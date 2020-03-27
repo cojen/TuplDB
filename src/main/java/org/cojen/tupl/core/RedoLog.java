@@ -166,7 +166,7 @@ final class RedoLog extends RedoWriter {
                 try {
                     if (mCrypto != null) {
                         try {
-                            in = mCrypto.newDecryptingStream(mLogId, in);
+                            in = mCrypto.newDecryptingStream(in);
                         } catch (IOException e) {
                             throw e;
                         } catch (Exception e) {
@@ -232,7 +232,7 @@ final class RedoLog extends RedoWriter {
                 nextOut = fout;
             } else {
                 try {
-                    nextOut = mCrypto.newEncryptingStream(logId, fout);
+                    nextOut = mCrypto.newEncryptingStream(fout);
                 } catch (GeneralSecurityException e) {
                     throw new DatabaseException(e);
                 }

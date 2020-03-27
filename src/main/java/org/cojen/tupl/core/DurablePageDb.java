@@ -679,7 +679,7 @@ final class DurablePageDb extends PageDb {
     OutputStream encrypt(OutputStream out) throws IOException {
         if (mCrypto != null) {
             try {
-                out = mCrypto.newEncryptingStream(0, out);
+                out = mCrypto.newEncryptingStream(out);
             } catch (GeneralSecurityException e) {
                 throw new DatabaseException(e);
             }
@@ -693,7 +693,7 @@ final class DurablePageDb extends PageDb {
     InputStream decrypt(InputStream in) throws IOException {
         if (mCrypto != null) {
             try {
-                in = mCrypto.newDecryptingStream(0, in);
+                in = mCrypto.newDecryptingStream(in);
             } catch (GeneralSecurityException e) {
                 throw new DatabaseException(e);
             }

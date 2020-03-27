@@ -218,16 +218,14 @@ int&nbsp;dstOffset)</code></th>
 </tr>
 <tr class="altColor" id="i8">
 <td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newDecryptingStream(long,java.io.InputStream)">newDecryptingStream</a></span>&#8203;(long&nbsp;id,
-<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;in)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newDecryptingStream(java.io.InputStream)">newDecryptingStream</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;in)</code></th>
 <td class="colLast">
 <div class="block">Called to wrap an InputStream for supporting decryption.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i9">
 <td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newEncryptingStream(long,java.io.OutputStream)">newEncryptingStream</a></span>&#8203;(long&nbsp;id,
-<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a>&nbsp;out)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newEncryptingStream(java.io.OutputStream)">newEncryptingStream</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a>&nbsp;out)</code></th>
 <td class="colLast">
 <div class="block">Called to wrap an OutputStream for supporting encryption.</div>
 </td>
@@ -427,16 +425,14 @@ int&nbsp;dstOffset)</span>
 </li>
 <li class="blockList">
 <section class="detail">
-<h3><a id="newEncryptingStream(long,java.io.OutputStream)">newEncryptingStream</a></h3>
-<div class="memberSignature"><span class="returnType"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a></span>&nbsp;<span class="memberName">newEncryptingStream</span>&#8203;(<span class="arguments">long&nbsp;id,
-<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a>&nbsp;out)</span>
+<h3><a id="newEncryptingStream(java.io.OutputStream)">newEncryptingStream</a></h3>
+<div class="memberSignature"><span class="returnType"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a></span>&nbsp;<span class="memberName">newEncryptingStream</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a>&nbsp;out)</span>
                           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a>,
 <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Called to wrap an OutputStream for supporting encryption. Implementation
  of this method must be thread-safe, but the stream doesn't need to be.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>id</code> - stream identifier</dd>
 <dd><code>out</code> - encrypted data destination</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>stream which encrypts all data</dd>
@@ -448,16 +444,14 @@ int&nbsp;dstOffset)</span>
 </li>
 <li class="blockList">
 <section class="detail">
-<h3><a id="newDecryptingStream(long,java.io.InputStream)">newDecryptingStream</a></h3>
-<div class="memberSignature"><span class="returnType"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a></span>&nbsp;<span class="memberName">newDecryptingStream</span>&#8203;(<span class="arguments">long&nbsp;id,
-<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;in)</span>
+<h3><a id="newDecryptingStream(java.io.InputStream)">newDecryptingStream</a></h3>
+<div class="memberSignature"><span class="returnType"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a></span>&nbsp;<span class="memberName">newDecryptingStream</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;in)</span>
                          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security" class="externalLink">GeneralSecurityException</a>,
 <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Called to wrap an InputStream for supporting decryption. Implementation
  of this method must be thread-safe, but the stream doesn't need to be.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
-<dd><code>id</code> - stream identifier</dd>
 <dd><code>in</code> - encrypted data source</dd>
 <dt><span class="returnLabel">Returns:</span></dt>
 <dd>stream which decrypts all data</dd>

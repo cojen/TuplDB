@@ -152,21 +152,19 @@ public interface Crypto {
      * Called to wrap an OutputStream for supporting encryption. Implementation
      * of this method must be thread-safe, but the stream doesn't need to be.
      *
-     * @param id stream identifier
      * @param out encrypted data destination
      * @return stream which encrypts all data
      */
-    public OutputStream newEncryptingStream(long id, OutputStream out)
+    public OutputStream newEncryptingStream(OutputStream out)
         throws GeneralSecurityException, IOException;
 
     /**
      * Called to wrap an InputStream for supporting decryption. Implementation
      * of this method must be thread-safe, but the stream doesn't need to be.
      *
-     * @param id stream identifier
      * @param in encrypted data source
      * @return stream which decrypts all data
      */
-    public InputStream newDecryptingStream(long id, InputStream in)
+    public InputStream newDecryptingStream(InputStream in)
         throws GeneralSecurityException, IOException;
 }

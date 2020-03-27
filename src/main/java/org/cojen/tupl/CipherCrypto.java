@@ -344,7 +344,7 @@ public class CipherCrypto implements Crypto {
     }
 
     @Override
-    public final OutputStream newEncryptingStream(long id, OutputStream out)
+    public final OutputStream newEncryptingStream(OutputStream out)
         throws GeneralSecurityException, IOException
     {
         Cipher cipher = newStreamCipher();
@@ -357,7 +357,7 @@ public class CipherCrypto implements Crypto {
     }
 
     @Override
-    public final InputStream newDecryptingStream(long id, InputStream in)
+    public final InputStream newDecryptingStream(InputStream in)
         throws GeneralSecurityException, IOException
     {
         int length = in.read();
