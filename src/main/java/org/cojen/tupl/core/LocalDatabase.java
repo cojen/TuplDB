@@ -101,6 +101,7 @@ import org.cojen.tupl.io.PageArray;
 
 import org.cojen.tupl.repl.StreamReplicator;
 
+import org.cojen.tupl.util.Clutch;
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.Runner;
 
@@ -223,7 +224,7 @@ public final class LocalDatabase extends CoreDatabase {
     // Various mappings, defined by RK_ fields.
     private final BTree mRegistryKeyMap;
 
-    private final Latch mOpenTreesLatch;
+    private final Clutch mOpenTreesLatch;
     // Maps tree names to open trees.
     // Must be a concurrent map because we rely on concurrent iteration.
     private final Map<byte[], TreeRef> mOpenTrees;
@@ -645,7 +646,7 @@ public final class LocalDatabase extends CoreDatabase {
                 mRegistry = new BTree(this, Tree.REGISTRY_ID, null, rootNode);
             }
 
-            mOpenTreesLatch = new Latch();
+            mOpenTreesLatch = Clutch.make();
             if (openMode == OPEN_TEMP) {
                 mOpenTrees = Collections.emptyMap();
                 mOpenTreesById = new LHashTable.Obj<>(0);
@@ -1152,12 +1153,12 @@ public final class LocalDatabase extends CoreDatabase {
 
     @Override
     public Index findIndex(byte[] name) throws IOException {
-        return openTree(name.clone(), IX_FIND);
+        return openTree(name, IX_FIND);
     }
 
     @Override
     public Index openIndex(byte[] name) throws IOException {
-        return openTree(name.clone(), IX_CREATE);
+        return openTree(name, IX_CREATE);
     }
 
     @Override
@@ -3486,6 +3487,7 @@ public final class LocalDatabase extends CoreDatabase {
         // Cleanup before opening more trees.
         cleanupUnreferencedTrees();
 
+        name = name.clone();
         byte[] nameKey = newKey(RK_INDEX_NAME, name);
 
         if (treeIdBytes == null) {
