@@ -18,8 +18,6 @@
 package org.cojen.tupl.ev;
 
 import org.cojen.tupl.EventListener;
-import org.cojen.tupl.EventLogger;
-import org.cojen.tupl.EventPrinter;
 import org.cojen.tupl.EventType;
 
 /**

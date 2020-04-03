@@ -36,7 +36,6 @@ import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.EventListener;
-import org.cojen.tupl.EventPrinter;
 import org.cojen.tupl.EventType;
 import org.cojen.tupl.LockUpgradeRule;
 
@@ -274,7 +273,7 @@ public final class Launcher implements Cloneable {
 
         Launcher launcher = clone();
 
-        launcher.eventListener(new EventPrinter(out));
+        launcher.eventListener(EventListener.printTo(out));
         launcher.mReadOnly = true;
         launcher.mDebugOpen = properties;
 

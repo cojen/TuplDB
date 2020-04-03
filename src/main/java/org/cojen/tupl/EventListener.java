@@ -19,6 +19,8 @@ package org.cojen.tupl;
 
 import org.cojen.tupl.ev.AllowEventListener;
 import org.cojen.tupl.ev.DisallowEventListener;
+import org.cojen.tupl.ev.EventLogger;
+import org.cojen.tupl.ev.EventPrinter;
 
 /**
  * Listener which receives notifications of actions being performed by the
@@ -29,6 +31,27 @@ import org.cojen.tupl.ev.DisallowEventListener;
  * @see DatabaseConfig#eventListener
  */
 public interface EventListener {
+    /**
+     * Returns a new listener that prints messages to the given stream.
+     */
+    public static EventListener printTo(java.io.PrintStream out) {
+        return new EventPrinter(out);
+    }
+
+    /**
+     * Returns a new listener that logs messages to the given logger.
+     */
+    public static EventListener logTo(java.util.logging.Logger logger) {
+        return new EventLogger(logger);
+    }
+
+    /**
+     * Returns a new listener that logs messages to the given logger.
+     */
+    public static EventListener logTo(System.Logger logger) {
+        return new EventLogger(logger);
+    }
+
     /**
      * @param message event message format
      * @param args arguments for message

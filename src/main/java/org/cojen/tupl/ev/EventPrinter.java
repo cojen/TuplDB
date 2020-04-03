@@ -15,9 +15,12 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl;
+package org.cojen.tupl.ev;
 
 import java.io.PrintStream;
+
+import org.cojen.tupl.EventListener;
+import org.cojen.tupl.EventType;
 
 /**
  * Event listener implementation which prints events to an output stream.
@@ -26,13 +29,6 @@ import java.io.PrintStream;
  */
 public final class EventPrinter implements EventListener {
     private final PrintStream mOut;
-
-    /**
-     * Prints events to standard out.
-     */
-    public EventPrinter() {
-        this(System.out);
-    }
 
     /**
      * Prints events to the given stream.

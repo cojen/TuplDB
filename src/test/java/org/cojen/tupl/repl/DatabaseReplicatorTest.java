@@ -39,7 +39,6 @@ import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseConfig;
 import org.cojen.tupl.EventListener;
-import org.cojen.tupl.EventPrinter;
 import org.cojen.tupl.EventType;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockResult;
@@ -130,7 +129,7 @@ public class DatabaseReplicatorTest {
         for (int i=0; i<members; i++) {
             mReplBaseFiles[i] = TestUtils.newTempBaseFile(getClass()); 
 
-            EventListener listener = false ? new EventPrinter() : null;
+            EventListener listener = false ? EventListener.printTo(System.out) : null;
 
             mReplConfigs[i] = new ReplicatorConfig()
                 .groupToken(1)

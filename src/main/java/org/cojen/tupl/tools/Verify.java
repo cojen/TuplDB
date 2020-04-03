@@ -36,7 +36,7 @@ public class Verify extends VerificationObserver {
         var config = new DatabaseConfig()
             .createFilePath(false)
             .baseFilePath(args[0])
-            .eventListener(new EventPrinter());
+            .eventListener(EventListener.printTo(System.out));
 
         if (args.length > 1) {
             config.minCacheSize(Long.parseLong(args[1]));

@@ -36,7 +36,7 @@ public class Compact {
         var config = new DatabaseConfig()
             .createFilePath(false)
             .baseFilePath(args[0])
-            .eventListener(new EventPrinter().ignore(EventType.Category.CHECKPOINT))
+            .eventListener(EventListener.printTo(System.out).ignore(EventType.Category.CHECKPOINT))
             .checkpointSizeThreshold(0);
 
         double target = Double.parseDouble(args[1]);

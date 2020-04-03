@@ -15,7 +15,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl;
+package org.cojen.tupl.ev;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -23,7 +23,10 @@ import java.util.logging.LogRecord;
 
 import java.util.Objects;
 
-import org.cojen.tupl.core.Utils;
+import org.cojen.tupl.EventListener;
+import org.cojen.tupl.EventType;
+
+import org.cojen.tupl.io.Utils;
 
 /**
  * Event listener implementation which passes events to a logger.
@@ -32,13 +35,6 @@ import org.cojen.tupl.core.Utils;
  */
 public final class EventLogger implements EventListener {
     private final Object mLogger;
-
-    /**
-     * Passes events to the global {@link Logger}.
-     */
-    public EventLogger() {
-        this(Logger.getGlobal());
-    }
 
     /**
      * Passes events to the given logger.
