@@ -28,9 +28,9 @@ import java.util.Objects;
 
 import javax.crypto.Cipher;
 import javax.crypto.CipherInputStream;
-import javax.crypto.CipherOutputStream;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
+import javax.crypto.ShortBufferException;
 
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -353,7 +353,7 @@ public class CipherCrypto implements Crypto {
         checkBlockLength(iv, 256);
         out.write((byte) (iv.length - 1));
         out.write(iv);
-        return new CipherOutputStream(out, cipher);
+        return new Out(out, cipher);
     }
 
     @Override
@@ -517,5 +517,67 @@ public class CipherCrypto implements Crypto {
     {
         return cipher.doFinal(DirectAccess.ref(srcPage + srcStart, srcLen),
                               DirectAccess.ref2(dstPage + dstStart, srcLen));
+    }
+
+    /**
+     * Alternative to CipherOutputStream which recycles the output buffer and doesn't suppress
+     * exceptions.
+     */
+    private static class Out extends OutputStream {
+        private final OutputStream mOut;
+        private final Cipher mCipher;
+
+        private byte[] mBuffer;
+
+        Out(OutputStream out, Cipher cipher) {
+            mOut = out;
+            mCipher = cipher;
+        }
+
+        @Override
+        public void write(int b) throws IOException {
+            mOut.write(new byte[] {(byte) b});
+        }
+
+        @Override
+        public void write(byte[] b, int off, int len) throws IOException {
+            byte[] buf = mBuffer;
+            if (buf == null || buf.length < len) {
+                mBuffer = buf = new byte[len];
+            }
+
+            int amt;
+            try {
+                amt = mCipher.update(b, off, len, buf);
+            } catch (ShortBufferException e) {
+                mBuffer = buf = mCipher.update(b, off, len);
+                amt = buf.length;
+            }
+
+            mOut.write(buf, 0, amt);
+        }
+
+        @Override
+        public void flush() throws IOException {
+            mOut.flush();
+        }
+
+        @Override
+        public void close() throws IOException {
+            mBuffer = null;
+
+            byte[] buf;
+            try {
+                buf = mCipher.doFinal();
+            } catch (GeneralSecurityException e) {
+                throw new IOException(e);
+            }
+
+            if (buf != null) {
+                mOut.write(buf);
+            }
+
+            mOut.close();
+        }
     }
 }
