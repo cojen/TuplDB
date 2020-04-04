@@ -428,6 +428,7 @@ class ReplWriter extends RedoWriter {
     @Override
     public void close() throws IOException {
         mEngine.mRepl.close();
+        mEngine.interrupt();
 
         if (mBufferLatch == null) {
             return;

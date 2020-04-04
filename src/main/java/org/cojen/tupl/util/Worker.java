@@ -208,7 +208,8 @@ public class Worker {
 
     /**
      * Waits until the worker queue is drained and possibly interrupt it. If the worker thread
-     * is interrupted and exits, a new thread is started when new tasks are enqueued.
+     * is interrupted and exits, a new thread is started when new tasks are enqueued. The same
+     * mutual exclusion rules for enqueuing apply to this method too.
      *
      * @param interrupt pass true to interrupt the worker thread so that it exits
      */
@@ -236,10 +237,19 @@ public class Worker {
         }
 
         if (interrupt) {
-            Thread t = mThread;
-            if (t != null) {
-                t.interrupt();
-            }
+            interrupt();
+        }
+    }
+
+    /**
+     * Interrupt the worker thread, if it exists. If the worker thread is idle, this forces it
+     * to exit, but a new thread is started when new tasks are enqueued. This method can be
+     * safely called by any thread without any special mutual exclusion.
+     */
+    public void interrupt() {
+        Thread t = mThread;
+        if (t != null) {
+            t.interrupt();
         }
     }
 

@@ -1140,6 +1140,15 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     }
 
     /**
+     * Send an interrupt to any workers, to help the threads exit sooner.
+     */
+    void interrupt() {
+        if (mWorkerGroup != null) {
+            mWorkerGroup.interrupt();
+        }
+    }
+
+    /**
      * Called by ReplWriter.
      *
      * @param txn prepared transaction

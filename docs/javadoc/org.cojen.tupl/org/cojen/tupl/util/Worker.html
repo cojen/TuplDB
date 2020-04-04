@@ -19,7 +19,7 @@
 <script type="text/javascript" src="../../../../../script-dir/jquery-ui.js"></script>
 </head>
 <body class="class-declaration">
-<script type="text/javascript">var data = {"i0":10,"i1":10,"i2":9,"i3":10};
+<script type="text/javascript">var data = {"i0":10,"i1":10,"i2":10,"i3":9,"i4":10};
 var tabs = {65535:["t0","All Methods"],1:["t1","Static Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -160,12 +160,19 @@ extends <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/ja
 </tr>
 <tr class="rowColor" id="i1">
 <td class="colFirst"><code>void</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#interrupt()">interrupt</a></span>()</code></th>
+<td class="colLast">
+<div class="block">Interrupt the worker thread, if it exists.</div>
+</td>
+</tr>
+<tr class="altColor" id="i2">
+<td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#join(boolean)">join</a></span>&#8203;(boolean&nbsp;interrupt)</code></th>
 <td class="colLast">
 <div class="block">Waits until the worker queue is drained and possibly interrupt it.</div>
 </td>
 </tr>
-<tr class="altColor" id="i2">
+<tr class="rowColor" id="i3">
 <td class="colFirst"><code>static <a href="Worker.html" title="class in org.cojen.tupl.util">Worker</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#make(int,long,java.util.concurrent.TimeUnit,java.util.concurrent.ThreadFactory)">make</a></span>&#8203;(int&nbsp;maxSize,
 long&nbsp;keepAliveTime,
@@ -173,7 +180,7 @@ long&nbsp;keepAliveTime,
 <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/concurrent/ThreadFactory.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">ThreadFactory</a>&nbsp;threadFactory)</code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="rowColor" id="i3">
+<tr class="altColor" id="i4">
 <td class="colFirst"><code>boolean</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#tryEnqueue(org.cojen.tupl.util.Worker.Task)">tryEnqueue</a></span>&#8203;(<a href="Worker.Task.html" title="class in org.cojen.tupl.util">Worker.Task</a>&nbsp;task)</code></th>
 <td class="colLast">
@@ -243,11 +250,21 @@ long&nbsp;keepAliveTime,
 <h3><a id="join(boolean)">join</a></h3>
 <div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">join</span>&#8203;(<span class="arguments">boolean&nbsp;interrupt)</span></div>
 <div class="block">Waits until the worker queue is drained and possibly interrupt it. If the worker thread
- is interrupted and exits, a new thread is started when new tasks are enqueued.</div>
+ is interrupted and exits, a new thread is started when new tasks are enqueued. The same
+ mutual exclusion rules for enqueuing apply to this method too.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>interrupt</code> - pass true to interrupt the worker thread so that it exits</dd>
 </dl>
+</section>
+</li>
+<li class="blockList">
+<section class="detail">
+<h3><a id="interrupt()">interrupt</a></h3>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">interrupt</span>()</div>
+<div class="block">Interrupt the worker thread, if it exists. If the worker thread is idle, this forces it
+ to exit, but a new thread is started when new tasks are enqueued. This method can be
+ safely called by any thread without any special mutual exclusion.</div>
 </section>
 </li>
 </ul>

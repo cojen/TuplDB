@@ -90,11 +90,17 @@ public abstract class WorkerGroup {
 
     /**
      * Waits until all the worker queues are drained. If the worker threads are interrupted and
-     * exit, new threads are started when new tasks are enqueued.
+     * exit, new threads are started when new tasks are enqueued. The same mutual exclusion
+     * rules for enqueueing apply to this method too.
      *
      * @param interrupt pass true to interrupt the worker threads so that they exit
      */
     public abstract void join(boolean interrupt);
+
+    /**
+     * Interrupts all the workers.
+     */
+    public abstract void interrupt();
 
     private static final class One extends WorkerGroup {
         private final Worker mWorker;
@@ -118,6 +124,11 @@ public abstract class WorkerGroup {
         @Override
         public void join(boolean interrupt) {
             mWorker.join(interrupt);
+        }
+
+        @Override
+        public void interrupt() {
+            mWorker.interrupt();
         }
     }
 
@@ -173,6 +184,13 @@ public abstract class WorkerGroup {
         public void join(boolean interrupt) {
             for (Worker w : mWorkers) {
                 w.join(interrupt);
+            }
+        }
+
+        @Override
+        public void interrupt() {
+            for (Worker w : mWorkers) {
+                w.interrupt();
             }
         }
     }
