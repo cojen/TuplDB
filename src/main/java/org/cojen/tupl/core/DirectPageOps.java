@@ -145,16 +145,10 @@ public final class DirectPageOps {
 
             if (true) {
                 // Pre-touch the pages, using the OS page size.
-                pageSize = 4096;
-                try {
-                    pageSize = UnsafeAccess.tryObtain().pageSize();
-                } catch (Throwable e) {
-                    // Ignore. Use default value.
-                }
 
                 final int numThreads = Runtime.getRuntime().availableProcessors();
                 final var latch = new Latch(numThreads);
-                final int osPageSize = pageSize;
+                final int osPageSize = UNSAFE.pageSize();
                 final long osPageCount = (mEndPtr - mStartPtr) / osPageSize;
 
                 long startPtr = mStartPtr;
