@@ -28,7 +28,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.Cursor;
-import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventType;
 import org.cojen.tupl.LockFailureException;
@@ -1021,7 +1020,6 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     public boolean txnPrepareRollback(long txnId, long prepareTxnId) throws IOException {
         // Run the task against the transaction being prepared, not the carrier transaction.
         TxnEntry te = getTxnEntry(prepareTxnId);
-        LocalTransaction txn = te.mTxn;
 
         runTask(te, new Worker.Task() {
             public void run() throws IOException {

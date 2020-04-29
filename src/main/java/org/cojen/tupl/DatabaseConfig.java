@@ -44,8 +44,6 @@ import org.cojen.tupl.repl.StreamReplicator;
  * @author Brian S O'Neill
  */
 public class DatabaseConfig implements Cloneable {
-    private static final long serialVersionUID = 1L;
-
     // Contains all the actual configuration options.
     final Launcher mLauncher;
 

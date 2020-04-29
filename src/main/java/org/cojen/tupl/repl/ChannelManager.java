@@ -45,7 +45,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.LongPredicate;
 
-import java.util.zip.Checksum;
 import java.util.zip.CRC32C;
 
 import javax.net.ServerSocketFactory;
@@ -1561,28 +1560,6 @@ final class ChannelManager {
                 encodeLongLE(command, 24, c);
                 encodeLongLE(command, 32, d);
                 encodeLongLE(command, 40, e);
-                return writeCommand(out, command, 0, commandLength);
-            } finally {
-                releaseExclusive();
-            }
-        }
-
-        private boolean writeCommand(int op, long a, long b, long c, long d, long e, long f) {
-            acquireExclusive();
-            try {
-                OutputStream out = mOut;
-                if (out == null) {
-                    return false;
-                }
-                final int commandLength = 8 + 8 * 6;
-                byte[] command = allocWriteBuffer(commandLength);
-                prepareCommand(command, op, 0, 8 * 6);
-                encodeLongLE(command, 8, a);
-                encodeLongLE(command, 16, b);
-                encodeLongLE(command, 24, c);
-                encodeLongLE(command, 32, d);
-                encodeLongLE(command, 40, e);
-                encodeLongLE(command, 48, f);
                 return writeCommand(out, command, 0, commandLength);
             } finally {
                 releaseExclusive();

@@ -36,7 +36,6 @@ import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.EventListener;
-import org.cojen.tupl.EventType;
 import org.cojen.tupl.LockUpgradeRule;
 
 import org.cojen.tupl.ev.ChainedEventListener;

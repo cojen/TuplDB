@@ -158,12 +158,10 @@ abstract class BTreeSeparator extends LongAdder {
             if (from == null) {
                 mFirstWorker = worker;
             } else {
-                worker.mPrev = from;
                 Worker next = from.mNext;
                 from.mNext = worker;
                 if (next != null) {
                     worker.mNext = next;
-                    next.mPrev = worker;
                 }
             }
         }
@@ -271,8 +269,6 @@ abstract class BTreeSeparator extends LongAdder {
 
         // Linked list of workers, ordered by the range of keys they act upon.
         Worker mNext;
-        Worker mPrev;
-
         /**
          * @param lowKey inclusive lowest key in the worker range; pass null for open range
          * @param highKey exclusive highest key in the worker range; pass null for open range

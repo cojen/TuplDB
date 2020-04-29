@@ -36,7 +36,6 @@ import static org.cojen.tupl.io.Utils.rethrow;
  *
  * @author Brian S O'Neill
  */
-@SuppressWarnings("restriction")
 abstract class AbstractFileIO extends FileIO {
     private static final int PAGE_SIZE;
 

@@ -55,7 +55,6 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.ObjLongConsumer;
 
-import java.util.zip.Checksum;
 import java.util.zip.CRC32C;
 
 import org.cojen.tupl.io.Utils;

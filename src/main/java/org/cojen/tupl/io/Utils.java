@@ -328,7 +328,6 @@ public class Utils {
     /**
      * Attempt to delete the given direct or mapped byte buffer.
      */
-    @SuppressWarnings("restriction")
     public static boolean delete(ByteBuffer bb) {
         if (!bb.isDirect()) {
             return false;

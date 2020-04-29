@@ -21,8 +21,6 @@ import java.io.IOException;
 
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.cojen.tupl.io.PageArray;
-
 import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventType;

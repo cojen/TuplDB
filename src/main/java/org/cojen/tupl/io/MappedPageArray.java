@@ -39,7 +39,6 @@ import static org.cojen.tupl.io.Utils.rethrow;
  *
  * @author Brian S O'Neill
  */
-@SuppressWarnings("restriction")
 public abstract class MappedPageArray extends PageArray {
     private static final VarHandle cMappingPtrHandle, cCauseHandle;
 

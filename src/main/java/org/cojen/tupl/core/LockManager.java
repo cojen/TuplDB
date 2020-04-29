@@ -276,7 +276,6 @@ public final class LockManager {
     /**
      * Simple hashtable of Locks.
      */
-    @SuppressWarnings({"unused", "restriction"})
     static final class LockHT extends Latch {
         private static final float LOAD_FACTOR = 0.75f;
 

@@ -1200,11 +1200,11 @@ final class FileTermLog extends Latch implements TermLog {
             if (commitTasks == null) {
                 commitTasks = task;
             } else {
-                List list;
+                List<Object> list;
                 if (commitTasks instanceof List) {
-                    list = (List) commitTasks;
+                    list = (List<Object>) commitTasks;
                 } else {
-                    list = new ArrayList();
+                    list = new ArrayList<Object>();
                     list.add(commitTasks);
                     commitTasks = list;
                 }

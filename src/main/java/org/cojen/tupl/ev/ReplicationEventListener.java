@@ -19,8 +19,6 @@ package org.cojen.tupl.ev;
 
 import java.util.function.BiConsumer;
 
-import java.util.logging.Level;
-
 import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventType;
 

@@ -38,7 +38,6 @@ import org.cojen.tupl.util.Runner;
  *
  * @author Brian S O'Neill
  */
-@SuppressWarnings("restriction")
 public final class DirectPageOps {
     static final int NODE_OVERHEAD = 100 - 24; // 6 fewer fields
 

@@ -645,7 +645,6 @@ class Locker implements DatabaseAccess { // weak access to database
             throw new IllegalStateException("No locks held");
         }
         if (tailObj instanceof Lock) {
-            ParentScope parent = mParentScope;
             // Group of one, so nothing to do.
         } else {
             Block.unlockCombine((Block) tailObj);

@@ -37,7 +37,7 @@ final class LCache<E extends LCache.Entry<E, C>, C> {
     private E mMostRecentlyUsed;
     private E mLeastRecentlyUsed;
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings({"unchecked"})
     LCache(int maxSize) {
         if (maxSize <= 0) {
             throw new IllegalArgumentException();
@@ -217,7 +217,7 @@ final class LCache<E extends LCache.Entry<E, C>, C> {
     /**
      * @param newLen must be a power of 2
      */
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings({"unchecked"})
     private void rehash(int newLen) {
         final E[] newEntries = (E[]) new Entry[newLen];
         final E[] entries = mEntries;

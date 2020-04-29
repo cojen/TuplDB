@@ -29,8 +29,6 @@ import java.util.function.LongConsumer;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DatabaseFullException;
 
-import static org.cojen.tupl.core.PageOps.*;
-
 /**
  * PageDb implementation which doesn't actually persist anything. Used for non-durable
  * databases.

@@ -24,8 +24,6 @@ import java.util.Comparator;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Scanner;
 
-import org.cojen.tupl.core.Utils;
-
 /**
  * Interface which combines Scanner and Cursor together.
  *

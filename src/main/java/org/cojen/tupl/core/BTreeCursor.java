@@ -4944,7 +4944,6 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
         return true;
     }
 
-    @SuppressWarnings("fallthrough")
     private boolean verifyFrames(int level, Node[] stack, CursorFrame frame,
                                  VerificationObserver observer)
         throws IOException
