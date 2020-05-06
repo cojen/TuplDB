@@ -184,8 +184,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/ja
 <tr class="rowColor">
 <th class="colFirst" scope="row"><code><span class="memberNameLink"><a href="#UNOWNED">UNOWNED</a></span></code></th>
 <td class="colLast">
-<div class="block">Result from lock check indicating that locker doesn't own the lock, or the result from a
- method which didn't require that a lock be acquired.</div>
+<div class="block">Indicates that the lock isn't owned, or that lock acquisition wasn't performed.</div>
 </td>
 </tr>
 <tr class="altColor">
@@ -364,8 +363,14 @@ the order they are declared.</div>
 <section class="detail">
 <h3><a id="UNOWNED">UNOWNED</a></h3>
 <div class="memberSignature"><span class="modifiers">public static final</span>&nbsp;<span class="returnType"><a href="LockResult.html" title="enum in org.cojen.tupl">LockResult</a></span>&nbsp;<span class="memberName">UNOWNED</span></div>
-<div class="block">Result from lock check indicating that locker doesn't own the lock, or the result from a
- method which didn't require that a lock be acquired.</div>
+<div class="block">Indicates that the lock isn't owned, or that lock acquisition wasn't performed. Unless
+ returned from an explcit lock check method, this result doesn't imply that the lock is
+ truly unowned.</div>
+<dl>
+<dt><span class="seeLabel">See Also:</span></dt>
+<dd><a href="Transaction.html#lockCheck(long,byte%5B%5D)"><code>Transaction.lockCheck</code></a>, 
+<a href="View.html#lockCheck(org.cojen.tupl.Transaction,byte%5B%5D)"><code>View.lockCheck</code></a></dd>
+</dl>
 </section>
 </li>
 </ul>

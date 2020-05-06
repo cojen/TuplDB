@@ -78,8 +78,12 @@ public enum LockResult {
     OWNED_EXCLUSIVE(3),
 
     /**
-     * Result from lock check indicating that locker doesn't own the lock, or the result from a
-     * method which didn't require that a lock be acquired.
+     * Indicates that the lock isn't owned, or that lock acquisition wasn't performed. Unless
+     * returned from an explcit lock check method, this result doesn't imply that the lock is
+     * truly unowned.
+     *
+     * @see Transaction#lockCheck Transaction.lockCheck
+     * @see View#lockCheck View.lockCheck
      */
     UNOWNED(0);
 
