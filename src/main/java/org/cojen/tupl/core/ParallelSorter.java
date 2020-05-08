@@ -225,14 +225,10 @@ final class ParallelSorter implements Sorter, Node.Supplier {
     public BTree finish() throws IOException {
         try {
             BTree tree = doFinish(null);
-            finishComplete(false);
+            finishComplete(true, true);
             return tree;
         } catch (Throwable e) {
-            try {
-                reset();
-            } catch (Exception e2) {
-                e.addSuppressed(e2);
-            }
+            resetAsync(e);
             throw e;
         }
     }
@@ -251,16 +247,12 @@ final class ParallelSorter implements Sorter, Node.Supplier {
         try {
             BTree tree = doFinish(scanner);
             if (tree != null) {
-                finishComplete(false);
+                finishComplete(true, true);
                 scanner.ready(tree);
             }
             return scanner;
         } catch (Throwable e) {
-            try {
-                reset();
-            } catch (Exception e2) {
-                e.addSuppressed(e2);
-            }
+            resetAsync(e);
             throw e;
         }
     }
@@ -274,7 +266,7 @@ final class ParallelSorter implements Sorter, Node.Supplier {
         synchronized (this) {
             checkState();
 
-            mState = S_FINISHING;
+            setState(S_FINISHING);
             mFinishCount = 0;
 
             try {
@@ -375,20 +367,10 @@ final class ParallelSorter implements Sorter, Node.Supplier {
             public BTree get() throws IOException {
                 try {
                     BTree tree = finishLevel.waitForFirstTree();
-                    finishComplete(false);
+                    finishComplete(true, true);
                     return tree;
                 } catch (Throwable e) {
-                    try {
-                        mExecutor.execute(() -> {
-                            try {
-                                reset();
-                            } catch (Throwable e2) {
-                                Utils.uncaught(e2);
-                            }
-                        });
-                    } catch (Throwable e3) {
-                        e.addSuppressed(e3);
-                    }
+                    resetAsync(e);
                     throw e;
                 }
             }
@@ -439,7 +421,9 @@ final class ParallelSorter implements Sorter, Node.Supplier {
         }
     }
 
-    private synchronized void finishComplete(boolean forReset) throws IOException {
+    private synchronized void finishComplete(boolean checkException, boolean clearException)
+        throws IOException
+    {
         mSortTreeLevels = null;
 
         if (mFinishCounter != null) {
@@ -456,11 +440,16 @@ final class ParallelSorter implements Sorter, Node.Supplier {
             } while (mSortTreePoolSize > 0);
         }
 
-        if (!forReset && mState == S_EXCEPTION) {
-            checkState();
+        if (mState == S_EXCEPTION) {
+            if (checkException) {
+                checkState();
+            }
+            if (!clearException) {
+                return;
+            }
         }
 
-        mState = S_READY;
+        setState(S_READY);
         mException = null;
     }
 
@@ -471,77 +460,108 @@ final class ParallelSorter implements Sorter, Node.Supplier {
 
     @Override
     public void reset() throws IOException {
+        reset(false);
+    }
+
+    private void resetAsync(Throwable cause) {
+        try {
+            mExecutor.execute(() -> {
+                try {
+                    reset(true);
+                } catch (Throwable e) {
+                    Utils.uncaught(e);
+                }
+            });
+        } catch (Throwable e) {
+            cause.addSuppressed(e);
+        }
+    }
+
+    private void reset(boolean async) throws IOException {
         List<BTree> toDrop = null;
 
         synchronized (this) {
-            if (mState == S_RESET) {
-                throw new IllegalStateException("Sorter is being concurrently reset");
+            while (mState == S_RESET) {
+                if (async) {
+                    return;
+                }
+                try {
+                    wait();
+                } catch (InterruptedException e) {
+                    throw new InterruptedIOException();
+                }
             }
 
-            mState = S_RESET;
+            setState(S_RESET);
             mFinishCounter = null;
             mFinishCount = 0;
 
             try {
-                while (mMergerCount != 0) {
-                    wait();
-                }
-            } catch (InterruptedException e) {
-                throw new InterruptedIOException();
-            }
-
-            Level[] levels = stopTreeMergers();
-
-            if (levels != null) {
-                for (Level level : levels) {
-                    BTree[] trees;
-                    int size;
-                    synchronized (level) {
-                        trees = level.mTrees;
-                        size = level.mSize;
-                        level.mSize = 0;
+                try {
+                    while (mMergerCount != 0) {
+                        wait();
                     }
-                    if (size != 0) {
-                        if (toDrop == null) {
-                            toDrop = new ArrayList<>();
+                } catch (InterruptedException e) {
+                    throw new InterruptedIOException();
+                }
+
+                Level[] levels = stopTreeMergers();
+
+                if (levels != null) {
+                    for (Level level : levels) {
+                        BTree[] trees;
+                        int size;
+                        synchronized (level) {
+                            trees = level.mTrees;
+                            size = level.mSize;
+                            level.mSize = 0;
                         }
-                        for (int i=0; i<size; i++) {
-                            toDrop.add(trees[i]);
+                        if (size != 0) {
+                            if (toDrop == null) {
+                                toDrop = new ArrayList<>();
+                            }
+                            for (int i=0; i<size; i++) {
+                                toDrop.add(trees[i]);
+                            }
                         }
                     }
+
+                    mSortTreeLevels = null;
                 }
 
-                mSortTreeLevels = null;
-            }
+                BTree[] sortTrees = mSortTrees;
+                int size = mSortTreesSize;
+                mSortTrees = null;
+                mSortTreesSize = 0;
 
-            BTree[] sortTrees = mSortTrees;
-            int size = mSortTreesSize;
-            mSortTrees = null;
-            mSortTreesSize = 0;
-
-            if (size != 0) {
-                if (toDrop == null) {
-                    toDrop = new ArrayList<>();
+                if (size != 0) {
+                    if (toDrop == null) {
+                        toDrop = new ArrayList<>();
+                    }
+                    for (int i=0; i<size; i++) {
+                        toDrop.add(sortTrees[i]);
+                    }
                 }
-                for (int i=0; i<size; i++) {
-                    toDrop.add(sortTrees[i]);
-                }
+            } catch (Throwable e) {
+                exception(e);
+                throw e;
             }
         }
 
-        finishReset(toDrop);
-    }
-
-    private void finishReset(List<BTree> toDrop) throws IOException {
-        if (toDrop != null) {
-            if (toDrop.size() == 1) {
-                toDrop.get(0).drop(false).run();
-            } else {
-                runDropTasks(toDrop);
+        try {
+            if (toDrop != null) {
+                if (toDrop.size() == 1) {
+                    toDrop.get(0).drop(false).run();
+                } else {
+                    runDropTasks(toDrop);
+                }
             }
-        }
 
-        finishComplete(true);
+            finishComplete(false, !async);
+        } catch (Throwable e) {
+            exception(e);
+            throw e;
+        }
     }
 
     private void runDropTasks(List<BTree> toDrop) throws IOException {
@@ -998,6 +1018,12 @@ final class ParallelSorter implements Sorter, Node.Supplier {
         if (mException == null) {
             mException = e;
         }
-        mState = S_EXCEPTION;
+        setState(S_EXCEPTION);
+    }
+
+    // Caller must be synchronized.
+    private void setState(int state) {
+        mState = state;
+        notifyAll();
     }
 }
