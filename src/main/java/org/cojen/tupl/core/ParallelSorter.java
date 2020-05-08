@@ -225,7 +225,7 @@ final class ParallelSorter implements Sorter, Node.Supplier {
     public BTree finish() throws IOException {
         try {
             BTree tree = doFinish(null);
-            finishComplete();
+            finishComplete(false);
             return tree;
         } catch (Throwable e) {
             try {
@@ -251,7 +251,7 @@ final class ParallelSorter implements Sorter, Node.Supplier {
         try {
             BTree tree = doFinish(scanner);
             if (tree != null) {
-                finishComplete();
+                finishComplete(false);
                 scanner.ready(tree);
             }
             return scanner;
@@ -375,13 +375,19 @@ final class ParallelSorter implements Sorter, Node.Supplier {
             public BTree get() throws IOException {
                 try {
                     BTree tree = finishLevel.waitForFirstTree();
-                    finishComplete();
+                    finishComplete(false);
                     return tree;
                 } catch (Throwable e) {
                     try {
-                        reset();
-                    } catch (Exception e2) {
-                        e.addSuppressed(e2);
+                        mExecutor.execute(() -> {
+                            try {
+                                reset();
+                            } catch (Throwable e2) {
+                                Utils.uncaught(e2);
+                            }
+                        });
+                    } catch (Throwable e3) {
+                        e.addSuppressed(e3);
                     }
                     throw e;
                 }
@@ -433,7 +439,7 @@ final class ParallelSorter implements Sorter, Node.Supplier {
         }
     }
 
-    private synchronized void finishComplete() throws IOException {
+    private synchronized void finishComplete(boolean forReset) throws IOException {
         mSortTreeLevels = null;
 
         if (mFinishCounter != null) {
@@ -450,7 +456,7 @@ final class ParallelSorter implements Sorter, Node.Supplier {
             } while (mSortTreePoolSize > 0);
         }
 
-        if (mState == S_EXCEPTION) {
+        if (!forReset && mState == S_EXCEPTION) {
             checkState();
         }
 
@@ -468,6 +474,10 @@ final class ParallelSorter implements Sorter, Node.Supplier {
         List<BTree> toDrop = null;
 
         synchronized (this) {
+            if (mState == S_RESET) {
+                throw new IllegalStateException("Sorter is being concurrently reset");
+            }
+
             mState = S_RESET;
             mFinishCounter = null;
             mFinishCount = 0;
@@ -519,11 +529,73 @@ final class ParallelSorter implements Sorter, Node.Supplier {
             }
         }
 
-        if (toDrop != null) for (BTree tree : toDrop) {
-            tree.drop(false).run();
+        finishReset(toDrop);
+    }
+
+    private void finishReset(List<BTree> toDrop) throws IOException {
+        if (toDrop != null) {
+            if (toDrop.size() == 1) {
+                toDrop.get(0).drop(false).run();
+            } else {
+                runDropTasks(toDrop);
+            }
         }
 
-        finishComplete();
+        finishComplete(true);
+    }
+
+    private void runDropTasks(List<BTree> toDrop) throws IOException {
+        int numThreads = Math.min(toDrop.size(), MERGE_THREAD_COUNT);
+
+        var controller = new Runnable() {
+            private int mPos;
+            private int mActive = numThreads;
+
+            @Override
+            public void run() {
+                while (true) {
+                    BTree tree;
+                    synchronized (this) {
+                        int pos = mPos;
+                        if (pos >= toDrop.size()) {
+                            inactive();
+                            return;
+                        }
+                        tree = toDrop.get(pos);
+                        mPos = pos + 1;
+                    }
+                    try {
+                        tree.drop(false).run();
+                    } catch (Throwable e) {
+                        inactive();
+                        Utils.rethrow(e);
+                    }
+                }
+            }
+
+            synchronized void waitUntilFinished() throws InterruptedIOException {
+                while (mActive > 0) {
+                    try {
+                        wait();
+                    } catch (InterruptedException e) {
+                        throw new InterruptedIOException();
+                    }
+                }
+            }
+
+            private synchronized void inactive() {
+                if (--mActive <= 0) {
+                    notifyAll();
+                }
+            }
+        };
+
+        for (int i=1; i<numThreads; i++) {
+            mExecutor.execute(controller);
+        }
+
+        controller.run();
+        controller.waitUntilFinished();
     }
 
     /**
