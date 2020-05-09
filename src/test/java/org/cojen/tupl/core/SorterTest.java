@@ -60,7 +60,7 @@ public class SorterTest {
 
     @Test
     public void sortNothing() throws Exception {
-        Sorter s = mDatabase.newSorter(null);
+        Sorter s = mDatabase.newSorter();
 
         Index ix1 = s.finish();
         assertEquals(0, ix1.count(null, null));
@@ -83,7 +83,7 @@ public class SorterTest {
 
     @Test
     public void sortOne() throws Exception {
-        Sorter s = mDatabase.newSorter(null);
+        Sorter s = mDatabase.newSorter();
 
         s.add("hello".getBytes(), "world".getBytes());
         s.reset();
@@ -155,7 +155,7 @@ public class SorterTest {
         var rnd = new Random(seed);
 
         if (s == null) {
-            s = mDatabase.newSorter(null);
+            s = mDatabase.newSorter();
         }
 
         byte[][] kvPairs = null;
@@ -222,7 +222,7 @@ public class SorterTest {
         final long seed = 394508;
         var rnd = new Random(seed);
 
-        Sorter s = mDatabase.newSorter(null);
+        Sorter s = mDatabase.newSorter();
 
         for (int i=0; i<count; i++) {
             byte[] key = randomStr(rnd, 100, 8000);
@@ -271,7 +271,7 @@ public class SorterTest {
         final long seed = 123 + count;
         var rnd = new Random(seed);
 
-        Sorter s = mDatabase.newSorter(null);
+        Sorter s = mDatabase.newSorter();
 
         var expected = new TreeMap<byte[], byte[]>(KeyComparator.THE);
 

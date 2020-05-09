@@ -364,10 +364,9 @@ double&nbsp;target)</code></th>
 </tr>
 <tr class="altColor" id="i24">
 <td class="colFirst"><code><a href="Sorter.html" title="interface in org.cojen.tupl">Sorter</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newSorter(java.util.concurrent.Executor)">newSorter</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/concurrent/Executor.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">Executor</a>&nbsp;executor)</code></th>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newSorter()">newSorter</a></span>()</code></th>
 <td class="colLast">
-<div class="block">Returns a new Sorter instance, which uses the given executor for running parallel
- tasks.</div>
+<div class="block">Returns a new Sorter instance.</div>
 </td>
 </tr>
 <tr class="rowColor" id="i25">
@@ -797,17 +796,11 @@ byte[]&nbsp;newName)</span>
 </li>
 <li class="blockList">
 <section class="detail">
-<h3><a id="newSorter(java.util.concurrent.Executor)">newSorter</a></h3>
-<div class="memberSignature"><span class="returnType"><a href="Sorter.html" title="interface in org.cojen.tupl">Sorter</a></span>&nbsp;<span class="memberName">newSorter</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/concurrent/Executor.html?is-external=true" title="class or interface in java.util.concurrent" class="externalLink">Executor</a>&nbsp;executor)</span>
-          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
-<div class="block">Returns a new Sorter instance, which uses the given executor for running parallel
- tasks. Pass null to use a default executor. The standard algorithm is a parallel
- external mergesort, which attempts to use all available processors. All external storage
- is maintained in the database itself, in the form of temporary indexes.</div>
-<dl>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
-</dl>
+<h3><a id="newSorter()">newSorter</a></h3>
+<div class="memberSignature"><span class="returnType"><a href="Sorter.html" title="interface in org.cojen.tupl">Sorter</a></span>&nbsp;<span class="memberName">newSorter</span>()</div>
+<div class="block">Returns a new Sorter instance. The standard algorithm is a parallel external mergesort,
+ which attempts to use all available processors. All external storage is maintained in
+ the database itself, in the form of temporary indexes.</div>
 </section>
 </li>
 <li class="blockList">

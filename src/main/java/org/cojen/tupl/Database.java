@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
 
-import java.util.concurrent.Executor;
 import java.util.concurrent.locks.Lock;
 
 import java.nio.charset.StandardCharsets;
@@ -252,12 +251,11 @@ public interface Database extends CauseCloseable, Flushable {
     public abstract PrepareHandler prepareWriter(String name) throws IOException;
 
     /**
-     * Returns a new Sorter instance, which uses the given executor for running parallel
-     * tasks. Pass null to use a default executor. The standard algorithm is a parallel
-     * external mergesort, which attempts to use all available processors. All external storage
-     * is maintained in the database itself, in the form of temporary indexes.
+     * Returns a new Sorter instance. The standard algorithm is a parallel external mergesort,
+     * which attempts to use all available processors. All external storage is maintained in
+     * the database itself, in the form of temporary indexes.
      */
-    public abstract Sorter newSorter(Executor executor) throws IOException;
+    public abstract Sorter newSorter();
 
     /**
      * Preallocates pages for immediate use. The actual amount allocated

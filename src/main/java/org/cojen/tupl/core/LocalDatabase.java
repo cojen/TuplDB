@@ -51,7 +51,6 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.Executor;
 
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
@@ -2183,8 +2182,8 @@ public final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
-    public Sorter newSorter(Executor executor) throws IOException {
-        return new ParallelSorter(this, executor == null ? Runner.current() : executor);
+    public Sorter newSorter() {
+        return new ParallelSorter(this, Runner.current());
     }
 
     @Override
