@@ -222,6 +222,38 @@ final class ParallelSorter implements Sorter, Node.Supplier {
     }
 
     @Override
+    public void addAll(Scanner s) throws IOException {
+        byte[][] kvPairs = new byte[200][];
+        int size = 0;
+
+        do {
+            byte[] key = s.key();
+            byte[] value = s.value();
+
+            if (key == null || value == null) {
+                break;
+            }
+
+            kvPairs[size++] = key;
+            kvPairs[size++] = value;
+
+            if (size >= kvPairs.length) {
+                addBatch(kvPairs, 0, kvPairs.length >> 1);
+
+                if (Thread.interrupted()) {
+                    throw new InterruptedIOException();
+                }
+
+                size = 0;
+            }
+        } while (s.step());
+
+        if (size > 0) {
+            addBatch(kvPairs, 0, size >> 1);
+        }
+    }
+
+    @Override
     public BTree finish() throws IOException {
         try {
             BTree tree = doFinish(null);
@@ -239,28 +271,129 @@ final class ParallelSorter implements Sorter, Node.Supplier {
     }
 
     @Override
+    public Scanner finishScan(Scanner src) throws IOException {
+        return finishScan(new SortScanner(mDatabase), src);
+    }
+
+    @Override
     public Scanner finishScanReverse() throws IOException {
         return finishScan(new SortReverseScanner(mDatabase));
     }
 
-    private Scanner finishScan(SortScanner scanner) throws IOException {
+    @Override
+    public Scanner finishScanReverse(Scanner src) throws IOException {
+        return finishScan(new SortReverseScanner(mDatabase), src);
+    }
+
+    private Scanner finishScan(SortScanner dst) throws IOException {
         try {
-            BTree tree = doFinish(scanner);
+            BTree tree = doFinish(dst);
             if (tree != null) {
                 finishComplete(true, true);
-                scanner.ready(tree);
+                dst.ready(tree);
             }
-            return scanner;
+            return dst;
         } catch (Throwable e) {
             resetAsync(e);
             throw e;
         }
     }
 
+    private Scanner finishScan(SortScanner dst, Scanner src) throws IOException {
+        if (src == null) {
+            return finishScan(dst);
+        }
+
+        var addTask = new Runnable() {
+            // this:      not started
+            // Thread:    running
+            // null:      finished
+            // Throwable: failed (and finished)
+            private Object mState = this;
+
+            @Override
+            public void run() {
+                doRun: {
+                    synchronized (this) {
+                        if (mState == null) {
+                            break doRun;
+                        }
+                        mState = Thread.currentThread();
+                    }
+
+                    Object state;
+                    try {
+                        addAll(src);
+                        state = null;
+                    } catch (Throwable e) {
+                        state = e;
+                    }
+
+                    synchronized (this) {
+                        mState = state;
+                        notifyAll();
+                    }
+                }
+
+                Utils.closeQuietly(src);
+            }
+
+            synchronized void waitUntilFinished() throws InterruptedIOException {
+                while (true) {
+                    Object state = mState;
+                    if (state == null) {
+                        return;
+                    }
+                    if (state instanceof Throwable) {
+                        throw Utils.rethrow((Throwable) state);
+                    }
+                    try {
+                        wait();
+                    } catch (InterruptedException e) {
+                        state = mState;
+                        mState = null; // don't let it start
+                        if (state instanceof Thread) {
+                            ((Thread) state).interrupt();
+                        }
+                        var ex = new InterruptedIOException();
+                        if (state instanceof Throwable) {
+                            ex.addSuppressed((Throwable) state);
+                        }
+                        throw ex;
+                    }
+                }
+            }
+        };
+
+        mExecutor.execute(addTask);
+
+        dst.notReady(new SortScanner.Supplier() {
+            @Override
+            public BTree get() throws IOException {
+                try {
+                    addTask.waitUntilFinished();
+                    BTree tree = doFinish(null);
+                    finishComplete(true, true);
+                    return tree;
+                } catch (Throwable e) {
+                    resetAsync(e);
+                    throw e;
+                }
+            }
+
+            @Override
+            public void close() throws IOException {
+                reset();
+            }
+        });
+
+        return dst;
+    }
+
     /**
-     * @param scanner pass null to always wait to finish
+     * @param dst pass null to always wait to finish
      */
-    private BTree doFinish(SortScanner scanner) throws IOException {
+    private BTree doFinish(SortScanner dst) throws IOException {
         Level finishLevel;
 
         synchronized (this) {
@@ -358,11 +491,11 @@ final class ParallelSorter implements Sorter, Node.Supplier {
             mFinishCounter = merger;
         }
 
-        if (scanner == null) {
+        if (dst == null) {
             return finishLevel.waitForFirstTree();
         }
 
-        scanner.notReady(new SortScanner.Supplier() {
+        dst.notReady(new SortScanner.Supplier() {
             @Override
             public BTree get() throws IOException {
                 try {
@@ -477,12 +610,12 @@ final class ParallelSorter implements Sorter, Node.Supplier {
         }
     }
 
-    private void reset(boolean async) throws IOException {
+    private void reset(boolean isAsync) throws IOException {
         List<BTree> toDrop = null;
 
         synchronized (this) {
             while (mState == S_RESET) {
-                if (async) {
+                if (isAsync) {
                     return;
                 }
                 try {
@@ -557,7 +690,7 @@ final class ParallelSorter implements Sorter, Node.Supplier {
                 }
             }
 
-            finishComplete(false, !async);
+            finishComplete(false, !isAsync);
         } catch (Throwable e) {
             exception(e);
             throw e;

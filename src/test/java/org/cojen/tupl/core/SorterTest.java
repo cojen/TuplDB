@@ -309,4 +309,54 @@ public class SorterTest {
             assertTrue(expected.isEmpty());
         }
     }
+
+    @Test
+    public void sortScanner() throws Exception {
+        // Fill an index with random entries and then transform it such that the keys and
+        // values are swapped, and therefore the view is unordered. Then sort it using a
+        // background-sorting scanner.
+
+        var rnd = new Random(928451);
+        Index ix = mDatabase.openIndex("test");
+        Index expect = mDatabase.openIndex("expect");
+
+        for (int i=0; i<100_000; i++) {
+            byte[] key = randomStr(rnd, 10);
+            byte[] value = randomStr(rnd, 10);
+            ix.store(null, key, value);
+            expect.store(null, value, key);
+        }
+
+        View view = ix.viewTransformed(new Transformer() {
+            @Override
+            public byte[] transformValue(byte[] value, byte[] key, byte[] tkey) {
+                return key;
+            }
+
+            @Override
+            public byte[] transformKey(Cursor c) {
+                return c.value();
+            }
+        });
+
+        Scanner result = mDatabase.newSorter().finishScan(view.newScanner(null));
+        checkResults(expect.newScanner(null), result);
+
+        // Again, in reverse.
+        result = mDatabase.newSorter().finishScanReverse(view.newScanner(null));
+        checkResults(expect.viewReverse().newScanner(null), result);
+    }
+
+    private void checkResults(Scanner expect, Scanner result) throws Exception {
+        while (true) {
+            fastAssertArrayEquals(expect.key(), result.key());
+            fastAssertArrayEquals(expect.value(), result.value());
+            if (!expect.step()) {
+                assertFalse(result.step());
+                break;
+            } else {
+                assertTrue(result.step());
+            }
+        }
+    }
 }

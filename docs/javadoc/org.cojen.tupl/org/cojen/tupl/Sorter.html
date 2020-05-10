@@ -19,7 +19,7 @@
 <script type="text/javascript" src="../../../../script-dir/jquery-ui.js"></script>
 </head>
 <body class="class-declaration">
-<script type="text/javascript">var data = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6};
+<script type="text/javascript">var data = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6,"i7":6,"i8":6,"i9":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -126,6 +126,13 @@ byte[]&nbsp;value)</code></th>
 </tr>
 <tr class="rowColor" id="i1">
 <td class="colFirst"><code>void</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#addAll(org.cojen.tupl.Scanner)">addAll</a></span>&#8203;(<a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&nbsp;s)</code></th>
+<td class="colLast">
+<div class="block">Add all remaining items from the given scanner into the sorter.</div>
+</td>
+</tr>
+<tr class="altColor" id="i2">
+<td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#addBatch(byte%5B%5D%5B%5D,int,int)">addBatch</a></span>&#8203;(byte[][]&nbsp;kvPairs,
 int&nbsp;offset,
 int&nbsp;size)</code></th>
@@ -134,14 +141,14 @@ int&nbsp;size)</code></th>
  entry separately.</div>
 </td>
 </tr>
-<tr class="altColor" id="i2">
+<tr class="rowColor" id="i3">
 <td class="colFirst"><code><a href="Index.html" title="interface in org.cojen.tupl">Index</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#finish()">finish</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Finish sorting the entries, and return a temporary index with the results.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i3">
+<tr class="altColor" id="i4">
 <td class="colFirst"><code><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#finishScan()">finishScan</a></span>()</code></th>
 <td class="colLast">
@@ -149,14 +156,29 @@ int&nbsp;size)</code></th>
  as it goes.</div>
 </td>
 </tr>
-<tr class="altColor" id="i4">
+<tr class="rowColor" id="i5">
+<td class="colFirst"><code><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#finishScan(org.cojen.tupl.Scanner)">finishScan</a></span>&#8203;(<a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&nbsp;s)</code></th>
+<td class="colLast">
+<div class="block">Returns a single-use Scanner over the sorted results, which deletes temporary resources
+ as it goes.</div>
+</td>
+</tr>
+<tr class="altColor" id="i6">
 <td class="colFirst"><code><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#finishScanReverse()">finishScanReverse</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Same as <a href="#finishScan()"><code>finishScan</code></a>, but in reverse order.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i5">
+<tr class="rowColor" id="i7">
+<td class="colFirst"><code><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#finishScanReverse(org.cojen.tupl.Scanner)">finishScanReverse</a></span>&#8203;(<a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&nbsp;s)</code></th>
+<td class="colLast">
+<div class="block">Same as <a href="#finishScan(org.cojen.tupl.Scanner)"><code>finishScan</code></a>, but in reverse order.</div>
+</td>
+</tr>
+<tr class="altColor" id="i8">
 <td class="colFirst"><code>long</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#progress()">progress</a></span>()</code></th>
 <td class="colLast">
@@ -164,7 +186,7 @@ int&nbsp;size)</code></th>
  sort results are being finished.</div>
 </td>
 </tr>
-<tr class="altColor" id="i6">
+<tr class="rowColor" id="i9">
 <td class="colFirst"><code>void</code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#reset()">reset</a></span>()</code></th>
 <td class="colLast">
@@ -230,6 +252,23 @@ int&nbsp;size)</span>
 </li>
 <li class="blockList">
 <section class="detail">
+<h3><a id="addAll(org.cojen.tupl.Scanner)">addAll</a></h3>
+<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">addAll</span>&#8203;(<span class="arguments"><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&nbsp;s)</span>
+     throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<div class="block">Add all remaining items from the given scanner into the sorter. If multiple entries are
+ added with matching keys, only the last one added is kept. After a sorter is fully
+ finished or reset, no entries exist in the sorter, and new entries can be added for
+ another sort.</div>
+<dl>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if sort is finishing in another thread</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io" class="externalLink">InterruptedIOException</a></code> - if reset by another thread</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li class="blockList">
+<section class="detail">
 <h3><a id="finish()">finish</a></h3>
 <div class="memberSignature"><span class="returnType"><a href="Index.html" title="interface in org.cojen.tupl">Index</a></span>&nbsp;<span class="memberName">finish</span>()
       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
@@ -263,11 +302,46 @@ int&nbsp;size)</span>
 </li>
 <li class="blockList">
 <section class="detail">
+<h3><a id="finishScan(org.cojen.tupl.Scanner)">finishScan</a></h3>
+<div class="memberSignature"><span class="returnType"><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a></span>&nbsp;<span class="memberName">finishScan</span>&#8203;(<span class="arguments"><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&nbsp;s)</span>
+            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<div class="block">Returns a single-use Scanner over the sorted results, which deletes temporary resources
+ as it goes. Invoking this method causes the sort to be asynchronously finished, and the
+ Scanner might block waiting for entries to become available. Closing the Scanner before
+ the sort is finished interrupts it.</div>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>s</code> - source additional entries to add to the sorter before finishing</dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if sort is finishing in another thread</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io" class="externalLink">InterruptedIOException</a></code> - if reset by another thread</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li class="blockList">
+<section class="detail">
 <h3><a id="finishScanReverse()">finishScanReverse</a></h3>
 <div class="memberSignature"><span class="returnType"><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a></span>&nbsp;<span class="memberName">finishScanReverse</span>()
                    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
 <div class="block">Same as <a href="#finishScan()"><code>finishScan</code></a>, but in reverse order.</div>
 <dl>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if sort is finishing in another thread</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io" class="externalLink">InterruptedIOException</a></code> - if reset by another thread</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li class="blockList">
+<section class="detail">
+<h3><a id="finishScanReverse(org.cojen.tupl.Scanner)">finishScanReverse</a></h3>
+<div class="memberSignature"><span class="returnType"><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a></span>&nbsp;<span class="memberName">finishScanReverse</span>&#8203;(<span class="arguments"><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&nbsp;s)</span>
+                   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<div class="block">Same as <a href="#finishScan(org.cojen.tupl.Scanner)"><code>finishScan</code></a>, but in reverse order.</div>
+<dl>
+<dt><span class="paramLabel">Parameters:</span></dt>
+<dd><code>s</code> - source of additional entries to add to the sorter before finishing</dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if sort is finishing in another thread</dd>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/InterruptedIOException.html?is-external=true" title="class or interface in java.io" class="externalLink">InterruptedIOException</a></code> - if reset by another thread</dd>

@@ -90,7 +90,7 @@ loadScripts(document, 'script');</script>
 <section class="description">
 <dl>
 <dt>All Superinterfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code></dd>
 </dl>
 <dl>
 <dt>All Known Subinterfaces:</dt>
@@ -98,7 +98,7 @@ loadScripts(document, 'script');</script>
 </dl>
 <hr>
 <pre>public interface <span class="typeNameLabel">Scanner</span>
-extends <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></pre>
+extends <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></pre>
 <div class="block">Scans through all entries in a view and passes them to a consumer. Scanner implementations
  which perform pre-fetching can be more efficient than a <a href="Cursor.html" title="interface in org.cojen.tupl">cursor</a>. Any
  exception thrown by a scan action automatically closes the Scanner.
@@ -238,7 +238,8 @@ extends <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/ja
 <h3><a id="step(long)">step</a></h3>
 <div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">step</span>&#8203;(<span class="arguments">long&nbsp;amount)</span>
               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
-<div class="block">Steps over the requested amount of entries.</div>
+<div class="block">Steps over the requested amount of entries. An amount is one is equivalent to calling
+ the regular step method. An amount of zero simply checks that the scanner is open.</div>
 <dl>
 <dt><span class="paramLabel">Parameters:</span></dt>
 <dd><code>amount</code> - amount of entries to step over</dd>
@@ -270,6 +271,8 @@ extends <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/ja
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/AutoCloseable.html?is-external=true#close()" title="class or interface in java.lang" class="externalLink">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code></dd>
+<dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true#close()" title="class or interface in java.io" class="externalLink">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code></dd>
 <dt><span class="throwsLabel">Throws:</span></dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
 </dl>

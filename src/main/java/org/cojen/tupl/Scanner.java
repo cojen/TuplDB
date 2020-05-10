@@ -17,6 +17,7 @@
 
 package org.cojen.tupl;
 
+import java.io.Closeable;
 import java.io.IOException;
 
 import java.util.Comparator;
@@ -37,7 +38,7 @@ import org.cojen.tupl.core.Utils;
  * @see View#newScanner View.newScanner
  * @see Updater
  */
-public interface Scanner extends AutoCloseable {
+public interface Scanner extends Closeable {
     /**
      * Returns a comparator for the ordering of this scanner, or null if unordered.
      */
@@ -63,7 +64,8 @@ public interface Scanner extends AutoCloseable {
     boolean step() throws IOException;
 
     /**
-     * Steps over the requested amount of entries.
+     * Steps over the requested amount of entries. An amount is one is equivalent to calling
+     * the regular step method. An amount of zero simply checks that the scanner is open.
      *
      * @param amount amount of entries to step over
      * @return false if no more entries remain and scanner has been closed

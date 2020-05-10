@@ -52,6 +52,17 @@ public interface Sorter {
     public void addBatch(byte[][] kvPairs, int offset, int size) throws IOException;
 
     /**
+     * Add all remaining items from the given scanner into the sorter. If multiple entries are
+     * added with matching keys, only the last one added is kept. After a sorter is fully
+     * finished or reset, no entries exist in the sorter, and new entries can be added for
+     * another sort.
+     *
+     * @throws IllegalStateException if sort is finishing in another thread
+     * @throws InterruptedIOException if reset by another thread
+     */
+    public void addAll(Scanner s) throws IOException;
+
+    /**
      * Finish sorting the entries, and return a temporary index with the results.
      *
      * @throws IllegalStateException if sort is finishing in another thread
@@ -72,12 +83,33 @@ public interface Sorter {
     public Scanner finishScan() throws IOException;
 
     /**
-     * Same as {@link #finishScan finishScan}, but in reverse order.
+     * Returns a single-use Scanner over the sorted results, which deletes temporary resources
+     * as it goes. Invoking this method causes the sort to be asynchronously finished, and the
+     * Scanner might block waiting for entries to become available. Closing the Scanner before
+     * the sort is finished interrupts it.
+     *
+     * @param s source additional entries to add to the sorter before finishing
+     * @throws IllegalStateException if sort is finishing in another thread
+     * @throws InterruptedIOException if reset by another thread
+     */
+    public Scanner finishScan(Scanner s) throws IOException;
+
+    /**
+     * Same as {@link #finishScan() finishScan}, but in reverse order.
      *
      * @throws IllegalStateException if sort is finishing in another thread
      * @throws InterruptedIOException if reset by another thread
      */
     public Scanner finishScanReverse() throws IOException;
+
+    /**
+     * Same as {@link #finishScan(Scanner) finishScan}, but in reverse order.
+     *
+     * @param s source of additional entries to add to the sorter before finishing
+     * @throws IllegalStateException if sort is finishing in another thread
+     * @throws InterruptedIOException if reset by another thread
+     */
+    public Scanner finishScanReverse(Scanner s) throws IOException;
 
     /**
      * Returns an approximate count of entries which have finished, which is only updated while

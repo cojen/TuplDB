@@ -131,9 +131,24 @@ loadScripts(document, 'script');</script>
 </tr>
 <tr class="rowColor">
 <td class="colFirst"><code><a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a></code></td>
+<th class="colSecond" scope="row"><span class="typeNameLabel">Sorter.</span><code><span class="memberNameLink"><a href="../Sorter.html#finishScan(org.cojen.tupl.Scanner)">finishScan</a></span>&#8203;(<a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&nbsp;s)</code></th>
+<td class="colLast">
+<div class="block">Returns a single-use Scanner over the sorted results, which deletes temporary resources
+ as it goes.</div>
+</td>
+</tr>
+<tr class="altColor">
+<td class="colFirst"><code><a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a></code></td>
 <th class="colSecond" scope="row"><span class="typeNameLabel">Sorter.</span><code><span class="memberNameLink"><a href="../Sorter.html#finishScanReverse()">finishScanReverse</a></span>()</code></th>
 <td class="colLast">
 <div class="block">Same as <a href="../Sorter.html#finishScan()"><code>finishScan</code></a>, but in reverse order.</div>
+</td>
+</tr>
+<tr class="rowColor">
+<td class="colFirst"><code><a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a></code></td>
+<th class="colSecond" scope="row"><span class="typeNameLabel">Sorter.</span><code><span class="memberNameLink"><a href="../Sorter.html#finishScanReverse(org.cojen.tupl.Scanner)">finishScanReverse</a></span>&#8203;(<a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&nbsp;s)</code></th>
+<td class="colLast">
+<div class="block">Same as <a href="../Sorter.html#finishScan(org.cojen.tupl.Scanner)"><code>finishScan</code></a>, but in reverse order.</div>
 </td>
 </tr>
 <tr class="altColor">
@@ -141,6 +156,42 @@ loadScripts(document, 'script');</script>
 <th class="colSecond" scope="row"><span class="typeNameLabel">View.</span><code><span class="memberNameLink"><a href="../View.html#newScanner(org.cojen.tupl.Transaction)">newScanner</a></span>&#8203;(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></th>
 <td class="colLast">
 <div class="block">Returns a new scanner over this view.</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="useSummary">
+<table>
+<caption><span>Methods in <a href="../package-summary.html">org.cojen.tupl</a> with parameters of type <a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a></span><span class="tabEnd">&nbsp;</span></caption>
+<thead>
+<tr>
+<th class="colFirst" scope="col">Modifier and Type</th>
+<th class="colSecond" scope="col">Method</th>
+<th class="colLast" scope="col">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="altColor">
+<td class="colFirst"><code>void</code></td>
+<th class="colSecond" scope="row"><span class="typeNameLabel">Sorter.</span><code><span class="memberNameLink"><a href="../Sorter.html#addAll(org.cojen.tupl.Scanner)">addAll</a></span>&#8203;(<a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&nbsp;s)</code></th>
+<td class="colLast">
+<div class="block">Add all remaining items from the given scanner into the sorter.</div>
+</td>
+</tr>
+<tr class="rowColor">
+<td class="colFirst"><code><a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a></code></td>
+<th class="colSecond" scope="row"><span class="typeNameLabel">Sorter.</span><code><span class="memberNameLink"><a href="../Sorter.html#finishScan(org.cojen.tupl.Scanner)">finishScan</a></span>&#8203;(<a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&nbsp;s)</code></th>
+<td class="colLast">
+<div class="block">Returns a single-use Scanner over the sorted results, which deletes temporary resources
+ as it goes.</div>
+</td>
+</tr>
+<tr class="altColor">
+<td class="colFirst"><code><a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a></code></td>
+<th class="colSecond" scope="row"><span class="typeNameLabel">Sorter.</span><code><span class="memberNameLink"><a href="../Sorter.html#finishScanReverse(org.cojen.tupl.Scanner)">finishScanReverse</a></span>&#8203;(<a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&nbsp;s)</code></th>
+<td class="colLast">
+<div class="block">Same as <a href="../Sorter.html#finishScan(org.cojen.tupl.Scanner)"><code>finishScan</code></a>, but in reverse order.</div>
 </td>
 </tr>
 </tbody>
