@@ -88,7 +88,7 @@ public interface Sorter {
      * Scanner might block waiting for entries to become available. Closing the Scanner before
      * the sort is finished interrupts it.
      *
-     * @param s source additional entries to add to the sorter before finishing
+     * @param s source of additional entries to add to the sorter before finishing
      * @throws IllegalStateException if sort is finishing in another thread
      * @throws InterruptedIOException if reset by another thread
      */
