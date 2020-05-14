@@ -88,6 +88,7 @@ class SocketReplicator implements StreamReplicator {
         if (replicaHost == null) {
             // Local host is the replica.
             mServerSocket = new ServerSocket(port);
+            // FIXME: On MacOS, sometimes not bound.
             mLocalAddress = (InetSocketAddress) mServerSocket.getLocalSocketAddress();
         } else {
             // Local host is the leader.
