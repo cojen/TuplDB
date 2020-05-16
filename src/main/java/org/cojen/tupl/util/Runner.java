@@ -80,7 +80,7 @@ public final class Runner extends AbstractExecutorService {
             synchronized (Runner.class) {
                 runners = cRunners;
                 if (runners == null) {
-                    cRunners = new ConcurrentHashMap<>();
+                    cRunners = runners = new ConcurrentHashMap<>();
                 }
             }
         }
