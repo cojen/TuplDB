@@ -363,7 +363,7 @@ public interface Database extends CauseCloseable, Flushable {
      * Collection of database {@linkplain Database#stats statistics}.
      */
     public static class Stats implements Cloneable, Serializable {
-        private static final long serialVersionUID = 3L;
+        private static final long serialVersionUID = 4L;
 
         public int pageSize;
         public long freePages;
@@ -374,7 +374,6 @@ public interface Database extends CauseCloseable, Flushable {
         public long lockCount;
         public long cursorCount;
         public long txnCount;
-        public long txnsCreated;
 
         /**
          * Returns the allocation page size.
@@ -445,16 +444,6 @@ public interface Database extends CauseCloseable, Flushable {
             return txnCount;
         }
 
-        /**
-         * Returns the total amount of fully-established transactions created over the life of
-         * the database. This value is unaffected by transactions which make no changes, and it
-         * is also unaffected by auto-commit transactions. A resurrected transaction can become
-         * fully-established again, further increasing the total created value.
-         */
-        public long transactionsCreated() {
-            return txnsCreated;
-        }
-
         @Override
         public Stats clone() {
             try {
@@ -468,7 +457,7 @@ public interface Database extends CauseCloseable, Flushable {
         public int hashCode() {
             long hash = freePages;
             hash = hash * 31 + totalPages;
-            hash = hash * 31 + txnsCreated;
+            hash = hash * 31 + dirtyPages;
             return (int) scramble(hash);
         }
 
@@ -487,8 +476,7 @@ public interface Database extends CauseCloseable, Flushable {
                     && openIndexes == other.openIndexes
                     && lockCount == other.lockCount
                     && cursorCount == other.cursorCount
-                    && txnCount == other.txnCount
-                    && txnsCreated == other.txnsCreated;
+                    && txnCount == other.txnCount;
             }
             return false;
         }
@@ -504,7 +492,6 @@ public interface Database extends CauseCloseable, Flushable {
                 + ", lockCount=" + lockCount
                 + ", cursorCount=" + cursorCount
                 + ", transactionCount=" + txnCount
-                + ", transactionsCreated=" + txnsCreated
                 + '}';
         }
     }

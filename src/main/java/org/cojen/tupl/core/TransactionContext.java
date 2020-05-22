@@ -90,7 +90,6 @@ final class TransactionContext extends Latch implements Flushable {
 
     synchronized void addStats(Database.Stats stats) {
         stats.txnCount += mUndoLogCount;
-        stats.txnsCreated += mHighTxnId / mTxnStride;
     }
 
     /**

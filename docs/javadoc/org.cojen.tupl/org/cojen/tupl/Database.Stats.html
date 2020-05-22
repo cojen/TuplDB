@@ -19,7 +19,7 @@
 <script type="text/javascript" src="../../../../script-dir/jquery-ui.js"></script>
 </head>
 <body class="class-declaration">
-<script type="text/javascript">var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10};
+<script type="text/javascript">var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -173,11 +173,6 @@ implements <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#txnCount">txnCount</a></span></code></th>
 <td class="colLast">&nbsp;</td>
 </tr>
-<tr class="rowColor">
-<td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#txnsCreated">txnsCreated</a></span></code></th>
-<td class="colLast">&nbsp;</td>
-</tr>
 </tbody>
 </table>
 </div>
@@ -310,14 +305,6 @@ implements <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base
  state.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i13">
-<td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#transactionsCreated()">transactionsCreated</a></span>()</code></th>
-<td class="colLast">
-<div class="block">Returns the total amount of fully-established transactions created over the life of
- the database.</div>
-</td>
-</tr>
 </tbody>
 </table>
 </div>
@@ -392,12 +379,6 @@ implements <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base
 <section class="detail">
 <h3><a id="txnCount">txnCount</a></h3>
 <div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">long</span>&nbsp;<span class="memberName">txnCount</span></div>
-</section>
-</li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="txnsCreated">txnsCreated</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">long</span>&nbsp;<span class="memberName">txnsCreated</span></div>
 </section>
 </li>
 </ul>
@@ -493,16 +474,6 @@ implements <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base
  state. This value is unaffected by transactions which make no changes, and it is
  also unaffected by auto-commit transactions. An accumulation of transactions can
  indicate that they are not being reset properly.</div>
-</section>
-</li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="transactionsCreated()">transactionsCreated</a></h3>
-<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">long</span>&nbsp;<span class="memberName">transactionsCreated</span>()</div>
-<div class="block">Returns the total amount of fully-established transactions created over the life of
- the database. This value is unaffected by transactions which make no changes, and it
- is also unaffected by auto-commit transactions. A resurrected transaction can become
- fully-established again, further increasing the total created value.</div>
 </section>
 </li>
 <li class="blockList">

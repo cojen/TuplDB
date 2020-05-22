@@ -830,9 +830,6 @@ public class RecoverTest {
         assertNotNull(redoFile);
 
         final long redoLength = redoFile.length();
-        final long txnsCreated = mDb.stats().transactionsCreated();
-
-        assertTrue(txnsCreated > 0);
 
         // Simple locking transaction, no modifications.
 
@@ -887,9 +884,6 @@ public class RecoverTest {
         Cursor c = ix.newCursor(null);
         for (c.first(); c.key() != null; c.next());
         c.reset();
-
-        // A transaction is only truly created if it modifies anything.
-        assertEquals(txnsCreated, mDb.stats().transactionsCreated());
     }
 
     @Test
