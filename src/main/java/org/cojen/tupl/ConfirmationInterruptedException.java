@@ -28,4 +28,9 @@ public class ConfirmationInterruptedException extends ConfirmationFailureExcepti
     public ConfirmationInterruptedException() {
         super();
     }
+
+    @Override
+    public boolean isRecoverable() {
+        return true;
+    }
 }

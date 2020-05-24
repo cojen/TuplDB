@@ -21,6 +21,7 @@ import java.io.IOException;
 
 import java.util.concurrent.TimeUnit;
 
+import org.cojen.tupl.ConfirmationInterruptedException;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.InvalidTransactionException;
@@ -280,8 +281,7 @@ public final class LocalTransaction extends Locker implements Transaction {
                             // preventing additional blocking.
                             mRedo.txnCommitSync(commitPos);
                         } catch (Throwable e) {
-                            undo.uncommit();
-                            mContext.uncommitted(mTxnId);
+                            commitSyncFailed(e, commitPos);
                             throw e;
                         }
                     }
@@ -326,6 +326,29 @@ public final class LocalTransaction extends Locker implements Transaction {
             } catch (Throwable e) {
                 borked(e);
             }
+        }
+    }
+
+    private void commitSyncFailed(Throwable e, long commitPos) {
+        if (!isRecoverable(e)) {
+            panic(e);
+            return;
+        }
+
+        try {
+            if (e instanceof UnmodifiableReplicaException) {
+                mUndoLog.uncommit();
+                mContext.uncommitted(mTxnId);
+            } else if (mRedo instanceof ReplWriter) {
+                PendingTxn pending = preparePending();
+                ((ReplWriter) mRedo).mReplWriter.uponCommit(commitPos, pos -> {
+                    pending.commitPos(pos);
+                    pending.run();
+                });
+            }
+        } catch (Throwable e2) {
+            suppress(e, e2);
+            panic(e);
         }
     }
 
@@ -433,8 +456,7 @@ public final class LocalTransaction extends Locker implements Transaction {
                         try {
                             mRedo.txnCommitSync(commitPos);
                         } catch (Throwable e) {
-                            undo.uncommit();
-                            mContext.uncommitted(mTxnId);
+                            commitSyncFailed(e, commitPos);
                             throw e;
                         }
                     }

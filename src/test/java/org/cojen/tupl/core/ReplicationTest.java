@@ -26,6 +26,8 @@ import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import java.util.concurrent.atomic.AtomicReference;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -202,6 +204,52 @@ public class ReplicationTest {
         Index rix = mReplica.openIndex("test");
 
         fastAssertArrayEquals("!".getBytes(), rix.load(null, "k0".getBytes()));
+    }
+
+    @Test
+    public void interruptCommit() throws Exception {
+        Index lix = mLeader.openIndex("test");
+        byte[] key = "key".getBytes();
+        byte[] value = "value".getBytes();
+        byte[] hello = "hello".getBytes();
+        lix.store(null, key, value);
+
+        var exRef = new AtomicReference<Throwable>();
+
+        Thread t = startAndWaitUntilBlocked(new Thread(() -> {
+            try {
+                Transaction txn = mLeader.newTransaction();
+                txn.durabilityMode(DurabilityMode.SYNC);
+                lix.store(txn, key, hello);
+                txn.flush();
+                mLeaderRepl.suspendCommit(true);
+                txn.commit();
+            } catch (Throwable e) {
+                exRef.set(e);
+            }
+        }));
+
+        sleep(1000);
+        t.interrupt();
+        t.join();
+
+        assertTrue(exRef.get() instanceof ConfirmationInterruptedException);
+
+        try {
+            lix.load(null, key);
+            fail();
+        } catch (LockTimeoutException e) {
+            // Still pending.
+        }
+
+        mLeaderRepl.suspendCommit(false);
+
+        // Commit should complete and not have rolled back.
+        fastAssertArrayEquals(hello, lix.load(null, key));
+
+        // Replica should see the same thing.
+        Index rix = mReplica.openIndex("test");
+        fastAssertArrayEquals(hello, rix.load(null, key));
     }
 
     @Test

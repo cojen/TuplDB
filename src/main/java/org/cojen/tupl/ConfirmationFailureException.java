@@ -39,9 +39,4 @@ public class ConfirmationFailureException extends DatabaseException {
     public ConfirmationFailureException(String message, Throwable cause) {
         super(message, cause);
     }
-
-    @Override
-    public boolean isRecoverable() {
-        return true;
-    }
 }
