@@ -121,7 +121,7 @@ public class CheckpointFailureTest {
 
     @Test
     public void undoCommitRollback() throws Exception {
-        // Test that a transaction which optimisically committed its undo log rolls back when
+        // Test that a transaction which optimistically committed its undo log rolls back when
         // the checkpoint fails.
 
         var config = new DatabaseConfig()
@@ -185,7 +185,7 @@ public class CheckpointFailureTest {
             }
         });
 
-        startAndWaitUntilBlocked(committer);
+        repl.startAndWaitUntilSuspended(committer);
 
         var exRef2 = new AtomicReference<Throwable>();
 
@@ -254,7 +254,7 @@ public class CheckpointFailureTest {
         repl.asLeader();
         Thread.yield();
         Index ix = null;
-        for (int i=0; i<100; i++) {
+        for (int i=0; i<1000; i++) {
             try {
                 ix = mDb.openIndex("test");
                 break;
@@ -289,6 +289,7 @@ public class CheckpointFailureTest {
                 txn.commit();
                 txn.flush();
             } else if (i == mid) {
+                txn.flush();
                 pos = repl.position();
             }
         }
@@ -322,7 +323,7 @@ public class CheckpointFailureTest {
         }
 
         for (Thread c : committers) {
-            startAndWaitUntilBlocked(c);
+            repl.startAndWaitUntilSuspended(c);
         }
 
         var exRef = new AtomicReference<Throwable>();
@@ -391,7 +392,6 @@ public class CheckpointFailureTest {
                 } else {
                     try {
                         ix.load(null, key);
-                        // FIXME: Fails here randomly.
                         fail();
                     } catch (LockTimeoutException e) {
                         // Only the new leader can roll it back.

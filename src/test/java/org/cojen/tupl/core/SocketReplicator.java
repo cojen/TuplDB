@@ -78,6 +78,8 @@ class SocketReplicator implements StreamReplicator {
     private final Set<Thread> mSuspended = new HashSet<>();
     private long mSuspendPos;
 
+    private final Set<Thread> mWaiting = new HashSet<>();
+
     private boolean mClosed;
 
     /**
@@ -311,6 +313,16 @@ class SocketReplicator implements StreamReplicator {
         mPos = position;
     }
 
+    public <T extends Thread> T startAndWaitUntilSuspended(T t) {
+        t = TestUtils.startAndWaitUntilBlocked(t);
+        while (true) {
+            if (isWaiting(t)) {
+                return t;
+            }
+            Thread.yield();
+        }
+    }
+
     public synchronized void disableWrites() throws IOException {
         // Create a dummy replica stream that simply blocks until closed.
         mInput = new InputStream() {
@@ -413,15 +425,24 @@ class SocketReplicator implements StreamReplicator {
         });
     }
 
+    private synchronized boolean isWaiting(Thread t) {
+        return mWaiting.contains(t);
+    }
+
     private synchronized long waitForCommit(Accessor accessor, long position, long nanosTimeout)
         throws InterruptedIOException
     {
         try {
-            while (mSuspendCommit || mSuspended.contains(Thread.currentThread())) {
-                if (accessor.isClosed()) {
-                    return -1;
+            try {
+                while (mSuspendCommit || mSuspended.contains(Thread.currentThread())) {
+                    if (accessor.isClosed()) {
+                        return -1;
+                    }
+                    mWaiting.add(Thread.currentThread());
+                    wait();
                 }
-                wait();
+            } finally {
+                mWaiting.remove(Thread.currentThread());
             }
 
             long commitPos;

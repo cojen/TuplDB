@@ -1494,7 +1494,7 @@ final class UndoLog implements DatabaseAccess {
     }
 
     /**
-     * Scans through all the nodes and calles the visitor for each operation. Assumes that this
+     * Scans through all the nodes and calls the visitor for each operation. Assumes that this
      * undo log is persist-ready and has a top node.
      */
     private void scanNodes(Visitor v) throws IOException {
@@ -1522,7 +1522,7 @@ final class UndoLog implements DatabaseAccess {
                 entry = new byte[payloadRequired];
             }
 
-            while (true) {
+            do {
                 int avail = Math.min(payloadLen, pageSize(page) - nodeTopPos);
 
                 if (entry != null) {
@@ -1544,7 +1544,7 @@ final class UndoLog implements DatabaseAccess {
                 nodeTopPos += avail;
 
                 if (nodeTopPos >= pageSize(page)) {
-                    long lowerNodeId = p_longGetLE(node.mPage, I_LOWER_NODE_ID);
+                    long lowerNodeId = p_longGetLE(page, I_LOWER_NODE_ID);
                     node.releaseExclusive();
                     if (lowerNodeId == 0) {
                         return;
@@ -1556,15 +1556,10 @@ final class UndoLog implements DatabaseAccess {
                         node = readUndoLogNode(db, lowerNodeId, 0);
                         db.nodeMapPut(node);
                     }
+                    page = node.mPage;
                     nodeTopPos = node.undoTop();
                 }
-
-                if (payloadLen <= 0) {
-                    break;
-                }
-
-                page = node.mPage;
-            }
+            } while (payloadLen > 0);
         }
     }
 
