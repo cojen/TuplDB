@@ -459,8 +459,6 @@ class ReplWriter extends RedoWriter {
             return;
         }
 
-        int count = 1;
-
         while (true) {
             if (next == null) {
                 // Removing the last node requires special attention.
@@ -484,13 +482,11 @@ class ReplWriter extends RedoWriter {
                 pending = prev;
                 break;
             }
-
-            count++;
         }
 
         pending.mNext = null;
 
-        mEngine.mFinisher.enqueue(count, first, pending);
+        mEngine.mFinisher.enqueue(first, pending);
     }
 
     void closeConsumerThread() {

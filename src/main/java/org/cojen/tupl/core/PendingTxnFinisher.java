@@ -46,7 +46,7 @@ final class PendingTxnFinisher extends Latch implements Runnable {
         mCondition = new LatchCondition();
     }
 
-    void enqueue(int count, PendingTxn first, PendingTxn last) {
+    void enqueue(PendingTxn first, PendingTxn last) {
         acquireExclusive();
         try {
             if (mLast == null) {

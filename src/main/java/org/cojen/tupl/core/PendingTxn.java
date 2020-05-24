@@ -169,6 +169,7 @@ final class PendingTxn extends Locker implements Runnable {
     private void doRollback() throws IOException {
         UndoLog undo = mUndoLog;
         if (undo != null) {
+            mContext.uncommitted(mTxnId);
             undo.rollback();
         }
         scopeUnlockAll();
