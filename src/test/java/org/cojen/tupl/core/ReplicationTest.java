@@ -302,6 +302,51 @@ public class ReplicationTest {
     }
 
     @Test
+    public void interruptRenameIndex() throws Exception {
+        Index lix = mLeader.openIndex("test");
+        lix.store(null, "hello".getBytes(), "world".getBytes());
+        
+        fence();
+
+        Index rix = mReplica.openIndex("test");
+
+        mLeaderRepl.suspendCommit(true);
+        var exRef = new AtomicReference<Throwable>();
+
+        Thread t = startAndWaitUntilBlocked(new Thread(() -> {
+            try {
+                mLeader.renameIndex(lix, "newName");
+            } catch (Throwable e) {
+                exRef.set(e);
+            }
+        }));
+
+        sleep(1000);
+        t.interrupt();
+        t.join();
+
+        assertTrue(exRef.get() instanceof ConfirmationInterruptedException);
+
+        mLeaderRepl.suspendCommit(false);
+        fence();
+
+        assertEquals("newName", rix.nameString());
+
+        for (int i=10; --i>=0; ) {
+            try {
+                assertEquals("newName", lix.nameString());
+                break;
+            } catch (AssertionError e) {
+                if (i == 0) {
+                    throw e;
+                }
+            }
+            // Wait for background confirmation task to finish.
+            sleep(1000);
+        }
+    }
+
+    @Test
     public void deleteIndex() throws Exception {
         Index lix = mLeader.openIndex("test");
         lix.store(null, "hello".getBytes(), "world".getBytes());

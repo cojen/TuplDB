@@ -66,6 +66,7 @@ import static java.util.Arrays.fill;
 import org.cojen.tupl.CacheExhaustedException;
 import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.CompactionObserver;
+import org.cojen.tupl.ConfirmationInterruptedException;
 import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.Crypto;
 import org.cojen.tupl.Cursor;
@@ -1378,6 +1379,30 @@ public final class LocalDatabase extends CoreDatabase {
                 c.reset();
             }
 
+            LongConsumer finishTask = pos -> {
+                try {
+                    if (pos >= 0) {
+                        txn.durabilityMode(DurabilityMode.NO_REDO);
+                        mRegistryKeyMap.delete(txn, oldNameKey);
+                        mRegistryKeyMap.store(txn, idKey, newName);
+
+                        mOpenTreesLatch.acquireExclusive();
+                        try {
+                            txn.commit();
+
+                            tree.mName = newName;
+                            mOpenTrees.put(newName, mOpenTrees.remove(oldName));
+                        } finally {
+                            mOpenTreesLatch.releaseExclusive();
+                        }
+                    }
+                } catch (Throwable e) {
+                    rethrow(e);
+                } finally {
+                    txn.reset();
+                }
+            };
+
             if (redoTxnId == 0 && txn.mRedo != null) {
                 txn.durabilityMode(alwaysRedo(mDurabilityMode));
 
@@ -1395,30 +1420,26 @@ public final class LocalDatabase extends CoreDatabase {
                     // Must wait for durability confirmation before performing actions below
                     // which cannot be easily rolled back. No global latches or locks are held
                     // while waiting.
-                    txn.mRedo.txnCommitSync(commitPos);
+                    try {
+                        txn.mRedo.txnCommitSync(commitPos);
+                    } catch (ConfirmationInterruptedException e) {
+                        // Wait for confirmation in the background.
+                        ((ReplWriter) txn.mRedo).mReplWriter.uponCommit(commitPos, finishTask);
+                        throw e;
+                    }
                 }
             }
 
-            txn.durabilityMode(DurabilityMode.NO_REDO);
-            mRegistryKeyMap.delete(txn, oldNameKey);
-            mRegistryKeyMap.store(txn, idKey, newName);
-
-            mOpenTreesLatch.acquireExclusive();
-            try {
-                txn.commit();
-
-                tree.mName = newName;
-                mOpenTrees.put(newName, mOpenTrees.remove(oldName));
-            } finally {
-                mOpenTreesLatch.releaseExclusive();
-            }
-        } catch (IllegalStateException e) {
-            throw e;
+            finishTask.accept(0);
         } catch (Throwable e) {
+            if (!(e instanceof ConfirmationInterruptedException)) {
+                txn.reset();
+            }
+            if (e instanceof IllegalStateException) {
+                throw e;
+            }
             rethrowIfRecoverable(e);
             throw closeOnFailure(this, e);
-        } finally {
-            txn.reset();
         }
     }
 
