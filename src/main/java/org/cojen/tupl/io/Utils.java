@@ -364,7 +364,7 @@ public class Utils {
         }
 
         try {
-            sun.misc.Unsafe u = UnsafeAccess.obtain();
+            var u = UnsafeAccess.obtain();
             Method m = u.getClass().getMethod("invokeCleaner", ByteBuffer.class);
             m.invoke(u, bb);
             return true;
