@@ -30,6 +30,8 @@ import java.util.Set;
 
 import java.util.function.Consumer;
 
+import static org.cojen.tupl.io.Utils.closeQuietly;
+
 /**
  * Low-level replication interface, which receives messages in a non-delineated stream.
  * Applications using this interface are responsible for encoding messages such that they can
@@ -102,25 +104,33 @@ public interface StreamReplicator extends Replicator {
                 (config.mServerSocketFactory, listenAddress);
         }
 
-        Set<SocketAddress> seeds = config.mSeeds;
+        StateLog log = null;
 
-        if (seeds == null) {
-            seeds = Collections.emptySet();
+        try {
+            Set<SocketAddress> seeds = config.mSeeds;
+
+            if (seeds == null) {
+                seeds = Collections.emptySet();
+            }
+
+            if (config.mMkdirs) {
+                base.getParentFile().mkdirs();
+            }
+
+            log = FileStateLog.open(base);
+
+            return Controller.open(config.mEventListener,
+                                   log, groupToken,
+                                   new File(base.getPath() + ".group"), 
+                                   config.mSocketFactory,
+                                   localAddress, listenAddress, config.mLocalRole,
+                                   seeds, localSocket,
+                                   config.mProxyWrites);
+        } catch (Throwable e) {
+            closeQuietly(localSocket);
+            closeQuietly(log);
+            throw e;
         }
-
-        if (config.mMkdirs) {
-            base.getParentFile().mkdirs();
-        }
-
-        StateLog log = FileStateLog.open(base);
-
-        return Controller.open(config.mEventListener,
-                               log, groupToken,
-                               new File(base.getPath() + ".group"), 
-                               config.mSocketFactory,
-                               localAddress, listenAddress, config.mLocalRole,
-                               seeds, localSocket,
-                               config.mProxyWrites);
     }
 
     /**
