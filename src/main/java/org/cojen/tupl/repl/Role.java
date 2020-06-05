@@ -86,6 +86,8 @@ public enum Role {
             return PROXY;
         case 4:
             return OBSERVER;
+        case 5:
+            return RESTORING;
         default:
             throw new IllegalArgumentException();
         }
