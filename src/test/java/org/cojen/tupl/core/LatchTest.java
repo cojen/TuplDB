@@ -85,4 +85,22 @@ public class LatchTest {
 
         assertFalse(waiter.called);
     }
+
+    @Test
+    public void signalSharedWaiterAfterTimeout() throws Exception {
+        var latch = new Latch();
+        latch.acquireShared();
+
+        // Exclusive request is blocked because a shared lock is held.
+        Thread t1 = TestUtils.startAndWaitUntilBlocked(new Thread(() -> {
+            try {
+                latch.tryAcquireExclusiveNanos(1_000_000_000L);
+            } catch (InterruptedException e) {
+            }
+        }));
+
+        // Shared request is blocked by the exclusive latch request, but it should be granted
+        // once the exclusive request times out.
+        assertTrue(latch.tryAcquireSharedNanos(60_000_000_000L));
+    }
 }
