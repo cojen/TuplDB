@@ -696,13 +696,22 @@ public class Latch {
                         return true;
                     }
 
-                    if (!(node instanceof Shared) && mLatchState >= 0) {
-                        // Unpark any shared waiters that queued behind this exclusive request.
+                    int state = mLatchState;
+                    if (state >= 0) {
+                        // Unpark any waiters that queued behind this request.
                         WaitNode wnode = node;
-                        while ((wnode = wnode.mNext) instanceof Shared) {
+                        while ((wnode = wnode.mNext) != null) {
                             Object waiter = wnode.mWaiter;
                             if (waiter instanceof Thread) {
-                                Parker.unpark((Thread) waiter);
+                                if (wnode instanceof Shared) {
+                                    Parker.unpark((Thread) waiter);
+                                } else {
+                                    if (state == 0) {
+                                        Parker.unpark((Thread) waiter);
+                                    }
+                                    // No need to iterate past an exclusive waiter.
+                                    break;
+                                }
                             }
                         }
                     }
