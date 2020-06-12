@@ -980,7 +980,7 @@ public class Latch {
                     }
                     Thread.onSpinWait();
                 }
-                if (++trials >= SPIN_LIMIT >> 1) {
+                if (++trials >= SPIN_LIMIT >> 1 || timedOut()) {
                     return -1;
                 }
                 // Yield to avoid parking.
@@ -1091,6 +1091,9 @@ public class Latch {
             cNextHandle.set(this, null);
         }
 
+        protected boolean timedOut() {
+            return false;
+        }
 
         @Override
         public String toString() {
@@ -1127,6 +1130,19 @@ public class Latch {
                 }
                 return (mNanosTimeout = mEndNanos - System.nanoTime()) <= 0;
             }
+        }
+
+        @Override
+        protected boolean timedOut() {
+            if (mNanosTimeout >= 0) {
+                long timeout = mEndNanos - System.nanoTime();
+                if (timeout <= 0) {
+                    mNanosTimeout = 0;
+                    return true;
+                }
+                mNanosTimeout = timeout;
+            }
+            return false;
         }
     }
 
