@@ -97,10 +97,6 @@ public class Latch {
         cStateHandle.set(this, initialState);
     }
 
-    boolean isHeldExclusive() {
-        return mLatchState == EXCLUSIVE;
-    }
-
     /**
      * Try to acquire the exclusive latch, barging ahead of any waiting threads if possible.
      */
@@ -361,7 +357,7 @@ public class Latch {
                     } catch (Throwable e) {
                         Utils.uncaught(e);
                     }
-                    if (!isHeldExclusive()) {
+                    if (mLatchState != EXCLUSIVE) {
                         if (mLatchState <= 0) {
                             throw new IllegalStateException
                                 ("Illegal latch state: " + mLatchState + ", caused by " + waiter);
