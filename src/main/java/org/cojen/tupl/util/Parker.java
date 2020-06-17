@@ -40,10 +40,17 @@ public abstract class Parker {
         // https://bugs.openjdk.java.net/browse/JDK-8074773
         Class<?> clazz = LockSupport.class;
 
-        if (Boolean.getBoolean(Parker.class.getName() + ".now")) {
-            PARKER = new Now();
-        } else {
+        String type = System.getProperty(Parker.class.getName());
+
+        if (type == null) {
             PARKER = new Checked();
+        } else {
+            try {
+                PARKER = (Parker) Class.forName(Parker.class.getName() + '$' + type)
+                    .getDeclaredConstructor().newInstance();
+            } catch (Throwable e) {
+                throw Utils.rethrow(Utils.rootCause(e));
+            }
         }
     }
 
@@ -120,6 +127,80 @@ public abstract class Parker {
         @Override
         void doParkNanosNow(Object blocker, long nanos) {
             LockSupport.parkNanos(blocker, nanos);
+        }
+    }
+
+    private static final class Never extends Parker {
+        @Override
+        void doUnpark(Thread thread) {
+        }
+
+        @Override
+        void doPark(Object blocker) {
+        }
+
+        @Override
+        void doParkNow(Object blocker) {
+        }
+
+        @Override
+        void doParkNanos(Object blocker, long nanos) {
+        }
+
+        @Override
+        void doParkNanosNow(Object blocker, long nanos) {
+        }
+    }
+
+    private static final class Spin extends Parker {
+        @Override
+        void doUnpark(Thread thread) {
+        }
+
+        @Override
+        void doPark(Object blocker) {
+            Thread.onSpinWait();
+        }
+
+        @Override
+        void doParkNow(Object blocker) {
+            Thread.onSpinWait();
+        }
+
+        @Override
+        void doParkNanos(Object blocker, long nanos) {
+            Thread.onSpinWait();
+        }
+
+        @Override
+        void doParkNanosNow(Object blocker, long nanos) {
+            Thread.onSpinWait();
+        }
+    }
+
+    private static final class Yield extends Parker {
+        @Override
+        void doUnpark(Thread thread) {
+        }
+
+        @Override
+        void doPark(Object blocker) {
+            Thread.yield();
+        }
+
+        @Override
+        void doParkNow(Object blocker) {
+            Thread.yield();
+        }
+
+        @Override
+        void doParkNanos(Object blocker, long nanos) {
+            Thread.yield();
+        }
+
+        @Override
+        void doParkNanosNow(Object blocker, long nanos) {
+            Thread.yield();
         }
     }
 
