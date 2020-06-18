@@ -2857,6 +2857,7 @@ public final class LocalDatabase extends CoreDatabase {
                         Tree tree = entry.value.get();
                         if (tree != null) {
                             trees.add(tree);
+                            entry.value.clear();
                         }
                         return true;
                     });
@@ -2907,9 +2908,11 @@ public final class LocalDatabase extends CoreDatabase {
             }
             try {
                 if (mNodeGroups != null) {
-                    for (NodeGroup group : mNodeGroups) {
+                    for (int i=0; i<mNodeGroups.length; i++) {
+                        NodeGroup group = mNodeGroups[i];
                         if (group != null) {
                             group.delete();
+                            mNodeGroups[i] = null;
                         }
                     }
                 }
@@ -2945,6 +2948,8 @@ public final class LocalDatabase extends CoreDatabase {
                 if (mLockManager != null) {
                     mLockManager.close();
                 }
+
+                removeThreadLocalTransaction();
 
                 if (ex != null) {
                     throw ex;
@@ -3637,7 +3642,7 @@ public final class LocalDatabase extends CoreDatabase {
 
         // Use a transaction to ensure that only one thread loads the requested tree. Nothing
         // is written into it.
-        Transaction txn = threadLocalTransaction(DurabilityMode.NO_REDO);
+        Transaction txn = doNewTransaction(DurabilityMode.NO_REDO);
         try {
             txn.lockTimeout(-1, null);
 

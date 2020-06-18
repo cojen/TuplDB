@@ -263,6 +263,9 @@ public final class LockManager {
         for (LockHT ht : mHashTables) {
             ht.close(locker);
         }
+        if (mDatabaseRef != null) {
+            mDatabaseRef.clear();
+        }
     }
 
     final static int hash(long indexId, byte[] key) {

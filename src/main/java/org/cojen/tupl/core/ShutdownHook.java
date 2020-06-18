@@ -40,6 +40,7 @@ interface ShutdownHook {
             A obj = get();
             if (obj != null) {
                 doShutdown(obj);
+                clear();
             }
         }
 
