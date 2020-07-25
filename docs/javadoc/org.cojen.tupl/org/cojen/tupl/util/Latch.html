@@ -98,7 +98,7 @@ loadScripts(document, 'script');</script>
 <hr>
 <pre>public class <span class="typeNameLabel">Latch</span>
 extends <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Object.html?is-external=true" title="class or interface in java.lang" class="externalLink">Object</a></pre>
-<div class="block">Non-reentrant read-write latch, designed for throughout over fairness. Implementation
+<div class="block">Non-reentrant read-write latch, designed for throughput over fairness. Implementation
  doesn't track thread ownership or check for illegal usage. As a result, it typically
  outperforms ReentrantLock and built-in Java synchronization. Although latch acquisition is
  typically unfair, waiting threads aren't starved indefinitely.</div>

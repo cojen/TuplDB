@@ -23,7 +23,7 @@ import java.lang.invoke.VarHandle;
 import org.cojen.tupl.io.Utils;
 
 /**
- * Non-reentrant read-write latch, designed for throughout over fairness. Implementation
+ * Non-reentrant read-write latch, designed for throughput over fairness. Implementation
  * doesn't track thread ownership or check for illegal usage. As a result, it typically
  * outperforms ReentrantLock and built-in Java synchronization. Although latch acquisition is
  * typically unfair, waiting threads aren't starved indefinitely.

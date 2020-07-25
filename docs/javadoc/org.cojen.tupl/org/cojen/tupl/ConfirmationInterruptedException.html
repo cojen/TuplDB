@@ -19,7 +19,13 @@
 <script type="text/javascript" src="../../../../script-dir/jquery-ui.js"></script>
 </head>
 <body class="class-declaration">
-<script type="text/javascript">var pathtoroot = "../../../../";
+<script type="text/javascript">var data = {"i0":10};
+var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
+var altColor = "altColor";
+var rowColor = "rowColor";
+var tableTab = "tableTab";
+var activeTableTab = "activeTableTab";
+var pathtoroot = "../../../../";
 loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
@@ -58,7 +64,7 @@ loadScripts(document, 'script');</script>
 <li>Detail:&nbsp;</li>
 <li>Field&nbsp;|&nbsp;</li>
 <li><a href="#constructor.detail">Constr</a>&nbsp;|&nbsp;</li>
-<li>Method</li>
+<li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
 <div class="navListSearch"><label for="search">SEARCH:</label>
@@ -141,11 +147,29 @@ extends <a href="ConfirmationFailureException.html" title="class in org.cojen.tu
 <!--   -->
 </a>
 <h2>Method Summary</h2>
-<div class="inheritedList">
-<h3>Methods inherited from class&nbsp;org.cojen.tupl.<a href="ConfirmationFailureException.html" title="class in org.cojen.tupl">ConfirmationFailureException</a></h3>
-<a id="methods.inherited.from.class.org.cojen.tupl.ConfirmationFailureException">
-<!--   -->
-</a><code><a href="ConfirmationFailureException.html#isRecoverable()">isRecoverable</a></code></div>
+<div class="memberSummary">
+<div role="tablist" aria-orientation="horizontal"><button role="tab" aria-selected="true" aria-controls="memberSummary_tabpanel" tabindex="0" onkeydown="switchTab(event)" id="t0" class="activeTableTab">All Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t2" class="tableTab" onclick="show(2);">Instance Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t4" class="tableTab" onclick="show(8);">Concrete Methods</button></div>
+<div id="memberSummary_tabpanel" role="tabpanel">
+<table aria-labelledby="t0">
+<thead>
+<tr>
+<th class="colFirst" scope="col">Modifier and Type</th>
+<th class="colSecond" scope="col">Method</th>
+<th class="colLast" scope="col">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="altColor" id="i0">
+<td class="colFirst"><code>boolean</code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isRecoverable()">isRecoverable</a></span>()</code></th>
+<td class="colLast">
+<div class="block">Returns false if database should be closed as a result of this exception.</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 <div class="inheritedList">
 <h3>Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a></h3>
 <a id="methods.inherited.from.class.java.lang.Throwable">
@@ -173,6 +197,28 @@ extends <a href="ConfirmationFailureException.html" title="class in org.cojen.tu
 <section class="detail">
 <h3><a id="&lt;init&gt;()">ConfirmationInterruptedException</a></h3>
 <div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="memberName">ConfirmationInterruptedException</span>()</div>
+</section>
+</li>
+</ul>
+</section>
+</li>
+<!-- ============ METHOD DETAIL ========== -->
+<li class="blockList">
+<section class="methodDetails"><a id="method.detail">
+<!--   -->
+</a>
+<h2>Method Details</h2>
+<ul class="blockList">
+<li class="blockList">
+<section class="detail">
+<h3><a id="isRecoverable()">isRecoverable</a></h3>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">isRecoverable</span>()</div>
+<div class="block"><span class="descfrmTypeLabel">Description copied from class:&nbsp;<code><a href="DatabaseException.html#isRecoverable()">DatabaseException</a></code></span></div>
+<div class="block">Returns false if database should be closed as a result of this exception.</div>
+<dl>
+<dt><span class="overrideSpecifyLabel">Overrides:</span></dt>
+<dd><code><a href="DatabaseException.html#isRecoverable()">isRecoverable</a></code>&nbsp;in class&nbsp;<code><a href="DatabaseException.html" title="class in org.cojen.tupl">DatabaseException</a></code></dd>
+</dl>
 </section>
 </li>
 </ul>
@@ -216,7 +262,7 @@ extends <a href="ConfirmationFailureException.html" title="class in org.cojen.tu
 <li>Detail:&nbsp;</li>
 <li>Field&nbsp;|&nbsp;</li>
 <li><a href="#constructor.detail">Constr</a>&nbsp;|&nbsp;</li>
-<li>Method</li>
+<li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
 </div>
