@@ -268,7 +268,7 @@ public class Worker {
         outer: while (true) {
             if (size > 0 || (size = mSize) > 0) {
                 Task task;
-                while ((task = mFirst) == null);
+                while ((task = mFirst) == null) Thread.onSpinWait();
 
                 Task next;
                 while (true) {
