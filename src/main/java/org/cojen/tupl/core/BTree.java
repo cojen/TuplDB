@@ -1347,8 +1347,9 @@ class BTree extends Tree implements View, Index {
     final void writeCachePrimer(final DataOutput dout) throws IOException {
         // Encode name instead of identifier, to support priming set portability
         // between databases. The identifiers won't match, but the names might.
-        dout.writeInt(mName.length);
-        dout.write(mName);
+        byte[] name = mName;
+        dout.writeInt(name.length);
+        dout.write(name);
 
         traverseLoaded((node) -> {
             byte[] midKey;
