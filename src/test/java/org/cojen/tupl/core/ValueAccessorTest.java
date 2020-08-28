@@ -2165,4 +2165,35 @@ public class ValueAccessorTest {
         } catch (IllegalStateException e) {
         }
     }
+
+    @Test
+    public void overflow() throws Exception {
+        Index ix = mDb.openIndex("test");
+        ValueAccessor accessor = ix.newAccessor(null, "key".getBytes());
+
+        byte[] msg = "world".getBytes();
+
+        try {
+            accessor.valueWrite(Long.MAX_VALUE - 1, msg, 0, msg.length);
+            fail();
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("overflow"));
+        }
+
+        assertEquals(-1, accessor.valueLength());
+
+        accessor.valueWrite(Long.MAX_VALUE - 1 - msg.length, msg, 0, msg.length);
+        assertEquals(Long.MAX_VALUE - 1, accessor.valueLength());
+
+        try {
+            accessor.valueWrite(Long.MAX_VALUE - 1, msg, 0, msg.length);
+            fail();
+        } catch (IllegalArgumentException e) {
+            assertTrue(e.getMessage().contains("overflow"));
+        }
+
+        var buf = new byte[msg.length];
+        accessor.valueRead(Long.MAX_VALUE - 1 - msg.length, buf, 0, buf.length);
+        fastAssertArrayEquals(msg, buf);
+    }
 }

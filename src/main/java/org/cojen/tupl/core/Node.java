@@ -2220,6 +2220,11 @@ final class Node extends Clutch implements DatabaseAccess {
     void insertBlankLeafEntry(CursorFrame frame, BTree tree, int pos, byte[] okey, long vlength)
         throws IOException
     {
+        if (vlength < 0) {
+            // This method is called by BTreeValue.action to create a new value.
+            throw new IllegalArgumentException("Length overflow");
+        }
+
         final LocalDatabase db = tree.mDatabase;
 
         byte[] akey = okey;

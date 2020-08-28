@@ -816,6 +816,11 @@ final class BTreeValue {
                 final int pageSize;
 
                 if (endPos <= fLen) {
+                    if (endPos < 0) {
+                        node.releaseExclusive();
+                        throw new IllegalArgumentException("Length overflow");
+                    }
+
                     // Value doesn't need to be extended.
 
                     if (bLen == 0 && b != TOUCH_VALUE) {
