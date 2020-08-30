@@ -224,7 +224,7 @@ public interface Index extends View, Closeable {
 
         @Override
         public String toString() {
-            var b = new StringBuilder("Index.Stats {");
+            var b = new StringBuilder("Index.Stats{");
 
             boolean any = false;
             any = append(b, any, "entryCount", entryCount);

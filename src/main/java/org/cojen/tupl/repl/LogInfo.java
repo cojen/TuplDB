@@ -27,7 +27,7 @@ class LogInfo {
 
     @Override
     public String toString() {
-        return "LogInfo: {term=" + mTerm + ", highestPosition=" +
+        return "LogInfo{term=" + mTerm + ", highestPosition=" +
             mHighestPosition + ", commitPosition=" + mCommitPosition + '}';
     }
 }

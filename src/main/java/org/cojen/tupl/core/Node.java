@@ -6004,7 +6004,7 @@ final class Node extends Clutch implements DatabaseAccess {
 
         switch (type()) {
         case TYPE_UNDO_LOG:
-            return "UndoNode: {id=" + id() +
+            return "UndoNode{id=" + id() +
                 ", cachedState=" + mCachedState +
                 ", topEntry=" + garbage() +
                 ", lowerNodeId=" + + p_longGetLE(mPage, 4) +
@@ -6012,7 +6012,7 @@ final class Node extends Clutch implements DatabaseAccess {
                 '}';
             /*P*/ // [
         case TYPE_FRAGMENT:
-            return "FragmentNode: {id=" + id() +
+            return "FragmentNode{id=" + id() +
                 ", cachedState=" + mCachedState +
                 ", latchState=" + super.toString() +
                 '}';
@@ -6032,7 +6032,7 @@ final class Node extends Clutch implements DatabaseAccess {
             break;
         default:
             if (!isLeaf()) {
-                return "Node: {id=" + id() +
+                return "Node{id=" + id() +
                     ", cachedState=" + mCachedState +
                     ", latchState=" + super.toString() +
                     '}';
@@ -6052,7 +6052,7 @@ final class Node extends Clutch implements DatabaseAccess {
             extremity[1] = 'H';
         }
 
-        return prefix + "Node: {id=" + id() +
+        return prefix + "Node{id=" + id() +
             ", cachedState=" + mCachedState +
             ", isSplit=" + (mSplit != null) +
             ", availableBytes=" + availableBytes() +

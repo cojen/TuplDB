@@ -440,7 +440,7 @@ public class ViewUtils {
     public static final String toString(Index ix) {
         var b = new StringBuilder();
         Utils.appendMiniString(b, ix);
-        b.append(" {");
+        b.append('{');
         String nameStr = ix.nameString();
         if (nameStr != null) {
             b.append("name").append(": ").append(nameStr);

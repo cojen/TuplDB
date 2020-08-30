@@ -483,7 +483,7 @@ public interface Database extends CauseCloseable, Flushable {
 
         @Override
         public String toString() {
-            return "Database.Stats {pageSize=" + pageSize
+            return "Database.Stats{pageSize=" + pageSize
                 + ", freePages=" + freePages
                 + ", totalPages=" + totalPages
                 + ", cachePages=" + cachePages

@@ -103,7 +103,7 @@ abstract class PageDb implements CauseCloseable {
         public long freePages;
 
         public String toString() {
-            return "PageDb.Stats {totalPages=" + totalPages + ", freePages=" + freePages + '}';
+            return "PageDb.Stats{totalPages=" + totalPages + ", freePages=" + freePages + '}';
         }
     }
 

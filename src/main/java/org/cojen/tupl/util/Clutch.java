@@ -410,7 +410,7 @@ public abstract class Clutch extends Latch {
         }
         var b = new StringBuilder();
         appendMiniString(b, this);
-        return b.append(" {state=").append("contended").append('}').toString();
+        return b.append('{').append("state=").append("contended").append('}').toString();
     }
 
     /**

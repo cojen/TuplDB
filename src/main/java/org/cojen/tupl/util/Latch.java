@@ -866,7 +866,7 @@ public class Latch {
     public String toString() {
         var b = new StringBuilder();
         appendMiniString(b, this);
-        b.append(" {state=");
+        b.append('{').append("state=");
 
         int state = mLatchState;
         if (state == 0) {
@@ -1095,7 +1095,7 @@ public class Latch {
         public String toString() {
             var b = new StringBuilder();
             appendMiniString(b, this);
-            b.append(" {waiter=").append(mWaiter);
+            b.append('{').append("waiter=").append(mWaiter);
             b.append(", state=").append(mWaitState);
             b.append(", next="); appendMiniString(b, mNext);
             b.append(", prev="); appendMiniString(b, mPrev);

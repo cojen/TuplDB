@@ -114,7 +114,7 @@ final class SocketSnapshotReceiver implements SnapshotReceiver {
 
     @Override
     public String toString() {
-        return "SnapshotReceiver: {sender=" + senderAddress() + ", length=" + length() +
+        return "SnapshotReceiver{sender=" + senderAddress() + ", length=" + length() +
             ", prevTerm=" + prevTerm() + ", term=" + term() + ", position=" + position() + '}';
     }
 }

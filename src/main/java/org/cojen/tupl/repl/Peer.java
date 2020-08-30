@@ -225,7 +225,7 @@ final class Peer implements Comparable<Peer> {
 
     @Override
     public String toString() {
-        return "Peer: {memberId=" + Long.toUnsignedString(mMemberId)
+        return "Peer{memberId=" + Long.toUnsignedString(mMemberId)
             + ", address=" + mAddress + ", role=" + mRole + '}';
     }
 }

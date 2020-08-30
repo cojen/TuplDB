@@ -969,7 +969,7 @@ final class FileTermLog extends Latch implements TermLog {
 
     @Override
     public String toString() {
-        return "TermLog: {prevTerm=" + mLogPrevTerm + ", term=" + mLogTerm +
+        return "TermLog{prevTerm=" + mLogPrevTerm + ", term=" + mLogTerm +
             ", startPosition=" + mLogStartPosition + ", commitPosition=" + mLogCommitPosition +
             ", highestPosition=" + mLogHighestPosition + ", contigPosition=" + mLogContigPosition +
             ", endPosition=" + mLogEndPosition + '}';

@@ -795,7 +795,7 @@ public final class LocalTransaction extends Locker implements Transaction {
 
         b.append('@').append(Integer.toHexString(hashCode()));
 
-        b.append(" {");
+        b.append('{');
         b.append("id").append(": ").append(mTxnId);
         b.append(", ");
         b.append("durabilityMode").append(": ").append(mDurabilityMode);

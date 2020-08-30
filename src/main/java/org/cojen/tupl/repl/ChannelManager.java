@@ -1615,7 +1615,7 @@ final class ChannelManager {
 
         @Override
         public String toString() {
-            return getClass().getSimpleName() + ": {peer=" + mPeer + ", socket=" + mSocket + '}';
+            return getClass().getSimpleName() + "{peer=" + mPeer + ", socket=" + mSocket + '}';
         }
 
         /**
