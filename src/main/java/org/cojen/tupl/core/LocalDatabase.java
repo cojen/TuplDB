@@ -730,7 +730,7 @@ public final class LocalDatabase extends CoreDatabase {
                 mRedoWriter = null;
                 mCheckpointer = new Checkpointer(this, launcher, mNodeGroups.length);
             } else {
-                if (debugListener != null) {
+                if (mReadOnly) {
                     mCheckpointer = null;
                 } else {
                     mCheckpointer = new Checkpointer(this, launcher, mNodeGroups.length);

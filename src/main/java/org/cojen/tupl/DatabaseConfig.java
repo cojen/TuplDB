@@ -269,12 +269,14 @@ public class DatabaseConfig implements Cloneable {
         return this;
     }
 
-    /*
+    /**
+     * Open the database file in read only mode. Writes to the database are permitted until the
+     * cache fills up, but nothing is persisted.
+     */
     public DatabaseConfig readOnly(boolean readOnly) {
         mLauncher.readOnly(readOnly);
         return this;
     }
-    */
 
     /**
      * Set the page size, which is 4096 bytes by default.

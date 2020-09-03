@@ -19,7 +19,7 @@
 <script type="text/javascript" src="../../../../script-dir/jquery-ui.js"></script>
 </head>
 <body class="class-declaration">
-<script type="text/javascript">var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10,"i16":10,"i17":10,"i18":10,"i19":10,"i20":10,"i21":10,"i22":10,"i23":10,"i24":10,"i25":10,"i26":10,"i27":10,"i28":10,"i29":10,"i30":10};
+<script type="text/javascript">var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10,"i16":10,"i17":10,"i18":10,"i19":10,"i20":10,"i21":10,"i22":10,"i23":10,"i24":10,"i25":10,"i26":10,"i27":10,"i28":10,"i29":10,"i30":10,"i31":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "altColor";
 var rowColor = "rowColor";
@@ -361,19 +361,26 @@ implements <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base
 </tr>
 <tr class="altColor" id="i28">
 <td class="colFirst"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
+<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#readOnly(boolean)">readOnly</a></span>&#8203;(boolean&nbsp;readOnly)</code></th>
+<td class="colLast">
+<div class="block">Open the database file in read only mode.</div>
+</td>
+</tr>
+<tr class="rowColor" id="i29">
+<td class="colFirst"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#replicate(org.cojen.tupl.repl.ReplicatorConfig)">replicate</a></span>&#8203;(<a href="repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;config)</code></th>
 <td class="colLast">
 <div class="block">Enable replication using the given configuration.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i29">
+<tr class="altColor" id="i30">
 <td class="colFirst"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#replicate(org.cojen.tupl.repl.StreamReplicator)">replicate</a></span>&#8203;(<a href="repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a>&nbsp;repl)</code></th>
 <td class="colLast">
 <div class="block">Enable replication with an explicit <a href="repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl"><code>StreamReplicator</code></a> instance.</div>
 </td>
 </tr>
-<tr class="altColor" id="i30">
+<tr class="rowColor" id="i31">
 <td class="colFirst"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#syncWrites(boolean)">syncWrites</a></span>&#8203;(boolean&nbsp;fileSync)</code></th>
 <td class="colLast">
@@ -616,6 +623,14 @@ implements <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base
  although not checkpointed. This option typically reduces overall performance, but
  checkpoints complete more quickly. As a result, the main database file requires less
  pre-allocated pages and is smaller. Also consider specifying more <a href="#maxCheckpointThreads(int)">checkpoint threads</a> when using this option.</div>
+</section>
+</li>
+<li class="blockList">
+<section class="detail">
+<h3><a id="readOnly(boolean)">readOnly</a></h3>
+<div class="memberSignature"><span class="modifiers">public</span>&nbsp;<span class="returnType"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></span>&nbsp;<span class="memberName">readOnly</span>&#8203;(<span class="arguments">boolean&nbsp;readOnly)</span></div>
+<div class="block">Open the database file in read only mode. Writes to the database are permitted until the
+ cache fills up, but nothing is persisted.</div>
 </section>
 </li>
 <li class="blockList">

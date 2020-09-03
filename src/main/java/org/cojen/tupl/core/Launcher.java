@@ -197,11 +197,9 @@ public final class Launcher implements Cloneable {
         mFileSync = fileSync;
     }
 
-    /*
     public void readOnly(boolean readOnly) {
         mReadOnly = readOnly;
     }
-    */
 
     public void pageSize(int size) {
         if (mDataPageArray != null) {
