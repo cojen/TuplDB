@@ -8,205 +8,192 @@
 <meta name="description" content="declaration: module: org.cojen.tupl, package: org.cojen.tupl, interface: Combiner">
 <meta name="generator" content="javadoc/ClassWriterImpl">
 <link rel="stylesheet" type="text/css" href="../../../../stylesheet.css" title="Style">
-<link rel="stylesheet" type="text/css" href="../../../../script-dir/jquery-ui.css" title="Style">
+<link rel="stylesheet" type="text/css" href="../../../../script-dir/jquery-ui.min.css" title="Style">
+<link rel="stylesheet" type="text/css" href="../../../../jquery-ui.overrides.css" title="Style">
 <script type="text/javascript" src="../../../../script.js"></script>
-<script type="text/javascript" src="../../../../script-dir/jszip/dist/jszip.min.js"></script>
-<script type="text/javascript" src="../../../../script-dir/jszip-utils/dist/jszip-utils.min.js"></script>
-<!--[if IE]>
-<script type="text/javascript" src="../../../../script-dir/jszip-utils/dist/jszip-utils-ie.min.js"></script>
-<![endif]-->
-<script type="text/javascript" src="../../../../script-dir/jquery-3.4.1.js"></script>
-<script type="text/javascript" src="../../../../script-dir/jquery-ui.js"></script>
+<script type="text/javascript" src="../../../../script-dir/jquery-3.5.1.min.js"></script>
+<script type="text/javascript" src="../../../../script-dir/jquery-ui.min.js"></script>
 </head>
-<body class="class-declaration">
+<body class="class-declaration-page">
 <script type="text/javascript">var data = {"i0":6,"i1":18,"i2":1,"i3":1,"i4":18,"i5":18,"i6":18,"i7":18,"i8":1,"i9":18};
 var tabs = {65535:["t0","All Methods"],1:["t1","Static Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
-var altColor = "altColor";
-var rowColor = "rowColor";
-var tableTab = "tableTab";
-var activeTableTab = "activeTableTab";
+var altColor = "alt-color";
+var rowColor = "row-color";
+var tableTab = "table-tab";
+var activeTableTab = "active-table-tab";
 var pathtoroot = "../../../../";
 loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
-<div class="flexBox">
-<header role="banner" class="flexHeader">
+<div class="flex-box">
+<header role="banner" class="flex-header">
 <nav role="navigation">
 <!-- ========= START OF TOP NAVBAR ======= -->
-<div class="topNav"><a id="navbar.top">
-<!--   -->
-</a>
-<div class="skipNav"><a href="#skip.navbar.top" title="Skip navigation links">Skip navigation links</a></div>
-<a id="navbar.top.firstrow">
-<!--   -->
-</a>
-<ul class="navList" title="Navigation">
+<div class="top-nav" id="navbar.top">
+<div class="skip-nav"><a href="#skip.navbar.top" title="Skip navigation links">Skip navigation links</a></div>
+<ul id="navbar.top.firstrow" class="nav-list" title="Navigation">
 <li><a href="../../../module-summary.html">Module</a></li>
 <li><a href="package-summary.html">Package</a></li>
-<li class="navBarCell1Rev">Class</li>
+<li class="nav-bar-cell1-rev">Class</li>
 <li><a href="class-use/Combiner.html">Use</a></li>
 <li><a href="package-tree.html">Tree</a></li>
 <li><a href="../../../../index-all.html">Index</a></li>
 <li><a href="../../../../help-doc.html">Help</a></li>
 </ul>
 </div>
-<div class="subNav">
+<div class="sub-nav">
 <div>
-<ul class="subNavList">
+<ul class="sub-nav-list">
 <li>Summary:&nbsp;</li>
 <li>Nested&nbsp;|&nbsp;</li>
 <li>Field&nbsp;|&nbsp;</li>
 <li>Constr&nbsp;|&nbsp;</li>
 <li><a href="#method.summary">Method</a></li>
 </ul>
-<ul class="subNavList">
+<ul class="sub-nav-list">
 <li>Detail:&nbsp;</li>
 <li>Field&nbsp;|&nbsp;</li>
 <li>Constr&nbsp;|&nbsp;</li>
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
-<div class="navListSearch"><label for="search">SEARCH:</label>
+<div class="nav-list-search"><label for="search">SEARCH:</label>
 <input type="text" id="search" value="search" disabled="disabled">
 <input type="reset" id="reset" value="reset" disabled="disabled">
 </div>
 </div>
 <!-- ========= END OF TOP NAVBAR ========= -->
-<div class="skipNav"><a id="skip.navbar.top">
+<span class="skip-nav" id="skip.navbar.top">
 <!--   -->
-</a></div>
-</nav>
+</span></nav>
 </header>
-<div class="flexContent">
+<div class="flex-content">
 <main role="main">
 <!-- ======== START OF CLASS DATA ======== -->
 <div class="header">
-<div class="subTitle"><span class="moduleLabelInType">Module</span>&nbsp;<a href="../../../module-summary.html">org.cojen.tupl</a></div>
-<div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl</a></div>
+<div class="sub-title"><span class="module-label-in-type">Module</span>&nbsp;<a href="../../../module-summary.html">org.cojen.tupl</a></div>
+<div class="sub-title"><span class="package-label-in-type">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl</a></div>
 <h1 title="Interface Combiner" class="title">Interface Combiner</h1>
 </div>
-<div class="contentContainer">
 <section class="description">
-<dl>
+<dl class="notes">
 <dt>Functional Interface:</dt>
 <dd>This is a functional interface and can therefore be used as the assignment target for a lambda expression or method reference.</dd>
 </dl>
 <hr>
-<pre><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/FunctionalInterface.html?is-external=true" title="class or interface in java.lang" class="externalLink">@FunctionalInterface</a>
-public interface <span class="typeNameLabel">Combiner</span></pre>
+<pre><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/FunctionalInterface.html" title="class or interface in java.lang" class="external-link">@FunctionalInterface</a>
+public interface <span class="type-name-label">Combiner</span></pre>
 <div class="block">Represents an operation which combines two values that map to the same key.</div>
-<dl>
-<dt><span class="seeLabel">See Also:</span></dt>
+<dl class="notes">
+<dt>See Also:</dt>
 <dd><a href="View.html#viewUnion(org.cojen.tupl.Combiner,org.cojen.tupl.View)"><code>viewUnion</code></a>, 
 <a href="View.html#viewIntersection(org.cojen.tupl.Combiner,org.cojen.tupl.View)"><code>viewIntersection</code></a>, 
 <a href="View.html#viewDifference(org.cojen.tupl.Combiner,org.cojen.tupl.View)"><code>viewDifference</code></a></dd>
 </dl>
 </section>
 <section class="summary">
-<ul class="blockList">
+<ul class="summary-list">
 <!-- ========== METHOD SUMMARY =========== -->
-<li class="blockList">
-<section class="methodSummary"><a id="method.summary">
-<!--   -->
-</a>
+<li>
+<section class="method-summary" id="method.summary">
 <h2>Method Summary</h2>
-<div class="memberSummary">
-<div role="tablist" aria-orientation="horizontal"><button role="tab" aria-selected="true" aria-controls="memberSummary_tabpanel" tabindex="0" onkeydown="switchTab(event)" id="t0" class="activeTableTab">All Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t1" class="tableTab" onclick="show(1);">Static Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t2" class="tableTab" onclick="show(2);">Instance Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t3" class="tableTab" onclick="show(4);">Abstract Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t5" class="tableTab" onclick="show(16);">Default Methods</button></div>
-<div id="memberSummary_tabpanel" role="tabpanel">
-<table aria-labelledby="t0">
+<div class="member-summary" id="method-summary-table">
+<div class="table-tabs" role="tablist" aria-orientation="horizontal"><button role="tab" aria-selected="true" aria-controls="method-summary-table.tabpanel" tabindex="0" onkeydown="switchTab(event)" id="t0" class="active-table-tab">All Methods</button><button role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t1" class="table-tab" onclick="show(1);">Static Methods</button><button role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t2" class="table-tab" onclick="show(2);">Instance Methods</button><button role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t3" class="table-tab" onclick="show(4);">Abstract Methods</button><button role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t5" class="table-tab" onclick="show(16);">Default Methods</button></div>
+<div id="method-summary-table.tabpanel" role="tabpanel">
+<table class="summary-table" aria-labelledby="t0">
 <thead>
 <tr>
-<th class="colFirst" scope="col">Modifier and Type</th>
-<th class="colSecond" scope="col">Method</th>
-<th class="colLast" scope="col">Description</th>
+<th class="col-first" scope="col">Modifier and Type</th>
+<th class="col-second" scope="col">Method</th>
+<th class="col-last" scope="col">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="altColor" id="i0">
-<td class="colFirst"><code>byte[]</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#combine(byte%5B%5D,byte%5B%5D,byte%5B%5D)">combine</a></span>&#8203;(byte[]&nbsp;key,
+<tr class="alt-color" id="i0">
+<td class="col-first"><code>byte[]</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#combine(byte%5B%5D,byte%5B%5D,byte%5B%5D)">combine</a></span>&#8203;(byte[]&nbsp;key,
 byte[]&nbsp;first,
 byte[]&nbsp;second)</code></th>
-<td class="colLast">
+<td class="col-last">
 <div class="block">Return a combined value derived from the given key and value pair.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i1">
-<td class="colFirst"><code>default boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#combineLocks()">combineLocks</a></span>()</code></th>
-<td class="colLast">
+<tr class="row-color" id="i1">
+<td class="col-first"><code>default boolean</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#combineLocks()">combineLocks</a></span>()</code></th>
+<td class="col-last">
 <div class="block">Returns false by default, indicating that when loads of the first key acquire a lock, it
  doesn't need to be held while a lock on the second key is acquired.</div>
 </td>
 </tr>
-<tr class="altColor" id="i2">
-<td class="colFirst"><code>static <a href="Combiner.html" title="interface in org.cojen.tupl">Combiner</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#discard()">discard</a></span>()</code></th>
-<td class="colLast">
+<tr class="alt-color" id="i2">
+<td class="col-first"><code>static <a href="Combiner.html" title="interface in org.cojen.tupl">Combiner</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#discard()">discard</a></span>()</code></th>
+<td class="col-last">
 <div class="block">Returns a Combiner that discards both values (always returns null).</div>
 </td>
 </tr>
-<tr class="rowColor" id="i3">
-<td class="colFirst"><code>static <a href="Combiner.html" title="interface in org.cojen.tupl">Combiner</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#first()">first</a></span>()</code></th>
-<td class="colLast">
+<tr class="row-color" id="i3">
+<td class="col-first"><code>static <a href="Combiner.html" title="interface in org.cojen.tupl">Combiner</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#first()">first</a></span>()</code></th>
+<td class="col-last">
 <div class="block">Returns a Combiner that chooses the first value and discards the second value.</div>
 </td>
 </tr>
-<tr class="altColor" id="i4">
-<td class="colFirst"><code>default byte[]</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#loadDifference(org.cojen.tupl.Transaction,byte%5B%5D,org.cojen.tupl.View,org.cojen.tupl.View)">loadDifference</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<tr class="alt-color" id="i4">
+<td class="col-first"><code>default byte[]</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#loadDifference(org.cojen.tupl.Transaction,byte%5B%5D,org.cojen.tupl.View,org.cojen.tupl.View)">loadDifference</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key,
 <a href="View.html" title="interface in org.cojen.tupl">View</a>&nbsp;first,
 <a href="View.html" title="interface in org.cojen.tupl">View</a>&nbsp;second)</code></th>
-<td class="colLast">
+<td class="col-last">
 <div class="block">If <a href="#requireValues()"><code>requireValues</code></a> always returns false, consider overriding this
  method and implement a more efficient load for two views in a difference.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i5">
-<td class="colFirst"><code>default byte[]</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#loadIntersection(org.cojen.tupl.Transaction,byte%5B%5D,org.cojen.tupl.View,org.cojen.tupl.View)">loadIntersection</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<tr class="row-color" id="i5">
+<td class="col-first"><code>default byte[]</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#loadIntersection(org.cojen.tupl.Transaction,byte%5B%5D,org.cojen.tupl.View,org.cojen.tupl.View)">loadIntersection</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key,
 <a href="View.html" title="interface in org.cojen.tupl">View</a>&nbsp;first,
 <a href="View.html" title="interface in org.cojen.tupl">View</a>&nbsp;second)</code></th>
-<td class="colLast">
+<td class="col-last">
 <div class="block">If <a href="#requireValues()"><code>requireValues</code></a> always returns false, consider overriding this
  method and implement a more efficient load for two views in an intersection.</div>
 </td>
 </tr>
-<tr class="altColor" id="i6">
-<td class="colFirst"><code>default byte[]</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#loadUnion(org.cojen.tupl.Transaction,byte%5B%5D,org.cojen.tupl.View,org.cojen.tupl.View)">loadUnion</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<tr class="alt-color" id="i6">
+<td class="col-first"><code>default byte[]</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#loadUnion(org.cojen.tupl.Transaction,byte%5B%5D,org.cojen.tupl.View,org.cojen.tupl.View)">loadUnion</a></span>&#8203;(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key,
 <a href="View.html" title="interface in org.cojen.tupl">View</a>&nbsp;first,
 <a href="View.html" title="interface in org.cojen.tupl">View</a>&nbsp;second)</code></th>
-<td class="colLast">
+<td class="col-last">
 <div class="block">If <a href="#requireValues()"><code>requireValues</code></a> always returns false, consider overriding this
  method and implement a more efficient load for two views in a union.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i7">
-<td class="colFirst"><code>default boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#requireValues()">requireValues</a></span>()</code></th>
-<td class="colLast">
+<tr class="row-color" id="i7">
+<td class="col-first"><code>default boolean</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#requireValues()">requireValues</a></span>()</code></th>
+<td class="col-last">
 <div class="block">Returns true by default, indicating that the combine method always requires loaded value
  instances to be provided.</div>
 </td>
 </tr>
-<tr class="altColor" id="i8">
-<td class="colFirst"><code>static <a href="Combiner.html" title="interface in org.cojen.tupl">Combiner</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#second()">second</a></span>()</code></th>
-<td class="colLast">
+<tr class="alt-color" id="i8">
+<td class="col-first"><code>static <a href="Combiner.html" title="interface in org.cojen.tupl">Combiner</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#second()">second</a></span>()</code></th>
+<td class="col-last">
 <div class="block">Returns a Combiner that chooses the second value and discards the first value.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i9">
-<td class="colFirst"><code>default byte[][]</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#separate(byte%5B%5D,byte%5B%5D)">separate</a></span>&#8203;(byte[]&nbsp;key,
+<tr class="row-color" id="i9">
+<td class="col-first"><code>default byte[][]</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#separate(byte%5B%5D,byte%5B%5D)">separate</a></span>&#8203;(byte[]&nbsp;key,
 byte[]&nbsp;value)</code></th>
-<td class="colLast">
+<td class="col-last">
 <div class="block">Separates a combined result, for use when storing a value into a view which uses this
  combiner.</div>
 </td>
@@ -220,145 +207,143 @@ byte[]&nbsp;value)</code></th>
 </ul>
 </section>
 <section class="details">
-<ul class="blockList">
+<ul class="details-list">
 <!-- ============ METHOD DETAIL ========== -->
-<li class="blockList">
-<section class="methodDetails"><a id="method.detail">
-<!--   -->
-</a>
+<li>
+<section class="method-details" id="method.detail">
 <h2>Method Details</h2>
-<ul class="blockList">
-<li class="blockList">
-<section class="detail">
-<h3><a id="first()">first</a></h3>
-<div class="memberSignature"><span class="modifiers">static</span>&nbsp;<span class="returnType"><a href="Combiner.html" title="interface in org.cojen.tupl">Combiner</a></span>&nbsp;<span class="memberName">first</span>()</div>
+<ul class="member-list">
+<li>
+<section class="detail" id="first()">
+<h3>first</h3>
+<div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type"><a href="Combiner.html" title="interface in org.cojen.tupl">Combiner</a></span>&nbsp;<span class="member-name">first</span>()</div>
 <div class="block">Returns a Combiner that chooses the first value and discards the second value.</div>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="second()">second</a></h3>
-<div class="memberSignature"><span class="modifiers">static</span>&nbsp;<span class="returnType"><a href="Combiner.html" title="interface in org.cojen.tupl">Combiner</a></span>&nbsp;<span class="memberName">second</span>()</div>
+<li>
+<section class="detail" id="second()">
+<h3>second</h3>
+<div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type"><a href="Combiner.html" title="interface in org.cojen.tupl">Combiner</a></span>&nbsp;<span class="member-name">second</span>()</div>
 <div class="block">Returns a Combiner that chooses the second value and discards the first value.</div>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="discard()">discard</a></h3>
-<div class="memberSignature"><span class="modifiers">static</span>&nbsp;<span class="returnType"><a href="Combiner.html" title="interface in org.cojen.tupl">Combiner</a></span>&nbsp;<span class="memberName">discard</span>()</div>
+<li>
+<section class="detail" id="discard()">
+<h3>discard</h3>
+<div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type"><a href="Combiner.html" title="interface in org.cojen.tupl">Combiner</a></span>&nbsp;<span class="member-name">discard</span>()</div>
 <div class="block">Returns a Combiner that discards both values (always returns null). When used with a
  <a href="View.html#viewUnion(org.cojen.tupl.Combiner,org.cojen.tupl.View)">union</a>, this causes it to compute the <i>symmetric set
  difference</i>.</div>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="combine(byte[],byte[],byte[])">combine</a></h3>
-<div class="memberSignature"><span class="returnType">byte[]</span>&nbsp;<span class="memberName">combine</span>&#8203;(<span class="arguments">byte[]&nbsp;key,
+<li>
+<section class="detail" id="combine(byte[],byte[],byte[])">
+<h3>combine</h3>
+<div class="member-signature"><span class="return-type">byte[]</span>&nbsp;<span class="member-name">combine</span>&#8203;(<span class="parameters">byte[]&nbsp;key,
 byte[]&nbsp;first,
 byte[]&nbsp;second)</span>
-        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Return a combined value derived from the given key and value pair. Null can be returned
  to completely discard both values.</div>
-<dl>
-<dt><span class="paramLabel">Parameters:</span></dt>
+<dl class="notes">
+<dt>Parameters:</dt>
 <dd><code>key</code> - non-null associated key</dd>
 <dd><code>first</code> - non-null first value in the pair</dd>
 <dd><code>second</code> - non-null second value in the pair</dd>
-<dt><span class="returnLabel">Returns:</span></dt>
+<dt>Returns:</dt>
 <dd>combined value or null to discard both values</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="requireValues()">requireValues</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">requireValues</span>()</div>
+<li>
+<section class="detail" id="requireValues()">
+<h3>requireValues</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="member-name">requireValues</span>()</div>
 <div class="block">Returns true by default, indicating that the combine method always requires loaded value
  instances to be provided.</div>
-<dl>
-<dt><span class="returnLabel">Returns:</span></dt>
+<dl class="notes">
+<dt>Returns:</dt>
 <dd>true if loaded values must always be passed into the combine method</dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="combineLocks()">combineLocks</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">boolean</span>&nbsp;<span class="memberName">combineLocks</span>()</div>
+<li>
+<section class="detail" id="combineLocks()">
+<h3>combineLocks</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="member-name">combineLocks</span>()</div>
 <div class="block">Returns false by default, indicating that when loads of the first key acquire a lock, it
  doesn't need to be held while a lock on the second key is acquired. This option is
  applicable when using the <a href="LockMode.html#READ_COMMITTED"><code>READ_COMMITTED</code></a> lock mode or a
  null transaction. When storing into a view, acquired locks are always combined.</div>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="loadUnion(org.cojen.tupl.Transaction,byte[],org.cojen.tupl.View,org.cojen.tupl.View)">loadUnion</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">byte[]</span>&nbsp;<span class="memberName">loadUnion</span>&#8203;(<span class="arguments"><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<li>
+<section class="detail" id="loadUnion(org.cojen.tupl.Transaction,byte[],org.cojen.tupl.View,org.cojen.tupl.View)">
+<h3>loadUnion</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">byte[]</span>&nbsp;<span class="member-name">loadUnion</span>&#8203;(<span class="parameters"><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key,
 <a href="View.html" title="interface in org.cojen.tupl">View</a>&nbsp;first,
 <a href="View.html" title="interface in org.cojen.tupl">View</a>&nbsp;second)</span>
-                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">If <a href="#requireValues()"><code>requireValues</code></a> always returns false, consider overriding this
  method and implement a more efficient load for two views in a union.</div>
-<dl>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="loadIntersection(org.cojen.tupl.Transaction,byte[],org.cojen.tupl.View,org.cojen.tupl.View)">loadIntersection</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">byte[]</span>&nbsp;<span class="memberName">loadIntersection</span>&#8203;(<span class="arguments"><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<li>
+<section class="detail" id="loadIntersection(org.cojen.tupl.Transaction,byte[],org.cojen.tupl.View,org.cojen.tupl.View)">
+<h3>loadIntersection</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">byte[]</span>&nbsp;<span class="member-name">loadIntersection</span>&#8203;(<span class="parameters"><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key,
 <a href="View.html" title="interface in org.cojen.tupl">View</a>&nbsp;first,
 <a href="View.html" title="interface in org.cojen.tupl">View</a>&nbsp;second)</span>
-                         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+                         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">If <a href="#requireValues()"><code>requireValues</code></a> always returns false, consider overriding this
  method and implement a more efficient load for two views in an intersection.</div>
-<dl>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="loadDifference(org.cojen.tupl.Transaction,byte[],org.cojen.tupl.View,org.cojen.tupl.View)">loadDifference</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">byte[]</span>&nbsp;<span class="memberName">loadDifference</span>&#8203;(<span class="arguments"><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<li>
+<section class="detail" id="loadDifference(org.cojen.tupl.Transaction,byte[],org.cojen.tupl.View,org.cojen.tupl.View)">
+<h3>loadDifference</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">byte[]</span>&nbsp;<span class="member-name">loadDifference</span>&#8203;(<span class="parameters"><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
 byte[]&nbsp;key,
 <a href="View.html" title="interface in org.cojen.tupl">View</a>&nbsp;first,
 <a href="View.html" title="interface in org.cojen.tupl">View</a>&nbsp;second)</span>
-                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">If <a href="#requireValues()"><code>requireValues</code></a> always returns false, consider overriding this
  method and implement a more efficient load for two views in a difference.</div>
-<dl>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="separate(byte[],byte[])">separate</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">byte[][]</span>&nbsp;<span class="memberName">separate</span>&#8203;(<span class="arguments">byte[]&nbsp;key,
+<li>
+<section class="detail" id="separate(byte[],byte[])">
+<h3>separate</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">byte[][]</span>&nbsp;<span class="member-name">separate</span>&#8203;(<span class="parameters">byte[]&nbsp;key,
 byte[]&nbsp;value)</span>
-                   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+                   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Separates a combined result, for use when storing a value into a view which uses this
  combiner. Returns null by default, which then causes a <a href="ViewConstraintException.html" title="class in org.cojen.tupl"><code>ViewConstraintException</code></a>
  to be thrown.</div>
-<dl>
-<dt><span class="paramLabel">Parameters:</span></dt>
+<dl class="notes">
+<dt>Parameters:</dt>
 <dd><code>key</code> - non-null associated key</dd>
 <dd><code>value</code> - non-null combined value</dd>
-<dt><span class="returnLabel">Returns:</span></dt>
+<dt>Returns:</dt>
 <dd>first and second value, neither of which can be null</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -367,39 +352,33 @@ byte[]&nbsp;value)</span>
 </li>
 </ul>
 </section>
-</div>
 <!-- ========= END OF CLASS DATA ========= -->
 </main>
 <footer role="contentinfo">
 <nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
-<div class="bottomNav"><a id="navbar.bottom">
-<!--   -->
-</a>
-<div class="skipNav"><a href="#skip.navbar.bottom" title="Skip navigation links">Skip navigation links</a></div>
-<a id="navbar.bottom.firstrow">
-<!--   -->
-</a>
-<ul class="navList" title="Navigation">
+<div class="bottom-nav" id="navbar.bottom">
+<div class="skip-nav"><a href="#skip.navbar.bottom" title="Skip navigation links">Skip navigation links</a></div>
+<ul id="navbar.bottom.firstrow" class="nav-list" title="Navigation">
 <li><a href="../../../module-summary.html">Module</a></li>
 <li><a href="package-summary.html">Package</a></li>
-<li class="navBarCell1Rev">Class</li>
+<li class="nav-bar-cell1-rev">Class</li>
 <li><a href="class-use/Combiner.html">Use</a></li>
 <li><a href="package-tree.html">Tree</a></li>
 <li><a href="../../../../index-all.html">Index</a></li>
 <li><a href="../../../../help-doc.html">Help</a></li>
 </ul>
 </div>
-<div class="subNav">
+<div class="sub-nav">
 <div>
-<ul class="subNavList">
+<ul class="sub-nav-list">
 <li>Summary:&nbsp;</li>
 <li>Nested&nbsp;|&nbsp;</li>
 <li>Field&nbsp;|&nbsp;</li>
 <li>Constr&nbsp;|&nbsp;</li>
 <li><a href="#method.summary">Method</a></li>
 </ul>
-<ul class="subNavList">
+<ul class="sub-nav-list">
 <li>Detail:&nbsp;</li>
 <li>Field&nbsp;|&nbsp;</li>
 <li>Constr&nbsp;|&nbsp;</li>
@@ -407,12 +386,11 @@ byte[]&nbsp;value)</span>
 </ul>
 </div>
 </div>
-<a id="skip.navbar.bottom">
-<!--   -->
-</a>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
-</nav>
-<p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2020 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+<span class="skip-nav" id="skip.navbar.bottom">
+<!--   -->
+</span></nav>
+<p class="legal-copy"><small>Copyright &#169; 2011&#x2013;2020 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
 </div>
 </div>

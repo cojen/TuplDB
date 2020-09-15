@@ -1,1 +1,1 @@
-moduleSearchIndex = [{"l":"org.cojen.tupl"}]
+moduleSearchIndex = [{"l":"org.cojen.tupl"}];updateSearchResults();

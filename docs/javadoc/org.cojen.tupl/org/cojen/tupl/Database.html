@@ -8,93 +8,82 @@
 <meta name="description" content="declaration: module: org.cojen.tupl, package: org.cojen.tupl, interface: Database">
 <meta name="generator" content="javadoc/ClassWriterImpl">
 <link rel="stylesheet" type="text/css" href="../../../../stylesheet.css" title="Style">
-<link rel="stylesheet" type="text/css" href="../../../../script-dir/jquery-ui.css" title="Style">
+<link rel="stylesheet" type="text/css" href="../../../../script-dir/jquery-ui.min.css" title="Style">
+<link rel="stylesheet" type="text/css" href="../../../../jquery-ui.overrides.css" title="Style">
 <script type="text/javascript" src="../../../../script.js"></script>
-<script type="text/javascript" src="../../../../script-dir/jszip/dist/jszip.min.js"></script>
-<script type="text/javascript" src="../../../../script-dir/jszip-utils/dist/jszip-utils.min.js"></script>
-<!--[if IE]>
-<script type="text/javascript" src="../../../../script-dir/jszip-utils/dist/jszip-utils-ie.min.js"></script>
-<![endif]-->
-<script type="text/javascript" src="../../../../script-dir/jquery-3.4.1.js"></script>
-<script type="text/javascript" src="../../../../script-dir/jquery-ui.js"></script>
+<script type="text/javascript" src="../../../../script-dir/jquery-3.5.1.min.js"></script>
+<script type="text/javascript" src="../../../../script-dir/jquery-ui.min.js"></script>
 </head>
-<body class="class-declaration">
+<body class="class-declaration-page">
 <script type="text/javascript">var data = {"i0":6,"i1":6,"i2":18,"i3":18,"i4":18,"i5":6,"i6":18,"i7":6,"i8":6,"i9":6,"i10":6,"i11":6,"i12":6,"i13":1,"i14":6,"i15":6,"i16":18,"i17":6,"i18":18,"i19":6,"i20":6,"i21":6,"i22":6,"i23":6,"i24":6,"i25":6,"i26":18,"i27":6,"i28":1,"i29":6,"i30":18,"i31":6,"i32":6,"i33":6,"i34":18,"i35":1,"i36":6,"i37":6,"i38":6,"i39":6,"i40":6,"i41":6,"i42":6};
 var tabs = {65535:["t0","All Methods"],1:["t1","Static Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
-var altColor = "altColor";
-var rowColor = "rowColor";
-var tableTab = "tableTab";
-var activeTableTab = "activeTableTab";
+var altColor = "alt-color";
+var rowColor = "row-color";
+var tableTab = "table-tab";
+var activeTableTab = "active-table-tab";
 var pathtoroot = "../../../../";
 loadScripts(document, 'script');</script>
 <noscript>
 <div>JavaScript is disabled on your browser.</div>
 </noscript>
-<div class="flexBox">
-<header role="banner" class="flexHeader">
+<div class="flex-box">
+<header role="banner" class="flex-header">
 <nav role="navigation">
 <!-- ========= START OF TOP NAVBAR ======= -->
-<div class="topNav"><a id="navbar.top">
-<!--   -->
-</a>
-<div class="skipNav"><a href="#skip.navbar.top" title="Skip navigation links">Skip navigation links</a></div>
-<a id="navbar.top.firstrow">
-<!--   -->
-</a>
-<ul class="navList" title="Navigation">
+<div class="top-nav" id="navbar.top">
+<div class="skip-nav"><a href="#skip.navbar.top" title="Skip navigation links">Skip navigation links</a></div>
+<ul id="navbar.top.firstrow" class="nav-list" title="Navigation">
 <li><a href="../../../module-summary.html">Module</a></li>
 <li><a href="package-summary.html">Package</a></li>
-<li class="navBarCell1Rev">Class</li>
+<li class="nav-bar-cell1-rev">Class</li>
 <li><a href="class-use/Database.html">Use</a></li>
 <li><a href="package-tree.html">Tree</a></li>
 <li><a href="../../../../index-all.html">Index</a></li>
 <li><a href="../../../../help-doc.html">Help</a></li>
 </ul>
 </div>
-<div class="subNav">
+<div class="sub-nav">
 <div>
-<ul class="subNavList">
+<ul class="sub-nav-list">
 <li>Summary:&nbsp;</li>
 <li><a href="#nested.class.summary">Nested</a>&nbsp;|&nbsp;</li>
 <li>Field&nbsp;|&nbsp;</li>
 <li>Constr&nbsp;|&nbsp;</li>
 <li><a href="#method.summary">Method</a></li>
 </ul>
-<ul class="subNavList">
+<ul class="sub-nav-list">
 <li>Detail:&nbsp;</li>
 <li>Field&nbsp;|&nbsp;</li>
 <li>Constr&nbsp;|&nbsp;</li>
 <li><a href="#method.detail">Method</a></li>
 </ul>
 </div>
-<div class="navListSearch"><label for="search">SEARCH:</label>
+<div class="nav-list-search"><label for="search">SEARCH:</label>
 <input type="text" id="search" value="search" disabled="disabled">
 <input type="reset" id="reset" value="reset" disabled="disabled">
 </div>
 </div>
 <!-- ========= END OF TOP NAVBAR ========= -->
-<div class="skipNav"><a id="skip.navbar.top">
+<span class="skip-nav" id="skip.navbar.top">
 <!--   -->
-</a></div>
-</nav>
+</span></nav>
 </header>
-<div class="flexContent">
+<div class="flex-content">
 <main role="main">
 <!-- ======== START OF CLASS DATA ======== -->
 <div class="header">
-<div class="subTitle"><span class="moduleLabelInType">Module</span>&nbsp;<a href="../../../module-summary.html">org.cojen.tupl</a></div>
-<div class="subTitle"><span class="packageLabelInType">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl</a></div>
+<div class="sub-title"><span class="module-label-in-type">Module</span>&nbsp;<a href="../../../module-summary.html">org.cojen.tupl</a></div>
+<div class="sub-title"><span class="package-label-in-type">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl</a></div>
 <h1 title="Interface Database" class="title">Interface Database</h1>
 </div>
-<div class="contentContainer">
 <section class="description">
-<dl>
+<dl class="notes">
 <dt>All Superinterfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code>, <code><a href="io/CauseCloseable.html" title="interface in org.cojen.tupl.io">CauseCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Flushable.html?is-external=true" title="class or interface in java.io" class="externalLink">Flushable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></code>, <code><a href="io/CauseCloseable.html" title="interface in org.cojen.tupl.io">CauseCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/Flushable.html" title="class or interface in java.io" class="external-link">Flushable</a></code></dd>
 </dl>
 <hr>
-<pre>public interface <span class="typeNameLabel">Database</span>
-extends <a href="io/CauseCloseable.html" title="interface in org.cojen.tupl.io">CauseCloseable</a>, <a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Flushable.html?is-external=true" title="class or interface in java.io" class="externalLink">Flushable</a></pre>
+<pre>public interface <span class="type-name-label">Database</span>
+extends <a href="io/CauseCloseable.html" title="interface in org.cojen.tupl.io">CauseCloseable</a>, <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/Flushable.html" title="class or interface in java.io" class="external-link">Flushable</a></pre>
 <div class="block">Primary database interface, containing a collection of transactional indexes. Call <a href="#open(org.cojen.tupl.DatabaseConfig)"><code>open</code></a> to obtain a Database instance. Examples:
 
  <p>Open a non-durable database, limited to a max size of 100MB:
@@ -129,34 +118,32 @@ extends <a href="io/CauseCloseable.html" title="interface in org.cojen.tupl.io">
  also delete the old files. When <a href="#beginSnapshot()">snapshots</a> are in
  progress, one or more numbered temporary files are created. For example:
  <code>/var/lib/tupl/myapp.temp.123</code>.</div>
-<dl>
-<dt><span class="seeLabel">See Also:</span></dt>
+<dl class="notes">
+<dt>See Also:</dt>
 <dd><a href="DatabaseConfig.html" title="class in org.cojen.tupl"><code>DatabaseConfig</code></a></dd>
 </dl>
 </section>
 <section class="summary">
-<ul class="blockList">
+<ul class="summary-list">
 <!-- ======== NESTED CLASS SUMMARY ======== -->
-<li class="blockList">
-<section class="nestedClassSummary"><a id="nested.class.summary">
-<!--   -->
-</a>
+<li>
+<section class="nested-class-summary" id="nested.class.summary">
 <h2>Nested Class Summary</h2>
-<div class="memberSummary">
-<table>
-<caption><span>Nested Classes</span><span class="tabEnd">&nbsp;</span></caption>
+<div class="member-summary">
+<table class="summary-table">
+<caption><span>Nested Classes</span></caption>
 <thead>
 <tr>
-<th class="colFirst" scope="col">Modifier and Type</th>
-<th class="colSecond" scope="col">Interface</th>
-<th class="colLast" scope="col">Description</th>
+<th class="col-first" scope="col">Modifier and Type</th>
+<th class="col-second" scope="col">Interface</th>
+<th class="col-last" scope="col">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="altColor">
-<td class="colFirst"><code>static class&nbsp;</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></span></code></th>
-<td class="colLast">
+<tr class="alt-color">
+<td class="col-first"><code>static class&nbsp;</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></span></code></th>
+<td class="col-last">
 <div class="block">Collection of database <a href="#stats()">statistics</a>.</div>
 </td>
 </tr>
@@ -166,340 +153,338 @@ extends <a href="io/CauseCloseable.html" title="interface in org.cojen.tupl.io">
 </section>
 </li>
 <!-- ========== METHOD SUMMARY =========== -->
-<li class="blockList">
-<section class="methodSummary"><a id="method.summary">
-<!--   -->
-</a>
+<li>
+<section class="method-summary" id="method.summary">
 <h2>Method Summary</h2>
-<div class="memberSummary">
-<div role="tablist" aria-orientation="horizontal"><button role="tab" aria-selected="true" aria-controls="memberSummary_tabpanel" tabindex="0" onkeydown="switchTab(event)" id="t0" class="activeTableTab">All Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t1" class="tableTab" onclick="show(1);">Static Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t2" class="tableTab" onclick="show(2);">Instance Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t3" class="tableTab" onclick="show(4);">Abstract Methods</button><button role="tab" aria-selected="false" aria-controls="memberSummary_tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t5" class="tableTab" onclick="show(16);">Default Methods</button></div>
-<div id="memberSummary_tabpanel" role="tabpanel">
-<table aria-labelledby="t0">
+<div class="member-summary" id="method-summary-table">
+<div class="table-tabs" role="tablist" aria-orientation="horizontal"><button role="tab" aria-selected="true" aria-controls="method-summary-table.tabpanel" tabindex="0" onkeydown="switchTab(event)" id="t0" class="active-table-tab">All Methods</button><button role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t1" class="table-tab" onclick="show(1);">Static Methods</button><button role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t2" class="table-tab" onclick="show(2);">Instance Methods</button><button role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t3" class="table-tab" onclick="show(4);">Abstract Methods</button><button role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" id="t5" class="table-tab" onclick="show(16);">Default Methods</button></div>
+<div id="method-summary-table.tabpanel" role="tabpanel">
+<table class="summary-table" aria-labelledby="t0">
 <thead>
 <tr>
-<th class="colFirst" scope="col">Modifier and Type</th>
-<th class="colSecond" scope="col">Method</th>
-<th class="colLast" scope="col">Description</th>
+<th class="col-first" scope="col">Modifier and Type</th>
+<th class="col-second" scope="col">Method</th>
+<th class="col-last" scope="col">Description</th>
 </tr>
 </thead>
 <tbody>
-<tr class="altColor" id="i0">
-<td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#applyCachePrimer(java.io.InputStream)">applyCachePrimer</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;in)</code></th>
-<td class="colLast">
+<tr class="alt-color" id="i0">
+<td class="col-first"><code>void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#applyCachePrimer(java.io.InputStream)">applyCachePrimer</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/InputStream.html" title="class or interface in java.io" class="external-link">InputStream</a>&nbsp;in)</code></th>
+<td class="col-last">
 <div class="block">Prime the cache, from a set encoded <a href="#createCachePrimer(java.io.OutputStream)">earlier</a>.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i1">
-<td class="colFirst"><code><a href="Snapshot.html" title="interface in org.cojen.tupl">Snapshot</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#beginSnapshot()">beginSnapshot</a></span>()</code></th>
-<td class="colLast">
+<tr class="row-color" id="i1">
+<td class="col-first"><code><a href="Snapshot.html" title="interface in org.cojen.tupl">Snapshot</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#beginSnapshot()">beginSnapshot</a></span>()</code></th>
+<td class="col-last">
 <div class="block">Support for capturing a snapshot (hot backup) of the database, while
  still allowing concurrent modifications.</div>
 </td>
 </tr>
-<tr class="altColor" id="i2">
-<td class="colFirst"><code>default long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#capacityLimit()">capacityLimit</a></span>()</code></th>
-<td class="colLast">
+<tr class="alt-color" id="i2">
+<td class="col-first"><code>default long</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#capacityLimit()">capacityLimit</a></span>()</code></th>
+<td class="col-last">
 <div class="block">Returns the current capacity limit, rounded down by page size.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i3">
-<td class="colFirst"><code>default void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#capacityLimit(long)">capacityLimit</a></span>&#8203;(long&nbsp;bytes)</code></th>
-<td class="colLast">
+<tr class="row-color" id="i3">
+<td class="col-first"><code>default void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#capacityLimit(long)">capacityLimit</a></span>&#8203;(long&nbsp;bytes)</code></th>
+<td class="col-last">
 <div class="block">Set a soft capacity limit for the database, to prevent filling up the storage
  device.</div>
 </td>
 </tr>
-<tr class="altColor" id="i4">
-<td class="colFirst"><code>default void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#capacityLimitOverride(long)">capacityLimitOverride</a></span>&#8203;(long&nbsp;bytes)</code></th>
-<td class="colLast">
+<tr class="alt-color" id="i4">
+<td class="col-first"><code>default void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#capacityLimitOverride(long)">capacityLimitOverride</a></span>&#8203;(long&nbsp;bytes)</code></th>
+<td class="col-last">
 <div class="block">Set capacity limits for the current thread, allowing it to perform tasks which can free
  up space.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i5">
-<td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#checkpoint()">checkpoint</a></span>()</code></th>
-<td class="colLast">
+<tr class="row-color" id="i5">
+<td class="col-first"><code>void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#checkpoint()">checkpoint</a></span>()</code></th>
+<td class="col-last">
 <div class="block">Durably sync and checkpoint all changes to the database.</div>
 </td>
 </tr>
-<tr class="altColor" id="i6">
-<td class="colFirst"><code>default void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#close()">close</a></span>()</code></th>
-<td class="colLast">
+<tr class="alt-color" id="i6">
+<td class="col-first"><code>default void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#close()">close</a></span>()</code></th>
+<td class="col-last">
 <div class="block">Closes the database, ensuring durability of committed transactions.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i7">
-<td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#close(java.lang.Throwable)">close</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</code></th>
-<td class="colLast">
+<tr class="row-color" id="i7">
+<td class="col-first"><code>void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#close(java.lang.Throwable)">close</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/Throwable.html" title="class or interface in java.lang" class="external-link">Throwable</a>&nbsp;cause)</code></th>
+<td class="col-last">
 <div class="block">Closes the database after an unexpected failure.</div>
 </td>
 </tr>
-<tr class="altColor" id="i8">
-<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/concurrent/locks/Lock.html?is-external=true" title="class or interface in java.util.concurrent.locks" class="externalLink">Lock</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#commitLock()">commitLock</a></span>()</code></th>
-<td class="colLast">
+<tr class="alt-color" id="i8">
+<td class="col-first"><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/concurrent/locks/Lock.html" title="class or interface in java.util.concurrent.locks" class="external-link">Lock</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#commitLock()">commitLock</a></span>()</code></th>
+<td class="col-last">
 <div class="block">Returns the checkpoint commit lock, which can be held to prevent checkpoints from
  capturing a safe commit point.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i9">
-<td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#compactFile(org.cojen.tupl.CompactionObserver,double)">compactFile</a></span>&#8203;(<a href="CompactionObserver.html" title="class in org.cojen.tupl">CompactionObserver</a>&nbsp;observer,
+<tr class="row-color" id="i9">
+<td class="col-first"><code>boolean</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#compactFile(org.cojen.tupl.CompactionObserver,double)">compactFile</a></span>&#8203;(<a href="CompactionObserver.html" title="class in org.cojen.tupl">CompactionObserver</a>&nbsp;observer,
 double&nbsp;target)</code></th>
-<td class="colLast">
+<td class="col-last">
 <div class="block">Compacts the database by shrinking the database file.</div>
 </td>
 </tr>
-<tr class="altColor" id="i10">
-<td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#createCachePrimer(java.io.OutputStream)">createCachePrimer</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a>&nbsp;out)</code></th>
-<td class="colLast">
+<tr class="alt-color" id="i10">
+<td class="col-first"><code>void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#createCachePrimer(java.io.OutputStream)">createCachePrimer</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/OutputStream.html" title="class or interface in java.io" class="external-link">OutputStream</a>&nbsp;out)</code></th>
+<td class="col-last">
 <div class="block">Writes a cache priming set into the given stream, which can then be used later to
  <a href="#applyCachePrimer(java.io.InputStream)">prime</a> the cache.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i11">
-<td class="colFirst"><code><a href="ext/CustomHandler.html" title="interface in org.cojen.tupl.ext">CustomHandler</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#customWriter(java.lang.String)">customWriter</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;name)</code></th>
-<td class="colLast">
+<tr class="row-color" id="i11">
+<td class="col-first"><code><a href="ext/CustomHandler.html" title="interface in org.cojen.tupl.ext">CustomHandler</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#customWriter(java.lang.String)">customWriter</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name)</code></th>
+<td class="col-last">
 <div class="block">Returns a handler instance suitable for writing custom redo and undo operations.</div>
 </td>
 </tr>
-<tr class="altColor" id="i12">
-<td class="colFirst"><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#deleteIndex(org.cojen.tupl.Index)">deleteIndex</a></span>&#8203;(<a href="Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index)</code></th>
-<td class="colLast">
+<tr class="alt-color" id="i12">
+<td class="col-first"><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/Runnable.html" title="class or interface in java.lang" class="external-link">Runnable</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#deleteIndex(org.cojen.tupl.Index)">deleteIndex</a></span>&#8203;(<a href="Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index)</code></th>
+<td class="col-last">
 <div class="block">Fully closes and deletes the given index, but does not immediately reclaim the pages it
  occupied.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i13">
-<td class="colFirst"><code>static <a href="Database.html" title="interface in org.cojen.tupl">Database</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#destroy(org.cojen.tupl.DatabaseConfig)">destroy</a></span>&#8203;(<a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config)</code></th>
-<td class="colLast">
+<tr class="row-color" id="i13">
+<td class="col-first"><code>static <a href="Database.html" title="interface in org.cojen.tupl">Database</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#destroy(org.cojen.tupl.DatabaseConfig)">destroy</a></span>&#8203;(<a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config)</code></th>
+<td class="col-last">
 <div class="block">Delete the contents of an existing database, and replace it with an
  empty one.</div>
 </td>
 </tr>
-<tr class="altColor" id="i14">
-<td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#failover()">failover</a></span>()</code></th>
-<td class="colLast">
+<tr class="alt-color" id="i14">
+<td class="col-first"><code>boolean</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#failover()">failover</a></span>()</code></th>
+<td class="col-last">
 <div class="block">If the database instance is currently acting as a leader, attempt to give up leadership
  and become a replica.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i15">
-<td class="colFirst"><code><a href="Index.html" title="interface in org.cojen.tupl">Index</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#findIndex(byte%5B%5D)">findIndex</a></span>&#8203;(byte[]&nbsp;name)</code></th>
-<td class="colLast">
+<tr class="row-color" id="i15">
+<td class="col-first"><code><a href="Index.html" title="interface in org.cojen.tupl">Index</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#findIndex(byte%5B%5D)">findIndex</a></span>&#8203;(byte[]&nbsp;name)</code></th>
+<td class="col-last">
 <div class="block">Returns the given named index, returning null if not found.</div>
 </td>
 </tr>
-<tr class="altColor" id="i16">
-<td class="colFirst"><code>default <a href="Index.html" title="interface in org.cojen.tupl">Index</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#findIndex(java.lang.String)">findIndex</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;name)</code></th>
-<td class="colLast">
+<tr class="alt-color" id="i16">
+<td class="col-first"><code>default <a href="Index.html" title="interface in org.cojen.tupl">Index</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#findIndex(java.lang.String)">findIndex</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name)</code></th>
+<td class="col-last">
 <div class="block">Returns the given named index, returning null if not found.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i17">
-<td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#flush()">flush</a></span>()</code></th>
-<td class="colLast">
+<tr class="row-color" id="i17">
+<td class="col-first"><code>void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#flush()">flush</a></span>()</code></th>
+<td class="col-last">
 <div class="block">Flushes all committed transactions, but not durably.</div>
 </td>
 </tr>
-<tr class="altColor" id="i18">
-<td class="colFirst"><code>default <a href="Index.html" title="interface in org.cojen.tupl">Index</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#indexById(byte%5B%5D)">indexById</a></span>&#8203;(byte[]&nbsp;id)</code></th>
-<td class="colLast">
+<tr class="alt-color" id="i18">
+<td class="col-first"><code>default <a href="Index.html" title="interface in org.cojen.tupl">Index</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#indexById(byte%5B%5D)">indexById</a></span>&#8203;(byte[]&nbsp;id)</code></th>
+<td class="col-last">
 <div class="block">Returns an index by its identifier, returning null if not found.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i19">
-<td class="colFirst"><code><a href="Index.html" title="interface in org.cojen.tupl">Index</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#indexById(long)">indexById</a></span>&#8203;(long&nbsp;id)</code></th>
-<td class="colLast">
+<tr class="row-color" id="i19">
+<td class="col-first"><code><a href="Index.html" title="interface in org.cojen.tupl">Index</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#indexById(long)">indexById</a></span>&#8203;(long&nbsp;id)</code></th>
+<td class="col-last">
 <div class="block">Returns an index by its identifier, returning null if not found.</div>
 </td>
 </tr>
-<tr class="altColor" id="i20">
-<td class="colFirst"><code><a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#indexRegistryById()">indexRegistryById</a></span>()</code></th>
-<td class="colLast">
+<tr class="alt-color" id="i20">
+<td class="col-first"><code><a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#indexRegistryById()">indexRegistryById</a></span>()</code></th>
+<td class="col-last">
 <div class="block">Returns an <a href="UnmodifiableViewException.html" title="class in org.cojen.tupl">unmodifiable</a> View which maps all
  available index identifiers to names.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i21">
-<td class="colFirst"><code><a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#indexRegistryByName()">indexRegistryByName</a></span>()</code></th>
-<td class="colLast">
+<tr class="row-color" id="i21">
+<td class="col-first"><code><a href="View.html" title="interface in org.cojen.tupl">View</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#indexRegistryByName()">indexRegistryByName</a></span>()</code></th>
+<td class="col-last">
 <div class="block">Returns an <a href="UnmodifiableViewException.html" title="class in org.cojen.tupl">unmodifiable</a> View which maps all
  available index names to identifiers.</div>
 </td>
 </tr>
-<tr class="altColor" id="i22">
-<td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isClosed()">isClosed</a></span>()</code></th>
-<td class="colLast">
+<tr class="alt-color" id="i22">
+<td class="col-first"><code>boolean</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#isClosed()">isClosed</a></span>()</code></th>
+<td class="col-last">
 <div class="block">Returns true if database was explicitly closed, or if it was closed due to a panic.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i23">
-<td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#isLeader()">isLeader</a></span>()</code></th>
-<td class="colLast">
+<tr class="row-color" id="i23">
+<td class="col-first"><code>boolean</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#isLeader()">isLeader</a></span>()</code></th>
+<td class="col-last">
 <div class="block">Returns true of the database instance is currently the leader.</div>
 </td>
 </tr>
-<tr class="altColor" id="i24">
-<td class="colFirst"><code><a href="Sorter.html" title="interface in org.cojen.tupl">Sorter</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newSorter()">newSorter</a></span>()</code></th>
-<td class="colLast">
+<tr class="alt-color" id="i24">
+<td class="col-first"><code><a href="Sorter.html" title="interface in org.cojen.tupl">Sorter</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#newSorter()">newSorter</a></span>()</code></th>
+<td class="col-last">
 <div class="block">Returns a new Sorter instance.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i25">
-<td class="colFirst"><code><a href="Index.html" title="interface in org.cojen.tupl">Index</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newTemporaryIndex()">newTemporaryIndex</a></span>()</code></th>
-<td class="colLast">
+<tr class="row-color" id="i25">
+<td class="col-first"><code><a href="Index.html" title="interface in org.cojen.tupl">Index</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#newTemporaryIndex()">newTemporaryIndex</a></span>()</code></th>
+<td class="col-last">
 <div class="block">Creates a new unnamed temporary index.</div>
 </td>
 </tr>
-<tr class="altColor" id="i26">
-<td class="colFirst"><code>default <a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newTransaction()">newTransaction</a></span>()</code></th>
-<td class="colLast">
+<tr class="alt-color" id="i26">
+<td class="col-first"><code>default <a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#newTransaction()">newTransaction</a></span>()</code></th>
+<td class="col-last">
 <div class="block">Returns a new Transaction with the <a href="DatabaseConfig.html#durabilityMode(org.cojen.tupl.DurabilityMode)">default</a>
  durability mode.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i27">
-<td class="colFirst"><code><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#newTransaction(org.cojen.tupl.DurabilityMode)">newTransaction</a></span>&#8203;(<a href="DurabilityMode.html" title="enum in org.cojen.tupl">DurabilityMode</a>&nbsp;durabilityMode)</code></th>
-<td class="colLast">
+<tr class="row-color" id="i27">
+<td class="col-first"><code><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#newTransaction(org.cojen.tupl.DurabilityMode)">newTransaction</a></span>&#8203;(<a href="DurabilityMode.html" title="enum in org.cojen.tupl">DurabilityMode</a>&nbsp;durabilityMode)</code></th>
+<td class="col-last">
 <div class="block">Returns a new Transaction with the given durability mode.</div>
 </td>
 </tr>
-<tr class="altColor" id="i28">
-<td class="colFirst"><code>static <a href="Database.html" title="interface in org.cojen.tupl">Database</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#open(org.cojen.tupl.DatabaseConfig)">open</a></span>&#8203;(<a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config)</code></th>
-<td class="colLast">
+<tr class="alt-color" id="i28">
+<td class="col-first"><code>static <a href="Database.html" title="interface in org.cojen.tupl">Database</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#open(org.cojen.tupl.DatabaseConfig)">open</a></span>&#8203;(<a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config)</code></th>
+<td class="col-last">
 <div class="block">Open a database, creating it if necessary.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i29">
-<td class="colFirst"><code><a href="Index.html" title="interface in org.cojen.tupl">Index</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#openIndex(byte%5B%5D)">openIndex</a></span>&#8203;(byte[]&nbsp;name)</code></th>
-<td class="colLast">
+<tr class="row-color" id="i29">
+<td class="col-first"><code><a href="Index.html" title="interface in org.cojen.tupl">Index</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#openIndex(byte%5B%5D)">openIndex</a></span>&#8203;(byte[]&nbsp;name)</code></th>
+<td class="col-last">
 <div class="block">Returns the given named index, creating it if necessary.</div>
 </td>
 </tr>
-<tr class="altColor" id="i30">
-<td class="colFirst"><code>default <a href="Index.html" title="interface in org.cojen.tupl">Index</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#openIndex(java.lang.String)">openIndex</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;name)</code></th>
-<td class="colLast">
+<tr class="alt-color" id="i30">
+<td class="col-first"><code>default <a href="Index.html" title="interface in org.cojen.tupl">Index</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#openIndex(java.lang.String)">openIndex</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name)</code></th>
+<td class="col-last">
 <div class="block">Returns the given named index, creating it if necessary.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i31">
-<td class="colFirst"><code>long</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#preallocate(long)">preallocate</a></span>&#8203;(long&nbsp;bytes)</code></th>
-<td class="colLast">
+<tr class="row-color" id="i31">
+<td class="col-first"><code>long</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#preallocate(long)">preallocate</a></span>&#8203;(long&nbsp;bytes)</code></th>
+<td class="col-last">
 <div class="block">Preallocates pages for immediate use.</div>
 </td>
 </tr>
-<tr class="altColor" id="i32">
-<td class="colFirst"><code><a href="ext/PrepareHandler.html" title="interface in org.cojen.tupl.ext">PrepareHandler</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#prepareWriter(java.lang.String)">prepareWriter</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;name)</code></th>
-<td class="colLast">
+<tr class="alt-color" id="i32">
+<td class="col-first"><code><a href="ext/PrepareHandler.html" title="interface in org.cojen.tupl.ext">PrepareHandler</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#prepareWriter(java.lang.String)">prepareWriter</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name)</code></th>
+<td class="col-last">
 <div class="block">Returns a handler instance suitable for preparing transactions.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i33">
-<td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#renameIndex(org.cojen.tupl.Index,byte%5B%5D)">renameIndex</a></span>&#8203;(<a href="Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
+<tr class="row-color" id="i33">
+<td class="col-first"><code>void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#renameIndex(org.cojen.tupl.Index,byte%5B%5D)">renameIndex</a></span>&#8203;(<a href="Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
 byte[]&nbsp;newName)</code></th>
-<td class="colLast">
+<td class="col-last">
 <div class="block">Renames the given index to the one given.</div>
 </td>
 </tr>
-<tr class="altColor" id="i34">
-<td class="colFirst"><code>default void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#renameIndex(org.cojen.tupl.Index,java.lang.String)">renameIndex</a></span>&#8203;(<a href="Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
-<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;newName)</code></th>
-<td class="colLast">
+<tr class="alt-color" id="i34">
+<td class="col-first"><code>default void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#renameIndex(org.cojen.tupl.Index,java.lang.String)">renameIndex</a></span>&#8203;(<a href="Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;newName)</code></th>
+<td class="col-last">
 <div class="block">Renames the given index to the one given.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i35">
-<td class="colFirst"><code>static <a href="Database.html" title="interface in org.cojen.tupl">Database</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#restoreFromSnapshot(org.cojen.tupl.DatabaseConfig,java.io.InputStream)">restoreFromSnapshot</a></span>&#8203;(<a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config,
-<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;in)</code></th>
-<td class="colLast">
+<tr class="row-color" id="i35">
+<td class="col-first"><code>static <a href="Database.html" title="interface in org.cojen.tupl">Database</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#restoreFromSnapshot(org.cojen.tupl.DatabaseConfig,java.io.InputStream)">restoreFromSnapshot</a></span>&#8203;(<a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/InputStream.html" title="class or interface in java.io" class="external-link">InputStream</a>&nbsp;in)</code></th>
+<td class="col-last">
 <div class="block">Restore from a <a href="#beginSnapshot()">snapshot</a>, into the data files defined by the
  given configuration.</div>
 </td>
 </tr>
-<tr class="altColor" id="i36">
-<td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#resumeCheckpoints()">resumeCheckpoints</a></span>()</code></th>
-<td class="colLast">
+<tr class="alt-color" id="i36">
+<td class="col-first"><code>void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#resumeCheckpoints()">resumeCheckpoints</a></span>()</code></th>
+<td class="col-last">
 <div class="block">Resume automatic checkpoints after having been temporarily <a href="#suspendCheckpoints()"><code>suspended</code></a>.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i37">
-<td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#shutdown()">shutdown</a></span>()</code></th>
-<td class="colLast">
+<tr class="row-color" id="i37">
+<td class="col-first"><code>void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#shutdown()">shutdown</a></span>()</code></th>
+<td class="col-last">
 <div class="block">Cleanly closes the database, ensuring durability of all modifications.</div>
 </td>
 </tr>
-<tr class="altColor" id="i38">
-<td class="colFirst"><code><a href="Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#stats()">stats</a></span>()</code></th>
-<td class="colLast">
+<tr class="alt-color" id="i38">
+<td class="col-first"><code><a href="Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#stats()">stats</a></span>()</code></th>
+<td class="col-last">
 <div class="block">Returns a collection of database statistics.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i39">
-<td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#suspendCheckpoints()">suspendCheckpoints</a></span>()</code></th>
-<td class="colLast">
+<tr class="row-color" id="i39">
+<td class="col-first"><code>void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#suspendCheckpoints()">suspendCheckpoints</a></span>()</code></th>
+<td class="col-last">
 <div class="block">Temporarily suspend automatic checkpoints without waiting for any in-progress checkpoint
  to complete.</div>
 </td>
 </tr>
-<tr class="altColor" id="i40">
-<td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#sync()">sync</a></span>()</code></th>
-<td class="colLast">
+<tr class="alt-color" id="i40">
+<td class="col-first"><code>void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#sync()">sync</a></span>()</code></th>
+<td class="col-last">
 <div class="block">Durably flushes all committed transactions.</div>
 </td>
 </tr>
-<tr class="rowColor" id="i41">
-<td class="colFirst"><code>void</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#uponLeader(java.lang.Runnable,java.lang.Runnable)">uponLeader</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;acquired,
-<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;lost)</code></th>
-<td class="colLast">
+<tr class="row-color" id="i41">
+<td class="col-first"><code>void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#uponLeader(java.lang.Runnable,java.lang.Runnable)">uponLeader</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/Runnable.html" title="class or interface in java.lang" class="external-link">Runnable</a>&nbsp;acquired,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/Runnable.html" title="class or interface in java.lang" class="external-link">Runnable</a>&nbsp;lost)</code></th>
+<td class="col-last">
 <div class="block">Registers the given task to start in a separate thread when the database instance has
  become the leader.</div>
 </td>
 </tr>
-<tr class="altColor" id="i42">
-<td class="colFirst"><code>boolean</code></td>
-<th class="colSecond" scope="row"><code><span class="memberNameLink"><a href="#verify(org.cojen.tupl.VerificationObserver)">verify</a></span>&#8203;(<a href="VerificationObserver.html" title="class in org.cojen.tupl">VerificationObserver</a>&nbsp;observer)</code></th>
-<td class="colLast">
+<tr class="alt-color" id="i42">
+<td class="col-first"><code>boolean</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#verify(org.cojen.tupl.VerificationObserver)">verify</a></span>&#8203;(<a href="VerificationObserver.html" title="class in org.cojen.tupl">VerificationObserver</a>&nbsp;observer)</code></th>
+<td class="col-last">
 <div class="block">Verifies the integrity of the database and all indexes.</div>
 </td>
 </tr>
@@ -512,173 +497,171 @@ byte[]&nbsp;newName)</code></th>
 </ul>
 </section>
 <section class="details">
-<ul class="blockList">
+<ul class="details-list">
 <!-- ============ METHOD DETAIL ========== -->
-<li class="blockList">
-<section class="methodDetails"><a id="method.detail">
-<!--   -->
-</a>
+<li>
+<section class="method-details" id="method.detail">
 <h2>Method Details</h2>
-<ul class="blockList">
-<li class="blockList">
-<section class="detail">
-<h3><a id="open(org.cojen.tupl.DatabaseConfig)">open</a></h3>
-<div class="memberSignature"><span class="modifiers">static</span>&nbsp;<span class="returnType"><a href="Database.html" title="interface in org.cojen.tupl">Database</a></span>&nbsp;<span class="memberName">open</span>&#8203;(<span class="arguments"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config)</span>
-              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<ul class="member-list">
+<li>
+<section class="detail" id="open(org.cojen.tupl.DatabaseConfig)">
+<h3>open</h3>
+<div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type"><a href="Database.html" title="interface in org.cojen.tupl">Database</a></span>&nbsp;<span class="member-name">open</span>&#8203;(<span class="parameters"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config)</span>
+              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Open a database, creating it if necessary.</div>
-<dl>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="destroy(org.cojen.tupl.DatabaseConfig)">destroy</a></h3>
-<div class="memberSignature"><span class="modifiers">static</span>&nbsp;<span class="returnType"><a href="Database.html" title="interface in org.cojen.tupl">Database</a></span>&nbsp;<span class="memberName">destroy</span>&#8203;(<span class="arguments"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config)</span>
-                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="destroy(org.cojen.tupl.DatabaseConfig)">
+<h3>destroy</h3>
+<div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type"><a href="Database.html" title="interface in org.cojen.tupl">Database</a></span>&nbsp;<span class="member-name">destroy</span>&#8203;(<span class="parameters"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config)</span>
+                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Delete the contents of an existing database, and replace it with an
  empty one. When using a raw block device for the data file, this method
  must be used to format it.</div>
-<dl>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="findIndex(byte[])">findIndex</a></h3>
-<div class="memberSignature"><span class="returnType"><a href="Index.html" title="interface in org.cojen.tupl">Index</a></span>&nbsp;<span class="memberName">findIndex</span>&#8203;(<span class="arguments">byte[]&nbsp;name)</span>
-         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="findIndex(byte[])">
+<h3>findIndex</h3>
+<div class="member-signature"><span class="return-type"><a href="Index.html" title="interface in org.cojen.tupl">Index</a></span>&nbsp;<span class="member-name">findIndex</span>&#8203;(<span class="parameters">byte[]&nbsp;name)</span>
+         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Returns the given named index, returning null if not found.</div>
-<dl>
-<dt><span class="returnLabel">Returns:</span></dt>
+<dl class="notes">
+<dt>Returns:</dt>
 <dd>shared Index instance; null if not found</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="findIndex(java.lang.String)">findIndex</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType"><a href="Index.html" title="interface in org.cojen.tupl">Index</a></span>&nbsp;<span class="memberName">findIndex</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;name)</span>
-                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="findIndex(java.lang.String)">
+<h3>findIndex</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="Index.html" title="interface in org.cojen.tupl">Index</a></span>&nbsp;<span class="member-name">findIndex</span>&#8203;(<span class="parameters"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name)</span>
+                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Returns the given named index, returning null if not found. Name is UTF-8
  encoded.</div>
-<dl>
-<dt><span class="returnLabel">Returns:</span></dt>
+<dl class="notes">
+<dt>Returns:</dt>
 <dd>shared Index instance; null if not found</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="openIndex(byte[])">openIndex</a></h3>
-<div class="memberSignature"><span class="returnType"><a href="Index.html" title="interface in org.cojen.tupl">Index</a></span>&nbsp;<span class="memberName">openIndex</span>&#8203;(<span class="arguments">byte[]&nbsp;name)</span>
-         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="openIndex(byte[])">
+<h3>openIndex</h3>
+<div class="member-signature"><span class="return-type"><a href="Index.html" title="interface in org.cojen.tupl">Index</a></span>&nbsp;<span class="member-name">openIndex</span>&#8203;(<span class="parameters">byte[]&nbsp;name)</span>
+         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Returns the given named index, creating it if necessary.</div>
-<dl>
-<dt><span class="returnLabel">Returns:</span></dt>
+<dl class="notes">
+<dt>Returns:</dt>
 <dd>shared Index instance</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="openIndex(java.lang.String)">openIndex</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType"><a href="Index.html" title="interface in org.cojen.tupl">Index</a></span>&nbsp;<span class="memberName">openIndex</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;name)</span>
-                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="openIndex(java.lang.String)">
+<h3>openIndex</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="Index.html" title="interface in org.cojen.tupl">Index</a></span>&nbsp;<span class="member-name">openIndex</span>&#8203;(<span class="parameters"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name)</span>
+                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Returns the given named index, creating it if necessary. Name is UTF-8
  encoded.</div>
-<dl>
-<dt><span class="returnLabel">Returns:</span></dt>
+<dl class="notes">
+<dt>Returns:</dt>
 <dd>shared Index instance</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="indexById(long)">indexById</a></h3>
-<div class="memberSignature"><span class="returnType"><a href="Index.html" title="interface in org.cojen.tupl">Index</a></span>&nbsp;<span class="memberName">indexById</span>&#8203;(<span class="arguments">long&nbsp;id)</span>
-         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="indexById(long)">
+<h3>indexById</h3>
+<div class="member-signature"><span class="return-type"><a href="Index.html" title="interface in org.cojen.tupl">Index</a></span>&nbsp;<span class="member-name">indexById</span>&#8203;(<span class="parameters">long&nbsp;id)</span>
+         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Returns an index by its identifier, returning null if not found.</div>
-<dl>
-<dt><span class="returnLabel">Returns:</span></dt>
+<dl class="notes">
+<dt>Returns:</dt>
 <dd>shared Index instance</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if id is reserved</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if id is reserved</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="indexById(byte[])">indexById</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType"><a href="Index.html" title="interface in org.cojen.tupl">Index</a></span>&nbsp;<span class="memberName">indexById</span>&#8203;(<span class="arguments">byte[]&nbsp;id)</span>
-                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="indexById(byte[])">
+<h3>indexById</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="Index.html" title="interface in org.cojen.tupl">Index</a></span>&nbsp;<span class="member-name">indexById</span>&#8203;(<span class="parameters">byte[]&nbsp;id)</span>
+                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Returns an index by its identifier, returning null if not found.</div>
-<dl>
-<dt><span class="paramLabel">Parameters:</span></dt>
+<dl class="notes">
+<dt>Parameters:</dt>
 <dd><code>id</code> - big-endian encoded long integer</dd>
-<dt><span class="returnLabel">Returns:</span></dt>
+<dt>Returns:</dt>
 <dd>shared Index instance</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if id is malformed or reserved</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if id is malformed or reserved</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="renameIndex(org.cojen.tupl.Index,byte[])">renameIndex</a></h3>
-<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">renameIndex</span>&#8203;(<span class="arguments"><a href="Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
+<li>
+<section class="detail" id="renameIndex(org.cojen.tupl.Index,byte[])">
+<h3>renameIndex</h3>
+<div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="member-name">renameIndex</span>&#8203;(<span class="parameters"><a href="Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
 byte[]&nbsp;newName)</span>
-          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Renames the given index to the one given.</div>
-<dl>
-<dt><span class="paramLabel">Parameters:</span></dt>
+<dl class="notes">
+<dt>Parameters:</dt>
 <dd><code>index</code> - non-null open index</dd>
 <dd><code>newName</code> - new non-null name</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
+<dt>Throws:</dt>
 <dd><code><a href="ClosedIndexException.html" title="class in org.cojen.tupl">ClosedIndexException</a></code> - if index reference is closed</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if name is already in use by another index</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if index belongs to another database instance</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if name is already in use by another index</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if index belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="renameIndex(org.cojen.tupl.Index,java.lang.String)">renameIndex</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">renameIndex</span>&#8203;(<span class="arguments"><a href="Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
-<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;newName)</span>
-                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="renameIndex(org.cojen.tupl.Index,java.lang.String)">
+<h3>renameIndex</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="member-name">renameIndex</span>&#8203;(<span class="parameters"><a href="Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;newName)</span>
+                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Renames the given index to the one given. Name is UTF-8 encoded.</div>
-<dl>
-<dt><span class="paramLabel">Parameters:</span></dt>
+<dl class="notes">
+<dt>Parameters:</dt>
 <dd><code>index</code> - non-null open index</dd>
 <dd><code>newName</code> - new non-null name</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
+<dt>Throws:</dt>
 <dd><code><a href="ClosedIndexException.html" title="class in org.cojen.tupl">ClosedIndexException</a></code> - if index reference is closed</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if name is already in use by another index</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if index belongs to another database instance</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if name is already in use by another index</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if index belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="deleteIndex(org.cojen.tupl.Index)">deleteIndex</a></h3>
-<div class="memberSignature"><span class="returnType"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a></span>&nbsp;<span class="memberName">deleteIndex</span>&#8203;(<span class="arguments"><a href="Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index)</span>
-              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="deleteIndex(org.cojen.tupl.Index)">
+<h3>deleteIndex</h3>
+<div class="member-signature"><span class="return-type"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/Runnable.html" title="class or interface in java.lang" class="external-link">Runnable</a></span>&nbsp;<span class="member-name">deleteIndex</span>&#8203;(<span class="parameters"><a href="Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index)</span>
+              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Fully closes and deletes the given index, but does not immediately reclaim the pages it
  occupied. Run the returned task in any thread to reclaim the pages.
 
@@ -689,139 +672,139 @@ byte[]&nbsp;newName)</span>
  <p>If the deletion task is never started or it doesn't finish normally, it will resume
  when the database is re-opened. All resumed deletions are completed in serial order by a
  background thread.</div>
-<dl>
-<dt><span class="paramLabel">Parameters:</span></dt>
+<dl class="notes">
+<dt>Parameters:</dt>
 <dd><code>index</code> - non-null open index</dd>
-<dt><span class="returnLabel">Returns:</span></dt>
+<dt>Returns:</dt>
 <dd>non-null task to call for reclaiming the pages used by the deleted index</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
+<dt>Throws:</dt>
 <dd><code><a href="ClosedIndexException.html" title="class in org.cojen.tupl">ClosedIndexException</a></code> - if index reference is closed</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if index belongs to another database instance</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
-<dt><span class="seeLabel">See Also:</span></dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if index belongs to another database instance</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dt>See Also:</dt>
 <dd><a href="EventListener.html" title="interface in org.cojen.tupl"><code>EventListener</code></a>, 
 <a href="Index.html#drop()"><code>Index.drop</code></a></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="newTemporaryIndex()">newTemporaryIndex</a></h3>
-<div class="memberSignature"><span class="returnType"><a href="Index.html" title="interface in org.cojen.tupl">Index</a></span>&nbsp;<span class="memberName">newTemporaryIndex</span>()
-                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="newTemporaryIndex()">
+<h3>newTemporaryIndex</h3>
+<div class="member-signature"><span class="return-type"><a href="Index.html" title="interface in org.cojen.tupl">Index</a></span>&nbsp;<span class="member-name">newTemporaryIndex</span>()
+                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Creates a new unnamed temporary index. Temporary indexes never get written to the redo
  log, and they are deleted when the database is re-opened. Temporary indexes should be
  explicitly <a href="#deleteIndex(org.cojen.tupl.Index)">deleted</a> when no longer needed, rather than waiting
  until the database is re-opened.</div>
-<dl>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="indexRegistryByName()">indexRegistryByName</a></h3>
-<div class="memberSignature"><span class="returnType"><a href="View.html" title="interface in org.cojen.tupl">View</a></span>&nbsp;<span class="memberName">indexRegistryByName</span>()
-                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="indexRegistryByName()">
+<h3>indexRegistryByName</h3>
+<div class="member-signature"><span class="return-type"><a href="View.html" title="interface in org.cojen.tupl">View</a></span>&nbsp;<span class="member-name">indexRegistryByName</span>()
+                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Returns an <a href="UnmodifiableViewException.html" title="class in org.cojen.tupl">unmodifiable</a> View which maps all
  available index names to identifiers. Identifiers are long integers, <a href="io/Utils.html#decodeLongBE(byte%5B%5D,int)">big-endian</a> encoded.</div>
-<dl>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="indexRegistryById()">indexRegistryById</a></h3>
-<div class="memberSignature"><span class="returnType"><a href="View.html" title="interface in org.cojen.tupl">View</a></span>&nbsp;<span class="memberName">indexRegistryById</span>()
-                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="indexRegistryById()">
+<h3>indexRegistryById</h3>
+<div class="member-signature"><span class="return-type"><a href="View.html" title="interface in org.cojen.tupl">View</a></span>&nbsp;<span class="member-name">indexRegistryById</span>()
+                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Returns an <a href="UnmodifiableViewException.html" title="class in org.cojen.tupl">unmodifiable</a> View which maps all
  available index identifiers to names. Identifiers are long integers, <a href="io/Utils.html#decodeLongBE(byte%5B%5D,int)">big-endian</a> encoded.</div>
-<dl>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="newTransaction()">newTransaction</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType"><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></span>&nbsp;<span class="memberName">newTransaction</span>()</div>
+<li>
+<section class="detail" id="newTransaction()">
+<h3>newTransaction</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></span>&nbsp;<span class="member-name">newTransaction</span>()</div>
 <div class="block">Returns a new Transaction with the <a href="DatabaseConfig.html#durabilityMode(org.cojen.tupl.DurabilityMode)">default</a>
  durability mode.</div>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="newTransaction(org.cojen.tupl.DurabilityMode)">newTransaction</a></h3>
-<div class="memberSignature"><span class="returnType"><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></span>&nbsp;<span class="memberName">newTransaction</span>&#8203;(<span class="arguments"><a href="DurabilityMode.html" title="enum in org.cojen.tupl">DurabilityMode</a>&nbsp;durabilityMode)</span></div>
+<li>
+<section class="detail" id="newTransaction(org.cojen.tupl.DurabilityMode)">
+<h3>newTransaction</h3>
+<div class="member-signature"><span class="return-type"><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></span>&nbsp;<span class="member-name">newTransaction</span>&#8203;(<span class="parameters"><a href="DurabilityMode.html" title="enum in org.cojen.tupl">DurabilityMode</a>&nbsp;durabilityMode)</span></div>
 <div class="block">Returns a new Transaction with the given durability mode. If null, the
  <a href="DatabaseConfig.html#durabilityMode(org.cojen.tupl.DurabilityMode)">default</a> is used.</div>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="customWriter(java.lang.String)">customWriter</a></h3>
-<div class="memberSignature"><span class="returnType"><a href="ext/CustomHandler.html" title="interface in org.cojen.tupl.ext">CustomHandler</a></span>&nbsp;<span class="memberName">customWriter</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;name)</span>
-                    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="customWriter(java.lang.String)">
+<h3>customWriter</h3>
+<div class="member-signature"><span class="return-type"><a href="ext/CustomHandler.html" title="interface in org.cojen.tupl.ext">CustomHandler</a></span>&nbsp;<span class="member-name">customWriter</span>&#8203;(<span class="parameters"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name)</span>
+                    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Returns a handler instance suitable for writing custom redo and undo operations. A
  corresponding recovery instance must have been provided when the database was opened,
  via the <a href="DatabaseConfig.html#customHandlers(java.util.Map)"><code>customHandlers</code></a> config method.</div>
-<dl>
-<dt><span class="returnLabel">Returns:</span></dt>
+<dl class="notes">
+<dt>Returns:</dt>
 <dd>new writer instance</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if no recovery instance by the given name is installed</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if no recovery instance by the given name is installed</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="prepareWriter(java.lang.String)">prepareWriter</a></h3>
-<div class="memberSignature"><span class="returnType"><a href="ext/PrepareHandler.html" title="interface in org.cojen.tupl.ext">PrepareHandler</a></span>&nbsp;<span class="memberName">prepareWriter</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/String.html?is-external=true" title="class or interface in java.lang" class="externalLink">String</a>&nbsp;name)</span>
-                      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="prepareWriter(java.lang.String)">
+<h3>prepareWriter</h3>
+<div class="member-signature"><span class="return-type"><a href="ext/PrepareHandler.html" title="interface in org.cojen.tupl.ext">PrepareHandler</a></span>&nbsp;<span class="member-name">prepareWriter</span>&#8203;(<span class="parameters"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name)</span>
+                      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Returns a handler instance suitable for preparing transactions. A corresponding recovery
  instance must have been provided when the database was opened, via the <a href="DatabaseConfig.html#prepareHandlers(java.util.Map)"><code>prepareHandlers</code></a> config method.</div>
-<dl>
-<dt><span class="returnLabel">Returns:</span></dt>
+<dl class="notes">
+<dt>Returns:</dt>
 <dd>new writer instance</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if no recovery instance by the given name is installed</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if no recovery instance by the given name is installed</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="newSorter()">newSorter</a></h3>
-<div class="memberSignature"><span class="returnType"><a href="Sorter.html" title="interface in org.cojen.tupl">Sorter</a></span>&nbsp;<span class="memberName">newSorter</span>()</div>
+<li>
+<section class="detail" id="newSorter()">
+<h3>newSorter</h3>
+<div class="member-signature"><span class="return-type"><a href="Sorter.html" title="interface in org.cojen.tupl">Sorter</a></span>&nbsp;<span class="member-name">newSorter</span>()</div>
 <div class="block">Returns a new Sorter instance. The standard algorithm is a parallel external mergesort,
  which attempts to use all available processors. All external storage is maintained in
  the database itself, in the form of temporary indexes.</div>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="preallocate(long)">preallocate</a></h3>
-<div class="memberSignature"><span class="returnType">long</span>&nbsp;<span class="memberName">preallocate</span>&#8203;(<span class="arguments">long&nbsp;bytes)</span>
-          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="preallocate(long)">
+<h3>preallocate</h3>
+<div class="member-signature"><span class="return-type">long</span>&nbsp;<span class="member-name">preallocate</span>&#8203;(<span class="parameters">long&nbsp;bytes)</span>
+          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Preallocates pages for immediate use. The actual amount allocated
  varies, depending on the amount of free pages already available.</div>
-<dl>
-<dt><span class="returnLabel">Returns:</span></dt>
+<dl class="notes">
+<dt>Returns:</dt>
 <dd>actual amount allocated</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="capacityLimit(long)">capacityLimit</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">capacityLimit</span>&#8203;(<span class="arguments">long&nbsp;bytes)</span></div>
+<li>
+<section class="detail" id="capacityLimit(long)">
+<h3>capacityLimit</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="member-name">capacityLimit</span>&#8203;(<span class="parameters">long&nbsp;bytes)</span></div>
 <div class="block">Set a soft capacity limit for the database, to prevent filling up the storage
  device. When the limit is reached, writes might fail with a <a href="DatabaseFullException.html" title="class in org.cojen.tupl"><code>DatabaseFullException</code></a>. No explicit limit is defined by default, and the option is
  ignored by non-durable databases. The limit is checked only when the database attempts
@@ -830,40 +813,40 @@ byte[]&nbsp;newName)</span>
  <p>Even with a capacity limit, the database file can still slowly grow in size.
  Explicit overrides and critical operations can allocate space which can only be
  reclaimed by <a href="#compactFile(org.cojen.tupl.CompactionObserver,double)">compaction</a>.</div>
-<dl>
-<dt><span class="paramLabel">Parameters:</span></dt>
+<dl class="notes">
+<dt>Parameters:</dt>
 <dd><code>bytes</code> - maximum capacity, in bytes; pass -1 for no limit</dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="capacityLimit()">capacityLimit</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">long</span>&nbsp;<span class="memberName">capacityLimit</span>()</div>
+<li>
+<section class="detail" id="capacityLimit()">
+<h3>capacityLimit</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="member-name">capacityLimit</span>()</div>
 <div class="block">Returns the current capacity limit, rounded down by page size.</div>
-<dl>
-<dt><span class="returnLabel">Returns:</span></dt>
+<dl class="notes">
+<dt>Returns:</dt>
 <dd>maximum capacity, in bytes; is -1 if no limit</dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="capacityLimitOverride(long)">capacityLimitOverride</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">capacityLimitOverride</span>&#8203;(<span class="arguments">long&nbsp;bytes)</span></div>
+<li>
+<section class="detail" id="capacityLimitOverride(long)">
+<h3>capacityLimitOverride</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="member-name">capacityLimitOverride</span>&#8203;(<span class="parameters">long&nbsp;bytes)</span></div>
 <div class="block">Set capacity limits for the current thread, allowing it to perform tasks which can free
  up space. While doing so, it might require additional temporary storage.</div>
-<dl>
-<dt><span class="paramLabel">Parameters:</span></dt>
+<dl class="notes">
+<dt>Parameters:</dt>
 <dd><code>bytes</code> - maximum capacity, in bytes; pass -1 for no limit; pass 0 to remove override</dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="beginSnapshot()">beginSnapshot</a></h3>
-<div class="memberSignature"><span class="returnType"><a href="Snapshot.html" title="interface in org.cojen.tupl">Snapshot</a></span>&nbsp;<span class="memberName">beginSnapshot</span>()
-                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="beginSnapshot()">
+<h3>beginSnapshot</h3>
+<div class="member-signature"><span class="return-type"><a href="Snapshot.html" title="interface in org.cojen.tupl">Snapshot</a></span>&nbsp;<span class="member-name">beginSnapshot</span>()
+                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Support for capturing a snapshot (hot backup) of the database, while
  still allowing concurrent modifications. The snapshot contains all data
  up to the last checkpoint. Call the <a href="#checkpoint()"><code>checkpoint</code></a>
@@ -880,145 +863,145 @@ byte[]&nbsp;newName)</span>
  these files keep growing. File growth rate increases too if the database
  is being heavily modified. In the worst case, the temporary files can
  become larger than the primary database files.</div>
-<dl>
-<dt><span class="returnLabel">Returns:</span></dt>
+<dl class="notes">
+<dt>Returns:</dt>
 <dd>a snapshot control object, which must be closed when no longer needed</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="restoreFromSnapshot(org.cojen.tupl.DatabaseConfig,java.io.InputStream)">restoreFromSnapshot</a></h3>
-<div class="memberSignature"><span class="modifiers">static</span>&nbsp;<span class="returnType"><a href="Database.html" title="interface in org.cojen.tupl">Database</a></span>&nbsp;<span class="memberName">restoreFromSnapshot</span>&#8203;(<span class="arguments"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config,
-<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;in)</span>
-                             throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="restoreFromSnapshot(org.cojen.tupl.DatabaseConfig,java.io.InputStream)">
+<h3>restoreFromSnapshot</h3>
+<div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type"><a href="Database.html" title="interface in org.cojen.tupl">Database</a></span>&nbsp;<span class="member-name">restoreFromSnapshot</span>&#8203;(<span class="parameters"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/InputStream.html" title="class or interface in java.io" class="external-link">InputStream</a>&nbsp;in)</span>
+                             throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Restore from a <a href="#beginSnapshot()">snapshot</a>, into the data files defined by the
  given configuration. All existing data and redo log files at the snapshot destination
  are deleted before the restore begins.</div>
-<dl>
-<dt><span class="paramLabel">Parameters:</span></dt>
+<dl class="notes">
+<dt>Parameters:</dt>
 <dd><code>in</code> - snapshot source; does not require extra buffering; auto-closed</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="createCachePrimer(java.io.OutputStream)">createCachePrimer</a></h3>
-<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">createCachePrimer</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/OutputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">OutputStream</a>&nbsp;out)</span>
-                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="createCachePrimer(java.io.OutputStream)">
+<h3>createCachePrimer</h3>
+<div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="member-name">createCachePrimer</span>&#8203;(<span class="parameters"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/OutputStream.html" title="class or interface in java.io" class="external-link">OutputStream</a>&nbsp;out)</span>
+                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Writes a cache priming set into the given stream, which can then be used later to
  <a href="#applyCachePrimer(java.io.InputStream)">prime</a> the cache.</div>
-<dl>
-<dt><span class="paramLabel">Parameters:</span></dt>
+<dl class="notes">
+<dt>Parameters:</dt>
 <dd><code>out</code> - cache priming destination; buffering is recommended; not auto-closed</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
-<dt><span class="seeLabel">See Also:</span></dt>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dt>See Also:</dt>
 <dd><a href="DatabaseConfig.html#cachePriming(boolean)"><code>DatabaseConfig.cachePriming(boolean)</code></a></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="applyCachePrimer(java.io.InputStream)">applyCachePrimer</a></h3>
-<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">applyCachePrimer</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/InputStream.html?is-external=true" title="class or interface in java.io" class="externalLink">InputStream</a>&nbsp;in)</span>
-               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="applyCachePrimer(java.io.InputStream)">
+<h3>applyCachePrimer</h3>
+<div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="member-name">applyCachePrimer</span>&#8203;(<span class="parameters"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/InputStream.html" title="class or interface in java.io" class="external-link">InputStream</a>&nbsp;in)</span>
+               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Prime the cache, from a set encoded <a href="#createCachePrimer(java.io.OutputStream)">earlier</a>.</div>
-<dl>
-<dt><span class="paramLabel">Parameters:</span></dt>
+<dl class="notes">
+<dt>Parameters:</dt>
 <dd><code>in</code> - caching priming source; buffering is recommended; auto-closed</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
-<dt><span class="seeLabel">See Also:</span></dt>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dt>See Also:</dt>
 <dd><a href="DatabaseConfig.html#cachePriming(boolean)"><code>DatabaseConfig.cachePriming(boolean)</code></a></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="stats()">stats</a></h3>
-<div class="memberSignature"><span class="returnType"><a href="Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></span>&nbsp;<span class="memberName">stats</span>()</div>
+<li>
+<section class="detail" id="stats()">
+<h3>stats</h3>
+<div class="member-signature"><span class="return-type"><a href="Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></span>&nbsp;<span class="member-name">stats</span>()</div>
 <div class="block">Returns a collection of database statistics.</div>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="flush()">flush</a></h3>
-<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">flush</span>()
-    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="flush()">
+<h3>flush</h3>
+<div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="member-name">flush</span>()
+    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Flushes all committed transactions, but not durably. Transactions committed with
  <a href="DurabilityMode.html#NO_FLUSH">no-flush</a> effectively become <a href="DurabilityMode.html#NO_SYNC">no-sync</a> durable.
 
  <p>When the database is replicated, the no-flush mode is identical to the no-sync mode.
  Calling this method on a replicated database has no effect.</div>
-<dl>
-<dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Flushable.html?is-external=true#flush()" title="class or interface in java.io" class="externalLink">flush</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Flushable.html?is-external=true" title="class or interface in java.io" class="externalLink">Flushable</a></code></dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/Flushable.html#flush()" title="class or interface in java.io" class="external-link">flush</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/Flushable.html" title="class or interface in java.io" class="external-link">Flushable</a></code></dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="sync()">sync</a></h3>
-<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">sync</span>()
-   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="sync()">
+<h3>sync</h3>
+<div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="member-name">sync</span>()
+   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Durably flushes all committed transactions. Transactions committed with <a href="DurabilityMode.html#NO_FLUSH">no-flush</a> and <a href="DurabilityMode.html#NO_SYNC">no-sync</a>
  effectively become <a href="DurabilityMode.html#SYNC">sync</a> durable.</div>
-<dl>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="checkpoint()">checkpoint</a></h3>
-<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">checkpoint</span>()
-         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="checkpoint()">
+<h3>checkpoint</h3>
+<div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="member-name">checkpoint</span>()
+         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Durably sync and checkpoint all changes to the database. In addition to ensuring that
  all committed transactions are durable, checkpointing ensures that non-transactional
  modifications are durable. Checkpoints are performed automatically by a background
  thread, at a <a href="DatabaseConfig.html#checkpointRate(long,java.util.concurrent.TimeUnit)">configurable</a> rate.</div>
-<dl>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="suspendCheckpoints()">suspendCheckpoints</a></h3>
-<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">suspendCheckpoints</span>()</div>
+<li>
+<section class="detail" id="suspendCheckpoints()">
+<h3>suspendCheckpoints</h3>
+<div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="member-name">suspendCheckpoints</span>()</div>
 <div class="block">Temporarily suspend automatic checkpoints without waiting for any in-progress checkpoint
  to complete. Suspend may be invoked multiple times, but each must be paired with a
  <a href="#resumeCheckpoints()">resume</a> call to enable automatic checkpoints again.</div>
-<dl>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if suspended more than 2<sup>31</sup> times</dd>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if suspended more than 2<sup>31</sup> times</dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="resumeCheckpoints()">resumeCheckpoints</a></h3>
-<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">resumeCheckpoints</span>()</div>
+<li>
+<section class="detail" id="resumeCheckpoints()">
+<h3>resumeCheckpoints</h3>
+<div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="member-name">resumeCheckpoints</span>()</div>
 <div class="block">Resume automatic checkpoints after having been temporarily <a href="#suspendCheckpoints()"><code>suspended</code></a>.</div>
-<dl>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if resumed more than suspended</dd>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if resumed more than suspended</dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="commitLock()">commitLock</a></h3>
-<div class="memberSignature"><span class="returnType"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/util/concurrent/locks/Lock.html?is-external=true" title="class or interface in java.util.concurrent.locks" class="externalLink">Lock</a></span>&nbsp;<span class="memberName">commitLock</span>()</div>
+<li>
+<section class="detail" id="commitLock()">
+<h3>commitLock</h3>
+<div class="member-signature"><span class="return-type"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/concurrent/locks/Lock.html" title="class or interface in java.util.concurrent.locks" class="external-link">Lock</a></span>&nbsp;<span class="member-name">commitLock</span>()</div>
 <div class="block">Returns the checkpoint commit lock, which can be held to prevent checkpoints from
  capturing a safe commit point. By holding the commit lock, multiple modifications can be
  made to the database atomically, even without using a transaction.
@@ -1029,12 +1012,12 @@ byte[]&nbsp;newName)</span>
  commit lock must not attempt to issue a checkpoint, because deadlock is possible.</div>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="compactFile(org.cojen.tupl.CompactionObserver,double)">compactFile</a></h3>
-<div class="memberSignature"><span class="returnType">boolean</span>&nbsp;<span class="memberName">compactFile</span>&#8203;(<span class="arguments"><a href="CompactionObserver.html" title="class in org.cojen.tupl">CompactionObserver</a>&nbsp;observer,
+<li>
+<section class="detail" id="compactFile(org.cojen.tupl.CompactionObserver,double)">
+<h3>compactFile</h3>
+<div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="member-name">compactFile</span>&#8203;(<span class="parameters"><a href="CompactionObserver.html" title="class in org.cojen.tupl">CompactionObserver</a>&nbsp;observer,
 double&nbsp;target)</span>
-             throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+             throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Compacts the database by shrinking the database file. The compaction target is the
  desired file utilization, and it controls how much compaction should be performed. A
  target of 0.0 performs no compaction, and a value of 1.0 attempts to compact as much as
@@ -1050,131 +1033,131 @@ double&nbsp;target)</span>
  space might still linger following a massive compaction. More iterations are required to
  fully complete such a compaction. The first iteration might actually cause the file to
  grow slightly. This can be prevented by doing a less massive compaction first.</div>
-<dl>
-<dt><span class="paramLabel">Parameters:</span></dt>
+<dl class="notes">
+<dt>Parameters:</dt>
 <dd><code>observer</code> - optional observer; pass null for default</dd>
 <dd><code>target</code> - database file compaction target [0.0, 1.0]</dd>
-<dt><span class="returnLabel">Returns:</span></dt>
+<dt>Returns:</dt>
 <dd>false if file compaction aborted</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalArgumentException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalArgumentException</a></code> - if compaction target is out of bounds</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/IllegalStateException.html?is-external=true" title="class or interface in java.lang" class="externalLink">IllegalStateException</a></code> - if compaction is already in progress</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if compaction target is out of bounds</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if compaction is already in progress</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="verify(org.cojen.tupl.VerificationObserver)">verify</a></h3>
-<div class="memberSignature"><span class="returnType">boolean</span>&nbsp;<span class="memberName">verify</span>&#8203;(<span class="arguments"><a href="VerificationObserver.html" title="class in org.cojen.tupl">VerificationObserver</a>&nbsp;observer)</span>
-        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="verify(org.cojen.tupl.VerificationObserver)">
+<h3>verify</h3>
+<div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="member-name">verify</span>&#8203;(<span class="parameters"><a href="VerificationObserver.html" title="class in org.cojen.tupl">VerificationObserver</a>&nbsp;observer)</span>
+        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Verifies the integrity of the database and all indexes.</div>
-<dl>
-<dt><span class="paramLabel">Parameters:</span></dt>
+<dl class="notes">
+<dt>Parameters:</dt>
 <dd><code>observer</code> - optional observer; pass null for default</dd>
-<dt><span class="returnLabel">Returns:</span></dt>
+<dt>Returns:</dt>
 <dd>true if verification passed</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="isLeader()">isLeader</a></h3>
-<div class="memberSignature"><span class="returnType">boolean</span>&nbsp;<span class="memberName">isLeader</span>()</div>
+<li>
+<section class="detail" id="isLeader()">
+<h3>isLeader</h3>
+<div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="member-name">isLeader</span>()</div>
 <div class="block">Returns true of the database instance is currently the leader.</div>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="uponLeader(java.lang.Runnable,java.lang.Runnable)">uponLeader</a></h3>
-<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">uponLeader</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;acquired,
-<a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Runnable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Runnable</a>&nbsp;lost)</span></div>
+<li>
+<section class="detail" id="uponLeader(java.lang.Runnable,java.lang.Runnable)">
+<h3>uponLeader</h3>
+<div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="member-name">uponLeader</span>&#8203;(<span class="parameters"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/Runnable.html" title="class or interface in java.lang" class="external-link">Runnable</a>&nbsp;acquired,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/Runnable.html" title="class or interface in java.lang" class="external-link">Runnable</a>&nbsp;lost)</span></div>
 <div class="block">Registers the given task to start in a separate thread when the database instance has
  become the leader. If already the leader, the task is started immediately. The task is
  started at most once per registration, and a second task is called when leadership is
  lost. It too is called in a separate thread, and at most once per registration. Note
  that if leadership is quickly lost, the second task might run before the first task.</div>
-<dl>
-<dt><span class="paramLabel">Parameters:</span></dt>
+<dl class="notes">
+<dt>Parameters:</dt>
 <dd><code>acquired</code> - called when leadership is acquired (can be null)</dd>
 <dd><code>lost</code> - called when leadership is lost (can be null)</dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="failover()">failover</a></h3>
-<div class="memberSignature"><span class="returnType">boolean</span>&nbsp;<span class="memberName">failover</span>()
-          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="failover()">
+<h3>failover</h3>
+<div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="member-name">failover</span>()
+          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">If the database instance is currently acting as a leader, attempt to give up leadership
  and become a replica. If the database is a replica, or if failover is successful, true
  is returned. When false is returned, the database is likely still the leader, either
  because the database isn't replicated, or because no replicas exist to failover to.</div>
-<dl>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="close()">close</a></h3>
-<div class="memberSignature"><span class="modifiers">default</span>&nbsp;<span class="returnType">void</span>&nbsp;<span class="memberName">close</span>()
-            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="close()">
+<h3>close</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="member-name">close</span>()
+            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Closes the database, ensuring durability of committed transactions. No
  checkpoint is performed by this method, and so non-transactional
  modifications can be lost.</div>
-<dl>
-<dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/AutoCloseable.html?is-external=true#close()" title="class or interface in java.lang" class="externalLink">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/AutoCloseable.html?is-external=true" title="class or interface in java.lang" class="externalLink">AutoCloseable</a></code></dd>
-<dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true#close()" title="class or interface in java.io" class="externalLink">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/Closeable.html?is-external=true" title="class or interface in java.io" class="externalLink">Closeable</a></code></dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
-<dt><span class="seeLabel">See Also:</span></dt>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/AutoCloseable.html#close()" title="class or interface in java.lang" class="external-link">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></code></dd>
+<dt>Specified by:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/Closeable.html#close()" title="class or interface in java.io" class="external-link">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></code></dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dt>See Also:</dt>
 <dd><a href="#shutdown()"><code>shutdown()</code></a></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="close(java.lang.Throwable)">close</a></h3>
-<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">close</span>&#8203;(<span class="arguments"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/lang/Throwable.html?is-external=true" title="class or interface in java.lang" class="externalLink">Throwable</a>&nbsp;cause)</span>
-    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="close(java.lang.Throwable)">
+<h3>close</h3>
+<div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="member-name">close</span>&#8203;(<span class="parameters"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/Throwable.html" title="class or interface in java.lang" class="external-link">Throwable</a>&nbsp;cause)</span>
+    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Closes the database after an unexpected failure. No checkpoint is performed by this
  method, and so non-transactional modifications can be lost.</div>
-<dl>
-<dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
+<dl class="notes">
+<dt>Specified by:</dt>
 <dd><code><a href="io/CauseCloseable.html#close(java.lang.Throwable)">close</a></code>&nbsp;in interface&nbsp;<code><a href="io/CauseCloseable.html" title="interface in org.cojen.tupl.io">CauseCloseable</a></code></dd>
-<dt><span class="paramLabel">Parameters:</span></dt>
+<dt>Parameters:</dt>
 <dd><code>cause</code> - if non-null, delivers a <a href="EventType.html#PANIC_UNHANDLED_EXCEPTION">panic</a> event and future database accesses will rethrow the cause</dd>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
-<dt><span class="seeLabel">See Also:</span></dt>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dt>See Also:</dt>
 <dd><a href="#shutdown()"><code>shutdown()</code></a></dd>
 </dl>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="isClosed()">isClosed</a></h3>
-<div class="memberSignature"><span class="returnType">boolean</span>&nbsp;<span class="memberName">isClosed</span>()</div>
+<li>
+<section class="detail" id="isClosed()">
+<h3>isClosed</h3>
+<div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="member-name">isClosed</span>()</div>
 <div class="block">Returns true if database was explicitly closed, or if it was closed due to a panic.</div>
 </section>
 </li>
-<li class="blockList">
-<section class="detail">
-<h3><a id="shutdown()">shutdown</a></h3>
-<div class="memberSignature"><span class="returnType">void</span>&nbsp;<span class="memberName">shutdown</span>()
-       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></span></div>
+<li>
+<section class="detail" id="shutdown()">
+<h3>shutdown</h3>
+<div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="member-name">shutdown</span>()
+       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Cleanly closes the database, ensuring durability of all modifications. A checkpoint is
  issued first, and so a quick recovery is performed when the database is re-opened. As a
  side effect of shutting down, all extraneous files are deleted.</div>
-<dl>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/14/docs/api/java.base/java/io/IOException.html?is-external=true" title="class or interface in java.io" class="externalLink">IOException</a></code></dd>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -1183,39 +1166,33 @@ double&nbsp;target)</span>
 </li>
 </ul>
 </section>
-</div>
 <!-- ========= END OF CLASS DATA ========= -->
 </main>
 <footer role="contentinfo">
 <nav role="navigation">
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
-<div class="bottomNav"><a id="navbar.bottom">
-<!--   -->
-</a>
-<div class="skipNav"><a href="#skip.navbar.bottom" title="Skip navigation links">Skip navigation links</a></div>
-<a id="navbar.bottom.firstrow">
-<!--   -->
-</a>
-<ul class="navList" title="Navigation">
+<div class="bottom-nav" id="navbar.bottom">
+<div class="skip-nav"><a href="#skip.navbar.bottom" title="Skip navigation links">Skip navigation links</a></div>
+<ul id="navbar.bottom.firstrow" class="nav-list" title="Navigation">
 <li><a href="../../../module-summary.html">Module</a></li>
 <li><a href="package-summary.html">Package</a></li>
-<li class="navBarCell1Rev">Class</li>
+<li class="nav-bar-cell1-rev">Class</li>
 <li><a href="class-use/Database.html">Use</a></li>
 <li><a href="package-tree.html">Tree</a></li>
 <li><a href="../../../../index-all.html">Index</a></li>
 <li><a href="../../../../help-doc.html">Help</a></li>
 </ul>
 </div>
-<div class="subNav">
+<div class="sub-nav">
 <div>
-<ul class="subNavList">
+<ul class="sub-nav-list">
 <li>Summary:&nbsp;</li>
 <li><a href="#nested.class.summary">Nested</a>&nbsp;|&nbsp;</li>
 <li>Field&nbsp;|&nbsp;</li>
 <li>Constr&nbsp;|&nbsp;</li>
 <li><a href="#method.summary">Method</a></li>
 </ul>
-<ul class="subNavList">
+<ul class="sub-nav-list">
 <li>Detail:&nbsp;</li>
 <li>Field&nbsp;|&nbsp;</li>
 <li>Constr&nbsp;|&nbsp;</li>
@@ -1223,12 +1200,11 @@ double&nbsp;target)</span>
 </ul>
 </div>
 </div>
-<a id="skip.navbar.bottom">
-<!--   -->
-</a>
 <!-- ======== END OF BOTTOM NAVBAR ======= -->
-</nav>
-<p class="legalCopy"><small>Copyright &#169; 2011&#x2013;2020 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+<span class="skip-nav" id="skip.navbar.bottom">
+<!--   -->
+</span></nav>
+<p class="legal-copy"><small>Copyright &#169; 2011&#x2013;2020 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
 </div>
 </div>
