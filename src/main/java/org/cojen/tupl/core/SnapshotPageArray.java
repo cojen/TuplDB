@@ -200,6 +200,11 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
+    public void syncPage(long index) throws IOException {
+        mSource.syncPage(index);
+    }
+
+    @Override
     public void close(Throwable cause) throws IOException {
         mSource.close(cause);
     }
