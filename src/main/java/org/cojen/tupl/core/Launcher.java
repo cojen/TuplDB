@@ -85,9 +85,15 @@ public final class Launcher implements Cloneable {
     ReplicatorConfig mReplConfig;
     StreamReplicator mRepl;
     int mMaxReplicaThreads;
-    Crypto mCrypto;
+    Crypto mDataCrypto;
+    Crypto mRedoCrypto;
     Map<String, CustomHandler> mCustomHandlers;
     Map<String, PrepareHandler> mPrepareHandlers;
+    TempFileManager mTempFileManager;
+
+    // When true: one index is supported (the registry), no lock file is created, snapshots
+    // aren't supported, and the database has no redo log.
+    boolean mBasicMode;
 
     // Set only when calling debugOpen, and then it's discarded.
     Map<String, ? extends Object> mDebugOpen;
@@ -235,7 +241,8 @@ public final class Launcher implements Cloneable {
     }
 
     public void encrypt(Crypto crypto) {
-        mCrypto = crypto;
+        mDataCrypto = crypto;
+        mRedoCrypto = crypto;
     }
 
     public void customHandlers(Map<String, ? extends CustomHandler> handlers) {
@@ -288,6 +295,14 @@ public final class Launcher implements Cloneable {
         } catch (CloneNotSupportedException e) {
             throw rethrow(e);
         }
+    }
+
+    TempFileManager tempFileManager() throws IOException {
+        TempFileManager tfm = mTempFileManager;
+        if (tfm == null && mBaseFile != null && !mBasicMode && mDebugOpen == null) {
+            mTempFileManager = tfm = new TempFileManager(mBaseFile);
+        }
+        return tfm;
     }
 
     /**
@@ -373,7 +388,7 @@ public final class Launcher implements Cloneable {
         return true;
     }
 
-    public final Database open(boolean destroy, InputStream restore) throws IOException {
+    public final CoreDatabase open(boolean destroy, InputStream restore) throws IOException {
         Launcher launcher = clone();
         boolean openedReplicator = launcher.openReplicator();
         try {
@@ -390,7 +405,7 @@ public final class Launcher implements Cloneable {
         }
     }
 
-    private Database doOpen(boolean destroy, InputStream restore) throws IOException {
+    private CoreDatabase doOpen(boolean destroy, InputStream restore) throws IOException {
         if (!destroy && restore == null && mRepl != null) shouldRestore: {
             // If no data files exist, attempt to restore from a peer.
 
@@ -430,7 +445,7 @@ public final class Launcher implements Cloneable {
         Throwable e1 = null;
         if (m != null) {
             try {
-                return (Database) m.invoke(null, args);
+                return (CoreDatabase) m.invoke(null, args);
             } catch (Exception e) {
                 handleDirectException(e);
                 e1 = e;

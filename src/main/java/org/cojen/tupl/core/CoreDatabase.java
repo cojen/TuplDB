@@ -31,6 +31,12 @@ import org.cojen.tupl.EventListener;
  * @author Brian S O'Neill
  */
 abstract class CoreDatabase implements Database {
+    abstract boolean isDurable();
+
+    abstract boolean isReadOnly();
+
+    abstract Tree registry();
+
     /**
      * @return null if none
      */

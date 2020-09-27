@@ -54,6 +54,11 @@ final class CryptoPageArray extends PageArray {
     }
 
     @Override
+    public boolean isDurable() {
+        return mSource.isDurable();
+    }
+
+    @Override
     public boolean isReadOnly() {
         return mSource.isReadOnly();
     }

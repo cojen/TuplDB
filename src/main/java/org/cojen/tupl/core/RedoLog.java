@@ -93,7 +93,7 @@ final class RedoLog extends RedoWriter {
      * @param logId first log id to create
      */
     RedoLog(Launcher launcher, long logId, long redoPos) throws IOException {
-        this(launcher.mCrypto, launcher.mBaseFile, logId, redoPos, null);
+        this(launcher.mRedoCrypto, launcher.mBaseFile, logId, redoPos, null);
     }
 
     /**
@@ -104,13 +104,12 @@ final class RedoLog extends RedoWriter {
     RedoLog(Launcher launcher, RedoLog replayed, TransactionContext context)
         throws IOException
     {
-        this(launcher.mCrypto, launcher.mBaseFile,
+        this(launcher.mRedoCrypto, launcher.mBaseFile,
              replayed.mLogId, replayed.mPosition, context);
     }
 
     /**
      * @param crypto optional
-     * @param factory optional
      * @param logId first log id to create
      * @param context used for creating next log file; pass null for replay mode
      */

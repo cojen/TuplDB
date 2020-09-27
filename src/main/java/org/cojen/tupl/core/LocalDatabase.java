@@ -145,8 +145,6 @@ public final class LocalDatabase extends CoreDatabase {
         return nodes * (long) (pageSize + NODE_OVERHEAD);
     }
 
-    private static final int ENCODING_VERSION = 20130112;
-
     private static final int I_ENCODING_VERSION        = 0;
     private static final int I_ROOT_PAGE_ID            = I_ENCODING_VERSION + 4;
     private static final int I_MASTER_UNDO_LOG_PAGE_ID = I_ROOT_PAGE_ID + 8;
@@ -161,7 +159,7 @@ public final class LocalDatabase extends CoreDatabase {
     private static final int MINIMUM_PAGE_SIZE = 512;
     private static final int MAXIMUM_PAGE_SIZE = 65536;
 
-    private static final int OPEN_REGULAR = 0, OPEN_DESTROY = 1, OPEN_TEMP = 2;
+    private final int mEncodingVersion;
 
     final EventListener mEventListener;
 
@@ -303,7 +301,7 @@ public final class LocalDatabase extends CoreDatabase {
      * Open a database, creating it if necessary.
      */
     static LocalDatabase open(Launcher launcher) throws IOException {
-        var db = new LocalDatabase(launcher, OPEN_REGULAR);
+        var db = new LocalDatabase(launcher, false);
         try {
             db.finishInit(launcher);
             return db;
@@ -322,7 +320,7 @@ public final class LocalDatabase extends CoreDatabase {
         if (launcher.mReadOnly) {
             throw new IllegalArgumentException("Cannot destroy read-only database");
         }
-        var db = new LocalDatabase(launcher, OPEN_DESTROY);
+        var db = new LocalDatabase(launcher, true);
         try {
             db.finishInit(launcher);
             return db;
@@ -341,7 +339,8 @@ public final class LocalDatabase extends CoreDatabase {
         launcher.dataFiles(file);
         launcher.createFilePath(false);
         launcher.durabilityMode(DurabilityMode.NO_FLUSH);
-        var db = new LocalDatabase(launcher, OPEN_TEMP);
+        launcher.mBasicMode = true;
+        var db = new LocalDatabase(launcher, false);
         tfm.register(file, db);
         db.mCheckpointer.start(false);
         return db.mRegistry;
@@ -350,7 +349,9 @@ public final class LocalDatabase extends CoreDatabase {
     /**
      * @param launcher unshared launcher
      */
-    private LocalDatabase(Launcher launcher, int openMode) throws IOException {
+    private LocalDatabase(Launcher launcher, boolean destroy) throws IOException {
+        mEncodingVersion = launcher.mBasicMode ? 20130113 : 20130112;
+
         launcher.mEventListener = mEventListener = 
             SafeEventListener.makeSafe(launcher.mEventListener);
 
@@ -449,7 +450,7 @@ public final class LocalDatabase extends CoreDatabase {
 
         try {
             // Create lock file, preventing database from being opened multiple times.
-            if (mBaseFile == null || openMode == OPEN_TEMP) {
+            if (mBaseFile == null || launcher.mBasicMode) {
                 mLockFile = null;
             } else {
                 var lockFile = new File(lockFilePath());
@@ -463,7 +464,7 @@ public final class LocalDatabase extends CoreDatabase {
                 }
             }
 
-            if (openMode == OPEN_DESTROY) {
+            if (destroy) {
                 deleteRedoLogFiles();
             }
 
@@ -484,9 +485,8 @@ public final class LocalDatabase extends CoreDatabase {
                     mPageDb = new NonPageDb(pageSize);
                 } else {
                     dataPageArray = dataPageArray.open();
-                    Crypto crypto = launcher.mCrypto;
-                    mPageDb = DurablePageDb.open
-                        (debugListener, dataPageArray, crypto, openMode == OPEN_DESTROY);
+                    Crypto crypto = launcher.mDataCrypto;
+                    mPageDb = DurablePageDb.open(debugListener, dataPageArray, crypto, destroy);
                     /*P*/ // [|
                     /*P*/ // fullyMapped = crypto == null && dataPageArray.isFullyMapped();
                     /*P*/ // ]
@@ -499,7 +499,7 @@ public final class LocalDatabase extends CoreDatabase {
                     pageDb = DurablePageDb.open
                         (debugListener, explicitPageSize, pageSize,
                          dataFiles, options,
-                         launcher.mCrypto, openMode == OPEN_DESTROY);
+                         launcher.mDataCrypto, destroy);
                 } catch (FileNotFoundException e) {
                     if (!mReadOnly) {
                         throw e;
@@ -558,7 +558,7 @@ public final class LocalDatabase extends CoreDatabase {
                 }
 
                 long usedRate;
-                if (mPageDb.isDurable()) {
+                if (isDurable()) {
                     // Magic constant was determined empirically against the G1 collector. A
                     // higher constant increases memory thrashing.
                     usedRate = Utils.roundUpPower2((long) Math.ceil(maxCache / 32768.0)) - 1;
@@ -646,7 +646,7 @@ public final class LocalDatabase extends CoreDatabase {
             }
 
             mOpenTreesLatch = new Latch();
-            if (openMode == OPEN_TEMP) {
+            if (launcher.mBasicMode) {
                 mOpenTrees = Collections.emptyMap();
                 mOpenTreesById = new LHashTable.Obj<>(0);
                 mOpenTreesRefQueue = null;
@@ -674,7 +674,7 @@ public final class LocalDatabase extends CoreDatabase {
                 debugListener.notify(EventType.DEBUG, "REDO_POSITION: %1$d", redoPos);
             }
 
-            if (openMode == OPEN_TEMP) {
+            if (launcher.mBasicMode) {
                 mRegistryKeyMap = null;
             } else {
                 mRegistryKeyMap = openInternalTree(Tree.REGISTRY_KEY_MAP_ID, IX_CREATE, launcher);
@@ -694,7 +694,7 @@ public final class LocalDatabase extends CoreDatabase {
             }
 
             BTree cursorRegistry = null;
-            if (openMode != OPEN_TEMP) {
+            if (!launcher.mBasicMode) {
                 cursorRegistry = openInternalTree(Tree.CURSOR_REGISTRY_ID, IX_FIND, launcher);
             }
 
@@ -716,17 +716,13 @@ public final class LocalDatabase extends CoreDatabase {
             // deleting pages, and caching helps performance.
             mPageDb.pageCache(this);
 
-            if (mBaseFile == null || openMode == OPEN_TEMP || debugListener != null) {
-                mTempFileManager = null;
-            } else {
-                mTempFileManager = new TempFileManager(mBaseFile);
-            }
+            mTempFileManager = launcher.tempFileManager();
 
             long recoveryStart = 0;
             if (mBaseFile == null) {
                 mRedoWriter = null;
                 mCheckpointer = null;
-            } else if (openMode == OPEN_TEMP) {
+            } else if (launcher.mBasicMode) {
                 mRedoWriter = null;
                 mCheckpointer = new Checkpointer(this, launcher, mNodeGroups.length);
             } else {
@@ -946,7 +942,7 @@ public final class LocalDatabase extends CoreDatabase {
             applyCachePrimer(launcher);
         }
 
-        if (launcher.mCachePriming && mPageDb.isDurable() && !mReadOnly) {
+        if (launcher.mCachePriming && isDurable() && !mReadOnly) {
             mCheckpointer.register(new ShutdownPrimer(this));
         }
 
@@ -1070,7 +1066,7 @@ public final class LocalDatabase extends CoreDatabase {
     }
 
     private void applyCachePrimer(Launcher launcher) {
-        if (mPageDb.isDurable()) {
+        if (isDurable()) {
             File primer = primerFile();
             try {
                 if (launcher.mCachePriming && primer.exists()) {
@@ -1581,6 +1577,10 @@ public final class LocalDatabase extends CoreDatabase {
      * @return null if not found
      */
     private BTree openTrashedTree(byte[] idBytes, boolean next) throws IOException {
+        if (mRegistryKeyMap == null) {
+            return null;
+        }
+
         byte[] treeIdBytes, name, rootIdBytes;
 
         try (Cursor c = trash().newCursor(Transaction.BOGUS)) {
@@ -2182,7 +2182,7 @@ public final class LocalDatabase extends CoreDatabase {
 
     @Override
     public long preallocate(long bytes) throws IOException {
-        if (!isClosed() && mPageDb.isDurable()) {
+        if (!isClosed() && isDurable()) {
             int pageSize = mPageSize;
             long pageCount = (bytes + pageSize - 1) / pageSize;
             if (pageCount > 0) {
@@ -2225,12 +2225,8 @@ public final class LocalDatabase extends CoreDatabase {
 
     @Override
     public Snapshot beginSnapshot() throws IOException {
-        if (!(mPageDb.isDurable())) {
-            throw new UnsupportedOperationException("Snapshot only allowed for durable databases");
-        }
         checkClosed();
-        var pageDb = (DurablePageDb) mPageDb;
-        return pageDb.beginSnapshot(this);
+        return mPageDb.beginSnapshot(this);
     }
 
     /**
@@ -2240,7 +2236,7 @@ public final class LocalDatabase extends CoreDatabase {
      *
      * @param in snapshot source; does not require extra buffering; auto-closed
      */
-    static Database restoreFromSnapshot(Launcher launcher, InputStream in) throws IOException {
+    static CoreDatabase restoreFromSnapshot(Launcher launcher, InputStream in) throws IOException {
         if (launcher.mReadOnly) {
             throw new IllegalArgumentException("Cannot restore into a read-only database");
         }
@@ -2262,7 +2258,7 @@ public final class LocalDatabase extends CoreDatabase {
             // Delete old redo log files.
             deleteNumberedFiles(launcher.mBaseFile, REDO_FILE_SUFFIX);
 
-            restored = DurablePageDb.restoreFromSnapshot(dataPageArray, launcher.mCrypto, in);
+            restored = DurablePageDb.restoreFromSnapshot(dataPageArray, launcher.mDataCrypto, in);
 
             // Delete the object, but keep the page array open.
             restored.delete();
@@ -2286,7 +2282,7 @@ public final class LocalDatabase extends CoreDatabase {
             }
 
             restored = DurablePageDb.restoreFromSnapshot
-                (pageSize, dataFiles, options, launcher.mCrypto, in);
+                (pageSize, dataFiles, options, launcher.mDataCrypto, in);
 
             try {
                 restored.close();
@@ -2300,7 +2296,7 @@ public final class LocalDatabase extends CoreDatabase {
 
     @Override
     public void createCachePrimer(OutputStream out) throws IOException {
-        if (!(mPageDb.isDurable())) {
+        if (!isDurable()) {
             throw new UnsupportedOperationException
                 ("Cache priming only allowed for durable databases");
         }
@@ -2325,7 +2321,7 @@ public final class LocalDatabase extends CoreDatabase {
     @Override
     public void applyCachePrimer(final InputStream fin) throws IOException {
         try (fin) {
-            if (!(mPageDb.isDurable())) {
+            if (!isDurable()) {
                 throw new UnsupportedOperationException
                     ("Cache priming only allowed for durable databases");
             }
@@ -3356,7 +3352,7 @@ public final class LocalDatabase extends CoreDatabase {
             // No registry; clearly nothing has been checkpointed.
             mInitialReadState = CACHED_DIRTY_0;
         } else {
-            if (version != ENCODING_VERSION) {
+            if (version != mEncodingVersion) {
                 throw new CorruptDatabaseException("Unknown encoding version: " + version);
             }
 
@@ -5732,6 +5728,21 @@ public final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
+    boolean isDurable() {
+        return mPageDb.isDurable();
+    }
+
+    @Override
+    boolean isReadOnly() {
+        return mReadOnly;
+    }
+
+    @Override
+    Tree registry() {
+        return mRegistry;
+    }
+
+    @Override
     EventListener eventListener() {
         return mEventListener;
     }
@@ -5751,7 +5762,7 @@ public final class LocalDatabase extends CoreDatabase {
     private void checkpoint(int force, long sizeThreshold, long delayThresholdNanos)
         throws IOException
     {
-        while (!isClosed() && mPageDb.isDurable()) {
+        while (!isClosed() && isDurable()) {
             // Checkpoint lock ensures consistent state between page store and logs.
             mCheckpointLock.lock();
             try {
@@ -5948,7 +5959,7 @@ public final class LocalDatabase extends CoreDatabase {
 
         try {
             int hoff = mPageDb.extraCommitDataOffset();
-            p_intPutLE(header, hoff + I_ENCODING_VERSION, ENCODING_VERSION);
+            p_intPutLE(header, hoff + I_ENCODING_VERSION, mEncodingVersion);
 
             if (redo != null) {
                 // File-based redo log should create a new file, but not write to it yet.

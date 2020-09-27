@@ -112,7 +112,6 @@ final class DurablePageDb extends PageDb {
     private final long mDatabaseId;
 
     /**
-     * @param factory optional
      * @param crypto optional
      */
     static DurablePageDb open(EventListener debugListener,
@@ -358,7 +357,7 @@ final class DurablePageDb extends PageDb {
 
     @Override
     public boolean isDurable() {
-        return true;
+        return mPageArray.isDurable();
     }
 
     @Override
@@ -704,7 +703,8 @@ final class DurablePageDb extends PageDb {
     /**
      * @see SnapshotPageArray#beginSnapshot
      */
-    Snapshot beginSnapshot(LocalDatabase db) throws IOException {
+    @Override
+    public Snapshot beginSnapshot(LocalDatabase db) throws IOException {
         mHeaderLatch.acquireShared();
         try {
             long pageCount, redoPos;

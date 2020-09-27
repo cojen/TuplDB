@@ -45,6 +45,11 @@ public class FilePageArray extends PageArray {
     }
 
     @Override
+    public boolean isDurable() {
+        return true;
+    }
+
+    @Override
     public boolean isReadOnly() {
         return mFio.isReadOnly();
     }

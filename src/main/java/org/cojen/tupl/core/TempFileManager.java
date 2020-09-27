@@ -38,9 +38,6 @@ final class TempFileManager implements CauseCloseable, ShutdownHook {
 
     private Throwable mCause;
 
-    /**
-     * @param factory optional
-     */
     TempFileManager(File baseFile) throws IOException {
         mBaseFile = baseFile;
 

@@ -23,6 +23,8 @@ import java.util.Random;
 
 import java.util.function.LongConsumer;
 
+import org.cojen.tupl.Snapshot;
+
 import org.cojen.tupl.io.CauseCloseable;
 
 /**
@@ -279,4 +281,6 @@ abstract class PageDb implements CauseCloseable {
      * @param extra optional extra data which was committed, up to 256 bytes
      */
     public abstract void readExtraCommitData(byte[] extra) throws IOException;
+
+    public abstract Snapshot beginSnapshot(LocalDatabase db) throws IOException;
 }

@@ -28,6 +28,7 @@ import java.util.function.LongConsumer;
 
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DatabaseFullException;
+import org.cojen.tupl.Snapshot;
 
 /**
  * PageDb implementation which doesn't actually persist anything. Used for non-durable
@@ -228,6 +229,11 @@ final class NonPageDb extends PageDb {
     @Override
     public void readExtraCommitData(byte[] extra) throws IOException {
         Arrays.fill(extra, (byte) 0);
+    }
+
+    @Override
+    public Snapshot beginSnapshot(LocalDatabase db) throws IOException {
+        throw new UnsupportedOperationException("Snapshot only allowed for durable databases");
     }
 
     @Override

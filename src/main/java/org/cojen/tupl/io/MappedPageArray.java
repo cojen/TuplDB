@@ -57,6 +57,7 @@ public abstract class MappedPageArray extends PageArray {
     }
 
     private final long mPageCount;
+    private final boolean mDurable;
     private final boolean mReadOnly;
 
     private volatile long mMappingPtr;
@@ -96,12 +97,18 @@ public abstract class MappedPageArray extends PageArray {
     MappedPageArray(int pageSize, long pageCount, EnumSet<OpenOption> options) {
         super(pageSize);
         mPageCount = pageCount;
+        mDurable = !options.contains(OpenOption.NON_DURABLE);
         mReadOnly = options.contains(OpenOption.READ_ONLY);
     }
 
     @Override
     public final boolean isFullyMapped() {
         return true;
+    }
+
+    @Override
+    public final boolean isDurable() {
+        return mDurable;
     }
 
     @Override
