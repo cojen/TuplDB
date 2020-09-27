@@ -124,23 +124,11 @@ public class DirectAccess {
         if (local == null) {
             throw new UnsupportedOperationException();
         }
-
         ByteBuffer bb = local.get();
-
-        try {
-            if (bb == null) {
-                bb = (ByteBuffer) UNSAFE.allocateInstance(cDirectByteBufferClass);
-                bb.clear();
-                local.set(bb);
-            }
-            UNSAFE.putLong(bb, cDirectAddressOffset, ptr);
-            UNSAFE.putInt(bb, cDirectCapacityOffset, length);
-        } catch (Exception e) {
-            throw new UnsupportedOperationException(e);
+        if (bb == null) {
+            bb = allocDirect();
         }
-
-        bb.position(0).limit(length);
-
+        ref(bb, ptr, length);
         return bb;
     }
 
@@ -156,5 +144,21 @@ public class DirectAccess {
         } catch (Exception e) {
             throw new UnsupportedOperationException(e);
         }
+    }
+
+    static ByteBuffer allocDirect() {
+        try {
+            var bb = (ByteBuffer) UNSAFE.allocateInstance(cDirectByteBufferClass);
+            bb.clear();
+            return bb;
+        } catch (Exception e) {
+            throw new UnsupportedOperationException(e);
+        }
+    }
+
+    static void ref(ByteBuffer bb, long ptr, int length) {
+        UNSAFE.putLong(bb, cDirectAddressOffset, ptr);
+        UNSAFE.putInt(bb, cDirectCapacityOffset, length);
+        bb.position(0).limit(length);
     }
 }
