@@ -27,6 +27,7 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 
 import java.nio.channels.FileChannel;
+import java.nio.channels.ClosedByInterruptException;
 
 import java.util.EnumSet;
 
@@ -94,7 +95,7 @@ final class JavaFileIO extends AbstractFileIO {
             mFilePoolLatch.acquireExclusive();
             try {
                 for (int i=0; i<openFileCount; i++) {
-                    mFilePool[i] = openRaf(file, mode);
+                    mFilePool[i] = openRaf();
                 }
             } finally {
                 mFilePoolLatch.releaseExclusive();
@@ -156,13 +157,19 @@ final class JavaFileIO extends AbstractFileIO {
     protected void doRead(long pos, ByteBuffer bb) throws IOException {
         RandomAccessFile file = accessFile();
         try {
-            FileChannel channel = file.getChannel();
-            while (bb.hasRemaining()) {
-                int amt = channel.read(bb, pos);
-                if (amt < 0) {
-                    throw new EOFException("Attempt to read past end of file: " + pos);
+            while (true) try {
+                FileChannel channel = file.getChannel();
+                while (bb.hasRemaining()) {
+                    int amt = channel.read(bb, pos);
+                    if (amt < 0) {
+                        throw new EOFException("Attempt to read past end of file: " + pos);
+                    }
+                    pos += amt;
                 }
-                pos += amt;
+                break;
+            } catch (ClosedByInterruptException e) {
+                Thread.interrupted(); // clear the status
+                file = openRaf();
             }
         } finally {
             yieldFile(file);
@@ -189,9 +196,15 @@ final class JavaFileIO extends AbstractFileIO {
     protected void doWrite(long pos, ByteBuffer bb) throws IOException {
         RandomAccessFile file = accessFile();
         try {
-            FileChannel channel = file.getChannel();
-            while (bb.hasRemaining()) {
-                pos += channel.write(bb, pos);
+            while (true) try {
+                FileChannel channel = file.getChannel();
+                while (bb.hasRemaining()) {
+                    pos += channel.write(bb, pos);
+                }
+                break;
+            } catch (ClosedByInterruptException e) {
+                Thread.interrupted(); // clear the status
+                file = openRaf();
             }
         } finally {
             yieldFile(file);
@@ -224,7 +237,7 @@ final class JavaFileIO extends AbstractFileIO {
 
             for (int i=0; i<mFilePool.length; i++) {
                 try {
-                    mFilePool[i] = openRaf(mFile, mMode);
+                    mFilePool[i] = openRaf();
                 } catch (IOException e) {
                     if (ex == null) {
                         ex = e;
@@ -244,7 +257,13 @@ final class JavaFileIO extends AbstractFileIO {
     protected void doSync(boolean metadata) throws IOException {
         RandomAccessFile file = accessFile();
         try {
-            file.getChannel().force(metadata);
+            while (true) try {
+                file.getChannel().force(metadata);
+                break;
+            } catch (ClosedByInterruptException e) {
+                Thread.interrupted(); // clear the status
+                file = openRaf();
+            }
         } finally {
             yieldFile(file);
         }
@@ -341,30 +360,30 @@ final class JavaFileIO extends AbstractFileIO {
         }
     }
 
-    static FileAccess openRaf(File file, String mode) throws IOException {
+    private FileAccess openRaf() throws IOException {
         try {
-            return new FileAccess(file, mode);
+            return new FileAccess(mFile, mMode);
         } catch (FileNotFoundException e) {
             String message = null;
 
-            if (file.isDirectory()) {
+            if (mFile.isDirectory()) {
                 message = "File is a directory";
-            } else if (!file.isFile()) {
+            } else if (!mFile.isFile()) {
                 message = "Not a normal file";
-            } else if ("r".equals(mode)) {
-                if (!file.exists()) {
+            } else if ("r".equals(mMode)) {
+                if (!mFile.exists()) {
                     message = "File does not exist";
-                } else if (!file.canRead()) {
+                } else if (!mFile.canRead()) {
                     message = "File cannot be read";
                 }
             } else {
-                if (!file.canRead()) {
-                    if (!file.canWrite()) {
+                if (!mFile.canRead()) {
+                    if (!mFile.canWrite()) {
                         message = "File cannot be read or written";
                     } else {
                         message = "File cannot be read";
                     }
-                } else if (!file.canWrite()) {
+                } else if (!mFile.canWrite()) {
                     message = "File cannot be written";
                 }
             }
@@ -373,11 +392,11 @@ final class JavaFileIO extends AbstractFileIO {
                 throw e;
             }
 
-            String path = file.getPath();
+            String path = mFile.getPath();
 
             String originalMessage = e.getMessage();
             if (originalMessage.indexOf(path) < 0) {
-                message = message + ": " + file.getPath() + ' ' + originalMessage;
+                message = message + ": " + mFile.getPath() + ' ' + originalMessage;
             } else {
                 message = message + ": " + originalMessage;
             }
