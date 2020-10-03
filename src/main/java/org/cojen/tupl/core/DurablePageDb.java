@@ -112,6 +112,7 @@ final class DurablePageDb extends PageDb {
     private final long mDatabaseId;
 
     /**
+     * @param debugListener optional
      * @param crypto optional
      */
     static DurablePageDb open(EventListener debugListener,
@@ -137,6 +138,7 @@ final class DurablePageDb extends PageDb {
     }
 
     /**
+     * @param debugListener optional
      * @param crypto optional
      */
     static DurablePageDb open(EventListener debugListener,
@@ -343,6 +345,11 @@ final class DurablePageDb extends PageDb {
     @Override
     void pageCache(LocalDatabase db) {
         mPageManager.pageCache(db);
+    }
+
+    @Override
+    Crypto dataCrypto() {
+        return mCrypto;
     }
 
     /**
@@ -705,6 +712,10 @@ final class DurablePageDb extends PageDb {
      */
     @Override
     public Snapshot beginSnapshot(LocalDatabase db) throws IOException {
+        if (mPageArray.mSource instanceof CompressedPageArray) {
+            return ((CompressedPageArray) mPageArray.mSource).beginSnapshot();
+        }
+
         mHeaderLatch.acquireShared();
         try {
             long pageCount, redoPos;
@@ -719,6 +730,17 @@ final class DurablePageDb extends PageDb {
             return mPageArray.beginSnapshot(db, pageCount, redoPos);
         } finally {
             mHeaderLatch.releaseShared();
+        }
+    }
+
+    // Called by CompressedPageArray.beginSnapshot.
+    long snapshotRedoPos() throws IOException {
+        var header = p_allocPage(directPageSize());
+        try {
+            mPageArray.readPage(mCommitNumber & 1, header, 0, MINIMUM_PAGE_SIZE);
+            return LocalDatabase.readRedoPosition(header, I_EXTRA_DATA); 
+        } finally {
+            p_delete(header);
         }
     }
 

@@ -15,7 +15,7 @@
 <script type="text/javascript" src="../../../../../script-dir/jquery-ui.min.js"></script>
 </head>
 <body class="class-declaration-page">
-<script type="text/javascript">var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10};
+<script type="text/javascript">var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "alt-color";
 var rowColor = "row-color";
@@ -156,22 +156,27 @@ extends <a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a
 </tr>
 <tr class="row-color" id="i3">
 <td class="col-first"><code>boolean</code></td>
-<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#isEmpty()">isEmpty</a></span>()</code></th>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#isDurable()">isDurable</a></span>()</code></th>
 <td class="col-last">&nbsp;</td>
 </tr>
 <tr class="alt-color" id="i4">
 <td class="col-first"><code>boolean</code></td>
-<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#isReadOnly()">isReadOnly</a></span>()</code></th>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#isEmpty()">isEmpty</a></span>()</code></th>
 <td class="col-last">&nbsp;</td>
 </tr>
 <tr class="row-color" id="i5">
+<td class="col-first"><code>boolean</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#isReadOnly()">isReadOnly</a></span>()</code></th>
+<td class="col-last">&nbsp;</td>
+</tr>
+<tr class="alt-color" id="i6">
 <td class="col-first"><code>long</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#pageCount()">pageCount</a></span>()</code></th>
 <td class="col-last">
 <div class="block">Returns the total count of pages in the array, or Long.MAX_VALUE if not applicable.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i6">
+<tr class="row-color" id="i7">
 <td class="col-first"><code>void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#readPage(long,byte%5B%5D,int,int)">readPage</a></span>&#8203;(long&nbsp;index,
 byte[]&nbsp;dst,
@@ -179,7 +184,7 @@ int&nbsp;offset,
 int&nbsp;length)</code></th>
 <td class="col-last">&nbsp;</td>
 </tr>
-<tr class="row-color" id="i7">
+<tr class="alt-color" id="i8">
 <td class="col-first"><code>void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#readPage(long,long,int,int)">readPage</a></span>&#8203;(long&nbsp;index,
 long&nbsp;dstPtr,
@@ -187,21 +192,21 @@ int&nbsp;offset,
 int&nbsp;length)</code></th>
 <td class="col-last">&nbsp;</td>
 </tr>
-<tr class="alt-color" id="i8">
+<tr class="row-color" id="i9">
 <td class="col-first"><code>void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#sync(boolean)">sync</a></span>&#8203;(boolean&nbsp;metadata)</code></th>
 <td class="col-last">
 <div class="block">Durably flushes all writes to the underlying device.</div>
 </td>
 </tr>
-<tr class="row-color" id="i9">
+<tr class="alt-color" id="i10">
 <td class="col-first"><code>void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#truncatePageCount(long)">truncatePageCount</a></span>&#8203;(long&nbsp;count)</code></th>
 <td class="col-last">
 <div class="block">Attempt to truncate the total count of pages.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i10">
+<tr class="row-color" id="i11">
 <td class="col-first"><code>void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#writePage(long,byte%5B%5D,int)">writePage</a></span>&#8203;(long&nbsp;index,
 byte[]&nbsp;src,
@@ -210,7 +215,7 @@ int&nbsp;offset)</code></th>
 <div class="block">Writes a page, which is lazily flushed.</div>
 </td>
 </tr>
-<tr class="row-color" id="i11">
+<tr class="alt-color" id="i12">
 <td class="col-first"><code>void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#writePage(long,long,int)">writePage</a></span>&#8203;(long&nbsp;index,
 long&nbsp;srcPtr,
@@ -271,6 +276,16 @@ int&nbsp;offset)</code></th>
 <dl class="notes">
 <dt>Overrides:</dt>
 <dd><code><a href="PageArray.html#directPageSize()">directPageSize</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="isDurable()">
+<h3>isDurable</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="member-name">isDurable</span>()</div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="PageArray.html#isDurable()">isDurable</a></code>&nbsp;in class&nbsp;<code><a href="PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></code></dd>
 </dl>
 </section>
 </li>

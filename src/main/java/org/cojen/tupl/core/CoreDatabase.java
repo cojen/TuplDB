@@ -19,6 +19,7 @@ package org.cojen.tupl.core;
 
 import java.io.IOException;
 
+import org.cojen.tupl.Crypto;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.EventListener;
 
@@ -34,6 +35,8 @@ abstract class CoreDatabase implements Database {
     abstract boolean isDurable();
 
     abstract boolean isReadOnly();
+
+    abstract Crypto dataCrypto();
 
     abstract Tree registry();
 

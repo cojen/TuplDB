@@ -5738,6 +5738,11 @@ public final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
+    Crypto dataCrypto() {
+        return mPageDb.dataCrypto();
+    }
+
+    @Override
     Tree registry() {
         return mRegistry;
     }

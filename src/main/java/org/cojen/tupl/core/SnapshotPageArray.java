@@ -29,6 +29,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import static java.lang.System.arraycopy;
 
 import org.cojen.tupl.Cursor;
+import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.Snapshot;
 import org.cojen.tupl.Transaction;
@@ -47,7 +48,7 @@ import static org.cojen.tupl.core.Utils.*;
  * @author Brian S O'Neill
  */
 final class SnapshotPageArray extends PageArray {
-    private final PageArray mSource;
+    final PageArray mSource;
     private final PageArray mRawSource;
 
     private volatile Object mSnapshots;
@@ -307,7 +308,7 @@ final class SnapshotPageArray extends PageArray {
         }
     }
 
-    class SnapshotImpl implements CauseCloseable, Snapshot {
+    class SnapshotImpl implements CauseCloseable, ReadableSnapshot {
         private final LocalDatabase mNodeCache;
         private final PageArray mRawPageArray;
 
@@ -577,6 +578,40 @@ final class SnapshotPageArray extends PageArray {
 
         private IOException aborted(Throwable cause) {
             return new IOException("Snapshot closed", cause);
+        }
+
+        // Defined by ReadableSnapshot.
+        @Override
+        public int pageSize() {
+            return SnapshotPageArray.this.pageSize();
+        }
+
+        // Defined by ReadableSnapshot.
+        @Override
+        public long pageCount() {
+            return mSnapshotPageCount;
+        }
+
+        // Defined by ReadableSnapshot.
+        @Override
+        public void readPage(long index, byte[] dst, int offset, int length) throws IOException {
+            var txn = mPageCopyIndex.mDatabase.threadLocalTransaction(DurabilityMode.NO_REDO);
+            try {
+                txn.lockMode(LockMode.REPEATABLE_READ);
+                var key = new byte[8];
+                encodeLongBE(key, 0, index);
+
+                byte[] page = mPageCopyIndex.load(txn, key);
+
+                if (page != null) {
+                    arraycopy(page, 0, dst, offset, length);
+                } else {
+                    // FIXME: Check the cache first as an optimization?
+                    mRawPageArray.readPage(index, dst, offset, length);
+                }
+            } finally {
+                txn.reset();
+            }
         }
     }
 }

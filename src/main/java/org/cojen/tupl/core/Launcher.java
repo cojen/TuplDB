@@ -31,6 +31,8 @@ import java.util.Map;
 
 import java.util.concurrent.TimeUnit;
 
+import java.util.function.Supplier;
+
 import org.cojen.tupl.Crypto;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseException;
@@ -46,6 +48,7 @@ import org.cojen.tupl.ext.PrepareHandler;
 
 import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
+import org.cojen.tupl.io.PageCompressor;
 
 import org.cojen.tupl.repl.ReplicatorConfig;
 import org.cojen.tupl.repl.StreamReplicator;
@@ -87,6 +90,9 @@ public final class Launcher implements Cloneable {
     int mMaxReplicaThreads;
     Crypto mDataCrypto;
     Crypto mRedoCrypto;
+    int mCompressorPageSize;
+    long mCompressorCacheSize;
+    Supplier<PageCompressor> mCompressorFactory;
     Map<String, CustomHandler> mCustomHandlers;
     Map<String, PrepareHandler> mPrepareHandlers;
     TempFileManager mTempFileManager;
@@ -243,6 +249,12 @@ public final class Launcher implements Cloneable {
     public void encrypt(Crypto crypto) {
         mDataCrypto = crypto;
         mRedoCrypto = crypto;
+    }
+
+    public void compress(int fullPageSize, long cacheSize, Supplier<PageCompressor> factory) {
+        mCompressorPageSize = fullPageSize;
+        mCompressorCacheSize = cacheSize;
+        mCompressorFactory = factory;
     }
 
     public void customHandlers(Map<String, ? extends CustomHandler> handlers) {
@@ -426,6 +438,36 @@ public final class Launcher implements Cloneable {
 
             // Is null if no restore should be performed.
             restore = ReplUtils.restoreRequest(mRepl, mEventListener);
+        }
+
+        if (mCompressorFactory != null) {
+            // Eagerly allocate a TempFileManager for supporting compressed snapshots. The
+            // instance is shared by the two database instances.
+            tempFileManager();
+
+            Launcher subLauncher = clone();
+            subLauncher.mBasicMode = true;
+
+            subLauncher.minCacheSize(mCompressorCacheSize);
+            subLauncher.maxCacheSize(mCompressorCacheSize);
+            subLauncher.durabilityMode(DurabilityMode.NO_FLUSH);
+            subLauncher.checkpointRate(-1, null);
+            subLauncher.eventListener(null);
+            subLauncher.cachePriming(false);
+            subLauncher.replicate((StreamReplicator) null);
+            subLauncher.compress(0, 0, null);
+            subLauncher.customHandlers(null);
+            subLauncher.prepareHandlers(null);
+
+            CoreDatabase sub = subLauncher.doOpen(destroy, restore);
+            restore = null;
+
+            var compressed = new CompressedPageArray
+                (mCompressorPageSize, sub, sub.registry(), mCompressorFactory);
+
+            mPageSize = 0;
+            dataPageArray(compressed);
+            mDataCrypto = null; // don't double encrypt; it defeats compression
         }
 
         Method m;

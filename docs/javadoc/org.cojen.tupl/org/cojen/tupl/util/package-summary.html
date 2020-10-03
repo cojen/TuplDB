@@ -58,6 +58,25 @@ loadScripts(document, 'script');</script>
 <li>
 <div class="type-summary">
 <table class="summary-table">
+<caption><span>Interface Summary</span></caption>
+<thead>
+<tr>
+<th class="col-first" scope="col">Interface</th>
+<th class="col-last" scope="col">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="alt-color">
+<th class="col-first" scope="row"><a href="LocalPool.Entry.html" title="interface in org.cojen.tupl.util">LocalPool.Entry</a>&lt;B&gt;</th>
+<td class="col-last">&nbsp;</td>
+</tr>
+</tbody>
+</table>
+</div>
+</li>
+<li>
+<div class="type-summary">
+<table class="summary-table">
 <caption><span>Class Summary</span></caption>
 <thead>
 <tr>
@@ -92,32 +111,39 @@ loadScripts(document, 'script');</script>
 </td>
 </tr>
 <tr class="alt-color">
+<th class="col-first" scope="row"><a href="LocalPool.html" title="class in org.cojen.tupl.util">LocalPool</a>&lt;B&gt;</th>
+<td class="col-last">
+<div class="block">Utility for sharing a small set of poolable objects (like buffers) which have thread
+ afinity.</div>
+</td>
+</tr>
+<tr class="row-color">
 <th class="col-first" scope="row"><a href="Parker.html" title="class in org.cojen.tupl.util">Parker</a></th>
 <td class="col-last">
 <div class="block">Alternative to directly using LockSupport for parking and unparking threads, which is much
  faster when threads are parked briefly.</div>
 </td>
 </tr>
-<tr class="row-color">
+<tr class="alt-color">
 <th class="col-first" scope="row"><a href="Runner.html" title="class in org.cojen.tupl.util">Runner</a></th>
 <td class="col-last">
 <div class="block">Shared pool of daemon threads.</div>
 </td>
 </tr>
-<tr class="alt-color">
+<tr class="row-color">
 <th class="col-first" scope="row"><a href="Worker.html" title="class in org.cojen.tupl.util">Worker</a></th>
 <td class="col-last">
 <div class="block">Simple task worker which has at most one background thread, and is expected to have only one
  thread enqueing tasks.</div>
 </td>
 </tr>
-<tr class="row-color">
+<tr class="alt-color">
 <th class="col-first" scope="row"><a href="Worker.Task.html" title="class in org.cojen.tupl.util">Worker.Task</a></th>
 <td class="col-last">
 <div class="block">One-shot <a href="Worker.html" title="class in org.cojen.tupl.util">worker</a> task instance.</div>
 </td>
 </tr>
-<tr class="alt-color">
+<tr class="row-color">
 <th class="col-first" scope="row"><a href="WorkerGroup.html" title="class in org.cojen.tupl.util">WorkerGroup</a></th>
 <td class="col-last">
 <div class="block">A group of <a href="Worker.html" title="class in org.cojen.tupl.util">workers</a> for running tasks.</div>

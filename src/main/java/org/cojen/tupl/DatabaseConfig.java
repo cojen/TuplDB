@@ -25,6 +25,8 @@ import java.util.Map;
 
 import java.util.concurrent.TimeUnit;
 
+import java.util.function.Supplier;
+
 import org.cojen.tupl.core.Launcher;
 
 import org.cojen.tupl.ext.CustomHandler;
@@ -33,6 +35,7 @@ import org.cojen.tupl.ext.PrepareHandler;
 import org.cojen.tupl.io.MappedPageArray;
 import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
+import org.cojen.tupl.io.PageCompressor;
 import org.cojen.tupl.io.StripedPageArray;
 
 import org.cojen.tupl.repl.ReplicatorConfig;
@@ -350,6 +353,29 @@ public class DatabaseConfig implements Cloneable {
      */
     public DatabaseConfig encrypt(Crypto crypto) {
         mLauncher.encrypt(crypto);
+        return this;
+    }
+
+    /**
+     * Compress the underlying database pages, reducing overall size at the cost of
+     * performance. To be effective, the given full page size must be larger than physical page
+     * size. A full page size of 65536 bytes paired with the default physical page size of 4096
+     * bytes achieves the best compression. A full page size which is smaller than the physical
+     * page size is generally a poor choice.
+     *
+     * <p>The compression layer itself needs its own cache when accessing pages, although it
+     * can be much smaller than the primary cache size. Setting it to be 1% of the primary
+     * cache size should be sufficient. For a non-durable database, the compression cache
+     * should be much larger to avoid running out of space.
+     *
+     * @param fullPageSize full size of pages when uncompressed
+     * @param cacheSize cache size (in bytes) for the compression layer
+     * @param factory creates new page compressor instances
+     */
+    public DatabaseConfig compress(int fullPageSize, long cacheSize,
+                                   Supplier<PageCompressor> factory)
+    {
+        mLauncher.compress(fullPageSize, cacheSize, factory);
         return this;
     }
 

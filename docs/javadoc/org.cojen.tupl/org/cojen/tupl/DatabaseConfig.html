@@ -15,7 +15,7 @@
 <script type="text/javascript" src="../../../../script-dir/jquery-ui.min.js"></script>
 </head>
 <body class="class-declaration-page">
-<script type="text/javascript">var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10,"i16":10,"i17":10,"i18":10,"i19":10,"i20":10,"i21":10,"i22":10,"i23":10,"i24":10,"i25":10,"i26":10,"i27":10,"i28":10,"i29":10,"i30":10,"i31":10};
+<script type="text/javascript">var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10,"i15":10,"i16":10,"i17":10,"i18":10,"i19":10,"i20":10,"i21":10,"i22":10,"i23":10,"i24":10,"i25":10,"i26":10,"i27":10,"i28":10,"i29":10,"i30":10,"i31":10,"i32":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "alt-color";
 var rowColor = "row-color";
@@ -194,20 +194,30 @@ implements <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base
 </tr>
 <tr class="alt-color" id="i8">
 <td class="col-first"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#compress(int,long,java.util.function.Supplier)">compress</a></span>&#8203;(int&nbsp;fullPageSize,
+long&nbsp;cacheSize,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;<a href="io/PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a>&gt;&nbsp;factory)</code></th>
+<td class="col-last">
+<div class="block">Compress the underlying database pages, reducing overall size at the cost of
+ performance.</div>
+</td>
+</tr>
+<tr class="row-color" id="i9">
+<td class="col-first"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#createFilePath(boolean)">createFilePath</a></span>&#8203;(boolean&nbsp;mkdirs)</code></th>
 <td class="col-last">
 <div class="block">Set true to create directories for the base and data file, if they don't
  already exist.</div>
 </td>
 </tr>
-<tr class="row-color" id="i9">
+<tr class="alt-color" id="i10">
 <td class="col-first"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#customHandlers(java.util.Map)">customHandlers</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,&#8203;? extends <a href="ext/CustomHandler.html" title="interface in org.cojen.tupl.ext">CustomHandler</a>&gt;&nbsp;handlers)</code></th>
 <td class="col-last">
 <div class="block">Provide handlers for recovering custom transactional operations.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i10">
+<tr class="row-color" id="i11">
 <td class="col-first"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#dataFile(java.io.File)">dataFile</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/File.html" title="class or interface in java.io" class="external-link">File</a>&nbsp;file)</code></th>
 <td class="col-last">
@@ -215,7 +225,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base
  directory as the base file.</div>
 </td>
 </tr>
-<tr class="row-color" id="i11">
+<tr class="alt-color" id="i12">
 <td class="col-first"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#dataFiles(java.io.File...)">dataFiles</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/File.html" title="class or interface in java.io" class="external-link">File</a>...&nbsp;files)</code></th>
 <td class="col-last">
@@ -223,14 +233,14 @@ implements <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base
  separate devices.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i12">
+<tr class="row-color" id="i13">
 <td class="col-first"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#dataPageArray(org.cojen.tupl.io.PageArray)">dataPageArray</a></span>&#8203;(<a href="io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&nbsp;array)</code></th>
 <td class="col-last">
 <div class="block">Use a custom storage layer instead of the default data file.</div>
 </td>
 </tr>
-<tr class="row-color" id="i13">
+<tr class="alt-color" id="i14">
 <td class="col-first"><code>void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#debugOpen(java.io.PrintStream,java.util.Map)">debugOpen</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/PrintStream.html" title="class or interface in java.io" class="external-link">PrintStream</a>&nbsp;out,
 <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,&#8203;? extends <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&gt;&nbsp;properties)</code></th>
@@ -238,7 +248,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base
 <div class="block">Opens the database in read-only mode for debugging purposes, and then closes it.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i14">
+<tr class="row-color" id="i15">
 <td class="col-first"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#directPageAccess(boolean)">directPageAccess</a></span>&#8203;(boolean&nbsp;direct)</code></th>
 <td class="col-last">
@@ -246,14 +256,14 @@ implements <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base
  reduced garbage collection activity.</div>
 </td>
 </tr>
-<tr class="row-color" id="i15">
+<tr class="alt-color" id="i16">
 <td class="col-first"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#durabilityMode(org.cojen.tupl.DurabilityMode)">durabilityMode</a></span>&#8203;(<a href="DurabilityMode.html" title="enum in org.cojen.tupl">DurabilityMode</a>&nbsp;durabilityMode)</code></th>
 <td class="col-last">
 <div class="block">Set the default transaction durability mode, which is <a href="DurabilityMode.html#SYNC"><code>SYNC</code></a> if not overridden.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i16">
+<tr class="row-color" id="i17">
 <td class="col-first"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#encrypt(org.cojen.tupl.Crypto)">encrypt</a></span>&#8203;(<a href="Crypto.html" title="interface in org.cojen.tupl">Crypto</a>&nbsp;crypto)</code></th>
 <td class="col-last">
@@ -261,7 +271,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base
  sets.</div>
 </td>
 </tr>
-<tr class="row-color" id="i17">
+<tr class="alt-color" id="i18">
 <td class="col-first"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#eventListener(org.cojen.tupl.EventListener)">eventListener</a></span>&#8203;(<a href="EventListener.html" title="interface in org.cojen.tupl">EventListener</a>&nbsp;listener)</code></th>
 <td class="col-last">
@@ -269,7 +279,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base
  database.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i18">
+<tr class="row-color" id="i19">
 <td class="col-first"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#eventListeners(org.cojen.tupl.EventListener...)">eventListeners</a></span>&#8203;(<a href="EventListener.html" title="interface in org.cojen.tupl">EventListener</a>...&nbsp;listeners)</code></th>
 <td class="col-last">
@@ -277,7 +287,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base
  database.</div>
 </td>
 </tr>
-<tr class="row-color" id="i19">
+<tr class="alt-color" id="i20">
 <td class="col-first"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#lockTimeout(long,java.util.concurrent.TimeUnit)">lockTimeout</a></span>&#8203;(long&nbsp;timeout,
 <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/concurrent/TimeUnit.html" title="class or interface in java.util.concurrent" class="external-link">TimeUnit</a>&nbsp;unit)</code></th>
@@ -286,7 +296,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base
  overridden.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i20">
+<tr class="row-color" id="i21">
 <td class="col-first"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#lockUpgradeRule(org.cojen.tupl.LockUpgradeRule)">lockUpgradeRule</a></span>&#8203;(<a href="LockUpgradeRule.html" title="enum in org.cojen.tupl">LockUpgradeRule</a>&nbsp;lockUpgradeRule)</code></th>
 <td class="col-last">
@@ -294,28 +304,28 @@ implements <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base
  overridden.</div>
 </td>
 </tr>
-<tr class="row-color" id="i21">
+<tr class="alt-color" id="i22">
 <td class="col-first"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#mapDataFiles(boolean)">mapDataFiles</a></span>&#8203;(boolean&nbsp;mapped)</code></th>
 <td class="col-last">
 <div class="block">Enable memory mapping of the data files.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i22">
+<tr class="row-color" id="i23">
 <td class="col-first"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#maxCacheSize(long)">maxCacheSize</a></span>&#8203;(long&nbsp;maxBytes)</code></th>
 <td class="col-last">
 <div class="block">Set the maximum cache size, overriding the default.</div>
 </td>
 </tr>
-<tr class="row-color" id="i23">
+<tr class="alt-color" id="i24">
 <td class="col-first"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#maxCheckpointThreads(int)">maxCheckpointThreads</a></span>&#8203;(int&nbsp;num)</code></th>
 <td class="col-last">
 <div class="block">Specify the maximum number of threads for performing checkpointing, to speed it up.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i24">
+<tr class="row-color" id="i25">
 <td class="col-first"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#maxReplicaThreads(int)">maxReplicaThreads</a></span>&#8203;(int&nbsp;num)</code></th>
 <td class="col-last">
@@ -323,49 +333,49 @@ implements <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base
  changes.</div>
 </td>
 </tr>
-<tr class="row-color" id="i25">
+<tr class="alt-color" id="i26">
 <td class="col-first"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#minCacheSize(long)">minCacheSize</a></span>&#8203;(long&nbsp;minBytes)</code></th>
 <td class="col-last">
 <div class="block">Set the minimum cache size, overriding the default.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i26">
+<tr class="row-color" id="i27">
 <td class="col-first"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#pageSize(int)">pageSize</a></span>&#8203;(int&nbsp;size)</code></th>
 <td class="col-last">
 <div class="block">Set the page size, which is 4096 bytes by default.</div>
 </td>
 </tr>
-<tr class="row-color" id="i27">
+<tr class="alt-color" id="i28">
 <td class="col-first"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#prepareHandlers(java.util.Map)">prepareHandlers</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,&#8203;? extends <a href="ext/PrepareHandler.html" title="interface in org.cojen.tupl.ext">PrepareHandler</a>&gt;&nbsp;handlers)</code></th>
 <td class="col-last">
 <div class="block">Provide handlers for recovering prepared transactions.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i28">
+<tr class="row-color" id="i29">
 <td class="col-first"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#readOnly(boolean)">readOnly</a></span>&#8203;(boolean&nbsp;readOnly)</code></th>
 <td class="col-last">
 <div class="block">Open the database file in read only mode.</div>
 </td>
 </tr>
-<tr class="row-color" id="i29">
+<tr class="alt-color" id="i30">
 <td class="col-first"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#replicate(org.cojen.tupl.repl.ReplicatorConfig)">replicate</a></span>&#8203;(<a href="repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;config)</code></th>
 <td class="col-last">
 <div class="block">Enable replication using the given configuration.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i30">
+<tr class="row-color" id="i31">
 <td class="col-first"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#replicate(org.cojen.tupl.repl.StreamReplicator)">replicate</a></span>&#8203;(<a href="repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a>&nbsp;repl)</code></th>
 <td class="col-last">
 <div class="block">Enable replication with an explicit <a href="repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl"><code>StreamReplicator</code></a> instance.</div>
 </td>
 </tr>
-<tr class="row-color" id="i31">
+<tr class="alt-color" id="i32">
 <td class="col-first"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#syncWrites(boolean)">syncWrites</a></span>&#8203;(boolean&nbsp;fileSync)</code></th>
 <td class="col-last">
@@ -680,6 +690,30 @@ implements <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base
  <p>Allocated but never used pages within the data files are unencrypted, although they
  contain no information. Temporary files used by in-progress snapshots contain encrypted
  content.</div>
+</section>
+</li>
+<li>
+<section class="detail" id="compress(int,long,java.util.function.Supplier)">
+<h3>compress</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></span>&nbsp;<span class="member-name">compress</span>&#8203;(<span class="parameters">int&nbsp;fullPageSize,
+long&nbsp;cacheSize,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;<a href="io/PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a>&gt;&nbsp;factory)</span></div>
+<div class="block">Compress the underlying database pages, reducing overall size at the cost of
+ performance. To be effective, the given full page size must be larger than physical page
+ size. A full page size of 65536 bytes paired with the default physical page size of 4096
+ bytes achieves the best compression. A full page size which is smaller than the physical
+ page size is generally a poor choice.
+
+ <p>The compression layer itself needs its own cache when accessing pages, although it
+ can be much smaller than the primary cache size. Setting it to be 1% of the primary
+ cache size should be sufficient. For a non-durable database, the compression cache
+ should be much larger to avoid running out of space.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>fullPageSize</code> - full size of pages when uncompressed</dd>
+<dd><code>cacheSize</code> - cache size (in bytes) for the compression layer</dd>
+<dd><code>factory</code> - creates new page compressor instances</dd>
+</dl>
 </section>
 </li>
 <li>

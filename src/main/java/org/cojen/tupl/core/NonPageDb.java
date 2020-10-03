@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.LongAdder;
 
 import java.util.function.LongConsumer;
 
+import org.cojen.tupl.Crypto;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DatabaseFullException;
 import org.cojen.tupl.Snapshot;
@@ -64,6 +65,11 @@ final class NonPageDb extends PageDb {
 
     @Override
     void pageCache(LocalDatabase db) {
+    }
+
+    @Override
+    Crypto dataCrypto() {
+        return null;
     }
 
     @Override
