@@ -26,6 +26,9 @@ import java.io.InterruptedIOException;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import java.net.ConnectException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -114,6 +117,18 @@ final class ChannelManager {
         OP_QUERY_DATA_REPLY_MISSING = 29, // alternate reply from OP_QUERY_DATA
         OP_FORCE_ELECTION  = 34;
 
+    private static final VarHandle cControlVersionHandle;
+
+    static {
+        try {
+            cControlVersionHandle =
+                MethodHandles.lookup().findVarHandle
+                (ChannelManager.class, "mControlVersion", int.class);
+        } catch (Throwable e) {
+            throw rethrow(e);
+        }
+    }
+
     private final SocketFactory mSocketFactory;
     private final Scheduler mScheduler;
     private final long mGroupToken;
@@ -136,6 +151,8 @@ final class ChannelManager {
     private volatile Consumer<Socket> mSnapshotRequestAcceptor;
 
     volatile boolean mPartitioned;
+
+    private volatile int mControlVersion;
 
     /**
      * @param factory optional
@@ -265,6 +282,37 @@ final class ChannelManager {
 
     boolean hasSnapshotRequestAcceptor() {
         return mSnapshotRequestAcceptor != null;
+    }
+
+    /**
+     * Returns true if the set of control connections changed since the last time this check
+     * was made.
+     *
+     * @param limit maximum number of times false can be returned consecutively
+     */
+    boolean checkControlVersion(int limit) {
+        while (true) {
+            int version = mControlVersion;
+            if (version > 0 || -version > limit) {
+                if (cControlVersionHandle.compareAndSet(this, version, 0)) {
+                    return true;
+                }
+            } else {
+                if (cControlVersionHandle.compareAndSet(this, version, version - 1)) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    private void incrementControlVersion() {
+        while (true) {
+            int version = mControlVersion;
+            int newVersion = Math.max(0, version) + 1;
+            if (cControlVersionHandle.compareAndSet(this, version, newVersion)) {
+                break;
+            }
+        }
     }
 
     /**
@@ -839,6 +887,7 @@ final class ChannelManager {
                 mReconnectDelay = Math.min(delay << 1, MAX_RECONNECT_DELAY_MILLIS);
             }
             
+            incrementControlVersion();
             closeQuietly(s);
 
             if (localServer != null) {
@@ -896,6 +945,7 @@ final class ChannelManager {
                 execute(task);
             }
 
+            incrementControlVersion();
             closeQuietly(s);
         }
 
@@ -928,6 +978,7 @@ final class ChannelManager {
                 return false;
             }
 
+            incrementControlVersion();
             closeQuietly(mSocket);
 
             acquireExclusive();
