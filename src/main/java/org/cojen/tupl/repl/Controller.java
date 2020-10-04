@@ -1326,7 +1326,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 // Only request missing data when the set of control connections changes. If
                 // data is simply delayed, then don't request it again. Limit the number of
                 // times the request is denied, in case data is missing for another reason.
-                if (mChanMan.checkControlVersion(10)) for (int i=0; i<collector.mSize; ) {
+                // The most common other reason is due to relaying, where the relayer needed to
+                // request missing data, but no connections changed here.
+                if (mChanMan.checkControlVersion(1)) for (int i=0; i<collector.mSize; ) {
                     long startPosition = collector.mRanges[i++];
                     long endPosition = collector.mRanges[i++];
                     requestMissingData(startPosition, endPosition);

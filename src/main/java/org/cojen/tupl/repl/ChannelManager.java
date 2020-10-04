@@ -293,7 +293,7 @@ final class ChannelManager {
     boolean checkControlVersion(int limit) {
         while (true) {
             int version = mControlVersion;
-            if (version > 0 || -version > limit) {
+            if (version > 0 || -version >= limit) {
                 if (cControlVersionHandle.compareAndSet(this, version, 0)) {
                     return true;
                 }
