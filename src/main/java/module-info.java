@@ -16,4 +16,6 @@ module org.cojen.tupl {
 
     requires transitive com.sun.jna;
     requires transitive com.sun.jna.platform;
+
+    requires static org.lz4.java;
 }

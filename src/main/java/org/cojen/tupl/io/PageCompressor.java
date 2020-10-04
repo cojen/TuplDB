@@ -41,11 +41,12 @@ public interface PageCompressor extends Closeable {
         return new ZlibCompressor(level);
     }
 
-    /*
+    /**
+     * Returns a new LZ4 compressor.
+     */
     public static PageCompressor lz4() {
         return new LZ4Compressor();
     }
-    */
 
     /**
      * Compress to a byte array.

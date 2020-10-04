@@ -15,7 +15,7 @@
 <script type="text/javascript" src="../../../../../script-dir/jquery-ui.min.js"></script>
 </head>
 <body class="class-declaration-page">
-<script type="text/javascript">var data = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6,"i6":1,"i7":1};
+<script type="text/javascript">var data = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6,"i6":1,"i7":1,"i8":1};
 var tabs = {65535:["t0","All Methods"],1:["t1","Static Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"]};
 var altColor = "alt-color";
 var rowColor = "row-color";
@@ -158,12 +158,19 @@ int&nbsp;dstLen)</code></th>
 </tr>
 <tr class="alt-color" id="i6">
 <td class="col-first"><code>static <a href="PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#lz4()">lz4</a></span>()</code></th>
+<td class="col-last">
+<div class="block">Returns a new LZ4 compressor.</div>
+</td>
+</tr>
+<tr class="row-color" id="i7">
+<td class="col-first"><code>static <a href="PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#zlib()">zlib</a></span>()</code></th>
 <td class="col-last">
 <div class="block">Returns a new ZLIB compressor (deflate).</div>
 </td>
 </tr>
-<tr class="row-color" id="i7">
+<tr class="alt-color" id="i8">
 <td class="col-first"><code>static <a href="PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#zlib(int)">zlib</a></span>&#8203;(int&nbsp;level)</code></th>
 <td class="col-last">
@@ -201,6 +208,13 @@ int&nbsp;dstLen)</code></th>
 <dt>Parameters:</dt>
 <dd><code>level</code> - compression level [0..9]</dd>
 </dl>
+</section>
+</li>
+<li>
+<section class="detail" id="lz4()">
+<h3>lz4</h3>
+<div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type"><a href="PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a></span>&nbsp;<span class="member-name">lz4</span>()</div>
+<div class="block">Returns a new LZ4 compressor.</div>
 </section>
 </li>
 <li>
