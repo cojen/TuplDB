@@ -126,7 +126,7 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
         } else {
             var entry = mCompressors.access();
             try {
-                entry.get().decompress(value, 0, dst, offset, pageSize());
+                entry.get().decompress(value, 0, value.length, dst, offset, pageSize());
             } finally {
                 entry.release();
             }
@@ -157,7 +157,7 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
         } else {
             var entry = mCompressors.access();
             try {
-                entry.get().decompress(value, 0, dstPtr, offset, pageSize());
+                entry.get().decompress(value, 0, value.length, dstPtr, offset, pageSize());
             } finally {
                 entry.release();
             }

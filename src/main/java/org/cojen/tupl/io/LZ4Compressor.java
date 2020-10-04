@@ -94,19 +94,21 @@ class LZ4Compressor implements PageCompressor {
     }
 
     @Override
-    public void decompress(byte[] src, int srcOff, byte[] dst, int dstOff, int dstLen) {
+    public void decompress(byte[] src, int srcOff, int srcLen, byte[] dst, int dstOff, int dstLen) {
         mDecompressor.decompress(src, srcOff, dst, dstOff, dstLen);
     }
 
     @Override
-    public void decompress(byte[] src, int srcOff, long dstPtr, int dstOff, int dstLen) {
+    public void decompress(byte[] src, int srcOff, int srcLen,
+                           long dstPtr, int dstOff, int dstLen)
+    {
         ByteBuffer bb = mDirectBuffer;
         if (bb == null) {
             mDirectBuffer = bb = DirectAccess.allocDirect();
         }
         DirectAccess.ref(bb, dstPtr + dstOff, dstLen);
 
-        mDecompressor.decompress(ByteBuffer.wrap(src, srcOff, src.length - srcOff), bb);
+        mDecompressor.decompress(ByteBuffer.wrap(src, srcOff, srcLen), bb);
     }
 
     @Override

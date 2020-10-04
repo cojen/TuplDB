@@ -111,9 +111,9 @@ class ZlibCompressor implements PageCompressor {
     }
 
     @Override
-    public void decompress(byte[] src, int srcOff, byte[] dst, int dstOff, int dstLen) {
+    public void decompress(byte[] src, int srcOff, int srcLen, byte[] dst, int dstOff, int dstLen) {
         try {
-            mInflater.setInput(src, srcOff, src.length - srcOff);
+            mInflater.setInput(src, srcOff, srcLen);
             mInflater.inflate(dst, dstOff, dstLen);
         } catch (DataFormatException e) {
             throw Utils.rethrow(e);
@@ -123,7 +123,9 @@ class ZlibCompressor implements PageCompressor {
     }
 
     @Override
-    public void decompress(byte[] src, int srcOff, long dstPtr, int dstOff, int dstLen) {
+    public void decompress(byte[] src, int srcOff, int srcLen,
+                           long dstPtr, int dstOff, int dstLen)
+    {
         ByteBuffer bb = mDirectBuffer;
         if (bb == null) {
             mDirectBuffer = bb = DirectAccess.allocDirect();
@@ -131,7 +133,7 @@ class ZlibCompressor implements PageCompressor {
         DirectAccess.ref(bb, dstPtr + dstOff, dstLen);
 
         try {
-            mInflater.setInput(src, srcOff, src.length - srcOff);
+            mInflater.setInput(src, srcOff, srcLen);
             mInflater.inflate(bb);
         } catch (DataFormatException e) {
             throw Utils.rethrow(e);

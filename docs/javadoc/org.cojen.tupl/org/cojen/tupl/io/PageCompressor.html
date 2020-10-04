@@ -136,8 +136,9 @@ int&nbsp;srcLen)</code></th>
 </tr>
 <tr class="alt-color" id="i4">
 <td class="col-first"><code>void</code></td>
-<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#decompress(byte%5B%5D,int,byte%5B%5D,int,int)">decompress</a></span>&#8203;(byte[]&nbsp;src,
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#decompress(byte%5B%5D,int,int,byte%5B%5D,int,int)">decompress</a></span>&#8203;(byte[]&nbsp;src,
 int&nbsp;srcOff,
+int&nbsp;srcLen,
 byte[]&nbsp;dst,
 int&nbsp;dstOff,
 int&nbsp;dstLen)</code></th>
@@ -147,8 +148,9 @@ int&nbsp;dstLen)</code></th>
 </tr>
 <tr class="row-color" id="i5">
 <td class="col-first"><code>void</code></td>
-<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#decompress(byte%5B%5D,int,long,int,int)">decompress</a></span>&#8203;(byte[]&nbsp;src,
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#decompress(byte%5B%5D,int,int,long,int,int)">decompress</a></span>&#8203;(byte[]&nbsp;src,
 int&nbsp;srcOff,
+int&nbsp;srcLen,
 long&nbsp;dstPtr,
 int&nbsp;dstOff,
 int&nbsp;dstLen)</code></th>
@@ -222,11 +224,14 @@ int&nbsp;dstLen)</code></th>
 <h3>compress</h3>
 <div class="member-signature"><span class="return-type">int</span>&nbsp;<span class="member-name">compress</span>&#8203;(<span class="parameters">byte[]&nbsp;src,
 int&nbsp;srcOff,
-int&nbsp;srcLen)</span></div>
+int&nbsp;srcLen)</span>
+      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Compress to a byte array.</div>
 <dl class="notes">
 <dt>Returns:</dt>
 <dd>the compressed size</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -235,11 +240,14 @@ int&nbsp;srcLen)</span></div>
 <h3>compress</h3>
 <div class="member-signature"><span class="return-type">int</span>&nbsp;<span class="member-name">compress</span>&#8203;(<span class="parameters">long&nbsp;srcPtr,
 int&nbsp;srcOff,
-int&nbsp;srcLen)</span></div>
+int&nbsp;srcLen)</span>
+      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Compress to a byte array from a raw memory pointer.</div>
 <dl class="notes">
 <dt>Returns:</dt>
 <dd>the compressed size</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -251,32 +259,40 @@ int&nbsp;srcLen)</span></div>
 </section>
 </li>
 <li>
-<section class="detail" id="decompress(byte[],int,byte[],int,int)">
+<section class="detail" id="decompress(byte[],int,int,byte[],int,int)">
 <h3>decompress</h3>
 <div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="member-name">decompress</span>&#8203;(<span class="parameters">byte[]&nbsp;src,
 int&nbsp;srcOff,
+int&nbsp;srcLen,
 byte[]&nbsp;dst,
 int&nbsp;dstOff,
-int&nbsp;dstLen)</span></div>
+int&nbsp;dstLen)</span>
+         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Decompress to a byte array.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>dstLen</code> - original size of uncompressed page</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
 <li>
-<section class="detail" id="decompress(byte[],int,long,int,int)">
+<section class="detail" id="decompress(byte[],int,int,long,int,int)">
 <h3>decompress</h3>
 <div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="member-name">decompress</span>&#8203;(<span class="parameters">byte[]&nbsp;src,
 int&nbsp;srcOff,
+int&nbsp;srcLen,
 long&nbsp;dstPtr,
 int&nbsp;dstOff,
-int&nbsp;dstLen)</span></div>
+int&nbsp;dstLen)</span>
+         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Decompress to a raw memory pointer.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>dstLen</code> - original size of uncompressed page</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>

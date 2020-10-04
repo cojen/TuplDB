@@ -18,6 +18,7 @@
 package org.cojen.tupl.io;
 
 import java.io.Closeable;
+import java.io.IOException;
 
 /**
  * Compresses and decompresses pages. Instances aren't expected to be thread-safe.
@@ -53,14 +54,14 @@ public interface PageCompressor extends Closeable {
      *
      * @return the compressed size
      */
-    public int compress(byte[] src, int srcOff, int srcLen);
+    public int compress(byte[] src, int srcOff, int srcLen) throws IOException;
 
     /**
      * Compress to a byte array from a raw memory pointer.
      *
      * @return the compressed size
      */
-    public int compress(long srcPtr, int srcOff, int srcLen);
+    public int compress(long srcPtr, int srcOff, int srcLen) throws IOException;
 
     /**
      * Target of the compress method. The array is recycled, although it can be replaced.
@@ -72,14 +73,16 @@ public interface PageCompressor extends Closeable {
      *
      * @param dstLen original size of uncompressed page
      */
-    public void decompress(byte[] src, int srcOff, byte[] dst, int dstOff, int dstLen);
+    public void decompress(byte[] src, int srcOff, int srcLen, byte[] dst, int dstOff, int dstLen)
+        throws IOException;
 
     /**
      * Decompress to a raw memory pointer.
      *
      * @param dstLen original size of uncompressed page
      */
-    public void decompress(byte[] src, int srcOff, long dstPtr, int dstOff, int dstLen);
+    public void decompress(byte[] src, int srcOff, int srcLen, long dstPtr, int dstOff, int dstLen)
+        throws IOException;
 
     public void close();
 }
