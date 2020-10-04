@@ -29,7 +29,7 @@ import org.cojen.tupl.io.Utils;
 
 /**
  * Wraps a PageArray to apply encryption operations on all pages. Is constructed by {@link
- * DurablePageDb} when encryption is enabled via {@link DatabaseConfig#encrypt}.
+ * StoredPageDb} when encryption is enabled via {@link DatabaseConfig#encrypt}.
  *
  * @author Brian S O'Neill
  */
@@ -51,11 +51,6 @@ final class CryptoPageArray extends PageArray {
     @Override
     public boolean isFullyMapped() {
         return mSource.isFullyMapped();
-    }
-
-    @Override
-    public boolean isDurable() {
-        return mSource.isDurable();
     }
 
     @Override

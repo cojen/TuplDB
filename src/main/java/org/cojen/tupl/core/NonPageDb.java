@@ -32,8 +32,7 @@ import org.cojen.tupl.DatabaseFullException;
 import org.cojen.tupl.Snapshot;
 
 /**
- * PageDb implementation which doesn't actually persist anything. Used for non-durable
- * databases.
+ * PageDb implementation which doesn't actually store anything into a file or page array.
  *
  * @author Brian S O'Neill
  */
@@ -77,8 +76,8 @@ final class NonPageDb extends PageDb {
     }
 
     @Override
-    public boolean isDurable() {
-        return false;
+    boolean isCacheOnly() {
+        return true;
     }
 
     @Override
@@ -186,7 +185,7 @@ final class NonPageDb extends PageDb {
 
     @Override
     public void scanFreeList(LongConsumer dst) throws IOException {
-        // No durable pages to scan.
+        // No stored pages to scan.
         return;
     }
 
@@ -229,17 +228,12 @@ final class NonPageDb extends PageDb {
         throws IOException
     {
         // This is more of an assertion failure.
-        throw new DatabaseException("Cannot commit to a non-durable database");
+        throw new DatabaseException("Cannot commit to a non-stored database");
     }
 
     @Override
     public void readExtraCommitData(byte[] extra) throws IOException {
         Arrays.fill(extra, (byte) 0);
-    }
-
-    @Override
-    public Snapshot beginSnapshot(LocalDatabase db) throws IOException {
-        throw new UnsupportedOperationException("Snapshot only allowed for durable databases");
     }
 
     @Override
@@ -256,7 +250,7 @@ final class NonPageDb extends PageDb {
             throw new DatabaseFullException();
         } else {
             // This is more of an assertion failure.
-            throw new DatabaseException("Cannot read from a non-durable database");
+            throw new DatabaseException("Cannot read from a non-stored database");
         }
     }
 }

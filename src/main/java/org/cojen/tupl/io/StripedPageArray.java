@@ -31,7 +31,6 @@ import org.cojen.tupl.util.Runner;
 public class StripedPageArray extends PageArray {
     private final PageArray[] mArrays;
     private final int mDirectPageSize;
-    private final boolean mDurable;
     private final boolean mReadOnly;
 
     private final Syncer[] mSyncers;
@@ -51,15 +50,12 @@ public class StripedPageArray extends PageArray {
         }
         mDirectPageSize = directPageSize;
 
-        boolean durable = true;
         boolean readOnly = false;
 
         for (PageArray pa : arrays) {
-            durable &= pa.isDurable();
             readOnly |= pa.isReadOnly();
         }
 
-        mDurable = durable;
         mReadOnly = readOnly;
 
         mSyncers = new Syncer[arrays.length - 1];
@@ -82,11 +78,6 @@ public class StripedPageArray extends PageArray {
     @Override
     public final int directPageSize() {
         return mDirectPageSize;
-    }
-
-    @Override
-    public boolean isDurable() {
-        return mDurable;
     }
 
     @Override

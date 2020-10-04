@@ -486,7 +486,7 @@ public final class LocalDatabase extends CoreDatabase {
                 } else {
                     dataPageArray = dataPageArray.open();
                     Crypto crypto = launcher.mDataCrypto;
-                    mPageDb = DurablePageDb.open(debugListener, dataPageArray, crypto, destroy);
+                    mPageDb = StoredPageDb.open(debugListener, dataPageArray, crypto, destroy);
                     /*P*/ // [|
                     /*P*/ // fullyMapped = crypto == null && dataPageArray.isFullyMapped();
                     /*P*/ // ]
@@ -496,7 +496,7 @@ public final class LocalDatabase extends CoreDatabase {
 
                 PageDb pageDb;
                 try {
-                    pageDb = DurablePageDb.open
+                    pageDb = StoredPageDb.open
                         (debugListener, explicitPageSize, pageSize,
                          dataFiles, options,
                          launcher.mDataCrypto, destroy);
@@ -558,13 +558,13 @@ public final class LocalDatabase extends CoreDatabase {
                 }
 
                 long usedRate;
-                if (isDurable()) {
+                if (isCacheOnly()) {
+                    // Nothing gets evicted, so no need to ever adjust usage order.
+                    usedRate = -1;
+                } else {
                     // Magic constant was determined empirically against the G1 collector. A
                     // higher constant increases memory thrashing.
                     usedRate = Utils.roundUpPower2((long) Math.ceil(maxCache / 32768.0)) - 1;
-                } else {
-                    // Nothing gets evicted, so no need to ever adjust usage order.
-                    usedRate = -1;
                 }
 
                 int stripes = roundUpPower2(procCount * 16);
@@ -928,7 +928,7 @@ public final class LocalDatabase extends CoreDatabase {
     @SuppressWarnings("unchecked")
     private void finishInit(Launcher launcher) throws IOException {
         if (mCheckpointer == null) {
-            // Nothing is durable and nothing to ever clean up.
+            // Nothing is stored and nothing to ever clean up.
             return;
         }
 
@@ -942,7 +942,7 @@ public final class LocalDatabase extends CoreDatabase {
             applyCachePrimer(launcher);
         }
 
-        if (launcher.mCachePriming && isDurable() && !mReadOnly) {
+        if (launcher.mCachePriming && !isCacheOnly() && !mReadOnly) {
             mCheckpointer.register(new ShutdownPrimer(this));
         }
 
@@ -1066,7 +1066,7 @@ public final class LocalDatabase extends CoreDatabase {
     }
 
     private void applyCachePrimer(Launcher launcher) {
-        if (isDurable()) {
+        if (!isCacheOnly()) {
             File primer = primerFile();
             try {
                 if (launcher.mCachePriming && primer.exists()) {
@@ -2182,7 +2182,7 @@ public final class LocalDatabase extends CoreDatabase {
 
     @Override
     public long preallocate(long bytes) throws IOException {
-        if (!isClosed() && isDurable()) {
+        if (!isClosed() && !isCacheOnly()) {
             int pageSize = mPageSize;
             long pageCount = (bytes + pageSize - 1) / pageSize;
             if (pageCount > 0) {
@@ -2226,7 +2226,7 @@ public final class LocalDatabase extends CoreDatabase {
     @Override
     public Snapshot beginSnapshot() throws IOException {
         checkClosed();
-        return mPageDb.beginSnapshot(this);
+        return mPageDb.asStoredPageDb("Snapshot").beginSnapshot(this);
     }
 
     /**
@@ -2248,8 +2248,7 @@ public final class LocalDatabase extends CoreDatabase {
             PageArray dataPageArray = launcher.mDataPageArray;
 
             if (dataPageArray == null) {
-                throw new UnsupportedOperationException
-                    ("Restore only allowed for durable databases");
+                throw new UnsupportedOperationException(PageDb.unsupportedMessage("Restore"));
             }
 
             dataPageArray = dataPageArray.open();
@@ -2258,7 +2257,7 @@ public final class LocalDatabase extends CoreDatabase {
             // Delete old redo log files.
             deleteNumberedFiles(launcher.mBaseFile, REDO_FILE_SUFFIX);
 
-            restored = DurablePageDb.restoreFromSnapshot(dataPageArray, launcher.mDataCrypto, in);
+            restored = StoredPageDb.restoreFromSnapshot(dataPageArray, launcher.mDataCrypto, in);
 
             // Delete the object, but keep the page array open.
             restored.delete();
@@ -2281,7 +2280,7 @@ public final class LocalDatabase extends CoreDatabase {
                 pageSize = DEFAULT_PAGE_SIZE;
             }
 
-            restored = DurablePageDb.restoreFromSnapshot
+            restored = StoredPageDb.restoreFromSnapshot
                 (pageSize, dataFiles, options, launcher.mDataCrypto, in);
 
             try {
@@ -2296,12 +2295,7 @@ public final class LocalDatabase extends CoreDatabase {
 
     @Override
     public void createCachePrimer(OutputStream out) throws IOException {
-        if (!isDurable()) {
-            throw new UnsupportedOperationException
-                ("Cache priming only allowed for durable databases");
-        }
-
-        out = ((DurablePageDb) mPageDb).encrypt(out);
+        out = mPageDb.asStoredPageDb("Cache priming").encrypt(out);
 
         var dout = new DataOutputStream(out);
 
@@ -2321,12 +2315,7 @@ public final class LocalDatabase extends CoreDatabase {
     @Override
     public void applyCachePrimer(final InputStream fin) throws IOException {
         try (fin) {
-            if (!isDurable()) {
-                throw new UnsupportedOperationException
-                    ("Cache priming only allowed for durable databases");
-            }
-
-            InputStream in = ((DurablePageDb) mPageDb).decrypt(fin);
+            InputStream in = mPageDb.asStoredPageDb("Cache priming").decrypt(fin);
 
             DataInput din;
             if (in instanceof DataInput) {
@@ -2769,7 +2758,7 @@ public final class LocalDatabase extends CoreDatabase {
 
     @Override
     public void shutdown() throws IOException {
-        close(null, mPageDb.isDurable());
+        close(null, !isCacheOnly());
     }
 
     private void close(Throwable cause, boolean shutdown) throws IOException {
@@ -4507,10 +4496,10 @@ public final class LocalDatabase extends CoreDatabase {
         if (fail == null) {
             // Strict is false, to avoid deadlock when caller is holding latches.
             String stats = stats(false).toString();
-            if (mPageDb.isDurable()) {
-                throw new CacheExhaustedException(stats);
-            } else {
+            if (isCacheOnly()) {
                 throw new DatabaseFullException(stats);
+            } else {
+                throw new CacheExhaustedException(stats);
             }
         }
 
@@ -4895,7 +4884,7 @@ public final class LocalDatabase extends CoreDatabase {
                 }
 
                 // When id is <= 1, it won't be moved to a secondary cache. Preserve the
-                // original id for non-durable database to recycle it. Durable database relies
+                // original id for non-stored database to recycle it. Stored database relies
                 // on the free list.
                 node.id(-id);
             }
@@ -5728,8 +5717,8 @@ public final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
-    boolean isDurable() {
-        return mPageDb.isDurable();
+    boolean isCacheOnly() {
+        return mPageDb.isCacheOnly();
     }
 
     @Override
@@ -5767,7 +5756,7 @@ public final class LocalDatabase extends CoreDatabase {
     private void checkpoint(int force, long sizeThreshold, long delayThresholdNanos)
         throws IOException
     {
-        while (!isClosed() && isDurable()) {
+        while (!isClosed() && !isCacheOnly()) {
             // Checkpoint lock ensures consistent state between page store and logs.
             mCheckpointLock.lock();
             try {
@@ -6173,7 +6162,7 @@ public final class LocalDatabase extends CoreDatabase {
         }
     }
 
-    // Called by DurablePageDb with header latch held.
+    // Called by StoredPageDb with header latch held.
     static long readRedoPosition(/*P*/ byte[] header, int offset) {
         return p_longGetLE(header, offset + I_REDO_POSITION);
     }

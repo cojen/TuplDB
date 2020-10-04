@@ -33,7 +33,7 @@ import org.cojen.tupl.io.CauseCloseable;
  * database depends on this simpler database internally.
  *
  * @author Brian S O'Neill
- * @see DurablePageDb
+ * @see StoredPageDb
  * @see NonPageDb
  */
 abstract class PageDb implements CauseCloseable {
@@ -69,7 +69,25 @@ abstract class PageDb implements CauseCloseable {
      */
     abstract Crypto dataCrypto();
 
-    public abstract boolean isDurable();
+    /**
+     * @return true if no storage layer is used anywhere
+     */
+    abstract boolean isCacheOnly();
+
+    /**
+     * @param operation operation being requested; prefix for exception message
+     * @throws UnsupportedOperationException if not stored
+     */
+    StoredPageDb asStoredPageDb(String operation) {
+        if (this instanceof StoredPageDb) {
+            return (StoredPageDb) this;
+        }
+        throw new UnsupportedOperationException(unsupportedMessage(operation));
+    }
+
+    static String unsupportedMessage(String operation) {
+        return operation + " only supported for databases backed by a storage layer";
+    }
 
     /**
      * Returns a positive page size if not using direct I/O, else negate to get the page size
@@ -194,7 +212,7 @@ abstract class PageDb implements CauseCloseable {
     }
 
     /**
-     * Scan all durable free pages, passing them to the given consumer.
+     * Scan all stored free pages, passing them to the given consumer.
      *
      * @param dst destination for scanned page ids
      */
@@ -287,6 +305,4 @@ abstract class PageDb implements CauseCloseable {
      * @param extra optional extra data which was committed, up to 256 bytes
      */
     public abstract void readExtraCommitData(byte[] extra) throws IOException;
-
-    public abstract Snapshot beginSnapshot(LocalDatabase db) throws IOException;
 }

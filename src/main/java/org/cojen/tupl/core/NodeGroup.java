@@ -205,7 +205,7 @@ final class NodeGroup extends Clutch.Pack implements Checkpointer.DirtySet {
                 acquireExclusive();
             } else if ((mode & MODE_NO_EVICT) != 0) {
                 if (node.mCachedState != CACHED_CLEAN) {
-                    // MODE_NO_EVICT is only used by non-durable database. It ensures that
+                    // MODE_NO_EVICT is only used by non-stored database. It ensures that
                     // all clean nodes are least recently used, so no need to keep looking.
                     node.releaseExclusive();
                     break;

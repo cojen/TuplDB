@@ -177,7 +177,7 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
                 RedoWriter redo = db.txnRedoWriter();
 
                 if (redo == null || redo.adjustTransactionId(1) <= 0) {
-                    // Non-durable and replica databases don't redo.
+                    // Non-stored and replica databases don't redo.
                     return false;
                 }
 

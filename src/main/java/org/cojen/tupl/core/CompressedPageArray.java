@@ -69,9 +69,8 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
         return mCompressorFactory.get();
     }
 
-    @Override
-    public boolean isDurable() {
-        return mDatabase.isDurable();
+    public boolean isCacheOnly() {
+        return mDatabase.isCacheOnly();
     }
 
     @Override
@@ -216,7 +215,7 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
 
     @Override
     public void syncPage(long index) throws IOException {
-        // This method is only called by DurablePageDb to finish a checkpoint, after writing
+        // This method is only called by StoredPageDb to finish a checkpoint, after writing
         // the new header page. Prior to writing the header page it calls the regular sync
         // method to ensure proper ordering of the writes. Because the underlying storage here
         // is another database instance, checkpointing achieves atomic durability, thus
@@ -242,7 +241,7 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
           header might reside in the cache only, and might not be in the underlying file
           yet. This race condition exists when a checkpoint is running concurrently.
 
-          One strategy is for DurablePageDb.commitHeader to hold mHeaderLatch while syncPage is
+          One strategy is for StoredPageDb.commitHeader to hold mHeaderLatch while syncPage is
           called, but this can stall the start of a snapshot for a long time waiting for the
           syncPage to finish. The syncPage method as implemented in this class performs a
           checkpoint of the underlying compressed database, which can take a long time.
@@ -268,7 +267,7 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
             try (var snapDb = launcher.open(false, null)) {
                 snapArray = new CompressedPageArray
                     (pageSize(), snapDb, snapDb.registry(), mCompressorFactory);
-                var snapPageDb = DurablePageDb.open(null, snapArray, null, false);
+                var snapPageDb = StoredPageDb.open(null, snapArray, null, false);
                 redoPos = snapPageDb.snapshotRedoPos();
             }
         }

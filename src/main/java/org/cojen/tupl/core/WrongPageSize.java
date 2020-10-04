@@ -20,7 +20,7 @@ package org.cojen.tupl.core;
 import org.cojen.tupl.DatabaseException;
 
 /**
- * Used by {@link DurablePageDb} to abort opening the database if misconfigured.
+ * Used by {@link StoredPageDb} to abort opening the database if misconfigured.
  *
  * @author Brian S O'Neill
  */

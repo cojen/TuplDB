@@ -59,14 +59,13 @@ import static org.cojen.tupl.core.Utils.*;
  * all changes to the last successful commit. All changes before the commit are still
  * stored in the file, allowing the interval between commits to be quite long.
  *
- * <p>Any exception thrown while performing an operation on the DurablePageDb
- * causes it to close. This prevents further damage if the in-memory state is
- * now inconsistent with the persistent state. The DurablePageDb must be
- * re-opened to restore to a clean state.
+ * <p>Any exception thrown while performing an operation on the StoredPageDb causes it to
+ * close. This prevents further damage if the in-memory state is now inconsistent with the
+ * persistent state. The StoredPageDb must be re-opened to restore to a clean state.
  *
  * @author Brian S O'Neill
  */
-final class DurablePageDb extends PageDb {
+final class StoredPageDb extends PageDb {
     /*
 
     Header format for first and second pages in file, which is always 512 bytes:
@@ -115,15 +114,15 @@ final class DurablePageDb extends PageDb {
      * @param debugListener optional
      * @param crypto optional
      */
-    static DurablePageDb open(EventListener debugListener,
-                              boolean explicitPageSize, int pageSize,
-                              File[] files, EnumSet<OpenOption> options,
-                              Crypto crypto, boolean destroy)
+    static StoredPageDb open(EventListener debugListener,
+                             boolean explicitPageSize, int pageSize,
+                             File[] files, EnumSet<OpenOption> options,
+                             Crypto crypto, boolean destroy)
         throws IOException
     {
         while (true) {
             try {
-                return new DurablePageDb
+                return new StoredPageDb
                     (debugListener,
                      openPageArray(pageSize, files, options),
                      crypto, destroy);
@@ -141,12 +140,12 @@ final class DurablePageDb extends PageDb {
      * @param debugListener optional
      * @param crypto optional
      */
-    static DurablePageDb open(EventListener debugListener,
-                              PageArray rawArray, Crypto crypto, boolean destroy)
+    static StoredPageDb open(EventListener debugListener,
+                             PageArray rawArray, Crypto crypto, boolean destroy)
         throws IOException
     {
         try {
-            return new DurablePageDb(debugListener, rawArray, crypto, destroy);
+            return new StoredPageDb(debugListener, rawArray, crypto, destroy);
         } catch (WrongPageSize e) {
             throw e.rethrow();
         }
@@ -196,9 +195,9 @@ final class DurablePageDb extends PageDb {
         }
     }
 
-    private DurablePageDb(final EventListener debugListener,
-                          final PageArray rawArray,
-                          final Crypto crypto, final boolean destroy)
+    private StoredPageDb(final EventListener debugListener,
+                         final PageArray rawArray,
+                         final Crypto crypto, final boolean destroy)
         throws IOException, WrongPageSize
     {
         mCrypto = crypto;
@@ -363,8 +362,11 @@ final class DurablePageDb extends PageDb {
     }
 
     @Override
-    public boolean isDurable() {
-        return mPageArray.isDurable();
+    boolean isCacheOnly() {
+        if (mPageArray.mSource instanceof CompressedPageArray) {
+            return ((CompressedPageArray) mPageArray.mSource).isCacheOnly();
+        }
+        return false;
     }
 
     @Override
@@ -710,7 +712,6 @@ final class DurablePageDb extends PageDb {
     /**
      * @see SnapshotPageArray#beginSnapshot
      */
-    @Override
     public Snapshot beginSnapshot(LocalDatabase db) throws IOException {
         if (mPageArray.mSource instanceof CompressedPageArray) {
             return ((CompressedPageArray) mPageArray.mSource).beginSnapshot();
@@ -934,7 +935,7 @@ final class DurablePageDb extends PageDb {
         }
 
         try {
-            return new DurablePageDb(null, pa, crypto, false);
+            return new StoredPageDb(null, pa, crypto, false);
         } catch (WrongPageSize e) {
             throw e.rethrow();
         }

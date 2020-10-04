@@ -28,17 +28,17 @@ import org.cojen.tupl.io.PageArray;
 import static org.cojen.tupl.core.PageQueue.*;
 
 /**
- * Used by {@link DurablePageDb} to scan all pages in a free list, directly decoding the data
+ * Used by {@link StoredPageDb} to scan all pages in a free list, directly decoding the data
  * structure starting from the header page.
  *
  * @author Brian S O'Neill
  */
 class PageQueueScanner {
     /**
-     * Scan all durable page ids in a page queue, passing them to the given consumer. Caller
+     * Scan all stored page ids in a page queue, passing them to the given consumer. Caller
      * must ensure that no changes are being made to the page queue.
      *
-     * @param array durable page array
+     * @param array stored page array
      * @param headerId typically 0 or 1
      * @param headerOffset offset into header where page queue is encoded
      * @param dst destination for scanned page ids

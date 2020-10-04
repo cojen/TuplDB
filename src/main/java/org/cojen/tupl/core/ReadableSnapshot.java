@@ -43,11 +43,6 @@ interface ReadableSnapshot extends Snapshot {
     default PageArray asPageArray() {
         return new PageArray(pageSize()) {
             @Override
-            public boolean isDurable() {
-                return false;
-            }
-
-            @Override
             public boolean isReadOnly() {
                 return true;
             }

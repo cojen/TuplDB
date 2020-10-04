@@ -30,7 +30,7 @@ import org.cojen.tupl.WriteFailureException;
 import org.cojen.tupl.io.PageArray;
 
 /**
- * Manages free and deleted pages for {@link DurablePageDb}.
+ * Manages free and deleted pages for {@link StoredPageDb}.
  *
  * @author Brian S O'Neill
  */

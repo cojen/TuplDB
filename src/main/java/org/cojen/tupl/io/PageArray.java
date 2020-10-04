@@ -58,8 +58,6 @@ public abstract class PageArray implements CauseCloseable {
         return false;
     }
 
-    public abstract boolean isDurable();
-
     public abstract boolean isReadOnly();
 
     public abstract boolean isEmpty() throws IOException;
