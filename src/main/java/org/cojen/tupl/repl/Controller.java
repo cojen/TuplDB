@@ -38,7 +38,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ThreadLocalRandom;
+
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.LongConsumer;
@@ -135,6 +137,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private volatile long mNextQueryTermTime = Long.MIN_VALUE;
 
     private volatile Consumer<byte[]> mControlMessageAcceptor;
+
+    private volatile Set<byte[]> mRegisteredControlMessages;
 
     // Incremented when snapshot senders are created, and decremented when they are closed.
     private int mSnapshotSessionCount;
@@ -1771,7 +1775,15 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 return;
             }
 
-            acceptor.accept(mGroupFile.proposeRemovePeer(CONTROL_OP_UNJOIN, peer.mMemberId, null));
+            byte[] message = mGroupFile.proposeRemovePeer(CONTROL_OP_UNJOIN, peer.mMemberId, null);
+
+            if (registerControlMessage(message)) {
+                try {
+                    acceptor.accept(message);
+                } finally {
+                    unregisterControlMessage(message);
+                }
+            }
         }
     }
 
@@ -1949,7 +1961,14 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
         }, JOIN_TIMEOUT_MILLIS);
 
-        acceptor.accept(message);
+        if (registerControlMessage(message)) {
+            try {
+                acceptor.accept(message);
+            } finally {
+                unregisterControlMessage(message);
+            }
+        }
+
         return true;
     }
 
@@ -2051,6 +2070,57 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
 
             mLastConflictReport = now;
+        }
+    }
+
+    /**
+     * Call this to prevent a flood of pending control messages which request the same thing.
+     * Latch must not be held by caller, but it might be acquired and released here.
+     *
+     * @return false if message is already registered, or is null
+     */
+    private boolean registerControlMessage(byte[] message) {
+        if (message == null) {
+            return false;
+        }
+
+        Set<byte[]> registered = mRegisteredControlMessages;
+
+        if (registered == null) {
+            acquireExclusive();
+            try {
+                registered = mRegisteredControlMessages;
+                if (registered == null) {
+                    mRegisteredControlMessages = registered =
+                        new ConcurrentSkipListSet<>(Arrays::compareUnsigned);
+                    registered.add(message);
+                    return true;
+                }
+            } finally {
+                releaseExclusive();
+            }
+        }
+
+        return registered.add(message);
+    }
+
+    /**
+     * Remove a message registered earlier. Latch must not be held by caller, but it might be
+     * acquired and released here.
+     */
+    private void unregisterControlMessage(byte[] message) {
+        Set<byte[]> registered = mRegisteredControlMessages;
+
+        if (registered != null) {
+            registered.remove(message);
+            if (registered.isEmpty()) {
+                acquireShared();
+                if (registered == mRegisteredControlMessages && registered.isEmpty()) {
+                    // No harm if multiple threads clear this field concurrently.
+                    mRegisteredControlMessages = null;
+                }
+                releaseShared();
+            }
         }
     }
 
@@ -2927,8 +2997,16 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             releaseShared();
         }
 
-        if (message != null) {
-            acceptor.accept(message);
+        if (registerControlMessage(message)) {
+            // The acceptor can block, so call it in a separate thread.
+            final byte[] fmessage = message;
+            mScheduler.execute(() -> {
+                try {
+                    acceptor.accept(fmessage);
+                } finally {
+                    unregisterControlMessage(fmessage);
+                }
+            });
         }
 
         from.updateRoleReply(null, groupVersion, memberId, result);
