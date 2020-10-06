@@ -32,6 +32,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.RandomAccessFile;
+
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
@@ -77,6 +81,18 @@ final class GroupFile extends Latch {
       3421928112176343799 = localhost/127.0.0.1:5678 | STANDBY
 
     */
+
+    private static final VarHandle cLocalMemberRoleHandle;
+
+    static {
+        try {
+            cLocalMemberRoleHandle =
+                MethodHandles.lookup().findVarHandle
+                (GroupFile.class, "mLocalMemberRole", Role.class);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
+    }
 
     private final BiConsumer<Level, String> mEventListener;
     private final File mFile;
@@ -383,6 +399,13 @@ final class GroupFile extends Latch {
         Role role = mLocalMemberRole;
         releaseShared();
         return role;
+    }
+
+    /**
+     * @return local member role without waiting for a latch; can return null
+     */
+    public Role localMemberRoleOpaque() {
+        return (Role) cLocalMemberRoleHandle.getOpaque(this);
     }
 
     /**

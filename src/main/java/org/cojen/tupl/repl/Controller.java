@@ -19,9 +19,6 @@ package org.cojen.tupl.repl;
 
 import static java.lang.System.Logger.Level;
 
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
-
 import java.io.File;
 import java.io.InputStream;
 import java.io.InterruptedIOException;
@@ -91,18 +88,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     private static final byte[] EMPTY_DATA = new byte[0];
 
-    private static final VarHandle cLocalRoleHandle;
-
-    static {
-        try {
-            cLocalRoleHandle =
-                MethodHandles.lookup().findVarHandle
-                (Controller.class, "mLocalRole", Role.class);
-        } catch (Throwable e) {
-            throw Utils.rethrow(e);
-        }
-    }
-
     private final BiConsumer<Level, String> mEventListener;
     private final Scheduler mScheduler;
     private final ChannelManager mChanMan;
@@ -115,7 +100,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private GroupFile mGroupFile;
 
     // Local role as desired, which might not initially match what the GroupFile says.
-    private Role mLocalRole;
+    private Role mDesiredRole;
 
     // Normal and standby members are required to participate in consensus.
     private Peer[] mConsensusPeers;
@@ -221,7 +206,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     {
         acquireExclusive();
         try {
-            mLocalRole = localRole;
+            mDesiredRole = localRole;
 
             if (mGroupFile == null) {
                 // Need to join the group.
@@ -328,7 +313,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                  mProxyWrites ? mProxyChannels : null);
         }
 
-        if (mLocalMode != MODE_FOLLOWER && mGroupFile.localMemberRole() != Role.NORMAL) {
+        if (mLocalMode != MODE_FOLLOWER && localMemberRole() != Role.NORMAL) {
             // Step down as leader or candidate.
             toFollower("local role changed");
         }
@@ -420,13 +405,48 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         if (receiver == null) {
             acquireShared();
-            boolean roleChange = mGroupFile.localMemberRole() != mLocalRole;
+            Role desiredRole = desiredRole();
             releaseShared();
 
-            if (roleChange) {
+            if (desiredRole != null) {
                 mScheduler.execute(this::roleChangeTask);
             }
         }
+    }
+
+    /**
+     * Caller must hold exclusive or shared latch. Returns null if no role change is requested.
+     */
+    private Role desiredRole() {
+        if (mDesiredRole != null) {
+            if (localMemberRole() != mDesiredRole) {
+                return mDesiredRole;
+            }
+            // Clearing it with only a shared latch is fine because it's never set again.
+            mDesiredRole = null;
+        }
+        return null;
+    }
+
+    private void roleChangeTask() {
+        acquireShared();
+        Role desiredRole = desiredRole();
+        if (desiredRole == null) {
+            releaseShared();
+            return;
+        }
+        long groupVersion = mGroupFile.version();
+        long localMemberId = mGroupFile.localMemberId();
+        releaseShared();
+
+        Channel requestChannel = leaderRequestChannel();
+
+        if (requestChannel != null) {
+            requestChannel.updateRole(this, groupVersion, localMemberId, desiredRole);
+        }
+
+        // Check again later.
+        mScheduler.schedule(this::roleChangeTask, ELECTION_DELAY_LOW_MILLIS);
     }
 
     @Override
@@ -446,7 +466,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             if (mLeaderLogWriter != null
                 && position >= mLeaderLogWriter.termStartPosition()
                 && position < mLeaderLogWriter.termEndPosition()
-                && mLocalRole != Role.STANDBY)
+                && localMemberRole() != Role.STANDBY)
             {
                 reader = null;
             } else {
@@ -491,7 +511,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
             if (mLeaderLogWriter == null
                 || (position >= 0 && position < mLeaderLogWriter.position())
-                || mLocalRole == Role.STANDBY)
+                || localMemberRole() == Role.STANDBY)
             {
                 return null;
             }
@@ -655,7 +675,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
             // If already a replica return true. If an interim leader, also return true because
             // new writes cannot be accepted. Externally, it's acting like a replica.
-            if (mLocalMode == MODE_FOLLOWER || mLocalRole == Role.STANDBY) {
+            if (mLocalMode == MODE_FOLLOWER || localMemberRole() == Role.STANDBY) {
                 return true;
             }
 
@@ -744,9 +764,14 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     @Override
     public Role localRole() {
         acquireShared();
-        Role role = mGroupFile.localMemberRole();
+        Role role = localMemberRole();
         releaseShared();
         return role;
+    }
+
+    // Caller must hold exclusive or shared latch.
+    private Role localMemberRole() {
+        return mGroupFile.localMemberRole();
     }
 
     @Override
@@ -772,12 +797,15 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 // Unknown message type.
                 return;
             case CONTROL_OP_JOIN:
+                // Counterpart to GroupFile.proposeJoin.
                 refresh = mGroupFile.applyJoin(position, message) != null;
                 break;
             case CONTROL_OP_UPDATE_ROLE:
+                // Counterpart to GroupFile.proposeUpdateRole.
                 refresh = mGroupFile.applyUpdateRole(message);
                 break;
             case CONTROL_OP_UNJOIN:
+                // Counterpart to GroupFile.proposeRemovePeer.
                 refresh = mGroupFile.applyRemovePeer(message);
                 break;
             }
@@ -1313,7 +1341,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
             if (collector.mSize <= 0) {
                 acquireShared();
-                Role local = mLocalRole;
+                Role local = localMemberRole();
                 Channel leader = mLeaderReplyChannel;
                 releaseShared();
                 if (local == Role.NORMAL && leader != null
@@ -1441,7 +1469,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             mElectionValidated--;
 
             if (mElectionValidated >= 0
-                || !isCandidate(mGroupFile.localMemberRole())
+                || !isCandidate(localMemberRole())
                 || (peerChannels = mCandidateChannels).length <= 0)
             {
                 releaseExclusive();
@@ -1476,7 +1504,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 toFollower("election timed out");
             }
 
-            if (!isCandidate(mGroupFile.localMemberRole())) {
+            if (!isCandidate(localMemberRole())) {
                 // Only NORMAL/STANDBY members can become candidates.
                 releaseExclusive();
                 return;
@@ -1538,7 +1566,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             releaseExclusive();
 
             var b = new StringBuilder().append("Local member is ");
-            if (mLocalRole == Role.STANDBY) {
+            if (localMemberRole() == Role.STANDBY) {
                 b.append("an interim ");
             } else {
                 b.append("a ");
@@ -1656,7 +1684,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
             var b = new StringBuilder("Local member ");
 
-            if (mLocalRole == Role.STANDBY) {
+            if (localMemberRole() == Role.STANDBY) {
                 b.append("interim ");
             }
 
@@ -1825,6 +1853,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 // Join is accepted, so reply with the log position info and the group
                 // file. The position is immediately after the control message.
 
+                // Note: This callback is invoked with the GroupFile shared latch held.
+
                 try {
                     if (gfIn == null) {
                         out.write(new byte[] {
@@ -1884,6 +1914,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         case GroupJoiner.OP_UNJOIN_MEMBER:
             message = mGroupFile.proposeRemovePeer(CONTROL_OP_UNJOIN, memberId, success -> {
+                // Note: This callback is invoked without any GroupFile latch.
+
                 try {
                     byte[] reply;
 
@@ -1924,27 +1956,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private static boolean joinFailure(Socket s, byte errorCode) throws IOException {
         s.getOutputStream().write(new byte[] {GroupJoiner.OP_ERROR, errorCode});
         return false;
-    }
-
-    private void roleChangeTask() {
-        acquireShared();
-        Role desiredRole = mLocalRole;
-        if (desiredRole == mGroupFile.localMemberRole()) {
-            releaseShared();
-            return;
-        }
-        long groupVersion = mGroupFile.version();
-        long localMemberId = mGroupFile.localMemberId();
-        releaseShared();
-
-        Channel requestChannel = leaderRequestChannel();
-
-        if (requestChannel != null) {
-            requestChannel.updateRole(this, groupVersion, localMemberId, desiredRole);
-        }
-
-        // Check again later.
-        mScheduler.schedule(this::roleChangeTask, ELECTION_DELAY_LOW_MILLIS);
     }
 
     /**
@@ -2101,7 +2112,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         LogInfo info = mStateLog.captureHighest();
         return term < info.mTerm || (term == info.mTerm && position < info.mHighestPosition)
             // Don't elect an interim leader if it's at the same position.
-            || (mLocalRole == Role.NORMAL && from.peer().role() == Role.STANDBY
+            || (localMemberRole() == Role.NORMAL && from.peer().role() == Role.STANDBY
                 && position <= info.mHighestPosition);
     }
 
@@ -2153,7 +2164,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private void toLeader(long term, long position) {
         try {
             var b = new StringBuilder().append("Local member is ");
-            if (mLocalRole == Role.STANDBY) {
+            if (localMemberRole() == Role.STANDBY) {
                 b.append("an interim ");
             } else {
                 b.append("the ");
@@ -2515,7 +2526,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             uncaught(e);
         }
 
-        if (from != null && ((Role) cLocalRoleHandle.getOpaque(this)).providesConsensus()) {
+        if (from != null && mGroupFile.localMemberRoleOpaque().providesConsensus()) {
             // TODO: Can skip reply if successful and highest didn't change.
             from.writeDataReply(null, term, highestPosition);
         }
@@ -2934,9 +2945,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         if (result != ErrorCodes.SUCCESS) {
             acquireShared();
-            boolean ok = mLocalRole == mGroupFile.localMemberRole();
+            Role desiredRole = desiredRole();
             releaseShared();
-            if (!ok && (result != ErrorCodes.VERSION_MISMATCH || !versionOk)) {
+            if (desiredRole != null && (result != ErrorCodes.VERSION_MISMATCH || !versionOk)) {
                 event(ErrorCodes.levelFor(result),
                       "Unable to update role: " + ErrorCodes.toString(result));
             }
