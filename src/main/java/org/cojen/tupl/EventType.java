@@ -85,6 +85,9 @@ public enum EventType {
     /** Signals the end of a checkpoint, reporting the duration. */
     CHECKPOINT_COMPLETE(Category.CHECKPOINT, Level.INFO),
 
+    /** @see DatabaseConfig#cleanShutdown */
+    SHUTDOWN_CLEAN(Category.SHUTDOWN, Level.INFO),
+
     /** Signals that an unhandled exception has occurred, and the database must be shutdown. */
     PANIC_UNHANDLED_EXCEPTION(Category.PANIC, Level.ERROR);
 
@@ -119,6 +122,9 @@ public enum EventType {
 
         /** Checkpoints commit transactional and non-transactional changes to the main database. */
         CHECKPOINT,
+
+        /** Category for clean shutdown operations. */
+        SHUTDOWN,
 
         /** A panic indicates that something is wrong with the database and it must be shutdown. */
         PANIC;

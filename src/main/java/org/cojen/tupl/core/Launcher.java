@@ -85,6 +85,7 @@ public final class Launcher implements Cloneable {
     int mPageSize;
     Boolean mDirectPageAccess;
     boolean mCachePriming;
+    boolean mCleanShutdown;
     ReplicatorConfig mReplConfig;
     StreamReplicator mRepl;
     int mMaxReplicaThreads;
@@ -230,6 +231,10 @@ public final class Launcher implements Cloneable {
 
     public void cachePriming(boolean priming) {
         mCachePriming = priming;
+    }
+
+    public void cleanShutdown(boolean shutdown) {
+        mCleanShutdown = shutdown;
     }
 
     public void replicate(ReplicatorConfig config) {
@@ -454,6 +459,7 @@ public final class Launcher implements Cloneable {
             subLauncher.checkpointRate(-1, null);
             subLauncher.eventListener(null);
             subLauncher.cachePriming(false);
+            subLauncher.cleanShutdown(false);
             subLauncher.replicate((StreamReplicator) null);
             subLauncher.compress(0, 0, null);
             subLauncher.customHandlers(null);

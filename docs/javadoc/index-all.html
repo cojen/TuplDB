@@ -278,7 +278,7 @@ loadScripts(document, 'script');</script>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#cachePriming(boolean)">cachePriming(boolean)</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
 <dd>
 <div class="block">Enable automatic cache priming, which writes a priming set into a special file when the
- database is cleanly shutdown.</div>
+ process is cleanly shutdown.</div>
 </dd>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#cacheSize(long)">cacheSize(long)</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
 <dd>
@@ -370,6 +370,10 @@ loadScripts(document, 'script');</script>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html#%3Cinit%3E(javax.crypto.SecretKey,int)">CipherCrypto(SecretKey, int)</a></span> - Constructor for class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>
 <div class="block">Construct with an existing key, although additional keys might need to be generated.</div>
+</dd>
+<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#cleanShutdown(boolean)">cleanShutdown(boolean)</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
+<dd>
+<div class="block">When the process is cleanly shutdown, attempt to issue a full database shutdown.</div>
 </dd>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html#clear()">clear()</a></span> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>
 <dd>
@@ -2988,6 +2992,12 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Opens a database and then calls <a href="org.cojen.tupl/org/cojen/tupl/Database.html#shutdown()"><code>shutdown</code></a>.</div>
 </dd>
+<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/EventType.Category.html#SHUTDOWN">SHUTDOWN</a></span> - org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/EventType.Category.html" title="enum in org.cojen.tupl">EventType.Category</a></dt>
+<dd>
+<div class="block">Category for clean shutdown operations.</div>
+</dd>
+<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/EventType.html#SHUTDOWN_CLEAN">SHUTDOWN_CLEAN</a></span> - org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/EventType.html" title="enum in org.cojen.tupl">EventType</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/util/Runner.html#shutdownNow()">shutdownNow()</a></span> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/Runner.html" title="class in org.cojen.tupl.util">Runner</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html#signal(org.cojen.tupl.util.Latch)">signal(Latch)</a></span> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>

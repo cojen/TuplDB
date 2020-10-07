@@ -942,8 +942,17 @@ public final class LocalDatabase extends CoreDatabase {
             applyCachePrimer(launcher);
         }
 
-        if (launcher.mCachePriming && !isCacheOnly() && !mReadOnly) {
-            mCheckpointer.register(new ShutdownPrimer(this));
+        if (!isCacheOnly() && !mReadOnly) {
+            int mode = 0;
+            if (launcher.mCachePriming) {
+                mode |= 1;
+            }
+            if (launcher.mCleanShutdown) {
+                mode |= 2;
+            }
+            if (mode != 0) {
+                mCheckpointer.register(new ShutdownPrimer(this, mode));
+            }
         }
 
         BTree trashed = openNextTrashedTree(null);
@@ -1094,8 +1103,14 @@ public final class LocalDatabase extends CoreDatabase {
     }
 
     static class ShutdownPrimer extends ShutdownHook.Weak<LocalDatabase> {
-        ShutdownPrimer(LocalDatabase db) {
+        private final int mMode;
+
+        /**
+         * @param mode bit 0: write primer file,  bit 1: call shutdown()
+         */
+        ShutdownPrimer(LocalDatabase db, int mode) {
             super(db);
+            mMode = mode;
         }
 
         @Override
@@ -1104,20 +1119,35 @@ public final class LocalDatabase extends CoreDatabase {
                 return;
             }
 
-            File primer = db.primerFile();
+            if ((mMode & 1) != 0) {
+                File primer = db.primerFile();
 
-            FileOutputStream fout;
-            try {
-                fout = new FileOutputStream(primer);
+                FileOutputStream fout;
                 try {
-                    try (var bout = new BufferedOutputStream(fout)) {
-                        db.createCachePrimer(bout);
+                    fout = new FileOutputStream(primer);
+                    try {
+                        try (var bout = new BufferedOutputStream(fout)) {
+                            db.createCachePrimer(bout);
+                        }
+                    } catch (IOException e) {
+                        fout.close();
+                        primer.delete();
                     }
                 } catch (IOException e) {
-                    fout.close();
-                    primer.delete();
+                    // Ignore.
                 }
-            } catch (IOException e) {
+            }
+
+            if ((mMode & 2) != 0) {
+                if (db.mEventListener != null) {
+                    db.mEventListener.notify
+                        (EventType.SHUTDOWN_CLEAN, "Database is cleanly shutting down");
+                }
+                try {
+                    db.shutdown();
+                } catch (IOException e) {
+                    // Ignore.
+                }
             }
         }
     }

@@ -301,13 +301,23 @@ public class DatabaseConfig implements Cloneable {
 
     /**
      * Enable automatic cache priming, which writes a priming set into a special file when the
-     * database is cleanly shutdown. When opened again, the priming set is applied and the file
+     * process is cleanly shutdown. When opened again, the priming set is applied and the file
      * is deleted. Option has no effect if database is non-durable.
      *
      * @see Database#createCachePrimer
      */
     public DatabaseConfig cachePriming(boolean priming) {
         mLauncher.cachePriming(priming);
+        return this;
+    }
+
+    /**
+     * When the process is cleanly shutdown, attempt to issue a full database shutdown. This
+     * ensures full durability of all modifications. Setting this option prevents the process
+     * from exiting until a final checkpoint completes.
+     */
+    public DatabaseConfig cleanShutdown(boolean shutdown) {
+        mLauncher.cleanShutdown(shutdown);
         return this;
     }
 
