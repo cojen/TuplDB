@@ -57,6 +57,10 @@ final class KeyOnlyCursor extends WrappedCursor {
 
     @Override
     public InputStream newValueInputStream(long pos) throws IOException {
+        if (pos < 0) {
+            throw new IllegalArgumentException();
+        }
+
         return new InputStream() {
             @Override
             public int read() throws IOException {

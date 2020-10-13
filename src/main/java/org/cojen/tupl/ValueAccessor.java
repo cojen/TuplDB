@@ -67,7 +67,7 @@ public interface ValueAccessor extends Closeable {
      * @param len requested amount to read
      * @return actual amount read, which is less than requested only if the end was reached, or
      * -1 if the value doesn't exist
-     * @throws IllegalArgumentException if position is negative
+     * @throws IllegalArgumentException if the position is negative
      * @throws IndexOutOfBoundsException
      * @throws IllegalStateException if closed
      */
@@ -81,7 +81,7 @@ public interface ValueAccessor extends Closeable {
      * @param buf buffer to write from
      * @param off buffer start offset
      * @param len amount to write
-     * @throws IllegalArgumentException if position is negative
+     * @throws IllegalArgumentException if the position is negative
      * @throws IndexOutOfBoundsException
      * @throws IllegalStateException if closed
      * @throws IllegalUpgradeException if not locked for writing
@@ -94,7 +94,7 @@ public interface ValueAccessor extends Closeable {
      *
      * @param pos start position to clear from
      * @param length amount to clear
-     * @throws IllegalArgumentException if position or length is negative
+     * @throws IllegalArgumentException if the position or length is negative
      * @throws IllegalStateException if closed
      * @throws IllegalUpgradeException if not locked for writing
      */
@@ -111,7 +111,7 @@ public interface ValueAccessor extends Closeable {
      *
      * @param pos start position to read from
      * @return buffered unsynchronized InputStream
-     * @throws IllegalArgumentException if position is negative
+     * @throws IllegalArgumentException if the position is negative
      */
     public InputStream newValueInputStream(long pos) throws IOException;
 
@@ -127,7 +127,7 @@ public interface ValueAccessor extends Closeable {
      * @param pos start position to read from
      * @param bufferSize requested buffer size; actual size may differ
      * @return buffered unsynchronized InputStream
-     * @throws IllegalArgumentException if position is negative
+     * @throws IllegalArgumentException if the position is negative
      * @throws IllegalStateException if closed
      */
     public InputStream newValueInputStream(long pos, int bufferSize) throws IOException;
@@ -139,7 +139,7 @@ public interface ValueAccessor extends Closeable {
      *
      * @param pos start position to write to
      * @return buffered unsynchronized OutputStream
-     * @throws IllegalArgumentException if position is negative
+     * @throws IllegalArgumentException if the position is negative
      * @throws IllegalStateException if closed
      */
     public OutputStream newValueOutputStream(long pos) throws IOException;
@@ -152,7 +152,7 @@ public interface ValueAccessor extends Closeable {
      * @param pos start position to write to
      * @param bufferSize requested buffer size; actual size may differ
      * @return buffered unsynchronized OutputStream
-     * @throws IllegalArgumentException if position is negative
+     * @throws IllegalArgumentException if the position is negative
      * @throws IllegalStateException if closed
      */
     public OutputStream newValueOutputStream(long pos, int bufferSize) throws IOException;
