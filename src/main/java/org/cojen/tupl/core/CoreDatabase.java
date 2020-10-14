@@ -32,6 +32,8 @@ import org.cojen.tupl.EventListener;
  * @author Brian S O'Neill
  */
 abstract class CoreDatabase implements Database {
+    abstract boolean isDirectPageAccess();
+
     abstract boolean isCacheOnly();
 
     abstract boolean isReadOnly();

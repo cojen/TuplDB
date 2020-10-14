@@ -5747,6 +5747,15 @@ public final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
+    boolean isDirectPageAccess() {
+        /*P*/ // [
+        return false;
+        /*P*/ // |
+        /*P*/ // return true;
+        /*P*/ // ]
+    }
+
+    @Override
     boolean isCacheOnly() {
         return mPageDb.isCacheOnly();
     }

@@ -362,6 +362,9 @@ final class SnapshotPageArray extends PageArray {
             var launcher = new Launcher();
             launcher.pageSize(pageSize);
             launcher.minCacheSize(pageSize * Math.max(100, slots * 16));
+            if (nodeCache != null) {
+                launcher.directPageAccess(nodeCache.isDirectPageAccess());
+            }
             mPageCopyIndex = LocalDatabase.openTemp(tfm, launcher);
             mTempFile = launcher.mBaseFile;
 
