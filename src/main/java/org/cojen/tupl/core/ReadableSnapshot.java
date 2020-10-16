@@ -37,8 +37,12 @@ interface ReadableSnapshot extends Snapshot {
 
     void readPage(long index, byte[] dst, int offset, int length) throws IOException;
 
+    void readPage(long index, long dstPtr, int offset, int length) throws IOException;
+
     /**
-     * Returns a PageArray view which when closed doesn't close the underlying snapshot.
+     * Returns a PageArray view which when closed doesn't close the underlying snapshot. Is
+     * only valid before writing the snapshot begins, since it will delete copied pages as it
+     * goes.
      */
     default PageArray asPageArray() {
         return new PageArray(pageSize()) {
@@ -72,6 +76,13 @@ interface ReadableSnapshot extends Snapshot {
                 throws IOException
             {
                 ReadableSnapshot.this.readPage(index, dst, offset, length);
+            }
+
+            @Override
+            public void readPage(long index, long dstPtr, int offset, int length)
+                throws IOException
+            {
+                ReadableSnapshot.this.readPage(index, dstPtr, offset, length);
             }
 
             @Override

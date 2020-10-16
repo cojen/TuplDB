@@ -611,5 +611,27 @@ final class SnapshotPageArray extends PageArray {
                 txn.reset();
             }
         }
+
+        // Defined by ReadableSnapshot.
+        @Override
+        public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
+            var txn = mPageCopyIndex.mDatabase.threadLocalTransaction(DurabilityMode.NO_REDO);
+            try {
+                txn.lockMode(LockMode.REPEATABLE_READ);
+                var key = new byte[8];
+                encodeLongBE(key, 0, index);
+
+                byte[] page = mPageCopyIndex.load(txn, key);
+
+                if (page != null) {
+                    DirectPageOps.p_copyFromArray(page, 0, dstPtr, offset, length);
+                } else {
+                    // FIXME: Check the cache first as an optimization?
+                    mRawPageArray.readPage(index, dstPtr, offset, length);
+                }
+            } finally {
+                txn.reset();
+            }
+        }
     }
 }
