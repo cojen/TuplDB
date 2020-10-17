@@ -144,10 +144,11 @@ final class Lock {
         }
 
         if (w >= 1) {
+            // After consuming one signal, next shared waiter must be signaled, and so on. Do
+            // this before calling addSharedLocker, in case it throws an exception.
+            queueSX.signalShared(latch);
             addSharedLocker(mLockCount, locker);
             locker.mWaitingFor = null;
-            // After consuming one signal, next shared waiter must be signaled, and so on.
-            queueSX.signalShared(latch);
             return ACQUIRED;
         } else if (w == 0) {
             return TIMED_OUT_LOCK;
