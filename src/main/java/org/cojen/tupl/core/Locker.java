@@ -21,6 +21,8 @@ import java.lang.ref.WeakReference;
 
 import java.util.concurrent.ThreadLocalRandom;
 
+import java.util.function.Consumer;
+
 import org.cojen.tupl.DeadlockException;
 import org.cojen.tupl.IllegalUpgradeException;
 import org.cojen.tupl.LockFailureException;
@@ -341,6 +343,39 @@ class Locker implements DatabaseAccess { // weak access to database
         throws LockFailureException
     {
         return doLock(TYPE_EXCLUSIVE, indexId, key, hash, nanosTimeout);
+    }
+
+    final void doUponLockShared(long indexId, byte[] key, Consumer<LockResult> cont) {
+        doUponLock(TYPE_SHARED, indexId, key, hash(indexId, key), cont);
+    }
+
+    final void doUponLockShared(long indexId, byte[] key, int hash, Consumer<LockResult> cont) {
+        doUponLock(TYPE_SHARED, indexId, key, hash, cont);
+    }
+
+    final void doUponLockUpgradable(long indexId, byte[] key, Consumer<LockResult> cont) {
+        doUponLock(TYPE_UPGRADABLE, indexId, key, hash(indexId, key), cont);
+    }
+
+    final void doUponLockUpgradable(long indexId, byte[] key, int hash, Consumer<LockResult> cont) {
+        doUponLock(TYPE_UPGRADABLE, indexId, key, hash, cont);
+    }
+
+    final void doUponLockExclusive(long indexId, byte[] key, Consumer<LockResult> cont) {
+        doUponLock(TYPE_EXCLUSIVE, indexId, key, hash(indexId, key), cont);
+    }
+
+    final void doUponLockExclusive(long indexId, byte[] key, int hash, Consumer<LockResult> cont) {
+        doUponLock(TYPE_EXCLUSIVE, indexId, key, hash, cont);
+    }
+
+    /**
+     * @param lockType TYPE_SHARED, TYPE_UPGRADABLE, or TYPE_EXCLUSIVE
+     */
+    final void doUponLock(int lockType, long indexId, byte[] key, int hash,
+                          Consumer<LockResult> cont)
+    {
+        manager().getLockHT(hash).uponLock(lockType, this, indexId, key, hash, cont);
     }
 
     /**

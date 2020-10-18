@@ -21,6 +21,8 @@ import java.io.IOException;
 
 import java.util.concurrent.TimeUnit;
 
+import java.util.function.Consumer;
+
 import org.cojen.tupl.ConfirmationInterruptedException;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
@@ -908,22 +910,41 @@ public final class LocalTransaction extends Locker implements Transaction {
     public final LockResult lockExclusive(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
     {
-        return logLock(doLockExclusive(indexId, key, nanosTimeout),
-                       UndoLog.OP_LOCK_EXCLUSIVE, OP_TXN_LOCK_EXCLUSIVE, indexId, key);
+        return logExclusiveLock(doLockExclusive(indexId, key, nanosTimeout), indexId, key);
     }
 
     @Override
     public final LockResult tryLockExclusive(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
     {
-        return logLock(doTryLockExclusive(indexId, key, nanosTimeout),
-                       UndoLog.OP_LOCK_EXCLUSIVE, OP_TXN_LOCK_EXCLUSIVE, indexId, key);
+        return logExclusiveLock(doTryLockExclusive(indexId, key, nanosTimeout), indexId, key);
     }
 
-    private LockResult logLock(LockResult result, byte undoOp, byte redoOp,
-                               long indexId, byte[] key)
-        throws LockFailureException
+    @Override
+    public void uponLockShared(long indexId, byte[] key, Consumer<LockResult> cont) {
+        doUponLockShared(indexId, key, cont);
+    }
 
+    @Override
+    public void uponLockUpgradable(long indexId, byte[] key, Consumer<LockResult> cont) {
+        doUponLockUpgradable(indexId, key, cont);
+    }
+
+    @Override
+    public void uponLockExclusive(long indexId, byte[] key, Consumer<LockResult> cont) {
+        doUponLockExclusive(indexId, key, result -> {
+            try {
+                logExclusiveLock(result, indexId, key);
+            } catch (LockFailureException e) {
+                uncaught(e);
+                result = LockResult.INTERRUPTED;
+            }
+            cont.accept(result);
+        });
+    }
+
+    private LockResult logExclusiveLock(LockResult result, long indexId, byte[] key)
+        throws LockFailureException
     {
         if (!result.isAcquired()) {
             return result;
@@ -934,7 +955,7 @@ public final class LocalTransaction extends Locker implements Transaction {
 
             final CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
             try {
-                undoLog().pushLock(undoOp, indexId, key);
+                undoLog().pushLock(UndoLog.OP_LOCK_EXCLUSIVE, indexId, key);
             } catch (Throwable e) {
                 borked(e);
             } finally {
@@ -958,7 +979,7 @@ public final class LocalTransaction extends Locker implements Transaction {
                     mHasState = hasState | HAS_SCOPE;
                 }
 
-                mContext.redoLock(mRedo, redoOp, txnId, indexId, key);
+                mContext.redoLock(mRedo, OP_TXN_LOCK_EXCLUSIVE, txnId, indexId, key);
             }
         } catch (Throwable e) {
             if (e instanceof UnmodifiableReplicaException || mDatabase.isClosed()) {

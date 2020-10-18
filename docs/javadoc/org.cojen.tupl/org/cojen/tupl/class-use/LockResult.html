@@ -457,6 +457,50 @@ the order they are declared.</div>
 </tbody>
 </table>
 </div>
+<div class="use-summary">
+<table class="summary-table">
+<caption><span>Method parameters in <a href="../package-summary.html">org.cojen.tupl</a> with type arguments of type <a href="../LockResult.html" title="enum in org.cojen.tupl">LockResult</a></span></caption>
+<thead>
+<tr>
+<th class="col-first" scope="col">Modifier and Type</th>
+<th class="col-second" scope="col">Method</th>
+<th class="col-last" scope="col">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="alt-color">
+<td class="col-first"><code>void</code></td>
+<th class="col-second" scope="row"><span class="type-name-label">Transaction.</span><code><span class="member-name-link"><a href="../Transaction.html#uponLockExclusive(long,byte%5B%5D,java.util.function.Consumer)">uponLockExclusive</a></span>&#8203;(long&nbsp;indexId,
+byte[]&nbsp;key,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;<a href="../LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&gt;&nbsp;cont)</code></th>
+<td class="col-last">
+<div class="block">Asynchronously attempts to acquire an exclusive lock for the given key, denying any
+ additional locks.</div>
+</td>
+</tr>
+<tr class="row-color">
+<td class="col-first"><code>void</code></td>
+<th class="col-second" scope="row"><span class="type-name-label">Transaction.</span><code><span class="member-name-link"><a href="../Transaction.html#uponLockShared(long,byte%5B%5D,java.util.function.Consumer)">uponLockShared</a></span>&#8203;(long&nbsp;indexId,
+byte[]&nbsp;key,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;<a href="../LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&gt;&nbsp;cont)</code></th>
+<td class="col-last">
+<div class="block">Asynchronously attempts to acquire a shared lock for the given key, denying exclusive
+ locks.</div>
+</td>
+</tr>
+<tr class="alt-color">
+<td class="col-first"><code>void</code></td>
+<th class="col-second" scope="row"><span class="type-name-label">Transaction.</span><code><span class="member-name-link"><a href="../Transaction.html#uponLockUpgradable(long,byte%5B%5D,java.util.function.Consumer)">uponLockUpgradable</a></span>&#8203;(long&nbsp;indexId,
+byte[]&nbsp;key,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;<a href="../LockResult.html" title="enum in org.cojen.tupl">LockResult</a>&gt;&nbsp;cont)</code></th>
+<td class="col-last">
+<div class="block">Asynchronously attempts to acquire an upgrade lock for the given key, denying exclusive
+ and additional upgradable locks.</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
 </section>
 </li>
 </ul>

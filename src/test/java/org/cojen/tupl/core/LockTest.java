@@ -31,6 +31,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.*;
@@ -2507,6 +2508,315 @@ public class LockTest {
 
         for (String strKey : toss) {
             assertEquals(UNOWNED, locker.lockCheck(0, key(strKey)));
+        }
+    }
+
+    @Test
+    public void uponLockShared() throws Throwable {
+        Thread main = Thread.currentThread();
+        var locker = new Locker(mManager);
+        var ex = new AtomicReference<Throwable>();
+        var count = new AtomicInteger();
+
+        // Quick cases...
+
+        locker.doUponLockShared(0, k1, result -> {
+            try {
+                assertNotEquals(main, Thread.currentThread());
+                assertEquals(ACQUIRED, result);
+                assertEquals(OWNED_SHARED, locker.lockCheck(0, k1));
+                count.getAndIncrement();
+            } catch (Throwable e) {
+                ex.set(e);
+            }
+        });
+
+        waitForCount(count, 1);
+
+        if (ex.get() != null) {
+            throw ex.get();
+        }
+
+        locker.doUponLockShared(0, k1, result -> {
+            try {
+                assertNotEquals(main, Thread.currentThread());
+                assertEquals(OWNED_SHARED, result);
+                assertEquals(OWNED_SHARED, locker.lockCheck(0, k1));
+                count.getAndIncrement();
+            } catch (Throwable e) {
+                ex.set(e);
+            }
+        });
+
+        waitForCount(count, 2);
+
+        if (ex.get() != null) {
+            throw ex.get();
+        }
+
+        locker.scopeUnlockAll();
+        assertEquals(ACQUIRED, locker.doTryLockExclusive(0, k1, -1));
+
+        locker.doUponLockShared(0, k1, result -> {
+            try {
+                assertNotEquals(main, Thread.currentThread());
+                assertEquals(OWNED_EXCLUSIVE, result);
+                assertEquals(OWNED_EXCLUSIVE, locker.lockCheck(0, k1));
+                count.getAndIncrement();
+            } catch (Throwable e) {
+                ex.set(e);
+            }
+        });
+
+        waitForCount(count, 3);
+
+        if (ex.get() != null) {
+            throw ex.get();
+        }
+
+        // Slow cases... (locker still holds exclusive lock)
+
+        var locker2 = new Locker(mManager);
+        var locker3 = new Locker(mManager);
+
+        locker2.doUponLockShared(0, k1, result -> {
+            try {
+                assertNotEquals(main, Thread.currentThread());
+                assertEquals(ACQUIRED, result);
+                assertEquals(OWNED_SHARED, locker2.lockCheck(0, k1));
+                count.getAndIncrement();
+            } catch (Throwable e) {
+                ex.set(e);
+            }
+        });
+
+        locker3.doUponLockShared(0, k1, result -> {
+            try {
+                assertNotEquals(main, Thread.currentThread());
+                assertEquals(ACQUIRED, result);
+                assertEquals(OWNED_SHARED, locker3.lockCheck(0, k1));
+                count.getAndIncrement();
+            } catch (Throwable e) {
+                ex.set(e);
+            }
+        });
+
+        locker.scopeUnlockAll();
+
+        waitForCount(count, 5);
+
+        if (ex.get() != null) {
+            throw ex.get();
+        }
+    }
+
+    private static void waitForCount(AtomicInteger count, int expect) {
+        for (int i=0; i<100; i++) {
+            if (count.get() == expect) {
+                return;
+            }
+            sleep(100);
+        }
+        fail();
+    }
+
+    @Test
+    public void uponLockUpgradable() throws Throwable {
+        Thread main = Thread.currentThread();
+        var locker = new Locker(mManager);
+        var ex = new AtomicReference<Throwable>();
+        var count = new AtomicInteger();
+
+        // Quick cases...
+
+        locker.doUponLockUpgradable(0, k1, result -> {
+            try {
+                assertNotEquals(main, Thread.currentThread());
+                assertEquals(ACQUIRED, result);
+                assertEquals(OWNED_UPGRADABLE, locker.lockCheck(0, k1));
+                count.getAndIncrement();
+            } catch (Throwable e) {
+                ex.set(e);
+            }
+        });
+
+        waitForCount(count, 1);
+
+        if (ex.get() != null) {
+            throw ex.get();
+        }
+
+        locker.doUponLockUpgradable(0, k1, result -> {
+            try {
+                assertNotEquals(main, Thread.currentThread());
+                assertEquals(OWNED_UPGRADABLE, result);
+                assertEquals(OWNED_UPGRADABLE, locker.lockCheck(0, k1));
+                count.getAndIncrement();
+            } catch (Throwable e) {
+                ex.set(e);
+            }
+        });
+
+        waitForCount(count, 2);
+
+        if (ex.get() != null) {
+            throw ex.get();
+        }
+
+        locker.scopeUnlockAll();
+        assertEquals(ACQUIRED, locker.doTryLockExclusive(0, k1, -1));
+
+        locker.doUponLockUpgradable(0, k1, result -> {
+            try {
+                assertNotEquals(main, Thread.currentThread());
+                assertEquals(OWNED_EXCLUSIVE, result);
+                assertEquals(OWNED_EXCLUSIVE, locker.lockCheck(0, k1));
+                count.getAndIncrement();
+            } catch (Throwable e) {
+                ex.set(e);
+            }
+        });
+
+        waitForCount(count, 3);
+
+        if (ex.get() != null) {
+            throw ex.get();
+        }
+
+        // Slow cases... (locker still holds exclusive lock)
+
+        var locker2 = new Locker(mManager);
+        var locker3 = new Locker(mManager);
+
+        locker2.doUponLockUpgradable(0, k1, result -> {
+            try {
+                assertNotEquals(main, Thread.currentThread());
+                assertEquals(ACQUIRED, result);
+                assertEquals(OWNED_UPGRADABLE, locker2.lockCheck(0, k1));
+                locker2.scopeUnlockAll();
+                count.getAndIncrement();
+            } catch (Throwable e) {
+                ex.set(e);
+            }
+        });
+
+        locker3.doUponLockUpgradable(0, k1, result -> {
+            try {
+                assertNotEquals(main, Thread.currentThread());
+                assertEquals(ACQUIRED, result);
+                assertEquals(OWNED_UPGRADABLE, locker3.lockCheck(0, k1));
+                count.getAndIncrement();
+            } catch (Throwable e) {
+                ex.set(e);
+            }
+        });
+
+        locker.scopeUnlockAll();
+
+        waitForCount(count, 5);
+
+        if (ex.get() != null) {
+            throw ex.get();
+        }
+    }
+
+    @Test
+    public void uponLockExclusivee() throws Throwable {
+        Thread main = Thread.currentThread();
+        var locker = new Locker(mManager);
+        var ex = new AtomicReference<Throwable>();
+        var count = new AtomicInteger();
+
+        // Quick cases...
+
+        locker.doUponLockExclusive(0, k1, result -> {
+            try {
+                assertNotEquals(main, Thread.currentThread());
+                assertEquals(ACQUIRED, result);
+                assertEquals(OWNED_EXCLUSIVE, locker.lockCheck(0, k1));
+                count.getAndIncrement();
+            } catch (Throwable e) {
+                ex.set(e);
+            }
+        });
+
+        waitForCount(count, 1);
+
+        if (ex.get() != null) {
+            throw ex.get();
+        }
+
+        locker.doUponLockExclusive(0, k1, result -> {
+            try {
+                assertNotEquals(main, Thread.currentThread());
+                assertEquals(OWNED_EXCLUSIVE, result);
+                assertEquals(OWNED_EXCLUSIVE, locker.lockCheck(0, k1));
+                count.getAndIncrement();
+            } catch (Throwable e) {
+                ex.set(e);
+            }
+        });
+
+        waitForCount(count, 2);
+
+        if (ex.get() != null) {
+            throw ex.get();
+        }
+
+        locker.scopeUnlockAll();
+        assertEquals(ACQUIRED, locker.doTryLockExclusive(0, k1, -1));
+
+        locker.doUponLockExclusive(0, k1, result -> {
+            try {
+                assertNotEquals(main, Thread.currentThread());
+                assertEquals(OWNED_EXCLUSIVE, result);
+                assertEquals(OWNED_EXCLUSIVE, locker.lockCheck(0, k1));
+                count.getAndIncrement();
+            } catch (Throwable e) {
+                ex.set(e);
+            }
+        });
+
+        waitForCount(count, 3);
+
+        if (ex.get() != null) {
+            throw ex.get();
+        }
+
+        // Slow cases... (locker still holds exclusive lock)
+
+        var locker2 = new Locker(mManager);
+        var locker3 = new Locker(mManager);
+
+        locker2.doUponLockExclusive(0, k1, result -> {
+            try {
+                assertNotEquals(main, Thread.currentThread());
+                assertEquals(ACQUIRED, result);
+                assertEquals(OWNED_EXCLUSIVE, locker2.lockCheck(0, k1));
+                locker2.scopeUnlockAll();
+                count.getAndIncrement();
+            } catch (Throwable e) {
+                ex.set(e);
+            }
+        });
+
+        locker3.doUponLockExclusive(0, k1, result -> {
+            try {
+                assertNotEquals(main, Thread.currentThread());
+                assertEquals(ACQUIRED, result);
+                assertEquals(OWNED_EXCLUSIVE, locker3.lockCheck(0, k1));
+                count.getAndIncrement();
+            } catch (Throwable e) {
+                ex.set(e);
+            }
+        });
+
+        locker.scopeUnlockAll();
+
+        waitForCount(count, 5);
+
+        if (ex.get() != null) {
+            throw ex.get();
         }
     }
 
