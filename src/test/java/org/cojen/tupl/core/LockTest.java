@@ -39,6 +39,8 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
+import org.cojen.tupl.util.Runner;
+
 import static org.cojen.tupl.LockResult.*;
 import static org.cojen.tupl.core.TestUtils.startAndWaitUntilBlocked;
 
@@ -2517,10 +2519,11 @@ public class LockTest {
         var locker = new Locker(mManager);
         var ex = new AtomicReference<Throwable>();
         var count = new AtomicInteger();
+        var exec = Runner.current();
 
         // Quick cases...
 
-        locker.doUponLockShared(0, k1, result -> {
+        locker.doUponLockShared(0, k1, exec, result -> {
             try {
                 assertNotEquals(main, Thread.currentThread());
                 assertEquals(ACQUIRED, result);
@@ -2537,7 +2540,7 @@ public class LockTest {
             throw ex.get();
         }
 
-        locker.doUponLockShared(0, k1, result -> {
+        locker.doUponLockShared(0, k1, exec, result -> {
             try {
                 assertNotEquals(main, Thread.currentThread());
                 assertEquals(OWNED_SHARED, result);
@@ -2557,7 +2560,7 @@ public class LockTest {
         locker.scopeUnlockAll();
         assertEquals(ACQUIRED, locker.doTryLockExclusive(0, k1, -1));
 
-        locker.doUponLockShared(0, k1, result -> {
+        locker.doUponLockShared(0, k1, exec, result -> {
             try {
                 assertNotEquals(main, Thread.currentThread());
                 assertEquals(OWNED_EXCLUSIVE, result);
@@ -2579,7 +2582,7 @@ public class LockTest {
         var locker2 = new Locker(mManager);
         var locker3 = new Locker(mManager);
 
-        locker2.doUponLockShared(0, k1, result -> {
+        locker2.doUponLockShared(0, k1, exec, result -> {
             try {
                 assertNotEquals(main, Thread.currentThread());
                 assertEquals(ACQUIRED, result);
@@ -2590,7 +2593,7 @@ public class LockTest {
             }
         });
 
-        locker3.doUponLockShared(0, k1, result -> {
+        locker3.doUponLockShared(0, k1, exec, result -> {
             try {
                 assertNotEquals(main, Thread.currentThread());
                 assertEquals(ACQUIRED, result);
@@ -2626,10 +2629,11 @@ public class LockTest {
         var locker = new Locker(mManager);
         var ex = new AtomicReference<Throwable>();
         var count = new AtomicInteger();
+        var exec = Runner.current();
 
         // Quick cases...
 
-        locker.doUponLockUpgradable(0, k1, result -> {
+        locker.doUponLockUpgradable(0, k1, exec, result -> {
             try {
                 assertNotEquals(main, Thread.currentThread());
                 assertEquals(ACQUIRED, result);
@@ -2646,7 +2650,7 @@ public class LockTest {
             throw ex.get();
         }
 
-        locker.doUponLockUpgradable(0, k1, result -> {
+        locker.doUponLockUpgradable(0, k1, exec, result -> {
             try {
                 assertNotEquals(main, Thread.currentThread());
                 assertEquals(OWNED_UPGRADABLE, result);
@@ -2666,7 +2670,7 @@ public class LockTest {
         locker.scopeUnlockAll();
         assertEquals(ACQUIRED, locker.doTryLockExclusive(0, k1, -1));
 
-        locker.doUponLockUpgradable(0, k1, result -> {
+        locker.doUponLockUpgradable(0, k1, exec, result -> {
             try {
                 assertNotEquals(main, Thread.currentThread());
                 assertEquals(OWNED_EXCLUSIVE, result);
@@ -2688,7 +2692,7 @@ public class LockTest {
         var locker2 = new Locker(mManager);
         var locker3 = new Locker(mManager);
 
-        locker2.doUponLockUpgradable(0, k1, result -> {
+        locker2.doUponLockUpgradable(0, k1, exec, result -> {
             try {
                 assertNotEquals(main, Thread.currentThread());
                 assertEquals(ACQUIRED, result);
@@ -2700,7 +2704,7 @@ public class LockTest {
             }
         });
 
-        locker3.doUponLockUpgradable(0, k1, result -> {
+        locker3.doUponLockUpgradable(0, k1, exec, result -> {
             try {
                 assertNotEquals(main, Thread.currentThread());
                 assertEquals(ACQUIRED, result);
@@ -2726,10 +2730,11 @@ public class LockTest {
         var locker = new Locker(mManager);
         var ex = new AtomicReference<Throwable>();
         var count = new AtomicInteger();
+        var exec = Runner.current();
 
         // Quick cases...
 
-        locker.doUponLockExclusive(0, k1, result -> {
+        locker.doUponLockExclusive(0, k1, exec, result -> {
             try {
                 assertNotEquals(main, Thread.currentThread());
                 assertEquals(ACQUIRED, result);
@@ -2746,7 +2751,7 @@ public class LockTest {
             throw ex.get();
         }
 
-        locker.doUponLockExclusive(0, k1, result -> {
+        locker.doUponLockExclusive(0, k1, exec, result -> {
             try {
                 assertNotEquals(main, Thread.currentThread());
                 assertEquals(OWNED_EXCLUSIVE, result);
@@ -2766,7 +2771,7 @@ public class LockTest {
         locker.scopeUnlockAll();
         assertEquals(ACQUIRED, locker.doTryLockExclusive(0, k1, -1));
 
-        locker.doUponLockExclusive(0, k1, result -> {
+        locker.doUponLockExclusive(0, k1, exec, result -> {
             try {
                 assertNotEquals(main, Thread.currentThread());
                 assertEquals(OWNED_EXCLUSIVE, result);
@@ -2788,7 +2793,7 @@ public class LockTest {
         var locker2 = new Locker(mManager);
         var locker3 = new Locker(mManager);
 
-        locker2.doUponLockExclusive(0, k1, result -> {
+        locker2.doUponLockExclusive(0, k1, exec, result -> {
             try {
                 assertNotEquals(main, Thread.currentThread());
                 assertEquals(ACQUIRED, result);
@@ -2800,7 +2805,7 @@ public class LockTest {
             }
         });
 
-        locker3.doUponLockExclusive(0, k1, result -> {
+        locker3.doUponLockExclusive(0, k1, exec, result -> {
             try {
                 assertNotEquals(main, Thread.currentThread());
                 assertEquals(ACQUIRED, result);

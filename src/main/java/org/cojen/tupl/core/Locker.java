@@ -19,6 +19,7 @@ package org.cojen.tupl.core;
 
 import java.lang.ref.WeakReference;
 
+import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadLocalRandom;
 
 import java.util.function.Consumer;
@@ -345,37 +346,46 @@ class Locker implements DatabaseAccess { // weak access to database
         return doLock(TYPE_EXCLUSIVE, indexId, key, hash, nanosTimeout);
     }
 
-    final void doUponLockShared(long indexId, byte[] key, Consumer<LockResult> cont) {
-        doUponLock(TYPE_SHARED, indexId, key, hash(indexId, key), cont);
+    final void doUponLockShared(long indexId, byte[] key, Executor exec,
+                                Consumer<LockResult> cont)
+    {
+        doUponLock(TYPE_SHARED, indexId, key, hash(indexId, key), exec, cont);
     }
 
-    final void doUponLockShared(long indexId, byte[] key, int hash, Consumer<LockResult> cont) {
-        doUponLock(TYPE_SHARED, indexId, key, hash, cont);
+    final void doUponLockShared(long indexId, byte[] key, int hash,
+                                Executor exec, Consumer<LockResult> cont)
+    {
+        doUponLock(TYPE_SHARED, indexId, key, hash, exec, cont);
     }
 
-    final void doUponLockUpgradable(long indexId, byte[] key, Consumer<LockResult> cont) {
-        doUponLock(TYPE_UPGRADABLE, indexId, key, hash(indexId, key), cont);
+    final void doUponLockUpgradable(long indexId, byte[] key,
+                                    Executor exec, Consumer<LockResult> cont)
+    {
+        doUponLock(TYPE_UPGRADABLE, indexId, key, hash(indexId, key), exec, cont);
     }
 
-    final void doUponLockUpgradable(long indexId, byte[] key, int hash, Consumer<LockResult> cont) {
-        doUponLock(TYPE_UPGRADABLE, indexId, key, hash, cont);
+    final void doUponLockUpgradable(long indexId, byte[] key, int hash,
+                                    Executor exec, Consumer<LockResult> cont) {
+        doUponLock(TYPE_UPGRADABLE, indexId, key, hash, exec, cont);
     }
 
-    final void doUponLockExclusive(long indexId, byte[] key, Consumer<LockResult> cont) {
-        doUponLock(TYPE_EXCLUSIVE, indexId, key, hash(indexId, key), cont);
+    final void doUponLockExclusive(long indexId, byte[] key,
+                                   Executor exec, Consumer<LockResult> cont) {
+        doUponLock(TYPE_EXCLUSIVE, indexId, key, hash(indexId, key), exec, cont);
     }
 
-    final void doUponLockExclusive(long indexId, byte[] key, int hash, Consumer<LockResult> cont) {
-        doUponLock(TYPE_EXCLUSIVE, indexId, key, hash, cont);
+    final void doUponLockExclusive(long indexId, byte[] key, int hash,
+                                   Executor exec, Consumer<LockResult> cont) {
+        doUponLock(TYPE_EXCLUSIVE, indexId, key, hash, exec, cont);
     }
 
     /**
      * @param lockType TYPE_SHARED, TYPE_UPGRADABLE, or TYPE_EXCLUSIVE
      */
     final void doUponLock(int lockType, long indexId, byte[] key, int hash,
-                          Consumer<LockResult> cont)
+                          Executor exec, Consumer<LockResult> cont)
     {
-        manager().getLockHT(hash).uponLock(lockType, this, indexId, key, hash, cont);
+        manager().getLockHT(hash).uponLock(lockType, this, indexId, key, hash, exec, cont);
     }
 
     /**

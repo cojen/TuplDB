@@ -3498,17 +3498,17 @@ loadScripts(document, 'script');</script>
 <div class="block">Registers the given task to start in a separate thread when the database instance has
  become the leader.</div>
 </dd>
-<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/Transaction.html#uponLockExclusive(long,byte%5B%5D,java.util.function.Consumer)">uponLockExclusive(long, byte[], Consumer&lt;LockResult&gt;)</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
+<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/Transaction.html#uponLockExclusive(long,byte%5B%5D,java.util.concurrent.Executor,java.util.function.Consumer)">uponLockExclusive(long, byte[], Executor, Consumer&lt;LockResult&gt;)</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
 <dd>
 <div class="block">Asynchronously attempts to acquire an exclusive lock for the given key, denying any
  additional locks.</div>
 </dd>
-<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/Transaction.html#uponLockShared(long,byte%5B%5D,java.util.function.Consumer)">uponLockShared(long, byte[], Consumer&lt;LockResult&gt;)</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
+<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/Transaction.html#uponLockShared(long,byte%5B%5D,java.util.concurrent.Executor,java.util.function.Consumer)">uponLockShared(long, byte[], Executor, Consumer&lt;LockResult&gt;)</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
 <dd>
 <div class="block">Asynchronously attempts to acquire a shared lock for the given key, denying exclusive
  locks.</div>
 </dd>
-<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/Transaction.html#uponLockUpgradable(long,byte%5B%5D,java.util.function.Consumer)">uponLockUpgradable(long, byte[], Consumer&lt;LockResult&gt;)</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
+<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/Transaction.html#uponLockUpgradable(long,byte%5B%5D,java.util.concurrent.Executor,java.util.function.Consumer)">uponLockUpgradable(long, byte[], Executor, Consumer&lt;LockResult&gt;)</a></span> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
 <dd>
 <div class="block">Asynchronously attempts to acquire an upgrade lock for the given key, denying exclusive
  and additional upgradable locks.</div>

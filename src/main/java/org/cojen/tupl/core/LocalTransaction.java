@@ -19,6 +19,7 @@ package org.cojen.tupl.core;
 
 import java.io.IOException;
 
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
 import java.util.function.Consumer;
@@ -921,18 +922,22 @@ public final class LocalTransaction extends Locker implements Transaction {
     }
 
     @Override
-    public void uponLockShared(long indexId, byte[] key, Consumer<LockResult> cont) {
-        doUponLockShared(indexId, key, cont);
+    public void uponLockShared(long indexId, byte[] key, Executor exec, Consumer<LockResult> cont) {
+        doUponLockShared(indexId, key, exec, cont);
     }
 
     @Override
-    public void uponLockUpgradable(long indexId, byte[] key, Consumer<LockResult> cont) {
-        doUponLockUpgradable(indexId, key, cont);
+    public void uponLockUpgradable(long indexId, byte[] key,
+                                   Executor exec, Consumer<LockResult> cont)
+    {
+        doUponLockUpgradable(indexId, key, exec, cont);
     }
 
     @Override
-    public void uponLockExclusive(long indexId, byte[] key, Consumer<LockResult> cont) {
-        doUponLockExclusive(indexId, key, result -> {
+    public void uponLockExclusive(long indexId, byte[] key,
+                                  Executor exec, Consumer<LockResult> cont)
+    {
+        doUponLockExclusive(indexId, key, exec, result -> {
             try {
                 logExclusiveLock(result, indexId, key);
             } catch (LockFailureException e) {

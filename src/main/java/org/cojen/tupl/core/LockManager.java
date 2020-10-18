@@ -22,6 +22,10 @@ import java.lang.invoke.VarHandle;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 
+import java.util.Objects;
+
+import java.util.concurrent.Executor;
+
 import java.util.function.Consumer;
 
 import org.cojen.tupl.Index;
@@ -33,7 +37,6 @@ import static org.cojen.tupl.LockResult.*;
 
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.LatchCondition;
-import org.cojen.tupl.util.Runner;
 
 /**
  * Manages all Lock instances using a specialized striped hashtable.
@@ -481,8 +484,11 @@ public final class LockManager {
          */
         void uponLock(int type,
                       Locker locker, long indexId, byte[] key, int hash,
-                      Consumer<LockResult> cont)
+                      Executor exec, Consumer<LockResult> cont)
         {
+            Objects.requireNonNull(exec);
+            Objects.requireNonNull(cont);
+
             Lock lock;
             acquireExclusive();
             try {
@@ -498,7 +504,7 @@ public final class LockManager {
                             } else if (result == UPGRADED) {
                                 locker.pushUpgrade(flock);
                             }
-                            Runner.start(() -> cont.accept(result));
+                            exec.execute(() -> cont.accept(result));
                         };
 
                         if (type == TYPE_SHARED) {
@@ -542,7 +548,7 @@ public final class LockManager {
             }
 
             locker.push(lock);
-            Runner.start(() -> cont.accept(ACQUIRED));
+            exec.execute(() -> cont.accept(ACQUIRED));
         }
 
         /**
