@@ -91,20 +91,18 @@ final class Checkpointer implements Runnable {
             if (max <= 0) {
                 extraExecutor = null;
             } else {
-                long timeoutNanos = Math.max
-                    (launcher.mCheckpointRateNanos, launcher.mCheckpointDelayThresholdNanos);
-                if (timeoutNanos < 0) {
-                    // One minute default.
-                    timeoutNanos = TimeUnit.MINUTES.toNanos(1);
-                }
-                // Add one more second, with wraparound check.
-                timeoutNanos += TimeUnit.SECONDS.toNanos(1);
-                if (timeoutNanos < 0) {
-                    timeoutNanos = Long.MAX_VALUE;
+                // Default keep-alive time for extra checkpoint threads.
+                long keepAliveSeconds = 60;
+
+                // If automatic checkpoint rate is close to the keep-alive time, boost the
+                // keep-alive to prevent premature thread exits.
+                long rateSeconds = TimeUnit.NANOSECONDS.toSeconds(launcher.mCheckpointRateNanos);
+                if (rateSeconds <= keepAliveSeconds * 2) {
+                    keepAliveSeconds = Math.max(keepAliveSeconds, rateSeconds + 5);
                 }
 
                 extraExecutor = new ThreadPoolExecutor
-                    (max, max, timeoutNanos, TimeUnit.NANOSECONDS,
+                    (max, max, keepAliveSeconds, TimeUnit.SECONDS,
                      new LinkedBlockingQueue<>(), Checkpointer::newThread);
 
                 extraExecutor.allowCoreThreadTimeOut(true);
