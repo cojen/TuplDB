@@ -5,7 +5,6 @@ v1.5.0
 ------
 
 * Depends on Java 11 and defines a module: org.cojen.tupl.
-* Fix race condition when copying pages from the secondary cache.
 * Fix page leak when deleting temporary trees which were created by the Sorter.
 * Fix data loss when replicating values using the ValueAccessor API.
 * Fix replication ABA race condition which caused a blank range of data (zeros) to appear as
@@ -27,6 +26,12 @@ v1.5.0
 * Fix potential deadlock in the count and skip methods.
 * Fix where the cache primer creation task could stall behind a long running cursor.
 * Fix trashed tree race condition with recovery of a non-replicated database.
+* Fix premature lock acquisition bug caused by a timeout.
+* Fix potential deadlocks when opening a tree.
+* Fix extending and truncating fragmented values when using a large page size.
+* Fix off by one error when storing a 8193 byte value into a large page.
+* Fix potential deadlock when throwing CacheExhaustedException or DatabaseFullException.
+* Various fixes for the database compaction feature.
 * Replace "unsafe" usage with VarHandles.
 * Guard against a flood of duplicate hole fill requests. De-duplicate them and handle them in
   at most one thread per remote peer.
@@ -40,7 +45,6 @@ v1.5.0
 * Update dependencies to support Java 11.
 * WriteFailureException no longer extends DatabaseFullException.
 * Optimize update and delete by not always increasing the node garbage size.
-* Permit non-durable database to utilize a secondary cache.
 * Handle edge cases where a latches wouldn't get released when an exception was thrown.
 * Define a default Cursor.close method.
 * Added socket factory support to replicator.
@@ -60,7 +64,7 @@ v1.5.0
 * Remove spare page pool and keep a spare page within each node group instead. This eliminates
   some contention when many threads are simultaneously compacting pages.
 * Added support for proxying writes from the replication leader via a peer. Experimental for now.
-* Add ability to check if current member is the leader.
+* Added ability to check if current member is the leader.
 * Boost the size of the replication writer cache when creating non-contiguous writers, to
   ensure that they don't get lost. When they're lost, additional hole filling requests are
   performed.
@@ -77,6 +81,15 @@ v1.5.0
 * Latching performance improvements when parking/unparking threads.
 * Don't dirty a node when insert/replace/update returns false, reducing unnecessary writes.
 * Code coverage improvements and fixes.
+* Support conversion to/from replicated mode.
+* Performance improvements for pending transactions.
+* Support pending transaction notification with a new CommitCallback interface.
+* Automatically pre-touch direct access pages when creating the cache.
+* Support limited read-only mode which doesn't persist any changes.
+* File I/O operations are no longer affected by thread interrrupts. The database remains open.
+* Added support for page-level compression.
+* Support clean database shutdown triggered by clean JVM exit.
+* Added support for asynchronous lock acquisition.
 
 v1.4.4 (2018-06-30)
 ------
