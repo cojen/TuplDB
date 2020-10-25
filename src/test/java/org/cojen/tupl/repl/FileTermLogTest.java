@@ -722,7 +722,7 @@ public class FileTermLogTest {
 
             syncThread = new Thread(() -> {
                 try {
-                    while (true) {
+                    while (!Thread.interrupted()) {
                         Thread.sleep(500);
                         mLog.sync();
                     }
