@@ -70,6 +70,7 @@
       <groupId>org.lz4</groupId>
       <artifactId>lz4-java</artifactId>
       <version>[1.7,)</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
@@ -93,7 +94,7 @@
       <plugin>
         <groupId>org.jacoco</groupId>
         <artifactId>jacoco-maven-plugin</artifactId>
-        <version>0.8.3</version>
+        <version>0.8.6</version>
           <executions>
             <execution>
               <id>default-prepare-agent</id>
