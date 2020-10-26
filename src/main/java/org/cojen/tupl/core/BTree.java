@@ -87,7 +87,7 @@ class BTree extends Tree implements View, Index {
     }
 
     /**
-     * Unnamed tree which prohibits redo durabilty. The BTreeCursor class checks this with the
+     * Unnamed tree which prohibits redo durability. The BTreeCursor class checks this with the
      * allowRedo method.
      */
     static final class Temp extends BTree {

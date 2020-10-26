@@ -24,7 +24,6 @@ import java.util.concurrent.TimeUnit;
 
 import java.util.function.Consumer;
 
-import org.cojen.tupl.ConfirmationInterruptedException;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.InvalidTransactionException;
@@ -1805,7 +1804,7 @@ public final class LocalTransaction extends Locker implements Transaction {
         // called. Any action which releases locks must only do so after it has issued a
         // rollback operation to the undo log.
 
-        boolean closed = mDatabase == null ? false : mDatabase.isClosed();
+        boolean closed = mDatabase != null && mDatabase.isClosed();
 
         if (rethrow == null) {
             rethrow = !closed;

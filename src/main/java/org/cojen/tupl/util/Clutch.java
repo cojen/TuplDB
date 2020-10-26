@@ -33,7 +33,7 @@ import static org.cojen.tupl.io.Utils.rethrow;
  * patterns have changed.
  *
  * <p>Note: Shared access should not be held by any thread indefinitely. If another thread
- * attempts to switch to contended mode, it first needs to acquire exlusive access in order to
+ * attempts to switch to contended mode, it first needs to acquire exclusive access in order to
  * make the switch. The thread will block even though shared access could have been granted if
  * it just kept trying. This behavior holds true for downgrades as well. Another thread cannot
  * switch to contended mode until after the downgraded latch is fully released.

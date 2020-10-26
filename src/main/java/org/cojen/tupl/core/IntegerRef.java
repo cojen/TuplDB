@@ -28,7 +28,7 @@ interface IntegerRef {
     public void set(int v);
 
     /**
-     * Mutable alterative to java.lang.Integer.
+     * Mutable alternative to java.lang.Integer.
      */
     public static class Value implements IntegerRef {
         public int value;

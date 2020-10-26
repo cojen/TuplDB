@@ -792,7 +792,7 @@ final class FileStateLog extends Latch implements StateLog {
 
     /**
      * @return true if conflict exists but state log is closed
-     * @throws exception if conflict exists and state log is open
+     * @throws CommitConflictException if conflict exists and state log is open
      */
     private boolean checkCommitConflict(TermLog termLog, long position)
         throws CommitConflictException
@@ -885,7 +885,7 @@ final class FileStateLog extends Latch implements StateLog {
                 throw new IllegalStateException("Closed");
             }
             var termLog = (TermLog) mTermLogs.floor(key); // findLe
-            return termLog == null ? false : termLog.isReadable(position);
+            return termLog != null && termLog.isReadable(position);
         } finally {
             releaseShared();
         }

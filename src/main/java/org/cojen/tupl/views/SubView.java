@@ -64,7 +64,7 @@ abstract class SubView implements View {
 
     @Override
     public boolean exists(Transaction txn, byte[] key) throws IOException {
-        return inRange(key) ? mSource.exists(txn, key) : false;
+        return inRange(key) && mSource.exists(txn, key);
     }
 
     @Override
@@ -100,7 +100,7 @@ abstract class SubView implements View {
 
     @Override
     public boolean replace(Transaction txn, byte[] key, byte[] value) throws IOException {
-        return inRange(key) ? mSource.replace(txn, key, value) : false;
+        return inRange(key) && mSource.replace(txn, key, value);
     }
 
     @Override
@@ -132,7 +132,7 @@ abstract class SubView implements View {
 
     @Override
     public boolean delete(Transaction txn, byte[] key) throws IOException {
-        return inRange(key) ? mSource.delete(txn, key) : false;
+        return inRange(key) && mSource.delete(txn, key);
     }
 
     @Override

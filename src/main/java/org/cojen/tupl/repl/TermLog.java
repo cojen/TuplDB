@@ -129,7 +129,7 @@ interface TermLog extends LKey<TermLog>, Closeable {
     void finishTerm(long endPosition);
 
     /**
-     * Returns the highst position of contiguous data.
+     * Returns the highest position of contiguous data.
      */
     long contigPosition();
 

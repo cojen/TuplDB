@@ -160,7 +160,7 @@ final class PageOps {
     }
 
     /**
-     * @param size pass negative for size for aligned allocation (if possible)
+     * @param pageSize pass negative for size for aligned allocation (if possible)
      */
     static byte[] p_clonePage(byte[] page, int pageSize) {
         return page.clone();
@@ -176,7 +176,7 @@ final class PageOps {
     }
 
     /**
-     * @param size pass negative for size for aligned allocation (if possible)
+     * @param pageSize pass negative for size for aligned allocation (if possible)
      */
     static byte[] p_transferPage(byte[] array, int pageSize) {
         return array;

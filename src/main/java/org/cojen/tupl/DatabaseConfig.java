@@ -168,7 +168,7 @@ public class DatabaseConfig implements Cloneable {
     /**
      * Set the default transaction durability mode, which is {@link
      * DurabilityMode#SYNC SYNC} if not overridden. If database itself is
-     * non-durabile, durability modes are ignored.
+     * non-durable, durability modes are ignored.
      */
     public DatabaseConfig durabilityMode(DurabilityMode durabilityMode) {
         mLauncher.durabilityMode(durabilityMode);
@@ -419,7 +419,7 @@ public class DatabaseConfig implements Cloneable {
      * @param out pass null to print to standard out
      * @param properties optional
      */
-    public void debugOpen(PrintStream out, Map<String, ? extends Object> properties)
+    public void debugOpen(PrintStream out, Map<String, ?> properties)
         throws IOException
     {
         mLauncher.debugOpen(out, properties);

@@ -317,10 +317,6 @@ final class Checkpointer implements Runnable {
         }
     }
 
-    boolean isClosed() {
-        return mState == STATE_CLOSED;
-    }
-
     void close(Throwable cause) {
         mState = STATE_CLOSED;
         mDatabaseRef.enqueue();

@@ -1076,7 +1076,6 @@ final class TransactionContext extends Latch implements Flushable {
         prepare: {
             if (pos > buffer.length - ((1 + 9) << 1)) { // 2 ops and 2 deltas (max length)
                 redoFlush(false);
-                pos = 0;
             } else if (pos != 0) {
                 buffer[pos] = op;
                 pos = Utils.encodeSignedVarLong(buffer, pos + 1, cursorId - mRedoLastTxnId);

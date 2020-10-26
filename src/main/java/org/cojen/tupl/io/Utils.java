@@ -322,7 +322,7 @@ public class Utils {
      * Attempt to delete the given direct or mapped byte buffer.
      */
     public static boolean delete(Buffer bb) {
-        return bb instanceof ByteBuffer ? delete((ByteBuffer) bb) : false;
+        return bb instanceof ByteBuffer && delete((ByteBuffer) bb);
     }
 
     /**

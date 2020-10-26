@@ -687,7 +687,7 @@ public class Utils extends org.cojen.tupl.io.Utils {
                                 } else {
                                     v -= (1L << 49);
                                     if (v < (1L << 56)) {
-                                        b[offset++] = (byte) (0xfe | (int) (v >> 56));
+                                        b[offset++] = (byte) (0xfe);
                                     } else {
                                         v -= (1L << 56);
                                         b[offset++] = (byte) (0xff);
@@ -865,7 +865,7 @@ public class Utils extends org.cojen.tupl.io.Utils {
      *
      * @param pattern example: ".redo."
      * @param min delete numbers greater than or equal to this
-     * @param min delete numbers less than or equal to this
+     * @param max delete numbers less than or equal to this
      */
     public static void deleteNumberedFiles(File baseFile, String pattern, long min, long max)
         throws IOException
@@ -879,7 +879,7 @@ public class Utils extends org.cojen.tupl.io.Utils {
      *
      * @param pattern example: ".redo."
      * @param min find numbers greater than or equal to this
-     * @param min find numbers less than or equal to this
+     * @param max find numbers less than or equal to this
      */
     public static TreeMap<Long, File> findNumberedFiles(File baseFile, String pattern,
                                                         long min, long max)

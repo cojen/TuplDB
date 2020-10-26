@@ -44,9 +44,6 @@ final class NonPageDb extends PageDb {
 
     private final long mDatabaseId;
 
-    /**
-     * @param cache optional
-     */
     NonPageDb(int pageSize) {
         mPageSize = pageSize;
 
@@ -186,7 +183,6 @@ final class NonPageDb extends PageDb {
     @Override
     public void scanFreeList(LongConsumer dst) throws IOException {
         // No stored pages to scan.
-        return;
     }
 
     @Override

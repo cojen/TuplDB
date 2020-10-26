@@ -1267,7 +1267,7 @@ final class UndoLog implements DatabaseAccess {
      * As a result, this variant should only be used when checkpoints will never run, like
      * during recovery.
      */
-    private class PopOne implements Popper {
+    private static class PopOne implements Popper {
         byte mOp;
         byte[] mEntry;
 
@@ -1461,12 +1461,11 @@ final class UndoLog implements DatabaseAccess {
         parent.makeEvictable();
 
         if (delete) {
-            LocalDatabase db = mDatabase;
             // Safer to never recycle undo log nodes. Keep them until the next checkpoint, when
             // there's a guarantee that the master undo log will not reference them anymore.
             // Of course it's fine to recycle pages from master undo log itself, which is the
             // only one with a transaction id of zero.
-            db.deleteNode(parent, mTxnId == 0);
+            mDatabase.deleteNode(parent, mTxnId == 0);
         } else {
             parent.releaseExclusive();
         }
@@ -1488,7 +1487,7 @@ final class UndoLog implements DatabaseAccess {
 
         /**
          * @param node last node of operation, latched exclusively; caller always releases it
-         * @param full or partial payload, as prescribed by the accept method
+         * @param payload full or partial payload, as prescribed by the accept method
          */
         void payload(Node node, byte[] payload) throws IOException;
     }
@@ -1634,7 +1633,7 @@ final class UndoLog implements DatabaseAccess {
     }
 
     private void recoverMaster(long nodeId, long length) throws IOException {
-        mLength = Long.MAX_VALUE;
+        mLength = length;
         mNode = readUndoLogNode(mDatabase, nodeId);
         mNodeTopPos = mNode.undoTop();
         mNode.releaseExclusive();
@@ -1989,7 +1988,7 @@ final class UndoLog implements DatabaseAccess {
             break;
 
         case OP_UNUPDATE_LK: case OP_UNDELETE_LK:
-            opStr = op == OP_UNUPDATE ? "UNUPDATE_LK" : "UNDELETE_LK";
+            opStr = op == OP_UNUPDATE_LK ? "UNUPDATE_LK" : "UNDELETE_LK";
 
             int keyLen = decodeUnsignedVarInt(entry, 0);
             int keyLoc = calcUnsignedVarIntLength(keyLen);

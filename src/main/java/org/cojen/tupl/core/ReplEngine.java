@@ -1485,10 +1485,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
 
     private static void checkClosedIndex(final Throwable e) {
         Throwable cause = e;
-        while (true) {
-            if (cause instanceof ClosedIndexException) {
-                break;
-            }
+        while (!(cause instanceof ClosedIndexException)) {
             cause = cause.getCause();
             if (cause == null) {
                 rethrow(e);

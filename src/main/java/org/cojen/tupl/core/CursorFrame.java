@@ -23,7 +23,7 @@ import java.lang.invoke.VarHandle;
 import static org.cojen.tupl.io.Utils.rethrow;
 
 /**
- * Used to bind a cursor to nodes within the tree. A recursive search alorithm creates stack
+ * Used to bind a cursor to nodes within the tree. A recursive search algorithm creates stack
  * frames as at goes, and a cursor frame is a heap allocated equivalent. The difference is that
  * cursor frames stick around and can move more freely. If another thread concurrently modifies
  * a tree, it sees all the bound cursor frames and makes necessary adjustments to them. This
@@ -238,7 +238,7 @@ class CursorFrame {
                   performed before step 11. Step 12 could be performed with a CAS, simply
                   giving up if the CAS fails. CAS is expensive, but volatile reads are cheap.
 
-                  This loop stalls T1 before step 11 can proceeed. The T1 CAS already succeeded
+                  This loop stalls T1 before step 11 can proceed. The T1 CAS already succeeded
                   because step 9 completed, having undone the actions of step 5. The next
                   cousin matched A again, allowing the CAS to succeed. However, the unbind has
                   one more step, to set the last frame. By spinning, the effects of step 6 are
@@ -458,7 +458,7 @@ class CursorFrame {
      *
      * @param child must be a bound frame of this parent, and must not be the parent itself
      */
-    final void popChilden(CursorFrame child) {
+    final void popChildren(CursorFrame child) {
         do {
             child = child.pop();
         } while (child != this);

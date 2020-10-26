@@ -22,7 +22,6 @@ import java.io.IOException;
 
 /**
  * @author Brian S O'Neill
- * @see DatabaseStreamReplicator
  */
 final class RestoreInputStream extends InputStream {
     private final InputStream mSource;

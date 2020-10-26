@@ -273,7 +273,7 @@ public interface StreamReplicator extends Replicator {
          * Write complete or partial messages to the log. The {@code highestPosition} parameter
          * defines the new absolute log position which can become the commit position. The
          * provided highest position is permitted to exceed the current log size, in
-         * anticpation of future writes which will fill in the gap. Until the gap is filled in,
+         * anticipation of future writes which will fill in the gap. Until the gap is filled in,
          * the highest position won't be applied. In addition, the highest position can only
          * ever advance. Passing in a smaller value for the highest position won't actually
          * change it. If all of the provided messages are partial, simply pass zero as the

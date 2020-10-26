@@ -56,7 +56,7 @@ public interface Updater extends Scanner, Flushable {
     /**
      * Applies the given updating action for each remaining entry, and then closes the updater.
      * An entry is updated to the value returned by the action, or it's deleted when the action
-     * returns null. If the action returns {@link NO_UPDATE}, then no update is performed.
+     * returns null. If the action returns {@link #NO_UPDATE}, then no update is performed.
      */
     default void updateAll(EntryFunction action) throws IOException {
         while (true) {

@@ -53,7 +53,7 @@ public class CompactionObserver {
     }
 
     /**
-     * Called after an index node has been visted by the compactor. Implementation is free to
+     * Called after an index node has been visited by the compactor. Implementation is free to
      * report incremental progress or throttle compaction. Default implementation does nothing
      * but return true.
      *

@@ -24,7 +24,6 @@ import java.util.Random;
 import java.util.function.LongConsumer;
 
 import org.cojen.tupl.Crypto;
-import org.cojen.tupl.Snapshot;
 
 import org.cojen.tupl.io.CauseCloseable;
 

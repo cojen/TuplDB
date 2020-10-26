@@ -22,7 +22,7 @@ import java.io.IOException;
 import org.cojen.tupl.LockMode;
 
 /**
- * Used to apply recovered transactions from the redo log, when database isn't replictated.
+ * Used to apply recovered transactions from the redo log, when database isn't replicated.
  * This class extends ReplEngine because it applies transactions using multiple threads,
  * but it's replication features aren't used.
  *

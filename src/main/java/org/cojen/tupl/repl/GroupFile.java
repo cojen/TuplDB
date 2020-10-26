@@ -99,7 +99,7 @@ final class GroupFile extends Latch {
     private final SocketAddress mLocalMemberAddress;
     private final long mGroupId;
 
-    private NavigableSet<Peer> mPeerSet;
+    private final NavigableSet<Peer> mPeerSet;
     private long mVersion;
 
     private long mLocalMemberId;

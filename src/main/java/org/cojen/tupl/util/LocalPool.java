@@ -75,13 +75,11 @@ public final class LocalPool<B> {
         mLocalEntry = new ThreadLocal<>();
         mSupplier = supplier;
         mAllEntries = (TheEntry<B>[]) new TheEntry[maxSize];
-        if (true) {
-            for (int i=0; i<maxSize; i++) {
-                mAllEntries[i] = new TheEntry<>(supplier.get());
-                mAllEntries[i].release();
-            }
-            mNumEntries = maxSize;
+        for (int i=0; i<maxSize; i++) {
+            mAllEntries[i] = new TheEntry<>(supplier.get());
+            mAllEntries[i].release();
         }
+        mNumEntries = maxSize;
     }
 
     /**

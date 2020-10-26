@@ -79,7 +79,7 @@ public abstract class SelectCombiner implements Combiner {
             }
             return v1;
         }
-    };
+    }
 
     public static final class Second extends SelectCombiner {
         public static final Combiner THE = new Second();
@@ -108,7 +108,7 @@ public abstract class SelectCombiner implements Combiner {
             byte[] v2 = second.load(txn, key);
             return v2 == null ? null : first.exists(txn, key) ? v2 : null;
         }
-    };
+    }
 
     public static final class Discard extends SelectCombiner {
         public static final Combiner THE = new Discard();
@@ -153,7 +153,7 @@ public abstract class SelectCombiner implements Combiner {
             }
             return second.exists(txn, key) ? null : v1;
         }
-    };
+    }
 
     @Override
     public boolean requireValues() {

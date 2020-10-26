@@ -87,27 +87,27 @@ public class RemoveMember {
             String message = e.getMessage();
 
             if (message != null) {
-                if (message.indexOf("EOFException") >= 0) {
+                if (message.contains("EOFException")) {
                     System.out.println("Incorrect group token");
                     return;
                 }
-                if (message.indexOf("ConnectException") >= 0) {
+                if (message.contains("ConnectException")) {
                     System.out.println("Connection refused");
                     return;
                 }
-                if (message.indexOf("invalid address") >= 0) {
+                if (message.contains("invalid address")) {
                     System.out.println("Cannot remove group leader");
                     return;
                 }
-                if (message.indexOf("no leader") >= 0) {
+                if (message.contains("no leader")) {
                     System.out.println("No group leader");
                     return;
                 }
-                if (message.indexOf("timed out") >= 0) {
+                if (message.contains("timed out")) {
                     System.out.println("Operation timed out");
                     return;
                 }
-                if (message.indexOf("version mismatch") >= 0) {
+                if (message.contains("version mismatch")) {
                     System.out.println("Member not found (or concurrent group modification)");
                     return;
                 }

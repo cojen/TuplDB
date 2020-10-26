@@ -361,7 +361,7 @@ final class BTreeValue {
                                     txn.pushUndoStore(tree.mId, UndoLog.OP_UNUPDATE,
                                                       page, kHeaderLoc, loc + vLen - kHeaderLoc);
                                 }
-                                node.updateLeafValue(frame, tree, nodePos, 0, b);
+                                node.updateLeafValue(tree, nodePos, 0, b);
                             } catch (Throwable e) {
                                 throw releaseExclusive(node, e);
                             }
@@ -1455,8 +1455,8 @@ final class BTreeValue {
      * and the field size doesn't change.
      *
      * As a side effect of calling this method, the page referenced by the node can change when
-     * a non-negative value is returned. Also, any locations within the page may changed.
-     * Caller should always continue from the beginning after calling this method.
+     * a non-negative value is returned. Caller should always continue from the beginning after
+     * calling this method.
      *
      * The node latch is released if an exception is thrown.
      *
@@ -1467,10 +1467,10 @@ final class BTreeValue {
      * @param fHeaderLoc location of fragmented value header
      * @param growth amount of zero bytes to add to the length field (2, 4, or 6)
      */
-    private static int tryIncreaseLengthField(final BTreeCursor cursor, final CursorFrame frame,
-                                              final int kHeaderLoc,
-                                              final int vHeaderLoc, final int vLen,
-                                              final int fHeaderLoc, final long growth)
+    private static void tryIncreaseLengthField(final BTreeCursor cursor, final CursorFrame frame,
+                                               final int kHeaderLoc,
+                                               final int vHeaderLoc, final int vLen,
+                                               final int fHeaderLoc, final long growth)
         throws IOException
     {
         final int fOffset = fHeaderLoc - kHeaderLoc;
@@ -1479,7 +1479,7 @@ final class BTreeValue {
 
         if (newEntryLen > node.getDatabase().mMaxFragmentedEntrySize) {
             compactDirectFormat(cursor, frame, kHeaderLoc, vHeaderLoc, vLen, fHeaderLoc);
-            return -1;
+            return;
         }
 
         final BTree tree = cursor.mTree;
@@ -1507,7 +1507,7 @@ final class BTreeValue {
             p_bytePut(page, vHeaderLoc, p_byteGet(page, vHeaderLoc) & ~Node.ENTRY_FRAGMENTED);
 
             // The fragmented bit is set again by this call.
-            node.updateLeafValue(frame, tree, frame.mNodePos, Node.ENTRY_FRAGMENTED, newValue);
+            node.updateLeafValue(tree, frame.mNodePos, Node.ENTRY_FRAGMENTED, newValue);
         } catch (Throwable e) {
             throw releaseExclusive(node, e);
         }
@@ -1516,10 +1516,8 @@ final class BTreeValue {
             // Releases latch if an exception is thrown.
             tree.finishSplitCritical(frame, node);
             // Finishing the split causes the node latch to be re-acquired, so start over.
-            return -2;
         }
 
-        return 0;
     }
 
     private static long pointerCount(long pageSize, long len) {
@@ -1584,7 +1582,7 @@ final class BTreeValue {
             p_bytePut(page, vHeaderLoc, p_byteGet(page, vHeaderLoc) & ~Node.ENTRY_FRAGMENTED);
 
             // The fragmented bit is set again by this call.
-            node.updateLeafValue(frame, tree, frame.mNodePos, Node.ENTRY_FRAGMENTED, newValue);
+            node.updateLeafValue(tree, frame.mNodePos, Node.ENTRY_FRAGMENTED, newValue);
         } catch (Throwable e) {
             throw releaseExclusive(node, e);
         }
@@ -1679,7 +1677,7 @@ final class BTreeValue {
                 }
 
                 try {
-                    node.updateLeafValue(frame, cursor.mTree, frame.mNodePos,
+                    node.updateLeafValue(cursor.mTree, frame.mNodePos,
                                          Node.ENTRY_FRAGMENTED, newValue);
                 } catch (Throwable e) {
                     throw releaseExclusive(node, e);
@@ -1900,12 +1898,11 @@ final class BTreeValue {
 
         if ((p_byteGet(page, loc) & 0x20) == 0) {
             p_bytePut(page, loc++, 0xc0 | ((newLen - 1) >> 8));
-            p_bytePut(page, loc++, newLen - 1);
         } else {
             p_bytePut(page, loc++, 0xe0 | ((newLen - 1) >> 16));
             p_bytePut(page, loc++, (newLen - 1) >> 8);
-            p_bytePut(page, loc++, newLen - 1);
         }
+        p_bytePut(page, loc++, newLen - 1);
 
         node.garbage(node.garbage() + shrinkage);
 

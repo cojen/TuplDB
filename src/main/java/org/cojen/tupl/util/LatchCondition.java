@@ -160,11 +160,10 @@ public class LatchCondition {
      * and any exception thrown by the continuation is passed to the uncaught exception handler
      * of the running thread.
      *
-     * @param latch latch being used by this condition
      * @param cont called with latch held
      */
-    public final void uponSignal(Latch latch, Runnable cont) {
-        upon(latch, cont, WaitNode.COND_WAIT);
+    public final void uponSignal(Runnable cont) {
+        upon(cont, WaitNode.COND_WAIT);
     }
 
     /**
@@ -180,14 +179,13 @@ public class LatchCondition {
      * signaled specially. After waiting, the continuation is responsible for signaling the
      * next shared waiter.
      *
-     * @param latch latch being used by this condition
      * @param cont called with latch held
      */
-    public final void uponSignalShared(Latch latch, Runnable cont) {
-        upon(latch, cont, WaitNode.COND_WAIT_SHARED);
+    public final void uponSignalShared(Runnable cont) {
+        upon(cont, WaitNode.COND_WAIT_SHARED);
     }
 
-    private void upon(Latch latch, Runnable cont, int waitState) {
+    private void upon(Runnable cont, int waitState) {
         final var node = new WaitNode(cont, waitState);
 
         WaitNode tail = mTail;

@@ -243,8 +243,4 @@ public final class ReverseView implements View {
     public boolean isModifyAtomic() {
         return mSource.isModifyAtomic();
     }
-
-    static byte[] appendZero(byte[] key) {
-        return key == null ? null : ViewUtils.appendZero(key);
-    }
 }

@@ -45,7 +45,7 @@ final class Primer {
         mView = view;
         mDin = din;
         // TODO: Limit should be based on the concurrency level of the I/O system.
-        // TODO: Cache primer order should be scrambled, to improve cuncurrent priming.
+        // TODO: Cache primer order should be scrambled, to improve concurrent priming.
         mTaskLimit = Runtime.getRuntime().availableProcessors() * 8;
     }
 

@@ -615,7 +615,7 @@ public final class DirectPageOps {
                                 } else {
                                     v -= (1L << 49);
                                     if (v < (1L << 56)) {
-                                        p_bytePut(page, index++, 0xfe | (int) (v >> 56));
+                                        p_bytePut(page, index++, 0xfe);
                                     } else {
                                         v -= (1L << 56);
                                         p_bytePut(page, index++, 0xff);

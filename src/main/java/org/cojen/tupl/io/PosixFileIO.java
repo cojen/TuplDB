@@ -236,7 +236,7 @@ final class PosixFileIO extends AbstractFileIO {
             // Hint to the kernel that it can release pages associated with this
             // file. It is free to ignore our advice, but generally helps
             // prevent filling up the page cache with useless data. On numa
-            // machines page cache pollution can cause unnecesary trashing.
+            // machines page cache pollution can cause unnecessary trashing.
             
             // Using length of 0 means to apply the hint from the offset to EOF.
             fadvise(fd, 0, 0, 4); // 4 = POSIX_FADV_DONTNEED
@@ -617,7 +617,7 @@ final class PosixFileIO extends AbstractFileIO {
     public static class PlatformHolder {
         public static final PlatformIO INSTANCE;
         static {
-            PlatformIO inst = null;
+            PlatformIO inst;
             if (Platform.isMac()) {
                 inst = new MacIO();
             } else {

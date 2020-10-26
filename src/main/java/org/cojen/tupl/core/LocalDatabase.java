@@ -44,7 +44,6 @@ import java.nio.charset.StandardCharsets;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
@@ -70,7 +69,6 @@ import org.cojen.tupl.ConfirmationInterruptedException;
 import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.Crypto;
 import org.cojen.tupl.Cursor;
-import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DatabaseFullException;
 import org.cojen.tupl.DurabilityMode;
@@ -623,7 +621,7 @@ public final class LocalDatabase extends CoreDatabase {
             mTxnContexts = new TransactionContext[procCount * 4];
             for (int i=0; i<mTxnContexts.length; i++) {
                 mTxnContexts[i] = new TransactionContext(mTxnContexts.length, 4096);
-            };
+            }
 
             mCommitLock.acquireExclusive();
             try {
@@ -821,7 +819,7 @@ public final class LocalDatabase extends CoreDatabase {
                         // values are visible to other threads. Pass the state to the caller
                         // through the launcher object.
                         launcher.mReplRecoveryStartNanos = recoveryStart;
-                        launcher.mReplInitialPostion = redoPos;
+                        launcher.mReplInitialPosition = redoPos;
                         launcher.mReplInitialTxnId = redoTxnId;
                     }
                 } else {
@@ -980,7 +978,7 @@ public final class LocalDatabase extends CoreDatabase {
             }
 
             try {
-                controller.ready(launcher.mReplInitialPostion, launcher.mReplInitialTxnId);
+                controller.ready(launcher.mReplInitialPosition, launcher.mReplInitialTxnId);
             } catch (Throwable e) {
                 closeQuietly(this, e);
                 throw e;
@@ -1218,10 +1216,7 @@ public final class LocalDatabase extends CoreDatabase {
                 // merely acquired a shared lock, then it might not find the index at all.
 
                 Locker locker = mLockManager.localLocker();
-                while (true) {
-                    if (locker.doTryLockExclusive(mRegistryKeyMap.id(), idKey, 0).isHeld()) {
-                        break;
-                    }
+                while (!locker.doTryLockExclusive(mRegistryKeyMap.id(), idKey, 0).isHeld()) {
                     // Release locks and retry, avoiding possible deadlock if the checkpointer
                     // has suspended replica decoding in the middle of tree creation.
                     shared.release();
@@ -1636,7 +1631,7 @@ public final class LocalDatabase extends CoreDatabase {
                     c.store(null);
                 } else {
                     name = c.value();
-                    if (name[0] < 0 || (idBytes != null && next == false)) {
+                    if (name[0] < 0 || (idBytes != null && !next)) {
                         // Found a tagged entry, or found the requested entry.
                         break;
                     }
@@ -1663,7 +1658,7 @@ public final class LocalDatabase extends CoreDatabase {
 
         long treeId = decodeLongBE(treeIdBytes, 0);
 
-        return newBTreeInstance(treeId, treeIdBytes, name, loadTreeRoot(treeId, rootId));
+        return newBTreeInstance(treeId, treeIdBytes, name, loadTreeRoot(rootId));
     }
 
     private class Deletion implements Runnable {
@@ -1810,7 +1805,7 @@ public final class LocalDatabase extends CoreDatabase {
                     throw e;
                 }
             } else {
-                root = loadTreeRoot(treeId, 0);
+                root = loadTreeRoot(0);
             }
 
             try {
@@ -1962,15 +1957,6 @@ public final class LocalDatabase extends CoreDatabase {
     void discardRedoWriter(RedoWriter expect) {
         for (TransactionContext context : mTxnContexts) {
             context.discardRedoWriter(expect);
-        }
-    }
-
-    /**
-     * Copies a reference to all active UndoLogs into the given collection.
-     */
-    void gatherUndoLogs(Collection<? super UndoLog> to) {
-        for (TransactionContext context : mTxnContexts) {
-            context.gatherUndoLogs(to);
         }
     }
 
@@ -2762,7 +2748,7 @@ public final class LocalDatabase extends CoreDatabase {
 
     @Override
     public boolean isLeader() {
-        return mRedoWriter == null ? true : mRedoWriter.isLeader();
+        return mRedoWriter == null || mRedoWriter.isLeader();
     }
 
     @Override
@@ -2778,7 +2764,7 @@ public final class LocalDatabase extends CoreDatabase {
 
     @Override
     public boolean failover() throws IOException {
-        return mRedoWriter == null ? false : mRedoWriter.txnRedoWriter().failover();
+        return mRedoWriter != null && mRedoWriter.txnRedoWriter().failover();
     }
 
     @Override
@@ -3073,7 +3059,7 @@ public final class LocalDatabase extends CoreDatabase {
         try {
             txn.lockTimeout(-1, null);
 
-            if (!doMoveToTrash(txn, treeId, treeIdBytes)) {
+            if (!doMoveToTrash(txn, treeIdBytes)) {
                 return false;
             }
 
@@ -3120,14 +3106,14 @@ public final class LocalDatabase extends CoreDatabase {
     void redoMoveToTrash(LocalTransaction txn, long treeId) throws IOException {
         var treeIdBytes = new byte[8];
         encodeLongBE(treeIdBytes, 0, treeId);
-        doMoveToTrash(txn, treeId, treeIdBytes);
+        doMoveToTrash(txn, treeIdBytes);
     }
 
     /**
      * @param txn must not redo
      * @return false if already in the trash
      */
-    private boolean doMoveToTrash(LocalTransaction txn, long treeId, byte[] treeIdBytes)
+    private boolean doMoveToTrash(LocalTransaction txn, byte[] treeIdBytes)
         throws IOException
     {
         final byte[] trashIdKey = newKey(RK_TRASH_ID, treeIdBytes);
@@ -3301,11 +3287,10 @@ public final class LocalDatabase extends CoreDatabase {
     }
 
     /**
-     * @param treeId pass zero if unknown or not applicable
      * @param rootId pass zero to create
      * @return unlatched and unevictable root node
      */
-    private Node loadTreeRoot(final long treeId, final long rootId) throws IOException {
+    private Node loadTreeRoot(final long rootId) throws IOException {
         if (rootId == 0) {
             Node rootNode = allocLatchedNode(NodeGroup.MODE_UNEVICTABLE);
 
@@ -3423,7 +3408,7 @@ public final class LocalDatabase extends CoreDatabase {
                  "identified by: " + replEncoding);
         }
 
-        return loadTreeRoot(0, rootId);
+        return loadTreeRoot(rootId);
     }
 
     private static final byte IX_FIND = 0, IX_CREATE = 1;
@@ -3452,7 +3437,7 @@ public final class LocalDatabase extends CoreDatabase {
                 rootId = 0;
             }
 
-            Node root = loadTreeRoot(treeId, rootId);
+            Node root = loadTreeRoot(rootId);
 
             // Cannot call newBTreeInstance because mRedoWriter isn't set yet.
             if (launcher != null && launcher.mRepl != null) {
@@ -3554,10 +3539,7 @@ public final class LocalDatabase extends CoreDatabase {
 
             mOpenTreesLatch.acquireExclusive();
             try {
-                while (true) {
-                    if (locker.doTryLockShared(mRegistryKeyMap.id(), nameKey, 0).isHeld()) {
-                        break;
-                    }
+                while (!locker.doTryLockShared(mRegistryKeyMap.id(), nameKey, 0).isHeld()) {
                     // Release locks and retry, avoiding possible deadlock if the checkpointer
                     // has suspended replica decoding in the middle of tree creation.
                     mOpenTreesLatch.releaseExclusive();
@@ -3638,20 +3620,18 @@ public final class LocalDatabase extends CoreDatabase {
                 mOpenTreesLatch.releaseExclusive();
             }
 
-            if (createTxn != null) {
+            try {
+                createTxn.commit();
+            } catch (Throwable e) {
                 try {
-                    createTxn.commit();
-                } catch (Throwable e) {
-                    try {
-                        createTxn.reset();
-                        mRegistry.delete(Transaction.BOGUS, treeIdBytes);
-                    } catch (Throwable e2) {
-                        Utils.suppress(e, e2);
-                        throw closeOnFailure(this, e);
-                    }
-                    rethrowIfRecoverable(e);
+                    createTxn.reset();
+                    mRegistry.delete(Transaction.BOGUS, treeIdBytes);
+                } catch (Throwable e2) {
+                    Utils.suppress(e, e2);
                     throw closeOnFailure(this, e);
                 }
+                rethrowIfRecoverable(e);
+                throw closeOnFailure(this, e);
             }
         }
 
@@ -3677,7 +3657,7 @@ public final class LocalDatabase extends CoreDatabase {
             long rootId = (rootIdBytes == null || rootIdBytes.length == 0) ? 0
                 : decodeLongLE(rootIdBytes, 0);
 
-            Node root = loadTreeRoot(treeId, rootId);
+            Node root = loadTreeRoot(rootId);
 
             BTree btree = newBTreeInstance(treeId, treeIdBytes, name, root);
             tree = btree;
@@ -4009,10 +3989,7 @@ public final class LocalDatabase extends CoreDatabase {
 
         var first = (Node) cNodeMapElementHandle.getVolatile(table, slot);
 
-        while (true) {
-            if (first != null && (first = nodeMapLock(table, slot, first)) != null) {
-                break;
-            }
+        while (first == null || (first = nodeMapLock(table, slot, first)) == null) {
             first = (Node) cNodeMapElementHandle.compareAndExchange(table, slot, null, node);
             if (first == null) {
                 return;
@@ -4050,10 +4027,7 @@ public final class LocalDatabase extends CoreDatabase {
 
         var first = (Node) cNodeMapElementHandle.getVolatile(table, slot);
 
-        while (true) {
-            if (first != null && (first = nodeMapLock(table, slot, first)) != null) {
-                break;
-            }
+        while (first == null || (first = nodeMapLock(table, slot, first)) == null) {
             first = (Node) cNodeMapElementHandle.compareAndExchange(table, slot, null, node);
             if (first == null) {
                 return null;
@@ -4379,7 +4353,7 @@ public final class LocalDatabase extends CoreDatabase {
                         }
                         if (childNode.mCachedState == Node.CACHED_CLEAN) {
                             // Child state which was checked earlier changed when its latch was
-                            // released, and now it shoudn't be evicted.
+                            // released, and now it shouldn't be evicted.
                             childNode.downgrade();
                             break evictChild;
                         }
@@ -5257,7 +5231,7 @@ public final class LocalDatabase extends CoreDatabase {
             }
         } finally {
             // Zero fill the rest, making it easier to extend later. If an exception was
-            // thrown, this simplies cleanup. All of the allocated pages are referenced,
+            // thrown, this simplifies cleanup. All of the allocated pages are referenced,
             // but the rest are not.
             p_clear(page, poffset, pageSize(page));
         }

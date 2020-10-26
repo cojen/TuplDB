@@ -122,7 +122,7 @@ abstract class BTreeSeparator extends LongAdder {
     }
 
     /**
-     * Returns the first exception supressed by any worker, if any.
+     * Returns the first exception suppressed by any worker, if any.
      */
     public Throwable exceptionCheck() {
         return mException;

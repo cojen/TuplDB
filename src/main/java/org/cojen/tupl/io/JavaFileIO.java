@@ -395,7 +395,7 @@ final class JavaFileIO extends AbstractFileIO {
             String path = mFile.getPath();
 
             String originalMessage = e.getMessage();
-            if (originalMessage.indexOf(path) < 0) {
+            if (!originalMessage.contains(path)) {
                 message = message + ": " + mFile.getPath() + ' ' + originalMessage;
             } else {
                 message = message + ": " + originalMessage;

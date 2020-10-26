@@ -204,7 +204,7 @@ final class Lock {
         locker.mWaitingFor = this;
 
         // Await for shared lock.
-        queueSX.uponSignalShared(latch, () -> {
+        queueSX.uponSignalShared(() -> {
             locker.mWaitingFor = null;
             LatchCondition queue = mQueueSX;
 
@@ -312,7 +312,7 @@ final class Lock {
     /**
      * Called with exclusive latch held, which is retained.
      */
-    void uponLockUpgradable(Latch latch, Locker locker, Consumer<LockResult> cont) {
+    void uponLockUpgradable(Locker locker, Consumer<LockResult> cont) {
         LatchCondition queueU;
         quick: {
             LockResult result;
@@ -359,14 +359,13 @@ final class Lock {
         locker.mWaitingFor = this;
 
         // Await for upgradable lock.
-        queueU.uponSignal(latch, () -> {
+        queueU.uponSignal(() -> {
             locker.mWaitingFor = null;
             LatchCondition queue = mQueueU;
 
             LockResult result;
             if (queue == null) {
                 // Assume LockManager was closed.
-                locker.mWaitingFor = null;
                 result = INTERRUPTED;
             } else {
                 if (queue.isEmpty()) {
@@ -375,7 +374,6 @@ final class Lock {
                 }
                 mLockCount |= 0x80000000;
                 mOwner = locker;
-                locker.mWaitingFor = null;
                 result = ACQUIRED;
             }
 
@@ -453,8 +451,8 @@ final class Lock {
     /**
      * Called with exclusive latch held, which is retained.
      */
-    void uponLockExclusive(Latch latch, Locker locker, Consumer<LockResult> cont) {
-        uponLockUpgradable(latch, locker, result -> {
+    void uponLockExclusive(Locker locker, Consumer<LockResult> cont) {
+        uponLockUpgradable(locker, result -> {
             LatchCondition queueSX;
             quick: {
                 if (result.isHeld() && result != OWNED_EXCLUSIVE) {
@@ -481,14 +479,13 @@ final class Lock {
             final LockResult fresult = result == OWNED_UPGRADABLE ? UPGRADED : ACQUIRED;
 
             // Await for exclusive lock.
-            queueSX.uponSignal(latch, () -> {
+            queueSX.uponSignal(() -> {
                 locker.mWaitingFor = null;
                 LatchCondition queue = mQueueSX;
 
                 LockResult actualResult;
                 if (queue == null) {
                     // Assume LockManager was closed.
-                    locker.mWaitingFor = null;
                     actualResult = INTERRUPTED;
                 } else {
                     if (queue.isEmpty()) {
@@ -771,26 +768,6 @@ final class Lock {
             queueSX.signalShared(latch);
         }
         latch.releaseExclusive();
-    }
-
-    /**
-     * Releases an exclusive lock and never removes it from the LockManager. Is used to
-     * transfer ownership of a Locker between threads, which must have a reference back to this
-     * Lock. No check is made to verify that lock is held exclusive. The other thread, upon
-     * acquiring the lock, must not push this Lock instance to the Locker again.
-     *
-     * @param ht never released, even if an exception is thrown
-     */
-    void signalExclusive(LockManager.LockHT ht) {
-        mOwner = null;
-        mLockCount = 0;
-        // Signal behavior is a simplified from used by doUnlockOwned.
-        if (mQueueU != null) {
-            mQueueU.signal(ht);
-        }
-        if (mQueueSX != null) {
-            mQueueSX.signal(ht);
-        }
     }
 
     private IllegalStateException unlockFail() {

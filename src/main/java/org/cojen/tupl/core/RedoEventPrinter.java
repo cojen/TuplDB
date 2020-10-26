@@ -309,8 +309,7 @@ class RedoEventPrinter implements RedoVisitor {
             }
         }
 
-        return new StringBuilder().append("0x").append(Utils.toHex(key)).append(" (")
-            .append(chars).append(')').toString();
+        return "0x" + Utils.toHex(key) + " (" + String.valueOf(chars) + ')';
     }
 
     private static String valueStr(byte[] value) {

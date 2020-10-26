@@ -79,7 +79,7 @@ public enum LockResult {
 
     /**
      * Indicates that the lock isn't owned, or that lock acquisition wasn't performed. Unless
-     * returned from an explcit lock check method, this result doesn't imply that the lock is
+     * returned from an explicit lock check method, this result doesn't imply that the lock is
      * truly unowned.
      *
      * @see Transaction#lockCheck Transaction.lockCheck
@@ -95,7 +95,7 @@ public enum LockResult {
     }
 
     /**
-     * Rreturns true if lock request timed out. Applicable to {@link #TIMED_OUT_LOCK}.
+     * Returns true if lock request timed out. Applicable to {@link #TIMED_OUT_LOCK}.
      */
     public boolean isTimedOut() {
         return mType == 1;

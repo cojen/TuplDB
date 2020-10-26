@@ -517,7 +517,7 @@ final class FileTermLog extends Latch implements TermLog {
             if (mCommitListeners == null) {
                 mCommitListeners = new LongConsumer[1];
             } else {
-                Arrays.copyOf(mCommitListeners, mCommitListeners.length + 1);
+                mCommitListeners = Arrays.copyOf(mCommitListeners, mCommitListeners.length + 1);
             }
             mCommitListeners[mCommitListeners.length - 1] = listener;
         } finally {
@@ -1204,7 +1204,7 @@ final class FileTermLog extends Latch implements TermLog {
                 if (commitTasks instanceof List) {
                     list = (List<Object>) commitTasks;
                 } else {
-                    list = new ArrayList<Object>();
+                    list = new ArrayList<>();
                     list.add(commitTasks);
                     commitTasks = list;
                 }

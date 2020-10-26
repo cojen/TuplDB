@@ -45,7 +45,7 @@ public enum EventType {
     RECOVERY_APPLY_REDO_LOG(Category.RECOVERY, Level.INFO),
     /** Signals that some redo operations were not recovered due to log file corruption. */
     RECOVERY_REDO_LOG_CORRUPTION(Category.RECOVERY, Level.WARNING),
-    /** Signals that transactions not expliticly committed or rolled back are being processed. */
+    /** Signals that transactions not explicitly committed or rolled back are being processed. */
     RECOVERY_PROCESS_REMAINING(Category.RECOVERY, Level.INFO),
     /** Signals that a prepared transaction held by the leader hasn't been released yet. */
     RECOVERY_AWAIT_RELEASE(Category.RECOVERY, Level.WARNING),

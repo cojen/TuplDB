@@ -20,7 +20,7 @@ package org.cojen.tupl.repl;
 import java.io.IOException;
 
 /**
- * Throwm by StateLog when a term conflict was detected but cannot be resolved because the
+ * Thrown by StateLog when a term conflict was detected but cannot be resolved because the
  * local commit position cannot be rolled back.
  *
  * @author Brian S O'Neill
@@ -41,7 +41,7 @@ class CommitConflictException extends IOException {
     /**
      * Returns true if the conflicting position is lower than the durable position, which
      * implies that a restart won't fix the conflict. When false is returned, a restart might
-     * fix the conflict becuase non-durable changes can be rolled back.
+     * fix the conflict because non-durable changes can be rolled back.
      */
     boolean isFatal() {
         return isFatal(mPosition, mDurablePosition);

@@ -38,7 +38,7 @@ final class PendingTxn extends Locker implements Runnable {
     final UndoLog mUndoLog;
     final int mHasState;
 
-    private Object mAttachment;
+    private final Object mAttachment;
 
     private volatile long mCommitPos;
     private static final VarHandle cCommitPosHandle;

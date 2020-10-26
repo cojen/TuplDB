@@ -53,9 +53,6 @@ final class SnapshotPageArray extends PageArray {
 
     private volatile Object mSnapshots;
 
-    /**
-     * @param cache optional
-     */
     SnapshotPageArray(PageArray source, PageArray rawSource) {
         super(source.pageSize());
         mSource = source;

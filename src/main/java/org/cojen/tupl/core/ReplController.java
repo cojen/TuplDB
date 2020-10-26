@@ -183,8 +183,7 @@ final class ReplController extends ReplWriter {
 
         // Only capture new checkpoint state if previous attempt succeeded.
         if (mCheckpointPos <= 0 && mCheckpointTxnId == 0) {
-            StreamReplicator.Writer writer = redo.mReplWriter;
-            if (writer == null) {
+            if (redo.mReplWriter == null) {
                 cCheckpointPosHandle.setOpaque(this, mEngine.suspendedDecodePosition());
                 mCheckpointTxnId = mEngine.suspendedDecodeTransactionId();
             } else {
@@ -344,7 +343,7 @@ final class ReplController extends ReplWriter {
             }
 
             // When signaled and with the latch held, need to check everything again.
-            mLeaderNotifyCondition.uponSignal(this, () -> doUponLeader(acquired, lost));
+            mLeaderNotifyCondition.uponSignal(() -> doUponLeader(acquired, lost));
         }
     }
 
@@ -472,7 +471,7 @@ final class ReplController extends ReplWriter {
         // volatile assignments. The exclusive latch prevents leaderNotify from assigning to
         // mTxnRedoWriter, and by assigning it first, there's no race with an immediate call to
         // switchToReplica. If the assignment was reversed, then a call to switchToReplica
-        // might observe that mTxnRedoWriter still matches and then it will erronously call
+        // might observe that mTxnRedoWriter still matches and then it will erroneously call
         // doSwitchToReplica again.
         acquireExclusive();
         mTxnRedoWriter = this;

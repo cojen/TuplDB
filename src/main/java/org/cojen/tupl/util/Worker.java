@@ -30,7 +30,7 @@ import org.cojen.tupl.io.Utils;
 
 /**
  * Simple task worker which has at most one background thread, and is expected to have only one
- * thread enqueing tasks. This class isn't thread safe for enqueuing tasks, and so the caller
+ * thread enqueuing tasks. This class isn't thread safe for enqueuing tasks, and so the caller
  * must provide its own mutual exclusion to protect against concurrent enqueues.
  *
  * @author Brian S O'Neill

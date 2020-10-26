@@ -77,12 +77,9 @@ class PosixMappedPageArray extends MappedPageArray {
                 throw e;
             }
         } else {
-            var fio = new JavaFileIO(file, options, 1, false);
-            try {
+            try (var fio = new JavaFileIO(file, options, 1, false)) {
                 fileLen = fio.length();
                 fd = PosixFileIO.openFd(file, options);
-            } finally {
-                fio.close();
             }
         }
 

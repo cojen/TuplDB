@@ -198,11 +198,8 @@ public abstract class FileIO implements CauseCloseable {
                 PosixFileIO.closeFd(fd);
             }
         } else {
-            FileChannel fc = FileChannel.open(file.toPath(), StandardOpenOption.READ);
-            try {
+            try (FileChannel fc = FileChannel.open(file.toPath(), StandardOpenOption.READ)) {
                 fc.force(true);
-            } finally {
-                fc.close();
             }
         }
     }

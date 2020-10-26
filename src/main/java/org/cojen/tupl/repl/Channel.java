@@ -227,7 +227,7 @@ interface Channel {
     /**
      * Request the current group file version.
      *
-     * @param groupVersion requestor group version, which can be ignored
+     * @param groupVersion requester group version, which can be ignored
      * @return false if not sent or processed
      */
     boolean groupVersion(Channel from, long groupVersion);
@@ -240,7 +240,7 @@ interface Channel {
     /**
      * Request the current group file, if the version is higher.
      *
-     * @param groupVersion requestor group version, which can be ignored
+     * @param groupVersion requester group version, which can be ignored
      * @return false if not sent or processed
      */
     boolean groupFile(Channel from, long groupVersion) throws IOException;

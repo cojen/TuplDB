@@ -746,7 +746,6 @@ final class StoredPageDb extends PageDb {
     }
 
     /**
-     * @param cache optional
      * @param crypto optional
      * @param in snapshot source; does not require extra buffering; auto-closed
      */
@@ -802,7 +801,6 @@ final class StoredPageDb extends PageDb {
     }
 
     /**
-     * @param cache optional
      * @param crypto optional
      * @param in snapshot source; does not require extra buffering; auto-closed
      */

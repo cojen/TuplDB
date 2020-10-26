@@ -1244,10 +1244,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
     }
 
-    Scheduler scheduler() {
-        return mScheduler;
-    }
-
     /**
      * Enable or disable partitioned mode, which simulates a network partition. New connections
      * are rejected and existing connections are closed.

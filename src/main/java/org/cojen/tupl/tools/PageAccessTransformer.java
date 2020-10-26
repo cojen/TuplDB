@@ -242,7 +242,7 @@ public class PageAccessTransformer {
         try (var in = new BufferedReader(new FileReader(file))) {
             String line;
             while ((line = in.readLine()) != null) {
-                if (line.indexOf("/*P*/") >= 0) {
+                if (line.contains("/*P*/")) {
                     return true;
                 }
             }

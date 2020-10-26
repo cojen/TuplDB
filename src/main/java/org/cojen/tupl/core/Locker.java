@@ -961,7 +961,7 @@ class Locker implements DatabaseAccess { // weak access to database
         // Limited by number of bits available in mUpgrades and mUnlockGroup.
         private static final int HIGHEST_BLOCK_CAPACITY = 64;
 
-        private Lock[] mLocks;
+        private final Lock[] mLocks;
         private long mUpgrades;
         // Size must always be at least 1.
         int mSize;

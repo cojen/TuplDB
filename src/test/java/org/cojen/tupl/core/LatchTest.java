@@ -78,7 +78,7 @@ public class LatchTest {
         };
 
         latch.acquireExclusive();
-        cond.uponSignal(latch, waiter);
+        cond.uponSignal(waiter);
 
         cond.clear();
         latch.releaseExclusive();

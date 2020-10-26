@@ -388,7 +388,7 @@ final class Node extends Clutch implements DatabaseAccess {
     /**
      * Prepares the node for appending entries out-of-order, and then sorting them.
      *
-     * @see appendToSortLeaf
+     * @see #appendToSortLeaf
      */
     void asSortLeaf() {
         type((byte) (TYPE_TN_LEAF | LOW_EXTREMITY | HIGH_EXTREMITY));
@@ -2044,7 +2044,7 @@ final class Node extends Clutch implements DatabaseAccess {
      *
      * @param pos position as provided by binarySearch; must be positive
      */
-    void txnPreUpdateLeafEntry(LocalTransaction txn, BTree tree, byte[] key, int pos)
+    void txnPreUpdateLeafEntry(LocalTransaction txn, BTree tree, int pos)
         throws IOException
     {
         final var page = mPage;
@@ -3584,11 +3584,10 @@ final class Node extends Clutch implements DatabaseAccess {
     }
 
     /**
-     * @param frame optional frame which is bound to this node; only used for rebalancing
      * @param pos position as provided by binarySearch; must be positive
      * @param vfrag 0 or ENTRY_FRAGMENTED
      */
-    void updateLeafValue(CursorFrame frame, BTree tree, int pos, int vfrag, byte[] value)
+    void updateLeafValue(BTree tree, int pos, int vfrag, byte[] value)
         throws IOException
     {
         var page = mPage;
@@ -4510,19 +4509,16 @@ final class Node extends Clutch implements DatabaseAccess {
      * @return page location for first byte of value (first location after header)
      */
     static int encodeLeafValueHeader(/*P*/ byte[] page, int vfrag, int vlen, int vloc) {
-        if (vlen <= 127 && vfrag == 0) {
-            p_bytePut(page, vloc++, vlen);
-        } else {
+        if (vlen > 127 || vfrag != 0) {
             vlen--;
             if (vlen < 8192) {
                 p_bytePut(page, vloc++, 0x80 | vfrag | (vlen >> 8));
-                p_bytePut(page, vloc++, vlen);
             } else {
                 p_bytePut(page, vloc++, 0xa0 | vfrag | (vlen >> 16));
                 p_bytePut(page, vloc++, vlen >> 8);
-                p_bytePut(page, vloc++, vlen);
             }
         }
+        p_bytePut(page, vloc++, vlen);
         return vloc;
     }
 
@@ -4632,9 +4628,8 @@ final class Node extends Clutch implements DatabaseAccess {
      * @param snode source node to copy entry from
      * @param spos source position to copy entry from
      * @param encodedLen length of new entry to allocate
-     * @param pos normalized search vector position of entry to insert
      */
-    void splitLeafAscendingAndCopyEntry(BTree tree, Node snode, int spos, int encodedLen, int pos)
+    void splitLeafAscendingAndCopyEntry(BTree tree, Node snode, int spos, int encodedLen)
         throws IOException
     {
         // Note: This method is a specialized variant of the splitLeafAndCreateEntry method.
@@ -5142,7 +5137,7 @@ final class Node extends Clutch implements DatabaseAccess {
             if (pos < 0) {
                 throw new AssertionError("Key not found");
             }
-            updateLeafValue(null, tree, pos, vfrag, value);
+            updateLeafValue(tree, pos, vfrag, value);
             return null;
         }
 
@@ -5372,7 +5367,7 @@ final class Node extends Clutch implements DatabaseAccess {
                     boolean full = size < TN_HEADER_SIZE | newSize > pageSize(newPage);
 
                     if (full || newSize >= size) {
-                        // New node has accumlated enough entries...
+                        // New node has accumulated enough entries...
 
                         if (newKeyLoc != 0) {
                             // ...and split key has been found.
@@ -5477,7 +5472,7 @@ final class Node extends Clutch implements DatabaseAccess {
                     boolean full = size < TN_HEADER_SIZE | newSize > pageSize(newPage);
 
                     if (full || newSize >= size) {
-                        // New node has accumlated enough entries...
+                        // New node has accumulated enough entries...
 
                         if (newKeyLoc != 0) {
                             // ...and split key has been found.
@@ -5897,7 +5892,7 @@ final class Node extends Clutch implements DatabaseAccess {
         // Increment garbage by the size of the encoded entry.
         garbage(garbage() + entryLen);
 
-        // Encode an empty key and a ghost value, to faciliate cleanup when an exception
+        // Encode an empty key and a ghost value, to facilitate cleanup when an exception
         // occurs. This ensures that cleanup won't double-delete fragmented keys or values.
         p_shortPutLE(page, loc, 0x8000); // encoding for an empty key
         p_bytePut(page, loc + 2, -1); // encoding for a ghost value

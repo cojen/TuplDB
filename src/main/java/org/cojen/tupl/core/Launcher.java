@@ -34,7 +34,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 import org.cojen.tupl.Crypto;
-import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.EventListener;
@@ -103,14 +102,14 @@ public final class Launcher implements Cloneable {
     boolean mBasicMode;
 
     // Set only when calling debugOpen, and then it's discarded.
-    Map<String, ? extends Object> mDebugOpen;
+    Map<String, ?> mDebugOpen;
 
     // Set only when not replicated and unfinished transactions were recovered.
     LHashTable.Obj mUnfinished;
 
     // These fields are set as a side-effect of constructing a replicated Database.
     long mReplRecoveryStartNanos;
-    long mReplInitialPostion;
+    long mReplInitialPosition;
     long mReplInitialTxnId;
 
     public Launcher() {
@@ -281,7 +280,7 @@ public final class Launcher implements Cloneable {
         return map == null || map.isEmpty() ? null : new LHashTable.Obj<>(map.size());
     }
 
-    public void debugOpen(PrintStream out, Map<String, ? extends Object> properties)
+    public void debugOpen(PrintStream out, Map<String, ?> properties)
         throws IOException
     {
         if (out == null) {

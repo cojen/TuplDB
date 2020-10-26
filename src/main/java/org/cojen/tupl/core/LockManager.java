@@ -345,7 +345,7 @@ public final class LockManager {
                 releaseShared();
             }
 
-            return lock == null ? true : lock.isAvailable(locker);
+            return lock == null || lock.isAvailable(locker);
         }
 
         /**
@@ -510,9 +510,9 @@ public final class LockManager {
                         if (type == TYPE_SHARED) {
                             flock.uponLockShared(this, locker, cont2);
                         } else if (type == TYPE_UPGRADABLE) {
-                            flock.uponLockUpgradable(this, locker, cont2);
+                            flock.uponLockUpgradable(locker, cont2);
                         } else {
-                            flock.uponLockExclusive(this, locker, cont2);
+                            flock.uponLockExclusive(locker, cont2);
                         }
 
                         return;

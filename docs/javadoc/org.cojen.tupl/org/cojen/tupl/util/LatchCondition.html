@@ -214,16 +214,14 @@ long&nbsp;nanosEnd)</code></th>
 </tr>
 <tr class="row-color" id="i11">
 <td class="col-first"><code>void</code></td>
-<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#uponSignal(org.cojen.tupl.util.Latch,java.lang.Runnable)">uponSignal</a></span>&#8203;(<a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
-<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/Runnable.html" title="class or interface in java.lang" class="external-link">Runnable</a>&nbsp;cont)</code></th>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#uponSignal(java.lang.Runnable)">uponSignal</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/Runnable.html" title="class or interface in java.lang" class="external-link">Runnable</a>&nbsp;cont)</code></th>
 <td class="col-last">
 <div class="block">Invokes the given continuation upon the condition being signaled.</div>
 </td>
 </tr>
 <tr class="alt-color" id="i12">
 <td class="col-first"><code>void</code></td>
-<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#uponSignalShared(org.cojen.tupl.util.Latch,java.lang.Runnable)">uponSignalShared</a></span>&#8203;(<a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
-<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/Runnable.html" title="class or interface in java.lang" class="external-link">Runnable</a>&nbsp;cont)</code></th>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#uponSignalShared(java.lang.Runnable)">uponSignalShared</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/Runnable.html" title="class or interface in java.lang" class="external-link">Runnable</a>&nbsp;cont)</code></th>
 <td class="col-last">
 <div class="block">Invokes the given continuation upon the condition being signaled.</div>
 </td>
@@ -376,10 +374,9 @@ long&nbsp;nanosEnd)</span></div>
 </section>
 </li>
 <li>
-<section class="detail" id="uponSignal(org.cojen.tupl.util.Latch,java.lang.Runnable)">
+<section class="detail" id="uponSignal(java.lang.Runnable)">
 <h3>uponSignal</h3>
-<div class="member-signature"><span class="modifiers">public final</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="member-name">uponSignal</span>&#8203;(<span class="parameters"><a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
-<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/Runnable.html" title="class or interface in java.lang" class="external-link">Runnable</a>&nbsp;cont)</span></div>
+<div class="member-signature"><span class="modifiers">public final</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="member-name">uponSignal</span>&#8203;(<span class="parameters"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/Runnable.html" title="class or interface in java.lang" class="external-link">Runnable</a>&nbsp;cont)</span></div>
 <div class="block">Invokes the given continuation upon the condition being signaled. The exclusive latch
  must be acquired by the caller, which is retained. When the condition is signaled, the
  continuation is enqueued to be run by a thread which releases the exclusive latch. The
@@ -389,16 +386,14 @@ long&nbsp;nanosEnd)</span></div>
  of the running thread.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>latch</code> - latch being used by this condition</dd>
 <dd><code>cont</code> - called with latch held</dd>
 </dl>
 </section>
 </li>
 <li>
-<section class="detail" id="uponSignalShared(org.cojen.tupl.util.Latch,java.lang.Runnable)">
+<section class="detail" id="uponSignalShared(java.lang.Runnable)">
 <h3>uponSignalShared</h3>
-<div class="member-signature"><span class="modifiers">public final</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="member-name">uponSignalShared</span>&#8203;(<span class="parameters"><a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
-<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/Runnable.html" title="class or interface in java.lang" class="external-link">Runnable</a>&nbsp;cont)</span></div>
+<div class="member-signature"><span class="modifiers">public final</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="member-name">uponSignalShared</span>&#8203;(<span class="parameters"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/Runnable.html" title="class or interface in java.lang" class="external-link">Runnable</a>&nbsp;cont)</span></div>
 <div class="block">Invokes the given continuation upon the condition being signaled. The exclusive latch
  must be acquired by the caller, which is retained. When the condition is signaled, the
  continuation is enqueued to be run by a thread which releases the exclusive latch. The
@@ -412,7 +407,6 @@ long&nbsp;nanosEnd)</span></div>
  next shared waiter.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>latch</code> - latch being used by this condition</dd>
 <dd><code>cont</code> - called with latch held</dd>
 </dl>
 </section>

@@ -124,7 +124,6 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
         stats[1] = 0;
         if (mValue != null && mValue != Cursor.NOT_LOADED) {
             stats[0] = mValue.length;
-            stats[1] = 0;
             return;
         }
         CursorFrame frame = frameSharedNotSplit();
@@ -265,7 +264,7 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
      * @return false if nothing left
      */
     private boolean toFirst(CursorFrame frame, Node node) throws IOException {
-        return toFirstLeaf(frame, node).hasKeys() ? true : toNext(mFrame);
+        return toFirstLeaf(frame, node).hasKeys() || toNext(mFrame);
     }
 
     /**
@@ -389,7 +388,7 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
      * @return false if nothing left
      */
     private boolean toLast(CursorFrame frame, Node node) throws IOException {
-        return toLastLeaf(frame, node).hasKeys() ? true : toPrevious(mFrame);
+        return toLastLeaf(frame, node).hasKeys() || toPrevious(mFrame);
     }
 
     /**
@@ -761,7 +760,7 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
                 if (parentPos < parentNode.highestInternalPos()) {
                     // Note: Frames are popped as late as possible, in order for cursor
                     // bindings to be properly fixed as structural tree changes are made.
-                    parentFrame.popChilden(mFrame);
+                    parentFrame.popChildren(mFrame);
                     parentFrame.mNodePos = (parentPos += 2);
                     // Always create a new cursor frame. See CursorFrame.unbind.
                     frame = new CursorFrame(parentFrame);
@@ -876,7 +875,7 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
                 if (parentPos < parentNode.highestInternalPos()) {
                     // Note: Frames are popped as late as possible, in order for cursor
                     // bindings to be properly fixed as structural tree changes are made.
-                    parentFrame.popChilden(mFrame);
+                    parentFrame.popChildren(mFrame);
                     parentFrame.mNodePos = (parentPos += 2);
                     // Always create a new cursor frame. See CursorFrame.unbind.
                     frame = new CursorFrame(parentFrame);
@@ -1390,7 +1389,7 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
                 if (parentPos > 0) {
                     // Note: Frames are popped as late as possible, in order for cursor
                     // bindings to be properly fixed as structural tree changes are made.
-                    parentFrame.popChilden(mFrame);
+                    parentFrame.popChildren(mFrame);
                     parentFrame.mNodePos = (parentPos -= 2);
                     // Always create a new cursor frame. See CursorFrame.unbind.
                     frame = new CursorFrame(parentFrame);
@@ -1505,7 +1504,7 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
                 if (parentPos > 0) {
                     // Note: Frames are popped as late as possible, in order for cursor
                     // bindings to be properly fixed as structural tree changes are made.
-                    parentFrame.popChilden(mFrame);
+                    parentFrame.popChildren(mFrame);
                     parentFrame.mNodePos = (parentPos -= 2);
                     // Always create a new cursor frame. See CursorFrame.unbind.
                     frame = new CursorFrame(parentFrame);
@@ -1703,7 +1702,7 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
 
             // Copy key for now, because lock might not be available. Value
             // might change after latch is released. Assign NOT_LOADED, in case
-            // lock cannot be granted at all. This prevents uncommited value
+            // lock cannot be granted at all. This prevents uncommitted value
             // from being exposed.
             mKey = node.retrieveKey(pos);
             mValue = NOT_LOADED;
@@ -3419,7 +3418,7 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
 
         // Keeping the exclusive latch is ideal, but I'd rather not have to create special
         // modifications for an infrequent operation. Releasing the latch permits a concurrent
-        // modificiation, which is checked by ensuring that a value exists and is empty.
+        // modification, which is checked by ensuring that a value exists and is empty.
         storeNoRedo(null, mFrame, EMPTY_BYTES);
 
         CursorFrame leaf;
@@ -3704,9 +3703,9 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
 
                 try {
                     if (txn != null && txn.lockMode() != LockMode.UNSAFE) {
-                        node.txnPreUpdateLeafEntry(txn, mTree, key, pos);
+                        node.txnPreUpdateLeafEntry(txn, mTree, pos);
                     }
-                    node.updateLeafValue(leaf, mTree, pos, 0, value);
+                    node.updateLeafValue(mTree, pos, 0, value);
                 } catch (Throwable e) {
                     node.releaseExclusive();
                     throw e;
@@ -3824,7 +3823,7 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
             final int pos = leaf.mNodePos;
             if (pos >= 0) {
                 try {
-                    node.updateLeafValue(leaf, mTree, pos, Node.ENTRY_FRAGMENTED, value);
+                    node.updateLeafValue(mTree, pos, Node.ENTRY_FRAGMENTED, value);
                 } catch (Throwable e) {
                     node.releaseExclusive();
                     throw e;
@@ -3857,7 +3856,7 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
     }
 
     /**
-     * Non-transactional insert of a blank value. Caller must hold shared commmit lock and
+     * Non-transactional insert of a blank value. Caller must hold shared commit lock and
      * have verified that insert is a valid operation.
      *
      * @param leaf leaf frame, latched exclusively, which is released by this
@@ -4197,7 +4196,7 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
     private int randomPosition(ThreadLocalRandom rnd, Node node, byte[] lowKey, byte[] highKey)
         throws IOException
     {
-       int pos = 0;
+       int pos;
        if (highKey == null) {
            pos = node.highestPos() + 2;
        } else {
@@ -4251,10 +4250,7 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
             } else {
                 findGe(lowKey);
             }
-            if (mKey == null || (highKey != null && compareUnsigned(mKey, highKey) >= 0)) {
-                return true;
-            }
-            return false;
+            return mKey == null || (highKey != null && compareUnsigned(mKey, highKey) >= 0);
         } finally {
             reset();
             mKeyOnly = oldKeyOnly;
@@ -4559,7 +4555,7 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
                 final int tloc = tnode.createLeafEntry(null, mTree, tpos, encodedLen);
 
                 if (tloc < 0) {
-                    tnode.splitLeafAscendingAndCopyEntry(mTree, source, 0, encodedLen, tpos);
+                    tnode.splitLeafAscendingAndCopyEntry(mTree, source, 0, encodedLen);
                     tnode = mTree.finishSplitCritical(tleaf, tnode);
                 } else {
                     p_copy(spage, sloc, tnode.mPage, tloc, encodedLen);
@@ -4618,7 +4614,7 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
                     final int tloc = tnode.createLeafEntry(null, mTree, tpos, encodedLen);
 
                     if (tloc < 0) {
-                        tnode.splitLeafAscendingAndCopyEntry(mTree, snode, spos, encodedLen, tpos);
+                        tnode.splitLeafAscendingAndCopyEntry(mTree, snode, spos, encodedLen);
                         tnode = mTree.finishSplitCritical(tleaf, tnode);
                     } else {
                         p_copy(spage, sloc, tnode.mPage, tloc, encodedLen);

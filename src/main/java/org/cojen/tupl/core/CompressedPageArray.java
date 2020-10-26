@@ -24,7 +24,6 @@ import java.util.Arrays;
 
 import java.util.function.Supplier;
 
-import org.cojen.tupl.Crypto;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.Snapshot;
@@ -229,9 +228,6 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
         mCompressors.clear(PageCompressor::close);
     }
 
-    /**
-     * @param crypto optional
-     */
     Snapshot beginSnapshot() throws IOException {
         Snapshot snap = mDatabase.beginSnapshot();
 
