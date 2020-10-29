@@ -37,13 +37,11 @@ import com.sun.jna.win32.W32APIOptions;
  *
  * @author Brian S O'Neill
  */
-@SuppressWarnings({"deprecation", "cast"}) // Native.load is preferred over Native.loadLibrary.
 class WindowsMappedPageArray extends MappedPageArray {
     private static final Kernel32Ex cKernel;
 
     static {
-        cKernel = (Kernel32Ex) Native.loadLibrary
-            ("kernel32", Kernel32Ex.class, W32APIOptions.UNICODE_OPTIONS);
+        cKernel = Native.load("kernel32", Kernel32Ex.class, W32APIOptions.UNICODE_OPTIONS);
     }
 
     private final File mFile;
