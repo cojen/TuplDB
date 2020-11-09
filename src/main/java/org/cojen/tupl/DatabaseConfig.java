@@ -351,6 +351,11 @@ public class DatabaseConfig implements Cloneable {
         return this;
     }
 
+    public DatabaseConfig enableJMX(boolean enable) {
+        mLauncher.enableJMX(enable);
+        return this;
+    }
+
     /**
      * Enable full encryption of the data files, transaction logs, snapshots, and cache priming
      * sets. Option has no effect if database is non-durable. If replication is enabled,

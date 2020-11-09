@@ -88,6 +88,7 @@ public final class Launcher implements Cloneable {
     ReplicatorConfig mReplConfig;
     StreamReplicator mRepl;
     int mMaxReplicaThreads;
+    boolean mEnableJMX;
     Crypto mDataCrypto;
     Crypto mRedoCrypto;
     int mCompressorPageSize;
@@ -250,6 +251,10 @@ public final class Launcher implements Cloneable {
         mMaxReplicaThreads = num;
     }
 
+    public void enableJMX(boolean enable) {
+        mEnableJMX = enable;
+    }
+
     public void encrypt(Crypto crypto) {
         mDataCrypto = crypto;
         mRedoCrypto = crypto;
@@ -407,8 +412,22 @@ public final class Launcher implements Cloneable {
     public final CoreDatabase open(boolean destroy, InputStream restore) throws IOException {
         Launcher launcher = clone();
         boolean openedReplicator = launcher.openReplicator();
+
         try {
-            return launcher.doOpen(destroy, restore);
+            CoreDatabase db = launcher.doOpen(destroy, restore);
+
+            if (mEnableJMX) {
+                String base;
+                if (mBaseFile != null) {
+                    base = mBaseFile.toString();
+                } else {
+                    base = java.util.UUID.randomUUID().toString();
+                }
+
+                org.cojen.tupl.jmx.Registration.register(db, base);
+            }
+
+            return db;
         } catch (Throwable e) {
             if (openedReplicator) {
                 try {
