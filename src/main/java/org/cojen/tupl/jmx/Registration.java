@@ -104,33 +104,27 @@ public class Registration {
         }
 
         @Override
-        public int getPageSize() {
+        public long getFreeBytes() {
             var stats = stats();
-            return stats == null ? 0 : stats.pageSize();
+            return stats == null ? 0 : stats.freePages() * stats.pageSize();
         }
 
         @Override
-        public long getFreePages() {
+        public long getTotalBytes() {
             var stats = stats();
-            return stats == null ? 0 : stats.freePages();
+            return stats == null ? 0 : stats.totalPages() * stats.pageSize();
         }
 
         @Override
-        public long getTotalPages() {
+        public long getCacheBytes() {
             var stats = stats();
-            return stats == null ? 0 : stats.totalPages();
+            return stats == null ? 0 : stats.cachePages() * stats.pageSize();
         }
 
         @Override
-        public long getCachePages() {
+        public long getDirtyBytes() {
             var stats = stats();
-            return stats == null ? 0 : stats.cachePages();
-        }
-
-        @Override
-        public long getDirtyPages() {
-            var stats = stats();
-            return stats == null ? 0 : stats.dirtyPages();
+            return stats == null ? 0 : stats.dirtyPages() * stats.pageSize();
         }
 
         @Override

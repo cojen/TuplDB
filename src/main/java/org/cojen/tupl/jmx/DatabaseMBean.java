@@ -23,15 +23,13 @@ package org.cojen.tupl.jmx;
  * @author Brian S O'Neill
  */
 public interface DatabaseMBean {
-    int getPageSize();
+    long getFreeBytes();
 
-    long getFreePages();
+    long getTotalBytes();
 
-    long getTotalPages();
+    long getCacheBytes();
 
-    long getCachePages();
-
-    long getDirtyPages();
+    long getDirtyBytes();
 
     int getOpenIndexes();
 
