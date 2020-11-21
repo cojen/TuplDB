@@ -15,7 +15,7 @@
 <script type="text/javascript" src="../../../../../script-dir/jquery-ui.min.js"></script>
 </head>
 <body class="class-declaration-page">
-<script type="text/javascript">var data = {"i0":10,"i1":9,"i2":10,"i3":6,"i4":6,"i5":6,"i6":6,"i7":6,"i8":9,"i9":9,"i10":6,"i11":10,"i12":6,"i13":6,"i14":6,"i15":6,"i16":6,"i17":6,"i18":10,"i19":6};
+<script type="text/javascript">var data = {"i0":10,"i1":9,"i2":10,"i3":6,"i4":6,"i5":6,"i6":6,"i7":6,"i8":9,"i9":9,"i10":6,"i11":6,"i12":10,"i13":10,"i14":6,"i15":6,"i16":6,"i17":6,"i18":6,"i19":6,"i20":6,"i21":6,"i22":10,"i23":10,"i24":6,"i25":6};
 var tabs = {65535:["t0","All Methods"],1:["t1","Static Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],8:["t4","Concrete Methods"]};
 var altColor = "alt-color";
 var rowColor = "row-color";
@@ -202,6 +202,15 @@ int&nbsp;length)</code></th>
 <td class="col-last">&nbsp;</td>
 </tr>
 <tr class="row-color" id="i11">
+<td class="col-first"><code>abstract void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#read(long,byte%5B%5D,int,int,java.nio.ByteBuffer)">read</a></span>&#8203;(long&nbsp;pos,
+byte[]&nbsp;buf,
+int&nbsp;offset,
+int&nbsp;length,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</code></th>
+<td class="col-last">&nbsp;</td>
+</tr>
+<tr class="alt-color" id="i12">
 <td class="col-first"><code>void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#read(long,long,int,int)">read</a></span>&#8203;(long&nbsp;pos,
 long&nbsp;ptr,
@@ -209,41 +218,57 @@ int&nbsp;offset,
 int&nbsp;length)</code></th>
 <td class="col-last">&nbsp;</td>
 </tr>
-<tr class="alt-color" id="i12">
+<tr class="row-color" id="i13">
+<td class="col-first"><code>void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#read(long,long,int,int,java.nio.ByteBuffer)">read</a></span>&#8203;(long&nbsp;pos,
+long&nbsp;ptr,
+int&nbsp;offset,
+int&nbsp;length,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</code></th>
+<td class="col-last">&nbsp;</td>
+</tr>
+<tr class="alt-color" id="i14">
 <td class="col-first"><code>abstract void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#read(long,java.nio.ByteBuffer)">read</a></span>&#8203;(long&nbsp;pos,
 <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;bb)</code></th>
 <td class="col-last">&nbsp;</td>
 </tr>
-<tr class="row-color" id="i13">
+<tr class="row-color" id="i15">
+<td class="col-first"><code>abstract void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#read(long,java.nio.ByteBuffer,java.nio.ByteBuffer)">read</a></span>&#8203;(long&nbsp;pos,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;bb,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</code></th>
+<td class="col-last">&nbsp;</td>
+</tr>
+<tr class="alt-color" id="i16">
 <td class="col-first"><code>abstract void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#remap()">remap</a></span>()</code></th>
 <td class="col-last">
 <div class="block">If file is mapped, remaps it if the file length has changed.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i14">
+<tr class="row-color" id="i17">
 <td class="col-first"><code>abstract void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#sync(boolean)">sync</a></span>&#8203;(boolean&nbsp;metadata)</code></th>
 <td class="col-last">
 <div class="block">Durably flushes all writes to the underlying device.</div>
 </td>
 </tr>
-<tr class="row-color" id="i15">
+<tr class="alt-color" id="i18">
 <td class="col-first"><code>abstract void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#truncateLength(long)">truncateLength</a></span>&#8203;(long&nbsp;length)</code></th>
 <td class="col-last">
 <div class="block">Attempt to truncate the length of the file.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i16">
+<tr class="row-color" id="i19">
 <td class="col-first"><code>abstract void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#unmap()">unmap</a></span>()</code></th>
 <td class="col-last">
 <div class="block">Unmaps the file from main memory, leaving the file open.</div>
 </td>
 </tr>
-<tr class="row-color" id="i17">
+<tr class="alt-color" id="i20">
 <td class="col-first"><code>abstract void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#write(long,byte%5B%5D,int,int)">write</a></span>&#8203;(long&nbsp;pos,
 byte[]&nbsp;buf,
@@ -251,7 +276,16 @@ int&nbsp;offset,
 int&nbsp;length)</code></th>
 <td class="col-last">&nbsp;</td>
 </tr>
-<tr class="alt-color" id="i18">
+<tr class="row-color" id="i21">
+<td class="col-first"><code>abstract void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#write(long,byte%5B%5D,int,int,java.nio.ByteBuffer)">write</a></span>&#8203;(long&nbsp;pos,
+byte[]&nbsp;buf,
+int&nbsp;offset,
+int&nbsp;length,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</code></th>
+<td class="col-last">&nbsp;</td>
+</tr>
+<tr class="alt-color" id="i22">
 <td class="col-first"><code>void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#write(long,long,int,int)">write</a></span>&#8203;(long&nbsp;pos,
 long&nbsp;ptr,
@@ -259,10 +293,26 @@ int&nbsp;offset,
 int&nbsp;length)</code></th>
 <td class="col-last">&nbsp;</td>
 </tr>
-<tr class="row-color" id="i19">
+<tr class="row-color" id="i23">
+<td class="col-first"><code>void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#write(long,long,int,int,java.nio.ByteBuffer)">write</a></span>&#8203;(long&nbsp;pos,
+long&nbsp;ptr,
+int&nbsp;offset,
+int&nbsp;length,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</code></th>
+<td class="col-last">&nbsp;</td>
+</tr>
+<tr class="alt-color" id="i24">
 <td class="col-first"><code>abstract void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#write(long,java.nio.ByteBuffer)">write</a></span>&#8203;(long&nbsp;pos,
 <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;bb)</code></th>
+<td class="col-last">&nbsp;</td>
+</tr>
+<tr class="row-color" id="i25">
+<td class="col-first"><code>abstract void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#write(long,java.nio.ByteBuffer,java.nio.ByteBuffer)">write</a></span>&#8203;(long&nbsp;pos,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;bb,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</code></th>
 <td class="col-last">&nbsp;</td>
 </tr>
 </tbody>
@@ -409,6 +459,28 @@ int&nbsp;length)</span>
 </section>
 </li>
 <li>
+<section class="detail" id="read(long,byte[],int,int,java.nio.ByteBuffer)">
+<h3>read</h3>
+<div class="member-signature"><span class="modifiers">public abstract</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="member-name">read</span>&#8203;(<span class="parameters">long&nbsp;pos,
+byte[]&nbsp;buf,
+int&nbsp;offset,
+int&nbsp;length,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</span>
+                   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>pos</code> - zero-based position in file</dd>
+<dd><code>buf</code> - receives read data</dd>
+<dd><code>offset</code> - offset into data buffer</dd>
+<dd><code>length</code> - amount of data to read</dd>
+<dd><code>tail</code> - receives additional data</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
 <section class="detail" id="read(long,java.nio.ByteBuffer)">
 <h3>read</h3>
 <div class="member-signature"><span class="modifiers">public abstract</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="member-name">read</span>&#8203;(<span class="parameters">long&nbsp;pos,
@@ -425,12 +497,45 @@ int&nbsp;length)</span>
 </section>
 </li>
 <li>
+<section class="detail" id="read(long,java.nio.ByteBuffer,java.nio.ByteBuffer)">
+<h3>read</h3>
+<div class="member-signature"><span class="modifiers">public abstract</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="member-name">read</span>&#8203;(<span class="parameters">long&nbsp;pos,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;bb,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</span>
+                   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>pos</code> - zero-based position in file</dd>
+<dd><code>bb</code> - receives read data</dd>
+<dd><code>tail</code> - receives additional data</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
 <section class="detail" id="read(long,long,int,int)">
 <h3>read</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="member-name">read</span>&#8203;(<span class="parameters">long&nbsp;pos,
 long&nbsp;ptr,
 int&nbsp;offset,
 int&nbsp;length)</span>
+          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="read(long,long,int,int,java.nio.ByteBuffer)">
+<h3>read</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="member-name">read</span>&#8203;(<span class="parameters">long&nbsp;pos,
+long&nbsp;ptr,
+int&nbsp;offset,
+int&nbsp;length,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</span>
           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <dl class="notes">
 <dt>Throws:</dt>
@@ -459,6 +564,28 @@ int&nbsp;length)</span>
 </section>
 </li>
 <li>
+<section class="detail" id="write(long,byte[],int,int,java.nio.ByteBuffer)">
+<h3>write</h3>
+<div class="member-signature"><span class="modifiers">public abstract</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="member-name">write</span>&#8203;(<span class="parameters">long&nbsp;pos,
+byte[]&nbsp;buf,
+int&nbsp;offset,
+int&nbsp;length,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</span>
+                    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>pos</code> - zero-based position in file</dd>
+<dd><code>buf</code> - data to write</dd>
+<dd><code>offset</code> - offset into data buffer</dd>
+<dd><code>length</code> - amount of data</dd>
+<dd><code>tail</code> - additional data to write</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
 <section class="detail" id="write(long,java.nio.ByteBuffer)">
 <h3>write</h3>
 <div class="member-signature"><span class="modifiers">public abstract</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="member-name">write</span>&#8203;(<span class="parameters">long&nbsp;pos,
@@ -475,12 +602,45 @@ int&nbsp;length)</span>
 </section>
 </li>
 <li>
+<section class="detail" id="write(long,java.nio.ByteBuffer,java.nio.ByteBuffer)">
+<h3>write</h3>
+<div class="member-signature"><span class="modifiers">public abstract</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="member-name">write</span>&#8203;(<span class="parameters">long&nbsp;pos,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;bb,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</span>
+                    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>pos</code> - zero-based position in file</dd>
+<dd><code>bb</code> - data to write</dd>
+<dd><code>tail</code> - additional data to write</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
 <section class="detail" id="write(long,long,int,int)">
 <h3>write</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="member-name">write</span>&#8203;(<span class="parameters">long&nbsp;pos,
 long&nbsp;ptr,
 int&nbsp;offset,
 int&nbsp;length)</span>
+           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="write(long,long,int,int,java.nio.ByteBuffer)">
+<h3>write</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="member-name">write</span>&#8203;(<span class="parameters">long&nbsp;pos,
+long&nbsp;ptr,
+int&nbsp;offset,
+int&nbsp;length,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</span>
            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <dl class="notes">
 <dt>Throws:</dt>

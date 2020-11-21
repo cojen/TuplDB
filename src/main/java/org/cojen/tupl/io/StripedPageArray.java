@@ -20,6 +20,8 @@ package org.cojen.tupl.io;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
+import java.nio.ByteBuffer;
+
 import org.cojen.tupl.util.Runner;
 
 /**
@@ -152,10 +154,28 @@ public class StripedPageArray extends PageArray {
     }
 
     @Override
+    public void readPage(long index, byte[] dst, int off, int len, ByteBuffer tail)
+        throws IOException
+    {
+        PageArray[] arrays = mArrays;
+        int stripes = arrays.length;
+        arrays[(int) (index % stripes)].readPage(index / stripes, dst, off, len, tail);
+    }
+
+    @Override
     public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
         PageArray[] arrays = mArrays;
         int stripes = arrays.length;
         arrays[(int) (index % stripes)].readPage(index / stripes, dstPtr, offset, length);
+    }
+
+    @Override
+    public void readPage(long index, long dstPtr, int off, int len, ByteBuffer tail)
+        throws IOException
+    {
+        PageArray[] arrays = mArrays;
+        int stripes = arrays.length;
+        arrays[(int) (index % stripes)].readPage(index / stripes, dstPtr, off, len, tail);
     }
 
     @Override
@@ -166,10 +186,24 @@ public class StripedPageArray extends PageArray {
     }
 
     @Override
+    public void writePage(long index, byte[] src, int off, ByteBuffer tail) throws IOException {
+        PageArray[] arrays = mArrays;
+        int stripes = arrays.length;
+        arrays[(int) (index % stripes)].writePage(index / stripes, src, off, tail);
+    }
+
+    @Override
     public void writePage(long index, long srcPtr, int offset) throws IOException {
         PageArray[] arrays = mArrays;
         int stripes = arrays.length;
         arrays[(int) (index % stripes)].writePage(index / stripes, srcPtr, offset);
+    }
+
+    @Override
+    public void writePage(long index, long srcPtr, int off, ByteBuffer tail) throws IOException {
+        PageArray[] arrays = mArrays;
+        int stripes = arrays.length;
+        arrays[(int) (index % stripes)].writePage(index / stripes, srcPtr, off, tail);
     }
 
     @Override

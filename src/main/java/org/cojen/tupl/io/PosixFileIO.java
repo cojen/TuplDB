@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 import java.nio.channels.ClosedChannelException;
 import java.util.Arrays;
@@ -56,6 +57,9 @@ final class PosixFileIO extends AbstractFileIO {
     private final int mReopenOptions;
 
     private final ThreadLocal<BufRef> mBufRef;
+    private final ThreadLocal<BufRef> mBufRefAlt;
+    private final ThreadLocal<BufRef> mIovecRef;
+
     private final boolean mReadahead;
     private final boolean mCloseDontNeed;
 
@@ -92,6 +96,8 @@ final class PosixFileIO extends AbstractFileIO {
         }
 
         mBufRef = new ThreadLocal<>();
+        mBufRefAlt = new ThreadLocal<>();
+        mIovecRef = new ThreadLocal<>();
 
         if (options.contains(OpenOption.MAPPED)) {
             map();
@@ -120,10 +126,32 @@ final class PosixFileIO extends AbstractFileIO {
     @Override
     protected void doRead(long pos, byte[] buf, int offset, int length) throws IOException {
         BufRef ref = bufRef(length);
-        doRead(pos, ref.mPointer, length);
+        preadFd(fd(), ref.mPointer, length, pos);
         ByteBuffer bb = ref.mBuffer;
         bb.position(0);
         bb.get(buf, offset, length);
+    }
+
+    @Override
+    protected void doRead(long pos, byte[] buf, int offset, int length, ByteBuffer tail)
+        throws IOException
+    {
+        ByteBuffer bb = bufRef(length).mBuffer;
+        bb.position(0);
+        doRead(pos, bb, tail);
+        bb.position(0);
+        bb.get(buf, offset, length);
+    }
+
+    private void doRead(long pos, ByteBuffer bb1, byte[] buf2, int offset2, int length2)
+        throws IOException
+    {
+        // Use alternate buffer, to prevent clobbering the primary one.
+        ByteBuffer bb2 = bufRefAlt(length2).mBuffer;
+        bb2.position(0);
+        doRead(pos, bb1, bb2);
+        bb2.position(0);
+        bb2.get(buf2, offset2, length2);
     }
 
     @Override
@@ -131,7 +159,7 @@ final class PosixFileIO extends AbstractFileIO {
         int bufPos = bb.position();
         int bufLen = bb.limit() - bufPos;
         if (bb.isDirect()) {
-            doRead(pos, DirectAccess.getAddress(bb) + bufPos, bufLen);
+            preadFd(fd(), DirectAccess.getAddress(bb) + bufPos, bufLen, pos);
         } else {
             doRead(pos, bb.array(), bb.arrayOffset() + bufPos, bufLen);
         }
@@ -139,8 +167,67 @@ final class PosixFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected void doRead(long pos, long ptr, int length) throws IOException {
-        preadFd(fd(), ptr, length, pos);
+    protected void doRead(long pos, ByteBuffer bb, ByteBuffer tail) throws IOException {
+        int bbPos = bb.position();
+        int bbLen = bb.limit() - bbPos;
+
+        if (!bb.isDirect()) {
+            doRead(pos, bb.array(), bb.arrayOffset() + bbPos, bbLen, tail);
+            return;
+        }
+
+        int tailPos = tail.position();
+        int tailLen = tail.limit() - tailPos;
+
+        if (!tail.isDirect()) {
+            doRead(pos, bb, tail.array(), tail.arrayOffset() + tailPos, tailLen);
+            return;
+        }
+
+        BufRef iovecRef = iovecRef();
+        ByteBuffer iovecBuf = iovecRef.mBuffer;
+
+        iovecBuf.putLong(0,  DirectAccess.getAddress(bb) + bbPos);
+        iovecBuf.putLong(8,  bbLen);
+        iovecBuf.putLong(16, DirectAccess.getAddress(tail) + tailPos);
+        iovecBuf.putLong(24, tailLen);
+
+        int fd = fd();
+
+        while (true) {
+            int amt = preadv(fd, iovecRef.mPointer, 2, pos);
+
+            if (amt <= 0) {
+                if (amt < 0) {
+                    throw lastErrorToException();
+                }
+                if (bbLen > 0) {
+                    throw new EOFException("Attempt to read past end of file: " + pos);
+                }
+                return;
+            }
+
+            pos += amt;
+
+            if (amt >= bbLen) {
+                bb.position(bb.limit());
+                int tailAmt = amt - bbLen;
+                tailPos += tailAmt;
+                tailLen -= tailAmt;
+                tail.position(tailPos);
+                if (tailLen > 0) {
+                    preadFd(fd, DirectAccess.getAddress(tail) + tailPos, tailLen, pos);
+                    tail.position(tail.limit());
+                }
+                return;
+            }
+
+            bbPos += amt;
+            bbLen -= amt;
+            bb.position(bbPos);
+            iovecBuf.putLong(0, DirectAccess.getAddress(bb) + bbPos);
+            iovecBuf.putLong(8, bbLen);
+        }
     }
 
     @Override
@@ -149,7 +236,31 @@ final class PosixFileIO extends AbstractFileIO {
         ByteBuffer bb = ref.mBuffer;
         bb.position(0);
         bb.put(buf, offset, length);
-        doWrite(pos, ref.mPointer, length);
+        pwriteFd(fd(), ref.mPointer, length, pos);
+    }
+
+    @Override
+    protected void doWrite(long pos, byte[] buf, int offset, int length, ByteBuffer tail)
+        throws IOException
+    {
+        BufRef ref = bufRef(length);
+        ByteBuffer bb = ref.mBuffer;
+        bb.position(0);
+        bb.put(buf, offset, length);
+        bb.flip();
+        doWrite(pos, bb, tail);
+    }
+
+    private void doWrite(long pos, ByteBuffer bb1, byte[] buf2, int offset2, int length2)
+        throws IOException
+    {
+        // Use alternate buffer, to prevent clobbering the primary one.
+        BufRef ref2 = bufRefAlt(length2);
+        ByteBuffer bb2 = ref2.mBuffer;
+        bb2.position(0);
+        bb2.put(buf2, offset2, length2);
+        bb2.flip();
+        doWrite(pos, bb1, bb2);
     }
 
     @Override
@@ -157,7 +268,7 @@ final class PosixFileIO extends AbstractFileIO {
         int bufPos = bb.position();
         int bufLen = bb.limit() - bufPos;
         if (bb.isDirect()) {
-            doWrite(pos, DirectAccess.getAddress(bb) + bufPos, bufLen);
+            pwriteFd(fd(), DirectAccess.getAddress(bb) + bufPos, bufLen, pos);
         } else {
             doWrite(pos, bb.array(), bb.arrayOffset() + bufPos, bufLen);
         }
@@ -165,8 +276,61 @@ final class PosixFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected void doWrite(long pos, long ptr, int length) throws IOException {
-        pwriteFd(fd(), ptr, length, pos);
+    protected void doWrite(long pos, ByteBuffer bb, ByteBuffer tail) throws IOException {
+        int bbPos = bb.position();
+        int bbLen = bb.limit() - bbPos;
+
+        if (!bb.isDirect()) {
+            doWrite(pos, bb.array(), bb.arrayOffset() + bbPos, bbLen, tail);
+            return;
+        }
+
+        int tailPos = tail.position();
+        int tailLen = tail.limit() - tailPos;
+
+        if (!tail.isDirect()) {
+            doWrite(pos, bb, tail.array(), tail.arrayOffset() + tailPos, tailLen);
+            return;
+        }
+
+        BufRef iovecRef = iovecRef();
+        ByteBuffer iovecBuf = iovecRef.mBuffer;
+
+        iovecBuf.putLong(0,  DirectAccess.getAddress(bb) + bbPos);
+        iovecBuf.putLong(8,  bbLen);
+        iovecBuf.putLong(16, DirectAccess.getAddress(tail) + tailPos);
+        iovecBuf.putLong(24, tailLen);
+
+        int fd = fd();
+
+        while (true) {
+            int amt = pwritev(fd, iovecRef.mPointer, 2, pos);
+
+            if (amt < 0) {
+                throw lastErrorToException();
+            }
+
+            pos += amt;
+
+            if (amt >= bbLen) {
+                bb.position(bb.limit());
+                int tailAmt = amt - bbLen;
+                tailPos += tailAmt;
+                tailLen -= tailAmt;
+                tail.position(tailPos);
+                if (tailLen > 0) {
+                    pwriteFd(fd, DirectAccess.getAddress(tail) + tailPos, tailLen, pos);
+                    tail.position(tail.limit());
+                }
+                return;
+            }
+
+            bbPos += amt;
+            bbLen -= amt;
+            bb.position(bbPos);
+            iovecBuf.putLong(0, DirectAccess.getAddress(bb) + bbPos);
+            iovecBuf.putLong(8, bbLen);
+        }
     }
 
     @Override
@@ -257,6 +421,36 @@ final class PosixFileIO extends AbstractFileIO {
             mBufRef.set(ref);
         }
         return ref;
+    }
+
+    private BufRef bufRefAlt(int size) {
+        BufRef ref = mBufRefAlt.get();
+        if (ref == null || ref.mBuffer.capacity() < size) {
+            ref = new BufRef(ByteBuffer.allocateDirect(size));
+            mBufRefAlt.set(ref);
+        }
+        return ref;
+    }
+
+    private BufRef iovecRef() {
+        BufRef ref = mIovecRef.get();
+        if (ref == null) {
+            ByteBuffer bb = ByteBuffer.allocateDirect(32);
+            bb.order(ByteOrder.LITTLE_ENDIAN);
+            ref = new BufRef(bb);
+            mIovecRef.set(ref);
+        }
+        return ref;
+    }
+
+    static class BufRef {
+        final ByteBuffer mBuffer;
+        final long mPointer;
+
+        BufRef(ByteBuffer buffer) {
+            mBuffer = buffer;
+            mPointer = Pointer.nativeValue(Native.getDirectBufferPointer(buffer));
+        }
     }
 
     // Caller must hold mAccessLock.
@@ -463,16 +657,6 @@ final class PosixFileIO extends AbstractFileIO {
         return "Error " + errnum;
     }
 
-    static class BufRef {
-        final ByteBuffer mBuffer;
-        final long mPointer;
-
-        BufRef(ByteBuffer buffer) {
-            mBuffer = buffer;
-            mPointer = Pointer.nativeValue(Native.getDirectBufferPointer(buffer));
-        }
-    }
-
     @Override
     protected boolean shouldPreallocate(LengthOption option) {
         return option == LengthOption.PREALLOCATE_ALWAYS
@@ -644,6 +828,10 @@ final class PosixFileIO extends AbstractFileIO {
     static native int pread(int fd, long bufPtr, int length, long fileOffset);
 
     static native int pwrite(int fd, long bufPtr, int length, long fileOffset);
+
+    static native int preadv(int fd, long iovecPtr, int iovcnt, long fileOffset);
+
+    static native int pwritev(int fd, long iovecPtr, int iovcnt, long fileOffset);
 
     static native int ftruncate(int fd, long length);
 

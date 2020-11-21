@@ -19,6 +19,8 @@ package org.cojen.tupl.io;
 
 import java.io.IOException;
 
+import java.nio.ByteBuffer;
+
 /**
  * Defines a persistent, array of fixed sized pages. Each page is uniquely
  * identified by a 64-bit index, starting at zero.
@@ -110,6 +112,9 @@ public abstract class PageArray implements CauseCloseable {
     public abstract void readPage(long index, byte[] dst, int offset, int length)
         throws IOException;
 
+    public abstract void readPage(long index, byte[] dst, int offset, int length, ByteBuffer tail)
+        throws IOException;
+
     /**
      * @param index zero-based page index to read
      * @param dstPtr receives read data
@@ -128,6 +133,12 @@ public abstract class PageArray implements CauseCloseable {
      * @throws IOException if index is greater than or equal to page count
      */
     public void readPage(long index, long dstPtr, int offset, int length)
+        throws IOException
+    {
+        throw new UnsupportedOperationException();
+    }
+
+    public void readPage(long index, long dstPtr, int offset, int length, ByteBuffer tail)
         throws IOException
     {
         throw new UnsupportedOperationException();
@@ -158,6 +169,9 @@ public abstract class PageArray implements CauseCloseable {
      */
     public abstract void writePage(long index, byte[] src, int offset) throws IOException;
 
+    public abstract void writePage(long index, byte[] src, int offset, ByteBuffer tail)
+        throws IOException;
+
     /**
      * Writes a page, which is lazily flushed. The array grows automatically if the index is
      * greater than or equal to the current page count. If array supports caching, page must be
@@ -182,6 +196,10 @@ public abstract class PageArray implements CauseCloseable {
      * @throws IndexOutOfBoundsException if index is negative
      */
     public void writePage(long index, long srcPtr, int offset) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    public void writePage(long index, long srcPtr, int offset, ByteBuffer tail) throws IOException {
         throw new UnsupportedOperationException();
     }
 

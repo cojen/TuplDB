@@ -46,9 +46,15 @@ class PosixMappedPageArray extends MappedPageArray {
         mFile = file;
         mOptions = options;
 
+        int prot = 1; // PROT_READ
+        if (!options.contains(OpenOption.READ_ONLY)) {
+            prot |= 2; // PROT_WRITE
+        }
+
+        int flags = 1; // MAP_SHARED
+
         if (file == null) {
-            int prot = 1 | 2; // PROT_READ | PROT_WRITE
-            int flags = 1 | (Platform.isMac() ? 0x1000 : 0x20); // MAP_SHARED | MAP_ANONYMOUS
+            flags |= Platform.isMac() ? 0x1000 : 0x20; // MAP_ANONYMOUS
 
             setMappingPtr(PosixFileIO.mmapFd(pageSize * pageCount, prot, flags, -1, 0));
 
@@ -103,9 +109,6 @@ class PosixMappedPageArray extends MappedPageArray {
                 throw e;
             }
         }
-
-        int prot = 1 | 2; // PROT_READ | PROT_WRITE
-        int flags = 1; // MAP_SHARED
 
         long ptr;
         try {

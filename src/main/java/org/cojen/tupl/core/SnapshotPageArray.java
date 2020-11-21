@@ -24,6 +24,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import java.nio.ByteBuffer;
+
 import java.util.concurrent.ThreadLocalRandom;
 
 import static java.lang.System.arraycopy;
@@ -112,8 +114,24 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
+    public void readPage(long index, byte[] dst, int offset, int length, ByteBuffer tail)
+        throws IOException
+    {
+        // FIXME
+        throw null;
+    }
+
+    @Override
     public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
         mSource.readPage(index, dstPtr, offset, length);
+    }
+
+    @Override
+    public void readPage(long index, long dstPtr, int offset, int length, ByteBuffer tail)
+        throws IOException
+    {
+        // FIXME
+        throw null;
     }
 
     @Override
@@ -123,9 +141,21 @@ final class SnapshotPageArray extends PageArray {
     }
 
     @Override
+    public void writePage(long index, byte[] src, int offset, ByteBuffer tail) throws IOException {
+        // FIXME
+        throw null;
+    }
+
+    @Override
     public void writePage(long index, long srcPtr, int offset) throws IOException {
         preWritePage(index);
         mSource.writePage(index, srcPtr, offset);
+    }
+
+    @Override
+    public void writePage(long index, long srcPtr, int offset, ByteBuffer tail) throws IOException {
+        // FIXME
+        throw null;
     }
 
     @Override
@@ -611,6 +641,15 @@ final class SnapshotPageArray extends PageArray {
 
         // Defined by ReadableSnapshot.
         @Override
+        public void readPage(long index, byte[] dst, int offset, int length, ByteBuffer tail)
+            throws IOException
+        {
+            // FIXME
+            throw null;
+        }
+
+        // Defined by ReadableSnapshot.
+        @Override
         public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
             var txn = mPageCopyIndex.mDatabase.threadLocalTransaction(DurabilityMode.NO_REDO);
             try {
@@ -629,6 +668,15 @@ final class SnapshotPageArray extends PageArray {
             } finally {
                 txn.reset();
             }
+        }
+
+        // Defined by ReadableSnapshot.
+        @Override
+        public void readPage(long index, long dstPtr, int offset, int length, ByteBuffer tail)
+            throws IOException
+        {
+            // FIXME
+            throw null;
         }
     }
 }

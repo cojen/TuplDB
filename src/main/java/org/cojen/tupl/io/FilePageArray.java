@@ -20,6 +20,8 @@ package org.cojen.tupl.io;
 import java.io.File;
 import java.io.IOException;
 
+import java.nio.ByteBuffer;
+
 import java.util.EnumSet;
 
 /**
@@ -90,11 +92,31 @@ public class FilePageArray extends PageArray {
     }
 
     @Override
+    public void readPage(long index, byte[] dst, int offset, int length, ByteBuffer tail)
+        throws IOException
+    {
+        if (index < 0) {
+            throw new IndexOutOfBoundsException(String.valueOf(index));
+        }
+        mFio.read(index * mPageSize, dst, offset, length, tail);
+    }
+
+    @Override
     public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
         if (index < 0) {
             throw new IndexOutOfBoundsException(String.valueOf(index));
         }
         mFio.read(index * mPageSize, dstPtr, offset, length);
+    }
+
+    @Override
+    public void readPage(long index, long dstPtr, int offset, int length, ByteBuffer tail)
+        throws IOException
+    {
+        if (index < 0) {
+            throw new IndexOutOfBoundsException(String.valueOf(index));
+        }
+        mFio.read(index * mPageSize, dstPtr, offset, length, tail);
     }
 
     @Override
@@ -104,9 +126,25 @@ public class FilePageArray extends PageArray {
     }
 
     @Override
+    public void writePage(long index, byte[] src, int offset, ByteBuffer tail)
+        throws IOException
+    {
+        int pageSize = mPageSize;
+        mFio.write(index * pageSize, src, offset, pageSize - tail.remaining(), tail);
+    }
+
+    @Override
     public void writePage(long index, long srcPtr, int offset) throws IOException {
         int pageSize = mPageSize;
         mFio.write(index * pageSize, srcPtr, offset, pageSize);
+    }
+
+    @Override
+    public void writePage(long index, long srcPtr, int offset, ByteBuffer tail)
+        throws IOException
+    {
+        int pageSize = mPageSize;
+        mFio.write(index * pageSize, srcPtr, offset, pageSize - tail.remaining(), tail);
     }
 
     @Override

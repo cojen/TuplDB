@@ -89,8 +89,8 @@ class WindowsMappedPageArray extends MappedPageArray {
         mNonDurable = options.contains(OpenOption.NON_DURABLE);
 
         int access = WinNT.GENERIC_READ;
-
-        if (!options.contains(OpenOption.READ_ONLY)) {
+        boolean readOnly = options.contains(OpenOption.READ_ONLY);
+        if (!readOnly) {
             access |= WinNT.GENERIC_WRITE;
         }
 
@@ -127,7 +127,7 @@ class WindowsMappedPageArray extends MappedPageArray {
         WinNT.HANDLE hMapping = cKernel.CreateFileMapping
             (hFile,
              null, // security attributes
-             WinNT.PAGE_READWRITE,
+             readOnly ? WinNT.PAGE_READONLY : WinNT.PAGE_READWRITE,
              (int) (mappingSize >>> 32),
              (int) mappingSize,
              null // no name
@@ -139,12 +139,9 @@ class WindowsMappedPageArray extends MappedPageArray {
             throw toException(error);
         }
 
-        access = options.contains(OpenOption.READ_ONLY)
-            ? WinNT.SECTION_MAP_READ : WinNT.SECTION_MAP_WRITE;
-
         Pointer ptr = cKernel.MapViewOfFile
             (hMapping,
-             access,
+             readOnly ? WinNT.SECTION_MAP_READ : WinNT.SECTION_MAP_WRITE,
              0, // offset high
              0, // offset low
              mappingSize

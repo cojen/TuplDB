@@ -19,6 +19,8 @@ package org.cojen.tupl.core;
 
 import java.io.IOException;
 
+import java.nio.ByteBuffer;
+
 import org.cojen.tupl.Snapshot;
 
 import org.cojen.tupl.io.PageArray;
@@ -37,7 +39,13 @@ interface ReadableSnapshot extends Snapshot {
 
     void readPage(long index, byte[] dst, int offset, int length) throws IOException;
 
+    void readPage(long index, byte[] dst, int offset, int length, ByteBuffer tail)
+        throws IOException;
+
     void readPage(long index, long dstPtr, int offset, int length) throws IOException;
+
+    void readPage(long index, long dstPtr, int offset, int length, ByteBuffer tail)
+        throws IOException;
 
     /**
      * Returns a PageArray view which when closed doesn't close the underlying snapshot. Is
@@ -79,6 +87,13 @@ interface ReadableSnapshot extends Snapshot {
             }
 
             @Override
+            public void readPage(long index, byte[] dst, int offset, int length, ByteBuffer tail)
+                throws IOException
+            {
+                ReadableSnapshot.this.readPage(index, dst, offset, length, tail);
+            }
+
+            @Override
             public void readPage(long index, long dstPtr, int offset, int length)
                 throws IOException
             {
@@ -86,7 +101,21 @@ interface ReadableSnapshot extends Snapshot {
             }
 
             @Override
+            public void readPage(long index, long dstPtr, int offset, int length, ByteBuffer tail)
+                throws IOException
+            {
+                ReadableSnapshot.this.readPage(index, dstPtr, offset, length, tail);
+            }
+
+            @Override
             public void writePage(long index, byte[] src, int offset) throws IOException {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void writePage(long index, byte[] src, int offset, ByteBuffer tail)
+                throws IOException
+            {
                 throw new UnsupportedOperationException();
             }
 

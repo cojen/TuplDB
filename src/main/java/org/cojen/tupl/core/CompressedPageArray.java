@@ -20,6 +20,8 @@ package org.cojen.tupl.core;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import java.nio.ByteBuffer;
+
 import java.util.Arrays;
 
 import java.util.function.Supplier;
@@ -145,6 +147,14 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
     }
 
     @Override
+    public void readPage(long index, byte[] dst, int offset, int length, ByteBuffer tail)
+        throws IOException
+    {
+        // FIXME
+        throw null;
+    }
+
+    @Override
     public void readPage(long index, long dstPtr) throws IOException {
         readPage(index, dstPtr, 0);
     }
@@ -180,6 +190,14 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
     }
 
     @Override
+    public void readPage(long index, long dstPtr, int offset, int length, ByteBuffer tail)
+        throws IOException
+    {
+        // FIXME
+        throw null;
+    }
+
+    @Override
     public void writePage(long index, byte[] src, int offset) throws IOException {
         try (Cursor c = mPages.newAccessor(Transaction.BOGUS, keyFor(index))) {
             var entry = mCompressors.access();
@@ -194,6 +212,12 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
     }
 
     @Override
+    public void writePage(long index, byte[] src, int offset, ByteBuffer tail) throws IOException {
+        // FIXME
+        throw null;
+    }
+
+    @Override
     public void writePage(long index, long srcPtr, int offset) throws IOException {
         try (Cursor c = mPages.newAccessor(Transaction.BOGUS, keyFor(index))) {
             var entry = mCompressors.access();
@@ -205,6 +229,12 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
                 entry.release();
             }
         }
+    }
+
+    @Override
+    public void writePage(long index, long srcPtr, int offset, ByteBuffer tail) throws IOException {
+        // FIXME
+        throw null;
     }
 
     @Override

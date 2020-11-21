@@ -20,6 +20,8 @@ package org.cojen.tupl.io;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
+import java.nio.ByteBuffer;
+
 import java.io.File;
 import java.io.IOException;
 
@@ -133,46 +135,111 @@ public abstract class MappedPageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, byte[] buf, int offset, int length)
+    public void readPage(long index, byte[] dst, int offset, int length)
         throws IOException
     {
         readCheck(index);
-        UNSAFE.copyMemory(null, mappingPtr() + index * mPageSize, buf, ARRAY + offset, length);
+        UNSAFE.copyMemory(null, mappingPtr() + index * mPageSize, dst, ARRAY + offset, length);
     }
 
     @Override
-    public void readPage(long index, long ptr, int offset, int length)
+    public void readPage(long index, byte[] dst, int offset, int length, ByteBuffer tail)
         throws IOException
     {
         readCheck(index);
+        long srcPtr = mappingPtr() + index * mPageSize;
+        UNSAFE.copyMemory(null, srcPtr, dst, ARRAY + offset, length);
+        readTail(srcPtr + length, tail);
+    }
 
-        ptr += offset;
-        int pageSize = mPageSize;
-
-        long srcPtr = mappingPtr() + index * pageSize;
-        if (srcPtr != ptr) {
-            UNSAFE.copyMemory(null, srcPtr, null, ptr, length);
+    @Override
+    public void readPage(long index, long dstPtr, int offset, int length)
+        throws IOException
+    {
+        readCheck(index);
+        dstPtr += offset;
+        long srcPtr = mappingPtr() + index * mPageSize;
+        if (srcPtr != dstPtr) {
+            UNSAFE.copyMemory(null, srcPtr, null, dstPtr, length);
         }
     }
 
     @Override
-    public void writePage(long index, byte[] buf, int offset) throws IOException {
-        writeCheck(index);
-        int pageSize = mPageSize;
-        UNSAFE.copyMemory(buf, ARRAY + offset, null, mappingPtr() + index * pageSize, pageSize);
+    public void readPage(long index, long dstPtr, int offset, int length, ByteBuffer tail)
+        throws IOException
+    {
+        readCheck(index);
+        dstPtr += offset;
+        long srcPtr = mappingPtr() + index * mPageSize;
+        if (srcPtr != dstPtr) {
+            UNSAFE.copyMemory(null, srcPtr, null, dstPtr, length);
+        }
+        readTail(srcPtr + length, tail);
+    }
+
+    private static void readTail(long srcPtr, ByteBuffer tail) {
+        int rem = tail.remaining();
+        int pos = tail.position();
+        if (tail.isDirect()) {
+            UNSAFE.copyMemory(null, srcPtr, null, DirectAccess.getAddress(tail) + pos, rem);
+        } else {
+            UNSAFE.copyMemory(null, srcPtr, tail.array(), ARRAY + tail.arrayOffset() + pos, rem);
+        }
+        tail.position(pos + rem);
     }
 
     @Override
-    public void writePage(long index, long ptr, int offset) throws IOException {
+    public void writePage(long index, byte[] src, int offset) throws IOException {
         writeCheck(index);
-
-        ptr += offset;
         int pageSize = mPageSize;
+        UNSAFE.copyMemory(src, ARRAY + offset, null, mappingPtr() + index * pageSize, pageSize);
+    }
 
+    @Override
+    public void writePage(long index, byte[] src, int offset, ByteBuffer tail)
+        throws IOException
+    {
+        writeCheck(index);
+        int pageSize = mPageSize;
         long dstPtr = mappingPtr() + index * pageSize;
-        if (dstPtr != ptr) {
-            UNSAFE.copyMemory(null, ptr, null, dstPtr, pageSize);
+        UNSAFE.copyMemory(src, ARRAY + offset, null, dstPtr, pageSize);
+        writeTail(dstPtr + pageSize, tail);
+    }
+
+    @Override
+    public void writePage(long index, long srcPtr, int offset) throws IOException {
+        writeCheck(index);
+        srcPtr += offset;
+        int pageSize = mPageSize;
+        long dstPtr = mappingPtr() + index * pageSize;
+        if (dstPtr != srcPtr) {
+            UNSAFE.copyMemory(null, srcPtr, null, dstPtr, pageSize);
         }
+    }
+
+    @Override
+    public void writePage(long index, long srcPtr, int offset, ByteBuffer tail)
+        throws IOException
+    {
+        writeCheck(index);
+        srcPtr += offset;
+        int pageSize = mPageSize;
+        long dstPtr = mappingPtr() + index * pageSize;
+        if (dstPtr != srcPtr) {
+            UNSAFE.copyMemory(null, srcPtr, null, dstPtr, pageSize);
+        }
+        writeTail(dstPtr + pageSize, tail);
+    }
+
+    private static void writeTail(long dstPtr, ByteBuffer tail) {
+        int rem = tail.remaining();
+        int pos = tail.position();
+        if (tail.isDirect()) {
+            UNSAFE.copyMemory(null, DirectAccess.getAddress(tail) + pos, null, dstPtr, rem);
+        } else {
+            UNSAFE.copyMemory(tail.array(), ARRAY + tail.arrayOffset() + pos, null, dstPtr, rem);
+        }
+        tail.position(pos + rem);
     }
 
     @Override

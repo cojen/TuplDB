@@ -15,7 +15,7 @@
 <script type="text/javascript" src="../../../../../script-dir/jquery-ui.min.js"></script>
 </head>
 <body class="class-declaration-page">
-<script type="text/javascript">var data = {"i0":10,"i1":6,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":6,"i10":10,"i11":6,"i12":10,"i13":6,"i14":10,"i15":6,"i16":10,"i17":10,"i18":10,"i19":6,"i20":10,"i21":10,"i22":6,"i23":10,"i24":6,"i25":10,"i26":6,"i27":10,"i28":10};
+<script type="text/javascript">var data = {"i0":10,"i1":6,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":6,"i10":10,"i11":6,"i12":10,"i13":6,"i14":10,"i15":6,"i16":10,"i17":10,"i18":10,"i19":6,"i20":6,"i21":10,"i22":10,"i23":10,"i24":6,"i25":10,"i26":6,"i27":10,"i28":6,"i29":6,"i30":10,"i31":10,"i32":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],8:["t4","Concrete Methods"]};
 var altColor = "alt-color";
 var rowColor = "row-color";
@@ -266,12 +266,21 @@ int&nbsp;length)</code></th>
 <td class="col-last">&nbsp;</td>
 </tr>
 <tr class="alt-color" id="i20">
+<td class="col-first"><code>abstract void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#readPage(long,byte%5B%5D,int,int,java.nio.ByteBuffer)">readPage</a></span>&#8203;(long&nbsp;index,
+byte[]&nbsp;dst,
+int&nbsp;offset,
+int&nbsp;length,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</code></th>
+<td class="col-last">&nbsp;</td>
+</tr>
+<tr class="row-color" id="i21">
 <td class="col-first"><code>void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#readPage(long,long)">readPage</a></span>&#8203;(long&nbsp;index,
 long&nbsp;dstPtr)</code></th>
 <td class="col-last">&nbsp;</td>
 </tr>
-<tr class="row-color" id="i21">
+<tr class="alt-color" id="i22">
 <td class="col-first"><code>void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#readPage(long,long,int,int)">readPage</a></span>&#8203;(long&nbsp;index,
 long&nbsp;dstPtr,
@@ -279,28 +288,37 @@ int&nbsp;offset,
 int&nbsp;length)</code></th>
 <td class="col-last">&nbsp;</td>
 </tr>
-<tr class="alt-color" id="i22">
+<tr class="row-color" id="i23">
+<td class="col-first"><code>void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#readPage(long,long,int,int,java.nio.ByteBuffer)">readPage</a></span>&#8203;(long&nbsp;index,
+long&nbsp;dstPtr,
+int&nbsp;offset,
+int&nbsp;length,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</code></th>
+<td class="col-last">&nbsp;</td>
+</tr>
+<tr class="alt-color" id="i24">
 <td class="col-first"><code>abstract void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#sync(boolean)">sync</a></span>&#8203;(boolean&nbsp;metadata)</code></th>
 <td class="col-last">
 <div class="block">Durably flushes all writes to the underlying device.</div>
 </td>
 </tr>
-<tr class="row-color" id="i23">
+<tr class="row-color" id="i25">
 <td class="col-first"><code>void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#syncPage(long)">syncPage</a></span>&#8203;(long&nbsp;index)</code></th>
 <td class="col-last">
 <div class="block">Durably flushes the page at the given index, but implementation might flush more pages.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i24">
+<tr class="alt-color" id="i26">
 <td class="col-first"><code>abstract void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#truncatePageCount(long)">truncatePageCount</a></span>&#8203;(long&nbsp;count)</code></th>
 <td class="col-last">
 <div class="block">Attempt to truncate the total count of pages.</div>
 </td>
 </tr>
-<tr class="row-color" id="i25">
+<tr class="row-color" id="i27">
 <td class="col-first"><code>void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#writePage(long,byte%5B%5D)">writePage</a></span>&#8203;(long&nbsp;index,
 byte[]&nbsp;src)</code></th>
@@ -308,7 +326,7 @@ byte[]&nbsp;src)</code></th>
 <div class="block">Writes a page, which is lazily flushed.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i26">
+<tr class="alt-color" id="i28">
 <td class="col-first"><code>abstract void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#writePage(long,byte%5B%5D,int)">writePage</a></span>&#8203;(long&nbsp;index,
 byte[]&nbsp;src,
@@ -317,7 +335,15 @@ int&nbsp;offset)</code></th>
 <div class="block">Writes a page, which is lazily flushed.</div>
 </td>
 </tr>
-<tr class="row-color" id="i27">
+<tr class="row-color" id="i29">
+<td class="col-first"><code>abstract void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#writePage(long,byte%5B%5D,int,java.nio.ByteBuffer)">writePage</a></span>&#8203;(long&nbsp;index,
+byte[]&nbsp;src,
+int&nbsp;offset,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</code></th>
+<td class="col-last">&nbsp;</td>
+</tr>
+<tr class="alt-color" id="i30">
 <td class="col-first"><code>void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#writePage(long,long)">writePage</a></span>&#8203;(long&nbsp;index,
 long&nbsp;srcPtr)</code></th>
@@ -325,7 +351,7 @@ long&nbsp;srcPtr)</code></th>
 <div class="block">Writes a page, which is lazily flushed.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i28">
+<tr class="row-color" id="i31">
 <td class="col-first"><code>void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#writePage(long,long,int)">writePage</a></span>&#8203;(long&nbsp;index,
 long&nbsp;srcPtr,
@@ -333,6 +359,14 @@ int&nbsp;offset)</code></th>
 <td class="col-last">
 <div class="block">Writes a page, which is lazily flushed.</div>
 </td>
+</tr>
+<tr class="alt-color" id="i32">
+<td class="col-first"><code>void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#writePage(long,long,int,java.nio.ByteBuffer)">writePage</a></span>&#8203;(long&nbsp;index,
+long&nbsp;srcPtr,
+int&nbsp;offset,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</code></th>
+<td class="col-last">&nbsp;</td>
 </tr>
 </tbody>
 </table>
@@ -498,6 +532,21 @@ int&nbsp;length)</span>
 </section>
 </li>
 <li>
+<section class="detail" id="readPage(long,byte[],int,int,java.nio.ByteBuffer)">
+<h3>readPage</h3>
+<div class="member-signature"><span class="modifiers">public abstract</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="member-name">readPage</span>&#8203;(<span class="parameters">long&nbsp;index,
+byte[]&nbsp;dst,
+int&nbsp;offset,
+int&nbsp;length,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</span>
+                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
 <section class="detail" id="readPage(long,long)">
 <h3>readPage</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="member-name">readPage</span>&#8203;(<span class="parameters">long&nbsp;index,
@@ -529,6 +578,21 @@ int&nbsp;length)</span>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/IndexOutOfBoundsException.html" title="class or interface in java.lang" class="external-link">IndexOutOfBoundsException</a></code> - if index is negative</dd>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - if index is greater than or equal to page count</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="readPage(long,long,int,int,java.nio.ByteBuffer)">
+<h3>readPage</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="member-name">readPage</span>&#8203;(<span class="parameters">long&nbsp;index,
+long&nbsp;dstPtr,
+int&nbsp;offset,
+int&nbsp;length,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</span>
+              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -573,6 +637,20 @@ int&nbsp;offset)</span>
 </section>
 </li>
 <li>
+<section class="detail" id="writePage(long,byte[],int,java.nio.ByteBuffer)">
+<h3>writePage</h3>
+<div class="member-signature"><span class="modifiers">public abstract</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="member-name">writePage</span>&#8203;(<span class="parameters">long&nbsp;index,
+byte[]&nbsp;src,
+int&nbsp;offset,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</span>
+                        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
 <section class="detail" id="writePage(long,long)">
 <h3>writePage</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="member-name">writePage</span>&#8203;(<span class="parameters">long&nbsp;index,
@@ -608,6 +686,20 @@ int&nbsp;offset)</span>
 <dd><code>offset</code> - offset into data buffer</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/IndexOutOfBoundsException.html" title="class or interface in java.lang" class="external-link">IndexOutOfBoundsException</a></code> - if index is negative</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="writePage(long,long,int,java.nio.ByteBuffer)">
+<h3>writePage</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="member-name">writePage</span>&#8203;(<span class="parameters">long&nbsp;index,
+long&nbsp;srcPtr,
+int&nbsp;offset,
+<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</span>
+               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<dl class="notes">
+<dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
