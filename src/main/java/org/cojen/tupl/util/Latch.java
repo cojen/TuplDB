@@ -956,32 +956,25 @@ public class Latch {
          * removed; >0 if acquired and node should not be removed}
          */
         int tryAcquire(Latch latch) {
-            int trials = 0;
-            while (true) {
-                for (int i=0; i<SPIN_LIMIT; i++) {
-                    boolean acquired = latch.doTryAcquireExclusive();
-                    Object waiter = mWaiter;
-                    if (waiter == null) {
-                        // Fair handoff, and so node is no longer in the queue.
+            for (int i=0; i<SPIN_LIMIT; i++) {
+                boolean acquired = latch.doTryAcquireExclusive();
+                Object waiter = mWaiter;
+                if (waiter == null) {
+                    // Fair handoff, and so node is no longer in the queue.
+                    return 1;
+                }
+                if (acquired) {
+                    // Acquired, so no need to reference the waiter anymore.
+                    if (((int) cWaitStateHandle.get(this)) != SIGNALED) {
+                        cWaiterHandle.setOpaque(this, null);
+                    } else if (!cWaiterHandle.compareAndSet(this, waiter, null)) {
                         return 1;
                     }
-                    if (acquired) {
-                        // Acquired, so no need to reference the waiter anymore.
-                        if (((int) cWaitStateHandle.get(this)) != SIGNALED) {
-                            cWaiterHandle.setOpaque(this, null);
-                        } else if (!cWaiterHandle.compareAndSet(this, waiter, null)) {
-                            return 1;
-                        }
-                        return 0;
-                    }
-                    Thread.onSpinWait();
+                    return 0;
                 }
-                if (++trials >= SPIN_LIMIT >> 1 || timedOut()) {
-                    return -1;
-                }
-                // Yield to avoid parking.
-                Thread.yield();
+                Thread.onSpinWait();
             }
+            return -1;
         }
 
         /**
@@ -1009,7 +1002,6 @@ public class Latch {
                     Parker.parkNanos(queue, nanosTimeout);
                 }
 
-                int trials = 0;
                 while (true) {
                     for (int i=0; i<SPIN_LIMIT; i++) {
                         boolean acquired = latch.doTryAcquireExclusive();
@@ -1049,16 +1041,10 @@ public class Latch {
                         continue start;
                     }
 
-                    if (++trials < SPIN_LIMIT >> 1) {
-                        // Yield to avoid parking.
-                        Thread.yield();
-                    } else  {
-                        // Thread might have been unparked for a reason. If interrupted or
-                        // timed out, the exclusive latch is still required to remove the
-                        // waiter from the queue, or to even return from this method.
-                        trials = 0;
-                        Parker.park(latch);
-                    }
+                    // Thread might have been unparked for a reason. If interrupted or
+                    // timed out, the exclusive latch is still required to remove the
+                    // waiter from the queue, or to even return from this method.
+                    Parker.park(latch);
                 }
             }
         }
@@ -1085,10 +1071,6 @@ public class Latch {
                 cPrevHandle.set(this, null);
             }
             cNextHandle.set(this, null);
-        }
-
-        protected boolean timedOut() {
-            return false;
         }
 
         @Override
@@ -1126,19 +1108,6 @@ public class Latch {
                 }
                 return (mNanosTimeout = mEndNanos - System.nanoTime()) <= 0;
             }
-        }
-
-        @Override
-        protected boolean timedOut() {
-            if (mNanosTimeout >= 0) {
-                long timeout = mEndNanos - System.nanoTime();
-                if (timeout <= 0) {
-                    mNanosTimeout = 0;
-                    return true;
-                }
-                mNanosTimeout = timeout;
-            }
-            return false;
         }
     }
 
