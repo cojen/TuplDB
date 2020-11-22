@@ -145,19 +145,26 @@ loadScripts(document, 'script');</script>
 </tr>
 <tr class="row-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
+<th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#checksumPages(java.util.function.Supplier)">checksumPages</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/zip/Checksum.html" title="class or interface in java.util.zip" class="external-link">Checksum</a>&gt;&nbsp;factory)</code></th>
+<td class="col-last">
+<div class="block">Enable 32-bit checksums for all of the underlying database pages.</div>
+</td>
+</tr>
+<tr class="alt-color">
+<td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#cleanShutdown(boolean)">cleanShutdown</a></span>&#8203;(boolean&nbsp;shutdown)</code></th>
 <td class="col-last">
 <div class="block">When the process is cleanly shutdown, attempt to issue a full database shutdown.</div>
 </td>
 </tr>
-<tr class="alt-color">
+<tr class="row-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#clone()">clone</a></span>()</code></th>
 <td class="col-last">&nbsp;</td>
 </tr>
-<tr class="row-color">
+<tr class="alt-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
-<th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#compress(int,long,java.util.function.Supplier)">compress</a></span>&#8203;(int&nbsp;fullPageSize,
+<th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#compressPages(int,long,java.util.function.Supplier)">compressPages</a></span>&#8203;(int&nbsp;fullPageSize,
 long&nbsp;cacheSize,
 <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;<a href="../io/PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a>&gt;&nbsp;factory)</code></th>
 <td class="col-last">
@@ -165,7 +172,7 @@ long&nbsp;cacheSize,
  performance.</div>
 </td>
 </tr>
-<tr class="alt-color">
+<tr class="row-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#createFilePath(boolean)">createFilePath</a></span>&#8203;(boolean&nbsp;mkdirs)</code></th>
 <td class="col-last">
@@ -173,14 +180,14 @@ long&nbsp;cacheSize,
  already exist.</div>
 </td>
 </tr>
-<tr class="row-color">
+<tr class="alt-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#customHandlers(java.util.Map)">customHandlers</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,&#8203;? extends <a href="../ext/CustomHandler.html" title="interface in org.cojen.tupl.ext">CustomHandler</a>&gt;&nbsp;handlers)</code></th>
 <td class="col-last">
 <div class="block">Provide handlers for recovering custom transactional operations.</div>
 </td>
 </tr>
-<tr class="alt-color">
+<tr class="row-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#dataFile(java.io.File)">dataFile</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/File.html" title="class or interface in java.io" class="external-link">File</a>&nbsp;file)</code></th>
 <td class="col-last">
@@ -188,7 +195,7 @@ long&nbsp;cacheSize,
  directory as the base file.</div>
 </td>
 </tr>
-<tr class="row-color">
+<tr class="alt-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#dataFiles(java.io.File...)">dataFiles</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/File.html" title="class or interface in java.io" class="external-link">File</a>...&nbsp;files)</code></th>
 <td class="col-last">
@@ -196,14 +203,14 @@ long&nbsp;cacheSize,
  separate devices.</div>
 </td>
 </tr>
-<tr class="alt-color">
+<tr class="row-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#dataPageArray(org.cojen.tupl.io.PageArray)">dataPageArray</a></span>&#8203;(<a href="../io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a>&nbsp;array)</code></th>
 <td class="col-last">
 <div class="block">Use a custom storage layer instead of the default data file.</div>
 </td>
 </tr>
-<tr class="row-color">
+<tr class="alt-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#directPageAccess(boolean)">directPageAccess</a></span>&#8203;(boolean&nbsp;direct)</code></th>
 <td class="col-last">
@@ -211,19 +218,19 @@ long&nbsp;cacheSize,
  reduced garbage collection activity.</div>
 </td>
 </tr>
-<tr class="alt-color">
+<tr class="row-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#durabilityMode(org.cojen.tupl.DurabilityMode)">durabilityMode</a></span>&#8203;(<a href="../DurabilityMode.html" title="enum in org.cojen.tupl">DurabilityMode</a>&nbsp;durabilityMode)</code></th>
 <td class="col-last">
 <div class="block">Set the default transaction durability mode, which is <a href="../DurabilityMode.html#SYNC"><code>SYNC</code></a> if not overridden.</div>
 </td>
 </tr>
-<tr class="row-color">
+<tr class="alt-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#enableJMX(boolean)">enableJMX</a></span>&#8203;(boolean&nbsp;enable)</code></th>
 <td class="col-last">&nbsp;</td>
 </tr>
-<tr class="alt-color">
+<tr class="row-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#encrypt(org.cojen.tupl.Crypto)">encrypt</a></span>&#8203;(<a href="../Crypto.html" title="interface in org.cojen.tupl">Crypto</a>&nbsp;crypto)</code></th>
 <td class="col-last">
@@ -231,7 +238,7 @@ long&nbsp;cacheSize,
  sets.</div>
 </td>
 </tr>
-<tr class="row-color">
+<tr class="alt-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#eventListener(org.cojen.tupl.EventListener)">eventListener</a></span>&#8203;(<a href="../EventListener.html" title="interface in org.cojen.tupl">EventListener</a>&nbsp;listener)</code></th>
 <td class="col-last">
@@ -239,7 +246,7 @@ long&nbsp;cacheSize,
  database.</div>
 </td>
 </tr>
-<tr class="alt-color">
+<tr class="row-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#eventListeners(org.cojen.tupl.EventListener...)">eventListeners</a></span>&#8203;(<a href="../EventListener.html" title="interface in org.cojen.tupl">EventListener</a>...&nbsp;listeners)</code></th>
 <td class="col-last">
@@ -247,7 +254,7 @@ long&nbsp;cacheSize,
  database.</div>
 </td>
 </tr>
-<tr class="row-color">
+<tr class="alt-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#lockTimeout(long,java.util.concurrent.TimeUnit)">lockTimeout</a></span>&#8203;(long&nbsp;timeout,
 <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/concurrent/TimeUnit.html" title="class or interface in java.util.concurrent" class="external-link">TimeUnit</a>&nbsp;unit)</code></th>
@@ -256,7 +263,7 @@ long&nbsp;cacheSize,
  overridden.</div>
 </td>
 </tr>
-<tr class="alt-color">
+<tr class="row-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#lockUpgradeRule(org.cojen.tupl.LockUpgradeRule)">lockUpgradeRule</a></span>&#8203;(<a href="../LockUpgradeRule.html" title="enum in org.cojen.tupl">LockUpgradeRule</a>&nbsp;lockUpgradeRule)</code></th>
 <td class="col-last">
@@ -264,28 +271,28 @@ long&nbsp;cacheSize,
  overridden.</div>
 </td>
 </tr>
-<tr class="row-color">
+<tr class="alt-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#mapDataFiles(boolean)">mapDataFiles</a></span>&#8203;(boolean&nbsp;mapped)</code></th>
 <td class="col-last">
 <div class="block">Enable memory mapping of the data files.</div>
 </td>
 </tr>
-<tr class="alt-color">
+<tr class="row-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#maxCacheSize(long)">maxCacheSize</a></span>&#8203;(long&nbsp;maxBytes)</code></th>
 <td class="col-last">
 <div class="block">Set the maximum cache size, overriding the default.</div>
 </td>
 </tr>
-<tr class="row-color">
+<tr class="alt-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#maxCheckpointThreads(int)">maxCheckpointThreads</a></span>&#8203;(int&nbsp;num)</code></th>
 <td class="col-last">
 <div class="block">Specify the maximum number of threads for performing checkpointing, to speed it up.</div>
 </td>
 </tr>
-<tr class="alt-color">
+<tr class="row-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#maxReplicaThreads(int)">maxReplicaThreads</a></span>&#8203;(int&nbsp;num)</code></th>
 <td class="col-last">
@@ -293,49 +300,49 @@ long&nbsp;cacheSize,
  changes.</div>
 </td>
 </tr>
-<tr class="row-color">
+<tr class="alt-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#minCacheSize(long)">minCacheSize</a></span>&#8203;(long&nbsp;minBytes)</code></th>
 <td class="col-last">
 <div class="block">Set the minimum cache size, overriding the default.</div>
 </td>
 </tr>
-<tr class="alt-color">
+<tr class="row-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#pageSize(int)">pageSize</a></span>&#8203;(int&nbsp;size)</code></th>
 <td class="col-last">
 <div class="block">Set the page size, which is 4096 bytes by default.</div>
 </td>
 </tr>
-<tr class="row-color">
+<tr class="alt-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#prepareHandlers(java.util.Map)">prepareHandlers</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,&#8203;? extends <a href="../ext/PrepareHandler.html" title="interface in org.cojen.tupl.ext">PrepareHandler</a>&gt;&nbsp;handlers)</code></th>
 <td class="col-last">
 <div class="block">Provide handlers for recovering prepared transactions.</div>
 </td>
 </tr>
-<tr class="alt-color">
+<tr class="row-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#readOnly(boolean)">readOnly</a></span>&#8203;(boolean&nbsp;readOnly)</code></th>
 <td class="col-last">
 <div class="block">Open the database file in read only mode.</div>
 </td>
 </tr>
-<tr class="row-color">
+<tr class="alt-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#replicate(org.cojen.tupl.repl.ReplicatorConfig)">replicate</a></span>&#8203;(<a href="../repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;config)</code></th>
 <td class="col-last">
 <div class="block">Enable replication using the given configuration.</div>
 </td>
 </tr>
-<tr class="alt-color">
+<tr class="row-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#replicate(org.cojen.tupl.repl.StreamReplicator)">replicate</a></span>&#8203;(<a href="../repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl">StreamReplicator</a>&nbsp;repl)</code></th>
 <td class="col-last">
 <div class="block">Enable replication with an explicit <a href="../repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl"><code>StreamReplicator</code></a> instance.</div>
 </td>
 </tr>
-<tr class="row-color">
+<tr class="alt-color">
 <td class="col-first"><code><a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></td>
 <th class="col-second" scope="row"><span class="type-name-label">DatabaseConfig.</span><code><span class="member-name-link"><a href="../DatabaseConfig.html#syncWrites(boolean)">syncWrites</a></span>&#8203;(boolean&nbsp;fileSync)</code></th>
 <td class="col-last">

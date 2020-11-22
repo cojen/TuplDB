@@ -33,6 +33,8 @@ import java.util.concurrent.TimeUnit;
 
 import java.util.function.Supplier;
 
+import java.util.zip.Checksum;
+
 import org.cojen.tupl.Crypto;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
@@ -91,6 +93,7 @@ public final class Launcher implements Cloneable {
     boolean mEnableJMX;
     Crypto mDataCrypto;
     Crypto mRedoCrypto;
+    Supplier<Checksum> mChecksumFactory;
     int mCompressorPageSize;
     long mCompressorCacheSize;
     Supplier<PageCompressor> mCompressorFactory;
@@ -260,7 +263,11 @@ public final class Launcher implements Cloneable {
         mRedoCrypto = crypto;
     }
 
-    public void compress(int fullPageSize, long cacheSize, Supplier<PageCompressor> factory) {
+    public void checksumPages(Supplier<Checksum> factory) {
+        mChecksumFactory = factory;
+    }
+
+    public void compressPages(int fullPageSize, long cacheSize, Supplier<PageCompressor> factory) {
         mCompressorPageSize = fullPageSize;
         mCompressorCacheSize = cacheSize;
         mCompressorFactory = factory;
@@ -479,7 +486,7 @@ public final class Launcher implements Cloneable {
             subLauncher.cachePriming(false);
             subLauncher.cleanShutdown(false);
             subLauncher.replicate((StreamReplicator) null);
-            subLauncher.compress(0, 0, null);
+            subLauncher.compressPages(0, 0, null);
             subLauncher.customHandlers(null);
             subLauncher.prepareHandlers(null);
 
@@ -492,6 +499,7 @@ public final class Launcher implements Cloneable {
             mPageSize = 0;
             dataPageArray(compressed);
             mDataCrypto = null; // don't double encrypt; it defeats compression
+            mChecksumFactory = null; // only needed at physical layer
         }
 
         Method m;

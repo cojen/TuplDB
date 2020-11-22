@@ -28,6 +28,9 @@ import java.security.GeneralSecurityException;
 import java.util.EnumSet;
 
 import java.util.function.LongConsumer;
+import java.util.function.Supplier;
+
+import java.util.zip.Checksum;
 
 import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.Crypto;
@@ -112,20 +115,22 @@ final class StoredPageDb extends PageDb {
 
     /**
      * @param debugListener optional
+     * @param checksumFactory optional
      * @param crypto optional
      */
     static StoredPageDb open(EventListener debugListener,
                              boolean explicitPageSize, int pageSize,
                              File[] files, EnumSet<OpenOption> options,
-                             Crypto crypto, boolean destroy)
+                             Supplier<Checksum> checksumFactory, Crypto crypto, boolean destroy)
         throws IOException
     {
         while (true) {
             try {
-                return new StoredPageDb
-                    (debugListener,
-                     openPageArray(pageSize, files, options),
-                     crypto, destroy);
+                PageArray pa = openPageArray(pageSize, files, options);
+                if (checksumFactory != null) {
+                    pa = CheckedPageArray.open(pa, checksumFactory);
+                }
+                return new StoredPageDb(debugListener, pa, crypto, destroy);
             } catch (WrongPageSize e) {
                 if (explicitPageSize) {
                     throw e.rethrow();

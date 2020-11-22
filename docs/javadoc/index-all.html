@@ -354,6 +354,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Set the minimum redo log size required for an automatic <a href="org.cojen.tupl/org/cojen/tupl/Database.html#checkpoint()">checkpoint</a> to actually be performed.</div>
 </dd>
+<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#checksumPages(java.util.function.Supplier)">checksumPages(Supplier&lt;Checksum&gt;)</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
+<dd>
+<div class="block">Enable 32-bit checksums for all of the underlying database pages.</div>
+</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl"><span class="type-name-link">CipherCrypto</span></a> - Class in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
 <div class="block">Crypto implementation which uses <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/javax/crypto/Cipher.html" title="class or interface in javax.crypto" class="external-link"><code>Cipher</code></a> and defaults to the AES algorithm.</div>
@@ -566,11 +570,6 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Compress to a byte array.</div>
 </dd>
-<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#compress(int,long,java.util.function.Supplier)">compress(int, long, Supplier&lt;PageCompressor&gt;)</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
-<dd>
-<div class="block">Compress the underlying database pages, reducing overall size at the cost of
- performance.</div>
-</dd>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/io/PageCompressor.html#compress(long,int,int)">compress(long, int, int)</a></span> - Method in interface org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a></dt>
 <dd>
 <div class="block">Compress to a byte array from a raw memory pointer.</div>
@@ -578,6 +577,11 @@ loadScripts(document, 'script');</script>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/io/PageCompressor.html#compressedBytes()">compressedBytes()</a></span> - Method in interface org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a></dt>
 <dd>
 <div class="block">Target of the compress method.</div>
+</dd>
+<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#compressPages(int,long,java.util.function.Supplier)">compressPages(int, long, Supplier&lt;PageCompressor&gt;)</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
+<dd>
+<div class="block">Compress the underlying database pages, reducing overall size at the cost of
+ performance.</div>
 </dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/ConfirmationFailureException.html" title="class in org.cojen.tupl"><span class="type-name-link">ConfirmationFailureException</span></a> - Exception in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>

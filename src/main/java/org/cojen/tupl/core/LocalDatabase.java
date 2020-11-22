@@ -483,6 +483,10 @@ public final class LocalDatabase extends CoreDatabase {
                     mPageDb = new NonPageDb(pageSize);
                 } else {
                     dataPageArray = dataPageArray.open();
+                    if (launcher.mChecksumFactory != null) {
+                        dataPageArray = CheckedPageArray.open
+                            (dataPageArray, launcher.mChecksumFactory);
+                    }
                     Crypto crypto = launcher.mDataCrypto;
                     mPageDb = StoredPageDb.open(debugListener, dataPageArray, crypto, destroy);
                     /*P*/ // [|
@@ -496,7 +500,7 @@ public final class LocalDatabase extends CoreDatabase {
                 try {
                     pageDb = StoredPageDb.open
                         (debugListener, explicitPageSize, pageSize,
-                         dataFiles, options,
+                         dataFiles, options, launcher.mChecksumFactory,
                          launcher.mDataCrypto, destroy);
                 } catch (FileNotFoundException e) {
                     if (!mReadOnly) {

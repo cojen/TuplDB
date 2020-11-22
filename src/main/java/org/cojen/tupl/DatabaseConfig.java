@@ -27,6 +27,8 @@ import java.util.concurrent.TimeUnit;
 
 import java.util.function.Supplier;
 
+import java.util.zip.Checksum;
+
 import org.cojen.tupl.core.Launcher;
 
 import org.cojen.tupl.ext.CustomHandler;
@@ -372,6 +374,17 @@ public class DatabaseConfig implements Cloneable {
     }
 
     /**
+     * Enable 32-bit checksums for all of the underlying database pages. The page size reported
+     * by the database will be 4 bytes smaller, to make room for the checksum.
+     *
+     * @param factory creates new checksum instances; {@code CRC32C::new} is recommended
+     */
+    public DatabaseConfig checksumPages(Supplier<Checksum> factory) {
+        mLauncher.checksumPages(factory);
+        return this;
+    }
+
+    /**
      * Compress the underlying database pages, reducing overall size at the cost of
      * performance. To be effective, the given full page size must be larger than physical page
      * size. A full page size of 65536 bytes paired with the default physical page size of 4096
@@ -387,10 +400,10 @@ public class DatabaseConfig implements Cloneable {
      * @param cacheSize cache size (in bytes) for the compression layer
      * @param factory creates new page compressor instances
      */
-    public DatabaseConfig compress(int fullPageSize, long cacheSize,
-                                   Supplier<PageCompressor> factory)
+    public DatabaseConfig compressPages(int fullPageSize, long cacheSize,
+                                        Supplier<PageCompressor> factory)
     {
-        mLauncher.compress(fullPageSize, cacheSize, factory);
+        mLauncher.compressPages(fullPageSize, cacheSize, factory);
         return this;
     }
 

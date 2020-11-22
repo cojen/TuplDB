@@ -43,7 +43,7 @@ public class CrudCompressedTest extends CrudTest {
             .cacheSize(10_000_000L) // small cache forces more decompression activity
             .durabilityMode(DurabilityMode.NO_FLUSH)
             .directPageAccess(false)
-            .compress(65536, 1_000_000L, PageCompressor::zlib);
+            .compressPages(65536, 1_000_000L, PageCompressor::zlib);
 
         mDb = newTempDatabase(getClass(), config);
     }
