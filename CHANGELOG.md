@@ -87,7 +87,7 @@ v1.5.0
 * Automatically pre-touch direct access pages when creating the cache.
 * Support limited read-only mode which doesn't persist any changes.
 * File I/O operations are no longer affected by thread interrrupts. The database remains open.
-* Added support for page-level compression.
+* Added support for page-level compression and checksums.
 * Support clean database shutdown triggered by clean JVM exit.
 * Added support for asynchronous lock acquisition.
 
