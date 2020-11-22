@@ -123,8 +123,8 @@ final class CryptoPageArray extends PageArray {
     public void readPage(long index, byte[] dst, int offset, int length, ByteBuffer tail)
         throws IOException
     {
-        // FIXME
-        throw null;
+        // Only required by lower layers, and used by CheckedPageArray.
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -145,14 +145,6 @@ final class CryptoPageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, long dstPtr, int offset, int length, ByteBuffer tail)
-        throws IOException
-    {
-        // FIXME
-        throw null;
-    }
-
-    @Override
     public void writePage(long index, byte[] src, int offset) throws IOException {
         try {
             int pageSize = pageSize();
@@ -168,8 +160,8 @@ final class CryptoPageArray extends PageArray {
 
     @Override
     public void writePage(long index, byte[] src, int offset, ByteBuffer tail) throws IOException {
-        // FIXME
-        throw null;
+        // Only required by lower layers, and used by CheckedPageArray.
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -187,12 +179,6 @@ final class CryptoPageArray extends PageArray {
         } catch (GeneralSecurityException e) {
             throw new DatabaseException(e);
         }
-    }
-
-    @Override
-    public void writePage(long index, long srcPtr, int offset, ByteBuffer tail) throws IOException {
-        // FIXME
-        throw null;
     }
 
     @Override

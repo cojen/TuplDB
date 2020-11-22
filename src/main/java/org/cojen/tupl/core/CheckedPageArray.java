@@ -78,6 +78,22 @@ abstract class CheckedPageArray extends PageArray {
     }
 
     @Override
+    public void readPage(long index, byte[] dst, int offset, int length, ByteBuffer tail)
+        throws IOException
+    {
+        // No need to support this unless double checksumming, which makes no sense.
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void writePage(long index, byte[] src, int offset, ByteBuffer tail)
+        throws IOException
+    {
+        // No need to support this unless double checksumming, which makes no sense.
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public void sync(boolean metadata) throws IOException {
         mSource.sync(metadata);
     }
@@ -135,14 +151,6 @@ abstract class CheckedPageArray extends PageArray {
         }
 
         @Override
-        public void readPage(long index, byte[] dst, int offset, int length, ByteBuffer tail)
-            throws IOException
-        {
-            // FIXME
-            throw null;
-        }
-
-        @Override
         public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
             int pageSize = pageSize();
             if (offset != 0 || length != pageSize()) {
@@ -167,14 +175,6 @@ abstract class CheckedPageArray extends PageArray {
         }
 
         @Override
-        public void readPage(long index, long dstPtr, int offset, int length, ByteBuffer tail)
-            throws IOException
-        {
-            // FIXME
-            throw null;
-        }
-
-        @Override
         public void writePage(long index, byte[] src, int offset) throws IOException {
             BufRef ref = bufRef();
             Checksum checksum = ref.mChecksum;
@@ -187,14 +187,6 @@ abstract class CheckedPageArray extends PageArray {
         }
 
         @Override
-        public void writePage(long index, byte[] src, int offset, ByteBuffer tail)
-            throws IOException
-        {
-            // FIXME
-            throw null;
-        }
-
-        @Override
         public void writePage(long index, long srcPtr, int offset) throws IOException {
             BufRef ref = bufRef();
             Checksum checksum = ref.mChecksum;
@@ -204,14 +196,6 @@ abstract class CheckedPageArray extends PageArray {
             tail.position(0);
             tail.putInt(0, (int) checksum.getValue());
             mSource.writePage(index, srcPtr, offset, tail);
-        }
-
-        @Override
-        public void writePage(long index, long srcPtr, int offset, ByteBuffer tail)
-            throws IOException
-        {
-            // FIXME
-            throw null;
         }
 
         private BufRef bufRef() {
@@ -257,9 +241,8 @@ abstract class CheckedPageArray extends PageArray {
 
         @Override
         public void readPage(long index, byte[] dst, int offset, int length) throws IOException {
-            int pageSize = pageSize();
             if (offset != 0 || length != pageSize()) {
-                byte[] page = new byte[pageSize()];
+                byte[] page = new byte[mAbsPageSize];
                 readPage(index, page);
                 System.arraycopy(page, 0, dst, offset, length);
             } else {
@@ -274,16 +257,7 @@ abstract class CheckedPageArray extends PageArray {
         }
 
         @Override
-        public void readPage(long index, byte[] dst, int offset, int length, ByteBuffer tail)
-            throws IOException
-        {
-            // FIXME
-            throw null;
-        }
-
-        @Override
         public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
-            int pageSize = pageSize();
             if (offset != 0 || length != pageSize()) {
                 long page = UnsafeAccess.alloc(mAbsPageSize, true); // aligned
                 try {
@@ -304,43 +278,29 @@ abstract class CheckedPageArray extends PageArray {
         }
 
         @Override
-        public void readPage(long index, long dstPtr, int offset, int length, ByteBuffer tail)
-            throws IOException
-        {
-            // FIXME
-            throw null;
-        }
-
-        @Override
         public void writePage(long index, byte[] src, int offset) throws IOException {
-            // FIXME
-            throw null;
-        }
-
-        @Override
-        public void writePage(long index, byte[] src, int offset, ByteBuffer tail)
-            throws IOException
-        {
-            // FIXME
-            throw null;
+            if (offset != 0) {
+                byte[] page = new byte[mAbsPageSize];
+                System.arraycopy(src, offset, page, 0, page.length);
+                writePage(index, page);
+            } else {
+                Checksum checksum = checksum();
+                checksum.reset();
+                checksum.update(src, offset, mAbsPageSize - 4);
+                // Assume that the caller has provided a buffer sized to match the direct page.
+                Utils.encodeIntLE(src, offset + mAbsPageSize - 4, (int) checksum.getValue());
+                mSource.writePage(index, src, offset);
+            }
         }
 
         @Override
         public void writePage(long index, long srcPtr, int offset) throws IOException {
             Checksum checksum = checksum();
             checksum.reset();
-            checksum.update(DirectAccess.ref(srcPtr + offset, pageSize()));
+            checksum.update(DirectAccess.ref(srcPtr + offset, mAbsPageSize - 4));
             // Assume that the caller has provided a buffer sized to match the direct page.
             UNSAFE.putInt(srcPtr + offset + mAbsPageSize - 4, (int) checksum.getValue());
             mSource.writePage(index, srcPtr, offset);
-        }
-
-        @Override
-        public void writePage(long index, long srcPtr, int offset, ByteBuffer tail)
-            throws IOException
-        {
-            // FIXME
-            throw null;
         }
 
         private Checksum checksum() {

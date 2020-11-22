@@ -39,13 +39,7 @@ interface ReadableSnapshot extends Snapshot {
 
     void readPage(long index, byte[] dst, int offset, int length) throws IOException;
 
-    void readPage(long index, byte[] dst, int offset, int length, ByteBuffer tail)
-        throws IOException;
-
     void readPage(long index, long dstPtr, int offset, int length) throws IOException;
-
-    void readPage(long index, long dstPtr, int offset, int length, ByteBuffer tail)
-        throws IOException;
 
     /**
      * Returns a PageArray view which when closed doesn't close the underlying snapshot. Is
@@ -90,7 +84,8 @@ interface ReadableSnapshot extends Snapshot {
             public void readPage(long index, byte[] dst, int offset, int length, ByteBuffer tail)
                 throws IOException
             {
-                ReadableSnapshot.this.readPage(index, dst, offset, length, tail);
+                // Only required by lower layers, and used by CheckedPageArray.
+                throw new UnsupportedOperationException();
             }
 
             @Override
@@ -98,13 +93,6 @@ interface ReadableSnapshot extends Snapshot {
                 throws IOException
             {
                 ReadableSnapshot.this.readPage(index, dstPtr, offset, length);
-            }
-
-            @Override
-            public void readPage(long index, long dstPtr, int offset, int length, ByteBuffer tail)
-                throws IOException
-            {
-                ReadableSnapshot.this.readPage(index, dstPtr, offset, length, tail);
             }
 
             @Override
