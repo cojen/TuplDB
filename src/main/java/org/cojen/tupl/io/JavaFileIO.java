@@ -120,7 +120,7 @@ final class JavaFileIO extends AbstractFileIO {
 
     @Override
     protected long doLength() throws IOException {
-        RandomAccessFile file = accessFile();
+        FileAccess file = accessFile();
         try {
             return file.length();
         } finally {
@@ -130,7 +130,7 @@ final class JavaFileIO extends AbstractFileIO {
 
     @Override
     protected void doSetLength(long length) throws IOException {
-        RandomAccessFile file = accessFile();
+        FileAccess file = accessFile();
         try {
             file.setLength(length);
         } finally {
@@ -141,7 +141,7 @@ final class JavaFileIO extends AbstractFileIO {
     @Override
     protected void doRead(long pos, byte[] buf, int offset, int length) throws IOException {
         try {
-            RandomAccessFile file = accessFile();
+            FileAccess file = accessFile();
             try {
                 file.seek(pos);
                 file.readFully(buf, offset, length);
@@ -162,7 +162,9 @@ final class JavaFileIO extends AbstractFileIO {
 
     @Override
     protected void doRead(long pos, ByteBuffer bb) throws IOException {
-        RandomAccessFile file = accessFile();
+        boolean interrupted = false;
+
+        FileAccess file = accessFile();
         try {
             while (true) try {
                 FileChannel channel = file.getChannel();
@@ -175,21 +177,29 @@ final class JavaFileIO extends AbstractFileIO {
                 }
                 break;
             } catch (ClosedByInterruptException e) {
-                Thread.interrupted(); // clear the status
+                interrupted = true;
+                // Clear the status to allow retry to succeed.
+                Thread.interrupted();
                 file = openRaf();
             }
         } finally {
             yieldFile(file);
         }
+
+        if (interrupted) {
+            // Restore the interrupt status.
+            Thread.currentThread().interrupt();
+        }
     }
 
     @Override
     protected void doRead(long pos, ByteBuffer bb, ByteBuffer tail) throws IOException {
-        RandomAccessFile file = accessFile();
+        boolean interrupted = false;
+
+        FileAccess file = accessFile();
         try {
             while (true) try {
-                FileChannel channel = file.getChannel();
-                channel.position(pos);
+                FileChannel channel = file.positionChannel(pos);
                 while (bb.hasRemaining()) {
                     long amt = channel.read(new ByteBuffer[] {bb, tail});
                     if (amt < 0) {
@@ -208,17 +218,24 @@ final class JavaFileIO extends AbstractFileIO {
                 }
                 break;
             } catch (ClosedByInterruptException e) {
-                Thread.interrupted(); // clear the status
+                interrupted = true;
+                // Clear the status to allow retry to succeed.
+                Thread.interrupted();
                 file = openRaf();
             }
         } finally {
             yieldFile(file);
         }
+
+        if (interrupted) {
+            // Restore the interrupt status.
+            Thread.currentThread().interrupt();
+        }
     }
 
     @Override
     protected void doWrite(long pos, byte[] buf, int offset, int length) throws IOException {
-        RandomAccessFile file = accessFile();
+        FileAccess file = accessFile();
         try {
             file.seek(pos);
             file.write(buf, offset, length);
@@ -236,7 +253,9 @@ final class JavaFileIO extends AbstractFileIO {
 
     @Override
     protected void doWrite(long pos, ByteBuffer bb) throws IOException {
-        RandomAccessFile file = accessFile();
+        boolean interrupted = false;
+
+        FileAccess file = accessFile();
         try {
             while (true) try {
                 FileChannel channel = file.getChannel();
@@ -245,21 +264,29 @@ final class JavaFileIO extends AbstractFileIO {
                 }
                 break;
             } catch (ClosedByInterruptException e) {
-                Thread.interrupted(); // clear the status
+                interrupted = true;
+                // Clear the status to allow retry to succeed.
+                Thread.interrupted();
                 file = openRaf();
             }
         } finally {
             yieldFile(file);
         }
+
+        if (interrupted) {
+            // Restore the interrupt status.
+            Thread.currentThread().interrupt();
+        }
     }
 
     @Override
     protected void doWrite(long pos, ByteBuffer bb, ByteBuffer tail) throws IOException {
-        RandomAccessFile file = accessFile();
+        boolean interrupted = false;
+
+        FileAccess file = accessFile();
         try {
             while (true) try {
-                FileChannel channel = file.getChannel();
-                channel.position(pos);
+                FileChannel channel = file.positionChannel(pos);
                 while (bb.hasRemaining()) {
                     pos += channel.write(new ByteBuffer[] {bb, tail});
                 }
@@ -268,11 +295,18 @@ final class JavaFileIO extends AbstractFileIO {
                 }
                 break;
             } catch (ClosedByInterruptException e) {
-                Thread.interrupted(); // clear the status
+                interrupted = true;
+                // Clear the status to allow retry to succeed.
+                Thread.interrupted();
                 file = openRaf();
             }
         } finally {
             yieldFile(file);
+        }
+
+        if (interrupted) {
+            // Restore the interrupt status.
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -315,17 +349,26 @@ final class JavaFileIO extends AbstractFileIO {
 
     @Override
     protected void doSync(boolean metadata) throws IOException {
-        RandomAccessFile file = accessFile();
+        boolean interrupted = false;
+
+        FileAccess file = accessFile();
         try {
             while (true) try {
                 file.getChannel().force(metadata);
                 break;
             } catch (ClosedByInterruptException e) {
-                Thread.interrupted(); // clear the status
+                interrupted = true;
+                // Clear the status to allow retry to succeed.
+                Thread.interrupted();
                 file = openRaf();
             }
         } finally {
             yieldFile(file);
+        }
+
+        if (interrupted) {
+            // Restore the interrupt status.
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -389,8 +432,8 @@ final class JavaFileIO extends AbstractFileIO {
         }
     }
 
-    private RandomAccessFile accessFile() throws InterruptedIOException {
-        RandomAccessFile[] pool = mFilePool;
+    private FileAccess accessFile() throws InterruptedIOException {
+        FileAccess[] pool = mFilePool;
         Latch latch = mFilePoolLatch;
         latch.acquireExclusive();
         try {
@@ -400,7 +443,7 @@ final class JavaFileIO extends AbstractFileIO {
                     throw new InterruptedIOException();
                 }
             }
-            RandomAccessFile file = pool[top];
+            FileAccess file = pool[top];
             mFilePoolTop = top + 1;
             return file;
         } finally {
@@ -408,8 +451,8 @@ final class JavaFileIO extends AbstractFileIO {
         }
     }
 
-    private void yieldFile(RandomAccessFile file) {
-        RandomAccessFile[] pool = mFilePool;
+    private void yieldFile(FileAccess file) {
+        FileAccess[] pool = mFilePool;
         Latch latch = mFilePoolLatch;
         latch.acquireExclusive();
         try {
@@ -471,6 +514,13 @@ final class JavaFileIO extends AbstractFileIO {
         FileAccess(File file, String mode) throws IOException {
             super(file, mode);
             seek(0);
+        }
+
+        FileChannel positionChannel(long pos) throws IOException {
+            mPosition = -1; // seek method must actually seek
+            FileChannel channel = getChannel();
+            channel.position(pos);
+            return channel;
         }
 
         @Override
