@@ -517,7 +517,7 @@ public final class LocalDatabase extends CoreDatabase {
             /*P*/ // ]
 
             // Actual page size might differ from configured size.
-            launcher.pageSize(pageSize = mPageSize = mPageDb.pageSize());
+            pageSize = mPageSize = mPageDb.pageSize();
 
             /*P*/ // [
             launcher.mDirectPageAccess = false;
@@ -551,7 +551,7 @@ public final class LocalDatabase extends CoreDatabase {
                     /*P*/ // ]
 
                     try {
-                        mArena = p_arenaAlloc(pageSize, minCache); 
+                        mArena = p_arenaAlloc(mPageDb.directPageSize(), minCache);
                     } catch (IOException e) {
                         var oom = new OutOfMemoryError();
                         oom.initCause(e);

@@ -135,6 +135,7 @@ public final class DirectPageOps {
         private long mNextPtr;
 
         Arena(int pageSize, long pageCount) throws IOException {
+            pageSize = Math.abs(pageSize);
             mPageArray = MappedPageArray.open(pageSize, pageCount, null, null);
             mStartPtr = mPageArray.directPagePointer(0);
             mEndPtr = mStartPtr + (pageSize * pageCount);
