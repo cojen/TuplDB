@@ -128,7 +128,7 @@ final class StoredPageDb extends PageDb {
             try {
                 PageArray pa = openPageArray(pageSize, files, options);
                 if (checksumFactory != null) {
-                    pa = CheckedPageArray.open(pa, checksumFactory);
+                    pa = ChecksumPageArray.open(pa, checksumFactory);
                 }
                 return new StoredPageDb(debugListener, pa, crypto, destroy);
             } catch (WrongPageSize e) {
@@ -201,15 +201,16 @@ final class StoredPageDb extends PageDb {
     }
 
     private StoredPageDb(final EventListener debugListener,
-                         final PageArray rawArray,
-                         final Crypto crypto, final boolean destroy)
+                         PageArray array, final Crypto crypto, final boolean destroy)
         throws IOException, WrongPageSize
     {
         mCrypto = crypto;
 
-        PageArray array = crypto == null ? rawArray : new CryptoPageArray(rawArray, crypto);
+        if (crypto != null) {
+            array = new CryptoPageArray(array, crypto);
+        }
 
-        mPageArray = new SnapshotPageArray(array, rawArray);
+        mPageArray = new SnapshotPageArray(array);
         mHeaderLatch = new Latch();
 
         try {

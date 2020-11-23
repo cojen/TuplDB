@@ -484,7 +484,7 @@ public final class LocalDatabase extends CoreDatabase {
                 } else {
                     dataPageArray = dataPageArray.open();
                     if (launcher.mChecksumFactory != null) {
-                        dataPageArray = CheckedPageArray.open
+                        dataPageArray = ChecksumPageArray.open
                             (dataPageArray, launcher.mChecksumFactory);
                     }
                     Crypto crypto = launcher.mDataCrypto;

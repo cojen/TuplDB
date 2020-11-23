@@ -38,17 +38,15 @@ import org.cojen.tupl.io.Utils;
  *
  * @author Brian S O'Neill
  */
-abstract class CheckedPageArray extends PageArray {
-    static CheckedPageArray open(PageArray source, Supplier<Checksum> supplier) {
+abstract class ChecksumPageArray extends TransformedPageArray {
+    static ChecksumPageArray open(PageArray source, Supplier<Checksum> supplier) {
         return source.isDirectIO() ? new Direct(source, supplier) : new Standard(source, supplier);
     }
 
-    final PageArray mSource;
     final Supplier<Checksum> mSupplier;
 
-    CheckedPageArray(PageArray source, Supplier<Checksum> supplier) {
-        super(source.pageSize() - 4); // need 4 bytes for the checksum
-        mSource = source;
+    ChecksumPageArray(PageArray source, Supplier<Checksum> supplier) {
+        super(source.pageSize() - 4, source); // need 4 bytes for the checksum
         mSupplier = supplier;
     }
 
@@ -111,7 +109,7 @@ abstract class CheckedPageArray extends PageArray {
     @Override
     public PageArray open() throws IOException {
         PageArray array = mSource.open();
-        return array == mSource ? this : CheckedPageArray.open(array, mSupplier);
+        return array == mSource ? this : ChecksumPageArray.open(array, mSupplier);
     }
 
     static void check(long index, int actualChecksum, Checksum checksum) throws IOException { 
@@ -122,7 +120,7 @@ abstract class CheckedPageArray extends PageArray {
         }
     }
 
-    private static class Standard extends CheckedPageArray {
+    private static class Standard extends ChecksumPageArray {
         private final ThreadLocal<BufRef> mBufRef;
 
         Standard(PageArray source, Supplier<Checksum> supplier) {
@@ -221,7 +219,7 @@ abstract class CheckedPageArray extends PageArray {
         }
     }
 
-    private static class Direct extends CheckedPageArray {
+    private static class Direct extends ChecksumPageArray {
         private static final sun.misc.Unsafe UNSAFE = UnsafeAccess.obtain();
 
         private final int mAbsPageSize;

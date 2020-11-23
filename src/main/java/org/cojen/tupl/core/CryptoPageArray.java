@@ -35,13 +35,11 @@ import org.cojen.tupl.io.Utils;
  *
  * @author Brian S O'Neill
  */
-final class CryptoPageArray extends PageArray {
-    private final PageArray mSource;
+final class CryptoPageArray extends TransformedPageArray {
     private final Crypto mCrypto;
 
     CryptoPageArray(PageArray source, Crypto crypto) {
-        super(source.pageSize());
-        mSource = source;
+        super(source);
         mCrypto = crypto;
     }
 

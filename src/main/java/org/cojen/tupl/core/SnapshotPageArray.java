@@ -51,15 +51,12 @@ import static org.cojen.tupl.core.Utils.*;
  */
 final class SnapshotPageArray extends PageArray {
     final PageArray mSource;
-    private final PageArray mRawSource;
 
     private volatile Object mSnapshots;
 
-    SnapshotPageArray(PageArray source, PageArray rawSource) {
+    SnapshotPageArray(PageArray source) {
         super(source.pageSize());
         mSource = source;
-        // Snapshot does not decrypt pages.
-        mRawSource = rawSource;
     }
 
     @Override
@@ -237,7 +234,7 @@ final class SnapshotPageArray extends PageArray {
         LocalDatabase nodeCache = db;
 
         // Snapshot does not decrypt pages.
-        PageArray rawSource = mRawSource;
+        PageArray rawSource = TransformedPageArray.rawSource(mSource);
         if (rawSource != mSource) {
             // Cache contents are not encrypted, and so it cannot be used.
             nodeCache = null;
@@ -369,7 +366,8 @@ final class SnapshotPageArray extends PageArray {
                 mCaptureLatches[i] = new Latch();
                 mCaptureBufferArrays[i] = new byte[pageSize];
                 // Allocates if page is not an array. The copy is not actually required.
-                mCaptureBuffers[i] = p_transferPage(mCaptureBufferArrays[i], directPageSize());
+                mCaptureBuffers[i] = p_transferPage
+                    (mCaptureBufferArrays[i], rawPageArray.directPageSize());
             }
 
             var launcher = new Launcher();
@@ -418,7 +416,7 @@ final class SnapshotPageArray extends PageArray {
 
             final var pageBufferArray = new byte[pageSize()];
             // Allocates if page is not an array. The copy is not actually required.
-            final var pageBuffer = p_transferPage(pageBufferArray, directPageSize());
+            final var pageBuffer = p_transferPage(pageBufferArray, mRawPageArray.directPageSize());
 
             final LocalDatabase cache = mNodeCache;
             final long count = mSnapshotPageCount;
@@ -594,7 +592,7 @@ final class SnapshotPageArray extends PageArray {
         // Defined by ReadableSnapshot.
         @Override
         public int pageSize() {
-            return SnapshotPageArray.this.pageSize();
+            return mRawPageArray.pageSize();
         }
 
         // Defined by ReadableSnapshot.
