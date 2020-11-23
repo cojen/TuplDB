@@ -25,6 +25,7 @@ import java.io.OutputStream;
 
 import java.security.GeneralSecurityException;
 
+import java.util.Arrays;
 import java.util.EnumSet;
 
 import java.util.function.LongConsumer;
@@ -127,9 +128,7 @@ final class StoredPageDb extends PageDb {
         while (true) {
             try {
                 PageArray pa = openPageArray(pageSize, files, options);
-                if (checksumFactory != null) {
-                    pa = ChecksumPageArray.open(pa, checksumFactory);
-                }
+                pa = decorate(pa, checksumFactory, crypto);
                 return new StoredPageDb(debugListener, pa, crypto, destroy);
             } catch (WrongPageSize e) {
                 if (explicitPageSize) {
@@ -143,14 +142,16 @@ final class StoredPageDb extends PageDb {
 
     /**
      * @param debugListener optional
+     * @param checksumFactory optional
      * @param crypto optional
      */
-    static StoredPageDb open(EventListener debugListener,
-                             PageArray rawArray, Crypto crypto, boolean destroy)
+    static StoredPageDb open(EventListener debugListener, PageArray rawArray,
+                             Supplier<Checksum> checksumFactory, Crypto crypto, boolean destroy)
         throws IOException
     {
         try {
-            return new StoredPageDb(debugListener, rawArray, crypto, destroy);
+            PageArray pa = decorate(rawArray, checksumFactory, crypto);
+            return new StoredPageDb(debugListener, pa, crypto, destroy);
         } catch (WrongPageSize e) {
             throw e.rethrow();
         }
@@ -200,17 +201,26 @@ final class StoredPageDb extends PageDb {
         }
     }
 
-    private StoredPageDb(final EventListener debugListener,
-                         PageArray array, final Crypto crypto, final boolean destroy)
+    private static PageArray decorate(PageArray pa,
+                                      Supplier<Checksum> checksumFactory, Crypto crypto)
+    {
+        if (checksumFactory != null) {
+            pa = ChecksumPageArray.open(pa, checksumFactory);
+        }
+        if (crypto != null) {
+            pa = new CryptoPageArray(pa, crypto);
+        }
+        return pa;
+    }
+
+    /**
+     * @param pa must already be fully decorated
+     */
+    private StoredPageDb(EventListener debugListener, PageArray pa, Crypto crypto, boolean destroy)
         throws IOException, WrongPageSize
     {
         mCrypto = crypto;
-
-        if (crypto != null) {
-            array = new CryptoPageArray(array, crypto);
-        }
-
-        mPageArray = new SnapshotPageArray(array);
+        mPageArray = new SnapshotPageArray(pa);
         mHeaderLatch = new Latch();
 
         try {
@@ -752,11 +762,13 @@ final class StoredPageDb extends PageDb {
     }
 
     /**
+     * @param checksumFactory optional
      * @param crypto optional
      * @param in snapshot source; does not require extra buffering; auto-closed
      */
     static PageDb restoreFromSnapshot(int pageSize, File[] files, EnumSet<OpenOption> options,
-                                      Crypto crypto, InputStream in)
+                                      Supplier<Checksum> checksumFactory, Crypto crypto,
+                                      InputStream in)
         throws IOException
     {
         try (in) {
@@ -769,6 +781,9 @@ final class StoredPageDb extends PageDb {
             if (crypto != null) {
                 buffer = new byte[pageSize];
                 readFully(in, buffer, 0, buffer.length);
+                if (checksumFactory != null) {
+                    pageSize -= 4; // don't decrypt the checksum
+                }
                 try {
                     crypto.decryptPage(0, pageSize, buffer, 0);
                 } catch (GeneralSecurityException e) {
@@ -781,7 +796,12 @@ final class StoredPageDb extends PageDb {
             }
 
             checkMagicNumber(decodeLongLE(buffer, I_MAGIC_NUMBER));
+
             pageSize = decodeIntLE(buffer, I_PAGE_SIZE);
+            if (checksumFactory != null) {
+                pageSize += 4; // need 4 bytes for the checksum
+            }
+
             PageArray pa = openPageArray(pageSize, files, options);
 
             if (!pa.isEmpty()) {
@@ -802,15 +822,22 @@ final class StoredPageDb extends PageDb {
                 }
             }
 
-            return restoreFromSnapshot(crypto, in, buffer, pa);
+            try {
+                return restoreFromSnapshot(checksumFactory, crypto, in, buffer, pa);
+            } catch (Throwable e) {
+                closeQuietly(pa);
+                throw e;
+            }
         }
     }
 
     /**
+     * @param checksumFactory optional
      * @param crypto optional
      * @param in snapshot source; does not require extra buffering; auto-closed
      */
-    static PageDb restoreFromSnapshot(PageArray pa, Crypto crypto, InputStream in)
+    static PageDb restoreFromSnapshot(PageArray pa, Supplier<Checksum> checksumFactory,
+                                      Crypto crypto, InputStream in)
         throws IOException
     {
         try (in) {
@@ -823,15 +850,23 @@ final class StoredPageDb extends PageDb {
             readFully(in, buffer, 0, buffer.length);
 
             if (crypto != null) {
+                int pageSize = buffer.length;
+                if (checksumFactory != null) {
+                    pageSize -= 4; // don't decrypt the checksum
+                }
                 try {
-                    crypto.decryptPage(0, buffer.length, buffer, 0);
+                    crypto.decryptPage(0, pageSize, buffer, 0);
                 } catch (GeneralSecurityException e) {
                     throw new DatabaseException(e);
                 }
             }
 
             checkMagicNumber(decodeLongLE(buffer, I_MAGIC_NUMBER));
+
             int pageSize = decodeIntLE(buffer, I_PAGE_SIZE);
+            if (checksumFactory != null) {
+                pageSize += 4; // need 4 bytes for the checksum
+            }
 
             if (pageSize != buffer.length) {
                 closeQuietly(pa);
@@ -839,17 +874,19 @@ final class StoredPageDb extends PageDb {
                     ("Mismatched page size: " + pageSize + " != " + buffer.length);
             }
 
-            return restoreFromSnapshot(crypto, in, buffer, pa);
+            return restoreFromSnapshot(checksumFactory, crypto, in, buffer, pa);
         }
     }
 
     /**
      * @param buffer initialized with page 0 (first header)
      */
-    private static PageDb restoreFromSnapshot(Crypto crypto, InputStream in,
-                                              byte[] buffer, PageArray pa)
+    private static PageDb restoreFromSnapshot(Supplier<Checksum> checksumFactory, Crypto crypto,
+                                              InputStream in, byte[] buffer, PageArray rawArray)
         throws IOException
     {
+        PageArray logicalArray = decorate(rawArray, checksumFactory, crypto);
+
         // Indicate that a restore is in progress. Replace with the correct magic number when
         // complete.
         encodeLongLE(buffer, I_MAGIC_NUMBER, INCOMPLETE_RESTORE);
@@ -857,30 +894,21 @@ final class StoredPageDb extends PageDb {
         int commitNumber = decodeIntLE(buffer, I_COMMIT_NUMBER);
         long pageCount = decodeLongLE(buffer, I_MANAGER_HEADER + PageManager.I_TOTAL_PAGE_COUNT);
 
-        if (crypto != null) {
-            try {
-                crypto.encryptPage(0, pa.pageSize(), buffer, 0);
-            } catch (GeneralSecurityException e) {
-                closeQuietly(pa);
-                throw new DatabaseException(e);
-            }
-        }
-
-        var bufferPage = p_transferPage(buffer, pa.directPageSize());
+        var bufferPage = p_transferPage(buffer, rawArray.directPageSize());
 
         try {
             // Write header and ensure that the incomplete restore state is persisted.
-            pa.writePage(0, bufferPage);
-            pa.sync(false);
+            writeLogicalHeader(logicalArray, buffer);
+            logicalArray.sync(false);
 
             // Read header 1 to determine the correct page count, and then preallocate.
             {
                 readFully(in, buffer, 0, buffer.length);
-                pa.writePage(1, p_transferTo(buffer, bufferPage));
+                rawArray.writePage(1, p_transferTo(buffer, bufferPage));
 
                 if (crypto != null) {
                     try {
-                        crypto.decryptPage(0, buffer.length, buffer, 0);
+                        crypto.decryptPage(0, logicalArray.pageSize(), buffer, 0);
                     } catch (GeneralSecurityException e) {
                         throw new DatabaseException(e);
                     }
@@ -892,7 +920,7 @@ final class StoredPageDb extends PageDb {
                         (buffer, I_MANAGER_HEADER + PageManager.I_TOTAL_PAGE_COUNT);
                 }
 
-                pa.expandPageCount(pageCount);
+                rawArray.expandPageCount(pageCount);
             }
 
             long index = 2;
@@ -902,47 +930,47 @@ final class StoredPageDb extends PageDb {
                     break;
                 }
                 readFully(in, buffer, amt, buffer.length - amt);
-                pa.writePage(index, p_transferTo(buffer, bufferPage));
+                rawArray.writePage(index, p_transferTo(buffer, bufferPage));
                 index++;
             }
-
-            // Store proper magic number, indicating that the restore is complete. All data
-            // pages must be durable before doing this.
-
-            pa.sync(false);
-            pa.readPage(0, bufferPage);
-
-            try {
-                if (crypto != null) {
-                    crypto.decryptPage(0, pa.pageSize(), bufferPage, 0);
-                }
-
-                p_longPutLE(bufferPage, I_MAGIC_NUMBER, MAGIC_NUMBER);
-
-                if (crypto != null) {
-                    crypto.encryptPage(0, pa.pageSize(), bufferPage, 0);
-                }
-            } catch (GeneralSecurityException e) {
-                throw new DatabaseException(e);
-            }
-
-            pa.writePage(0, bufferPage);
-
-            // Ensure newly restored snapshot is durable and also ensure that PageArray (if a
-            // MappedPageArray) no longer considers itself to be empty.
-            pa.sync(true);
-        } catch (Throwable e) {
-            closeQuietly(pa);
-            throw e;
         } finally {
             p_delete(bufferPage);
         }
 
+        // Store proper magic number, indicating that the restore is complete. All data pages
+        // must be durable before doing this.
+
+        rawArray.sync(false);
+        rawArray.readPage(0, buffer);
+
+        if (crypto != null) {
+            try {
+                crypto.decryptPage(0, logicalArray.pageSize(), buffer, 0);
+            } catch (GeneralSecurityException e) {
+                throw new DatabaseException(e);
+            }
+        }
+
+        encodeLongLE(buffer, I_MAGIC_NUMBER, MAGIC_NUMBER);
+        writeLogicalHeader(logicalArray, buffer);
+
+        // Ensure newly restored snapshot is durable and also ensure that PageArray (if a
+        // MappedPageArray) no longer considers itself to be empty.
+        logicalArray.sync(true);
+
         try {
-            return new StoredPageDb(null, pa, crypto, false);
+            return new StoredPageDb(null, logicalArray, crypto, false);
         } catch (WrongPageSize e) {
             throw e.rethrow();
         }
+    }
+
+    private static void writeLogicalHeader(PageArray pa, byte[] buffer) throws IOException {
+        if (buffer.length != pa.pageSize()) {
+            // Assume that the logical page size is smaller.
+            buffer = Arrays.copyOfRange(buffer, 0, pa.pageSize());
+        }
+        pa.writePage(0, buffer);
     }
 
     private IOException closeOnFailure(Throwable e) throws IOException {

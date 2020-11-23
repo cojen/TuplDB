@@ -202,8 +202,9 @@ public abstract class MappedPageArray extends PageArray {
         writeCheck(index);
         int pageSize = mPageSize;
         long dstPtr = mappingPtr() + index * pageSize;
-        UNSAFE.copyMemory(src, ARRAY + offset, null, dstPtr, pageSize);
-        writeTail(dstPtr + pageSize, tail);
+        int length = pageSize - tail.remaining();
+        UNSAFE.copyMemory(src, ARRAY + offset, null, dstPtr, length);
+        writeTail(dstPtr + length, tail);
     }
 
     @Override
@@ -225,10 +226,11 @@ public abstract class MappedPageArray extends PageArray {
         srcPtr += offset;
         int pageSize = mPageSize;
         long dstPtr = mappingPtr() + index * pageSize;
+        int length = pageSize - tail.remaining();
         if (dstPtr != srcPtr) {
-            UNSAFE.copyMemory(null, srcPtr, null, dstPtr, pageSize);
+            UNSAFE.copyMemory(null, srcPtr, null, dstPtr, length);
         }
-        writeTail(dstPtr + pageSize, tail);
+        writeTail(dstPtr + length, tail);
     }
 
     private static void writeTail(long dstPtr, ByteBuffer tail) {

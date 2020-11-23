@@ -483,12 +483,9 @@ public final class LocalDatabase extends CoreDatabase {
                     mPageDb = new NonPageDb(pageSize);
                 } else {
                     dataPageArray = dataPageArray.open();
-                    if (launcher.mChecksumFactory != null) {
-                        dataPageArray = ChecksumPageArray.open
-                            (dataPageArray, launcher.mChecksumFactory);
-                    }
                     Crypto crypto = launcher.mDataCrypto;
-                    mPageDb = StoredPageDb.open(debugListener, dataPageArray, crypto, destroy);
+                    mPageDb = StoredPageDb.open(debugListener, dataPageArray,
+                                                launcher.mChecksumFactory, crypto, destroy);
                     /*P*/ // [|
                     /*P*/ // fullyMapped = crypto == null && dataPageArray.isFullyMapped();
                     /*P*/ // ]
@@ -499,9 +496,8 @@ public final class LocalDatabase extends CoreDatabase {
                 PageDb pageDb;
                 try {
                     pageDb = StoredPageDb.open
-                        (debugListener, explicitPageSize, pageSize,
-                         dataFiles, options, launcher.mChecksumFactory,
-                         launcher.mDataCrypto, destroy);
+                        (debugListener, explicitPageSize, pageSize, dataFiles, options,
+                         launcher.mChecksumFactory, launcher.mDataCrypto, destroy);
                 } catch (FileNotFoundException e) {
                     if (!mReadOnly) {
                         throw e;
@@ -2277,7 +2273,8 @@ public final class LocalDatabase extends CoreDatabase {
             // Delete old redo log files.
             deleteNumberedFiles(launcher.mBaseFile, REDO_FILE_SUFFIX);
 
-            restored = StoredPageDb.restoreFromSnapshot(dataPageArray, launcher.mDataCrypto, in);
+            restored = StoredPageDb.restoreFromSnapshot
+                (dataPageArray, launcher.mChecksumFactory, launcher.mDataCrypto, in);
 
             // Delete the object, but keep the page array open.
             restored.delete();
@@ -2301,7 +2298,7 @@ public final class LocalDatabase extends CoreDatabase {
             }
 
             restored = StoredPageDb.restoreFromSnapshot
-                (pageSize, dataFiles, options, launcher.mDataCrypto, in);
+                (pageSize, dataFiles, options, launcher.mChecksumFactory, launcher.mDataCrypto, in);
 
             try {
                 restored.close();
