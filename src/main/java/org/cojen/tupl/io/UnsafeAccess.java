@@ -31,6 +31,7 @@ import com.sun.jna.Platform;
 public class UnsafeAccess {
     private static final sun.misc.Unsafe UNSAFE;
     private static final Throwable UNSUPPORTED;
+    private static final long ARRAY_OFFSET;
 
     static {
         sun.misc.Unsafe unsafe = null;
@@ -46,6 +47,7 @@ public class UnsafeAccess {
 
         UNSAFE = unsafe;
         UNSUPPORTED = unsupported;
+        ARRAY_OFFSET = unsafe == null ? 0 : unsafe.arrayBaseOffset(byte[].class);
     }
 
     private UnsafeAccess() {
@@ -134,6 +136,20 @@ public class UnsafeAccess {
      */
     public static void copy(long srcPtr, long dstPtr, long len) {
         UNSAFE.copyMemory(srcPtr, dstPtr, len);
+    }
+
+    /**
+     * Copy to native memory.
+     */
+    public static void copy(byte[] src, int srcOffset, long dstPtr, long len) {
+        UNSAFE.copyMemory(src, ARRAY_OFFSET + srcOffset, null, dstPtr, len);
+    }
+
+    /**
+     * Copy from native memory.
+     */
+    public static void copy(long srcPtr, byte[] dst, int dstOffset, long len) {
+        UNSAFE.copyMemory(null, srcPtr, dst, ARRAY_OFFSET + dstOffset, len);
     }
 
     /**

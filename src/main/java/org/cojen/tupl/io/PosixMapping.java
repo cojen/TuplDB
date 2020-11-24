@@ -41,7 +41,7 @@ final class PosixMapping extends Mapping {
 
     @Override
     void read(int start, byte[] b, int off, int len) {
-        UNSAFE.copyMemory(null, mAddr + start, b, ARRAY + off, len);
+        UnsafeAccess.copy(mAddr + start, b, off, len);
     }
 
     @Override
@@ -51,7 +51,7 @@ final class PosixMapping extends Mapping {
 
     @Override
     void write(int start, byte[] b, int off, int len) {
-        UNSAFE.copyMemory(b, ARRAY + off, null, mAddr + start, len);
+        UnsafeAccess.copy(b, off, mAddr + start, len);
     }
 
     @Override
@@ -68,7 +68,4 @@ final class PosixMapping extends Mapping {
     public void close() throws IOException {
         PosixFileIO.munmapAddr(mAddr, mSize);
     }
-
-    private static final sun.misc.Unsafe UNSAFE = UnsafeAccess.obtain();
-    private static final long ARRAY = (long) UNSAFE.arrayBaseOffset(byte[].class);
 }

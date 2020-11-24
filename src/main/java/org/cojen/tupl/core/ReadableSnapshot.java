@@ -81,14 +81,6 @@ interface ReadableSnapshot extends Snapshot {
             }
 
             @Override
-            public void readPage(long index, byte[] dst, int offset, int length, ByteBuffer tail)
-                throws IOException
-            {
-                // Only required by lower layers, and used by CheckedPageArray.
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
             public void readPage(long index, long dstPtr, int offset, int length)
                 throws IOException
             {

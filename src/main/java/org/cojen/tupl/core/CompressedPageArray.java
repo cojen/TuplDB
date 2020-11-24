@@ -147,14 +147,6 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
     }
 
     @Override
-    public void readPage(long index, byte[] dst, int offset, int length, ByteBuffer tail)
-        throws IOException
-    {
-        // Only required by lower layers, and used by CheckedPageArray.
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public void readPage(long index, long dstPtr) throws IOException {
         readPage(index, dstPtr, 0);
     }

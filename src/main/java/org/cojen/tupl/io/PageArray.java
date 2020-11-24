@@ -112,8 +112,15 @@ public abstract class PageArray implements CauseCloseable {
     public abstract void readPage(long index, byte[] dst, int offset, int length)
         throws IOException;
 
-    public abstract void readPage(long index, byte[] dst, int offset, int length, ByteBuffer tail)
-        throws IOException;
+    public void readPage(long index, byte[] dst, int offset, int length, ByteBuffer tail)
+        throws IOException
+    {
+        // Default implementation isn't very efficient.
+        var page = new byte[length + tail.remaining()];
+        readPage(index, page, 0, page.length);
+        System.arraycopy(page, 0, dst, offset, length);
+        tail.put(page, length, tail.remaining());
+    }
 
     /**
      * @param index zero-based page index to read
@@ -141,7 +148,11 @@ public abstract class PageArray implements CauseCloseable {
     public void readPage(long index, long dstPtr, int offset, int length, ByteBuffer tail)
         throws IOException
     {
-        throw new UnsupportedOperationException();
+        // Default implementation isn't very efficient.
+        var page = new byte[length + tail.remaining()];
+        readPage(index, page, 0, page.length);
+        UnsafeAccess.copy(page, 0, dstPtr + offset, length);
+        tail.put(page, length, tail.remaining());
     }
 
     /**

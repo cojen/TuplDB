@@ -139,7 +139,7 @@ public abstract class MappedPageArray extends PageArray {
         throws IOException
     {
         readCheck(index);
-        UNSAFE.copyMemory(null, mappingPtr() + index * mPageSize, dst, ARRAY + offset, length);
+        UnsafeAccess.copy(mappingPtr() + index * mPageSize, dst, offset, length);
     }
 
     @Override
@@ -148,7 +148,7 @@ public abstract class MappedPageArray extends PageArray {
     {
         readCheck(index);
         long srcPtr = mappingPtr() + index * mPageSize;
-        UNSAFE.copyMemory(null, srcPtr, dst, ARRAY + offset, length);
+        UnsafeAccess.copy(srcPtr, dst, offset, length);
         readTail(srcPtr + length, tail);
     }
 
@@ -160,7 +160,7 @@ public abstract class MappedPageArray extends PageArray {
         dstPtr += offset;
         long srcPtr = mappingPtr() + index * mPageSize;
         if (srcPtr != dstPtr) {
-            UNSAFE.copyMemory(null, srcPtr, null, dstPtr, length);
+            UnsafeAccess.copy(srcPtr, dstPtr, length);
         }
     }
 
@@ -172,7 +172,7 @@ public abstract class MappedPageArray extends PageArray {
         dstPtr += offset;
         long srcPtr = mappingPtr() + index * mPageSize;
         if (srcPtr != dstPtr) {
-            UNSAFE.copyMemory(null, srcPtr, null, dstPtr, length);
+            UnsafeAccess.copy(srcPtr, dstPtr, length);
         }
         readTail(srcPtr + length, tail);
     }
@@ -181,9 +181,9 @@ public abstract class MappedPageArray extends PageArray {
         int rem = tail.remaining();
         int pos = tail.position();
         if (tail.isDirect()) {
-            UNSAFE.copyMemory(null, srcPtr, null, DirectAccess.getAddress(tail) + pos, rem);
+            UnsafeAccess.copy(srcPtr, DirectAccess.getAddress(tail) + pos, rem);
         } else {
-            UNSAFE.copyMemory(null, srcPtr, tail.array(), ARRAY + tail.arrayOffset() + pos, rem);
+            UnsafeAccess.copy(srcPtr, tail.array(), tail.arrayOffset() + pos, rem);
         }
         tail.position(pos + rem);
     }
@@ -192,7 +192,7 @@ public abstract class MappedPageArray extends PageArray {
     public void writePage(long index, byte[] src, int offset) throws IOException {
         writeCheck(index);
         int pageSize = mPageSize;
-        UNSAFE.copyMemory(src, ARRAY + offset, null, mappingPtr() + index * pageSize, pageSize);
+        UnsafeAccess.copy(src, offset, mappingPtr() + index * pageSize, pageSize);
     }
 
     @Override
@@ -203,7 +203,7 @@ public abstract class MappedPageArray extends PageArray {
         int pageSize = mPageSize;
         long dstPtr = mappingPtr() + index * pageSize;
         int length = pageSize - tail.remaining();
-        UNSAFE.copyMemory(src, ARRAY + offset, null, dstPtr, length);
+        UnsafeAccess.copy(src, offset, dstPtr, length);
         writeTail(dstPtr + length, tail);
     }
 
@@ -214,7 +214,7 @@ public abstract class MappedPageArray extends PageArray {
         int pageSize = mPageSize;
         long dstPtr = mappingPtr() + index * pageSize;
         if (dstPtr != srcPtr) {
-            UNSAFE.copyMemory(null, srcPtr, null, dstPtr, pageSize);
+            UnsafeAccess.copy(srcPtr, dstPtr, pageSize);
         }
     }
 
@@ -228,7 +228,7 @@ public abstract class MappedPageArray extends PageArray {
         long dstPtr = mappingPtr() + index * pageSize;
         int length = pageSize - tail.remaining();
         if (dstPtr != srcPtr) {
-            UNSAFE.copyMemory(null, srcPtr, null, dstPtr, length);
+            UnsafeAccess.copy(srcPtr, dstPtr, length);
         }
         writeTail(dstPtr + length, tail);
     }
@@ -237,9 +237,9 @@ public abstract class MappedPageArray extends PageArray {
         int rem = tail.remaining();
         int pos = tail.position();
         if (tail.isDirect()) {
-            UNSAFE.copyMemory(null, DirectAccess.getAddress(tail) + pos, null, dstPtr, rem);
+            UnsafeAccess.copy(DirectAccess.getAddress(tail) + pos, dstPtr, rem);
         } else {
-            UNSAFE.copyMemory(tail.array(), ARRAY + tail.arrayOffset() + pos, null, dstPtr, rem);
+            UnsafeAccess.copy(tail.array(), tail.arrayOffset() + pos, dstPtr, rem);
         }
         tail.position(pos + rem);
     }
@@ -273,7 +273,7 @@ public abstract class MappedPageArray extends PageArray {
         int pageSize = mPageSize;
         long ptr = mappingPtr();
         long dstPtr = ptr + dstIndex * pageSize;
-        UNSAFE.copyMemory(null, ptr + srcIndex * pageSize, null, dstPtr, pageSize);
+        UnsafeAccess.copy(ptr + srcIndex * pageSize, dstPtr, pageSize);
 
         return dstPtr;
     }
@@ -287,7 +287,7 @@ public abstract class MappedPageArray extends PageArray {
 
         int pageSize = mPageSize;
         long dstPtr = mappingPtr() + dstIndex * pageSize;
-        UNSAFE.copyMemory(null, srcPointer, null, dstPtr, pageSize);
+        UnsafeAccess.copy(srcPointer, dstPtr, pageSize);
 
         return dstPtr;
     }
@@ -368,7 +368,4 @@ public abstract class MappedPageArray extends PageArray {
                 ("Mapped file length limit reached: " + (mPageCount * mPageSize));
         }
     }
-
-    private static final sun.misc.Unsafe UNSAFE = UnsafeAccess.obtain();
-    private static final long ARRAY = (long) UNSAFE.arrayBaseOffset(byte[].class);
 }

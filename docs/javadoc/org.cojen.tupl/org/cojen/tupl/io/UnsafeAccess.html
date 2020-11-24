@@ -15,7 +15,7 @@
 <script type="text/javascript" src="../../../../../script-dir/jquery-ui.min.js"></script>
 </head>
 <body class="class-declaration-page">
-<script type="text/javascript">var data = {"i0":9,"i1":9,"i2":9,"i3":9,"i4":9,"i5":9,"i6":9,"i7":9};
+<script type="text/javascript">var data = {"i0":9,"i1":9,"i2":9,"i3":9,"i4":9,"i5":9,"i6":9,"i7":9,"i8":9,"i9":9};
 var tabs = {65535:["t0","All Methods"],1:["t1","Static Methods"],8:["t4","Concrete Methods"]};
 var altColor = "alt-color";
 var rowColor = "row-color";
@@ -128,6 +128,26 @@ boolean&nbsp;aligned)</code></th>
 </tr>
 <tr class="row-color" id="i3">
 <td class="col-first"><code>static void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#copy(byte%5B%5D,int,long,long)">copy</a></span>&#8203;(byte[]&nbsp;src,
+int&nbsp;srcOffset,
+long&nbsp;dstPtr,
+long&nbsp;len)</code></th>
+<td class="col-last">
+<div class="block">Copy to native memory.</div>
+</td>
+</tr>
+<tr class="alt-color" id="i4">
+<td class="col-first"><code>static void</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#copy(long,byte%5B%5D,int,long)">copy</a></span>&#8203;(long&nbsp;srcPtr,
+byte[]&nbsp;dst,
+int&nbsp;dstOffset,
+long&nbsp;len)</code></th>
+<td class="col-last">
+<div class="block">Copy from native memory.</div>
+</td>
+</tr>
+<tr class="row-color" id="i5">
+<td class="col-first"><code>static void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#copy(long,long,long)">copy</a></span>&#8203;(long&nbsp;srcPtr,
 long&nbsp;dstPtr,
 long&nbsp;len)</code></th>
@@ -135,7 +155,7 @@ long&nbsp;len)</code></th>
 <div class="block">Copy native memory.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i4">
+<tr class="alt-color" id="i6">
 <td class="col-first"><code>static void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#fill(long,long,byte)">fill</a></span>&#8203;(long&nbsp;ptr,
 long&nbsp;len,
@@ -144,19 +164,19 @@ byte&nbsp;value)</code></th>
 <div class="block">Fill a range of native memory.</div>
 </td>
 </tr>
-<tr class="row-color" id="i5">
+<tr class="row-color" id="i7">
 <td class="col-first"><code>static void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#free(long)">free</a></span>&#8203;(long&nbsp;ptr)</code></th>
 <td class="col-last">
 <div class="block">Free allocated native memory.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i6">
+<tr class="alt-color" id="i8">
 <td class="col-first"><code>static sun.misc.Unsafe</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#obtain()">obtain</a></span>()</code></th>
 <td class="col-last">&nbsp;</td>
 </tr>
-<tr class="row-color" id="i7">
+<tr class="row-color" id="i9">
 <td class="col-first"><code>static sun.misc.Unsafe</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#tryObtain()">tryObtain</a></span>()</code></th>
 <td class="col-last">&nbsp;</td>
@@ -239,6 +259,26 @@ byte&nbsp;value)</span></div>
 long&nbsp;dstPtr,
 long&nbsp;len)</span></div>
 <div class="block">Copy native memory.</div>
+</section>
+</li>
+<li>
+<section class="detail" id="copy(byte[],int,long,long)">
+<h3>copy</h3>
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="member-name">copy</span>&#8203;(<span class="parameters">byte[]&nbsp;src,
+int&nbsp;srcOffset,
+long&nbsp;dstPtr,
+long&nbsp;len)</span></div>
+<div class="block">Copy to native memory.</div>
+</section>
+</li>
+<li>
+<section class="detail" id="copy(long,byte[],int,long)">
+<h3>copy</h3>
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="member-name">copy</span>&#8203;(<span class="parameters">long&nbsp;srcPtr,
+byte[]&nbsp;dst,
+int&nbsp;dstOffset,
+long&nbsp;len)</span></div>
+<div class="block">Copy from native memory.</div>
 </section>
 </li>
 <li>

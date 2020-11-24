@@ -76,14 +76,6 @@ abstract class ChecksumPageArray extends TransformedPageArray {
     }
 
     @Override
-    public void readPage(long index, byte[] dst, int offset, int length, ByteBuffer tail)
-        throws IOException
-    {
-        // No need to support this unless double checksumming, which makes no sense.
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public void writePage(long index, byte[] src, int offset, ByteBuffer tail)
         throws IOException
     {
