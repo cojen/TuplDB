@@ -128,7 +128,7 @@ final class PosixFileIO extends AbstractFileIO {
         BufRef ref = bufRef(length);
         preadFd(fd(), ref.mPointer, length, pos);
         ByteBuffer bb = ref.mBuffer;
-        bb.position(0);
+        bb.clear();
         bb.get(buf, offset, length);
     }
 
@@ -137,7 +137,7 @@ final class PosixFileIO extends AbstractFileIO {
         throws IOException
     {
         ByteBuffer bb = bufRef(length).mBuffer;
-        bb.position(0);
+        bb.clear();
         doRead(pos, bb, tail);
         bb.position(0);
         bb.get(buf, offset, length);
@@ -148,7 +148,7 @@ final class PosixFileIO extends AbstractFileIO {
     {
         // Use alternate buffer, to prevent clobbering the primary one.
         ByteBuffer bb2 = bufRefAlt(length2).mBuffer;
-        bb2.position(0);
+        bb2.clear();
         doRead(pos, bb1, bb2);
         bb2.position(0);
         bb2.get(buf2, offset2, length2);
@@ -234,7 +234,7 @@ final class PosixFileIO extends AbstractFileIO {
     protected void doWrite(long pos, byte[] buf, int offset, int length) throws IOException {
         BufRef ref = bufRef(length);
         ByteBuffer bb = ref.mBuffer;
-        bb.position(0);
+        bb.clear();
         bb.put(buf, offset, length);
         pwriteFd(fd(), ref.mPointer, length, pos);
     }
@@ -245,7 +245,7 @@ final class PosixFileIO extends AbstractFileIO {
     {
         BufRef ref = bufRef(length);
         ByteBuffer bb = ref.mBuffer;
-        bb.position(0);
+        bb.clear();
         bb.put(buf, offset, length);
         bb.flip();
         doWrite(pos, bb, tail);
@@ -257,7 +257,7 @@ final class PosixFileIO extends AbstractFileIO {
         // Use alternate buffer, to prevent clobbering the primary one.
         BufRef ref2 = bufRefAlt(length2);
         ByteBuffer bb2 = ref2.mBuffer;
-        bb2.position(0);
+        bb2.clear();
         bb2.put(buf2, offset2, length2);
         bb2.flip();
         doWrite(pos, bb1, bb2);
