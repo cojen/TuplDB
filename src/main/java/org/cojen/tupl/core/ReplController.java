@@ -113,7 +113,7 @@ final class ReplController extends ReplWriter {
                 db.writeControlMessage(message);
             } catch (UnmodifiableReplicaException e) {
                 // Drop it.
-            } catch (IOException e) {
+            } catch (Throwable e) {
                 Utils.uncaught(e);
             }
         });
@@ -122,8 +122,11 @@ final class ReplController extends ReplWriter {
         mRepl.snapshotRequestAcceptor(sender -> {
             try {
                 ReplUtils.sendSnapshot(db, sender);
-            } catch (IOException e) {
+            } catch (Throwable e) {
                 Utils.closeQuietly(sender);
+                if (e instanceof DatabaseException || !(e instanceof IOException)) {
+                    Utils.uncaught(e);
+                }
             }
         });
 
