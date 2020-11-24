@@ -267,6 +267,7 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
             launcher.readOnly(true);
             launcher.directPageAccess(mDatabase.isDirectPageAccess());
             launcher.encrypt(mDatabase.dataCrypto());
+            launcher.checksumPages(mDatabase.checksumFactory());
 
             try (var snapDb = launcher.open(false, null)) {
                 snapArray = new CompressedPageArray

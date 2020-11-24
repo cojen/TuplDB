@@ -57,6 +57,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 import java.util.function.LongConsumer;
+import java.util.function.Supplier;
+
+import java.util.zip.Checksum;
 
 import static java.lang.System.arraycopy;
 
@@ -5743,6 +5746,11 @@ public final class LocalDatabase extends CoreDatabase {
     @Override
     Crypto dataCrypto() {
         return mPageDb.dataCrypto();
+    }
+
+    @Override
+    Supplier<Checksum> checksumFactory() {
+        return mPageDb.checksumFactory();
     }
 
     @Override

@@ -25,6 +25,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
 
 import java.util.function.LongConsumer;
+import java.util.function.Supplier;
+
+import java.util.zip.Checksum;
 
 import org.cojen.tupl.Crypto;
 import org.cojen.tupl.DatabaseException;
@@ -65,6 +68,11 @@ final class NonPageDb extends PageDb {
 
     @Override
     Crypto dataCrypto() {
+        return null;
+    }
+ 
+    @Override
+    Supplier<Checksum> checksumFactory() {
         return null;
     }
 

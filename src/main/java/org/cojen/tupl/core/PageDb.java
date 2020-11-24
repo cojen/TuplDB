@@ -22,6 +22,9 @@ import java.io.IOException;
 import java.util.Random;
 
 import java.util.function.LongConsumer;
+import java.util.function.Supplier;
+
+import java.util.zip.Checksum;
 
 import org.cojen.tupl.Crypto;
 
@@ -67,6 +70,11 @@ abstract class PageDb implements CauseCloseable {
      * @return null if not encrypted
      */
     abstract Crypto dataCrypto();
+
+    /**
+     * @return null if doesn't have checksums
+     */
+    abstract Supplier<Checksum> checksumFactory();
 
     /**
      * @return true if no storage layer is used anywhere

@@ -19,6 +19,10 @@ package org.cojen.tupl.core;
 
 import java.io.IOException;
 
+import java.util.function.Supplier;
+
+import java.util.zip.Checksum;
+
 import org.cojen.tupl.Crypto;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.EventListener;
@@ -39,6 +43,8 @@ abstract class CoreDatabase implements Database {
     abstract boolean isReadOnly();
 
     abstract Crypto dataCrypto();
+
+    abstract Supplier<Checksum> checksumFactory();
 
     abstract Tree registry();
 

@@ -17,6 +17,10 @@
 
 package org.cojen.tupl.core;
 
+import java.util.function.Supplier;
+
+import java.util.zip.Checksum;
+
 import org.cojen.tupl.io.PageArray;
 
 /**
@@ -42,5 +46,17 @@ abstract class TransformedPageArray extends PageArray {
             array = ((TransformedPageArray) array).mSource;
         }
         return array;
+    }
+
+    static Supplier<Checksum> checksumFactory(PageArray array) {
+        while (true) {
+            if (array instanceof ChecksumPageArray) {
+                return ((ChecksumPageArray) array).mSupplier;
+            }
+            if (!(array instanceof TransformedPageArray)) {
+                return null;
+            }
+            array = ((TransformedPageArray) array).mSource;
+        }
     }
 }

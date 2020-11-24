@@ -367,6 +367,11 @@ final class StoredPageDb extends PageDb {
         return mCrypto;
     }
 
+    @Override
+    Supplier<Checksum> checksumFactory() {
+        return TransformedPageArray.checksumFactory(mPageArray.mSource);
+    }
+
     /**
      * Must be called when object is no longer referenced.
      */
