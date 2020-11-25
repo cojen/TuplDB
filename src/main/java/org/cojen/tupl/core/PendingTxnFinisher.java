@@ -76,8 +76,11 @@ final class PendingTxnFinisher extends Latch implements Runnable {
                 while (true) {
                     pending = mFirst;
                     if (pending != null) {
-                        if ((mFirst = pending.mNext) == null) {
+                        if (pending == mLast) {
+                            mFirst = null;
                             mLast = null;
+                        } else {
+                            mFirst = pending.mNext;
                         }
                         break;
                     }
