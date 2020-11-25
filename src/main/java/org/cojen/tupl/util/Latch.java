@@ -677,7 +677,7 @@ public class Latch {
         if (acquireResult < 0) {
             int denied = 0;
             while (true) {
-                boolean parkAbort = node.parkNow(this);
+                boolean parkAbort = node.park(this);
 
                 acquireResult = node.tryAcquire(this);
 
@@ -946,8 +946,8 @@ public class Latch {
         /**
          * @return true if timed out or interrupted
          */
-        boolean parkNow(Latch latch) {
-            Parker.parkNow(latch);
+        boolean park(Latch latch) {
+            Parker.park(latch);
             return false;
         }
 
@@ -1113,12 +1113,12 @@ public class Latch {
         }
 
         @Override
-        final boolean parkNow(Latch latch) {
+        final boolean park(Latch latch) {
             if (mNanosTimeout < 0) {
-                Parker.parkNow(latch);
+                Parker.park(latch);
                 return Thread.currentThread().isInterrupted();
             } else {
-                Parker.parkNanosNow(latch, mNanosTimeout);
+                Parker.parkNanos(latch, mNanosTimeout);
                 if (Thread.currentThread().isInterrupted()) {
                     return true;
                 }
@@ -1189,12 +1189,12 @@ public class Latch {
         }
 
         @Override
-        final boolean parkNow(Latch latch) {
+        final boolean park(Latch latch) {
             if (mNanosTimeout < 0) {
-                Parker.parkNow(latch);
+                Parker.park(latch);
                 return Thread.currentThread().isInterrupted();
             } else {
-                Parker.parkNanosNow(latch, mNanosTimeout);
+                Parker.parkNanos(latch, mNanosTimeout);
                 if (Thread.currentThread().isInterrupted()) {
                     return true;
                 }
