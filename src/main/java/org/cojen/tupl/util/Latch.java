@@ -995,57 +995,73 @@ public class Latch {
         final int condAwait(Latch latch, LatchCondition queue, long nanosTimeout, long nanosEnd) {
             latch.releaseExclusive();
 
-            start: while (true) {
+            while (true) {
                 if (nanosTimeout < 0) {
                     Parker.park(queue);
                 } else {
                     Parker.parkNanos(queue, nanosTimeout);
                 }
 
-                while (true) {
-                    for (int i=0; i<SPIN_LIMIT; i++) {
-                        boolean acquired = latch.doTryAcquireExclusive();
-                        Object waiter = mWaiter;
-                        if (waiter == null) {
-                            // Signaled, and so node is no longer in the queue.
-                            return 1;
-                        }
-
-                        if (!acquired) {
-                            Thread.onSpinWait();
-                            continue;
-                        }
-
-                        if (((int) cWaitStateHandle.get(this)) == SIGNALED) {
-                            cWaiterHandle.set(this, null);
-                            return 1;
-                        }
-
-                        if (Thread.interrupted()) {
-                            condRemove(queue);
-                            return -1;
-                        }
-
-                        // Spurious unpark, or timed out.
-
-                        if (nanosTimeout >= 0) {
-                            if (nanosTimeout == 0
-                                || (nanosTimeout = nanosEnd - System.nanoTime()) <= 0)
-                            {
-                                condRemove(queue);
-                                return 0;
-                            }
-                        }
-
-                        latch.releaseExclusive();
-                        continue start;
+                boolean acquired;
+                for (int i = SPIN_LIMIT;;) {
+                    acquired = latch.doTryAcquireExclusive();
+                    if (mWaiter == null) {
+                        // Signaled, and so the node is no longer in the queue.
+                        return 1;
                     }
-
-                    // Thread might have been unparked for a reason. If interrupted or
-                    // timed out, the exclusive latch is still required to remove the
-                    // waiter from the queue, or to even return from this method.
-                    Parker.park(latch);
+                    if (acquired) {
+                        if (((int) cWaitStateHandle.get(this)) == SIGNALED) {
+                            cWaiterHandle.setOpaque(this, null);
+                            return 1;
+                        }
+                        break;
+                    }
+                    if (--i <= 0) {
+                        break;
+                    }
+                    Thread.onSpinWait();
                 }
+
+                // Check if interrupted, or spurious unpark, or timed out.
+
+                int result;
+                if (Thread.interrupted()) {
+                    result = -1;
+                } else {
+                    if (nanosTimeout < 0 ||
+                        (nanosTimeout != 0 && (nanosTimeout = nanosEnd - System.nanoTime()) > 0))
+                    {
+                        // Spurious unpark, so start over.
+                        if (acquired) {
+                            latch.releaseExclusive();
+                        }
+                        continue;
+                    }
+                    // Timed out.
+                    result = 0;
+                }
+
+                // If interrupted or timed out, the latch is still required to remove the
+                // waiter from the queue, or to even return from this method.
+                if (!acquired) doAcquire: {
+                    Object waiter = mWaiter;
+                    if (waiter != null && cWaiterHandle.compareAndSet(this, waiter, null)) {
+                        latch.acquireExclusive();
+                        if (((int) cWaitStateHandle.get(this)) != SIGNALED) {
+                            // Break out to remove from queue and return -1 or 0.
+                            break doAcquire;
+                        }
+                        cWaiterHandle.setOpaque(this, null);
+                    }
+                    // Signaled, and so the node is no longer in the queue.
+                    if (result < 0) {
+                        Thread.currentThread().interrupt(); // restore the status
+                    }
+                    return 1;
+                }
+
+                condRemove(queue);
+                return result;
             }
         }
 
