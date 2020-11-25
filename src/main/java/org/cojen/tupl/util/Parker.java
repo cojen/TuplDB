@@ -17,7 +17,9 @@
 
 package org.cojen.tupl.util;
 
+import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 
 import java.lang.ref.WeakReference;
@@ -206,11 +208,23 @@ public abstract class Parker {
 
     private static final class Checked extends Parker {
         private static final VarHandle STATE_HANDLE;
+        private static final MethodHandle IS_VIRTUAL_THREAD;
 
         static {
             try {
                 STATE_HANDLE = MethodHandles.lookup()
                     .findVarHandle(Entry.class, "mState", int.class);
+
+                MethodHandle isVirtual;
+                try {
+                    isVirtual = MethodHandles.lookup().findVirtual
+                        (Thread.class, "isVirtual", MethodType.methodType(boolean.class));
+                } catch (NoSuchMethodException e) {
+                    isVirtual = MethodHandles.empty
+                        (MethodType.methodType(boolean.class, Thread.class));
+                }
+
+                IS_VIRTUAL_THREAD = isVirtual;
             } catch (Throwable e) {
                 throw Utils.rethrow(e);
             }
@@ -241,52 +255,79 @@ public abstract class Parker {
 
         @Override
         void doPark(Object blocker) {
-            Entry e = check();
-            if (e != null) {
+            Thread thread = Thread.currentThread();
+            if (isVirtual(thread)) {
                 LockSupport.park(blocker);
-                e.mState = NONE;
+            } else {
+                Entry e = check(thread);
+                if (e != null) {
+                    LockSupport.park(blocker);
+                    e.mState = NONE;
+                }
             }
         }
 
         @Override
         void doParkNow(Object blocker) {
-            Entry e = checkNow();
-            if (e != null) {
+            Thread thread = Thread.currentThread();
+            if (isVirtual(thread)) {
                 LockSupport.park(blocker);
-                e.mState = NONE;
+            } else {
+                Entry e = checkNow(thread);
+                if (e != null) {
+                    LockSupport.park(blocker);
+                    e.mState = NONE;
+                }
             }
         }
 
         @Override
         void doParkNanos(Object blocker, long nanos) {
-            Entry e = check();
-            if (e != null) {
-                nanos -= MAX_CHECK_NANOS;
-                if (nanos > 0) {
-                    LockSupport.parkNanos(blocker, nanos);
+            Thread thread = Thread.currentThread();
+            if (isVirtual(thread)) {
+                LockSupport.parkNanos(blocker, nanos);
+            } else {
+                Entry e = check(thread);
+                if (e != null) {
+                    nanos -= MAX_CHECK_NANOS;
+                    if (nanos > 0) {
+                        LockSupport.parkNanos(blocker, nanos);
+                    }
+                    e.mState = NONE;
                 }
-                e.mState = NONE;
             }
         }
 
         @Override
         void doParkNanosNow(Object blocker, long nanos) {
-            Entry e = checkNow();
-            if (e != null) {
-                nanos -= MAX_CHECK_NANOS;
-                if (nanos > 0) {
-                    LockSupport.parkNanos(blocker, nanos);
+            Thread thread = Thread.currentThread();
+            if (isVirtual(thread)) {
+                LockSupport.parkNanos(blocker, nanos);
+            } else {
+                Entry e = checkNow(thread);
+                if (e != null) {
+                    nanos -= MAX_CHECK_NANOS;
+                    if (nanos > 0) {
+                        LockSupport.parkNanos(blocker, nanos);
+                    }
+                    e.mState = NONE;
                 }
-                e.mState = NONE;
+            }
+        }
+
+        private static boolean isVirtual(Thread thread) {
+            try {
+                return (boolean) IS_VIRTUAL_THREAD.invokeExact(thread);
+            } catch (Throwable e) {
+                throw Utils.rethrow(e);
             }
         }
 
         /**
          * @return null if no need to actually park
          */
-        private Entry check() {
+        private Entry check(final Thread thread) {
             final long start = System.nanoTime();
-            final Thread thread = Thread.currentThread();
 
             Entry e;
             try {
@@ -325,9 +366,7 @@ public abstract class Parker {
         /**
          * @return null if no need to actually park
          */
-        private Entry checkNow() {
-            final Thread thread = Thread.currentThread();
-
+        private Entry checkNow(final Thread thread) {
             Entry e;
             try {
                 e = entryFor(thread);
