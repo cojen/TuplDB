@@ -52,7 +52,7 @@ import static org.cojen.tupl.core.Utils.*;
 final class SnapshotPageArray extends PageArray {
     final PageArray mSource;
 
-    private volatile Object mSnapshots;
+    private volatile SnapshotImpl[] mSnapshots;
 
     SnapshotPageArray(PageArray source) {
         super(source.pageSize());
@@ -150,11 +150,9 @@ final class SnapshotPageArray extends PageArray {
             throw new IndexOutOfBoundsException(String.valueOf(index));
         }
 
-        Object obj = mSnapshots;
-        if (obj != null) {
-            if (obj instanceof SnapshotImpl) {
-                ((SnapshotImpl) obj).capture(index);
-            } else for (SnapshotImpl snapshot : (SnapshotImpl[]) obj) {
+        SnapshotImpl[] snapshots = mSnapshots;
+        if (snapshots != null) {
+            for (var snapshot : snapshots) {
                 snapshot.capture(index);
             }
         }
@@ -187,11 +185,9 @@ final class SnapshotPageArray extends PageArray {
             throw new IndexOutOfBoundsException(String.valueOf(dstIndex));
         }
 
-        Object obj = mSnapshots;
-        if (obj != null) {
-            if (obj instanceof SnapshotImpl) {
-                ((SnapshotImpl) obj).capture(dstIndex);
-            } else for (SnapshotImpl snapshot : (SnapshotImpl[]) obj) {
+        SnapshotImpl[] snapshots = mSnapshots;
+        if (snapshots != null) {
+            for (var snapshot : snapshots) {
                 snapshot.capture(dstIndex);
             }
         }
@@ -237,17 +233,14 @@ final class SnapshotPageArray extends PageArray {
         var snapshot = new SnapshotImpl(tfm, pageCount, redoPos, nodeCache, rawSource);
 
         synchronized (this) {
-            Object obj = mSnapshots;
-            if (obj == null) {
-                mSnapshots = snapshot;
-            } else if (obj instanceof SnapshotImpl[]) {
-                var snapshots = (SnapshotImpl[]) obj;
+            SnapshotImpl[] snapshots = mSnapshots;
+            if (snapshots == null) {
+                mSnapshots = new SnapshotImpl[] {snapshot};
+            } else {
                 var newSnapshots = new SnapshotImpl[snapshots.length + 1];
                 arraycopy(snapshots, 0, newSnapshots, 0, snapshots.length);
                 newSnapshots[newSnapshots.length - 1] = snapshot;
                 mSnapshots = newSnapshots;
-            } else {
-                mSnapshots = new SnapshotImpl[] {(SnapshotImpl) obj, snapshot};
             }
         }
 
@@ -255,23 +248,8 @@ final class SnapshotPageArray extends PageArray {
     }
 
     synchronized void unregister(SnapshotImpl snapshot) {
-        Object obj = mSnapshots;
-        if (obj == snapshot) {
-            mSnapshots = null;
-            return;
-        }
-        if (!(obj instanceof SnapshotImpl[])) {
-            return;
-        }
-
-        var snapshots = (SnapshotImpl[]) obj;
-
-        if (snapshots.length == 2) {
-            if (snapshots[0] == snapshot) {
-                mSnapshots = snapshots[1];
-            } else if (snapshots[1] == snapshot) {
-                mSnapshots = snapshots[0];
-            }
+        SnapshotImpl[] snapshots = mSnapshots;
+        if (snapshots == null) {
             return;
         }
 
@@ -285,10 +263,14 @@ final class SnapshotPageArray extends PageArray {
             return;
         }
 
-        var newSnapshots = new SnapshotImpl[snapshots.length - 1];
-        arraycopy(snapshots, 0, newSnapshots, 0, pos);
-        arraycopy(snapshots, pos + 1, newSnapshots, pos, newSnapshots.length - pos);
-        mSnapshots = newSnapshots;
+        if (snapshots.length <= 1) {
+            mSnapshots = null;
+        } else {
+            var newSnapshots = new SnapshotImpl[snapshots.length - 1];
+            arraycopy(snapshots, 0, newSnapshots, 0, pos);
+            arraycopy(snapshots, pos + 1, newSnapshots, pos, newSnapshots.length - pos);
+            mSnapshots = newSnapshots;
+        }
     }
 
     // This should be declared in the SnapshotImpl class, but the Java compiler prohibits this
