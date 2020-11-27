@@ -28,22 +28,16 @@ import org.cojen.tupl.util.Runner;
  */
 /*P*/
 final class PendingTxnFinisher extends Latch implements Runnable {
-    // FIXME: Actually spin up more threads.
     private final int mMaxThreads;
-
-    private final LatchCondition mCondition;
+    private final LatchCondition mIdleCondition;
 
     private PendingTxn mFirst, mLast;
 
-    private boolean mRunning;
-
-    PendingTxnFinisher() {
-        this(Runtime.getRuntime().availableProcessors());
-    }
+    private int mTotalThreads;
 
     PendingTxnFinisher(int maxThreads) {
         mMaxThreads = maxThreads;
-        mCondition = new LatchCondition();
+        mIdleCondition = new LatchCondition();
     }
 
     void enqueue(PendingTxn first, PendingTxn last) {
@@ -55,11 +49,11 @@ final class PendingTxnFinisher extends Latch implements Runnable {
                 mLast.mNext = first;
             }
             mLast = last;
-            if (!mRunning) {
+            if (mIdleCondition.isEmpty() && mTotalThreads < mMaxThreads) {
                 Runner.start("PendingTxnFinisher", this);
-                mRunning = true;
+                mTotalThreads++;
             } else {
-                mCondition.signal(this);
+                mIdleCondition.signal(this);
             }
         } finally {
             releaseExclusive();
@@ -85,10 +79,17 @@ final class PendingTxnFinisher extends Latch implements Runnable {
                         break;
                     }
                     if (waited) {
-                        mRunning = false;
+                        mTotalThreads--;
                         return;
                     }
-                    mCondition.await(this, 10_000_000_000L);
+
+                    // Use priorityAwait in order to force some threads to do less work,
+                    // allowing them to exit when idle. The total amount of threads will more
+                    // closely match the amount that's needed.
+                    long nanosTimeout = 10_000_000_000L;
+                    long nanosEnd = System.nanoTime() + nanosTimeout;
+                    mIdleCondition.priorityAwait(this, nanosTimeout, nanosEnd);
+
                     waited = true;
                 }
             } finally {

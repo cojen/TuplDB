@@ -152,6 +152,42 @@ public class LatchCondition {
     }
 
     /**
+     * Blocks the current thread until a signal is received. This method behaves like regular
+     * {@code await} method except the thread is signaled ahead of all the other waiting
+     * threads. Exclusive latch must be acquired by the caller, which is released and then
+     * re-acquired by this method.
+     *
+     * @param latch latch being used by this condition
+     * @param nanosTimeout relative nanosecond time to wait; infinite if {@literal <0}
+     * @param nanosEnd absolute nanosecond time to wait until; used only with {@literal >0} timeout
+     * @return -1 if interrupted, 0 if timed out, 1 if signaled
+     */
+    public final int priorityAwait(Latch latch, long nanosTimeout, long nanosEnd) {
+        return priorityAwait(latch, WaitNode.COND_WAIT, nanosTimeout, nanosEnd);
+    }
+
+    private int priorityAwait(Latch latch, int waitState, long nanosTimeout, long nanosEnd) {
+        final WaitNode node;
+        try {
+            node = new WaitNode(Thread.currentThread(), waitState);
+        } catch (Throwable e) {
+            // Possibly an OutOfMemoryError. Latch must still be held.
+            return -1;
+        }
+
+        WaitNode head = mHead;
+        if (head == null) {
+            mTail = node;
+        } else {
+            cPrevHandle.set(head, node);
+            cNextHandle.set(node, head);
+        }
+        mHead = node;
+
+        return node.condAwait(latch, this, nanosTimeout, nanosEnd);
+    }
+
+    /**
      * Invokes the given continuation upon the condition being signaled. The exclusive latch
      * must be acquired by the caller, which is retained. When the condition is signaled, the
      * continuation is enqueued to be run by a thread which releases the exclusive latch. The

@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.core;
 
+import java.util.ArrayList;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -102,5 +104,38 @@ public class LatchTest {
         // Shared request is blocked by the exclusive latch request, but it should be granted
         // once the exclusive request times out.
         assertTrue(latch.tryAcquireSharedNanos(60_000_000_000L));
+    }
+    
+    @Test
+    public void priorityAwait() throws Exception {
+        var latch = new Latch();
+        var condition = new LatchCondition();
+
+        var finished = new ArrayList<Thread>();
+
+        class Waiter extends Thread {
+            @Override
+            public void run() {
+                latch.acquireExclusive();
+                condition.priorityAwait(latch, -1, 0);
+                finished.add(this);
+                latch.releaseExclusive();
+            }
+        }
+
+        Thread t1 = TestUtils.startAndWaitUntilBlocked(new Waiter());
+        Thread t2 = TestUtils.startAndWaitUntilBlocked(new Waiter());
+
+        latch.acquireExclusive();
+        condition.signalAll(latch);
+        latch.releaseExclusive();
+
+        t1.join();
+        t2.join();
+
+        // Verify that threads finished in LIFO order.
+        assertEquals(2, finished.size());
+        assertEquals(t2, finished.get(0));
+        assertEquals(t1, finished.get(1));
     }
 }

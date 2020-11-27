@@ -15,7 +15,7 @@
 <script type="text/javascript" src="../../../../../script-dir/jquery-ui.min.js"></script>
 </head>
 <body class="class-declaration-page">
-<script type="text/javascript">var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10};
+<script type="text/javascript">var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "alt-color";
 var rowColor = "row-color";
@@ -192,34 +192,43 @@ long&nbsp;nanosEnd)</code></th>
 </td>
 </tr>
 <tr class="alt-color" id="i8">
+<td class="col-first"><code>int</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#priorityAwait(org.cojen.tupl.util.Latch,long,long)">priorityAwait</a></span>&#8203;(<a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
+long&nbsp;nanosTimeout,
+long&nbsp;nanosEnd)</code></th>
+<td class="col-last">
+<div class="block">Blocks the current thread until a signal is received.</div>
+</td>
+</tr>
+<tr class="row-color" id="i9">
 <td class="col-first"><code>void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#signal(org.cojen.tupl.util.Latch)">signal</a></span>&#8203;(<a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch)</code></th>
 <td class="col-last">
 <div class="block">Signals the first waiter, of any type.</div>
 </td>
 </tr>
-<tr class="row-color" id="i9">
+<tr class="alt-color" id="i10">
 <td class="col-first"><code>void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#signalAll(org.cojen.tupl.util.Latch)">signalAll</a></span>&#8203;(<a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch)</code></th>
 <td class="col-last">
 <div class="block">Signals all waiters, of any type.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i10">
+<tr class="row-color" id="i11">
 <td class="col-first"><code>void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#signalShared(org.cojen.tupl.util.Latch)">signalShared</a></span>&#8203;(<a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch)</code></th>
 <td class="col-last">
 <div class="block">Signals the first waiter, but only if it's a shared waiter.</div>
 </td>
 </tr>
-<tr class="row-color" id="i11">
+<tr class="alt-color" id="i12">
 <td class="col-first"><code>void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#uponSignal(java.lang.Runnable)">uponSignal</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/Runnable.html" title="class or interface in java.lang" class="external-link">Runnable</a>&nbsp;cont)</code></th>
 <td class="col-last">
 <div class="block">Invokes the given continuation upon the condition being signaled.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i12">
+<tr class="row-color" id="i13">
 <td class="col-first"><code>void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#uponSignalShared(java.lang.Runnable)">uponSignalShared</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/Runnable.html" title="class or interface in java.lang" class="external-link">Runnable</a>&nbsp;cont)</code></th>
 <td class="col-last">
@@ -363,6 +372,26 @@ long&nbsp;nanosEnd)</span></div>
  <p>A shared waiter intends to access a resource with shared access, and it can be
  signaled specially. After waiting, the caller is responsible for signaling the next
  shared waiter.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>latch</code> - latch being used by this condition</dd>
+<dd><code>nanosTimeout</code> - relative nanosecond time to wait; infinite if &lt;0</dd>
+<dd><code>nanosEnd</code> - absolute nanosecond time to wait until; used only with &gt;0 timeout</dd>
+<dt>Returns:</dt>
+<dd>-1 if interrupted, 0 if timed out, 1 if signaled</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="priorityAwait(org.cojen.tupl.util.Latch,long,long)">
+<h3>priorityAwait</h3>
+<div class="member-signature"><span class="modifiers">public final</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="member-name">priorityAwait</span>&#8203;(<span class="parameters"><a href="Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
+long&nbsp;nanosTimeout,
+long&nbsp;nanosEnd)</span></div>
+<div class="block">Blocks the current thread until a signal is received. This method behaves like regular
+ <code>await</code> method except the thread is signaled ahead of all the other waiting
+ threads. Exclusive latch must be acquired by the caller, which is released and then
+ re-acquired by this method.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>latch</code> - latch being used by this condition</dd>
