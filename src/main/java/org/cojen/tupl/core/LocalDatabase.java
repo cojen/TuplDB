@@ -5927,23 +5927,35 @@ public final class LocalDatabase extends CoreDatabase {
 
             // Thresholds for a checkpoint are met, but it might not be necessary.
 
-            boolean full = false;
+            boolean full;
 
             root.acquireShared();
             try {
-                if (root.mCachedState != CACHED_CLEAN) {
-                    // Root is dirty, so do a full checkpoint.
-                    full = true;
-                }
+                // If root is dirty, do a full checkpoint.
+                full = root.mCachedState != CACHED_CLEAN;
             } finally {
                 root.releaseShared();
             }
 
-            if (!full && mRedoWriter != null && (mRedoWriter instanceof ReplController)) {
-                if (mRedoWriter.shouldCheckpoint(1)) {
-                    // Clean up the replication log.
-                    full = true;
+            if (!full) {
+                // Other nodes can be dirty but aren't tracked by the registry root node, such
+                // as UndoLog nodes for pending transactions.
+                for (NodeGroup group : mNodeGroups) {
+                    if (group.dirtyCount() > 0) {
+                        full = true;
+                        break;
+                    }
                 }
+            }
+
+            if (!full) {
+                // Check if changes to the free list should be committed.
+                full = mPageDb.requiresCommit();
+            }
+
+            if (!full && mRedoWriter != null && (mRedoWriter instanceof ReplController)) {
+                // Check if replication log should be cleaned up.
+                full = mRedoWriter.shouldCheckpoint(1);
             }
 
             if (!full) {

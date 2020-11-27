@@ -327,6 +327,10 @@ final class PageManager {
         }
     }
 
+    public boolean hasDeletedOrRecycledPages() {
+        return mRegularFreeList.hasAppendedPages() || mRecycleFreeList.hasAppendedPages();
+    }
+
     public void allocAndRecyclePage() throws IOException {
         long pageId;
         mRemoveLock.lock();

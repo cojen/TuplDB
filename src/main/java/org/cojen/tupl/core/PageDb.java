@@ -140,6 +140,8 @@ abstract class PageDb implements CauseCloseable {
         }
     }
 
+    public abstract boolean requiresCommit();
+
     /**
      * Reads a page without locking. Caller must ensure that a deleted page
      * is not read during or after a commit.

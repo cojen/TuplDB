@@ -628,6 +628,15 @@ final class PageQueue implements IntegerRef {
             mRemoveNodeCount + mAppendNodeCount;
     }
 
+    boolean hasAppendedPages() {
+        mAppendLock.lock();
+        try {
+            return mAppendPageCount + mAppendNodeCount > 0;
+        } finally {
+            mAppendLock.unlock();
+        }
+    }
+
     /**
      * Scans all pages in the queue and checks if it matches the given range, assuming no
      * duplicates exist. Only should be called for reserve list.

@@ -450,6 +450,11 @@ final class StoredPageDb extends PageDb {
     }
 
     @Override
+    public boolean requiresCommit() {
+        return mPageManager.hasDeletedOrRecycledPages();
+    }
+
+    @Override
     public void readPage(long id, /*P*/ byte[] page) throws IOException {
         try {
             mPageArray.readPage(id, page, 0, pageSize());

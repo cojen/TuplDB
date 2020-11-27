@@ -145,6 +145,11 @@ final class NonPageDb extends PageDb {
     }
 
     @Override
+    public boolean requiresCommit() {
+        return false;
+    }
+
+    @Override
     public void readPage(long id, /*P*/ byte[] page) throws IOException {
         fail(false);
     }
