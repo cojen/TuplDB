@@ -312,7 +312,7 @@ public class CompactTest {
         mDb.compactFile(obs, 0.5);
 
         Database.Stats stats2 = mDb.stats();
-        assertEquals(stats1, stats2);
+        assertEqualStats(stats1, stats2);
 
         assertTrue(mDb.verify(null));
     }
@@ -536,7 +536,7 @@ public class CompactTest {
         mDb.compactFile(null, 0.9);
 
         // Nothing happened because most pages were in the undo log and not moved.
-        assertEquals(stats2, mDb.stats());
+        assertEqualStats(stats2, mDb.stats());
 
         txn.commit();
 
@@ -693,5 +693,13 @@ public class CompactTest {
         assertTrue(mDb.verify(null));
 
         mDb.close();
+    }
+
+    private static void assertEqualStats(Database.Stats stats1, Database.Stats stats2) {
+        // Ignore these.
+        stats1.checkpointDuration = 0;
+        stats2.checkpointDuration = 0;
+
+        assertEquals(stats1, stats2);
     }
 }

@@ -374,6 +374,7 @@ public interface Database extends CauseCloseable, Flushable {
         public long lockCount;
         public long cursorCount;
         public long txnCount;
+        public long checkpointDuration;
 
         /**
          * Returns the allocation page size.
@@ -444,6 +445,14 @@ public interface Database extends CauseCloseable, Flushable {
             return txnCount;
         }
 
+        /**
+         * Returns the time duration required for the last checkpoint to complete, in
+         * milliseconds. If no checkpoints are running, then zero is returned.
+         */
+        public long checkpointDuration() {
+            return checkpointDuration;
+        }
+
         @Override
         public Stats clone() {
             try {
@@ -476,7 +485,8 @@ public interface Database extends CauseCloseable, Flushable {
                     && openIndexes == other.openIndexes
                     && lockCount == other.lockCount
                     && cursorCount == other.cursorCount
-                    && txnCount == other.txnCount;
+                    && txnCount == other.txnCount
+                    && checkpointDuration == other.checkpointDuration;
             }
             return false;
         }
@@ -492,6 +502,7 @@ public interface Database extends CauseCloseable, Flushable {
                 + ", lockCount=" + lockCount
                 + ", cursorCount=" + cursorCount
                 + ", transactionCount=" + txnCount
+                + ", checkpointDuration=" + checkpointDuration
                 + '}';
         }
     }

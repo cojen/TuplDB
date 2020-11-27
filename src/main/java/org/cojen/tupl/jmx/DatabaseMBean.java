@@ -39,6 +39,8 @@ public interface DatabaseMBean {
 
     long getTransactionCount();
 
+    long getCheckpointDuration();
+
     void flush();
 
     void sync();

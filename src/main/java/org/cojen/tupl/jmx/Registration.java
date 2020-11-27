@@ -152,6 +152,12 @@ public class Registration {
         }
 
         @Override
+        public long getCheckpointDuration() {
+            var stats = stats();
+            return stats == null ? 0 : stats.checkpointDuration();
+        }
+
+        @Override
         public void flush() {
             asyncOp(Database::flush);
         }

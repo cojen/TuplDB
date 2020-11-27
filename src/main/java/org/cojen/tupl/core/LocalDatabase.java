@@ -251,7 +251,8 @@ public final class LocalDatabase extends CoreDatabase {
     // long by checkpoint thread.
     private final ReentrantLock mCheckpointLock = new ReentrantLock(true);
 
-    private long mLastCheckpointNanos;
+    private long mLastCheckpointStartNanos;
+    private volatile long mLastCheckpointDurationNanos;
 
     private final Checkpointer mCheckpointer;
 
@@ -2420,6 +2421,8 @@ public final class LocalDatabase extends CoreDatabase {
         if (stats.dirtyPages > stats.totalPages) {
             stats.dirtyPages = stats.totalPages;
         }
+
+        stats.checkpointDuration = mLastCheckpointDurationNanos / 1_000_000;
 
         return stats;
     }
@@ -5897,7 +5900,7 @@ public final class LocalDatabase extends CoreDatabase {
 
         var header = mCommitHeader;
 
-        long nowNanos = System.nanoTime();
+        final long nowNanos = System.nanoTime();
 
         if (force == 0 && header == p_null()) {
             thresholdCheck : {
@@ -5906,7 +5909,7 @@ public final class LocalDatabase extends CoreDatabase {
                 }
 
                 if (delayThresholdNanos > 0 &&
-                    ((nowNanos - mLastCheckpointNanos) >= delayThresholdNanos))
+                    ((nowNanos - mLastCheckpointStartNanos) >= delayThresholdNanos))
                 {
                     break thresholdCheck;
                 }
@@ -5918,7 +5921,7 @@ public final class LocalDatabase extends CoreDatabase {
                 // Thresholds not met for a full checkpoint, but fully sync the redo log
                 // for durability.
                 flush(2); // flush and sync metadata
-
+                mLastCheckpointDurationNanos = 0;
                 return;
             }
 
@@ -5946,11 +5949,12 @@ public final class LocalDatabase extends CoreDatabase {
             if (!full) {
                 // No need for full checkpoint, but fully sync the redo log for durability.
                 flush(2); // flush and sync metadata
+                mLastCheckpointDurationNanos = 0;
                 return;
             }
         }
 
-        mLastCheckpointNanos = nowNanos;
+        mLastCheckpointStartNanos = nowNanos;
 
         if (mEventListener != null) {
             // Note: Events should not be delivered when exclusive commit lock is held.
@@ -6127,8 +6131,10 @@ public final class LocalDatabase extends CoreDatabase {
             mRedoWriter.checkpointFinished();
         }
 
+        mLastCheckpointDurationNanos = System.nanoTime() - mLastCheckpointStartNanos;
+
         if (mEventListener != null) {
-            double duration = (System.nanoTime() - mLastCheckpointNanos) / 1_000_000_000.0;
+            double duration = mLastCheckpointDurationNanos / 1_000_000_000.0;
             mEventListener.notify(EventType.CHECKPOINT_COMPLETE,
                                   "Checkpoint completed in %1$1.3f seconds",
                                   duration, TimeUnit.SECONDS);
