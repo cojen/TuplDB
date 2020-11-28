@@ -99,7 +99,10 @@ final class Sequencer extends Latch {
                 releaseExclusive();
             }
 
-            Parker.park(this);
+            // The Sequencer is expected to be used to coordinate threads which are blocked on
+            // file I/O, and so parking immediately is the most efficient thing to do. As long
+            // as enough threads are running, there's little risk of a CPU core going to sleep.
+            Parker.parkNow(this);
 
             if (Thread.interrupted()) {
                 throw new InterruptedException();

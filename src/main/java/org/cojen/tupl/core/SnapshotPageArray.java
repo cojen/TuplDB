@@ -308,7 +308,7 @@ final class SnapshotPageArray extends PageArray {
             mSnapshotPageCount = pageCount;
             mSnapshotRedoPosition = redoPos;
 
-            int numCopiers = roundUpPower2(Runtime.getRuntime().availableProcessors());
+            int numCopiers = roundUpPower2(Runtime.getRuntime().availableProcessors() * 2);
             mCopiers = new Copier[numCopiers];
 
             mSequencer = new Sequencer(0, numCopiers);
