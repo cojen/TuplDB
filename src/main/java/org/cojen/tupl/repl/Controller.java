@@ -2877,7 +2877,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      */
     @Override // Channel
     public boolean compact(Channel from, long position) {
-        from.peer().mCompactPosition = position;
+        from.peer().updateCompactPosition(position);
         return true;
     }
 

@@ -35,25 +35,24 @@ import static org.cojen.tupl.io.Utils.rethrow;
  */
 final class Peer implements Comparable<Peer> {
     private static final VarHandle
-        cRoleHandle, cGroupVersionHandle, cSnapshotScoreHandle, cRangesHandle;
+        cRoleHandle, cGroupVersionHandle, cSnapshotScoreHandle, cRangesHandle,
+        cCompactPositionHandle;
 
     static {
         try {
-            cRoleHandle =
-                MethodHandles.lookup().findVarHandle
-                (Peer.class, "mRole", Role.class);
+            var lookup = MethodHandles.lookup();
 
-            cGroupVersionHandle =
-                MethodHandles.lookup().findVarHandle
-                (Peer.class, "mGroupVersion", long.class);
+            cRoleHandle = lookup.findVarHandle(Peer.class, "mRole", Role.class);
 
-            cSnapshotScoreHandle =
-                MethodHandles.lookup().findVarHandle
+            cGroupVersionHandle = lookup.findVarHandle(Peer.class, "mGroupVersion", long.class);
+
+            cSnapshotScoreHandle = lookup.findVarHandle
                 (Peer.class, "mSnapshotScore", SnapshotScore.class);
 
-            cRangesHandle =
-                MethodHandles.lookup().findVarHandle
-                (Peer.class, "mQueryRanges", RangeSet.class);
+            cRangesHandle = lookup.findVarHandle(Peer.class, "mQueryRanges", RangeSet.class);
+
+            cCompactPositionHandle = lookup.findVarHandle
+                (Peer.class, "mCompactPosition", long.class);
         } catch (Throwable e) {
             throw rethrow(e);
         }
@@ -105,13 +104,25 @@ final class Peer implements Comparable<Peer> {
         cRoleHandle.setOpaque(this, role);
     }
 
-    long updateGroupVersion(final long groupVersion) {
+    void updateCompactPosition(long position) {
+        while (true) {
+            long currentPosition = mCompactPosition;
+            position = Math.max(currentPosition, position);
+            if (position <= currentPosition ||
+                cCompactPositionHandle.compareAndSet(this, currentPosition, position))
+            {
+                return;
+            }
+        }
+    }
+
+    void updateGroupVersion(final long groupVersion) {
         while (true) {
             long currentVersion = mGroupVersion;
             if (groupVersion <= currentVersion ||
                 cGroupVersionHandle.compareAndSet(this, currentVersion, groupVersion))
             {
-                return currentVersion;
+                return;
             }
         }
     }
