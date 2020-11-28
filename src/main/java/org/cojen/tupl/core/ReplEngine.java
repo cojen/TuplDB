@@ -114,7 +114,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
 
         mController = new ReplController(this);
 
-        // FIXME: Document maxThreads dual usage?
+        // TODO: Document maxThreads dual usage?
         mFinisher = new PendingTxnFinisher(maxThreads);
 
         mDecodeLatch = new Latch();

@@ -472,7 +472,7 @@ final class SnapshotPageArray extends PageArray {
                 if (page != null) {
                     arraycopy(page, 0, dst, offset, length);
                 } else {
-                    // FIXME: Check the cache first as an optimization?
+                    // TODO: Check the cache first as an optimization?
                     mRawPageArray.readPage(index, dst, offset, length);
                 }
             } finally {
@@ -494,7 +494,7 @@ final class SnapshotPageArray extends PageArray {
                 if (page != null) {
                     DirectPageOps.p_copyFromArray(page, 0, dstPtr, offset, length);
                 } else {
-                    // FIXME: Check the cache first as an optimization?
+                    // TODO: Check the cache first as an optimization?
                     mRawPageArray.readPage(index, dstPtr, offset, length);
                 }
             } finally {

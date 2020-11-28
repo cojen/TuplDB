@@ -755,6 +755,7 @@ public final class LocalDatabase extends CoreDatabase {
                         boolean trace = debugListener != null &&
                             Boolean.TRUE.equals(launcher.mDebugOpen.get("traceUndo"));
 
+                        // TODO: Can this be done in parallel?
                         master.recoverTransactions(debugListener, trace, txns);
                     }
                 }
