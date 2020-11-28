@@ -131,6 +131,10 @@ final class BTreeValue {
             return -1;
         }
 
+        if (inodeId > highestNodeId) {
+            return 0;
+        }
+
         Node inode = db.nodeMapLoadFragment(inodeId);
         int level = db.calculateInodeLevels(fLen);
 
