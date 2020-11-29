@@ -41,6 +41,8 @@ public interface DatabaseMBean {
 
     long getCheckpointDuration();
 
+    long getReplicationBacklog();
+
     void flush();
 
     void sync();

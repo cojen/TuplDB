@@ -107,6 +107,11 @@ final class MessageStreamReplicator implements MessageReplicator {
     }
 
     @Override
+    public long commitPosition() {
+        return mRepl.commitPosition();
+    }
+
+    @Override
     public void start() throws IOException {
         mRepl.start();
     }

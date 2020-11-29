@@ -156,6 +156,11 @@ public interface Replicator extends Closeable {
      */
     void compact(long position) throws IOException;
 
+    /**
+     * Returns the highest appliable commit position overall.
+     */
+    long commitPosition();
+
     long localMemberId();
 
     SocketAddress localAddress();

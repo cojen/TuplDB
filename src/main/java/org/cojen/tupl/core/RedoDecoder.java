@@ -20,6 +20,9 @@ package org.cojen.tupl.core;
 import java.io.EOFException;
 import java.io.IOException;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import org.cojen.tupl.DatabaseException;
 
 import org.cojen.tupl.util.Latch;
@@ -32,6 +35,18 @@ import static org.cojen.tupl.core.RedoOps.*;
  * @author Brian S O'Neill
  */
 abstract class RedoDecoder {
+    private static final VarHandle cDecodePositionHandle;
+
+    static {
+        try {
+            cDecodePositionHandle =
+                MethodHandles.lookup().findVarHandle
+                (RedoDecoder.class, "mDecodePosition", long.class);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
+    }
+
     private final boolean mLenient;
     final DataIn mIn;
 
@@ -74,10 +89,14 @@ abstract class RedoDecoder {
         }
     }
 
+    long decodePositionOpaque() {
+        return (long) cDecodePositionHandle.getOpaque(this);
+    }
+
     @SuppressWarnings("fallthrough")
     private boolean doRun(RedoVisitor visitor, DataIn in) throws IOException {
         while (true) {
-            mDecodePosition = in.mPos;
+            cDecodePositionHandle.setOpaque(this, in.mPos);
             mDecodeTransactionId = mTxnId;
 
             mDecodeLatch.releaseExclusive();

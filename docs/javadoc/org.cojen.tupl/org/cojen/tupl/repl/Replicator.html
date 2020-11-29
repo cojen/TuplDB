@@ -15,7 +15,7 @@
 <script type="text/javascript" src="../../../../../script-dir/jquery-ui.min.js"></script>
 </head>
 <body class="class-declaration-page">
-<script type="text/javascript">var data = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6,"i7":6,"i8":6,"i9":6,"i10":6,"i11":6,"i12":6,"i13":6,"i14":6,"i15":6,"i16":6,"i17":6};
+<script type="text/javascript">var data = {"i0":6,"i1":6,"i2":6,"i3":6,"i4":6,"i5":6,"i6":6,"i7":6,"i8":6,"i9":6,"i10":6,"i11":6,"i12":6,"i13":6,"i14":6,"i15":6,"i16":6,"i17":6,"i18":6};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"]};
 var altColor = "alt-color";
 var rowColor = "row-color";
@@ -150,20 +150,27 @@ extends <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/ja
 </thead>
 <tbody>
 <tr class="alt-color" id="i0">
+<td class="col-first"><code>long</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#commitPosition()">commitPosition</a></span>()</code></th>
+<td class="col-last">
+<div class="block">Returns the highest appliable commit position overall.</div>
+</td>
+</tr>
+<tr class="row-color" id="i1">
 <td class="col-first"><code>void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#compact(long)">compact</a></span>&#8203;(long&nbsp;position)</code></th>
 <td class="col-last">
 <div class="block">Permit all data lower than the given position to be deleted, freeing up space in the log.</div>
 </td>
 </tr>
-<tr class="row-color" id="i1">
+<tr class="alt-color" id="i2">
 <td class="col-first"><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/net/Socket.html" title="class or interface in java.net" class="external-link">Socket</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#connect(java.net.SocketAddress)">connect</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/net/SocketAddress.html" title="class or interface in java.net" class="external-link">SocketAddress</a>&nbsp;addr)</code></th>
 <td class="col-last">
 <div class="block">Connect to any replication group member, for any particular use.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i2">
+<tr class="row-color" id="i3">
 <td class="col-first"><code>long</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#encoding()">encoding</a></span>()</code></th>
 <td class="col-last">
@@ -171,38 +178,38 @@ extends <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/ja
  encoding format.</div>
 </td>
 </tr>
-<tr class="row-color" id="i3">
+<tr class="alt-color" id="i4">
 <td class="col-first"><code>boolean</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#failover()">failover</a></span>()</code></th>
 <td class="col-last">
 <div class="block">Attempt to switch the replication role from leader to replica.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i4">
+<tr class="row-color" id="i5">
 <td class="col-first"><code>boolean</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#isReadable(long)">isReadable</a></span>&#8203;(long&nbsp;position)</code></th>
 <td class="col-last">
 <div class="block">Returns true if committed data exists at the given position.</div>
 </td>
 </tr>
-<tr class="row-color" id="i5">
+<tr class="alt-color" id="i6">
 <td class="col-first"><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/net/SocketAddress.html" title="class or interface in java.net" class="external-link">SocketAddress</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#localAddress()">localAddress</a></span>()</code></th>
 <td class="col-last">&nbsp;</td>
 </tr>
-<tr class="alt-color" id="i6">
+<tr class="row-color" id="i7">
 <td class="col-first"><code>long</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#localMemberId()">localMemberId</a></span>()</code></th>
 <td class="col-last">&nbsp;</td>
 </tr>
-<tr class="row-color" id="i7">
+<tr class="alt-color" id="i8">
 <td class="col-first"><code><a href="Role.html" title="enum in org.cojen.tupl.repl">Role</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#localRole()">localRole</a></span>()</code></th>
 <td class="col-last">
 <div class="block">Returns the effective local role, as known by the group.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i8">
+<tr class="row-color" id="i9">
 <td class="col-first"><code><a href="Replicator.Reader.html" title="interface in org.cojen.tupl.repl">Replicator.Reader</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#newReader(long,boolean)">newReader</a></span>&#8203;(long&nbsp;position,
 boolean&nbsp;follow)</code></th>
@@ -210,7 +217,7 @@ boolean&nbsp;follow)</code></th>
 <div class="block">Returns a new reader which accesses data starting from the given position.</div>
 </td>
 </tr>
-<tr class="row-color" id="i9">
+<tr class="alt-color" id="i10">
 <td class="col-first"><code><a href="Replicator.Writer.html" title="interface in org.cojen.tupl.repl">Replicator.Writer</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#newWriter()">newWriter</a></span>()</code></th>
 <td class="col-last">
@@ -218,7 +225,7 @@ boolean&nbsp;follow)</code></th>
  member isn't the leader.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i10">
+<tr class="row-color" id="i11">
 <td class="col-first"><code><a href="Replicator.Writer.html" title="interface in org.cojen.tupl.repl">Replicator.Writer</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#newWriter(long)">newWriter</a></span>&#8203;(long&nbsp;position)</code></th>
 <td class="col-last">
@@ -226,14 +233,14 @@ boolean&nbsp;follow)</code></th>
  member isn't the leader.</div>
 </td>
 </tr>
-<tr class="row-color" id="i11">
+<tr class="alt-color" id="i12">
 <td class="col-first"><code><a href="SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#requestSnapshot(java.util.Map)">requestSnapshot</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,&#8203;<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&gt;&nbsp;options)</code></th>
 <td class="col-last">
 <div class="block">Connect to a remote replication group member, for receiving a database snapshot.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i12">
+<tr class="row-color" id="i13">
 <td class="col-first"><code><a href="SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#restore(java.util.Map)">restore</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,&#8203;<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&gt;&nbsp;options)</code></th>
 <td class="col-last">
@@ -241,14 +248,14 @@ boolean&nbsp;follow)</code></th>
  expected to be called only by newly joined members.</div>
 </td>
 </tr>
-<tr class="row-color" id="i13">
+<tr class="alt-color" id="i14">
 <td class="col-first"><code>void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#snapshotRequestAcceptor(java.util.function.Consumer)">snapshotRequestAcceptor</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;<a href="SnapshotSender.html" title="interface in org.cojen.tupl.repl">SnapshotSender</a>&gt;&nbsp;acceptor)</code></th>
 <td class="col-last">
 <div class="block">Install a callback to be invoked when a snapshot is requested by a new group member.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i14">
+<tr class="row-color" id="i15">
 <td class="col-first"><code>void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#socketAcceptor(java.util.function.Consumer)">socketAcceptor</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/net/Socket.html" title="class or interface in java.net" class="external-link">Socket</a>&gt;&nbsp;acceptor)</code></th>
 <td class="col-last">
@@ -256,21 +263,21 @@ boolean&nbsp;follow)</code></th>
  group member.</div>
 </td>
 </tr>
-<tr class="row-color" id="i15">
+<tr class="alt-color" id="i16">
 <td class="col-first"><code>void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#start()">start</a></span>()</code></th>
 <td class="col-last">
 <div class="block">Start accepting replication data, to be called for new or existing members.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i16">
+<tr class="row-color" id="i17">
 <td class="col-first"><code>void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#sync()">sync</a></span>()</code></th>
 <td class="col-last">
 <div class="block">Durably persist all data up to the highest position.</div>
 </td>
 </tr>
-<tr class="row-color" id="i17">
+<tr class="alt-color" id="i18">
 <td class="col-first"><code>boolean</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#syncCommit(long,long)">syncCommit</a></span>&#8203;(long&nbsp;position,
 long&nbsp;nanosTimeout)</code></th>
@@ -482,6 +489,13 @@ long&nbsp;nanosTimeout)</span>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
+</section>
+</li>
+<li>
+<section class="detail" id="commitPosition()">
+<h3>commitPosition</h3>
+<div class="member-signature"><span class="return-type">long</span>&nbsp;<span class="member-name">commitPosition</span>()</div>
+<div class="block">Returns the highest appliable commit position overall.</div>
 </section>
 </li>
 <li>

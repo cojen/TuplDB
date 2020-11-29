@@ -363,7 +363,7 @@ public interface Database extends CauseCloseable, Flushable {
      * Collection of database {@linkplain Database#stats statistics}.
      */
     public static class Stats implements Cloneable, Serializable {
-        private static final long serialVersionUID = 4L;
+        private static final long serialVersionUID = 5L;
 
         public int pageSize;
         public long freePages;
@@ -375,6 +375,7 @@ public interface Database extends CauseCloseable, Flushable {
         public long cursorCount;
         public long txnCount;
         public long checkpointDuration;
+        public long replicationBacklog;
 
         /**
          * Returns the allocation page size.
@@ -453,6 +454,14 @@ public interface Database extends CauseCloseable, Flushable {
             return checkpointDuration;
         }
 
+        /**
+         * Returns the amount of log bytes that a replica must apply to be fully caught up to
+         * the leader. If the member is currently the leader, then zero is returned.
+         */
+        public long replicationBacklog() {
+            return replicationBacklog;
+        }
+
         @Override
         public Stats clone() {
             try {
@@ -486,7 +495,8 @@ public interface Database extends CauseCloseable, Flushable {
                     && lockCount == other.lockCount
                     && cursorCount == other.cursorCount
                     && txnCount == other.txnCount
-                    && checkpointDuration == other.checkpointDuration;
+                    && checkpointDuration == other.checkpointDuration
+                    && replicationBacklog == other.replicationBacklog;
             }
             return false;
         }
@@ -503,6 +513,7 @@ public interface Database extends CauseCloseable, Flushable {
                 + ", cursorCount=" + cursorCount
                 + ", transactionCount=" + txnCount
                 + ", checkpointDuration=" + checkpointDuration
+                + ", replicationBacklog=" + replicationBacklog
                 + '}';
         }
     }

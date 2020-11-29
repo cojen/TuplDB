@@ -26,6 +26,7 @@ import java.util.Objects;
 
 import org.cojen.tupl.ConfirmationFailureException;
 import org.cojen.tupl.ConfirmationTimeoutException;
+import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.UnmodifiableReplicaException;
@@ -314,6 +315,20 @@ final class ReplController extends ReplWriter {
         }
 
         super.force(metadata, nanosTimeout);
+    }
+
+    @Override
+    void addStats(Database.Stats stats) {
+        if (!isLeader()) {
+            try {
+                // Capture this first, to avoid reporting a negative backlog.
+                long decodePosition = mEngine.decodePosition();
+                long commitPosition = mEngine.mRepl.commitPosition();
+                stats.replicationBacklog = commitPosition - decodePosition;
+            } catch (IllegalStateException e) {
+                // Decoder hasn't been set yet. Not expected.
+            }
+        }
     }
 
     @Override

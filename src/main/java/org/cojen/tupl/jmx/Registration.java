@@ -158,6 +158,12 @@ public class Registration {
         }
 
         @Override
+        public long getReplicationBacklog() {
+            var stats = stats();
+            return stats == null ? 0 : stats.replicationBacklog();
+        }
+
+        @Override
         public void flush() {
             asyncOp(Database::flush);
         }

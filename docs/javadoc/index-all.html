@@ -535,6 +535,10 @@ loadScripts(document, 'script');</script>
 <div class="block">Returns the current term commit position, which might be lower than the start
  position.</div>
 </dd>
+<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html#commitPosition()">commitPosition()</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
+<dd>
+<div class="block">Returns the highest appliable commit position overall.</div>
+</dd>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html#compact(long)">compact(long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
 <dd>
 <div class="block">Permit all data lower than the given position to be deleted, freeing up space in the log.</div>
@@ -2887,6 +2891,13 @@ loadScripts(document, 'script');</script>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/EventType.html#REPLICATION_WARNING">REPLICATION_WARNING</a></span> - org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/EventType.html" title="enum in org.cojen.tupl">EventType</a></dt>
 <dd>
 <div class="block">Generic warning message from the replication system.</div>
+</dd>
+<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/Database.Stats.html#replicationBacklog">replicationBacklog</a></span> - Variable in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/Database.Stats.html#replicationBacklog()">replicationBacklog()</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></dt>
+<dd>
+<div class="block">Returns the amount of log bytes that a replica must apply to be fully caught up to
+ the leader.</div>
 </dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl"><span class="type-name-link">Replicator</span></a> - Interface in <a href="org.cojen.tupl/org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
 <dd>

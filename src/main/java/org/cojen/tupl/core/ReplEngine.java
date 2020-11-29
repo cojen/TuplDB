@@ -1078,24 +1078,18 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     }
 
     /**
-     * Returns the position of the next operation to decode. To avoid deadlocks, engine must
-     * not be suspended when calling this method. Instead, call suspendedDecodePosition.
+     * Returns the position of the next operation to decode.
      */
     long decodePosition() {
-        mDecodeLatch.acquireShared();
-        try {
-            return getDecodePosition();
-        } finally {
-            mDecodeLatch.releaseShared();
-        }
+        return decoder().decodePositionOpaque();
     }
 
-    private long getDecodePosition() {
+    private RedoDecoder decoder() {
         ReplDecoder decoder = mDecoder;
         if (decoder == null) {
             throw new IllegalStateException("No decoder");
         } else {
-            return decoder.mDecodePosition;
+            return decoder;
         }
     }
 
@@ -1103,7 +1097,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
      * Returns the position of the next operation to decode, while engine is suspended.
      */
     long suspendedDecodePosition() {
-        return getDecodePosition();
+        return decoder().mDecodePosition;
     }
 
     /**

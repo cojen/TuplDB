@@ -2425,6 +2425,10 @@ public final class LocalDatabase extends CoreDatabase {
 
         stats.checkpointDuration = mLastCheckpointDurationNanos / 1_000_000;
 
+        if (mRedoWriter != null) {
+            mRedoWriter.addStats(stats);
+        }
+
         return stats;
     }
 

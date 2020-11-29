@@ -15,7 +15,7 @@
 <script type="text/javascript" src="../../../../script-dir/jquery-ui.min.js"></script>
 </head>
 <body class="class-declaration-page">
-<script type="text/javascript">var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10};
+<script type="text/javascript">var data = {"i0":10,"i1":10,"i2":10,"i3":10,"i4":10,"i5":10,"i6":10,"i7":10,"i8":10,"i9":10,"i10":10,"i11":10,"i12":10,"i13":10,"i14":10};
 var tabs = {65535:["t0","All Methods"],2:["t2","Instance Methods"],8:["t4","Concrete Methods"]};
 var altColor = "alt-color";
 var rowColor = "row-color";
@@ -157,10 +157,15 @@ implements <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base
 </tr>
 <tr class="alt-color">
 <td class="col-first"><code>long</code></td>
-<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#totalPages">totalPages</a></span></code></th>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#replicationBacklog">replicationBacklog</a></span></code></th>
 <td class="col-last">&nbsp;</td>
 </tr>
 <tr class="row-color">
+<td class="col-first"><code>long</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#totalPages">totalPages</a></span></code></th>
+<td class="col-last">&nbsp;</td>
+</tr>
+<tr class="alt-color">
 <td class="col-first"><code>long</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#txnCount">txnCount</a></span></code></th>
 <td class="col-last">&nbsp;</td>
@@ -282,18 +287,26 @@ implements <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base
 </td>
 </tr>
 <tr class="row-color" id="i11">
+<td class="col-first"><code>long</code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#replicationBacklog()">replicationBacklog</a></span>()</code></th>
+<td class="col-last">
+<div class="block">Returns the amount of log bytes that a replica must apply to be fully caught up to
+ the leader.</div>
+</td>
+</tr>
+<tr class="alt-color" id="i12">
 <td class="col-first"><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#toString()">toString</a></span>()</code></th>
 <td class="col-last">&nbsp;</td>
 </tr>
-<tr class="alt-color" id="i12">
+<tr class="row-color" id="i13">
 <td class="col-first"><code>long</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#totalPages()">totalPages</a></span>()</code></th>
 <td class="col-last">
 <div class="block">Returns the total amount of pages in the database.</div>
 </td>
 </tr>
-<tr class="row-color" id="i13">
+<tr class="alt-color" id="i14">
 <td class="col-first"><code>long</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#transactionCount()">transactionCount</a></span>()</code></th>
 <td class="col-last">
@@ -377,6 +390,12 @@ implements <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base
 <section class="detail" id="checkpointDuration">
 <h3>checkpointDuration</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="member-name">checkpointDuration</span></div>
+</section>
+</li>
+<li>
+<section class="detail" id="replicationBacklog">
+<h3>replicationBacklog</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="member-name">replicationBacklog</span></div>
 </section>
 </li>
 </ul>
@@ -476,6 +495,14 @@ implements <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="member-name">checkpointDuration</span>()</div>
 <div class="block">Returns the time duration required for the last checkpoint to complete, in
  milliseconds. If no checkpoints are running, then zero is returned.</div>
+</section>
+</li>
+<li>
+<section class="detail" id="replicationBacklog()">
+<h3>replicationBacklog</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="member-name">replicationBacklog</span>()</div>
+<div class="block">Returns the amount of log bytes that a replica must apply to be fully caught up to
+ the leader. If the member is currently the leader, then zero is returned.</div>
 </section>
 </li>
 <li>
