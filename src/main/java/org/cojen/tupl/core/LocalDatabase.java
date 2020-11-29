@@ -793,6 +793,19 @@ public final class LocalDatabase extends CoreDatabase {
                 // methods will be called soon to perform recovery.
                 initHandlers(this, mCustomHandlers, mPrepareHandlers);
 
+                if (launcher.mEnableJMX) {
+                    // Register early, in case recovery takes a long time.
+
+                    String base;
+                    if (mBaseFile != null) {
+                        base = mBaseFile.toString();
+                    } else {
+                        base = java.util.UUID.randomUUID().toString();
+                    }
+
+                    org.cojen.tupl.jmx.Registration.register(this, base);
+                }
+
                 // Must tag the trashed trees before starting replication and recovery.
                 // Otherwise, trees recently deleted might get double deleted.
                 tagTrashedTrees();
@@ -2425,8 +2438,9 @@ public final class LocalDatabase extends CoreDatabase {
 
         stats.checkpointDuration = mLastCheckpointDurationNanos / 1_000_000;
 
-        if (mRedoWriter != null) {
-            mRedoWriter.addStats(stats);
+        RedoWriter redo = mRedoWriter;
+        if (redo != null) {
+            redo.addStats(stats);
         }
 
         return stats;

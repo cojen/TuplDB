@@ -326,7 +326,7 @@ final class ReplController extends ReplWriter {
                 long commitPosition = mEngine.mRepl.commitPosition();
                 stats.replicationBacklog = commitPosition - decodePosition;
             } catch (IllegalStateException e) {
-                // Decoder hasn't been set yet. Not expected.
+                // Decoder hasn't been set yet.
             }
         }
     }

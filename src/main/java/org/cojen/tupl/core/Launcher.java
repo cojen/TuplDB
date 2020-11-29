@@ -421,20 +421,7 @@ public final class Launcher implements Cloneable {
         boolean openedReplicator = launcher.openReplicator();
 
         try {
-            CoreDatabase db = launcher.doOpen(destroy, restore);
-
-            if (mEnableJMX) {
-                String base;
-                if (mBaseFile != null) {
-                    base = mBaseFile.toString();
-                } else {
-                    base = java.util.UUID.randomUUID().toString();
-                }
-
-                org.cojen.tupl.jmx.Registration.register(db, base);
-            }
-
-            return db;
+            return launcher.doOpen(destroy, restore);
         } catch (Throwable e) {
             if (openedReplicator) {
                 try {
@@ -486,6 +473,7 @@ public final class Launcher implements Cloneable {
             subLauncher.cachePriming(false);
             subLauncher.cleanShutdown(false);
             subLauncher.replicate((StreamReplicator) null);
+            subLauncher.enableJMX(false);
             subLauncher.compressPages(0, 0, null);
             subLauncher.customHandlers(null);
             subLauncher.prepareHandlers(null);
