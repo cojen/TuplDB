@@ -754,7 +754,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @Override
     public long commitPosition() {
-        return mStateLog.captureHighest().mCommitPosition;
+        return mStateLog.captureHighest(new LogInfo()).potentialCommitPosition();
     }
 
     @Override

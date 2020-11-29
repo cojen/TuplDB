@@ -157,7 +157,8 @@ public interface Replicator extends Closeable {
     void compact(long position) throws IOException;
 
     /**
-     * Returns the highest appliable commit position overall.
+     * Returns the highest observed commit position overall. This commit position might be
+     * higher than what can be currently applied, if gaps exist in the log.
      */
     long commitPosition();
 

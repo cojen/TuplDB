@@ -153,7 +153,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/ja
 <td class="col-first"><code>long</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#commitPosition()">commitPosition</a></span>()</code></th>
 <td class="col-last">
-<div class="block">Returns the highest appliable commit position overall.</div>
+<div class="block">Returns the highest observed commit position overall.</div>
 </td>
 </tr>
 <tr class="row-color" id="i1">
@@ -495,7 +495,8 @@ long&nbsp;nanosTimeout)</span>
 <section class="detail" id="commitPosition()">
 <h3>commitPosition</h3>
 <div class="member-signature"><span class="return-type">long</span>&nbsp;<span class="member-name">commitPosition</span>()</div>
-<div class="block">Returns the highest appliable commit position overall.</div>
+<div class="block">Returns the highest observed commit position overall. This commit position might be
+ higher than what can be currently applied, if gaps exist in the log.</div>
 </section>
 </li>
 <li>
