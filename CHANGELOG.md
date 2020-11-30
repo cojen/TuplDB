@@ -90,6 +90,7 @@ v1.5.0
 * Added support for page-level compression and checksums.
 * Support clean database shutdown triggered by clean JVM exit.
 * Added support for asynchronous lock acquisition.
+* Added basic JMX support.
 
 v1.4.4 (2018-06-30)
 ------
