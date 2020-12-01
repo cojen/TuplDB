@@ -48,27 +48,43 @@ class SortScanner implements Scanner {
 
     @Override
     public Comparator<byte[]> comparator() {
-        return cursor().comparator();
+        BTreeCursor c = mCursor;
+        if (c == null && (c = tryOpenCursor()) == null) {
+            return KeyComparator.THE;
+        }
+        return c.comparator();
     }
 
     @Override
     public byte[] key() {
-        return cursor().key();
+        BTreeCursor c = mCursor;
+        if (c == null && (c = tryOpenCursor()) == null) {
+            return null;
+        }
+        return c.key();
     }
 
     @Override
     public byte[] value() {
-        return cursor().value();
+        BTreeCursor c = mCursor;
+        if (c == null && (c = tryOpenCursor()) == null) {
+            return null;
+        }
+        return c.value();
     }
 
     @Override
     public boolean step() throws IOException {
-        BTreeCursor c = cursor();
+        BTreeCursor c = mCursor;
+        if (c == null && (c = tryOpenCursor()) == null) {
+            return false;
+        }
         try {
             doStep(c);
             if (c.key() != null) {
                 return true;
             }
+            mCursor = null;
             mDatabase.quickDeleteTemporaryTree(c.mTree);
             return false;
         } catch (UnpositionedCursorException e) {
@@ -122,21 +138,14 @@ class SortScanner implements Scanner {
         mSupplier = supplier;
     }
 
-    private BTreeCursor cursor() {
-        BTreeCursor c = mCursor;
-        return c == null ? openCursor() : c;
-    }
-
-    private BTreeCursor openCursor() {
+    private BTreeCursor tryOpenCursor() {
         try {
-            BTree tree;
             if (mSupplier == null) {
                 // Assume that scanner is being used after being closed.
-                tree = mDatabase.newTemporaryIndex();
-            } else {
-                tree = mSupplier.get();
-                mSupplier = null;
+                return null;
             }
+            BTree tree = mSupplier.get();
+            mSupplier = null;
             ready(tree);
             return mCursor;
         } catch (IOException e) {

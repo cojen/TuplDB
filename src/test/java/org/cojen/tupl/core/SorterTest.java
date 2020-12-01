@@ -308,6 +308,8 @@ public class SorterTest {
         if (!close) {
             assertTrue(expected.isEmpty());
         }
+
+        scanner.close();
     }
 
     @Test

@@ -88,7 +88,7 @@ public interface Scanner extends Closeable {
      * Calls the given action for each remaining entry, and then closes the scanner.
      */
     default void scanAll(EntryConsumer action) throws IOException {
-        while (true) {
+        do {
             byte[] key = key();
             if (key == null) {
                 return;
@@ -98,8 +98,7 @@ public interface Scanner extends Closeable {
             } catch (Throwable e) {
                 throw Utils.fail(this, e);
             }
-            step();
-        }
+        } while (step());
     }
 
     @Override
