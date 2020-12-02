@@ -1007,7 +1007,7 @@ public final class LocalDatabase extends CoreDatabase {
     }
 
     /**
-     * Called by ReplManager.
+     * Called by ReplController.
      */
     @Override
     long writeControlMessage(byte[] message) throws IOException {
@@ -3424,9 +3424,9 @@ public final class LocalDatabase extends CoreDatabase {
                 throw new DatabaseException(msg);
             }
 
-            // The redo position passed to the ReplManager must be 0, but what's in the header
-            // might be higher. Since we have the header data passed to us already, we can
-            // modify it without persisting it.
+            // The redo position passed to the ReplController must be 0, but what's in the
+            // header might be higher. Since we have the header data passed to us already, we
+            // can modify it without persisting it.
             encodeLongLE(header, I_REDO_POSITION, 0);
         } else if (replEncoding != repl.encoding()) {
             throw new DatabaseException

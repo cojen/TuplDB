@@ -59,7 +59,7 @@ abstract class CoreDatabase implements Database {
     abstract void checkpoint(long sizeThreshold, long delayThresholdNanos) throws IOException;
 
     /**
-     * Called by ReplManager.
+     * Called by ReplController.
      */
     abstract long writeControlMessage(byte[] message) throws IOException;
 }

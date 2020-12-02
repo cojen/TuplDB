@@ -68,7 +68,7 @@ class ReplWriter extends RedoWriter {
     private int mBufferTail = -1;
     // Absolute log position.
     private long mWritePos;
-    // Set if the consumer failed to write to the ReplManager.
+    // Set if the consumer failed to write to the StreamReplicator.Writer.
     private Throwable mConsumerException;
 
     volatile boolean mUnmodifiable;
@@ -378,7 +378,7 @@ class ReplWriter extends RedoWriter {
     }
 
     /**
-     * Waits for consumer to finish writing to the ReplManager.
+     * Waits for consumer to finish writing to the StreamReplicator.Writer.
      *
      * @return pending commit position to wait for, or <= 0 if nothing pending
      */
