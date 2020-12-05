@@ -181,7 +181,7 @@ final class BoundedCursor implements ScannerCursor {
         }
 
         // This performs any required lock acquisition.
-        return source.load();
+        return autoload ? source.load() : source.lock();
     }
 
     private LockResult toFirst() throws IOException {
@@ -232,7 +232,7 @@ final class BoundedCursor implements ScannerCursor {
         }
 
         // This performs any required lock acquisition.
-        return source.load();
+        return autoload ? source.load() : source.lock();
     }
 
     private LockResult toLast() throws IOException {
@@ -429,7 +429,7 @@ final class BoundedCursor implements ScannerCursor {
         }
 
         // This performs any required lock acquisition.
-        return source.load();
+        return autoload ? source.load() : source.lock();
     }
 
     @Override
@@ -466,7 +466,7 @@ final class BoundedCursor implements ScannerCursor {
         }
 
         // This performs any required lock acquisition.
-        return source.load();
+        return autoload ? source.load() : source.lock();
     }
 
     @Override
@@ -503,7 +503,7 @@ final class BoundedCursor implements ScannerCursor {
         }
 
         // This performs any required lock acquisition.
-        return source.load();
+        return autoload ? source.load() : source.lock();
     }
 
     @Override
@@ -540,7 +540,7 @@ final class BoundedCursor implements ScannerCursor {
         }
 
         // This performs any required lock acquisition.
-        return source.load();
+        return autoload ? source.load() : source.lock();
     }
 
     @Override
