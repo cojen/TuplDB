@@ -52,6 +52,12 @@ interface StateLog extends Closeable {
     void commit(long commitPosition);
 
     /**
+     * Returns the highest observed commit position overall. This commit position might be
+     * higher than what can be currently applied, if gaps exist in the log.
+     */
+    long commitPosition();
+
+    /**
      * Increment the current term by the amount given.
      *
      * @param candidateId local member id, voting for itself

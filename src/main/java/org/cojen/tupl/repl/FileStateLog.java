@@ -482,6 +482,16 @@ final class FileStateLog extends Latch implements StateLog {
     }
 
     @Override
+    public long commitPosition() {
+        acquireShared();
+        try {
+            return mTermLogs.isEmpty() ? 0 : ((TermLog) mTermLogs.last()).potentialCommitPosition();
+        } finally {
+            releaseShared();
+        }
+    }
+
+    @Override
     public long incrementCurrentTerm(int termIncrement, long candidateId) throws IOException {
         if (termIncrement <= 0) {
             throw new IllegalArgumentException();
