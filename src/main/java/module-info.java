@@ -20,4 +20,6 @@ module org.cojen.tupl {
     requires static java.management;
 
     requires static org.lz4.java;
+
+    requires static org.slf4j;
 }

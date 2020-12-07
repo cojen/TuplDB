@@ -21,6 +21,7 @@ import org.cojen.tupl.ev.AllowEventListener;
 import org.cojen.tupl.ev.DisallowEventListener;
 import org.cojen.tupl.ev.EventLogger;
 import org.cojen.tupl.ev.EventPrinter;
+import org.cojen.tupl.ev.Slf4jLogger;
 
 /**
  * Listener which receives notifications of actions being performed by the
@@ -50,6 +51,13 @@ public interface EventListener {
      */
     public static EventListener logTo(System.Logger logger) {
         return new EventLogger(logger);
+    }
+
+    /**
+     * Returns a new listener that logs messages to the given logger.
+     */
+    public static EventListener logTo(org.slf4j.Logger logger) {
+        return new Slf4jLogger(logger);
     }
 
     /**

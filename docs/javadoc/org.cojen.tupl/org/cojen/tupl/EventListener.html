@@ -15,7 +15,7 @@
 <script type="text/javascript" src="../../../../script-dir/jquery-ui.min.js"></script>
 </head>
 <body class="class-declaration-page">
-<script type="text/javascript">var data = {"i0":18,"i1":18,"i2":18,"i3":18,"i4":18,"i5":1,"i6":1,"i7":6,"i8":18,"i9":18,"i10":1};
+<script type="text/javascript">var data = {"i0":18,"i1":18,"i2":18,"i3":18,"i4":18,"i5":1,"i6":1,"i7":1,"i8":6,"i9":18,"i10":18,"i11":1};
 var tabs = {65535:["t0","All Methods"],1:["t1","Static Methods"],2:["t2","Instance Methods"],4:["t3","Abstract Methods"],16:["t5","Default Methods"]};
 var altColor = "alt-color";
 var rowColor = "row-color";
@@ -149,27 +149,34 @@ loadScripts(document, 'script');</script>
 </td>
 </tr>
 <tr class="row-color" id="i7">
+<td class="col-first"><code>static <a href="EventListener.html" title="interface in org.cojen.tupl">EventListener</a></code></td>
+<th class="col-second" scope="row"><code><span class="member-name-link"><a href="#logTo(org.slf4j.Logger)">logTo</a></span>&#8203;(org.slf4j.Logger&nbsp;logger)</code></th>
+<td class="col-last">
+<div class="block">Returns a new listener that logs messages to the given logger.</div>
+</td>
+</tr>
+<tr class="alt-color" id="i8">
 <td class="col-first"><code>void</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#notify(org.cojen.tupl.EventType,java.lang.String,java.lang.Object...)">notify</a></span>&#8203;(<a href="EventType.html" title="enum in org.cojen.tupl">EventType</a>&nbsp;type,
 <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;message,
 <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></th>
 <td class="col-last">&nbsp;</td>
 </tr>
-<tr class="alt-color" id="i8">
+<tr class="row-color" id="i9">
 <td class="col-first"><code>default <a href="EventListener.html" title="interface in org.cojen.tupl">EventListener</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#observe(java.lang.System.Logger.Level...)">observe</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/System.Logger.Level.html" title="class or interface in java.lang" class="external-link">System.Logger.Level</a>...&nbsp;levels)</code></th>
 <td class="col-last">
 <div class="block">Returns a filtered listener which only observes the given event levels.</div>
 </td>
 </tr>
-<tr class="row-color" id="i9">
+<tr class="alt-color" id="i10">
 <td class="col-first"><code>default <a href="EventListener.html" title="interface in org.cojen.tupl">EventListener</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#observe(org.cojen.tupl.EventType.Category...)">observe</a></span>&#8203;(<a href="EventType.Category.html" title="enum in org.cojen.tupl">EventType.Category</a>...&nbsp;categories)</code></th>
 <td class="col-last">
 <div class="block">Returns a filtered listener which only observes the given event categories.</div>
 </td>
 </tr>
-<tr class="alt-color" id="i10">
+<tr class="row-color" id="i11">
 <td class="col-first"><code>static <a href="EventListener.html" title="interface in org.cojen.tupl">EventListener</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#printTo(java.io.PrintStream)">printTo</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/PrintStream.html" title="class or interface in java.io" class="external-link">PrintStream</a>&nbsp;out)</code></th>
 <td class="col-last">
@@ -209,6 +216,13 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="logTo(java.lang.System.Logger)">
 <h3>logTo</h3>
 <div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type"><a href="EventListener.html" title="interface in org.cojen.tupl">EventListener</a></span>&nbsp;<span class="member-name">logTo</span>&#8203;(<span class="parameters"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/System.Logger.html" title="class or interface in java.lang" class="external-link">System.Logger</a>&nbsp;logger)</span></div>
+<div class="block">Returns a new listener that logs messages to the given logger.</div>
+</section>
+</li>
+<li>
+<section class="detail" id="logTo(org.slf4j.Logger)">
+<h3>logTo</h3>
+<div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type"><a href="EventListener.html" title="interface in org.cojen.tupl">EventListener</a></span>&nbsp;<span class="member-name">logTo</span>&#8203;(<span class="parameters">org.slf4j.Logger&nbsp;logger)</span></div>
 <div class="block">Returns a new listener that logs messages to the given logger.</div>
 </section>
 </li>
