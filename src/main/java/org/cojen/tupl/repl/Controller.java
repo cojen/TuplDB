@@ -2138,14 +2138,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      * Called from a remote group member.
      */
     @Override // Channel
-    public boolean nop(Channel from) {
-        return true;
-    }
-
-    /**
-     * Called from a remote group member.
-     */
-    @Override // Channel
     public boolean requestVote(Channel from, long term, long candidateId,
                                long highestTerm, long highestPosition)
     {

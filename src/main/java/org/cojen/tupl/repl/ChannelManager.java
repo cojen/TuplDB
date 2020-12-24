@@ -1019,7 +1019,6 @@ final class ChannelManager {
 
                     switch (op) {
                     case OP_NOP:
-                        localServer.nop(this);
                         break;
                     case OP_REQUEST_VOTE:
                         localServer.requestVote(this, in.readLongLE(), in.readLongLE(),
@@ -1238,11 +1237,6 @@ final class ChannelManager {
         @Override
         public void unknown(Channel from, int op) {
             // Not a normal remote call.
-        }
-
-        @Override
-        public boolean nop(Channel from) {
-            return writeCommand(OP_NOP);
         }
 
         @Override

@@ -63,11 +63,6 @@ interface Channel {
     void unknown(Channel from, int op);
 
     /**
-     * @return false if not sent or processed
-     */
-    boolean nop(Channel from);
-
-    /**
      * @param term must be greater than the highest term
      * @param candidateId must not be zero
      * @return false if not sent or processed
