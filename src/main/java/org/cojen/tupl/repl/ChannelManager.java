@@ -76,7 +76,7 @@ final class ChannelManager {
       8:  Group token (long)
       16: Group id (long)
       24: Member id (long)
-      32: Connection type (int)  -- 0: control, 1: plain, etc. TODO: use a bit to enable CRCs
+      32: Connection type (int)  -- 0: control, 1: plain, etc. Bit 31 enables CRC checks.
       36: CRC32C (int)
 
       Command header structure: (little endian fields)
@@ -132,6 +132,7 @@ final class ChannelManager {
     private final SocketFactory mSocketFactory;
     private final Scheduler mScheduler;
     private final long mGroupToken;
+    private final boolean mWriteCRCs;
     private final Consumer<Throwable> mUncaughtHandler;
     private final Map<SocketAddress, Peer> mPeerMap;
     private final TreeSet<Peer> mPeerSet;
@@ -156,9 +157,10 @@ final class ChannelManager {
 
     /**
      * @param factory optional
+     * @param writeCRCs true to write CRCs for all control commands written by client connections
      */
     ChannelManager(SocketFactory factory, Scheduler scheduler, long groupToken, long groupId,
-                   Consumer<Throwable> uncaughtHandler)
+                   boolean writeCRCs, Consumer<Throwable> uncaughtHandler)
     {
         if (scheduler == null || uncaughtHandler == null) {
             throw new IllegalArgumentException();
@@ -166,6 +168,7 @@ final class ChannelManager {
         mSocketFactory = factory;
         mScheduler = scheduler;
         mGroupToken = groupToken;
+        mWriteCRCs = writeCRCs;
         mUncaughtHandler = uncaughtHandler;
         mPeerMap = new HashMap<>();
         Comparator<Peer> cmp = (a, b) -> Long.compare(a.mMemberId, b.mMemberId);
@@ -413,14 +416,14 @@ final class ChannelManager {
     }
 
     Socket connectPlain(SocketAddress addr) throws IOException {
-        return connectSocket(addr, TYPE_PLAIN);
+        return connectSocket(addr, new int[] {TYPE_PLAIN});
     }
 
     Socket connectSnapshot(SocketAddress addr) throws IOException {
-        return connectSocket(addr, TYPE_SNAPSHOT);
+        return connectSocket(addr, new int[] {TYPE_SNAPSHOT});
     }
 
-    private Socket connectSocket(SocketAddress addr, int connectionType) throws IOException {
+    private Socket connectSocket(SocketAddress addr, int[] connectionType) throws IOException {
         if (addr == null) {
             throw new IllegalArgumentException();
         }
@@ -443,9 +446,11 @@ final class ChannelManager {
     }
 
     /**
+     * @param conType initially set to the requested type, and then set to the actual
+     * type from the peer; only expected to differ in the CRC bit
      * @return null if peer response was malformed
      */
-    Socket doConnect(Peer peer, int connectionType) throws IOException {
+    Socket doConnect(Peer peer, int[] conType) throws IOException {
         if (mPartitioned) {
             return null;
         }
@@ -463,7 +468,7 @@ final class ChannelManager {
                 localMemberId = mLocalMemberId;
             }
 
-            byte[] header = newConnectHeader(mGroupToken, groupId, localMemberId, connectionType);
+            byte[] header = newConnectHeader(mGroupToken, groupId, localMemberId, conType[0]);
 
             s.getOutputStream().write(header);
 
@@ -479,9 +484,11 @@ final class ChannelManager {
 
             int actualType = decodeIntLE(header, 32);
 
-            if (actualType != connectionType) {
+            if ((actualType | (1 << 31)) != (conType[0] | (1 << 31))) {
                 break doConnect;
             }
+
+            conType[0] = actualType;
 
             return s;
         } catch (IOException e) {
@@ -604,6 +611,8 @@ final class ChannelManager {
 
             long remoteMemberId = decodeLongLE(header, 24);
             int connectionType = decodeIntLE(header, 32);
+            boolean checkCRCs = connectionType < 0;
+            connectionType &= ~(1 << 31);
 
             Consumer<Socket> acceptor = null;
 
@@ -658,9 +667,16 @@ final class ChannelManager {
                         closeQuietly(s);
                         return;
                     }
-                    acceptor = server = new ServerChannel(peer, localServer);
+                    server = new ServerChannel(peer, localServer);
                     mChannels.add(server);
                     existing = mPeerServerChannels.put(peer, server);
+
+                    if (mWriteCRCs) {
+                        // Indicate that CRCs will be written and should be checked.
+                        connectionType |= 1 << 31;
+                    }
+
+                    encodeIntLE(header, 32, connectionType);
                 }
 
                 encodeLongLE(header, 24, mLocalMemberId);
@@ -672,7 +688,13 @@ final class ChannelManager {
 
             encodeHeaderCrc(header);
 
-            final Consumer<Socket> facceptor = acceptor;
+            final var fserver = server;
+
+            if (acceptor == null) {
+                acceptor = sock -> fserver.accepted(sock, checkCRCs);
+            }
+
+            final var facceptor = acceptor;
 
             Runnable replyTask = () -> {
                 try {
@@ -688,10 +710,8 @@ final class ChannelManager {
                     mUncaughtHandler.accept(e);
                 }
                 closeQuietly(s);
-                if (facceptor instanceof ServerChannel) {
-                    // Closing the ServerChannel also unregisters it.
-                    closeQuietly((ServerChannel) facceptor);
-                }
+                // Closing the ServerChannel also unregisters it.
+                closeQuietly(fserver);
             };
 
             if (existing == null) {
@@ -815,11 +835,12 @@ final class ChannelManager {
         }
     }
 
-    abstract class SocketChannel extends Latch implements Channel, Closeable, Consumer<Socket> {
+    abstract class SocketChannel extends Latch implements Channel, Closeable {
         final Peer mPeer;
         private Channel mLocalServer;
         private volatile Socket mSocket;
         private OutputStream mOut;
+        private final CRC32C mOutCRC;
         private ChannelInputStream mIn;
         private int mReconnectDelay;
         private volatile long mConnectAttemptStartedAt;
@@ -837,6 +858,7 @@ final class ChannelManager {
             mPeer = peer;
             mLocalServer = localServer;
             mConnectAttemptStartedAt = Long.MAX_VALUE;
+            mOutCRC = mWriteCRCs ? new CRC32C() : null;
         }
 
         void connect() {
@@ -848,8 +870,15 @@ final class ChannelManager {
                 }
             }
 
+            int[] conType = {TYPE_CONTROL};
+
+            if (mOutCRC != null) {
+                // Indicate that CRCs will be written and should be checked.
+                conType[0] |= 1 << 31;
+            }
+
             try {
-                connected(doConnect(mPeer, TYPE_CONTROL));
+                connected(doConnect(mPeer, conType), conType[0] < 0);
             } catch (JoinException e) {
                 boolean report;
                 synchronized (this) {
@@ -956,12 +985,11 @@ final class ChannelManager {
             closeQuietly(mSocket);
         }
 
-        @Override
-        public void accept(Socket s) {
-            connected(s);
+        void accepted(Socket s, boolean checkCRCs) {
+            connected(s, checkCRCs);
         }
 
-        private synchronized boolean connected(Socket s) {
+        private synchronized boolean connected(Socket s, boolean checkCRCs) {
             if (mPartitioned) {
                 closeQuietly(s);
                 return false;
@@ -972,7 +1000,7 @@ final class ChannelManager {
             try {
                 out = s.getOutputStream();
                 // Initial buffer is probably too small, but start with something.
-                in = new ChannelInputStream(s.getInputStream(), 128);
+                in = new ChannelInputStream(s.getInputStream(), 128, checkCRCs);
             } catch (Throwable e) {
                 closeQuietly(s);
                 return false;
@@ -1016,6 +1044,9 @@ final class ChannelManager {
                     int opAndLength = (int) header;
                     int commandLength = (opAndLength >> 8) & 0xffffff;
                     int op = opAndLength & 0xff;
+                    int crc = ((int) (header >> 32)) ^ opAndLength;
+
+                    in.prepareChecksum(commandLength, crc);
 
                     switch (op) {
                     case OP_NOP:
@@ -1662,6 +1693,15 @@ final class ChannelManager {
          */
         private boolean writeCommand(OutputStream out, byte[] command, int offset, int length) {
             try {
+                CRC32C crc = mOutCRC;
+                if (crc != null) {
+                    crc.reset();
+                    crc.update(command, offset + 8, length - 8);
+                    int crcValue = (int) crc.getValue();
+                    // Fold in the length and opcode too.
+                    crcValue ^= decodeIntLE(command, offset);
+                    encodeIntLE(command, offset + 4, crcValue);
+                }
                 mWriteState = 1;
                 out.write(command, offset, length);
                 mWriteState = 0;

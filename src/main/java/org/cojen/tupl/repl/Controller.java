@@ -161,7 +161,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                            SocketFactory factory,
                            SocketAddress localAddress, SocketAddress listenAddress,
                            Role localRole, Set<SocketAddress> seeds, ServerSocket localSocket,
-                           boolean proxyWrites)
+                           boolean proxyWrites, boolean writeCRCs)
         throws IOException
     {
         boolean canCreate = seeds.isEmpty() && localRole == Role.NORMAL;
@@ -173,7 +173,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                  Role.NORMAL + " to create the group, but configured role is: " + localRole);
         }
 
-        var con = new Controller(eventListener, log, groupToken, gf, factory, proxyWrites);
+        var con = new Controller
+            (eventListener, log, groupToken, gf, factory, proxyWrites, writeCRCs);
 
         try {
             con.init(groupFile, localAddress, listenAddress, localRole, seeds, localSocket);
@@ -190,14 +191,14 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     private Controller(BiConsumer<Level, String> eventListener,
                        StateLog log, long groupToken, GroupFile gf, SocketFactory factory,
-                       boolean proxyWrites)
+                       boolean proxyWrites, boolean writeCRCs)
         throws IOException
     {
         mEventListener = eventListener;
         mStateLog = log;
         mScheduler = new Scheduler();
-        mChanMan = new ChannelManager
-            (factory, mScheduler, groupToken, gf == null ? 0 : gf.groupId(), this::uncaught);
+        mChanMan = new ChannelManager(factory, mScheduler, groupToken,
+                                      gf == null ? 0 : gf.groupId(), writeCRCs, this::uncaught);
         mGroupFile = gf;
         mSyncCommitCondition = new LatchCondition();
         mProxyWrites = proxyWrites;
@@ -1812,7 +1813,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      */
     @SuppressWarnings("fallthrough")
     private boolean doRequestJoin(Socket s) throws IOException {
-        var in = new ChannelInputStream(s.getInputStream(), 100);
+        var in = new ChannelInputStream(s.getInputStream(), 100, false);
 
         SocketAddress addr;
         long memberId;

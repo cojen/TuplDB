@@ -54,6 +54,7 @@ public class ReplicatorConfig implements Cloneable {
     Role mLocalRole;
     Set<SocketAddress> mSeeds;
     boolean mProxyWrites;
+    boolean mChecksumSockets;
     BiConsumer<Level, String> mEventListener;
     SocketFactory mSocketFactory;
     ServerSocketFactory mServerSocketFactory;
@@ -249,6 +250,14 @@ public class ReplicatorConfig implements Cloneable {
      */
     public ReplicatorConfig proxyWrites(boolean proxy) {
         mProxyWrites = proxy;
+        return this;
+    }
+
+    /**
+     * Pass true to enable CRC checksums for all socket commands written. Default is false.
+     */
+    public ReplicatorConfig checksumSockets(boolean checksums) {
+        mChecksumSockets = checksums;
         return this;
     }
 

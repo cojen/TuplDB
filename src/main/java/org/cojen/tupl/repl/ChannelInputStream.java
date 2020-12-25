@@ -24,6 +24,8 @@ import java.io.OutputStream;
 
 import java.nio.charset.StandardCharsets;
 
+import java.util.zip.CRC32C;
+
 import org.cojen.tupl.io.Utils;
 
 /**
@@ -33,13 +35,41 @@ import org.cojen.tupl.io.Utils;
  */
 final class ChannelInputStream extends InputStream {
     private final InputStream mSource;
+    private final CRC32C mCRC;
     byte[] mBuffer;
     int mPos;
     private int mEnd;
 
-    ChannelInputStream(InputStream source, int size) {
+    // Amount of bytes remaining to feed into the checksum.
+    private int mChecksumLength;
+    private int mChecksumValue;
+
+    ChannelInputStream(InputStream source, int size, boolean checkCRCs) {
         mSource = source;
         mBuffer = new byte[size];
+        mCRC = checkCRCs ? new CRC32C() : null;
+    }
+
+    /**
+     * @param length amount of input to be checked
+     * @param value expected CRC value
+     */
+    void prepareChecksum(int length, int value) throws IOException {
+        CRC32C crc = mCRC;
+
+        if (crc != null) {
+            crc.reset();
+            int avail = Math.min(length, mEnd - mPos);
+            crc.update(mBuffer, mPos, avail);
+
+            length -= avail;
+            mChecksumLength = length;
+            mChecksumValue = value;
+
+            if (length <= 0 && value != (int) crc.getValue()) {
+                throw checksumMismatch();
+            }
+        }
     }
 
     byte readByte() throws IOException {
@@ -124,7 +154,7 @@ final class ChannelInputStream extends InputStream {
         byte[] buf = mBuffer;
 
         if (avail <= 0) {
-            avail = mSource.read(buf, 0, buf.length);
+            avail = doRead(buf, 0, buf.length);
             if (avail <= 0) {
                 return -1;
             }
@@ -144,9 +174,9 @@ final class ChannelInputStream extends InputStream {
 
         if (avail <= 0) {
             if (len >= buf.length) {
-                return mSource.read(b, off, len);
+                return doRead(b, off, len);
             }
-            avail = mSource.read(buf, 0, buf.length);
+            avail = doRead(buf, 0, buf.length);
             if (avail <= 0) {
                 return -1;
             }
@@ -162,6 +192,9 @@ final class ChannelInputStream extends InputStream {
 
     @Override
     public long skip(long n) throws IOException {
+        // Stop checking the checksum.
+        mChecksumLength = 0;
+
         int avail = mEnd - mPos;
 
         if (avail > 0) {
@@ -203,7 +236,7 @@ final class ChannelInputStream extends InputStream {
         }
 
         int amt;
-        while ((amt = mSource.read(buf)) > 0) {
+        while ((amt = doRead(buf, 0, buf.length)) > 0) {
             out.write(buf, 0, amt);
         }
     }
@@ -228,7 +261,7 @@ final class ChannelInputStream extends InputStream {
         }
 
         while (true) {
-            avail = mSource.read(buf, end, tail);
+            avail = doRead(buf, end, tail);
             if (avail <= 0) {
                 throw new EOFException();
             }
@@ -240,5 +273,25 @@ final class ChannelInputStream extends InputStream {
             }
             tail -= avail;
         }
+    }
+
+    private int doRead(byte[] buf, int offset, int length) throws IOException {
+        int amt = mSource.read(buf, offset, length);
+
+        if (amt > 0 && mChecksumLength > 0) {
+            int avail = Math.min(mChecksumLength, amt);
+            CRC32C crc = mCRC;
+            crc.update(buf, offset, avail);
+            if ((mChecksumLength -= avail) <= 0 && mChecksumValue != (int) crc.getValue()) {
+                throw checksumMismatch();
+            }
+        }
+
+        return amt;
+    }
+
+    private IOException checksumMismatch() {
+        Utils.closeQuietly(this);
+        return new IOException("Checksum mismatch");
     }
 }

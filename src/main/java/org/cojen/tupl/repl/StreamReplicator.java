@@ -125,7 +125,7 @@ public interface StreamReplicator extends Replicator {
                                    config.mSocketFactory,
                                    localAddress, listenAddress, config.mLocalRole,
                                    seeds, localSocket,
-                                   config.mProxyWrites);
+                                   config.mProxyWrites, config.mChecksumSockets);
         } catch (Throwable e) {
             closeQuietly(localSocket);
             closeQuietly(log);

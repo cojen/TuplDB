@@ -297,7 +297,7 @@ class GroupJoiner {
         byte[] header = ChannelManager.readHeader(s, false, mGroupToken, 0);
 
         if (header != null) {
-            var cin = new ChannelInputStream(s.getInputStream(), 1000);
+            var cin = new ChannelInputStream(s.getInputStream(), 1000, false);
             int op = cin.read();
             if (op == OP_ADDRESS) {
                 addr = GroupFile.parseSocketAddress(cin.readStr(cin.readIntLE()));
