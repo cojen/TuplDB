@@ -37,8 +37,6 @@ public class StripedPageArray extends PageArray {
 
     private final Syncer[] mSyncers;
 
-    private volatile boolean mClosed;
-
     public StripedPageArray(PageArray... arrays) {
         super(pageSize(arrays));
         mArrays = arrays;
@@ -221,39 +219,6 @@ public class StripedPageArray extends PageArray {
     }
 
     @Override
-    public long directPagePointer(long index) throws IOException {
-        PageArray[] arrays = mArrays;
-        int stripes = arrays.length;
-        return arrays[(int) (index % stripes)].directPagePointer(index / stripes);
-    }
-
-    @Override
-    public long copyPage(long srcIndex, long dstIndex) throws IOException {
-        PageArray[] arrays = mArrays;
-        int stripes = arrays.length;
-
-        PageArray src = arrays[(int) (srcIndex % stripes)];
-        srcIndex /= stripes;
-
-        PageArray dst = arrays[(int) (dstIndex % stripes)];
-        dstIndex /= stripes;
-
-        if (src == dst) {
-            return dst.copyPage(srcIndex, dstIndex);
-        } else {
-            return dst.copyPageFromPointer(src.directPagePointer(srcIndex), dstIndex);
-        }
-    }
-
-    @Override
-    public long copyPageFromPointer(long srcPointer, long dstIndex) throws IOException {
-        PageArray[] arrays = mArrays;
-        int stripes = arrays.length;
-        return arrays[(int) (dstIndex % stripes)]
-            .copyPageFromPointer(srcPointer, dstIndex / stripes);
-    }
-
-    @Override
     public synchronized void sync(boolean metadata) throws IOException {
         Syncer[] syncers = mSyncers;
         int i;
@@ -279,7 +244,6 @@ public class StripedPageArray extends PageArray {
 
     @Override
     public void close(Throwable cause) throws IOException {
-        mClosed = true;
         IOException ex = null;
         for (PageArray pa : mArrays) {
             ex = Utils.closeQuietly(ex, pa, cause);
@@ -291,13 +255,10 @@ public class StripedPageArray extends PageArray {
 
     @Override
     public StripedPageArray open() throws IOException {
-        if (!mClosed) {
-            return this;
-        }
         for (int i=0; i<mArrays.length; i++) {
             mArrays[i] = mArrays[i].open();
         }
-        return new StripedPageArray(mArrays);
+        return this;
     }
 
     private static class Syncer implements Runnable {
