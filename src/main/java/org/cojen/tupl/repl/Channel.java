@@ -22,6 +22,8 @@ import java.io.InterruptedIOException;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import java.util.function.Consumer;
+
 /**
  * Defines a collection of remote asynchronous methods. Method invocations are permitted to
  * block if the send buffer is full.
@@ -241,13 +243,16 @@ interface Channel {
     boolean groupFile(Channel from, long groupVersion) throws IOException;
 
     /**
-     * Sender-side passes null for the InputStream and receives an OutputStream to write into.
-     * Receiver-side implementation receives an InputStream to read from and returns null.
+     * Sender-side passes null for the InputStream and consumer is called to write into an
+     * OutputStream. Receiver-side implementation receives an InputStream to read from and the
+     * consumer isn't called.
      *
      * @param in pass to GroupFile.readFrom
-     * @return stream to pass to GroupFile.writeTo; is null if cannot send at the moment
+     * @param consumer receives the stream to pass to GroupFile.writeTo
+     * @return false if not sent or processed
      */
-    OutputStream groupFileReply(Channel from, InputStream in) throws IOException;
+    boolean groupFileReply(Channel from, InputStream in, Consumer<OutputStream> consumer)
+        throws IOException;
 
     /**
      * @return false if not sent or processed

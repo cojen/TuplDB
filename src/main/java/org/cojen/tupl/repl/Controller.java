@@ -3054,12 +3054,15 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     @Override
     public boolean groupFile(Channel from, long groupVersion) throws IOException {
         if (groupVersion < mGroupFile.version()) {
-            OutputStream out = from.groupFileReply(null, null);
-            if (out != null) {
-                mGroupFile.writeTo(out);
-                out.flush();
-            }
+            from.groupFileReply(null, null, out -> {
+                try {
+                    mGroupFile.writeTo(out);
+                } catch (IOException e) {
+                    rethrow(e);
+                }
+            });
         }
+
         return true;
     }
 
@@ -3067,7 +3070,13 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      * Called from a remote group member.
      */
     @Override // Channel
-    public OutputStream groupFileReply(Channel from, InputStream in) throws IOException {
+    public boolean groupFileReply(Channel from, InputStream in, Consumer<OutputStream> unused)
+        throws IOException
+    {
+        if (in == null || unused != null) {
+            throw new IllegalArgumentException();
+        }
+
         boolean refresh;
 
         acquireExclusive();
@@ -3088,7 +3097,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
         }
 
-        return null;
+        return true;
     }
 
     /**

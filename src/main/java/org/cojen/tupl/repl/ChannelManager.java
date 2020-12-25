@@ -1158,7 +1158,7 @@ final class ChannelManager {
                         commandLength -= (8 * 1);
                         break;
                     case OP_GROUP_FILE_REPLY:
-                        localServer.groupFileReply(this, in);
+                        localServer.groupFileReply(this, in, null);
                         break;
                     case OP_LEADER_CHECK:
                         localServer.leaderCheck(this);
@@ -1453,7 +1453,13 @@ final class ChannelManager {
         }
 
         @Override
-        public OutputStream groupFileReply(Channel from, InputStream in) throws IOException {
+        public boolean groupFileReply(Channel from, InputStream unused,
+                                      Consumer<OutputStream> consumer) throws IOException
+        {
+            if (unused != null || consumer == null) {
+                throw new IllegalArgumentException();
+            }
+
             acquireExclusive();
             try {
                 OutputStream out = mOut;
@@ -1462,13 +1468,23 @@ final class ChannelManager {
                     byte[] command = allocWriteBuffer(commandLength);
                     prepareCommand(command, OP_GROUP_FILE_REPLY, 0, 0);
                     if (writeCommand(out, command, 0, commandLength)) {
-                        return out;
+                        try {
+                            // Called with exclusive latch still held.
+                            consumer.accept(out);
+                            out.flush();
+                            return true;
+                        } catch (IOException e) {
+                            mOut = null;
+                            // Close and let inputLoop attempt to reconnect.
+                            closeSocket();
+                        }
                     }
                 }
             } finally {
                 releaseExclusive();
             }
-            return null;
+
+            return false;
         }
 
         @Override
