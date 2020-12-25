@@ -69,14 +69,15 @@ public class MessageReplicatorTest {
      * @return first is the leader
      */
     private MessageReplicator[] startGroup(int members) throws Exception {
-        return startGroup(members, Role.OBSERVER, true, false);
+        return startGroup(members, Role.OBSERVER, true, false, 0);
     }
 
     /**
      * @return first is the leader
+     * @param withCRCs mod value to enable CRC checksum on sockets
      */
     private MessageReplicator[] startGroup(int members, Role replicaRole, boolean waitToJoin,
-                                           boolean proxy)
+                                           boolean proxy, int withCRCs)
         throws Exception
     {
         if (members < 1) {
@@ -103,6 +104,10 @@ public class MessageReplicatorTest {
                 .groupToken(1)
                 .localSocket(sockets[i])
                 .proxyWrites(proxy);
+
+            if (withCRCs > 0) {
+                mConfigs[i].checksumSockets(i % withCRCs == 0);
+            }
 
             if (false) {
                 // Debug printing.
@@ -255,16 +260,21 @@ public class MessageReplicatorTest {
 
     @Test
     public void variableMessageSizes() throws Exception {
-        variableMessageSizes(false);
+        variableMessageSizes(false, 0);
     }
 
     @Test
     public void variableMessageSizesPartial() throws Exception {
-        variableMessageSizes(true);
+        variableMessageSizes(true, 0);
     }
 
-    private void variableMessageSizes(boolean partial) throws Exception {
-        MessageReplicator[] repls = startGroup(3);
+    @Test
+    public void variableMessageSizesWithCRCs() throws Exception {
+        variableMessageSizes(true, 2); // CRCs for even members only
+    }
+
+    private void variableMessageSizes(boolean partial, int withCRCs) throws Exception {
+        MessageReplicator[] repls = startGroup(3, Role.OBSERVER, true, false, withCRCs);
 
         int[] sizes = {
             0, 1, 10, 100, 127,
@@ -337,7 +347,7 @@ public class MessageReplicatorTest {
     private void largeGroupNoWaitToJoin(boolean proxy) throws Exception {
         final int count = 10;
 
-        MessageReplicator[] repls = startGroup(count, Role.PROXY, false, proxy);
+        MessageReplicator[] repls = startGroup(count, Role.PROXY, false, proxy, 0);
 
         Writer writer = repls[0].newWriter();
 
@@ -392,7 +402,7 @@ public class MessageReplicatorTest {
     }
 
     private void doExplicitFailover() throws Exception {
-        MessageReplicator[] repls = startGroup(3, Role.NORMAL, true, false);
+        MessageReplicator[] repls = startGroup(3, Role.NORMAL, true, false, 0);
         assertTrue(repls.length == 3);
 
         Writer writer = repls[0].newWriter();
@@ -476,7 +486,7 @@ public class MessageReplicatorTest {
     public void falseFailover() throws Exception {
         // Test that the new leader is lagging behind and loses leadership.
 
-        MessageReplicator[] repls = startGroup(2, Role.NORMAL, true, false);
+        MessageReplicator[] repls = startGroup(2, Role.NORMAL, true, false, 0);
         assertTrue(repls.length == 2);
 
         Writer writer = repls[0].newWriter();
