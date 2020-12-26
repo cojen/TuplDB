@@ -249,16 +249,29 @@ public abstract class PageArray implements CauseCloseable {
         throw new UnsupportedOperationException();
     }
 
+    /**
+     * Indicate that the contents of the given page will be modified. Permits the
+     * implementation to make a copy of the existing page contents, if it supports
+     * snapshotting.
+     *
+     * @return direct pointer to destination
+     */
     // Only expected to be called when isFullyMapped.
     public long dirtyPage(long index) throws IOException {
-        throw new UnsupportedOperationException();
+        return directPagePointer(index);
     }
 
+    /**
+     * @return direct pointer to destination
+     */
     // Only expected to be called when isFullyMapped.
     public long copyPage(long srcIndex, long dstIndex) throws IOException {
         throw new UnsupportedOperationException();
     }
 
+    /**
+     * @return direct pointer to destination
+     */
     // Only expected to be called when isFullyMapped.
     public long copyPageFromPointer(long srcPointer, long dstIndex) throws IOException {
         throw new UnsupportedOperationException();

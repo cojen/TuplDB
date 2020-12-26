@@ -176,7 +176,9 @@ long&nbsp;dstIndex)</code></th>
 <tr class="alt-color" id="i6">
 <td class="col-first"><code>long</code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#dirtyPage(long)">dirtyPage</a></span>&#8203;(long&nbsp;index)</code></th>
-<td class="col-last">&nbsp;</td>
+<td class="col-last">
+<div class="block">Indicate that the contents of the given page will be modified.</div>
+</td>
 </tr>
 <tr class="row-color" id="i7">
 <td class="col-first"><code>byte[]</code></td>
@@ -762,7 +764,12 @@ long&nbsp;bufPtr)</span>
 <h3>dirtyPage</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="member-name">dirtyPage</span>&#8203;(<span class="parameters">long&nbsp;index)</span>
                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Indicate that the contents of the given page will be modified. Permits the
+ implementation to make a copy of the existing page contents, if it supports
+ snapshotting.</div>
 <dl class="notes">
+<dt>Returns:</dt>
+<dd>direct pointer to destination</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
@@ -775,6 +782,8 @@ long&nbsp;bufPtr)</span>
 long&nbsp;dstIndex)</span>
               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <dl class="notes">
+<dt>Returns:</dt>
+<dd>direct pointer to destination</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
@@ -787,6 +796,8 @@ long&nbsp;dstIndex)</span>
 long&nbsp;dstIndex)</span>
                          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <dl class="notes">
+<dt>Returns:</dt>
+<dd>direct pointer to destination</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>

@@ -94,6 +94,11 @@ public class JoinedPageArray extends PageArray {
     }
 
     @Override
+    public boolean isFullyMapped() {
+        return mFirst.isFullyMapped() && mSecond.isFullyMapped();
+    }
+
+    @Override
     public boolean isEmpty() throws IOException {
         return mFirst.isEmpty() && mSecond.isEmpty();
     }
@@ -202,6 +207,55 @@ public class JoinedPageArray extends PageArray {
             index -= mJoinIndex;
         }
         return pa.evictPage(index, bufPtr);
+    }
+
+    @Override
+    public long directPagePointer(long index) throws IOException {
+        PageArray pa;
+        if (index < mJoinIndex) {
+            pa = mFirst;
+        } else {
+            pa = mSecond;
+            index -= mJoinIndex;
+        }
+        return pa.directPagePointer(index);
+    }
+
+    @Override
+    public long copyPage(long srcIndex, long dstIndex) throws IOException {
+        PageArray src;
+        if (srcIndex < mJoinIndex) {
+            src = mFirst;
+        } else {
+            src = mSecond;
+            srcIndex -= mJoinIndex;
+        }
+
+        PageArray dst;
+        if (dstIndex < mJoinIndex) {
+            dst = mFirst;
+        } else {
+            dst = mSecond;
+            dstIndex -= mJoinIndex;
+        }
+
+        if (src == dst) {
+            return dst.copyPage(srcIndex, dstIndex);
+        } else {
+            return dst.copyPageFromPointer(src.directPagePointer(srcIndex), dstIndex);
+        }
+    }
+
+    @Override
+    public long copyPageFromPointer(long srcPointer, long dstIndex) throws IOException {
+        PageArray pa;
+        if (dstIndex < mJoinIndex) {
+            pa = mFirst;
+        } else {
+            pa = mSecond;
+            dstIndex -= mJoinIndex;
+        }
+        return pa.copyPageFromPointer(srcPointer, dstIndex);
     }
 
     @Override

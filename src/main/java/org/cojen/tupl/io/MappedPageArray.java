@@ -250,21 +250,6 @@ public abstract class MappedPageArray extends PageArray {
         return mappingPtr() + index * mPageSize;
     }
 
-    /**
-     * Indicate that the contents of the given page will be modified. Permits the
-     * implementation to make a copy of the existing page contents, if it supports
-     * snapshotting.
-     *
-     * @return direct pointer to destination
-     */
-    @Override
-    public long dirtyPage(long index) throws IOException {
-        return directPagePointer(index);
-    }
- 
-    /**
-     * @return direct pointer to destination
-     */
     @Override
     public long copyPage(long srcIndex, long dstIndex) throws IOException {
         readCheck(srcIndex);
@@ -278,9 +263,6 @@ public abstract class MappedPageArray extends PageArray {
         return dstPtr;
     }
 
-    /**
-     * @return direct pointer to destination
-     */
     @Override
     public long copyPageFromPointer(long srcPointer, long dstIndex) throws IOException {
         writeCheck(dstIndex);

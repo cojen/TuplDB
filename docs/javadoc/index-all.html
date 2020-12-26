@@ -655,13 +655,21 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Copy native memory.</div>
 </dd>
+<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html#copyPage(long,long)">copyPage(long, long)</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html" title="class in org.cojen.tupl.io">JoinedPageArray</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html#copyPage(long,long)">copyPage(long, long)</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/io/PageArray.html#copyPage(long,long)">copyPage(long, long)</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html#copyPage(long,long)">copyPage(long, long)</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html#copyPageFromPointer(long,long)">copyPageFromPointer(long, long)</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html" title="class in org.cojen.tupl.io">JoinedPageArray</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html#copyPageFromPointer(long,long)">copyPageFromPointer(long, long)</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/io/PageArray.html#copyPageFromPointer(long,long)">copyPageFromPointer(long, long)</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html#copyPageFromPointer(long,long)">copyPageFromPointer(long, long)</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/CorruptDatabaseException.html" title="class in org.cojen.tupl"><span class="type-name-link">CorruptDatabaseException</span></a> - Exception in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
@@ -941,9 +949,13 @@ loadScripts(document, 'script');</script>
 <div class="block">Set true to allocate all pages off the Java heap, offering increased performance and
  reduced garbage collection activity.</div>
 </dd>
+<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html#directPagePointer(long)">directPagePointer(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html" title="class in org.cojen.tupl.io">JoinedPageArray</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html#directPagePointer(long)">directPagePointer(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/io/PageArray.html#directPagePointer(long)">directPagePointer(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html#directPagePointer(long)">directPagePointer(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/io/FilePageArray.html#directPageSize()">directPageSize()</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io">FilePageArray</a></dt>
 <dd>&nbsp;</dd>
@@ -960,12 +972,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Durably flushes the given directory, if required.</div>
 </dd>
-<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html#dirtyPage(long)">dirtyPage(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></dt>
+<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/io/PageArray.html#dirtyPage(long)">dirtyPage(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
 <dd>
 <div class="block">Indicate that the contents of the given page will be modified.</div>
 </dd>
-<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/io/PageArray.html#dirtyPage(long)">dirtyPage(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
-<dd>&nbsp;</dd>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/Database.Stats.html#dirtyPages">dirtyPages</a></span> - Variable in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/Database.Stats.html#dirtyPages()">dirtyPages()</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></dt>
@@ -1648,9 +1658,13 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Non-transactionally determines if the view has nothing in it.</div>
 </dd>
+<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html#isFullyMapped()">isFullyMapped()</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/JoinedPageArray.html" title="class in org.cojen.tupl.io">JoinedPageArray</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html#isFullyMapped()">isFullyMapped()</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/MappedPageArray.html" title="class in org.cojen.tupl.io">MappedPageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/io/PageArray.html#isFullyMapped()">isFullyMapped()</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/PageArray.html" title="class in org.cojen.tupl.io">PageArray</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html#isFullyMapped()">isFullyMapped()</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/DeadlockException.html#isGuilty()">isGuilty()</a></span> - Method in exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></dt>
 <dd>&nbsp;</dd>

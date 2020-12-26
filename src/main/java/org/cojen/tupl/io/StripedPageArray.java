@@ -81,6 +81,16 @@ public class StripedPageArray extends PageArray {
     }
 
     @Override
+    public boolean isFullyMapped() {
+        for (PageArray pa : mArrays) {
+            if (!pa.isFullyMapped()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
     public boolean isReadOnly() {
         return mReadOnly;
     }
@@ -216,6 +226,39 @@ public class StripedPageArray extends PageArray {
         PageArray[] arrays = mArrays;
         int stripes = arrays.length;
         return arrays[(int) (index % stripes)].evictPage(index / stripes, bufPtr);
+    }
+
+    @Override
+    public long directPagePointer(long index) throws IOException {
+        PageArray[] arrays = mArrays;
+        int stripes = arrays.length;
+        return arrays[(int) (index % stripes)].directPagePointer(index / stripes);
+    }
+
+    @Override
+    public long copyPage(long srcIndex, long dstIndex) throws IOException {
+        PageArray[] arrays = mArrays;
+        int stripes = arrays.length;
+
+        PageArray src = arrays[(int) (srcIndex % stripes)];
+        srcIndex /= stripes;
+
+        PageArray dst = arrays[(int) (dstIndex % stripes)];
+        dstIndex /= stripes;
+
+        if (src == dst) {
+            return dst.copyPage(srcIndex, dstIndex);
+        } else {
+            return dst.copyPageFromPointer(src.directPagePointer(srcIndex), dstIndex);
+        }
+    }
+
+    @Override
+    public long copyPageFromPointer(long srcPointer, long dstIndex) throws IOException {
+        PageArray[] arrays = mArrays;
+        int stripes = arrays.length;
+        return arrays[(int) (dstIndex % stripes)]
+            .copyPageFromPointer(srcPointer, dstIndex / stripes);
     }
 
     @Override
