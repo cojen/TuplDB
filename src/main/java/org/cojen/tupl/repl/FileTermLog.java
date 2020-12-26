@@ -2091,7 +2091,7 @@ final class FileTermLog extends Latch implements TermLog {
                     return null;
                 }
 
-                EnumSet<OpenOption> options = EnumSet.of(OpenOption.CLOSE_DONTNEED);
+                EnumSet<OpenOption> options = EnumSet.noneOf(OpenOption.class);
                 int handles = 1;
                 if (mMaxLength > 0) {
                     options.add(OpenOption.CREATE);
@@ -2127,7 +2127,7 @@ final class FileTermLog extends Latch implements TermLog {
                     throw new InvalidReadException("Log compacted");
                 }
 
-                EnumSet<OpenOption> options = EnumSet.of(OpenOption.CLOSE_DONTNEED);
+                EnumSet<OpenOption> options = EnumSet.noneOf(OpenOption.class);
                 int handles = 1;
                 if (mMaxLength > 0) {
                     handles = OPEN_HANDLE_COUNT;
