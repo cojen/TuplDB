@@ -67,14 +67,14 @@ interface TermLog extends LKey<TermLog>, Closeable {
     /**
      * @return true if the potential commit position is higher than the start position
      */
-    default boolean hasCommit() {
-        return hasCommit(startPosition());
+    default boolean hasPotentialCommit() {
+        return hasPotentialCommit(startPosition());
     }
 
     /**
      * @return true if the potential commit position is higher than the given position
      */
-    default boolean hasCommit(long position) {
+    default boolean hasPotentialCommit(long position) {
         return potentialCommitPosition() > position;
     }
 
@@ -118,6 +118,12 @@ interface TermLog extends LKey<TermLog>, Closeable {
      * invokes it.
      */
     void uponCommit(CommitCallback task);
+
+    /**
+     * Attempt to rollback the commit position to be no lower than the appliable commit
+     * position or the start position.
+     */
+    boolean tryRollbackCommit(long commitPosition);
 
     /**
      * Set the end position for this term instance, truncating all higher data. The highest

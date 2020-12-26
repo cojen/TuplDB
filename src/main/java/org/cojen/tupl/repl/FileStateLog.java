@@ -482,7 +482,7 @@ final class FileStateLog extends Latch implements StateLog {
     }
 
     @Override
-    public long commitPosition() {
+    public long potentialCommitPosition() {
         acquireShared();
         try {
             return mTermLogs.isEmpty() ? 0 : ((TermLog) mTermLogs.last()).potentialCommitPosition();
@@ -709,7 +709,7 @@ final class FileStateLog extends Latch implements StateLog {
                         break;
                     }
                     // Skip empty conflicting terms.
-                    if (!termLog.hasCommit()) {
+                    if (!termLog.hasPotentialCommit()) {
                         key = termLog; // update key for truncation
                         termLog = (TermLog) mTermLogs.lower(termLog); // findLt
                     } else {
@@ -807,14 +807,16 @@ final class FileStateLog extends Latch implements StateLog {
     private boolean checkCommitConflict(TermLog termLog, long position)
         throws CommitConflictException
     {
-        if (termLog.hasCommit(position)) {
+        if (termLog.hasPotentialCommit(position)) {
             if (mClosed) {
                 return true;
             }
-            var termInfo = new LogInfo();
-            termLog.captureHighest(termInfo);
-            long durablePosition = mMetadataDurablePosition;
-            throw new CommitConflictException(position, termInfo, durablePosition);
+            if (!termLog.tryRollbackCommit(position)) {
+                var termInfo = new LogInfo();
+                termLog.captureHighest(termInfo);
+                long durablePosition = mMetadataDurablePosition;
+                throw new CommitConflictException(position, termInfo, durablePosition);
+            }
         }
         return false;
     }

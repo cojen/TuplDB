@@ -755,7 +755,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @Override
     public long commitPosition() {
-        return mStateLog.commitPosition();
+        return mStateLog.potentialCommitPosition();
     }
 
     @Override
@@ -2053,6 +2053,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 return;
             }
         }
+
+        // FIXME: Potential leader could pull data from proxies (not observers) to prevent the
+        // conflict in the first place. Note that this doesn't work if proxy is behind. It
+        // might know the term, but it might not have the data.
 
         long now = System.currentTimeMillis();
 

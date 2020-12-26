@@ -38,7 +38,7 @@ interface StateLog extends Closeable {
 
     /**
      * Copies into all relevant fields of the given info object, for the highest term over a
-     * contiguous range (by highest position).
+     * contiguous range (by highest position). The commit position provided is appliable.
      *
      * @return the highest term, or null if none
      */
@@ -55,7 +55,7 @@ interface StateLog extends Closeable {
      * Returns the highest observed commit position overall. This commit position might be
      * higher than what can be currently applied, if gaps exist in the log.
      */
-    long commitPosition();
+    long potentialCommitPosition();
 
     /**
      * Increment the current term by the amount given.

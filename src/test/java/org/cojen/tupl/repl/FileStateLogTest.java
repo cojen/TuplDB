@@ -90,16 +90,29 @@ public class FileStateLogTest {
         assertFalse(mLog.defineTerm(0, 11, 2000));
         assertTrue(mLog.defineTerm(10, 11, 2000));
 
+        // Write contiguous data to prevent rollback.
+        {
+            LogWriter writer = mLog.openWriter(0, 10, 1000);
+            writer.write(new byte[1000]);
+            writer.release();
+
+            writer = mLog.openWriter(10, 11, 2000);
+            writer.write(new byte[1]);
+            writer.release();
+        }
+
         // Allow follower to define a higher term.
         TermLog term = mLog.defineTermLog(11, 15, 3000);
         assertTrue(term != null);
         assertTrue(term == mLog.defineTermLog(11, 15, 3000));
 
         // Validate the term.
-        LogWriter writer = mLog.openWriter(11, 15, 3000);
-        writer.write(new byte[1]);
-        writer.release();
-        mLog.commit(writer.position());
+        {
+            LogWriter writer = mLog.openWriter(11, 15, 3000);
+            writer.write(new byte[1]);
+            writer.release();
+            mLog.commit(writer.position());
+        }
 
         // Previous term conflict.
         assertFalse(mLog.defineTerm(10, 16, 4000));

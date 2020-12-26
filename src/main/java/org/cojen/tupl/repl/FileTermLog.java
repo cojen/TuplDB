@@ -660,6 +660,20 @@ final class FileTermLog extends Latch implements TermLog {
     }
 
     @Override
+    public boolean tryRollbackCommit(long position) {
+        acquireExclusive();
+        try {
+            if (position < mLogStartPosition || position < doAppliableCommitPosition()) {
+                return false;
+            }
+            mLogCommitPosition = position;
+            return true;
+        } finally {
+            releaseExclusive();
+        }
+    }
+
+    @Override
     public void finishTerm(long endPosition) {
         LongConsumer[] commitListeners = null;
         List<CommitCallback> removedTasks;
