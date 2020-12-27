@@ -53,8 +53,9 @@ final class IdHeap {
             // contains many nodes which only have a single element. This can cause additional
             // deletions during a drain operation and overflow the heap. This is usually caused
             // by aggressive forced checkpoints, typical of a database compaction operation.
-            // Grow the heap capacity incrementally.
-            mIds = ids = Arrays.copyOf(ids, ids.length + 1);
+            // Heap growth can also be caused by compaction, if all the pages for the reserve
+            // list are in the the compaction zone itself.
+            mIds = ids = Arrays.copyOf(ids, (int) (ids.length * 1.5));
         }
         while (pos > 0) {
             int parentPos = (pos - 1) >>> 1;
