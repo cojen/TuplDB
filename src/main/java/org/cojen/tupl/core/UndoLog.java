@@ -1334,7 +1334,13 @@ final class UndoLog implements DatabaseAccess {
         op = p_byteGet(page, nodeTopPos++);
 
         if (op < PAYLOAD_OP) {
-            boolean result = popper.accept(op, EMPTY_BYTES);
+            boolean result;
+            try {
+                result = popper.accept(op, EMPTY_BYTES);
+            } catch (Throwable e) {
+                node.releaseExclusive();
+                throw e;
+            }
             mNodeTopPos = nodeTopPos;
             mLength -= 1;
             if (nodeTopPos >= pageSize(page)) {
@@ -1465,7 +1471,16 @@ final class UndoLog implements DatabaseAccess {
             // there's a guarantee that the master undo log will not reference them anymore.
             // Of course it's fine to recycle pages from master undo log itself, which is the
             // only one with a transaction id of zero.
-            mDatabase.deleteNode(parent, mTxnId == 0);
+            try {
+                mDatabase.deleteNode(parent, mTxnId == 0);
+            } catch (Throwable e) {
+                if (lowerNode != null) {
+                    mDatabase.nodeMapPut(lowerNode);
+                    lowerNode.releaseExclusive();
+                    lowerNode.makeEvictable();
+                }
+                throw e;
+            }
         } else {
             parent.releaseExclusive();
         }
@@ -2178,8 +2193,8 @@ final class UndoLog implements DatabaseAccess {
             }
             return node;
         } catch (Throwable e) {
-            node.makeEvictableNow();
             node.releaseExclusive();
+            node.makeEvictableNow();
             throw e;
         }
     }

@@ -945,12 +945,12 @@ class BTree extends Tree implements View, Index {
             newRoot.acquireShared();
             try {
                 mDatabase.treeClosed(this);
-                newRoot.makeEvictableNow();
                 if (newRoot.id() > 0) {
                     mDatabase.nodeMapPut(newRoot);
                 }
             } finally {
                 newRoot.releaseShared();
+                newRoot.makeEvictableNow();
             }
 
             return null;
