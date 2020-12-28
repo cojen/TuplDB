@@ -948,6 +948,9 @@ public class Latch {
          */
         boolean park(Latch latch) {
             Parker.park(latch);
+            // Never report interrupted status, so clear it. Only the timed nodes handle thread
+            // interruption.
+            Thread.interrupted();
             return false;
         }
 
