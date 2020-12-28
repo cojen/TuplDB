@@ -820,22 +820,13 @@ final class UndoLog implements DatabaseAccess {
      * Truncate all log entries. Caller does not need to hold db commit lock.
      */
     final void truncate() throws IOException {
+        if (mLength <= 0) {
+            return;
+        }
+
         final CommitLock commitLock = mDatabase.commitLock();
         CommitLock.Shared shared = commitLock.acquireShared();
         try {
-            doTruncate(commitLock, shared);
-        } finally {
-            shared.release();
-        }
-    }
-
-    /**
-     * Truncate all log entries. Caller must hold db commit lock.
-     */
-    final void doTruncate(CommitLock commitLock, final CommitLock.Shared shared)
-        throws IOException
-    {
-        if (mLength > 0) {
             Node node = mNode;
             if (node == null) {
                 mBufferPos = mBuffer.length;
@@ -873,6 +864,8 @@ final class UndoLog implements DatabaseAccess {
             mLength = 0;
             mActiveIndexId = 0;
             mActiveKey = null;
+        } finally {
+            shared.release();
         }
     }
 

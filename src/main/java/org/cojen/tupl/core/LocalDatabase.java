@@ -6146,13 +6146,12 @@ public final class LocalDatabase extends CoreDatabase {
 
         if (masterUndoLog != null) {
             // Delete the master undo log, which won't take effect until the next checkpoint.
-            CommitLock.Shared shared = mCommitLock.acquireShared();
             try {
+                masterUndoLog.truncate();
+            } catch (Throwable e) {
                 if (!isClosed()) {
-                    masterUndoLog.doTruncate(mCommitLock, shared);
+                    throw e;
                 }
-            } finally {
-                shared.release();
             }
         }
 
