@@ -1116,9 +1116,13 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     /**
      * Prevents new operations from starting and waits for in-flight operations to complete.
      */
-    void suspend() {
+    void suspend() throws InterruptedIOException {
         // Prevent new operations from being decoded.
-        mDecodeLatch.acquireExclusive();
+        try {
+            mDecodeLatch.acquireExclusiveInterruptibly();
+        } catch (InterruptedException e) {
+            throw new InterruptedIOException();
+        }
 
         // Wait for work to complete.
         if (mWorkerGroup != null) {
