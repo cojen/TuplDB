@@ -20,6 +20,9 @@ package org.cojen.tupl.core;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import java.lang.ref.SoftReference;
 
 import java.util.Arrays;
@@ -65,6 +68,18 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     // to unsigned 11400714819323198485.
     private static final long HASH_SPREAD = -7046029254386353131L;
 
+    private static final VarHandle cDecodeExceptionHandle;
+
+    static {
+        try {
+            cDecodeExceptionHandle =
+                MethodHandles.lookup().findVarHandle
+                (ReplEngine.class, "mDecodeException", Throwable.class);
+        } catch (Throwable e) {
+            throw rethrow(e);
+        }
+    }
+
     final StreamReplicator mRepl;
     final LocalDatabase mDatabase;
 
@@ -90,6 +105,8 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     private final CursorTable mCursors;
 
     private ReplDecoder mDecoder;
+
+    private volatile Throwable mDecodeException;
 
     /**
      * @param txns recovered transactions; can be null; cleared as a side-effect; keyed by
@@ -1115,8 +1132,11 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
 
     /**
      * Prevents new operations from starting and waits for in-flight operations to complete.
+     *
+     * @throws InterruptedIOException if wait was interrupted
+     * @throws IOException if a failure had occurred decoding an operation
      */
-    void suspend() throws InterruptedIOException {
+    void suspend() throws IOException {
         // Prevent new operations from being decoded.
         try {
             mDecodeLatch.acquireExclusiveInterruptibly();
@@ -1128,6 +1148,12 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         if (mWorkerGroup != null) {
             // To call this in a thread-safe fashion, mDecodeLatch must be held.
             mWorkerGroup.join(false);
+        }
+
+        Throwable ex = mDecodeException;
+
+        if (ex != null) {
+            throw new IOException("Cannot advance decode position", ex);
         }
     }
 
@@ -1566,6 +1592,10 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     }
 
     void fail(Throwable e, boolean isUncaught) {
+        // Capture the first failure only. Setting it ensures that the decode position cannot
+        // advance when the next checkpoint runs.
+        cDecodeExceptionHandle.compareAndSet(this, null, e);
+
         if (!mDatabase.isClosed()) {
             EventListener listener = mDatabase.eventListener();
             if (listener != null) {
@@ -1578,6 +1608,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
                 uncaught(e);
             }
         }
+
         // Panic.
         closeQuietly(mDatabase, e);
     }
