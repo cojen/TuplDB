@@ -254,7 +254,13 @@ final class ReplController extends ReplWriter {
     }
 
     private void syncConfirm(long position, long nanosTimeout) throws IOException {
-        if (!mRepl.syncCommit(position, nanosTimeout)) {
+        if (nanosTimeout < 0) {
+            while (!mRepl.syncCommit(position, 1_000_000_000L)) {
+                if (mEngine.mDatabase.isClosed()) {
+                    throw new ConfirmationFailureException("Database is closed");
+                }
+            }
+        } else if (!mRepl.syncCommit(position, nanosTimeout)) {
             throw new ConfirmationTimeoutException(nanosTimeout);
         }
     }
