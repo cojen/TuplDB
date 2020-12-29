@@ -1144,16 +1144,21 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
             throw new InterruptedIOException();
         }
 
-        // Wait for work to complete.
-        if (mWorkerGroup != null) {
-            // To call this in a thread-safe fashion, mDecodeLatch must be held.
-            mWorkerGroup.join(false);
-        }
+        try {
+            // Wait for work to complete.
+            if (mWorkerGroup != null) {
+                // To call this in a thread-safe fashion, mDecodeLatch must be held.
+                mWorkerGroup.join(false);
+            }
 
-        Throwable ex = mDecodeException;
+            Throwable ex = mDecodeException;
 
-        if (ex != null) {
-            throw new IOException("Cannot advance decode position", ex);
+            if (ex != null) {
+                throw new IOException("Cannot advance decode position", ex);
+            }
+        } catch (Throwable e) {
+            mDecodeLatch.releaseExclusive();
+            throw e;
         }
     }
 
