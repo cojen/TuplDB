@@ -195,14 +195,7 @@ public class Worker {
             if (tryEnqueue(task)) {
                 return;
             }
-            mWaiter = Thread.currentThread();
-            if (cStateHandle.compareAndSet(this, THREAD_RUNNING, THREAD_BLOCKED)) {
-                // Loop in case of spurious unpark.
-                do {
-                    LockSupport.park(this);
-                } while (mThreadState == THREAD_BLOCKED);
-            }
-            mWaiter = null;
+            park();
         }
     }
 
@@ -226,19 +219,27 @@ public class Worker {
             if (mSize <= 0) {
                 break;
             }
-            mWaiter = Thread.currentThread();
-            if (cStateHandle.compareAndSet(this, THREAD_RUNNING, THREAD_BLOCKED)) {
-                // Loop in case of spurious unpark.
-                do {
-                    LockSupport.park(this);
-                } while (mThreadState == THREAD_BLOCKED);
-            }
-            mWaiter = null;
+            park();
         }
 
         if (interrupt) {
             interrupt();
         }
+    }
+
+    private void park() {
+        Thread t = Thread.currentThread();
+        mWaiter = t;
+        if (cStateHandle.compareAndSet(this, THREAD_RUNNING, THREAD_BLOCKED)) {
+            // Loop in case of spurious unpark.
+            do {
+                LockSupport.park(this);
+                if (t.isInterrupted()) {
+                    Thread.interrupted(); // clear the flag
+                }
+            } while (mThreadState == THREAD_BLOCKED);
+        }
+        mWaiter = null;
     }
 
     /**
