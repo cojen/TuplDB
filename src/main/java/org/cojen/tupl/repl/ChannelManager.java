@@ -1307,9 +1307,15 @@ final class ChannelManager {
                                       long prevTerm, long term, long position,
                                       byte[] data, int off, int len)
         {
-            if (len > ((1 << 24) - (8 * 3))) {
-                // TODO: break it up into several commands
-                throw new IllegalArgumentException("Too large");
+            while (len >= ((1 << 24) - (8 * 4))) {
+                // Break it up into several commands.
+                int max = (1 << 24) - ((8 * 4) + 1);
+                if (!queryDataReply(from, currentTerm, prevTerm, term, position, data, off, max)) {
+                    return false;
+                }
+                position += max;
+                off += max;
+                len -= max;
             }
 
             acquireExclusive();
@@ -1361,9 +1367,29 @@ final class ChannelManager {
                 fullLen += prefix.length;
             }
 
-            if (fullLen > ((1 << 24) - (8 * 5))) {
-                // TODO: break it up into several commands
-                throw new IllegalArgumentException("Too large");
+            while (fullLen >= ((1 << 24) - (8 * 5))) {
+                // Break it up into several commands.
+                if (prefix != null) {
+                    if (!writeData(op, prevTerm, term, position, highestPosition, commitPosition,
+                                   null, prefix, 0, prefix.length))
+                    {
+                        return false;
+                    }
+                    position += prefix.length;
+                    prefix = null;
+                    fullLen = len;
+                } else {
+                    int max = (1 << 24) - ((8 * 5) + 1);
+                    if (!writeData(op, prevTerm, term, position, highestPosition, commitPosition,
+                                   null, data, off, max))
+                    {
+                        return false;
+                    }
+                    position += max;
+                    off += max;
+                    len -= max;
+                    fullLen = len;
+                }
             }
 
             acquireExclusive();
@@ -1682,7 +1708,7 @@ final class ChannelManager {
          * Caller must hold exclusive latch.
          *
          * @param command must have at least 8 bytes, used for the header
-         * @param length max allowed is 16,777,216 bytes
+         * @param length max allowed is 16,777,215 bytes
          */
         private void prepareCommand(byte[] command, int op, int offset, int length) {
             encodeIntLE(command, offset, (length << 8) | (byte) op);

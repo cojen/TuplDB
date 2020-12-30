@@ -23,8 +23,6 @@ package org.cojen.tupl.repl;
  * @author Brian S O'Neill
  */
 final class LCache<E extends LCache.Entry<E, C>, C> {
-    // TODO: stripe for concurrency
-
     // Hash spreader. Based on rounded value of 2 ** 63 * (sqrt(5) - 1) equivalent 
     // to unsigned 11400714819323198485.
     private static final long HASH_SPREAD = -7046029254386353131L;

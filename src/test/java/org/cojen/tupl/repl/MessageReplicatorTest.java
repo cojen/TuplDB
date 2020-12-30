@@ -24,6 +24,10 @@ import java.net.ServerSocket;
 import java.util.Arrays;
 import java.util.Random;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -535,5 +539,52 @@ public class MessageReplicatorTest {
         writer = repls[0].newWriter();
         assertNotNull(writer);
         assertTrue(writer.writeMessage("flipped".getBytes()) > 0);
+    }
+
+    @Test
+    public void largeMessages() throws Exception {
+        // Test that large writeData messages are broken up into smaller commands.
+
+        MessageReplicator[] repls = startGroup(2);
+
+        MessageReplicator repl = repls[0];
+        Writer writer = repl.newWriter();
+
+        Reader replica = repls[1].newReader(0, false);
+
+        final long seed = 9823745;
+        var rnd = new Random(seed);
+
+        int[] sizes = {1_000_000, 16_777_170, 16_777_171, 16_777_176, 100_000_000};
+
+        for (int size : sizes) {
+            var message = new byte[size];
+            rnd.nextBytes(message);
+            assertTrue(writer.writeMessage(message) > 0);
+            long highPosition = writer.position();
+            assertEquals(highPosition, writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS));
+            TestUtils.fastAssertArrayEquals(message, replica.readMessage());
+        }
+
+        // Again, with some network failures thrown in. Although this forces that
+        // ChannelManager.queryDataReply be called, the length of the request never currently
+        // exceeds the maximum message size. To test the code that breaks up the command,
+        // manually reduce the limit and max length.
+
+        ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+
+        for (int size : sizes) {
+            var message = new byte[size];
+            rnd.nextBytes(message);
+
+            var repl1 = (MessageStreamReplicator) repls[1];
+            repl1.partitioned(true);
+            scheduler.schedule(() -> repl1.partitioned(false), 1, TimeUnit.SECONDS);
+
+            assertTrue(writer.writeMessage(message) > 0);
+            long highPosition = writer.position();
+            assertEquals(highPosition, writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS));
+            TestUtils.fastAssertArrayEquals(message, replica.readMessage());
+        }
     }
 }
