@@ -435,20 +435,22 @@ public final class Launcher implements Cloneable {
     }
 
     private CoreDatabase doOpen(boolean destroy, InputStream restore) throws IOException {
-        if (!destroy && restore == null && mRepl != null) shouldRestore: {
-            // If no data files exist, attempt to restore from a peer.
+        if (restore == null && mRepl != null) shouldRestore: {
+            if (!destroy) {
+                // If no data files exist, attempt to restore from a peer.
 
-            File[] dataFiles = dataFiles();
-            if (dataFiles == null) {
-                if (mDataPageArray == null || !mDataPageArray.isEmpty()) {
-                    // No data files are expected.
-                    break shouldRestore;
-                }
-            } else {
-                for (File file : dataFiles) {
-                    if (file.exists()) {
-                        // Don't restore if any data files are found to exist.
+                File[] dataFiles = dataFiles();
+                if (dataFiles == null) {
+                    if (mDataPageArray == null || !mDataPageArray.isEmpty()) {
+                        // No data files are expected.
                         break shouldRestore;
+                    }
+                } else {
+                    for (File file : dataFiles) {
+                        if (file.exists()) {
+                            // Don't restore if any data files are found to exist.
+                            break shouldRestore;
+                        }
                     }
                 }
             }

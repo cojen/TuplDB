@@ -329,10 +329,13 @@ public final class DirectPageOps {
         return page;
     }
 
-    static long p_transferTo(byte[] array, final long page) {
-        int length = array.length;
-        p_copyFromArray(array, 0, page, 0, length);
+    static long p_transferArrayToPage(byte[] array, long page) {
+        p_copyFromArray(array, 0, page, 0, array.length);
         return page;
+    }
+
+    static void p_transferPageToArray(long page, byte[] array) {
+        p_copyToArray(page, 0, array, 0, array.length);
     }
 
     static byte p_byteGet(final long page, int index) {

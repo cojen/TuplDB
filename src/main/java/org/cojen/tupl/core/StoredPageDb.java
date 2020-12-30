@@ -772,6 +772,9 @@ final class StoredPageDb extends PageDb {
     }
 
     /**
+     * Restore into the files without checking if they're empty. Caller must delete or truncate
+     * them first.
+     *
      * @param checksumFactory optional
      * @param crypto optional
      * @param in snapshot source; does not require extra buffering; auto-closed
@@ -814,11 +817,6 @@ final class StoredPageDb extends PageDb {
 
             PageArray pa = openPageArray(pageSize, files, options);
 
-            if (!pa.isEmpty()) {
-                closeQuietly(pa);
-                throw new DatabaseException("Cannot restore into a non-empty file");
-            }
-
             if (pageSize != buffer.length) {
                 if (crypto != null) {
                     closeQuietly(pa);
@@ -842,6 +840,8 @@ final class StoredPageDb extends PageDb {
     }
 
     /**
+     * Restore into the PageArray without checking if it's empty. Caller must truncate it first.
+     *
      * @param checksumFactory optional
      * @param crypto optional
      * @param in snapshot source; does not require extra buffering; auto-closed
@@ -851,11 +851,6 @@ final class StoredPageDb extends PageDb {
         throws IOException
     {
         try (in) {
-            if (!pa.isEmpty()) {
-                closeQuietly(pa);
-                throw new DatabaseException("Cannot restore into a non-empty file");
-            }
-
             var buffer = new byte[pa.pageSize()];
             readFully(in, buffer, 0, buffer.length);
 
@@ -908,13 +903,13 @@ final class StoredPageDb extends PageDb {
 
         try {
             // Write header and ensure that the incomplete restore state is persisted.
-            writeLogicalHeader(logicalArray, buffer);
+            writeLogicalHeader(logicalArray, buffer, bufferPage);
             logicalArray.sync(false);
 
             // Read header 1 to determine the correct page count, and then preallocate.
             {
                 readFully(in, buffer, 0, buffer.length);
-                rawArray.writePage(1, p_transferTo(buffer, bufferPage));
+                rawArray.writePage(1, p_transferArrayToPage(buffer, bufferPage));
 
                 if (crypto != null) {
                     try {
@@ -940,29 +935,30 @@ final class StoredPageDb extends PageDb {
                     break;
                 }
                 readFully(in, buffer, amt, buffer.length - amt);
-                rawArray.writePage(index, p_transferTo(buffer, bufferPage));
+                rawArray.writePage(index, p_transferArrayToPage(buffer, bufferPage));
                 index++;
             }
+
+            // Store proper magic number, indicating that the restore is complete. All data
+            // pages must be durable before doing this.
+
+            rawArray.sync(false);
+            rawArray.readPage(0, bufferPage);
+            p_transferPageToArray(bufferPage, buffer);
+
+            if (crypto != null) {
+                try {
+                    crypto.decryptPage(0, logicalArray.pageSize(), buffer, 0);
+                } catch (GeneralSecurityException e) {
+                    throw new DatabaseException(e);
+                }
+            }
+
+            encodeLongLE(buffer, I_MAGIC_NUMBER, MAGIC_NUMBER);
+            writeLogicalHeader(logicalArray, buffer, bufferPage);
         } finally {
             p_delete(bufferPage);
         }
-
-        // Store proper magic number, indicating that the restore is complete. All data pages
-        // must be durable before doing this.
-
-        rawArray.sync(false);
-        rawArray.readPage(0, buffer);
-
-        if (crypto != null) {
-            try {
-                crypto.decryptPage(0, logicalArray.pageSize(), buffer, 0);
-            } catch (GeneralSecurityException e) {
-                throw new DatabaseException(e);
-            }
-        }
-
-        encodeLongLE(buffer, I_MAGIC_NUMBER, MAGIC_NUMBER);
-        writeLogicalHeader(logicalArray, buffer);
 
         // Ensure newly restored snapshot is durable and also ensure that PageArray (if a
         // MappedPageArray) no longer considers itself to be empty.
@@ -975,12 +971,14 @@ final class StoredPageDb extends PageDb {
         }
     }
 
-    private static void writeLogicalHeader(PageArray pa, byte[] buffer) throws IOException {
+    private static void writeLogicalHeader(PageArray pa, byte[] buffer, /*P*/ byte[] bufferPage)
+        throws IOException
+    {
         if (buffer.length != pa.pageSize()) {
             // Assume that the logical page size is smaller.
             buffer = Arrays.copyOfRange(buffer, 0, pa.pageSize());
         }
-        pa.writePage(0, buffer);
+        pa.writePage(0, p_transferArrayToPage(buffer, bufferPage));
     }
 
     private IOException closeOnFailure(Throwable e) throws IOException {

@@ -84,9 +84,9 @@ public interface Database extends CauseCloseable, Flushable {
     }
 
     /**
-     * Delete the contents of an existing database, and replace it with an
-     * empty one. When using a raw block device for the data file, this method
-     * must be used to format it.
+     * Delete the contents of an existing database, and replace it with an empty one. When
+     * using a raw block device for the data file, this method must be used to format it. When
+     * database is replicated, calling destroy only affects the local replica.
      */
     public static Database destroy(DatabaseConfig config) throws IOException {
         return config.mLauncher.open(true, null);

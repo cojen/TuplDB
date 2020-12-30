@@ -187,8 +187,16 @@ final class PageOps {
      *
      * @return original array or page with copied data
      */
-    static byte[] p_transferTo(byte[] array, byte[] page) {
+    static byte[] p_transferArrayToPage(byte[] array, byte[] page) {
         return array;
+    }
+
+    /**
+     * Copies from a page to an array, but only if the page type is not an array.
+     *
+     * @return original array or page with copied data
+     */
+    static void p_transferPageToArray(byte[] page, byte[] array) {
     }
 
     static byte p_byteGet(byte[] page, int index) {

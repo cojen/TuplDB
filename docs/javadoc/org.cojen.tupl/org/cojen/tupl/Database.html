@@ -270,8 +270,7 @@ double&nbsp;target)</code></th>
 <td class="col-first"><code>static <a href="Database.html" title="interface in org.cojen.tupl">Database</a></code></td>
 <th class="col-second" scope="row"><code><span class="member-name-link"><a href="#destroy(org.cojen.tupl.DatabaseConfig)">destroy</a></span>&#8203;(<a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config)</code></th>
 <td class="col-last">
-<div class="block">Delete the contents of an existing database, and replace it with an
- empty one.</div>
+<div class="block">Delete the contents of an existing database, and replace it with an empty one.</div>
 </td>
 </tr>
 <tr class="alt-color" id="i14">
@@ -520,9 +519,9 @@ byte[]&nbsp;newName)</code></th>
 <h3>destroy</h3>
 <div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type"><a href="Database.html" title="interface in org.cojen.tupl">Database</a></span>&nbsp;<span class="member-name">destroy</span>&#8203;(<span class="parameters"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config)</span>
                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Delete the contents of an existing database, and replace it with an
- empty one. When using a raw block device for the data file, this method
- must be used to format it.</div>
+<div class="block">Delete the contents of an existing database, and replace it with an empty one. When
+ using a raw block device for the data file, this method must be used to format it. When
+ database is replicated, calling destroy only affects the local replica.</div>
 <dl class="notes">
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
