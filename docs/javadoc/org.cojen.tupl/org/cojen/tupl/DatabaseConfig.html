@@ -700,10 +700,12 @@ long&nbsp;cacheSize,
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></span>&nbsp;<span class="member-name">maxReplicaThreads</span>&#8203;(<span class="parameters">int&nbsp;num)</span></div>
 <div class="block">If replication is enabled, specify the maximum number of threads to process incoming
  changes. Default is the number of available processors. If a negative number is
- provided, the actual number applied is <code>(-num * availableProcessors)</code>.
+ provided, the actual number applied is <code>(-num * availableProcessors)</code>. When the
+ local member is the leader, these threads are used for background processing of
+ transactions which wren't committed with <code>SYNC</code> durability.
 
  <p>If replication isn't enabled, this option controls the number of threads used to
- recover transactions from the redo log.</div>
+ recover transactions from the redo log during startup.</div>
 </section>
 </li>
 <li>
