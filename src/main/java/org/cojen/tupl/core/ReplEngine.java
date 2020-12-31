@@ -950,15 +950,9 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         throws LockFailureException
     {
         TxnEntry te = getTxnEntry(txnId);
-        LocalTransaction txn = te.mTxn;
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
-        Lock lock = txn.doLockSharedNoPush(indexId, key);
-
-        // TODO: No need to run special task if worker isn't assigned yet
-        if (lock != null) {
-            runTask(te, new LockPushTask(txn, lock));
-        }
+        runLockPushTask(te, te.mTxn.doLockSharedNoPush(indexId, key));
 
         return true;
     }
@@ -968,31 +962,27 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         throws LockFailureException
     {
         TxnEntry te = getTxnEntry(txnId);
-        LocalTransaction txn = te.mTxn;
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
-        Lock lock = txn.doLockUpgradableNoPush(indexId, key);
-
-        // TODO: No need to run special task if worker isn't assigned yet
-        if (lock != null) {
-            runTask(te, new LockPushTask(txn, lock));
-        }
+        runLockPushTask(te, te.mTxn.doLockUpgradableNoPush(indexId, key));
 
         return true;
     }
 
-    private static final class LockPushTask extends Worker.Task {
-        private final LocalTransaction mTxn;
-        private final Lock mLock;
-
-        LockPushTask(LocalTransaction txn, Lock lock) {
-            mTxn = txn;
-            mLock = lock;
-        }
-
-        @Override
-        public void run() {
-            mTxn.push(mLock);
+    private void runLockPushTask(TxnEntry te, Lock lock) {
+        if (lock != null) {
+            LocalTransaction txn = te.mTxn;
+            Worker w = te.mWorker;
+            if (w == null) {
+                // No worker has been assigned yet, so no need to delegate.
+                txn.push(lock);
+            } else {
+                w.enqueue(new Worker.Task() {
+                    public void run() {
+                        txn.push(lock);
+                    }
+                });
+            }
         }
     }
 

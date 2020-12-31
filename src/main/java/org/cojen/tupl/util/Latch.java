@@ -315,7 +315,6 @@ public class Latch {
 
                 if (waiter != null) {
                     if (first instanceof Shared) {
-                        // TODO: can this be combined into one downgrade step?
                         downgrade();
                         if (doReleaseShared()) {
                             return;

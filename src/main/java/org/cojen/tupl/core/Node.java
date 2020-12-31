@@ -3711,7 +3711,7 @@ final class Node extends Clutch implements DatabaseAccess {
 
                     // Node is already split, and so value is too large.
                     if (vfrag != 0) {
-                        // TODO: Can this happen?
+                        // Not expected.
                         throw new DatabaseException("Fragmented entry doesn't fit");
                     }
                     LocalDatabase db = tree.mDatabase;
@@ -5150,7 +5150,7 @@ final class Node extends Clutch implements DatabaseAccess {
 
         while (entryLoc < 0) {
             if (vfrag != 0) {
-                // TODO: Can this happen?
+                // Not expected.
                 throw new DatabaseException("Fragmented entry doesn't fit");
             }
 
