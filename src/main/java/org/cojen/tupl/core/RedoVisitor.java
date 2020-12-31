@@ -19,6 +19,8 @@ package org.cojen.tupl.core;
 
 import java.io.IOException;
 
+import org.cojen.tupl.util.WeakPool;
+
 /**
  * Visitor design pattern for decoding operations from a redo log.
  *
@@ -197,11 +199,12 @@ interface RedoVisitor {
      * @param cursorId non-zero cursor id
      * @param txnId non-zero transaction id
      * @param pos value position to write to
+     * @param entry refers to the buffer and should be released when the write is finished
      * @param buf buffer with data to write
      * @return false to stop visiting
      */
-    public boolean cursorValueWrite(long cursorId, long txnId,
-                                    long pos, byte[] buf, int off, int len)
+    public boolean cursorValueWrite(long cursorId, long txnId, long pos,
+                                    WeakPool.Entry<byte[]> entry, byte[] buf, int off, int len)
         throws IOException;
 
     /**

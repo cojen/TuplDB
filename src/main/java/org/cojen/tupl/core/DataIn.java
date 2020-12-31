@@ -21,6 +21,8 @@ import java.io.EOFException;
 import java.io.InputStream;
 import java.io.IOException;
 
+import org.cojen.tupl.util.WeakPool;
+
 import static java.lang.System.arraycopy;
 
 /**
@@ -58,6 +60,8 @@ abstract class DataIn extends InputStream {
     private int mEnd;
 
     long mPos;
+
+    private WeakPool<byte[]> mWriteBufferPool;
 
     DataIn(long pos, int bufferSize) {
         if (pos < 0) {
@@ -322,55 +326,85 @@ abstract class DataIn extends InputStream {
     }
 
     /**
-     * Transfers data to the given visitor, in the form of cursorValueWrite calls.
+     * Transfers data to the given visitor, in the form of cursorValueWrite calls. Assumes only
+     * one thread calls this method at a time.
      */
     public void cursorValueWrite(RedoVisitor visitor, long cursorId, long txnId,
                                  long valuePos, int amount)
         throws IOException
     {
-        // Use the buffer to minimize the number of calls to cursorValueWrite.
+        // Use buffers to minimize the number of calls to cursorValueWrite. A separate buffer
+        // than the main one must be passed to the visitor, allowing it to use another thread.
 
         final byte[] buffer = mBuffer;
-        final int bufferLen = buffer.length;
 
-        int avail = mEnd - mStart;
-
-        if (amount > avail) {
-            if (amount > bufferLen) {
-                if (mStart != 0) {
-                    arraycopy(buffer, mStart, buffer, 0, avail);
-                    mStart = 0;
-                    mEnd = avail;
-                }
-
-                do {
-                    do {
-                        int amt = doRead(buffer, mEnd, bufferLen - mEnd);
-                        if (amt <= 0) {
-                            throw new EOFException();
-                        }
-                        mEnd += amt;
-                    } while (mEnd < bufferLen);
-
-                    visitor.cursorValueWrite(cursorId, txnId, valuePos, buffer, 0, bufferLen);
-                    mEnd = 0;
-                    mPos += bufferLen;
-                    amount -= bufferLen;
-
-                    if (amount <= 0) {
-                        return;
-                    }
-
-                    valuePos += bufferLen;
-                } while (amount > bufferLen);
-            }
-
-            require(amount);
+        WeakPool<byte[]> pool = mWriteBufferPool;
+        if (pool == null) {
+            // TODO: maxSize
+            mWriteBufferPool = pool = new WeakPool<>();
         }
 
-        visitor.cursorValueWrite(cursorId, txnId, valuePos, buffer, mStart, amount);
-        mStart += amount;
-        mPos += amount;
+        while (true) {
+            WeakPool.Entry<byte[]> entry;
+            byte[] writeBuf;
+            while (true) {
+                entry = pool.tryAccess();
+                if (entry == null) {
+                    // Create a buffer which is big enough, but not too big.
+                    writeBuf = new byte[Math.min(amount, buffer.length)];
+                    entry = pool.newEntry(writeBuf);
+                    break;
+                }
+                if ((writeBuf = entry.get()) != null) {
+                    if (amount <= writeBuf.length || writeBuf.length >= buffer.length) {
+                        break;
+                    }
+                    // Discard in favor of a bigger buffer.
+                }
+                entry.discard();
+            }
+
+            int writeOffset;
+            {
+                int avail = mEnd - mStart;
+                if (amount < avail) {
+                    // Partially drain the main buffer into the write buffer.
+                    arraycopy(buffer, mStart, writeBuf, 0, amount);
+                    mStart += amount;
+                    writeOffset = amount;
+                } else {
+                    // Fully drain the main buffer into the write buffer.
+                    arraycopy(buffer, mStart, writeBuf, 0, avail);
+                    mStart = 0;
+                    mEnd = 0;
+                    writeOffset = avail;
+                }
+                mPos += writeOffset;
+                amount -= writeOffset;
+            }
+
+            while (true) {
+                int rem = Math.min(amount, writeBuf.length - writeOffset);
+                if (rem <= 0) {
+                    break;
+                }
+                int amt = doRead(writeBuf, writeOffset, rem);
+                if (amt <= 0) {
+                    throw new EOFException();
+                }
+                mPos += amt;
+                writeOffset += amt;
+                amount -= amt;
+            }
+
+            visitor.cursorValueWrite(cursorId, txnId, valuePos, entry, writeBuf, 0, writeOffset);
+
+            if (amount <= 0) {
+                return;
+            }
+
+            valuePos += writeOffset;
+        }
     }
 
     /**

@@ -46,6 +46,7 @@ import org.cojen.tupl.repl.StreamReplicator;
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.LatchCondition;
 import org.cojen.tupl.util.Runner;
+import org.cojen.tupl.util.WeakPool;
 import org.cojen.tupl.util.Worker;
 import org.cojen.tupl.util.WorkerGroup;
 
@@ -825,47 +826,53 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean cursorValueWrite(long cursorId, long txnId,
-                                    long pos, byte[] buf, int off, int len)
+    public boolean cursorValueWrite(long cursorId, long txnId, long pos,
+                                    WeakPool.Entry<byte[]> entry, byte[] buf, int off, int len)
         throws LockFailureException
     {
         CursorEntry ce = getCursorEntry(cursorId);
         if (ce == null) {
+            entry.release();
             return true;
         }
 
-        // Need to copy the data, since it will be accessed by another thread.
-        // TODO: Use a buffer pool.
-        byte[] data = Arrays.copyOfRange(buf, off, off + len);
+        try {
+            TxnEntry te = getTxnEntry(txnId);
+            LocalTransaction txn = te.mTxn;
+            BTreeCursor tc = ce.mCursor;
 
-        TxnEntry te = getTxnEntry(txnId);
-        LocalTransaction txn = te.mTxn;
-        BTreeCursor tc = ce.mCursor;
+            // Acquire the lock on behalf of the transaction, but push it using the correct thread.
+            Lock lock = txn.doLockUpgradableNoPush(tc.mTree.mId, ce.mKey);
 
-        // Acquire the lock on behalf of the transaction, but push it using the correct thread.
-        Lock lock = txn.doLockUpgradableNoPush(tc.mTree.mId, ce.mKey);
-
-        runCursorTask(ce, te, new Worker.Task() {
-            public void run() throws IOException {
-                if (lock != null) {
-                    txn.push(lock);
-                }
-
-                BTreeCursor tc = ce.mCursor;
-                tc.mTxn = txn;
-
-                do {
+            runCursorTask(ce, te, new Worker.Task() {
+                public void run() throws IOException {
                     try {
-                        tc.valueWrite(pos, data, 0, data.length);
-                        break;
-                    } catch (ClosedIndexException e) {
-                        tc = reopenCursor(e, ce);
-                    }
-                } while (tc != null);
-            }
-        });
+                        if (lock != null) {
+                            txn.push(lock);
+                        }
 
-        return true;
+                        BTreeCursor tc = ce.mCursor;
+                        tc.mTxn = txn;
+
+                        do {
+                            try {
+                                tc.valueWrite(pos, buf, off, len);
+                                break;
+                            } catch (ClosedIndexException e) {
+                                tc = reopenCursor(e, ce);
+                            }
+                        } while (tc != null);
+                    } finally {
+                        entry.release();
+                    }
+                }
+            });
+
+            return true;
+        } catch (Throwable e) {
+            entry.release();
+            throw e;
+        }
     }
 
     @Override

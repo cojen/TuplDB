@@ -23,6 +23,8 @@ import org.cojen.tupl.Crypto;
 import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventType;
 
+import org.cojen.tupl.util.WeakPool;
+
 /**
  * Debugging utility enabled by {@link DatabaseConfig#debugOpen}. When launched from the
  * command line, reads and prints all the redo operations from a local log.
@@ -226,11 +228,19 @@ class RedoEventPrinter implements RedoVisitor {
     }
 
     @Override
-    public boolean cursorValueWrite(long cursorId, long txnId,
-                                    long pos, byte[] buf, int off, int len)
+    public boolean cursorValueWrite(long cursorId, long txnId, long pos,
+                                    WeakPool.Entry<byte[]> entry, byte[] buf, int off, int len)
     {
+        String str;
+        try {
+            str = valueStr(buf, off, len);
+        } finally {
+            entry.release();
+        }
+
         mListener.notify(mType, "Redo %1$s: cursorId=%2$d, txnId=%3$d, pos=%4$d, value=%5$s",
-                         "cursorValueWrite", cursorId, txnId, pos, valueStr(buf, off, len));
+                         "cursorValueWrite", cursorId, txnId, pos, str);
+
         return true;
     }
 

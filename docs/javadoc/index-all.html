@@ -985,6 +985,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Returns a Combiner that discards both values (always returns null).</div>
 </dd>
+<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/util/WeakPool.Entry.html#discard()">discard()</a></span> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/WeakPool.Entry.html" title="class in org.cojen.tupl.util">WeakPool.Entry</a></dt>
+<dd>
+<div class="block">Discard the entry from the pool instead of releasing it.</div>
+</dd>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/Index.Stats.html#divide(double)">divide(double)</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></dt>
 <dd>
 <div class="block">Divide the stats by a scalar into a new object.</div>
@@ -2198,6 +2202,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Called to wrap an OutputStream for supporting encryption.</div>
 </dd>
+<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/util/WeakPool.html#newEntry(B)">newEntry(B)</a></span> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/WeakPool.html" title="class in org.cojen.tupl.util">WeakPool</a></dt>
+<dd>
+<div class="block">Create a new pooled entry which refers to the given object.</div>
+</dd>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html#newPageCipher()">newPageCipher()</a></span> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>
 <div class="block">Called to instantiate a <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/javax/crypto/Cipher.html" title="class or interface in javax.crypto" class="external-link"><code>Cipher</code></a> for encrypting and decrypting regular database
@@ -2855,6 +2863,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Release the entry such that another thread can use the pooled object.</div>
 </dd>
+<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/util/WeakPool.Entry.html#release()">release()</a></span> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/WeakPool.Entry.html" title="class in org.cojen.tupl.util">WeakPool.Entry</a></dt>
+<dd>
+<div class="block">Release the entry such that it can be accessed again later.</div>
+</dd>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/util/Latch.html#release(boolean)">release(boolean)</a></span> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>
 <div class="block">Convenience method, which releases the held exclusive or shared latch.</div>
@@ -3398,6 +3410,10 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html#truncatePageCount(long)">truncatePageCount(long)</a></span> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/util/WeakPool.html#tryAccess()">tryAccess()</a></span> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/WeakPool.html" title="class in org.cojen.tupl.util">WeakPool</a></dt>
+<dd>
+<div class="block">Returns an available pooled entry if any exist.</div>
+</dd>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/util/Clutch.html#tryAcquireExclusive()">tryAcquireExclusive()</a></span> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/Clutch.html" title="class in org.cojen.tupl.util">Clutch</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/util/Latch.html#tryAcquireExclusive()">tryAcquireExclusive()</a></span> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
@@ -3874,6 +3890,17 @@ the order they are declared.</div>
 <dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.Accessor.html#waitForEndCommit(long)">waitForEndCommit(long)</a></span> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a></dt>
 <dd>
 <div class="block">Blocks until the commit position reaches the end of the term.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/util/WeakPool.html" title="class in org.cojen.tupl.util"><span class="type-name-link">WeakPool</span></a>&lt;<a href="org.cojen.tupl/org/cojen/tupl/util/WeakPool.html" title="type parameter in WeakPool">B</a>&gt; - Class in <a href="org.cojen.tupl/org/cojen/tupl/util/package-summary.html">org.cojen.tupl.util</a></dt>
+<dd>
+<div class="block">Utility for sharing a small set of poolable objects (like buffers) which are weakly
+ referenced.</div>
+</dd>
+<dt><span class="member-name-link"><a href="org.cojen.tupl/org/cojen/tupl/util/WeakPool.html#%3Cinit%3E()">WeakPool()</a></span> - Constructor for class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/WeakPool.html" title="class in org.cojen.tupl.util">WeakPool</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/util/WeakPool.Entry.html" title="class in org.cojen.tupl.util"><span class="type-name-link">WeakPool.Entry</span></a>&lt;<a href="org.cojen.tupl/org/cojen/tupl/util/WeakPool.Entry.html" title="type parameter in WeakPool.Entry">B</a>&gt; - Class in <a href="org.cojen.tupl/org/cojen/tupl/util/package-summary.html">org.cojen.tupl.util</a></dt>
+<dd>
+<div class="block">An entry which weakly references a pooled object.</div>
 </dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/util/Worker.html" title="class in org.cojen.tupl.util"><span class="type-name-link">Worker</span></a> - Class in <a href="org.cojen.tupl/org/cojen/tupl/util/package-summary.html">org.cojen.tupl.util</a></dt>
 <dd>
