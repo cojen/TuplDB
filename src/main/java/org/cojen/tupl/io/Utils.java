@@ -551,16 +551,24 @@ public class Utils {
      * @param target exception to receive suppressed exception; can be null
      * @param toSuppress exception to suppress and add to target; can be null
      */
-    public static void suppress(Throwable target, Throwable toSuppress) {
+    public static void suppress(final Throwable target, final Throwable toSuppress) {
         try {
-            if (target == null || toSuppress == null || target == toSuppress) {
+            if (target == null || toSuppress == null) {
                 return;
             }
 
-            // TODO: Should examine the entire cause chain in search of duplicates.
-            if (target.getCause() == toSuppress || toSuppress.getCause() == target) {
-                return;
-            }
+            // Check if exceptions and causes intersect at all, returning if so.
+            Throwable t = target;
+            do {
+                Throwable s = toSuppress;
+                do {
+                    if (t == s) {
+                        return;
+                    }
+                    s = s.getCause();
+                } while (s != null);
+                t = t.getCause();
+            } while (t != null);
 
             Throwable[] s1 = target.getSuppressed();
             Throwable[] s2 = toSuppress.getSuppressed();
