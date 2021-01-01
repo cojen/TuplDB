@@ -623,6 +623,18 @@ public interface Cursor extends ValueAccessor, Closeable {
     public void store(byte[] value) throws IOException;
 
     /**
+     * Deletes the value for the current entry, leaving the position unchanged. Unless an
+     * exception is thrown, the object returned by the {@link #value value} method will be null
+     * after calling this method.
+     *
+     * @throws UnpositionedCursorException if position is undefined at invocation time
+     * @throws ViewConstraintException if not permitted
+     */
+    public default void delete() throws IOException {
+        store(null);
+    }
+
+    /**
      * Combined store and commit to the linked transaction. Although similar to storing and
      * committing explicitly, additional optimizations can be applied. In particular, no undo
      * log entry is required when committing the outermost transaction scope. This is the same
