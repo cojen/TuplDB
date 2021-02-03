@@ -470,10 +470,20 @@ final class PosixFileIO extends AbstractFileIO {
      * @return fd
      */
     static int openFd(File file, EnumSet<OpenOption> options) throws IOException {
+        String path = file.getPath();
+
+        SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            sm.checkRead(path);
+        }
+
         // Select O_RDONLY or O_RDWR.
         int flags = 0;
         if (!options.contains(OpenOption.READ_ONLY)) {
             flags |= 2;
+            if (sm != null) {
+                sm.checkWrite(path);
+            }
         }
 
         int fd;
@@ -483,7 +493,7 @@ final class PosixFileIO extends AbstractFileIO {
                 flags |= 0100; // O_CREAT
             }
             int mode = 0600;
-            fd = RT.shm_open(file.getPath(), flags, mode);
+            fd = RT.shm_open(path, flags, mode);
         } else {
             if (options.contains(OpenOption.SYNC_IO)) {
                 flags |= 010000;
@@ -491,7 +501,7 @@ final class PosixFileIO extends AbstractFileIO {
             if (options.contains(OpenOption.DIRECT_IO)) {
                 flags |= 040000;
             }
-            fd = open(file.getPath(), flags);
+            fd = open(path, flags);
         }
 
         if (fd == -1) {

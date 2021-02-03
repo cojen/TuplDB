@@ -85,6 +85,13 @@ class WindowsMappedPageArray extends MappedPageArray {
             return;
         }
 
+        String path = file.getPath();
+
+        SecurityManager sm = System.getSecurityManager();
+        if (sm != null) {
+            sm.checkRead(path);
+        }
+
         mEmpty = file.length() == 0;
         mNonDurable = options.contains(OpenOption.NON_DURABLE);
 
@@ -92,6 +99,9 @@ class WindowsMappedPageArray extends MappedPageArray {
         boolean readOnly = options.contains(OpenOption.READ_ONLY);
         if (!readOnly) {
             access |= WinNT.GENERIC_WRITE;
+            if (sm != null) {
+                sm.checkWrite(path);
+            }
         }
 
         int create = options.contains(OpenOption.CREATE) ? WinNT.OPEN_ALWAYS : WinNT.OPEN_EXISTING;
@@ -108,7 +118,7 @@ class WindowsMappedPageArray extends MappedPageArray {
         }
 
         WinNT.HANDLE hFile = cKernel.CreateFile
-            (file.getPath(),
+            (path,
              access,
              0, // no sharing
              null, // security attributes
