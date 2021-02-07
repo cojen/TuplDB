@@ -116,7 +116,7 @@ import static org.cojen.tupl.core.Utils.*;
  *
  * @author Brian S O'Neill
  */
-public final class LocalDatabase extends CoreDatabase {
+final class LocalDatabase extends CoreDatabase {
     private static final int DEFAULT_CACHE_NODES = 1000;
     // +2 for registry and key map root nodes, +1 for one user index, and +2 for at least one
     // usage list to function correctly.
