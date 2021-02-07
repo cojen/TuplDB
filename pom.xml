@@ -197,6 +197,7 @@
             <notimestamp>true</notimestamp>
             <reportOutputDirectory>${basedir}/docs</reportOutputDirectory>
             <destDir>javadoc</destDir>
+            <excludePackageNames>org.cojen.tupl.core:org.cojen.tupl.ev:org.cojen.tupl.jmx:org.cojen.tupl.views</excludePackageNames>
           </configuration>
       </plugin>
 
