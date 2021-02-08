@@ -388,9 +388,18 @@ final class PageQueue implements IntegerRef {
         LocalDatabase cache = mManager.mPageCache;
         Node node;
 
-        if (cache == null || mIsReserve || (node = cache.nodeMapGetAndRemove(id)) == null) {
+        // Note: Call nodeMapGetExclusiveSpin to avoid deadlock due to mRemoveLock being held.
+        // The node might now be in use by a b-tree, and with the node latch held, it might be
+        // calling into the PageManager to allocate another node. This causes an inconsistent
+        // mRemoveLock acquisition order, hence deadlock. If the node still contains a
+        // reference to the next queue node, no other thread should be accessing it, and so
+        // acquisition shouldn't spin more than once.
+
+        if (cache == null || mIsReserve || (node = cache.nodeMapGetExclusiveSpin(id)) == null) {
             mManager.mPageArray.readPage(id, head);
         } else {
+            cache.nodeMapRemove(node);
+
             if (node.mCachedState != Node.CACHED_CLEAN) {
                 mManager.mPageArray.writePage(id, node.mPage);
                 node.mCachedState = Node.CACHED_CLEAN;

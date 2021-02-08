@@ -3928,6 +3928,31 @@ final class LocalDatabase extends CoreDatabase {
     }
 
     /**
+     * Variant of nodeMapGetExclusive which spins when confirming that the node identifier
+     * matches instead of blocking. This can prevent deadlock when the requested node has been
+     * evicted. This variant should only called when the requested node is unlikely to be
+     * accessed by another thread, and so blocking isn't expected.
+     *
+     * @return exclusively latched node if found; null if not found
+     */
+    Node nodeMapGetExclusiveSpin(long nodeId) {
+        int hash = Long.hashCode(nodeId);
+        while (true) {
+            Node node = nodeMapGet(nodeId, hash);
+            if (node == null) {
+                return null;
+            }
+            if (node.tryAcquireExclusive()) {
+                if (nodeId == node.id()) {
+                    return node;
+                }
+                node.releaseExclusive();
+            }
+            Thread.onSpinWait();
+        }
+    }
+
+    /**
      * Returns unconfirmed node if found. Caller must latch and confirm that the node
      * identifier matches, in case an eviction snuck in.
      */
