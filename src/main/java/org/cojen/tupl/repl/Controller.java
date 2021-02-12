@@ -17,8 +17,6 @@
 
 package org.cojen.tupl.repl;
 
-import static java.lang.System.Logger.Level;
-
 import java.io.File;
 import java.io.InputStream;
 import java.io.InterruptedIOException;
@@ -41,12 +39,14 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ThreadLocalRandom;
 
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.LongConsumer;
 import java.util.function.Supplier;
 
 import javax.net.SocketFactory;
+
+import org.cojen.tupl.EventListener;
+import org.cojen.tupl.EventType;
 
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.LatchCondition;
@@ -90,7 +90,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     private static final byte[] EMPTY_DATA = new byte[0];
 
-    private final BiConsumer<Level, String> mEventListener;
+    private final EventListener mEventListener;
     private final Scheduler mScheduler;
     private final ChannelManager mChanMan;
     private final StateLog mStateLog;
@@ -156,7 +156,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      * @param factory optional
      * @param localSocket optional; used for testing
      */
-    static Controller open(BiConsumer<Level, String> eventListener,
+    static Controller open(EventListener eventListener,
                            StateLog log, long groupToken, File groupFile,
                            SocketFactory factory,
                            SocketAddress localAddress, SocketAddress listenAddress,
@@ -189,7 +189,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         return con;
     }
 
-    private Controller(BiConsumer<Level, String> eventListener,
+    private Controller(EventListener eventListener,
                        StateLog log, long groupToken, GroupFile gf, SocketFactory factory,
                        boolean proxyWrites, boolean writeCRCs)
         throws IOException
@@ -1240,7 +1240,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         if (!mChanMan.isStopped()) {
             if (e instanceof JoinException && mEventListener != null) {
                 try {
-                    mEventListener.accept(Level.WARNING, e.getMessage());
+                    mEventListener.notify(EventType.REPLICATION_WARNING, e.getMessage());
                 } catch (Throwable e2) {
                     // Ignore.
                 }
@@ -1374,7 +1374,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     private void requestMissingData(final long startPosition, final long endPosition) {
-        event(Level.DEBUG, () ->
+        event(EventType.REPLICATION_DEBUG, () ->
               String.format("Requesting missing data: %1$,d bytes @[%2$d, %3$d)",
                             endPosition - startPosition, startPosition, endPosition));
 
@@ -1399,7 +1399,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         long requestSize;
         if (channels.length <= 1) {
             if (channels.length == 0) {
-                event(Level.ERROR, "No peers to request data from");
+                event(EventType.REPLICATION_PANIC, "No peers to request data from");
                 return;
             }
             requestSize = remaining;
@@ -1580,7 +1580,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             b.append("candidate: term=").append(term).append(", highestTerm=")
                 .append(info.mTerm).append(", highestPosition=").append(info.mHighestPosition);
 
-            event(Level.INFO, b.toString());
+            event(EventType.REPLICATION_INFO, b.toString());
 
             for (Channel peerChan : peerChannels) {
                 peerChan.requestVote(null, term, candidateId, info.mTerm, info.mHighestPosition);
@@ -1712,7 +1712,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 b.append(reason);
             }
 
-            event(Level.INFO, b.toString());
+            event(EventType.REPLICATION_INFO, b.toString());
         }
     }
 
@@ -2024,20 +2024,20 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         return requestChannel;
     }
 
-    private void event(Level level, String message) {
+    private void event(EventType type, String message) {
         if (mEventListener != null) {
             try {
-                mEventListener.accept(level, message);
+                mEventListener.notify(type, message);
             } catch (Throwable e) {
                 // Ignore.
             }
         }
     }
 
-    private void event(Level level, Supplier<String> message) {
+    private void event(EventType type, Supplier<String> message) {
         if (mEventListener != null) {
             try {
-                mEventListener.accept(level, message.get());
+                mEventListener.notify(type, message.get());
             } catch (Throwable e) {
                 // Ignore.
             }
@@ -2072,7 +2072,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 if (!e.isFatal()) {
                     b.append(". Restarting might rollback the conflict and resolve the issue.");
                 }
-                mEventListener.accept(Level.ERROR, b.toString());
+                mEventListener.notify(EventType.REPLICATION_PANIC, b.toString());
             }
 
             mLastConflictReport = now;
@@ -2135,7 +2135,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      */
     @Override // Channel
     public void unknown(Channel from, int op) {
-        event(Level.WARNING,
+        event(EventType.REPLICATION_WARNING,
               "Unknown operation received from: " + from.peer().mAddress + ", op=" + op);
     }
 
@@ -2239,7 +2239,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             }
             b.append("leader: term=").append(term).append(", position=").append(position);
 
-            event(Level.INFO, b.toString());
+            event(EventType.REPLICATION_INFO, b.toString());
 
             mElectionValidated = LOCAL_LEADER_VALIDATED;
 
@@ -2287,7 +2287,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      */
     @Override // Channel
     public boolean forceElection(Channel from) {
-        event(Level.INFO, "Forcing an election, as requested by: " + from.peer().mAddress);
+        event(EventType.REPLICATION_INFO,
+              "Forcing an election, as requested by: " + from.peer().mAddress);
         acquireExclusive();
         forceElection(); // releases exclusive latch as a side-effect
         return true;
@@ -2700,7 +2701,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 b.append("the ");
             }
             b.append("leader: ").append(from.peer().mAddress).append(", term=").append(term);
-            event(Level.INFO, b.toString());
+            event(EventType.REPLICATION_INFO, b.toString());
         }
 
         return from; // validation success
@@ -3024,7 +3025,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             Role desiredRole = desiredRole();
             releaseShared();
             if (desiredRole != null && (result != ErrorCodes.VERSION_MISMATCH || !versionOk)) {
-                event(ErrorCodes.levelFor(result),
+                event(ErrorCodes.typeFor(result),
                       "Unable to update role: " + ErrorCodes.toString(result));
             }
         }

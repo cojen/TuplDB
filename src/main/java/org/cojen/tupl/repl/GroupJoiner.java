@@ -17,8 +17,6 @@
 
 package org.cojen.tupl.repl;
 
-import static java.lang.System.Logger.Level;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -38,8 +36,9 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.TreeSet;
 
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+
+import org.cojen.tupl.EventListener;
 
 import org.cojen.tupl.io.Utils;
 
@@ -53,7 +52,7 @@ class GroupJoiner {
     static final int OP_NOP = 0, OP_ERROR = 1, OP_ADDRESS = 2, OP_JOINED = 3,
         OP_UNJOIN_ADDRESS = 4, OP_UNJOIN_MEMBER = 5, OP_UNJOINED = 6;
 
-    private final BiConsumer<Level, String> mEventListener;
+    private final EventListener mEventListener;
     private final File mFile;
     private final long mGroupToken;
     private final SocketAddress mLocalAddress;
@@ -76,7 +75,7 @@ class GroupJoiner {
      * @param groupFile file to store GroupFile contents
      * @param listenAddress optional
      */
-    GroupJoiner(BiConsumer<Level, String> eventListener, File groupFile, long groupToken,
+    GroupJoiner(EventListener eventListener, File groupFile, long groupToken,
                 SocketAddress localAddress, SocketAddress listenAddress)
     {
         mEventListener = eventListener;

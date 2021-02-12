@@ -31,6 +31,8 @@ import java.util.concurrent.TimeUnit;
 import org.junit.*;
 import static org.junit.Assert.*;
 
+import org.cojen.tupl.EventListener;
+
 import org.cojen.tupl.core.TestUtils;
 
 import static org.cojen.tupl.repl.MessageReplicator.*;
@@ -115,7 +117,7 @@ public class MessageReplicatorTest {
 
             if (false) {
                 // Debug printing.
-                mConfigs[i].eventListener((level, msg) -> System.out.println(level + ": " + msg));
+                mConfigs[i].eventListener(EventListener.printTo(System.out));
             }
 
             if (i > 0) {

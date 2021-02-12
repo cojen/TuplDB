@@ -61,6 +61,11 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color">
 <div class="block">See <a href="../Database.html" title="interface in org.cojen.tupl"><code>Database</code></a> to get started with Tupl.</div>
 </div>
+<div class="col-first odd-row-color"><a href="#org.cojen.tupl.repl">org.cojen.tupl.repl</a></div>
+<div class="col-last odd-row-color">
+<div class="block">General-purpose <a href="https://raft.github.io/">Raft-based</a> replication system,
+ intended for supporting fully replicated <a href="../Database.html" title="interface in org.cojen.tupl">databases</a>.</div>
+</div>
 </div>
 <section class="class-uses">
 <ul class="block-list">
@@ -129,6 +134,22 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color">
 <div class="block">Set multiple listeners which receive notifications of actions being performed by the
  database.</div>
+</div>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="org.cojen.tupl.repl">
+<h2>Uses of <a href="../EventListener.html" title="interface in org.cojen.tupl">EventListener</a> in <a href="../repl/package-summary.html">org.cojen.tupl.repl</a></h2>
+<div class="caption"><span>Methods in <a href="../repl/package-summary.html">org.cojen.tupl.repl</a> with parameters of type <a href="../EventListener.html" title="interface in org.cojen.tupl">EventListener</a></span></div>
+<div class="summary-table three-column-summary">
+<div class="table-header col-first">Modifier and Type</div>
+<div class="table-header col-second">Method</div>
+<div class="table-header col-last">Description</div>
+<div class="col-first even-row-color"><code><a href="../repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">ReplicatorConfig.</span><code><span class="member-name-link"><a href="../repl/ReplicatorConfig.html#eventListener(org.cojen.tupl.EventListener)">eventListener</a></span>&#8203;(<a href="../EventListener.html" title="interface in org.cojen.tupl">EventListener</a>&nbsp;listener)</code></div>
+<div class="col-last even-row-color">
+<div class="block">Set a listener which receives notifications of actions being performed by the replicator.</div>
 </div>
 </div>
 </section>

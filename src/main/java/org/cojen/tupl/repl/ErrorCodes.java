@@ -17,7 +17,7 @@
 
 package org.cojen.tupl.repl;
 
-import static java.lang.System.Logger.Level;
+import org.cojen.tupl.EventType;
 
 /**
  * 
@@ -56,17 +56,17 @@ final class ErrorCodes {
         }
     }
 
-    static Level levelFor(byte errorCode) {
+    static EventType typeFor(byte errorCode) {
         switch (errorCode) {
         default:
-            return Level.ERROR;
+            return EventType.REPLICATION_PANIC;
         case VERSION_MISMATCH:
         case NO_CONSENSUS:
         case NO_LEADER:
         case NOT_LEADER:
-            return Level.WARNING;
+            return EventType.REPLICATION_WARNING;
         case SUCCESS:
-            return Level.INFO;
+            return EventType.REPLICATION_INFO;
         }
     }
 }

@@ -17,8 +17,6 @@
 
 package org.cojen.tupl.repl;
 
-import static java.lang.System.Logger.Level;
-
 import java.io.File;
 
 import java.net.InetAddress;
@@ -30,10 +28,10 @@ import java.net.UnknownHostException;
 import java.util.HashSet;
 import java.util.Set;
 
-import java.util.function.BiConsumer;
-
 import javax.net.ServerSocketFactory;
 import javax.net.SocketFactory;
+
+import org.cojen.tupl.EventListener;
 
 import org.cojen.tupl.io.Utils;
 
@@ -55,7 +53,7 @@ public class ReplicatorConfig implements Cloneable {
     Set<SocketAddress> mSeeds;
     boolean mProxyWrites;
     boolean mChecksumSockets;
-    BiConsumer<Level, String> mEventListener;
+    EventListener mEventListener;
     SocketFactory mSocketFactory;
     ServerSocketFactory mServerSocketFactory;
 
@@ -264,7 +262,7 @@ public class ReplicatorConfig implements Cloneable {
     /**
      * Set a listener which receives notifications of actions being performed by the replicator.
      */
-    public ReplicatorConfig eventListener(BiConsumer<Level, String> listener) {
+    public ReplicatorConfig eventListener(EventListener listener) {
         mEventListener = listener;
         return this;
     }

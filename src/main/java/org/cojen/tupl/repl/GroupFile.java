@@ -17,8 +17,6 @@
 
 package org.cojen.tupl.repl;
 
-import static java.lang.System.Logger.Level;
-
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.EOFException;
@@ -55,11 +53,13 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ThreadLocalRandom;
 
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.ObjLongConsumer;
 
 import java.util.zip.CRC32C;
+
+import org.cojen.tupl.EventListener;
+import org.cojen.tupl.EventType;
 
 import org.cojen.tupl.io.Utils;
 
@@ -94,7 +94,7 @@ final class GroupFile extends Latch {
         }
     }
 
-    private final BiConsumer<Level, String> mEventListener;
+    private final EventListener mEventListener;
     private final File mFile;
     private final SocketAddress mLocalMemberAddress;
     private final long mGroupId;
@@ -111,7 +111,7 @@ final class GroupFile extends Latch {
      * @return null if file doesn't exist and create is false
      * @throws IllegalStateException if local member address doesn't match the file
      */
-    public static GroupFile open(BiConsumer<Level, String> eventListener,
+    public static GroupFile open(EventListener eventListener,
                                  File file, SocketAddress localMemberAddress, boolean create)
         throws IOException
     {
@@ -125,7 +125,7 @@ final class GroupFile extends Latch {
             : new GroupFile(eventListener, file, localMemberAddress, raf);
     }
 
-    private GroupFile(BiConsumer<Level, String> eventListener,
+    private GroupFile(EventListener eventListener,
                       File file, SocketAddress localMemberAddress, RandomAccessFile raf)
         throws IOException
     {
@@ -161,10 +161,14 @@ final class GroupFile extends Latch {
         }
     }
 
-    private void event(Level level, String message) {
+    private void infoEvent(String message) {
+        event(EventType.REPLICATION_INFO, message);
+    }
+
+    private void event(EventType type, String message) {
         if (mEventListener != null) {
             try {
-                mEventListener.accept(level, message);
+                mEventListener.notify(type, message);
             } catch (Throwable e) {
                 // Ignore.
             }
@@ -172,18 +176,18 @@ final class GroupFile extends Latch {
     }
 
     private void localAddedEvent() {
-        event(Level.INFO, "Local member added: " + mLocalMemberRole);
+        infoEvent("Local member added: " + mLocalMemberRole);
     }
 
     private void peerAddedEvent(Peer peer) {
-        event(Level.INFO, "Remote member added: " + peer.mAddress + ", " + peer.role());
+        infoEvent("Remote member added: " + peer.mAddress + ", " + peer.role());
     }
 
     private void localRoleChangeEvent(Role from) {
         if (from == null) {
             localAddedEvent();
         } else {
-            event(Level.INFO, "Local member role changed: " + from + " to " + mLocalMemberRole);
+            infoEvent("Local member role changed: " + from + " to " + mLocalMemberRole);
         }
     }
 
@@ -191,13 +195,13 @@ final class GroupFile extends Latch {
         if (from == null) {
             peerAddedEvent(to);
         } else {
-            event(Level.INFO, "Remote member role changed: " + to.mAddress + ", "
-                  + from + " to " + to.role());
+            infoEvent("Remote member role changed: " +
+                      to.mAddress + ", " + from + " to " + to.role());
         }
     }
 
     private void peerRemoveEvent(Peer peer) {
-        event(Level.INFO, "Remote member removed: " + peer.mAddress + ", " + peer.role());
+        infoEvent("Remote member removed: " + peer.mAddress + ", " + peer.role());
     }
 
     /**

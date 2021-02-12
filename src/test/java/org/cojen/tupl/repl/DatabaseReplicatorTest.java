@@ -39,7 +39,6 @@ import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseConfig;
 import org.cojen.tupl.EventListener;
-import org.cojen.tupl.EventType;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.LockTimeoutException;
@@ -134,13 +133,8 @@ public class DatabaseReplicatorTest {
             mReplConfigs[i] = new ReplicatorConfig()
                 .groupToken(1)
                 .localSocket(mSockets[i])
-                .baseFile(mReplBaseFiles[i]);
-
-            if (listener != null) {
-                mReplConfigs[i].eventListener((level, message) -> {
-                    listener.notify(EventType.REPLICATION_INFO, message);
-                });
-            }
+                .baseFile(mReplBaseFiles[i])
+                .eventListener(listener);
 
             if (i > 0) {
                 mReplConfigs[i].addSeed(mSockets[0].getLocalSocketAddress());

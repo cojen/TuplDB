@@ -42,7 +42,6 @@ import org.cojen.tupl.EventListener;
 import org.cojen.tupl.LockUpgradeRule;
 
 import org.cojen.tupl.ev.ChainedEventListener;
-import org.cojen.tupl.ev.ReplicationEventListener;
 
 import org.cojen.tupl.ext.CustomHandler;
 import org.cojen.tupl.ext.PrepareHandler;
@@ -405,7 +404,7 @@ public final class Launcher implements Cloneable {
         ReplicatorConfig replConfig = mReplConfig.clone();
 
         if (mEventListener != null) {
-            replConfig.eventListener(new ReplicationEventListener(mEventListener));
+            replConfig.eventListener(mEventListener);
         }
 
         replConfig.baseFilePath(mBaseFile.getPath() + ".repl");
