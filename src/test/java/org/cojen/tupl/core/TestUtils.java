@@ -36,7 +36,6 @@ import org.cojen.tupl.io.OpenOption;
 public class TestUtils {
     private static final Map<Class, TempFiles> cTempFiles = new HashMap<>();
 
-    private static long cTempId;
     private static File cBaseDir;
     private static volatile File cDeleteTempDir;
 
@@ -379,7 +378,7 @@ public class TestUtils {
             cDeleteTempDir = cBaseDir.exists() ? null : cBaseDir;
             cBaseDir.mkdirs();
         }
-        return new File(cBaseDir, prefix + "-" + System.currentTimeMillis() + "-" + (++cTempId));
+        return new File(cBaseDir, prefix + "-" + UUID.randomUUID());
     }
 
     static class TempFiles {
