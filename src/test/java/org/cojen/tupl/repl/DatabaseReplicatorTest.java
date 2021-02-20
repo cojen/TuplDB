@@ -453,19 +453,6 @@ public class DatabaseReplicatorTest {
         replicaDb.close();
     }
 
-    /* FIXME: Under heavy load.
-[ERROR] standbyLeader(org.cojen.tupl.repl.DatabaseReplicatorTest)  Time elapsed: 12.223 s  <<< FAILURE!
-java.lang.AssertionError: actual array was null
-	at org.junit.Assert.fail(Assert.java:89)
-	at org.junit.internal.ComparisonCriteria.arrayEquals(ComparisonCriteria.java:49)
-	at org.junit.internal.ComparisonCriteria.arrayEquals(ComparisonCriteria.java:28)
-	at org.junit.Assert.internalArrayEquals(Assert.java:534)
-	at org.junit.Assert.assertArrayEquals(Assert.java:343)
-	at org.junit.Assert.assertArrayEquals(Assert.java:354)
-	at org.cojen.tupl@1.5.0/org.cojen.tupl.core.TestUtils.fastAssertArrayEquals(TestUtils.java:66)
-	at org.cojen.tupl@1.5.0/org.cojen.tupl.repl.DatabaseReplicatorTest.standbyLeader(DatabaseReplicatorTest.java:520)
-    */
-
     @Test
     public void standbyLeader() throws Exception {
         // Test that a standby member can become an interim leader and prevent data loss.
@@ -502,7 +489,7 @@ java.lang.AssertionError: actual array was null
         leaderIx = leaderDb.openIndex("test");
 
         byte[] found = null;
-        for (int i=0; i<10; i++) {
+        for (int i=0; i<100; i++) {
             found = leaderIx.load(null, key);
             if (found != null) {
                 break;
@@ -510,7 +497,7 @@ java.lang.AssertionError: actual array was null
             TestUtils.sleep(1000);
         }
 
-        fastAssertArrayEquals(value, found); // FIXME: failed here
+        fastAssertArrayEquals(value, found);
 
         value = "value!".getBytes();
 
