@@ -953,7 +953,7 @@ public class DatabaseReplicatorTest {
 
         leaderIx.store(null, key, key);
 
-        for (int i=0; i<1000; i++) {
+        for (int i=0; i<10_000; i++) {
             byte[] value = replicaIx.load(null, key);
             if (value != null) {
                 if (Arrays.equals(key, value)) {
