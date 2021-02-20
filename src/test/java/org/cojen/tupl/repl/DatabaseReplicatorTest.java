@@ -190,21 +190,6 @@ public class DatabaseReplicatorTest {
         basicTest(1);
     }
 
-    /* FIXME
-[ERROR] basicTestThreeMembers(org.cojen.tupl.repl.DatabaseReplicatorTest)  Time elapsed: 5.883 s  <<< ERROR!
-java.net.ConnectException: Unable to obtain a snapshot from a peer (timed out)
-        at org.cojen.tupl@1.5.0/org.cojen.tupl.repl.Controller.requestSnapshot(Controller.java:809)
-        at org.cojen.tupl@1.5.0/org.cojen.tupl.repl.Controller.restore(Controller.java:368)
-        at org.cojen.tupl@1.5.0/org.cojen.tupl.repl.DatabaseStreamReplicator.restoreRequest(DatabaseStreamReplicator.java:113)
-        at org.cojen.tupl@1.5.0/org.cojen.tupl.core.Launcher.doOpen(Launcher.java:441)
-        at org.cojen.tupl@1.5.0/org.cojen.tupl.core.Launcher.open(Launcher.java:408)
-        at org.cojen.tupl@1.5.0/org.cojen.tupl.Database.open(Database.java:80)
-        at org.cojen.tupl@1.5.0/org.cojen.tupl.repl.DatabaseReplicatorTest.startGroup(DatabaseReplicatorTest.java:152)
-        at org.cojen.tupl@1.5.0/org.cojen.tupl.repl.DatabaseReplicatorTest.startGroup(DatabaseReplicatorTest.java:95)
-        at org.cojen.tupl@1.5.0/org.cojen.tupl.repl.DatabaseReplicatorTest.basicTest(DatabaseReplicatorTest.java:204)
-        at org.cojen.tupl@1.5.0/org.cojen.tupl.repl.DatabaseReplicatorTest.basicTestThreeMembers(DatabaseReplicatorTest.java:190)
-     */
-
     @Test
     public void basicTestThreeMembers() throws Exception {
         for (int i=3; --i>=0; ) {

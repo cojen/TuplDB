@@ -25,16 +25,14 @@ import java.util.concurrent.CountDownLatch;
  * @author Brian S O'Neill
  */
 final class SnapshotScore extends CountDownLatch implements Comparable<SnapshotScore> {
-    final Object mRequestedBy;
-    final Channel mChannel;
+    final Peer mPeer;
 
     int mActiveSessions;
     float mWeight;
 
-    SnapshotScore(Object requestedBy, Channel channel) {
+    SnapshotScore(Peer peer) {
         super(1);
-        mRequestedBy = requestedBy;
-        mChannel = channel;
+        mPeer = peer;
     }
 
     void snapshotScoreReply(int activeSessions, float weight) {

@@ -22,6 +22,8 @@ import java.lang.invoke.VarHandle;
 
 import java.net.SocketAddress;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 import java.util.concurrent.TimeUnit;
@@ -35,8 +37,7 @@ import static org.cojen.tupl.io.Utils.rethrow;
  */
 final class Peer implements Comparable<Peer> {
     private static final VarHandle
-        cRoleHandle, cGroupVersionHandle, cSnapshotScoreHandle, cRangesHandle,
-        cCompactPositionHandle;
+        cRoleHandle, cGroupVersionHandle, cRangesHandle, cCompactPositionHandle;
 
     static {
         try {
@@ -45,9 +46,6 @@ final class Peer implements Comparable<Peer> {
             cRoleHandle = lookup.findVarHandle(Peer.class, "mRole", Role.class);
 
             cGroupVersionHandle = lookup.findVarHandle(Peer.class, "mGroupVersion", long.class);
-
-            cSnapshotScoreHandle = lookup.findVarHandle
-                (Peer.class, "mSnapshotScore", SnapshotScore.class);
 
             cRangesHandle = lookup.findVarHandle(Peer.class, "mQueryRanges", RangeSet.class);
 
@@ -71,7 +69,8 @@ final class Peer implements Comparable<Peer> {
 
     volatile long mGroupVersion;
 
-    private volatile SnapshotScore mSnapshotScore;
+    // Map requestedBy to async SnapshotScore requests.
+    private Map<Object, SnapshotScore> mSnapshotScores;
 
     // Used for election stability.
     volatile long mLeaderCheck;
@@ -127,35 +126,52 @@ final class Peer implements Comparable<Peer> {
         }
     }
 
-    void resetSnapshotScore(SnapshotScore score) {
-        mSnapshotScore = score;
+    /**
+     * @param requestedBy unique instance (can be current thread)
+     */
+    synchronized void prepareSnapshotScore(Object requestedBy) {
+        if (mSnapshotScores == null) {
+            mSnapshotScores = new HashMap<>(2);
+        }
+        mSnapshotScores.put(requestedBy, new SnapshotScore(this));
     }
 
+    /**
+     * Must call prepareSnapshotScore first.
+     *
+     * @return null if timed out
+     */
     SnapshotScore awaitSnapshotScore(Object requestedBy, long timeoutMillis) {
-        SnapshotScore score = mSnapshotScore;
+        SnapshotScore score;
+        synchronized (this) {
+            score = mSnapshotScores.get(requestedBy);
+        }
 
-        if (score != null) {
-            final SnapshotScore waitFor = score;
+        if (score == null) {
+            throw new IllegalStateException();
+        }
 
-            try {
-                if (!waitFor.await(timeoutMillis, TimeUnit.MILLISECONDS)) {
-                    score = null;
-                }
-            } catch (InterruptedException e) {
+        try {
+            if (!score.await(timeoutMillis, TimeUnit.MILLISECONDS)) {
+                score = null;
             }
+        } catch (Throwable e) {
+            score = null;
+        }
 
-            if (waitFor.mRequestedBy == requestedBy) {
-                cSnapshotScoreHandle.compareAndSet(this, waitFor, null);
+        synchronized (this) {
+            mSnapshotScores.remove(requestedBy);
+            if (mSnapshotScores.isEmpty()) {
+                mSnapshotScores = null;
             }
         }
 
         return score;
     }
 
-    void snapshotScoreReply(int activeSessions, float weight) {
-        SnapshotScore score = mSnapshotScore;
-        if (score != null) {
-            score.snapshotScoreReply(activeSessions, weight);
+    synchronized void snapshotScoreReply(int activeSessions, float weight) {
+        if (mSnapshotScores != null) {
+            mSnapshotScores.values().forEach(s -> s.snapshotScoreReply(activeSessions, weight));
         }
     }
 

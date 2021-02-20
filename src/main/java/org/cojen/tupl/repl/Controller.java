@@ -850,6 +850,18 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     @Override
     public SocketSnapshotReceiver requestSnapshot(Map<String, String> options) throws IOException {
+        try {
+            return requestSnapshot(options, SNAPSHOT_REPLY_TIMEOUT_MILLIS);
+        } catch (IOException e) {
+            // Try again.
+            return requestSnapshot(options, SNAPSHOT_REPLY_TIMEOUT_MILLIS << 1);
+        }
+    }
+
+    private SocketSnapshotReceiver requestSnapshot(Map<String, String> options,
+                                                   long timeoutMillis)
+        throws IOException
+    {
         // Request snapshots from normal, standby, and proxy members. Observers aren't
         // first-class and might not have the data.
         acquireShared();
@@ -866,11 +878,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         final Object requestedBy = Thread.currentThread();
         for (Channel channel : channels) {
-            channel.peer().resetSnapshotScore(new SnapshotScore(requestedBy, channel));
+            channel.peer().prepareSnapshotScore(requestedBy);
             channel.snapshotScore(this);
         }
 
-        long timeoutMillis = SNAPSHOT_REPLY_TIMEOUT_MILLIS;
         long end = System.currentTimeMillis() + timeoutMillis;
 
         var results = new ArrayList<SnapshotScore>(channels.length);
@@ -897,7 +908,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         Collections.shuffle(results); // random selection in case of ties
         Collections.sort(results); // stable sort
 
-        Socket sock = mChanMan.connectSnapshot(results.get(0).mChannel.peer().mAddress);
+        Socket sock = mChanMan.connectSnapshot(results.get(0).mPeer.mAddress);
 
         try {
             return new SocketSnapshotReceiver(mGroupFile, sock, options);
