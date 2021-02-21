@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import java.util.EnumSet;
+import java.util.Objects;
 
 /**
  * Basic {@link PageArray} implementation which accesses a file.
@@ -33,8 +34,12 @@ public class FilePageArray extends PageArray {
     final FileIO mFio;
 
     public FilePageArray(int pageSize, File file, EnumSet<OpenOption> options) throws IOException {
+        this(pageSize, FileIO.open(file, options));
+    }
+
+    public FilePageArray(int pageSize, FileIO fio) {
         super(pageSize);
-        mFio = FileIO.open(file, options);
+        mFio = Objects.requireNonNull(fio);
     }
 
     @Override
