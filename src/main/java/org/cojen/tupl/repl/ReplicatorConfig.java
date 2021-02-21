@@ -60,6 +60,7 @@ public class ReplicatorConfig implements Cloneable {
     public ReplicatorConfig() {
         createFilePath(true);
         localRole(Role.NORMAL);
+        checksumSockets(true);
     }
 
     /**
@@ -252,7 +253,7 @@ public class ReplicatorConfig implements Cloneable {
     }
 
     /**
-     * Pass true to enable CRC checksums for all socket commands written. Default is false.
+     * Pass true to enable CRC checksums for all socket commands written. Default is true.
      */
     public ReplicatorConfig checksumSockets(boolean checksums) {
         mChecksumSockets = checksums;
