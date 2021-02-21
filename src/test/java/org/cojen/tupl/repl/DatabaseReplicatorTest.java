@@ -690,7 +690,7 @@ public class DatabaseReplicatorTest {
         // transaction is stuck.
         boolean pass = true;
         try {
-            fence(replicaDb, leaderDb);
+            fence(replicaDb, leaderDb, true);
             pass = false;
         } catch (AssertionError e) {
         }
@@ -946,6 +946,10 @@ public class DatabaseReplicatorTest {
      * Writes a message to the "control" index, and block the replica until it's received.
      */
     private void fence(Database leaderDb, Database replicaDb) throws Exception {
+        fence(leaderDb, replicaDb, false);
+    }
+
+    private void fence(Database leaderDb, Database replicaDb, boolean failFast) throws Exception {
         Index leaderIx = leaderDb.openIndex("control");
         Index replicaIx = replicaDb.openIndex("control");
 
@@ -953,7 +957,9 @@ public class DatabaseReplicatorTest {
 
         leaderIx.store(null, key, key);
 
-        for (int i=0; i<10_000; i++) {
+        int limit = failFast ? 100 : 10_000;
+
+        for (int i=0; i<limit; i++) {
             byte[] value = replicaIx.load(null, key);
             if (value != null) {
                 if (Arrays.equals(key, value)) {
