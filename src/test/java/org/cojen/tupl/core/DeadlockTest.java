@@ -120,9 +120,18 @@ public class DeadlockTest {
 
     @Test
     public void test_2() throws Throwable {
+        try {
+            doTest_2();
+        } catch (AssertionError e) {
+            // Time-sensitive test, so try again.
+            doTest_2();
+        }
+    }
+
+    private void doTest_2() throws Throwable {
         // Deadlock caused by three threads and three keys.
 
-        final long timeout = 3L * 1000 * 1000 * 1000;
+        final long timeout = 5L * 1000 * 1000 * 1000;
 
         class TheTask extends Task {
             private final long mTimeout;
@@ -160,9 +169,9 @@ public class DeadlockTest {
         // as one times out, the rest can proceed because the dependency cycle
         // is broken.
 
-        mTasks.add(new TheTask(timeout,     true,  "k1", "k2"));
-        mTasks.add(new TheTask(timeout * 2, false, "k2", "k3"));
-        mTasks.add(new TheTask(timeout * 2, false, "k3", "k1"));
+        mTasks.add(new TheTask(timeout,      true,  "k1", "k2"));
+        mTasks.add(new TheTask(timeout * 10, false, "k2", "k3"));
+        mTasks.add(new TheTask(timeout * 10, false, "k3", "k1"));
 
         startTasks();
         joinTasks();
