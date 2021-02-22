@@ -124,6 +124,7 @@ public class DeadlockTest {
             doTest_2();
         } catch (AssertionError e) {
             // Time-sensitive test, so try again.
+            setup();
             doTest_2();
         }
     }
