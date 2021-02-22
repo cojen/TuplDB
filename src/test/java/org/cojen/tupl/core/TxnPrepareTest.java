@@ -681,6 +681,8 @@ public class TxnPrepareTest {
 
         // Reopen without the handler.
         config.prepareHandlers(null);
+        // Suppress non-severe errors.
+        config.eventListener(EventListener.printTo(System.err).observe(EventType.Category.PANIC));
         db = reopenTempDatabase(getClass(), db, config);
 
         // Still locked (unless prepareCommit)
@@ -695,6 +697,7 @@ public class TxnPrepareTest {
 
         // Reopen with the handler installed.
         config.prepareHandlers(Map.of("TestHandler", recovery));
+        config.eventListener(null);
         recovery.message = null;
         recovery.prepareCommit = false;
         db = reopenTempDatabase(getClass(), db, config);
