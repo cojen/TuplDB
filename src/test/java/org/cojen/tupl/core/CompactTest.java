@@ -276,6 +276,7 @@ public class CompactTest {
     @Test
     public void manualAbort() throws Exception {
         mDb = newTempDb();
+        mDb.suspendCheckpoints();
 
         final Index ix = openTestIndex();
         final int seed = 98232;
