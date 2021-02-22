@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.util;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -145,19 +146,20 @@ public final class Runner extends AbstractExecutorService {
     }
 
     /**
-     * @throws UnsupportedOperationException
+     * Does nothing.
      */
     @Override
     public void shutdown() {
-        throw new UnsupportedOperationException();
     }
 
     /**
-     * @throws UnsupportedOperationException
+     * Does nothing.
+     *
+     * @return empty list
      */
     @Override
     public List<Runnable> shutdownNow() {
-        throw new UnsupportedOperationException();
+        return Collections.emptyList();
     }
 
     /**
@@ -177,11 +179,11 @@ public final class Runner extends AbstractExecutorService {
     }
 
     /**
-     * @throws UnsupportedOperationException
+     * @return false
      */
     @Override
     public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
-        throw new UnsupportedOperationException();
+        return false;
     }
 
     private synchronized void enqueue(Loop ready) {
