@@ -681,8 +681,30 @@ public class TxnPrepareTest {
 
         // Reopen without the handler.
         config.prepareHandlers(null);
-        // Suppress non-severe errors.
-        config.eventListener(EventListener.printTo(System.err).observe(EventType.Category.PANIC));
+
+        // Install a listener which is notified that recovery fails.
+        var listener = new EventListener() {
+            private boolean notified;
+
+            @Override
+            public void notify(EventType type, String message, Object... args) {
+                if (type == EventType.RECOVERY_HANDLER_UNCAUGHT) {
+                    synchronized (this) {
+                        notified = true;
+                        notifyAll();
+                    }
+                }
+            }
+
+            synchronized void waitForNotify() throws InterruptedException {
+                while (!notified) {
+                    wait();
+                }
+            }
+        };
+
+        config.eventListener(listener);
+
         db = reopenTempDatabase(getClass(), db, config);
 
         // Still locked (unless prepareCommit)
@@ -694,6 +716,8 @@ public class TxnPrepareTest {
             assertEquals(LockResult.TIMED_OUT_LOCK, ix.tryLockShared(txn, key, 0));
         }
         txn.reset();
+
+        listener.waitForNotify();
 
         // Reopen with the handler installed.
         config.prepareHandlers(Map.of("TestHandler", recovery));
