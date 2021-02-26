@@ -1480,7 +1480,7 @@ public class CursorTest {
     }
 
     protected long cursorCount() {
-        return mDb.stats().cursorCount();
+        return mDb.stats().cursorCount;
     }
 
     @Test

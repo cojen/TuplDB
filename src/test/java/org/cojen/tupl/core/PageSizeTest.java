@@ -53,7 +53,7 @@ public class PageSizeTest {
         config = decorate(config);
 
         Database db = newTempDatabase(getClass(), config);
-        assertEquals(512, db.stats().pageSize());
+        assertEquals(512, db.stats().pageSize);
         db.shutdown();
 
         // Page size not explicitly set, so use existing page size.
@@ -61,7 +61,7 @@ public class PageSizeTest {
         config = decorate(config);
 
         db = reopenTempDatabase(getClass(), db, config);
-        assertEquals(512, db.stats().pageSize());
+        assertEquals(512, db.stats().pageSize);
         db.shutdown();
 
         config = new DatabaseConfig()
@@ -85,7 +85,7 @@ public class PageSizeTest {
         config = decorate(config);
 
         Database db = newTempDatabase(getClass(), config);
-        assertEquals(512, db.stats().pageSize());
+        assertEquals(512, db.stats().pageSize);
 
         Snapshot snap = db.beginSnapshot();
         var out = new ByteArrayOutputStream();
@@ -101,7 +101,7 @@ public class PageSizeTest {
         var in = new ByteArrayInputStream(out.toByteArray());
         db = Database.restoreFromSnapshot(config, in);
 
-        assertEquals(512, db.stats().pageSize());
+        assertEquals(512, db.stats().pageSize);
 
         db.close();
     }

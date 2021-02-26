@@ -70,7 +70,7 @@ public class CursorDisjointUnionTest extends CursorNonDurableTest {
     @Override
     protected long cursorCount() {
         // Two actual cursors for every user-level cursor.
-        return mDb.stats().cursorCount() / 2;
+        return mDb.stats().cursorCount / 2;
     }
 
     @Override

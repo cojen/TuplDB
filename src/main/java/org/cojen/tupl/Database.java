@@ -363,104 +363,70 @@ public interface Database extends CauseCloseable, Flushable {
      * Collection of database {@linkplain Database#stats statistics}.
      */
     public static class Stats implements Cloneable, Serializable {
-        private static final long serialVersionUID = 5L;
+        private static final long serialVersionUID = 6L;
 
+        /**
+         * The allocation page size
+         */
         public int pageSize;
+
+        /**
+         * The amount of unused pages in the database.
+         */
         public long freePages;
+
+        /**
+         * The total amount of pages in the database.
+         */
         public long totalPages;
+
+        /**
+         * The current size of the cache, in pages.
+         */
         public long cachePages;
+
+        /**
+         * The count of pages which are dirty (need to be written with a checkpoint).
+         */
         public long dirtyPages;
+
+        /**
+         * The amount of indexes currently open.
+         */
         public int openIndexes;
-        public long lockCount;
-        public long cursorCount;
-        public long txnCount;
-        public long checkpointDuration;
-        public long replicationBacklog;
 
         /**
-         * Returns the allocation page size.
-         */
-        public int pageSize() {
-            return pageSize;
-        }
-
-        /**
-         * Returns the amount of unused pages in the database.
-         */
-        public long freePages() {
-            return freePages;
-        }
-
-        /**
-         * Returns the total amount of pages in the database.
-         */
-        public long totalPages() {
-            return totalPages;
-        }
-
-        /**
-         * Returns the current size of the cache, in pages.
-         */
-        public long cachePages() {
-            return cachePages;
-        }
-
-        /**
-         * Returns the count of pages which are dirty (need to be written with a checkpoint).
-         */
-        public long dirtyPages() {
-            return dirtyPages;
-        }
-
-        /**
-         * Returns the amount of indexes currently open.
-         */
-        public int openIndexes() {
-            return openIndexes;
-        }
-
-        /**
-         * Returns the amount of locks currently allocated. Locks are created as transactions
-         * access or modify records, and they are destroyed when transactions exit or reset. An
+         * The amount of locks currently allocated. Locks are created as transactions access or
+         * modify records, and they are destroyed when transactions exit or reset. An
          * accumulation of locks can indicate that transactions are not being reset properly.
          */
-        public long lockCount() {
-            return lockCount;
-        }
+        public long lockCount;
 
         /**
-         * Returns the amount of cursors which are in a non-reset state. An accumulation of
-         * cursors can indicate that they are not being reset properly.
-         */
-        public long cursorCount() {
-            return cursorCount;
-        }
-
-        /**
-         * Returns the amount of fully-established transactions which are in a non-reset
-         * state. This value is unaffected by transactions which make no changes, and it is
-         * also unaffected by auto-commit transactions. An accumulation of transactions can
+         * The amount of cursors which are in a non-reset state. An accumulation of cursors can
          * indicate that they are not being reset properly.
          */
-        public long transactionCount() {
-            return txnCount;
-        }
+        public long cursorCount;
 
         /**
-         * Returns the time duration required for the last checkpoint to complete, in
-         * milliseconds. If no checkpoints are running, then zero is returned.
+         * The amount of fully-established transactions which are in a non-reset state. This
+         * value is unaffected by transactions which make no changes, and it is also unaffected
+         * by auto-commit transactions. An accumulation of transactions can indicate that they
+         * are not being reset properly.
          */
-        public long checkpointDuration() {
-            return checkpointDuration;
-        }
+        public long transactionCount;
 
         /**
-         * Returns the amount of log bytes that a replica must apply to be fully caught up to
-         * the leader. If the member is currently the leader, then zero is returned.
+         * The time duration required for the last checkpoint to complete, in milliseconds. If
+         * no checkpoints are running, then zero is returned.
          */
-        public long replicationBacklog() {
-            return replicationBacklog;
-        }
+        public long checkpointDuration;
+
+        /**
+         * The amount of log bytes that a replica must apply to be fully caught up to the
+         * leader. If the member is currently the leader, then the backlog is zero.
+         */
+        public long replicationBacklog;
 
         @Override
         public Stats clone() {
@@ -494,7 +460,7 @@ public interface Database extends CauseCloseable, Flushable {
                     && openIndexes == other.openIndexes
                     && lockCount == other.lockCount
                     && cursorCount == other.cursorCount
-                    && txnCount == other.txnCount
+                    && transactionCount == other.transactionCount
                     && checkpointDuration == other.checkpointDuration
                     && replicationBacklog == other.replicationBacklog;
             }
@@ -511,7 +477,7 @@ public interface Database extends CauseCloseable, Flushable {
                 + ", openIndexes=" + openIndexes
                 + ", lockCount=" + lockCount
                 + ", cursorCount=" + cursorCount
-                + ", transactionCount=" + txnCount
+                + ", transactionCount=" + transactionCount
                 + ", checkpointDuration=" + checkpointDuration
                 + ", replicationBacklog=" + replicationBacklog
                 + '}';

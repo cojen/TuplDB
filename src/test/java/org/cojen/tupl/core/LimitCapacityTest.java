@@ -81,7 +81,7 @@ public class LimitCapacityTest {
         mDb.compactFile(null, 0.95);
 
         Database.Stats stats = mDb.stats();
-        long size = stats.totalPages() * stats.pageSize();
+        long size = stats.totalPages * stats.pageSize;
 
         assertTrue(size + " < " + mDb.capacityLimit(), size < mDb.capacityLimit());
     }
@@ -135,7 +135,7 @@ public class LimitCapacityTest {
         ix.store(null, "hello".getBytes(), "world".getBytes());
 
         Database.Stats stats = mDb.stats();
-        long total = stats.totalPages();
+        long total = stats.totalPages;
 
         // Value is too large.
         try {
@@ -147,9 +147,9 @@ public class LimitCapacityTest {
         }
 
         stats = mDb.stats();
-        long delta = stats.totalPages() - total;
+        long delta = stats.totalPages - total;
         assertTrue(delta >= minFreed);
-        assertEquals(delta, stats.freePages());
+        assertEquals(delta, stats.freePages);
 
         assertEquals(null, ix.load(null, "key".getBytes()));
 

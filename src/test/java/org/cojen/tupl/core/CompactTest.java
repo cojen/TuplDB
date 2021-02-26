@@ -97,14 +97,14 @@ public class CompactTest {
         Database.Stats stats2 = mDb.stats();
 
         try {
-            assertTrue(stats2.freePages() < stats1.freePages());
-            assertTrue(stats2.totalPages() < stats1.totalPages());
+            assertTrue(stats2.freePages < stats1.freePages);
+            assertTrue(stats2.totalPages < stats1.totalPages);
         } catch (AssertionError e) {
             // Can fail if delayed by concurrent test load. Retry.
             mDb.compactFile(null, 0.9);
             stats2 = mDb.stats();
-            assertTrue(stats2.freePages() < stats1.freePages());
-            assertTrue(stats2.totalPages() < stats1.totalPages());
+            assertTrue(stats2.freePages < stats1.freePages);
+            assertTrue(stats2.totalPages < stats1.totalPages);
         }
 
         assertTrue(mDb.verify(null));
@@ -126,8 +126,8 @@ public class CompactTest {
 
         Database.Stats stats3 = mDb.stats();
 
-        assertTrue(stats3.freePages() < stats2.freePages());
-        assertTrue(stats3.totalPages() < stats2.totalPages());
+        assertTrue(stats3.freePages < stats2.freePages);
+        assertTrue(stats3.totalPages < stats2.totalPages);
 
         assertTrue(mDb.verify(null));
 
@@ -224,14 +224,14 @@ public class CompactTest {
         Database.Stats stats2 = mDb.stats();
 
         try {
-            assertTrue(stats2.freePages() < stats1.freePages());
-            assertTrue(stats2.totalPages() < stats1.totalPages());
+            assertTrue(stats2.freePages < stats1.freePages);
+            assertTrue(stats2.totalPages < stats1.totalPages);
         } catch (AssertionError e) {
             // Can fail if delayed by concurrent test load. Retry.
             mDb.compactFile(null, 0.9);
             stats2 = mDb.stats();
-            assertTrue(stats2.freePages() < stats1.freePages());
-            assertTrue(stats2.totalPages() < stats1.totalPages());
+            assertTrue(stats2.freePages < stats1.freePages);
+            assertTrue(stats2.totalPages < stats1.totalPages);
         }
 
         assertTrue(mDb.verify(null));
@@ -255,8 +255,8 @@ public class CompactTest {
 
         Database.Stats stats3 = mDb.stats();
 
-        assertTrue(stats3.freePages() < stats2.freePages());
-        assertTrue(stats3.totalPages() < stats2.totalPages());
+        assertTrue(stats3.freePages < stats2.freePages);
+        assertTrue(stats3.totalPages < stats2.totalPages);
 
         assertTrue(mDb.verify(null));
 
@@ -375,7 +375,7 @@ public class CompactTest {
                     Database.Stats stats1 = mDb.stats();
                     mDb.compactFile(obs, 0.5);
                     Database.Stats stats2 = mDb.stats();
-                    result = stats2.totalPages() < stats1.totalPages();
+                    result = stats2.totalPages < stats1.totalPages;
                 } catch (Exception e) {
                     result = e;
                 }
@@ -445,7 +445,7 @@ public class CompactTest {
                         Database.Stats stats1 = mDb.stats();
                         mDb.compactFile(null, 0.5);
                         Database.Stats stats2 = mDb.stats();
-                        if (stats2.totalPages() < stats1.totalPages()) {
+                        if (stats2.totalPages < stats1.totalPages) {
                             success++;
                         } else {
                             abort++;
@@ -522,7 +522,7 @@ public class CompactTest {
         mDb.checkpoint();
         Database.Stats stats1 = mDb.stats();
 
-        assertEquals(0, stats1.freePages());
+        assertEquals(0, stats1.freePages);
 
         Transaction txn = mDb.newTransaction();
         for (int i=110000; i<200000; i++) {
@@ -532,7 +532,7 @@ public class CompactTest {
 
         mDb.checkpoint();
         Database.Stats stats2 = mDb.stats();
-        assertTrue(stats2.freePages() > 100);
+        assertTrue(stats2.freePages > 100);
 
         mDb.compactFile(null, 0.9);
 
@@ -547,8 +547,8 @@ public class CompactTest {
             Database.Stats stats3 = mDb.stats();
 
             try {
-                assertTrue(stats3.freePages() < stats2.freePages());
-                assertTrue(stats3.totalPages() < stats2.totalPages());
+                assertTrue(stats3.freePages < stats2.freePages);
+                assertTrue(stats3.totalPages < stats2.totalPages);
                 break;
             } catch (AssertionError e) {
                 // Can fail if delayed by concurrent test load.
@@ -585,14 +585,14 @@ public class CompactTest {
         mDb.compactFile(null, 0.9);
 
         Database.Stats stats2 = mDb.stats();
-        assertTrue(stats2.totalPages() - stats2.freePages() > 200);
+        assertTrue(stats2.totalPages - stats2.freePages > 200);
 
         txn.commit();
 
         mDb.compactFile(null, 0.9);
 
         Database.Stats stats3 = mDb.stats();
-        assertTrue(stats3.totalPages() - stats3.freePages() < 50);
+        assertTrue(stats3.totalPages - stats3.freePages < 50);
     }
 
     @Test
@@ -630,7 +630,7 @@ public class CompactTest {
 
         Database.Stats stats2 = mDb.stats();
 
-        assertTrue(stats1.totalPages() > stats2.totalPages() * 2);
+        assertTrue(stats1.totalPages > stats2.totalPages * 2);
 
         // Verify no data loss.
 

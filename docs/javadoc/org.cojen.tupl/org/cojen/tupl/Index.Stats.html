@@ -110,19 +110,29 @@ implements <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code>double</code></div>
 <div class="col-second even-row-color"><code><span class="member-name-link"><a href="#entryCount">entryCount</a></span></code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">The estimated number of index entries.</div>
+</div>
 <div class="col-first odd-row-color"><code>double</code></div>
 <div class="col-second odd-row-color"><code><span class="member-name-link"><a href="#freeBytes">freeBytes</a></span></code></div>
-<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-last odd-row-color">
+<div class="block">The estimated amount of free bytes in the index.</div>
+</div>
 <div class="col-first even-row-color"><code>double</code></div>
 <div class="col-second even-row-color"><code><span class="member-name-link"><a href="#keyBytes">keyBytes</a></span></code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">The estimated amount of bytes occupied by keys in the index.</div>
+</div>
 <div class="col-first odd-row-color"><code>double</code></div>
 <div class="col-second odd-row-color"><code><span class="member-name-link"><a href="#totalBytes">totalBytes</a></span></code></div>
-<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-last odd-row-color">
+<div class="block">The estimated total amount of bytes in the index.</div>
+</div>
 <div class="col-first even-row-color"><code>double</code></div>
 <div class="col-second even-row-color"><code><span class="member-name-link"><a href="#valueBytes">valueBytes</a></span></code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">The estimated amount of bytes occupied by values in the index.</div>
+</div>
 </div>
 </section>
 </li>
@@ -134,12 +144,14 @@ implements <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base
 <div class="summary-table two-column-summary">
 <div class="table-header col-first">Constructor</div>
 <div class="table-header col-last">Description</div>
-<div class="col-constructor-name even-row-color"><code><span class="member-name-link"><a href="#%3Cinit%3E(double,double,double,double,double)">Stats</a></span>&#8203;(double&nbsp;entryCount,
+<div class="col-constructor-name even-row-color"><code><span class="member-name-link"><a href="#%3Cinit%3E()">Stats</a></span>()</code></div>
+<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-constructor-name odd-row-color"><code><span class="member-name-link"><a href="#%3Cinit%3E(double,double,double,double,double)">Stats</a></span>&#8203;(double&nbsp;entryCount,
  double&nbsp;keyBytes,
  double&nbsp;valueBytes,
  double&nbsp;freeBytes,
  double&nbsp;totalBytes)</code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last odd-row-color">&nbsp;</div>
 </div>
 </section>
 </li>
@@ -172,50 +184,25 @@ implements <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base
 <div class="col-last odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">
 <div class="block">Divide the stats by a scalar and round to whole numbers into a new object.</div>
 </div>
-<div class="col-first even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code>double</code></div>
-<div class="col-second even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#entryCount()">entryCount</a></span>()</code></div>
-<div class="col-last even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">
-<div class="block">Returns the estimated number of index entries.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code>boolean</code></div>
-<div class="col-second odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#equals(java.lang.Object)">equals</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;obj)</code></div>
-<div class="col-last odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code>double</code></div>
-<div class="col-second even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#freeBytes()">freeBytes</a></span>()</code></div>
-<div class="col-last even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">
-<div class="block">Returns the estimated amount of free bytes in the index.</div>
-</div>
+<div class="col-first even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code>boolean</code></div>
+<div class="col-second even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#equals(java.lang.Object)">equals</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;obj)</code></div>
+<div class="col-last even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code>int</code></div>
 <div class="col-second odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#hashCode()">hashCode</a></span>()</code></div>
 <div class="col-last odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code>double</code></div>
-<div class="col-second even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#keyBytes()">keyBytes</a></span>()</code></div>
+<div class="col-first even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><a href="Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></code></div>
+<div class="col-second even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#round()">round</a></span>()</code></div>
 <div class="col-last even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">
-<div class="block">Returns the estimated amount of bytes occupied by keys in the index.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><a href="Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></code></div>
-<div class="col-second odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#round()">round</a></span>()</code></div>
-<div class="col-last odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">
 <div class="block">Round the stats to whole numbers into a new object.</div>
 </div>
-<div class="col-first even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><a href="Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></code></div>
-<div class="col-second even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#subtract(org.cojen.tupl.Index.Stats)">subtract</a></span>&#8203;(<a href="Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a>&nbsp;subtrahend)</code></div>
-<div class="col-last even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">
+<div class="col-first odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><a href="Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></code></div>
+<div class="col-second odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#subtract(org.cojen.tupl.Index.Stats)">subtract</a></span>&#8203;(<a href="Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a>&nbsp;subtrahend)</code></div>
+<div class="col-last odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">
 <div class="block">Subtract stats into a new object.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#toString()">toString</a></span>()</code></div>
-<div class="col-last odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code>double</code></div>
-<div class="col-second even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#totalBytes()">totalBytes</a></span>()</code></div>
-<div class="col-last even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">
-<div class="block">Returns the estimated total amount of bytes in the index.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code>double</code></div>
-<div class="col-second odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#valueBytes()">valueBytes</a></span>()</code></div>
-<div class="col-last odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">
-<div class="block">Returns the estimated amount of bytes occupied by values in the index.</div>
-</div>
+<div class="col-first even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#toString()">toString</a></span>()</code></div>
+<div class="col-last even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">&nbsp;</div>
 </div>
 </div>
 </div>
@@ -237,30 +224,35 @@ implements <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base
 <section class="detail" id="entryCount">
 <h3>entryCount</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">double</span>&nbsp;<span class="element-name">entryCount</span></div>
+<div class="block">The estimated number of index entries.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="keyBytes">
 <h3>keyBytes</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">double</span>&nbsp;<span class="element-name">keyBytes</span></div>
+<div class="block">The estimated amount of bytes occupied by keys in the index.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="valueBytes">
 <h3>valueBytes</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">double</span>&nbsp;<span class="element-name">valueBytes</span></div>
+<div class="block">The estimated amount of bytes occupied by values in the index.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="freeBytes">
 <h3>freeBytes</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">double</span>&nbsp;<span class="element-name">freeBytes</span></div>
+<div class="block">The estimated amount of free bytes in the index.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="totalBytes">
 <h3>totalBytes</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">double</span>&nbsp;<span class="element-name">totalBytes</span></div>
+<div class="block">The estimated total amount of bytes in the index.</div>
 </section>
 </li>
 </ul>
@@ -271,6 +263,12 @@ implements <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base
 <section class="constructor-details" id="constructor.detail">
 <h2>Constructor Details</h2>
 <ul class="member-list">
+<li>
+<section class="detail" id="&lt;init&gt;()">
+<h3>Stats</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">Stats</span>()</div>
+</section>
+</li>
 <li>
 <section class="detail" id="&lt;init&gt;(double,double,double,double,double)">
 <h3>Stats</h3>
@@ -289,41 +287,6 @@ implements <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base
 <section class="method-details" id="method.detail">
 <h2>Method Details</h2>
 <ul class="member-list">
-<li>
-<section class="detail" id="entryCount()">
-<h3>entryCount</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">double</span>&nbsp;<span class="element-name">entryCount</span>()</div>
-<div class="block">Returns the estimated number of index entries.</div>
-</section>
-</li>
-<li>
-<section class="detail" id="keyBytes()">
-<h3>keyBytes</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">double</span>&nbsp;<span class="element-name">keyBytes</span>()</div>
-<div class="block">Returns the estimated amount of bytes occupied by keys in the index.</div>
-</section>
-</li>
-<li>
-<section class="detail" id="valueBytes()">
-<h3>valueBytes</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">double</span>&nbsp;<span class="element-name">valueBytes</span>()</div>
-<div class="block">Returns the estimated amount of bytes occupied by values in the index.</div>
-</section>
-</li>
-<li>
-<section class="detail" id="freeBytes()">
-<h3>freeBytes</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">double</span>&nbsp;<span class="element-name">freeBytes</span>()</div>
-<div class="block">Returns the estimated amount of free bytes in the index.</div>
-</section>
-</li>
-<li>
-<section class="detail" id="totalBytes()">
-<h3>totalBytes</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">double</span>&nbsp;<span class="element-name">totalBytes</span>()</div>
-<div class="block">Returns the estimated total amount of bytes in the index.</div>
-</section>
-</li>
 <li>
 <section class="detail" id="add(org.cojen.tupl.Index.Stats)">
 <h3>add</h3>

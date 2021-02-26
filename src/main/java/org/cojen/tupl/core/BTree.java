@@ -776,7 +776,7 @@ class BTree extends Tree implements View, Index {
         try {
             cursor.mKeyOnly = true;
             cursor.random(lowKey, highKey);
-            return cursor.key() == null ? new Stats(0, 0, 0, 0, 0) : cursor.analyze();
+            return cursor.key() == null ? new Stats() : cursor.analyze();
         } catch (Throwable e) {
             cursor.reset();
             throw e;

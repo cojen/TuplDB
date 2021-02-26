@@ -363,8 +363,8 @@ public class CloseTest {
 
         Database.Stats stats2 = mDb.stats();
 
-        assertEquals(0, stats1.freePages());
-        assertTrue(60 <= stats2.freePages() && stats2.freePages() <= 70);
+        assertEquals(0, stats1.freePages);
+        assertTrue(60 <= stats2.freePages && stats2.freePages <= 70);
     }
 
     @Test

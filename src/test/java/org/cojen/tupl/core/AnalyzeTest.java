@@ -65,11 +65,11 @@ public class AnalyzeTest {
 
         {
             Index.Stats stats = ix.analyze(null, null);
-            assertEquals(0, stats.entryCount(), 0);
-            assertEquals(0, stats.keyBytes(), 0);
-            assertEquals(0, stats.valueBytes(), 0);
-            assertEquals(0, stats.freeBytes(), 0);
-            assertEquals(0, stats.totalBytes(), 0);
+            assertEquals(0, stats.entryCount, 0);
+            assertEquals(0, stats.keyBytes, 0);
+            assertEquals(0, stats.valueBytes, 0);
+            assertEquals(0, stats.freeBytes, 0);
+            assertEquals(0, stats.totalBytes, 0);
         }
 
         var rnd = new Random(98765);
@@ -105,13 +105,13 @@ public class AnalyzeTest {
 
         Index.Stats average = total.divideAndRound(probeCount);
 
-        assertEquals(count, average.entryCount(), count * 0.1);
-        assertEquals(keyBytes, average.keyBytes(), keyBytes * 0.1);
-        assertEquals(valueBytes, average.valueBytes(), valueBytes * 0.1);
+        assertEquals(count, average.entryCount, count * 0.1);
+        assertEquals(keyBytes, average.keyBytes, keyBytes * 0.1);
+        assertEquals(valueBytes, average.valueBytes, valueBytes * 0.1);
 
         // Compare to emperical data.
-        assertEquals(2200000, average.freeBytes(), 2200000 * 0.1);
-        assertEquals(9080000, average.totalBytes(), 9080000 * 0.1);
+        assertEquals(2200000, average.freeBytes, 2200000 * 0.1);
+        assertEquals(9080000, average.totalBytes, 9080000 * 0.1);
     }
 
     @Test
@@ -124,14 +124,14 @@ public class AnalyzeTest {
         ix.store(Transaction.BOGUS, key, value);
 
         Index.Stats stats = ix.analyze(null, null);
-        assertEquals(1, stats.entryCount(), 0);
-        assertEquals(key.length, stats.keyBytes(), 0);
-        assertEquals(value.length, stats.valueBytes(), 0);
+        assertEquals(1, stats.entryCount, 0);
+        assertEquals(key.length, stats.keyBytes, 0);
+        assertEquals(value.length, stats.valueBytes, 0);
 
         // Compare to emperical data.
-        assertEquals(2242, stats.freeBytes(), 0);
+        assertEquals(2242, stats.freeBytes, 0);
 
         // Compare to expected data.
-        assertEquals(1019904, stats.totalBytes(), 0);
+        assertEquals(1019904, stats.totalBytes, 0);
     }
 }

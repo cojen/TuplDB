@@ -110,37 +110,60 @@ implements <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code>long</code></div>
 <div class="col-second even-row-color"><code><span class="member-name-link"><a href="#cachePages">cachePages</a></span></code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">The current size of the cache, in pages.</div>
+</div>
 <div class="col-first odd-row-color"><code>long</code></div>
 <div class="col-second odd-row-color"><code><span class="member-name-link"><a href="#checkpointDuration">checkpointDuration</a></span></code></div>
-<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-last odd-row-color">
+<div class="block">The time duration required for the last checkpoint to complete, in milliseconds.</div>
+</div>
 <div class="col-first even-row-color"><code>long</code></div>
 <div class="col-second even-row-color"><code><span class="member-name-link"><a href="#cursorCount">cursorCount</a></span></code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">The amount of cursors which are in a non-reset state.</div>
+</div>
 <div class="col-first odd-row-color"><code>long</code></div>
 <div class="col-second odd-row-color"><code><span class="member-name-link"><a href="#dirtyPages">dirtyPages</a></span></code></div>
-<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-last odd-row-color">
+<div class="block">The count of pages which are dirty (need to be written with a checkpoint).</div>
+</div>
 <div class="col-first even-row-color"><code>long</code></div>
 <div class="col-second even-row-color"><code><span class="member-name-link"><a href="#freePages">freePages</a></span></code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">The amount of unused pages in the database.</div>
+</div>
 <div class="col-first odd-row-color"><code>long</code></div>
 <div class="col-second odd-row-color"><code><span class="member-name-link"><a href="#lockCount">lockCount</a></span></code></div>
-<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-last odd-row-color">
+<div class="block">The amount of locks currently allocated.</div>
+</div>
 <div class="col-first even-row-color"><code>int</code></div>
 <div class="col-second even-row-color"><code><span class="member-name-link"><a href="#openIndexes">openIndexes</a></span></code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">The amount of indexes currently open.</div>
+</div>
 <div class="col-first odd-row-color"><code>int</code></div>
 <div class="col-second odd-row-color"><code><span class="member-name-link"><a href="#pageSize">pageSize</a></span></code></div>
-<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-last odd-row-color">
+<div class="block">The allocation page size</div>
+</div>
 <div class="col-first even-row-color"><code>long</code></div>
 <div class="col-second even-row-color"><code><span class="member-name-link"><a href="#replicationBacklog">replicationBacklog</a></span></code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-last even-row-color">
+<div class="block">The amount of log bytes that a replica must apply to be fully caught up to the
+ leader.</div>
+</div>
 <div class="col-first odd-row-color"><code>long</code></div>
 <div class="col-second odd-row-color"><code><span class="member-name-link"><a href="#totalPages">totalPages</a></span></code></div>
-<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-last odd-row-color">
+<div class="block">The total amount of pages in the database.</div>
+</div>
 <div class="col-first even-row-color"><code>long</code></div>
-<div class="col-second even-row-color"><code><span class="member-name-link"><a href="#txnCount">txnCount</a></span></code></div>
-<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-second even-row-color"><code><span class="member-name-link"><a href="#transactionCount">transactionCount</a></span></code></div>
+<div class="col-last even-row-color">
+<div class="block">The amount of fully-established transactions which are in a non-reset state.</div>
+</div>
 </div>
 </section>
 </li>
@@ -168,76 +191,18 @@ implements <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code>long</code></div>
-<div class="col-second even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#cachePages()">cachePages</a></span>()</code></div>
-<div class="col-last even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">
-<div class="block">Returns the current size of the cache, in pages.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code>long</code></div>
-<div class="col-second odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#checkpointDuration()">checkpointDuration</a></span>()</code></div>
-<div class="col-last odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">
-<div class="block">Returns the time duration required for the last checkpoint to complete, in
- milliseconds.</div>
-</div>
 <div class="col-first even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><a href="Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></code></div>
 <div class="col-second even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#clone()">clone</a></span>()</code></div>
 <div class="col-last even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">&nbsp;</div>
-<div class="col-first odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code>long</code></div>
-<div class="col-second odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#cursorCount()">cursorCount</a></span>()</code></div>
-<div class="col-last odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">
-<div class="block">Returns the amount of cursors which are in a non-reset state.</div>
-</div>
-<div class="col-first even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code>long</code></div>
-<div class="col-second even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#dirtyPages()">dirtyPages</a></span>()</code></div>
-<div class="col-last even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">
-<div class="block">Returns the count of pages which are dirty (need to be written with a checkpoint).</div>
-</div>
 <div class="col-first odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code>boolean</code></div>
 <div class="col-second odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#equals(java.lang.Object)">equals</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;obj)</code></div>
 <div class="col-last odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code>long</code></div>
-<div class="col-second even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#freePages()">freePages</a></span>()</code></div>
-<div class="col-last even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">
-<div class="block">Returns the amount of unused pages in the database.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code>int</code></div>
-<div class="col-second odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#hashCode()">hashCode</a></span>()</code></div>
-<div class="col-last odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code>long</code></div>
-<div class="col-second even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#lockCount()">lockCount</a></span>()</code></div>
-<div class="col-last even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">
-<div class="block">Returns the amount of locks currently allocated.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code>int</code></div>
-<div class="col-second odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#openIndexes()">openIndexes</a></span>()</code></div>
-<div class="col-last odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">
-<div class="block">Returns the amount of indexes currently open.</div>
-</div>
 <div class="col-first even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code>int</code></div>
-<div class="col-second even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#pageSize()">pageSize</a></span>()</code></div>
-<div class="col-last even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">
-<div class="block">Returns the allocation page size.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code>long</code></div>
-<div class="col-second odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#replicationBacklog()">replicationBacklog</a></span>()</code></div>
-<div class="col-last odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">
-<div class="block">Returns the amount of log bytes that a replica must apply to be fully caught up to
- the leader.</div>
-</div>
-<div class="col-first even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#toString()">toString</a></span>()</code></div>
+<div class="col-second even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#hashCode()">hashCode</a></span>()</code></div>
 <div class="col-last even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">&nbsp;</div>
-<div class="col-first odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code>long</code></div>
-<div class="col-second odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#totalPages()">totalPages</a></span>()</code></div>
-<div class="col-last odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">
-<div class="block">Returns the total amount of pages in the database.</div>
-</div>
-<div class="col-first even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code>long</code></div>
-<div class="col-second even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#transactionCount()">transactionCount</a></span>()</code></div>
-<div class="col-last even-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">
-<div class="block">Returns the amount of fully-established transactions which are in a non-reset
- state.</div>
-</div>
+<div class="col-first odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table"><code><span class="member-name-link"><a href="#toString()">toString</a></span>()</code></div>
+<div class="col-last odd-row-color method-summary-table-tab2 method-summary-table-tab4 method-summary-table">&nbsp;</div>
 </div>
 </div>
 </div>
@@ -259,66 +224,85 @@ implements <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base
 <section class="detail" id="pageSize">
 <h3>pageSize</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">pageSize</span></div>
+<div class="block">The allocation page size</div>
 </section>
 </li>
 <li>
 <section class="detail" id="freePages">
 <h3>freePages</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">freePages</span></div>
+<div class="block">The amount of unused pages in the database.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="totalPages">
 <h3>totalPages</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">totalPages</span></div>
+<div class="block">The total amount of pages in the database.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="cachePages">
 <h3>cachePages</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">cachePages</span></div>
+<div class="block">The current size of the cache, in pages.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="dirtyPages">
 <h3>dirtyPages</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">dirtyPages</span></div>
+<div class="block">The count of pages which are dirty (need to be written with a checkpoint).</div>
 </section>
 </li>
 <li>
 <section class="detail" id="openIndexes">
 <h3>openIndexes</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">openIndexes</span></div>
+<div class="block">The amount of indexes currently open.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="lockCount">
 <h3>lockCount</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">lockCount</span></div>
+<div class="block">The amount of locks currently allocated. Locks are created as transactions access or
+ modify records, and they are destroyed when transactions exit or reset. An
+ accumulation of locks can indicate that transactions are not being reset properly.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="cursorCount">
 <h3>cursorCount</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">cursorCount</span></div>
+<div class="block">The amount of cursors which are in a non-reset state. An accumulation of cursors can
+ indicate that they are not being reset properly.</div>
 </section>
 </li>
 <li>
-<section class="detail" id="txnCount">
-<h3>txnCount</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">txnCount</span></div>
+<section class="detail" id="transactionCount">
+<h3>transactionCount</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">transactionCount</span></div>
+<div class="block">The amount of fully-established transactions which are in a non-reset state. This
+ value is unaffected by transactions which make no changes, and it is also unaffected
+ by auto-commit transactions. An accumulation of transactions can indicate that they
+ are not being reset properly.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="checkpointDuration">
 <h3>checkpointDuration</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">checkpointDuration</span></div>
+<div class="block">The time duration required for the last checkpoint to complete, in milliseconds. If
+ no checkpoints are running, then zero is returned.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="replicationBacklog">
 <h3>replicationBacklog</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">replicationBacklog</span></div>
+<div class="block">The amount of log bytes that a replica must apply to be fully caught up to the
+ leader. If the member is currently the leader, then the backlog is zero.</div>
 </section>
 </li>
 </ul>
@@ -343,91 +327,6 @@ implements <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base
 <section class="method-details" id="method.detail">
 <h2>Method Details</h2>
 <ul class="member-list">
-<li>
-<section class="detail" id="pageSize()">
-<h3>pageSize</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">pageSize</span>()</div>
-<div class="block">Returns the allocation page size.</div>
-</section>
-</li>
-<li>
-<section class="detail" id="freePages()">
-<h3>freePages</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">freePages</span>()</div>
-<div class="block">Returns the amount of unused pages in the database.</div>
-</section>
-</li>
-<li>
-<section class="detail" id="totalPages()">
-<h3>totalPages</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">totalPages</span>()</div>
-<div class="block">Returns the total amount of pages in the database.</div>
-</section>
-</li>
-<li>
-<section class="detail" id="cachePages()">
-<h3>cachePages</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">cachePages</span>()</div>
-<div class="block">Returns the current size of the cache, in pages.</div>
-</section>
-</li>
-<li>
-<section class="detail" id="dirtyPages()">
-<h3>dirtyPages</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">dirtyPages</span>()</div>
-<div class="block">Returns the count of pages which are dirty (need to be written with a checkpoint).</div>
-</section>
-</li>
-<li>
-<section class="detail" id="openIndexes()">
-<h3>openIndexes</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">openIndexes</span>()</div>
-<div class="block">Returns the amount of indexes currently open.</div>
-</section>
-</li>
-<li>
-<section class="detail" id="lockCount()">
-<h3>lockCount</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">lockCount</span>()</div>
-<div class="block">Returns the amount of locks currently allocated. Locks are created as transactions
- access or modify records, and they are destroyed when transactions exit or reset. An
- accumulation of locks can indicate that transactions are not being reset properly.</div>
-</section>
-</li>
-<li>
-<section class="detail" id="cursorCount()">
-<h3>cursorCount</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">cursorCount</span>()</div>
-<div class="block">Returns the amount of cursors which are in a non-reset state. An accumulation of
- cursors can indicate that they are not being reset properly.</div>
-</section>
-</li>
-<li>
-<section class="detail" id="transactionCount()">
-<h3>transactionCount</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">transactionCount</span>()</div>
-<div class="block">Returns the amount of fully-established transactions which are in a non-reset
- state. This value is unaffected by transactions which make no changes, and it is
- also unaffected by auto-commit transactions. An accumulation of transactions can
- indicate that they are not being reset properly.</div>
-</section>
-</li>
-<li>
-<section class="detail" id="checkpointDuration()">
-<h3>checkpointDuration</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">checkpointDuration</span>()</div>
-<div class="block">Returns the time duration required for the last checkpoint to complete, in
- milliseconds. If no checkpoints are running, then zero is returned.</div>
-</section>
-</li>
-<li>
-<section class="detail" id="replicationBacklog()">
-<h3>replicationBacklog</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">replicationBacklog</span>()</div>
-<div class="block">Returns the amount of log bytes that a replica must apply to be fully caught up to
- the leader. If the member is currently the leader, then zero is returned.</div>
-</section>
-</li>
 <li>
 <section class="detail" id="clone()">
 <h3>clone</h3>

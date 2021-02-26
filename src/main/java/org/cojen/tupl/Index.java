@@ -78,11 +78,33 @@ public interface Index extends View, Closeable {
     public static class Stats implements Cloneable, Serializable {
         private static final long serialVersionUID = 3L;
 
+        /**
+         * The estimated number of index entries.
+         */
         public double entryCount;
+
+        /**
+         * The estimated amount of bytes occupied by keys in the index.
+         */
         public double keyBytes;
+
+        /**
+         * The estimated amount of bytes occupied by values in the index.
+         */
         public double valueBytes;
+
+        /**
+         * The estimated amount of free bytes in the index.
+         */
         public double freeBytes;
+
+        /**
+         * The estimated total amount of bytes in the index.
+         */
         public double totalBytes;
+
+        public Stats() {
+        }
 
         public Stats(double entryCount,
                      double keyBytes,
@@ -96,41 +118,6 @@ public interface Index extends View, Closeable {
             this.freeBytes = freeBytes;
             this.totalBytes = totalBytes;
         } 
-
-        /**
-         * Returns the estimated number of index entries.
-         */
-        public double entryCount() {
-            return entryCount;
-        }
-
-        /**
-         * Returns the estimated amount of bytes occupied by keys in the index.
-         */
-        public double keyBytes() {
-            return keyBytes;
-        }
-
-        /**
-         * Returns the estimated amount of bytes occupied by values in the index.
-         */
-        public double valueBytes() {
-            return valueBytes;
-        }
-
-        /**
-         * Returns the estimated amount of free bytes in the index.
-         */
-        public double freeBytes() {
-            return freeBytes;
-        }
-
-        /**
-         * Returns the estimated total amount of bytes in the index.
-         */
-        public double totalBytes() {
-            return totalBytes;
-        }
 
         /**
          * Adds stats into a new object.

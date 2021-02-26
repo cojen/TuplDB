@@ -106,61 +106,61 @@ public class Registration {
         @Override
         public long getFreeBytes() {
             var stats = stats();
-            return stats == null ? 0 : stats.freePages() * stats.pageSize();
+            return stats == null ? 0 : stats.freePages * stats.pageSize;
         }
 
         @Override
         public long getTotalBytes() {
             var stats = stats();
-            return stats == null ? 0 : stats.totalPages() * stats.pageSize();
+            return stats == null ? 0 : stats.totalPages * stats.pageSize;
         }
 
         @Override
         public long getCacheBytes() {
             var stats = stats();
-            return stats == null ? 0 : stats.cachePages() * stats.pageSize();
+            return stats == null ? 0 : stats.cachePages * stats.pageSize;
         }
 
         @Override
         public long getDirtyBytes() {
             var stats = stats();
-            return stats == null ? 0 : stats.dirtyPages() * stats.pageSize();
+            return stats == null ? 0 : stats.dirtyPages * stats.pageSize;
         }
 
         @Override
         public int getOpenIndexes() {
             var stats = stats();
-            return stats == null ? 0 : stats.openIndexes();
+            return stats == null ? 0 : stats.openIndexes;
         }
 
         @Override
         public long getLockCount() {
             var stats = stats();
-            return stats == null ? 0 : stats.lockCount();
+            return stats == null ? 0 : stats.lockCount;
         }
 
         @Override
         public long getCursorCount() {
             var stats = stats();
-            return stats == null ? 0 : stats.cursorCount();
+            return stats == null ? 0 : stats.cursorCount;
         }
 
         @Override
         public long getTransactionCount() {
             var stats = stats();
-            return stats == null ? 0 : stats.transactionCount();
+            return stats == null ? 0 : stats.transactionCount;
         }
 
         @Override
         public long getCheckpointDuration() {
             var stats = stats();
-            return stats == null ? 0 : stats.checkpointDuration();
+            return stats == null ? 0 : stats.checkpointDuration;
         }
 
         @Override
         public long getReplicationBacklog() {
             var stats = stats();
-            return stats == null ? 0 : stats.replicationBacklog();
+            return stats == null ? 0 : stats.replicationBacklog;
         }
 
         @Override
