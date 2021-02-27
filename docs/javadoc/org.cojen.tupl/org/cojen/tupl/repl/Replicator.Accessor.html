@@ -219,9 +219,9 @@ extends <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/ja
 <div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">addCommitListener</span>&#8203;<span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/function/LongConsumer.html" title="class or interface in java.util.function" class="external-link">LongConsumer</a>&nbsp;listener)</span></div>
 <div class="block">Install a callback which receives a stream of commit position updates. Each update
  is guaranteed to be higher than the previous one. When the received position is -1,
- the term has ended, and no further updates are received. The commit stream
- implementation should avoid blocking the thread that calls it, or else the
- replicator can stall.</div>
+ the term has ended, and no further updates are received. The listener implementation
+ should avoid prolonged blocking of the calling thread, or else the replicator can
+ stall.</div>
 <dl class="notes">
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if listener is null</dd>

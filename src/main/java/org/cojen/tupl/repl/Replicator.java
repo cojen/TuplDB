@@ -238,9 +238,9 @@ public interface Replicator extends Closeable {
         /**
          * Install a callback which receives a stream of commit position updates. Each update
          * is guaranteed to be higher than the previous one. When the received position is -1,
-         * the term has ended, and no further updates are received. The commit stream
-         * implementation should avoid blocking the thread that calls it, or else the
-         * replicator can stall.
+         * the term has ended, and no further updates are received. The listener implementation
+         * should avoid prolonged blocking of the calling thread, or else the replicator can
+         * stall.
          *
          * @throws NullPointerException if listener is null
          */
