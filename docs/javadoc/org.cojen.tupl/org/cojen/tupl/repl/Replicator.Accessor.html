@@ -146,20 +146,15 @@ extends <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/ja
 <div class="col-last odd-row-color method-summary-table-tab2 method-summary-table method-summary-table-tab3">
 <div class="block">Invokes the given task when the commit position reaches the requested position.</div>
 </div>
-<div class="col-first even-row-color method-summary-table-tab2 method-summary-table-tab5 method-summary-table"><code>default void</code></div>
-<div class="col-second even-row-color method-summary-table-tab2 method-summary-table-tab5 method-summary-table"><code><span class="member-name-link"><a href="#uponEndCommit(java.util.function.LongConsumer)">uponEndCommit</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/function/LongConsumer.html" title="class or interface in java.util.function" class="external-link">LongConsumer</a>&nbsp;task)</code></div>
-<div class="col-last even-row-color method-summary-table-tab2 method-summary-table-tab5 method-summary-table">
-<div class="block">Invokes the given task when the commit position reaches the end of the term.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table-tab2 method-summary-table method-summary-table-tab3"><code>long</code></div>
-<div class="col-second odd-row-color method-summary-table-tab2 method-summary-table method-summary-table-tab3"><code><span class="member-name-link"><a href="#waitForCommit(long,long)">waitForCommit</a></span>&#8203;(long&nbsp;position,
+<div class="col-first even-row-color method-summary-table-tab2 method-summary-table method-summary-table-tab3"><code>long</code></div>
+<div class="col-second even-row-color method-summary-table-tab2 method-summary-table method-summary-table-tab3"><code><span class="member-name-link"><a href="#waitForCommit(long,long)">waitForCommit</a></span>&#8203;(long&nbsp;position,
  long&nbsp;nanosTimeout)</code></div>
-<div class="col-last odd-row-color method-summary-table-tab2 method-summary-table method-summary-table-tab3">
+<div class="col-last even-row-color method-summary-table-tab2 method-summary-table method-summary-table-tab3">
 <div class="block">Blocks until the commit position reaches the given position.</div>
 </div>
-<div class="col-first even-row-color method-summary-table-tab2 method-summary-table-tab5 method-summary-table"><code>default long</code></div>
-<div class="col-second even-row-color method-summary-table-tab2 method-summary-table-tab5 method-summary-table"><code><span class="member-name-link"><a href="#waitForEndCommit(long)">waitForEndCommit</a></span>&#8203;(long&nbsp;nanosTimeout)</code></div>
-<div class="col-last even-row-color method-summary-table-tab2 method-summary-table-tab5 method-summary-table">
+<div class="col-first odd-row-color method-summary-table-tab2 method-summary-table-tab5 method-summary-table"><code>default long</code></div>
+<div class="col-second odd-row-color method-summary-table-tab2 method-summary-table-tab5 method-summary-table"><code><span class="member-name-link"><a href="#waitForEndCommit(long)">waitForEndCommit</a></span>&#8203;(long&nbsp;nanosTimeout)</code></div>
+<div class="col-last odd-row-color method-summary-table-tab2 method-summary-table-tab5 method-summary-table">
 <div class="block">Blocks until the commit position reaches the end of the term.</div>
 </div>
 </div>
@@ -237,16 +232,6 @@ extends <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/ja
  current commit position is passed to the task, which is -1 if the term ended before
  the position could be reached. If the task can be run when this method is called,
  then the current thread invokes it immediately.</div>
-</section>
-</li>
-<li>
-<section class="detail" id="uponEndCommit(java.util.function.LongConsumer)">
-<h3>uponEndCommit</h3>
-<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">uponEndCommit</span>&#8203;<span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/function/LongConsumer.html" title="class or interface in java.util.function" class="external-link">LongConsumer</a>&nbsp;task)</span></div>
-<div class="block">Invokes the given task when the commit position reaches the end of the term. The
- current commit position is passed to the task, which is -1 if the accessor is
- closed. If the task can be run when this method is called, then the current thread
- invokes it immediately.</div>
 </section>
 </li>
 <li>
