@@ -20,6 +20,9 @@ package org.cojen.tupl.core;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import org.cojen.tupl.ConfirmationFailureException;
 import org.cojen.tupl.ConfirmationInterruptedException;
 import org.cojen.tupl.ConfirmationTimeoutException;
@@ -77,6 +80,22 @@ class ReplWriter extends RedoWriter {
     // Assumes that the commit stream from Replicator holds a latch of its own.
     private volatile PendingTxn mFirstPending;
     private volatile PendingTxn mLastPending;
+    private static final VarHandle cFirstPendingHandle;
+    private static final VarHandle cLastPendingHandle;
+
+    static {
+        try {
+            cFirstPendingHandle =
+                MethodHandles.lookup().findVarHandle
+                (ReplWriter.class, "mFirstPending", PendingTxn.class);
+
+            cLastPendingHandle =
+                MethodHandles.lookup().findVarHandle
+                (ReplWriter.class, "mLastPending", PendingTxn.class);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
+    }
 
     /**
      * Caller must call start if a writer is supplied.
@@ -237,16 +256,25 @@ class ReplWriter extends RedoWriter {
                 if (pending != null) {
                     // Set position before writing to volatile fields.
                     pending.commitPos(mLastCommitPos);
+
                     PendingTxn last = mLastPending;
-                    if (last == null) {
-                        mFirstPending = pending;
-                    } else {
-                        last.setNext(pending);
-                        if (mFirstPending == null) {
-                            mFirstPending = pending;
+                    while (true) {
+                        if (last == null) {
+                            cLastPendingHandle.set(this, pending);
+                            while (!cFirstPendingHandle.compareAndSet(this, null, pending)) {
+                                // Wait for the finishPending method to set first to null.
+                                Thread.onSpinWait();
+                            }
+                            break;
                         }
+                        PendingTxn newLast = (PendingTxn) cLastPendingHandle
+                            .compareAndExchange(this, last, pending);
+                        if (newLast == pending) {
+                            last.setNextVolatile(pending);
+                            break;
+                        }
+                        last = newLast;
                     }
-                    mLastPending = pending;
                 }
             }
 
@@ -443,48 +471,55 @@ class ReplWriter extends RedoWriter {
     }
 
     private void finishPending(long commitPos) {
-        PendingTxn pending = mFirstPending;
-        if (pending == null) {
+        final PendingTxn first = mFirstPending;
+
+        if (first == null) {
             return;
         }
-
-        final PendingTxn first = pending;
 
         // Read volatile field first to get the correct position.
-        PendingTxn next = pending.mNext;
+        PendingTxn next = first.getNextVolatile();
 
         if (commitPos < 0) {
-            pending.commitPos(-1); // signal rollback
-        } else if (commitPos < pending.commitPos()) {
+            first.commitPos(-1); // signal rollback
+        } else if (commitPos < first.commitPos()) {
             return;
         }
+
+        PendingTxn pending = first;
 
         while (true) {
             if (next == null) {
                 // Removing the last node requires special attention.
-                next = pending.tryLockLast();
-                mFirstPending = next;
-                if (next == null) {
-                    mLastPending = null;
-                    pending.unlockLast();
+                PendingTxn last = mLastPending;
+                if (last == pending && cLastPendingHandle.compareAndSet(this, last, null)) {
+                    cFirstPendingHandle.compareAndSet(this, first, null);
                     break;
                 }
+                // More nodes just got enqueued. Don't bother checking them because they are
+                // expected to have a higher commit position.
+                while ((next = pending.getNextVolatile()) == null) {
+                    // Wait for next to be assigned by the write method.
+                    Thread.onSpinWait();
+                }
+                cFirstPendingHandle.set(this, next);
+                break;
             }
 
             PendingTxn prev = pending;
             pending = next;
-            next = pending.mNext;
+            next = pending.getNextVolatile();
 
             if (commitPos < 0) {
                 pending.commitPos(-1); // signal rollback
             } else if (commitPos < pending.commitPos()) {
-                mFirstPending = pending;
+                cFirstPendingHandle.set(this, pending);
                 pending = prev;
                 break;
             }
         }
 
-        pending.mNext = null;
+        pending.setNextPlain(null);
 
         mEngine.mFinisher.enqueue(first, pending);
     }
@@ -690,6 +725,14 @@ class ReplWriter extends RedoWriter {
         mBufferLatch.releaseExclusive();
 
         mEngine.mController.switchToReplica(mReplWriter);
+
+        // A race condition is possible in which PendingTxns were enqueued but they didn't get
+        // rolled back. The finishPending listener doesn't get called again after given a
+        // commit position of -1, so register a listener to finish processing any remaining
+        // PendingTxns. Because mBuffer is now null, no new PendingTxns are enqueued. There's
+        // no harm if the original listener is still running, because the replication layer
+        // ensures that listeners aren't invoked concurrently.
+        mReplWriter.addCommitListener(this::finishPending);
     }
 
     /**

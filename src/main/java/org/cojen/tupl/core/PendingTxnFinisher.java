@@ -46,7 +46,7 @@ final class PendingTxnFinisher extends Latch implements Runnable {
             if (mLast == null) {
                 mFirst = first;
             } else {
-                mLast.mNext = first;
+                mLast.setNextPlain(first);
             }
             mLast = last;
             if (mIdleCondition.isEmpty() && mTotalThreads < mMaxThreads) {
@@ -74,7 +74,7 @@ final class PendingTxnFinisher extends Latch implements Runnable {
                             mFirst = null;
                             mLast = null;
                         } else {
-                            mFirst = pending.mNext;
+                            mFirst = pending.getNextPlain();
                         }
                         break;
                     }

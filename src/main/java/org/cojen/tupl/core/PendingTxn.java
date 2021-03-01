@@ -43,7 +43,7 @@ final class PendingTxn extends Locker implements Runnable {
     private volatile long mCommitPos;
     private static final VarHandle cCommitPosHandle;
 
-    volatile PendingTxn mNext;
+    private volatile PendingTxn mNext;
     private static final VarHandle cNextHandle;
 
     static {
@@ -93,21 +93,20 @@ final class PendingTxn extends Locker implements Runnable {
         cCommitPosHandle.setOpaque(this, pos);
     }
 
-    /**
-     * @return null if locked, else the next pending txn
-     */
-    PendingTxn tryLockLast() {
-        return (PendingTxn) cNextHandle.compareAndExchange(this, null, this);
+    PendingTxn getNextVolatile() {
+        return mNext;
     }
 
-    void unlockLast() {
-        mNext = null;
+    void setNextVolatile(PendingTxn next) {
+        mNext = next;
     }
 
-    void setNext(PendingTxn next) {
-        while (!cNextHandle.compareAndSet(this, null, next)) {
-            Thread.onSpinWait();
-        }
+    PendingTxn getNextPlain() {
+        return (PendingTxn) cNextHandle.get(this);
+    }
+
+    void setNextPlain(PendingTxn next) {
+        cNextHandle.set(this, next);
     }
 
     @Override
