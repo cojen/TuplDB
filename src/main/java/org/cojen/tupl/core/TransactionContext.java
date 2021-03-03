@@ -1302,7 +1302,8 @@ final class TransactionContext extends Latch implements Flushable {
 
     /**
      * Write any undo log references to the master undo log. Caller must hold db commit lock
-     * and synchronize on this context object.
+     * and synchronize on this context object. As a side effect, the set of uncommitted
+     * transactions is cleared.
      *
      * @param workspace temporary buffer, allocated on demand
      * @return new or original workspace instance
@@ -1311,16 +1312,8 @@ final class TransactionContext extends Latch implements Flushable {
         for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
             workspace = log.writeToMaster(master, workspace);
         }
+        mUncommitted = null;
         return workspace;
-    }
-
-    /**
-     * Copies a reference to all active UndoLogs into the given collection.
-     */
-    synchronized void gatherUndoLogs(Collection<? super UndoLog> to) {
-        for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
-            to.add(log);
-        }
     }
 
     /**
