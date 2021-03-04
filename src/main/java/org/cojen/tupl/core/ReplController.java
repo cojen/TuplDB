@@ -462,25 +462,36 @@ final class ReplController extends ReplWriter {
     }
 
     private void doSwitchToReplica(ReplWriter redo) {
-        StreamReplicator.Writer writer = redo.mReplWriter;
-
         long pos;
         try {
+            StreamReplicator.Writer writer = redo.mReplWriter;
+
+            // Position is required, so panic if this step fails.
             pos = confirmEnd(writer);
-        } catch (ConfirmationFailureException e) {
-            // Position is required, so panic.
-            mEngine.fail(e);
-            return;
-        }
 
-        writer.close();
+            writer.close();
 
-        redo.closeConsumerThread();
+            redo.closeConsumerThread();
 
-        // Cannot start receiving until all prepared transactions have been safely transferred.
-        try {
+            // Cannot start receiving until all prepared transactions have been safely
+            // transferred to ReplEngine and can be acted upon as replicas.
             mEngine.awaitPreparedTransactions();
-        } catch (IOException e) {
+
+            // Wait for any lingering transactions which optimistically committed. When a
+            // checkpoint runs, it records these transactions as committed, and recovery treats
+            // them as such. However, these transactions might need to roll back due to
+            // leadership failover. If a checkpoint were to run now, it will fail because the
+            // writer is closed, and then LocalDatabase.cleanupMasterUndoLog is called. If
+            // instead the next checkpoint is run is replica mode, the optimistically committed
+            // transactions will be recorded as committed even though some of them will roll
+            // back. If a recovery needs to run (database restarted), then it won't roll back
+            // the optimistically committed transactions that should be rolled back. This
+            // erroneous state is cleanup by the next checkpoint. To prevent this state from
+            // being recorded in the first place, wait for the optimistically committed
+            // transactions to finish before finishing the switch to replica mode. Some will
+            // finish as committed, and some will roll back.
+            mEngine.mDatabase.waitForCommitted();
+        } catch (Throwable e) {
             // Panic.
             mEngine.fail(e);
             return;

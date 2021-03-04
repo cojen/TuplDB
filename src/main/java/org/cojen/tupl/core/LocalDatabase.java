@@ -5873,37 +5873,15 @@ final class LocalDatabase extends CoreDatabase {
             if (isClosed()) {
                 return;
             }
+            // Shared commit lock is held to prevent this data structure from being deleted if
+            // the database is concurrently closing.
             committed = mCommitMasterUndoLog.findCommitted();
         } finally {
             shared.release();
         }
 
-        if (committed == null) {
+        if (committed == null || !waitForCommitted(committed)) {
             return;
-        }
-
-        loop: while (true) {
-            checkAll: {
-                for (TransactionContext txnContext : mTxnContexts) {
-                    if (txnContext.anyActive(committed)) {
-                        break checkAll;
-                    }
-                }
-                break loop;
-            }
-
-            if (isClosed()) {
-                return;
-            }
-
-            // Wait with a sleep. Crude, but it means that no special condition variable is
-            // required. Considering that this method is only expected to be called when
-            // leadership is lost during a checkpoint, there's no reason to be immediate.
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                throw new InterruptedIOException();
-            }
         }
 
         LHashTable.Obj<Object> uncommitted = null;
@@ -5923,6 +5901,69 @@ final class LocalDatabase extends CoreDatabase {
                 shared.release();
             }
         }
+    }
+
+    /**
+     * Wait for the set of transaction ids to finish.
+     *
+     * @param committed can be null if empty
+     * @return false if database is closed
+     */
+    private boolean waitForCommitted(LHashTable.Obj<Object> committed)
+        throws InterruptedIOException
+    {
+        if (committed == null) {
+            return true;
+        }
+
+        while (true) {
+            checkAll: {
+                for (TransactionContext txnContext : mTxnContexts) {
+                    if (txnContext.anyActive(committed)) {
+                        break checkAll;
+                    }
+                }
+                return true;
+            }
+
+            if (isClosed()) {
+                return false;
+            }
+
+            // Wait with a sleep. Crude, but it means that no special condition variable is
+            // required. Considering that this method is only expected to be called when
+            // leadership is lost, there's no reason to be immediate.
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                throw new InterruptedIOException();
+            }
+        }
+    }
+
+    /**
+     * Gathers all transactions which have an optimistic committed state and waits for them to
+     * finish. Should be called after redo writer is closed to prevent new transactions from
+     * entering the committed state.
+     */
+    boolean waitForCommitted() throws InterruptedIOException {
+        LHashTable.Obj<Object> committed = null;
+
+        // Acquire exclusive lock to wait for all threads which are concurrently entering the
+        // committed state. They'll be holding the shared lock (see LocalTransaction.commit).
+        mCommitLock.acquireExclusive();
+        try {
+            if (isClosed()) {
+                return false;
+            }
+            for (TransactionContext txnContext : mTxnContexts) {
+                committed = txnContext.gatherCommitted(committed);
+            }
+        } finally {
+            mCommitLock.releaseExclusive();
+        }
+
+        return waitForCommitted(committed);
     }
 
     /**
@@ -6106,6 +6147,9 @@ final class LocalDatabase extends CoreDatabase {
                             }
                             workspace = txnContext.writeToMaster(masterUndoLog, workspace);
                         }
+                        // Clear the set of uncommitted transactions, which is used to cleanup
+                        // the master undo log after a checkpoint failure.
+                        txnContext.clearUncommitted();
                     }
                 }
 

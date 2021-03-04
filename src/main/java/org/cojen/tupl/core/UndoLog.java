@@ -288,6 +288,13 @@ final class UndoLog implements DatabaseAccess {
     }
 
     /**
+     * Caller should hold db commit lock.
+     */
+    boolean isCommitted() {
+        return mCommitted != 0;
+    }
+
+    /**
      * If the transaction was committed, deletes any ghosts and truncates the log.
      *
      * @return true if transaction was committed
@@ -1684,7 +1691,7 @@ final class UndoLog implements DatabaseAccess {
      * uncommitted. Caller must hold db commit lock.
      */
     void markUncommitted(LHashTable.Obj<Object> uncommitted) throws IOException {
-        // Note that it's safe to blindly re-write the nodes. The node were intended for a
+        // Note that it's safe to blindly re-write the nodes. The nodes were intended for a
         // checkpoint which failed, and so nothing refers to them.
 
         var uncommitter = new Visitor() {

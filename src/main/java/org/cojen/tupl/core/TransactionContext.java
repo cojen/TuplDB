@@ -23,8 +23,6 @@ import java.lang.invoke.VarHandle;
 import java.io.Flushable;
 import java.io.IOException;
 
-import java.util.Collection;
-
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.cojen.tupl.Database;
@@ -1207,13 +1205,13 @@ final class TransactionContext extends Latch implements Flushable {
     /**
      * Caller must hold db commit lock.
      */
-    synchronized void register(UndoLog undo) {
+    synchronized void register(UndoLog log) {
         UndoLog top = mTopUndoLog;
         if (top != null) {
-            undo.mPrev = top;
-            top.mNext = undo;
+            log.mPrev = top;
+            top.mNext = log;
         }
-        mTopUndoLog = undo;
+        mTopUndoLog = log;
         mUndoLogCount++;
     }
 
@@ -1287,6 +1285,33 @@ final class TransactionContext extends Latch implements Flushable {
     }
 
     /**
+     * Clears the set of uncommitted transactions, freeing memory. Caller must synchronize on
+     * this context object.
+     */
+    void clearUncommitted() {
+        mUncommitted = null;
+    }
+
+    /**
+     * Gather all the ids for transactions which have an optimistic committed state. Returns
+     * null if none. Caller should hold exclusive commit lock.
+     *
+     * @param dest set with transaction id keys; can be null initially
+     * @return exiting or new set
+     */
+    synchronized LHashTable.Obj<Object> gatherCommitted(LHashTable.Obj<Object> dest) {
+        for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
+            if (log.isCommitted()) {
+                if (dest == null) {
+                    dest = new LHashTable.Obj<>(4);
+                }
+                dest.insert(log.mTxnId);
+            }
+        }
+        return dest;
+    }
+
+    /**
      * Returns the current transaction id or the given one, depending on which is higher.
      */
     long higherTransactionId(long txnId) {
@@ -1302,8 +1327,7 @@ final class TransactionContext extends Latch implements Flushable {
 
     /**
      * Write any undo log references to the master undo log. Caller must hold db commit lock
-     * and synchronize on this context object. As a side effect, the set of uncommitted
-     * transactions is cleared.
+     * and synchronize on this context object.
      *
      * @param workspace temporary buffer, allocated on demand
      * @return new or original workspace instance
@@ -1312,7 +1336,6 @@ final class TransactionContext extends Latch implements Flushable {
         for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
             workspace = log.writeToMaster(master, workspace);
         }
-        mUncommitted = null;
         return workspace;
     }
 
