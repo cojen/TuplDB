@@ -17,6 +17,9 @@
 
 package org.cojen.tupl.core;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import java.io.IOException;
 
 import java.util.ArrayDeque;
@@ -195,7 +198,18 @@ final class UndoLog implements DatabaseAccess {
     // Active key is used for ValueAccessor operations.
     private byte[] mActiveKey;
 
-    private byte mCommitted;
+    private int mCommitted;
+
+    private static final VarHandle cCommittedHandle;
+
+    static {
+        try {
+            cCommittedHandle =
+                MethodHandles.lookup().findVarHandle(UndoLog.class, "mCommitted", int.class);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
+    }
 
     UndoLog(LocalDatabase db, long txnId) {
         mDatabase = db;
@@ -279,19 +293,20 @@ final class UndoLog implements DatabaseAccess {
     }
 
     /**
-     * Called by LocalTransaction, which does not need to hold db commit lock.
+     * Called by LocalTransaction, from the thread which currently owns the transaction.
      */
     void uncommit() {
-        CommitLock.Shared shared = mDatabase.commitLock().acquireSharedUnchecked();
-        mCommitted = 0;
-        shared.release();
+        cCommittedHandle.setRelease(this, 0);
     }
 
     /**
-     * Caller should hold db commit lock.
+     * Called by a thread other than the one which currently owns the transaction. This state
+     * should be examined after acquiring the exclusive db commit lock.
      */
     boolean isCommitted() {
-        return mCommitted != 0;
+        // Note the use of acquire/release mode. This allows a call to uncommit to be observed
+        // without acquiring the db commit lock again.
+        return ((int) cCommittedHandle.getAcquire(this)) != 0;
     }
 
     /**
@@ -2166,7 +2181,7 @@ final class UndoLog implements DatabaseAccess {
             log.mNode.releaseExclusive();
         }
 
-        log.mCommitted = (byte) ((masterLogOp >> 1) & OP_LOG_COPY);
+        log.mCommitted = (masterLogOp >> 1) & OP_LOG_COPY;
 
         return log;
     }

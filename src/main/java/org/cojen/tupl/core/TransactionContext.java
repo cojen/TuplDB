@@ -1247,14 +1247,15 @@ final class TransactionContext extends Latch implements Flushable {
     }
 
     /**
-     * Checks if any of the given transaction ids match transactions which are still active.
+     * Checks if any of the given transaction ids match transactions which are still registered
+     * and have an optimistic commit state.
      *
      * @param committed set with transaction id keys
-     * @return true if at least one of the given transactions is still registered
+     * @return true if at least one of the given transactions is active
      */
     synchronized boolean anyActive(LHashTable.Obj<Object> committed) {
         for (UndoLog log = mTopUndoLog; log != null; log = log.mPrev) {
-            if (committed.get(log.mTxnId) != null) {
+            if (committed.get(log.mTxnId) != null && log.isCommitted()) {
                 return true;
             }
         }
@@ -1294,7 +1295,7 @@ final class TransactionContext extends Latch implements Flushable {
 
     /**
      * Gather all the ids for transactions which have an optimistic committed state. Returns
-     * null if none. Caller should hold exclusive commit lock.
+     * null if none.
      *
      * @param dest set with transaction id keys; can be null initially
      * @return exiting or new set

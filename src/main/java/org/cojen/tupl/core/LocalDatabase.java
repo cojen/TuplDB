@@ -5934,7 +5934,7 @@ final class LocalDatabase extends CoreDatabase {
             // required. Considering that this method is only expected to be called when
             // leadership is lost, there's no reason to be immediate.
             try {
-                Thread.sleep(10);
+                Thread.sleep(1);
             } catch (InterruptedException e) {
                 throw new InterruptedIOException();
             }
@@ -5947,20 +5947,15 @@ final class LocalDatabase extends CoreDatabase {
      * entering the committed state.
      */
     boolean waitForCommitted() throws InterruptedIOException {
-        LHashTable.Obj<Object> committed = null;
-
         // Acquire exclusive lock to wait for all threads which are concurrently entering the
         // committed state. They'll be holding the shared lock (see LocalTransaction.commit).
+        // There's no need to retain the exclusive lock after waiting.
         mCommitLock.acquireExclusive();
-        try {
-            if (isClosed()) {
-                return false;
-            }
-            for (TransactionContext txnContext : mTxnContexts) {
-                committed = txnContext.gatherCommitted(committed);
-            }
-        } finally {
-            mCommitLock.releaseExclusive();
+        mCommitLock.releaseExclusive();
+
+        LHashTable.Obj<Object> committed = null;
+        for (TransactionContext txnContext : mTxnContexts) {
+            committed = txnContext.gatherCommitted(committed);
         }
 
         return waitForCommitted(committed);
