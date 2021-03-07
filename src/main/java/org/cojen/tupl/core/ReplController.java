@@ -486,10 +486,10 @@ final class ReplController extends ReplWriter {
             // transactions will be recorded as committed even though some of them will roll
             // back. If a recovery needs to run (database restarted), then it won't roll back
             // the optimistically committed transactions that should be rolled back. This
-            // erroneous state is cleanup by the next checkpoint. To prevent this state from
-            // being recorded in the first place, wait for the optimistically committed
-            // transactions to finish before finishing the switch to replica mode. Some will
-            // finish as committed, and some will roll back.
+            // erroneous state is eventually cleaned up by a later checkpoint. To prevent this
+            // state from being recorded in the first place, wait for the optimistically
+            // committed transactions to finish before finishing the switch to replica
+            // mode. Some will finish as committed, and some will roll back.
             mEngine.mDatabase.waitForCommitted();
         } catch (Throwable e) {
             // Panic.
