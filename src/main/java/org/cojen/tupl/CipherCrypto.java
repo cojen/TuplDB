@@ -536,7 +536,7 @@ public class CipherCrypto implements Crypto {
 
         @Override
         public void write(int b) throws IOException {
-            mOut.write(new byte[] {(byte) b});
+            write(new byte[] {(byte) b});
         }
 
         @Override

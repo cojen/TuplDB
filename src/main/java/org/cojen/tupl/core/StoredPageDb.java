@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.core;
 
+import java.io.BufferedOutputStream;
 import java.io.EOFException;
 import java.io.File;
 import java.io.InputStream;
@@ -713,7 +714,7 @@ final class StoredPageDb extends PageDb {
     OutputStream encrypt(OutputStream out) throws IOException {
         if (mCrypto != null) {
             try {
-                out = mCrypto.newEncryptingStream(out);
+                out = new BufferedOutputStream(mCrypto.newEncryptingStream(out));
             } catch (GeneralSecurityException e) {
                 throw new DatabaseException(e);
             }

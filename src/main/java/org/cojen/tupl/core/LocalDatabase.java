@@ -21,6 +21,7 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.DataInput;
 import java.io.DataInputStream;
+import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -1138,9 +1139,8 @@ final class LocalDatabase extends CoreDatabase {
             if ((mMode & 1) != 0) {
                 File primer = db.primerFile();
 
-                FileOutputStream fout;
                 try {
-                    fout = new FileOutputStream(primer);
+                    var fout = new FileOutputStream(primer);
                     try {
                         try (var bout = new BufferedOutputStream(fout)) {
                             db.createCachePrimer(bout);
@@ -2330,9 +2330,15 @@ final class LocalDatabase extends CoreDatabase {
 
     @Override
     public void createCachePrimer(OutputStream out) throws IOException {
-        out = mPageDb.asStoredPageDb("Cache priming").encrypt(out);
+        final OutputStream original = out;
+        out = mPageDb.asStoredPageDb("Cache priming").encrypt(original);
 
-        var dout = new DataOutputStream(out);
+        DataOutput dout;
+        if (out instanceof DataOutput) {
+            dout = (DataOutput) out;
+        } else {
+            dout = new DataOutputStream(out);
+        }
 
         dout.writeLong(PRIMER_MAGIC_NUMBER);
 
@@ -2345,6 +2351,10 @@ final class LocalDatabase extends CoreDatabase {
 
         // Terminator.
         dout.writeInt(-1);
+
+        if (out != original) {
+            out.flush();
+        }
     }
 
     @Override
