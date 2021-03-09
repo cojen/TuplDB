@@ -1257,6 +1257,12 @@ public class RecoverTest {
         ix1.delete(txn, k3);
         ix2.delete(txn, k4);
 
+        // Force the background write consumer thread to finish. This ensures that the call to
+        // suspendCommit in the thread below doesn't block waiting on the SocketReplicator
+        // monitor. The thread must block calling commit, at which point the UndoLog commit
+        // state will have been set.
+        db.sync();
+
         var ex = new AtomicReference<Exception>();
 
         Thread t1 = startAndWaitUntilBlocked(new Thread() {

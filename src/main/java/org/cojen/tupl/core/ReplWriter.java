@@ -156,7 +156,7 @@ class ReplWriter extends RedoWriter {
     }
 
     @Override
-    public RedoWriter txnRedoWriter() {
+    public ReplWriter txnRedoWriter() {
         return this;
     }
 
@@ -411,7 +411,12 @@ class ReplWriter extends RedoWriter {
      * @return pending commit position to wait for, or <= 0 if nothing pending
      */
     private long drain(boolean checkWrite) throws IOException {
+        return txnRedoWriter().doDrain(checkWrite);
+    }
+
+    private long doDrain(boolean checkWrite) throws IOException {
         if (mBufferLatch == null) {
+            // Replica mode.
             return 0;
         }
 

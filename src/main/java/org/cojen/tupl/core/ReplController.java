@@ -156,7 +156,7 @@ final class ReplController extends ReplWriter {
     }
 
     @Override
-    public RedoWriter txnRedoWriter() {
+    public ReplWriter txnRedoWriter() {
         return mTxnRedoWriter;
     }
 
