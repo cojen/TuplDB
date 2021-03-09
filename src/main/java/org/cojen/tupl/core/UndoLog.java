@@ -310,27 +310,20 @@ final class UndoLog implements DatabaseAccess {
     }
 
     /**
-     * If the transaction was committed, deletes any ghosts and truncates the log.
+     * If the transaction was committed and truncates the log. Later when locks are released,
+     * any ghosts are deleted.
      *
      * @return true if transaction was committed
      */
     boolean recoveryCleanup() throws IOException {
         if (mCommitted == 0) {
             return false;
-        }
-
-        // Transaction was actually committed, but redo log is gone. This can happen when a
-        // checkpoint completes in the middle of the transaction commit operation.
-        if (mNode != null && mNodeTopPos == 0) {
-            // This signals that the checkpoint captured the undo log in the middle of a
-            // truncation, and any ghosts were already deleted.
-            truncate();
         } else {
-            // Deleting ghosts truncates the undo log as a side-effect.
-            deleteGhosts();
+            // Transaction was actually committed, but redo log is gone. This can happen when a
+            // checkpoint completes in the middle of the transaction commit operation.
+            truncate();
+            return true;
         }
-
-        return true;
     }
 
     /**
@@ -975,86 +968,6 @@ final class UndoLog implements DatabaseAccess {
         }
 
         return rtp;
-    }
-
-    /**
-     * Truncate all log entries, and delete any ghosts that were created. Only
-     * to be called during recovery.
-     */
-    final void deleteGhosts() throws IOException {
-        new PopAll() {
-            Index activeIndex;
-
-            @Override
-            public boolean accept(byte op, byte[] entry) throws IOException {
-                byte[] key;
-
-                switch (op) {
-                default:
-                    throw new DatabaseException("Unknown undo log entry type: " + op);
-
-                case OP_SCOPE_ENTER:
-                case OP_SCOPE_COMMIT:
-                case OP_UNPREPARE:
-                case OP_UNCREATE:
-                case OP_UNINSERT:
-                case OP_UNUPDATE:
-                case OP_ACTIVE_KEY:
-                case OP_CUSTOM:
-                case OP_UNUPDATE_LK:
-                case OP_UNEXTEND:
-                case OP_UNALLOC:
-                case OP_UNWRITE:
-                case OP_LOCK_EXCLUSIVE:
-                case OP_LOCK_UPGRADABLE:
-                case OP_PREPARED_UNROLLBACK:
-                    // Ignore.
-                    return true;
-
-                case OP_INDEX:
-                    mActiveIndexId = decodeLongLE(entry, 0);
-                    activeIndex = null;
-                    return true;
-
-                case OP_PREPARED: case OP_PREPARED_COMMIT:
-                    BTree preparedTxns = mDatabase.tryPreparedTxns();
-                    if (preparedTxns != null) {
-                        key = new byte[8];
-                        encodeLongBE(key, 0, mTxnId);
-                        deleteGhost(preparedTxns, key);
-                    }
-                    return true;
-
-                case OP_UNDELETE:
-                case OP_UNDELETE_FRAGMENTED:
-                    // Since transaction was committed, don't insert an entry
-                    // to undo a delete, but instead delete the ghost.
-                    key = decodeNodeKey(entry);
-                    break;
-
-                case OP_UNDELETE_LK:
-                case OP_UNDELETE_LK_FRAGMENTED:
-                    // Since transaction was committed, don't insert an entry
-                    // to undo a delete, but instead delete the ghost.
-                    key = new byte[decodeUnsignedVarInt(entry, 0)];
-                    arraycopy(entry, calcUnsignedVarIntLength(key.length), key, 0, key.length);
-                    break;
-                }
-
-                activeIndex = doUndo(activeIndex, ix -> deleteGhost((BTree) ix, key));
-
-                return true;
-            }
-        }.go(true, 0);
-    }
-
-    private static void deleteGhost(BTree tree, byte[] key) throws IOException {
-        var cursor = new BTreeCursor(tree, null);
-        try {
-            cursor.deleteGhost(key);
-        } catch (Throwable e) {
-            throw closeOnFailure(cursor, e);
-        }
     }
 
     /**
