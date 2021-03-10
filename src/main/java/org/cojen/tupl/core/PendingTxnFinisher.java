@@ -60,6 +60,18 @@ final class PendingTxnFinisher extends Latch implements Runnable {
         }
     }
 
+    /**
+     * Signal up all threads, to help them exit sooner.
+     */
+    void interrupt() {
+        acquireExclusive();
+        try {
+            mIdleCondition.signalAll(this);
+        } finally {
+            releaseExclusive();
+        }
+    }
+
     @Override
     public void run() {
         while (true) {

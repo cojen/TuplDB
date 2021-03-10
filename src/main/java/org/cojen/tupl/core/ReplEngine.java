@@ -1169,6 +1169,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         if (mWorkerGroup != null) {
             mWorkerGroup.interrupt();
         }
+        mFinisher.interrupt();
     }
 
     /**
