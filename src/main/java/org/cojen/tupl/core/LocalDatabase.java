@@ -6088,17 +6088,24 @@ final class LocalDatabase extends CoreDatabase {
                 redo.checkpointPrepare();
             }
 
-            while (true) {
-                mCommitLock.acquireExclusive();
+            try {
+                while (true) {
+                    mCommitLock.acquireExclusive();
 
-                // Registry root is infrequently modified, and so shared latch is usually
-                // available. If not, cause might be a deadlock. To be safe, always release
-                // commit lock and start over.
-                if (root.tryAcquireShared()) {
-                    break;
+                    // Registry root is infrequently modified, and so shared latch is usually
+                    // available. If not, cause might be a deadlock. To be safe, always release
+                    // the commit lock and start over.
+                    if (root.tryAcquireShared()) {
+                        break;
+                    }
+
+                    mCommitLock.releaseExclusive();
                 }
-
-                mCommitLock.releaseExclusive();
+            } catch (Throwable e) {
+                if (redo != null) {
+                    redo.checkpointAborted();
+                }
+                throw e;
             }
 
             mCheckpointFlushState = CHECKPOINT_FLUSH_PREPARE;
