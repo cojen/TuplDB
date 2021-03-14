@@ -209,6 +209,7 @@
           <!-- Why in the world does Surefire trim traces by default? -->
           <trimStackTrace>false</trimStackTrace>
           <useFile>false</useFile>
+          <runOrder>random</runOrder>
           <parallel>classes</parallel>
           <perCoreThreadCount>false</perCoreThreadCount>
           <threadCount>6</threadCount>
