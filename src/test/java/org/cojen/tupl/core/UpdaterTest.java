@@ -84,15 +84,6 @@ public class UpdaterTest extends ScannerTest {
         assertFalse(u.step());
 
         u = newUpdater(ix, txn);
-        assertFalse(u.step(0));
-        assertFalse(u.step(1));
-        try {
-            u.step(-1);
-            fail();
-        } catch (IllegalArgumentException e) {
-        }
-
-        u = newUpdater(ix, txn);
         var count = new AtomicInteger();
         u.scanAll((k, v) -> count.getAndIncrement());
         assertEquals(0, count.get());

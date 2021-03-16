@@ -40,10 +40,5 @@ public interface ScannerCursor extends Scanner, Cursor {
     }
 
     @Override
-    public default boolean step(long amount) throws IOException {
-        return ViewUtils.step(this, amount);
-    }
-
-    @Override
     public void close() throws IOException;
 }

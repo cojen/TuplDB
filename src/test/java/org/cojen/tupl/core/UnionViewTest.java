@@ -52,12 +52,6 @@ public class UnionViewTest {
 
     @Test
     public void unlockCombine() throws Exception {
-        unlockCombine(0); // normal step
-        unlockCombine(1);
-        unlockCombine(2);
-    }
-
-    private void unlockCombine(int delta) throws Exception {
         // Steping over entries with an updater should combine locks and then unlock them
         // together.
 
@@ -99,14 +93,8 @@ public class UnionViewTest {
                 assertEquals(LockResult.TIMED_OUT_LOCK, txn.tryLockUpgradable(ix.id(), key, 0));
             }
 
-            boolean more;
-            if (delta == 0) {
-                more = up.step();
-                j++;
-            } else {
-                more = up.step(delta);
-                j += delta;
-            }
+            boolean more = up.step();
+            j++;
 
             // Verify that lock is released by updater.
             for (int i=0; i<indexes.length; i++) {

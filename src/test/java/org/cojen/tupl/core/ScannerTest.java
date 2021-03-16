@@ -72,15 +72,6 @@ public class ScannerTest {
         assertNull(s.value());
         assertFalse(s.step());
 
-        s = newScanner(ix, null);
-        assertFalse(s.step(0));
-        assertFalse(s.step(1));
-        try {
-            s.step(-1);
-            fail();
-        } catch (IllegalArgumentException e) {
-        }
-
         s = newScanner(ix.viewReverse(), null);
         assertNull(s.key());
         assertNull(s.value());
@@ -115,20 +106,11 @@ public class ScannerTest {
         assertFalse(s.step());
 
         s = newScanner(ix, null);
-        assertTrue(s.step(0));
         fastAssertArrayEquals(key, s.key());
         fastAssertArrayEquals(value, s.value());
-        assertTrue(s.step(0));
-        fastAssertArrayEquals(key, s.key());
-        fastAssertArrayEquals(value, s.value());
-        assertFalse(s.step(1));
+        assertFalse(s.step());
         assertNull(s.key());
         assertNull(s.value());
-        try {
-            s.step(-1);
-            fail();
-        } catch (IllegalArgumentException e) {
-        }
 
         s = newScanner(ix.viewReverse(), null);
         fastAssertArrayEquals(key, s.key());

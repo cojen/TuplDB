@@ -61,11 +61,6 @@ public class CursorScanner implements Scanner {
     }
 
     @Override
-    public boolean step(long amount) throws IOException {
-        return ViewUtils.step(mCursor, amount);
-    }
-
-    @Override
     public void close() throws IOException {
         mCursor.close();
     }

@@ -64,27 +64,6 @@ public interface Scanner extends Closeable {
     boolean step() throws IOException;
 
     /**
-     * Steps over the requested amount of entries. An amount is one is equivalent to calling
-     * the regular step method. An amount of zero simply checks that the scanner is open.
-     *
-     * @param amount amount of entries to step over
-     * @return false if no more entries remain and scanner has been closed
-     * @throws IllegalArgumentException if amount is negative
-     */
-    default boolean step(long amount) throws IOException {
-        if (amount > 0) while (true) {
-            boolean result = step();
-            if (!result || --amount <= 0) {
-                return result;
-            }
-        }
-        if (amount == 0) {
-            return key() != null;
-        }
-        throw Utils.fail(this, new IllegalArgumentException());
-    }
-
-    /**
      * Calls the given action for each remaining entry, and then closes the scanner.
      */
     default void scanAll(EntryConsumer action) throws IOException {

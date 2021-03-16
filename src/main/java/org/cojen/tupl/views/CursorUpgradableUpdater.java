@@ -67,30 +67,6 @@ public class CursorUpgradableUpdater extends CursorScanner implements Updater {
     }
 
     @Override
-    public boolean step(long amount) throws IOException {
-        if (amount < 0) {
-            throw new IllegalArgumentException();
-        }
-        tryStep: {
-            Cursor c = mCursor;
-            if (amount > 0) {
-                try {
-                    c.skip(amount);
-                } catch (UnpositionedCursorException e) {
-                    break tryStep;
-                } catch (Throwable e) {
-                    throw Utils.fail(this, e);
-                }
-            }
-            if (c.key() != null) {
-                return true;
-            }
-        }
-        resetTxnMode();
-        return false;
-    }
-
-    @Override
     public boolean update(byte[] value) throws IOException {
         try {
             mCursor.store(value);

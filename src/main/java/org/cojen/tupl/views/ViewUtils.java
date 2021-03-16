@@ -365,21 +365,6 @@ public class ViewUtils {
         }
     }
 
-    public static boolean step(Cursor c, long amount) throws IOException {
-        if (amount > 0) {
-            try {
-                c.skip(amount);
-            } catch (UnpositionedCursorException e) {
-                return false;
-            } catch (Throwable e) {
-                throw Utils.fail(c, e);
-            }
-        } else if (amount < 0) {
-            throw new IllegalArgumentException();
-        }
-        return c.key() != null;
-    }
-
     @FunctionalInterface
     public static interface LockAction {
         LockResult lock(Transaction txn, byte[] key)

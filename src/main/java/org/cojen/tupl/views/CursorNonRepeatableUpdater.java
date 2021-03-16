@@ -77,44 +77,6 @@ public class CursorNonRepeatableUpdater extends CursorScanner implements Updater
     }
 
     @Override
-    public boolean step(long amount) throws IOException {
-        if (amount < 0) {
-            throw new IllegalArgumentException();
-        }
-
-        LockResult result = mLockResult;
-        if (result == null) {
-            return false;
-        }
-
-        Cursor c = mCursor;
-
-        tryStep: {
-            if (amount > 0) {
-                if (result.isAcquired()) {
-                    c.link().unlock();
-                }
-                try {
-                    result = c.skip(amount);
-                } catch (UnpositionedCursorException e) {
-                    break tryStep;
-                } catch (Throwable e) {
-                    throw Utils.fail(this, e);
-                }
-            }
-            if (c.key() != null) {
-                mLockResult = result;
-                return true;
-            }
-        }
-
-        mLockResult = null;
-        finished();
-
-        return false;
-    }
-
-    @Override
     public boolean update(byte[] value) throws IOException {
         Cursor c = mCursor;
 
