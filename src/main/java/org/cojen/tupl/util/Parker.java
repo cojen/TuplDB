@@ -243,7 +243,7 @@ public abstract class Parker {
 
         @Override
         void doUnpark(Thread thread) {
-            try {
+            if (!isVirtual(thread)) try {
                 if (((int) STATE_HANDLE.getAndSet(entryFor(thread), UNPARKED)) != PARKED) {
                     return;
                 }
@@ -256,46 +256,63 @@ public abstract class Parker {
         @Override
         void doPark(Object blocker) {
             Thread thread = Thread.currentThread();
-            Entry e = isVirtual(thread) ? checkNow(thread) : check(thread);
-            if (e != null) {
+            if (isVirtual(thread)) {
                 LockSupport.park(blocker);
-                e.mState = NONE;
+            } else {
+                Entry e = check(thread);
+                if (e != null) {
+                    LockSupport.park(blocker);
+                    e.mState = NONE;
+                }
             }
         }
 
         @Override
         void doParkNow(Object blocker) {
-            Entry e = checkNow(Thread.currentThread());
-            if (e != null) {
+            Thread thread = Thread.currentThread();
+            if (isVirtual(thread)) {
                 LockSupport.park(blocker);
-                e.mState = NONE;
+            } else {
+                Entry e = checkNow(thread);
+                if (e != null) {
+                    LockSupport.park(blocker);
+                    e.mState = NONE;
+                }
             }
         }
 
         @Override
         void doParkNanos(Object blocker, long nanos) {
             Thread thread = Thread.currentThread();
-            Entry e = isVirtual(thread) ? checkNow(thread) : check(thread);
-            if (e != null) {
-                nanos -= MAX_CHECK_NANOS;
-                if (nanos > 0) {
-                    LockSupport.parkNanos(blocker, nanos);
+            if (isVirtual(thread)) {
+                LockSupport.parkNanos(blocker, nanos);
+            } else {
+                Entry e = check(thread);
+                if (e != null) {
+                    nanos -= MAX_CHECK_NANOS;
+                    if (nanos > 0) {
+                        LockSupport.parkNanos(blocker, nanos);
+                    }
+                    e.mState = NONE;
                 }
-                e.mState = NONE;
             }
         }
 
         @Override
         void doParkNanosNow(Object blocker, long nanos) {
-            Entry e = checkNow(Thread.currentThread());
-            if (e != null) {
-                nanos -= MAX_CHECK_NANOS;
-                if (nanos > 0) {
-                    LockSupport.parkNanos(blocker, nanos);
+            Thread thread = Thread.currentThread();
+            if (isVirtual(thread)) {
+                LockSupport.parkNanos(blocker, nanos);
+            } else {
+                Entry e = checkNow(thread);
+                if (e != null) {
+                    nanos -= MAX_CHECK_NANOS;
+                    if (nanos > 0) {
+                        LockSupport.parkNanos(blocker, nanos);
+                    }
+                    e.mState = NONE;
                 }
-                e.mState = NONE;
             }
-
         }
 
         private static boolean isVirtual(Thread thread) {
