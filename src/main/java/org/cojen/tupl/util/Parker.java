@@ -256,63 +256,46 @@ public abstract class Parker {
         @Override
         void doPark(Object blocker) {
             Thread thread = Thread.currentThread();
-            if (isVirtual(thread)) {
+            Entry e = isVirtual(thread) ? checkNow(thread) : check(thread);
+            if (e != null) {
                 LockSupport.park(blocker);
-            } else {
-                Entry e = check(thread);
-                if (e != null) {
-                    LockSupport.park(blocker);
-                    e.mState = NONE;
-                }
+                e.mState = NONE;
             }
         }
 
         @Override
         void doParkNow(Object blocker) {
-            Thread thread = Thread.currentThread();
-            if (isVirtual(thread)) {
+            Entry e = checkNow(Thread.currentThread());
+            if (e != null) {
                 LockSupport.park(blocker);
-            } else {
-                Entry e = checkNow(thread);
-                if (e != null) {
-                    LockSupport.park(blocker);
-                    e.mState = NONE;
-                }
+                e.mState = NONE;
             }
         }
 
         @Override
         void doParkNanos(Object blocker, long nanos) {
             Thread thread = Thread.currentThread();
-            if (isVirtual(thread)) {
-                LockSupport.parkNanos(blocker, nanos);
-            } else {
-                Entry e = check(thread);
-                if (e != null) {
-                    nanos -= MAX_CHECK_NANOS;
-                    if (nanos > 0) {
-                        LockSupport.parkNanos(blocker, nanos);
-                    }
-                    e.mState = NONE;
+            Entry e = isVirtual(thread) ? checkNow(thread) : check(thread);
+            if (e != null) {
+                nanos -= MAX_CHECK_NANOS;
+                if (nanos > 0) {
+                    LockSupport.parkNanos(blocker, nanos);
                 }
+                e.mState = NONE;
             }
         }
 
         @Override
         void doParkNanosNow(Object blocker, long nanos) {
-            Thread thread = Thread.currentThread();
-            if (isVirtual(thread)) {
-                LockSupport.parkNanos(blocker, nanos);
-            } else {
-                Entry e = checkNow(thread);
-                if (e != null) {
-                    nanos -= MAX_CHECK_NANOS;
-                    if (nanos > 0) {
-                        LockSupport.parkNanos(blocker, nanos);
-                    }
-                    e.mState = NONE;
+            Entry e = checkNow(Thread.currentThread());
+            if (e != null) {
+                nanos -= MAX_CHECK_NANOS;
+                if (nanos > 0) {
+                    LockSupport.parkNanos(blocker, nanos);
                 }
+                e.mState = NONE;
             }
+
         }
 
         private static boolean isVirtual(Thread thread) {
