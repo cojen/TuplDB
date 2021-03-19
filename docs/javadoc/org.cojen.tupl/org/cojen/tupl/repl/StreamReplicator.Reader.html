@@ -78,7 +78,7 @@ loadScripts(document, 'script');</script>
 <section class="description">
 <dl class="notes">
 <dt>All Superinterfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></code>, <code><a href="Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a></code>, <code><a href="Replicator.Reader.html" title="interface in org.cojen.tupl.repl">Replicator.Reader</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></code>, <code><a href="Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a></code>, <code><a href="Replicator.Reader.html" title="interface in org.cojen.tupl.repl">Replicator.Reader</a></code></dd>
 </dl>
 <dl class="notes">
 <dt>Enclosing interface:</dt>
@@ -160,7 +160,7 @@ extends <a href="Replicator.Reader.html" title="interface in org.cojen.tupl.repl
 <section class="detail" id="read(byte[])">
 <h3>read</h3>
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">read</span>&#8203;<span class="parameters">(byte[]&nbsp;buf)</span>
-          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Blocks until log messages are available, never reading past a commit position or
  term.</div>
 <dl class="notes">
@@ -168,7 +168,7 @@ extends <a href="Replicator.Reader.html" title="interface in org.cojen.tupl.repl
 <dd>amount of bytes read, or EOF (-1) if the term end has been reached</dd>
 <dt>Throws:</dt>
 <dd><code><a href="InvalidReadException.html" title="class in org.cojen.tupl.repl">InvalidReadException</a></code> - if log was deleted (position is too low)</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -178,7 +178,7 @@ extends <a href="Replicator.Reader.html" title="interface in org.cojen.tupl.repl
 <div class="member-signature"><span class="return-type">int</span>&nbsp;<span class="element-name">read</span>&#8203;<span class="parameters">(byte[]&nbsp;buf,
  int&nbsp;offset,
  int&nbsp;length)</span>
-  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Blocks until log messages are available, never reading past a commit position or
  term.</div>
 <dl class="notes">
@@ -186,7 +186,7 @@ extends <a href="Replicator.Reader.html" title="interface in org.cojen.tupl.repl
 <dd>amount of bytes read, or EOF (-1) if the term end has been reached</dd>
 <dt>Throws:</dt>
 <dd><code><a href="InvalidReadException.html" title="class in org.cojen.tupl.repl">InvalidReadException</a></code> - if log was deleted (position is too low)</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -196,14 +196,14 @@ extends <a href="Replicator.Reader.html" title="interface in org.cojen.tupl.repl
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">readFully</span>&#8203;<span class="parameters">(byte[]&nbsp;buf,
  int&nbsp;offset,
  int&nbsp;length)</span>
-                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Blocks until the buffer is fully read with messages, never reading past a commit
  position or term.</div>
 <dl class="notes">
 <dt>Throws:</dt>
 <dd><code><a href="InvalidReadException.html" title="class in org.cojen.tupl.repl">InvalidReadException</a></code> - if log was deleted (position is too low)</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/EOFException.html" title="class or interface in java.io" class="external-link">EOFException</a></code> - if the term end has been reached too soon</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/EOFException.html" title="class or interface in java.io" class="external-link">EOFException</a></code> - if the term end has been reached too soon</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -213,7 +213,7 @@ extends <a href="Replicator.Reader.html" title="interface in org.cojen.tupl.repl
 <div class="member-signature"><span class="return-type">int</span>&nbsp;<span class="element-name">tryRead</span>&#8203;<span class="parameters">(byte[]&nbsp;buf,
  int&nbsp;offset,
  int&nbsp;length)</span>
-     throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+     throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Reads whatever log data is available, never higher than a commit position, never
  higher than a term, and never blocking.</div>
 <dl class="notes">
@@ -221,7 +221,7 @@ extends <a href="Replicator.Reader.html" title="interface in org.cojen.tupl.repl
 <dd>amount of bytes read, or EOF (-1) if the term end has been reached</dd>
 <dt>Throws:</dt>
 <dd><code><a href="InvalidReadException.html" title="class in org.cojen.tupl.repl">InvalidReadException</a></code> - if log data was deleted (position is too low)</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>

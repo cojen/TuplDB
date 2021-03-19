@@ -341,7 +341,7 @@ loadScripts(document, 'script');</script>
  additional upgradable locks.</div>
 </div>
 <div class="col-first even-row-color"><code>static <a href="../LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">LockResult.</span><code><span class="member-name-link"><a href="../LockResult.html#valueOf(java.lang.String)">valueOf</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name)</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">LockResult.</span><code><span class="member-name-link"><a href="../LockResult.html#valueOf(java.lang.String)">valueOf</a></span>&#8203;(<a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;name)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Returns the enum constant of this class with the specified name.</div>
 </div>
@@ -360,8 +360,8 @@ the order they are declared.</div>
 <div class="col-first even-row-color"><code>void</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">Transaction.</span><code><span class="member-name-link"><a href="../Transaction.html#uponLockExclusive(long,byte%5B%5D,java.util.concurrent.Executor,java.util.function.Consumer)">uponLockExclusive</a></span>&#8203;(long&nbsp;indexId,
  byte[]&nbsp;key,
- <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/concurrent/Executor.html" title="class or interface in java.util.concurrent" class="external-link">Executor</a>&nbsp;exec,
- <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;<a href="../LockResult.html" title="enum class in org.cojen.tupl">LockResult</a>&gt;&nbsp;cont)</code></div>
+ <a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/util/concurrent/Executor.html" title="class or interface in java.util.concurrent" class="external-link">Executor</a>&nbsp;exec,
+ <a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;<a href="../LockResult.html" title="enum class in org.cojen.tupl">LockResult</a>&gt;&nbsp;cont)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Asynchronously attempts to acquire an exclusive lock for the given key, denying any
  additional locks.</div>
@@ -369,8 +369,8 @@ the order they are declared.</div>
 <div class="col-first odd-row-color"><code>void</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">Transaction.</span><code><span class="member-name-link"><a href="../Transaction.html#uponLockShared(long,byte%5B%5D,java.util.concurrent.Executor,java.util.function.Consumer)">uponLockShared</a></span>&#8203;(long&nbsp;indexId,
  byte[]&nbsp;key,
- <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/concurrent/Executor.html" title="class or interface in java.util.concurrent" class="external-link">Executor</a>&nbsp;exec,
- <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;<a href="../LockResult.html" title="enum class in org.cojen.tupl">LockResult</a>&gt;&nbsp;cont)</code></div>
+ <a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/util/concurrent/Executor.html" title="class or interface in java.util.concurrent" class="external-link">Executor</a>&nbsp;exec,
+ <a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;<a href="../LockResult.html" title="enum class in org.cojen.tupl">LockResult</a>&gt;&nbsp;cont)</code></div>
 <div class="col-last odd-row-color">
 <div class="block">Asynchronously attempts to acquire a shared lock for the given key, denying exclusive
  locks.</div>
@@ -378,8 +378,8 @@ the order they are declared.</div>
 <div class="col-first even-row-color"><code>void</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">Transaction.</span><code><span class="member-name-link"><a href="../Transaction.html#uponLockUpgradable(long,byte%5B%5D,java.util.concurrent.Executor,java.util.function.Consumer)">uponLockUpgradable</a></span>&#8203;(long&nbsp;indexId,
  byte[]&nbsp;key,
- <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/concurrent/Executor.html" title="class or interface in java.util.concurrent" class="external-link">Executor</a>&nbsp;exec,
- <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;<a href="../LockResult.html" title="enum class in org.cojen.tupl">LockResult</a>&gt;&nbsp;cont)</code></div>
+ <a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/util/concurrent/Executor.html" title="class or interface in java.util.concurrent" class="external-link">Executor</a>&nbsp;exec,
+ <a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;<a href="../LockResult.html" title="enum class in org.cojen.tupl">LockResult</a>&gt;&nbsp;cont)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Asynchronously attempts to acquire an upgrade lock for the given key, denying exclusive
  and additional upgradable locks.</div>

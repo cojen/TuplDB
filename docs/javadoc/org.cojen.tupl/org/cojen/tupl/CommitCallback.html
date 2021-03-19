@@ -81,7 +81,7 @@ loadScripts(document, 'script');</script>
 <dd>This is a functional interface and can therefore be used as the assignment target for a lambda expression or method reference.</dd>
 </dl>
 <hr>
-<div class="type-signature"><span class="annotations"><a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/FunctionalInterface.html" title="class or interface in java.lang" class="external-link">@FunctionalInterface</a>
+<div class="type-signature"><span class="annotations"><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/FunctionalInterface.html" title="class or interface in java.lang" class="external-link">@FunctionalInterface</a>
 </span><span class="modifiers">public interface </span><span class="element-name type-name-label">CommitCallback</span></div>
 <div class="block">Defines a callback which is notified when a pending transaction has finished. To be
  effective, the callback must be <a href="Transaction.html#attach(org.cojen.tupl.CommitCallback)">attached</a>
@@ -115,7 +115,7 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table-tab2 method-summary-table method-summary-table-tab3"><code>void</code></div>
 <div class="col-second even-row-color method-summary-table-tab2 method-summary-table method-summary-table-tab3"><code><span class="member-name-link"><a href="#finished(long,java.lang.Object)">finished</a></span>&#8203;(long&nbsp;txnId,
- <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;status)</code></div>
+ <a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;status)</code></div>
 <div class="col-last even-row-color method-summary-table-tab2 method-summary-table method-summary-table-tab3">
 <div class="block">Called when a pending transaction has committed or rolled back.</div>
 </div>
@@ -142,7 +142,7 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="finished(long,java.lang.Object)">
 <h3>finished</h3>
 <div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">finished</span>&#8203;<span class="parameters">(long&nbsp;txnId,
- <a href="https://docs.oracle.com/en/java/javase/15/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;status)</span></div>
+ <a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;status)</span></div>
 <div class="block">Called when a pending transaction has committed or rolled back. When committed, the
  status is null. When rolled back, the status is an object which can be converted to a
  string to get a meaningful message.
