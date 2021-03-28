@@ -158,6 +158,7 @@ final class BTreeValue {
      * Caller must hold shared commit lock when using OP_SET_LENGTH or OP_WRITE.
      *
      * @param txn optional transaction for undo operations
+     * @param cursor never used by read op (OP_LENGTH and OP_READ)
      * @param frame latched shared for read op, exclusive for write op; released only if an
      * exception is thrown
      * @param b ignored by OP_LENGTH; OP_SET_LENGTH must pass EMPTY_BYTES
