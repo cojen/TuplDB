@@ -472,18 +472,10 @@ final class PosixFileIO extends AbstractFileIO {
     static int openFd(File file, EnumSet<OpenOption> options) throws IOException {
         String path = file.getPath();
 
-        SecurityManager sm = System.getSecurityManager();
-        if (sm != null) {
-            sm.checkRead(path);
-        }
-
         // Select O_RDONLY or O_RDWR.
         int flags = 0;
         if (!options.contains(OpenOption.READ_ONLY)) {
             flags |= 2;
-            if (sm != null) {
-                sm.checkWrite(path);
-            }
         }
 
         int fd;

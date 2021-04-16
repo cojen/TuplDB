@@ -39,7 +39,7 @@ public final class Runner extends AbstractExecutorService {
     private static volatile ConcurrentHashMap<ThreadGroup, Runner> cRunners;
 
     static {
-        cMainGroup = obtainGroup();
+        cMainGroup = Thread.currentThread().getThreadGroup();
         cMainRunner = new Runner(cMainGroup);
     }
 
@@ -69,7 +69,7 @@ public final class Runner extends AbstractExecutorService {
      * Return an executor for the current thread's group or security manager.
      */
     public static Runner current() {
-        ThreadGroup group = obtainGroup();
+        ThreadGroup group = Thread.currentThread().getThreadGroup();
 
         if (group == cMainGroup) {
             return cMainRunner;
@@ -99,18 +99,6 @@ public final class Runner extends AbstractExecutorService {
         }
 
         return runner;
-    }
-
-    private static ThreadGroup obtainGroup() {
-        SecurityManager sm = System.getSecurityManager();
-        if (sm != null) {
-            ThreadGroup group = sm.getThreadGroup();
-            if (group != null) {
-                return group;
-            }
-        }
-
-        return Thread.currentThread().getThreadGroup();
     }
 
     private static void setThreadName(Thread t, String namePrefix) {
