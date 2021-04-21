@@ -388,34 +388,38 @@ public final class DirectPageOps {
         UNSAFE.putInt(page + index, v);
     }
 
-    static int p_uintGetVar(final long page, int index) {
-        int v = p_byteGet(page, index);
-        if (v >= 0) {
-            return v;
+    static long p_uintGetVar(final long page, int index) {
+        int v = p_byteGet(page, index++);
+        if (v < 0) {
+            switch ((v >> 4) & 0x07) {
+            case 0x00: case 0x01: case 0x02: case 0x03:
+                v = (1 << 7)
+                    + (((v & 0x3f) << 8)
+                       | p_ubyteGet(page, index++));
+                break;
+            case 0x04: case 0x05:
+                v = ((1 << 14) + (1 << 7))
+                    + (((v & 0x1f) << 16)
+                       | (p_ubyteGet(page, index++) << 8)
+                       | p_ubyteGet(page, index++));
+                break;
+            case 0x06:
+                v = ((1 << 21) + (1 << 14) + (1 << 7))
+                    + (((v & 0x0f) << 24)
+                       | (p_ubyteGet(page, index++) << 16)
+                       | (p_ubyteGet(page, index++) << 8)
+                       | p_ubyteGet(page, index++));
+                break;
+            default:
+                v = ((1 << 28) + (1 << 21) + (1 << 14) + (1 << 7))
+                    + ((p_byteGet(page, index++) << 24)
+                       | (p_ubyteGet(page, index++) << 16)
+                       | (p_ubyteGet(page, index++) << 8)
+                       | p_ubyteGet(page, index++));
+                break;
+            }
         }
-        switch ((v >> 4) & 0x07) {
-        case 0x00: case 0x01: case 0x02: case 0x03:
-            return (1 << 7)
-                + (((v & 0x3f) << 8)
-                   | p_ubyteGet(page, index + 1));
-        case 0x04: case 0x05:
-            return ((1 << 14) + (1 << 7))
-                + (((v & 0x1f) << 16)
-                   | (p_ubyteGet(page, ++index) << 8)
-                   | p_ubyteGet(page, index + 1));
-        case 0x06:
-            return ((1 << 21) + (1 << 14) + (1 << 7))
-                + (((v & 0x0f) << 24)
-                   | (p_ubyteGet(page, ++index) << 16)
-                   | (p_ubyteGet(page, ++index) << 8)
-                   | p_ubyteGet(page, index + 1));
-        default:
-            return ((1 << 28) + (1 << 21) + (1 << 14) + (1 << 7)) 
-                + ((p_byteGet(page, ++index) << 24)
-                   | (p_ubyteGet(page, ++index) << 16)
-                   | (p_ubyteGet(page, ++index) << 8)
-                   | p_ubyteGet(page, index + 1));
-        }
+        return (((long) index) << 32L) | (v & 0xffff_ffffL);
     }
 
     static int p_uintPutVar(final long page, int index, int v) {
@@ -451,10 +455,6 @@ public final class DirectPageOps {
         }
         p_bytePut(page, index++, v);
         return index;
-    }
-
-    static int p_uintVarSize(int v) {
-        return Utils.calcUnsignedVarIntLength(v);
     }
 
     static long p_uint48GetLE(final long page, int index) {

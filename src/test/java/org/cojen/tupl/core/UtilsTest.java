@@ -70,8 +70,9 @@ public class UtilsTest {
         int offset = encodeUnsignedVarInt(b, 0, value);
         assertEquals(b.length, offset);
 
-        int decoded = decodeUnsignedVarInt(b, 0);
-        assertEquals(value, decoded);
+        long decoded = decodeUnsignedVarInt(b, 0);
+        assertEquals(value, (int) decoded);
+        assertEquals(offset, (int) (decoded >> 32));
     }
 
     @Test
@@ -123,8 +124,9 @@ public class UtilsTest {
         int offset = encodeSignedVarInt(b, 0, value);
         assertEquals(b.length, offset);
 
-        int decoded = decodeSignedVarInt(b, 0);
-        assertEquals(value, decoded);
+        long decoded = decodeSignedVarInt(b, 0);
+        assertEquals(value, (int) decoded);
+        assertEquals(offset, (int) (decoded >> 32));
     }
 
     @Test

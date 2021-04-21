@@ -231,16 +231,15 @@ final class PageOps {
         encodeIntLE(page, index, v);
     }
 
-    static int p_uintGetVar(byte[] page, int index) {
+    /**
+     * Value is in the lower word, and updated index is in the upper word.
+     */
+    static long p_uintGetVar(byte[] page, int index) {
         return decodeUnsignedVarInt(page, index);
     }
 
     static int p_uintPutVar(byte[] page, int index, int v) {
         return encodeUnsignedVarInt(page, index, v);
-    }
-
-    static int p_uintVarSize(int v) {
-        return calcUnsignedVarIntLength(v);
     }
 
     static long p_uint48GetLE(byte[] page, int index) {

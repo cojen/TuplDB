@@ -441,8 +441,9 @@ final class UndoLog implements DatabaseAccess {
                     break discardCheck;
                 }
                 int pos = mBufferPos + 1;
-                int payloadLen = decodeUnsignedVarInt(mBuffer, pos);
-                pos += calcUnsignedVarIntLength(payloadLen);
+                long decoded = decodeUnsignedVarInt(mBuffer, pos);
+                int payloadLen = (int) decoded;
+                pos = (int) (decoded >> 32);
                 var offsetRef = new IntegerRef.Value();
                 offsetRef.value = pos;
                 unlen = decodeUnsignedVarLong(mBuffer, offsetRef);
@@ -455,8 +456,9 @@ final class UndoLog implements DatabaseAccess {
                     break discardCheck;
                 }
                 int pos = mNodeTopPos + 1;
-                int payloadLen = p_uintGetVar(mNode.mPage, pos);
-                pos += calcUnsignedVarIntLength(payloadLen);
+                long decoded = p_uintGetVar(mNode.mPage, pos);
+                int payloadLen = (int) decoded;
+                pos = (int) (decoded >> 32);
                 if (pos + payloadLen > pageSize(mNode.mPage)) {
                     // Don't bother decoding payload which spills into the next node.
                     break discardCheck;
@@ -934,8 +936,9 @@ final class UndoLog implements DatabaseAccess {
         @Override
         public boolean accept(byte op, byte[] entry) throws IOException {
             if (op == OP_PREPARED || op == OP_PREPARED_COMMIT) {
-                handlerId = decodeUnsignedVarInt(entry, 0);
-                int messageLoc = calcUnsignedVarIntLength(handlerId) + 1;
+                long decoded = decodeUnsignedVarInt(entry, 0);
+                handlerId = (int) decoded;
+                int messageLoc = ((int) (decoded >> 32)) + 1;
                 if (messageLoc <= entry.length) {
                     message = Arrays.copyOfRange(entry, messageLoc, entry.length);
                 }
@@ -1009,8 +1012,9 @@ final class UndoLog implements DatabaseAccess {
 
         case OP_UNUPDATE_LK:
         case OP_UNDELETE_LK: {
-            var key = new byte[decodeUnsignedVarInt(entry, 0)];
-            int keyLoc = calcUnsignedVarIntLength(key.length);
+            long decoded = decodeUnsignedVarInt(entry, 0);
+            var key = new byte[(int) decoded];
+            int keyLoc = (int) (decoded >> 32);
             arraycopy(entry, keyLoc, key, 0, key.length);
 
             int valueLoc = keyLoc + key.length;
@@ -1028,8 +1032,9 @@ final class UndoLog implements DatabaseAccess {
             break;
 
         case OP_UNDELETE_LK_FRAGMENTED: {
-            var key = new byte[decodeUnsignedVarInt(entry, 0)];
-            int keyLoc = calcUnsignedVarIntLength(key.length);
+            long decoded = decodeUnsignedVarInt(entry, 0);
+            var key = new byte[(int) decoded];
+            int keyLoc = (int) (decoded >> 32);
             arraycopy(entry, keyLoc, key, 0, key.length);
 
             int tidLoc = keyLoc + key.length;
@@ -1045,8 +1050,9 @@ final class UndoLog implements DatabaseAccess {
         }
 
         case OP_CUSTOM:
-            int handlerId = decodeUnsignedVarInt(entry, 0);
-            int messageLoc = calcUnsignedVarIntLength(handlerId);
+            long decoded = decodeUnsignedVarInt(entry, 0);
+            int handlerId = (int) decoded;
+            int messageLoc = (int) (decoded >> 32);
             var message = new byte[entry.length - messageLoc];
             arraycopy(entry, messageLoc, message, 0, message.length);
             mDatabase.findCustomRecoveryHandler(handlerId).undo(null, message);
@@ -1233,8 +1239,9 @@ final class UndoLog implements DatabaseAccess {
                 mBufferPos = pos;
                 mLength -= 1;
             } else {
-                int payloadLen = decodeUnsignedVarInt(buffer, pos);
-                int varIntLen = calcUnsignedVarIntLength(payloadLen);
+                long decoded = decodeUnsignedVarInt(buffer, pos);
+                int payloadLen = (int) decoded;
+                int varIntLen = ((int) (decoded >> 32)) - pos;
                 pos += varIntLen;
                 var entry = new byte[payloadLen];
                 arraycopy(buffer, pos, entry, 0, payloadLen);
@@ -1282,8 +1289,9 @@ final class UndoLog implements DatabaseAccess {
 
         long length = mLength;
 
-        int payloadLen = p_uintGetVar(page, nodeTopPos);
-        int varIntLen = p_uintVarSize(payloadLen);
+        long decoded = p_uintGetVar(page, nodeTopPos);
+        int payloadLen = (int) decoded;
+        int varIntLen = ((int) (decoded >> 32)) - nodeTopPos;
         nodeTopPos += varIntLen;
         length -= 1 + varIntLen + payloadLen;
 
@@ -1451,9 +1459,9 @@ final class UndoLog implements DatabaseAccess {
 
             int payloadLen = 0;
             if (op >= PAYLOAD_OP) {
-                payloadLen = p_uintGetVar(page, nodeTopPos);
-                int varIntLen = p_uintVarSize(payloadLen);
-                nodeTopPos += varIntLen;
+                long decoded = p_uintGetVar(page, nodeTopPos);
+                payloadLen = (int) decoded;
+                nodeTopPos = (int) (decoded >> 32);
             }
 
             int payloadRequired = v.accept(node, op, opPos);
@@ -1800,8 +1808,10 @@ final class UndoLog implements DatabaseAccess {
             case OP_UNUPDATE_LK:
             case OP_UNDELETE_LK:
             case OP_UNDELETE_LK_FRAGMENTED: {
-                var key = new byte[decodeUnsignedVarInt(entry, 0)];
-                arraycopy(entry, calcUnsignedVarIntLength(key.length), key, 0, key.length);
+                long decoded = decodeUnsignedVarInt(entry, 0);
+                var key = new byte[(int) decoded];
+                int keyLoc = (int) (decoded >> 32);
+                arraycopy(entry, keyLoc, key, 0, key.length);
                 Lock lock = scope.addExclusiveLock(mActiveIndexId, key);
                 if (op != OP_UNUPDATE_LK) {
                     // Indicate that a ghost must be deleted when the transaction is
@@ -1923,8 +1933,9 @@ final class UndoLog implements DatabaseAccess {
 
         case OP_CUSTOM:
             opStr = "CUSTOM";
-            int handlerId = decodeUnsignedVarInt(entry, 0);
-            int messageLoc = calcUnsignedVarIntLength(handlerId);
+            long decoded = decodeUnsignedVarInt(entry, 0);
+            int handlerId = (int) decoded;
+            int messageLoc = (int) (decoded >> 32);
             String handlerName = mDatabase.findHandlerName(handlerId, LocalDatabase.RK_CUSTOM_ID);
             payloadStr = "handlerId=" + handlerId + ", handlerName=" + handlerName +
                 ", message=0x" + toHex(entry, messageLoc, entry.length - messageLoc);
@@ -1933,8 +1944,9 @@ final class UndoLog implements DatabaseAccess {
         case OP_UNUPDATE_LK: case OP_UNDELETE_LK:
             opStr = op == OP_UNUPDATE_LK ? "UNUPDATE_LK" : "UNDELETE_LK";
 
-            int keyLen = decodeUnsignedVarInt(entry, 0);
-            int keyLoc = calcUnsignedVarIntLength(keyLen);
+            decoded = decodeUnsignedVarInt(entry, 0);
+            int keyLen = (int) decoded;
+            int keyLoc = (int) (decoded >> 32);
             int valueLoc = keyLoc + keyLen;
             int valueLen = entry.length - valueLoc;
 
@@ -1947,8 +1959,9 @@ final class UndoLog implements DatabaseAccess {
         case OP_UNDELETE_LK_FRAGMENTED:
             opStr = "UNDELETE_LK_FRAGMENTED";
 
-            keyLen = decodeUnsignedVarInt(entry, 0);
-            keyLoc = calcUnsignedVarIntLength(keyLen);
+            decoded = decodeUnsignedVarInt(entry, 0);
+            keyLen = (int) decoded;
+            keyLoc = (int) (decoded >> 32);
 
             payloadStr = "key=0x" + toHex(entry, keyLoc, keyLen) + " (" +
                 utf8(entry, keyLoc, keyLen) + ')';
@@ -1993,10 +2006,11 @@ final class UndoLog implements DatabaseAccess {
 
         case OP_PREPARED: case OP_PREPARED_COMMIT:
             opStr = op == OP_PREPARED_COMMIT ? "PREPARED_COMMIT" : "PREPARED";
-            handlerId = decodeUnsignedVarInt(entry, 0);
+            decoded = decodeUnsignedVarInt(entry, 0);
+            handlerId = (int) decoded;
             handlerName = mDatabase.findHandlerName(handlerId, LocalDatabase.RK_PREPARE_ID);
             payloadStr = "handlerId=" + handlerId + ", handlerName=" + handlerName;
-            messageLoc = calcUnsignedVarIntLength(handlerId) + 1;
+            messageLoc = ((int) (decoded >> 32)) + 1;
             if (messageLoc <= entry.length) {
                 payloadStr += ", message=0x" + toHex(entry, messageLoc, entry.length - messageLoc);
             }

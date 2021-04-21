@@ -150,7 +150,9 @@ public class DirectPageOpsTest {
             int val = values[i];
             int len = values[i + 1];
             assertEquals(len, DirectPageOps.p_uintPutVar(page, 1, val) - 1);
-            assertEquals(val, DirectPageOps.p_uintGetVar(page, 1));
+            long decoded = DirectPageOps.p_uintGetVar(page, 1);
+            assertEquals(val, (int) decoded);
+            assertEquals(1 + len, (int) (decoded >> 32));
         }
 
         DirectPageOps.p_delete(page);

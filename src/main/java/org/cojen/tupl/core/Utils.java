@@ -271,35 +271,40 @@ public class Utils extends org.cojen.tupl.io.Utils {
 
     /**
      * Decodes an integer as encoded by encodeUnsignedVarInt.
+     * Value is in the lower word, and updated offset is in the upper word.
      */
-    public static int decodeUnsignedVarInt(byte[] b, int offset) {
-        int v = b[offset];
-        if (v >= 0) {
-            return v;
+    public static long decodeUnsignedVarInt(byte[] b, int offset) {
+        int v = b[offset++];
+        if (v < 0) {
+            switch ((v >> 4) & 0x07) {
+            case 0x00: case 0x01: case 0x02: case 0x03:
+                v = (1 << 7)
+                    + (((v & 0x3f) << 8)
+                       | (b[offset++] & 0xff));
+                break;
+            case 0x04: case 0x05:
+                v = ((1 << 14) + (1 << 7))
+                    + (((v & 0x1f) << 16)
+                       | ((b[offset++] & 0xff) << 8)
+                       | (b[offset++] & 0xff));
+                break;
+            case 0x06:
+                v = ((1 << 21) + (1 << 14) + (1 << 7))
+                    + (((v & 0x0f) << 24)
+                       | ((b[offset++] & 0xff) << 16)
+                       | ((b[offset++] & 0xff) << 8)
+                       | (b[offset++] & 0xff));
+                break;
+            default:
+                v = ((1 << 28) + (1 << 21) + (1 << 14) + (1 << 7)) 
+                    + ((b[offset++] << 24)
+                       | ((b[offset++] & 0xff) << 16)
+                       | ((b[offset++] & 0xff) << 8)
+                       | (b[offset++] & 0xff));
+                break;
+            }
         }
-        switch ((v >> 4) & 0x07) {
-        case 0x00: case 0x01: case 0x02: case 0x03:
-            return (1 << 7)
-                + (((v & 0x3f) << 8)
-                   | (b[offset + 1] & 0xff));
-        case 0x04: case 0x05:
-            return ((1 << 14) + (1 << 7))
-                + (((v & 0x1f) << 16)
-                   | ((b[++offset] & 0xff) << 8)
-                   | (b[offset + 1] & 0xff));
-        case 0x06:
-            return ((1 << 21) + (1 << 14) + (1 << 7))
-                + (((v & 0x0f) << 24)
-                   | ((b[++offset] & 0xff) << 16)
-                   | ((b[++offset] & 0xff) << 8)
-                   | (b[offset + 1] & 0xff));
-        default:
-            return ((1 << 28) + (1 << 21) + (1 << 14) + (1 << 7)) 
-                + ((b[++offset] << 24)
-                   | ((b[++offset] & 0xff) << 16)
-                   | ((b[++offset] & 0xff) << 8)
-                   | (b[offset + 1] & 0xff));
-        }
+        return (((long) offset) << 32L) | (v & 0xffff_ffffL);
     }
 
     /**
@@ -354,10 +359,13 @@ public class Utils extends org.cojen.tupl.io.Utils {
 
     /**
      * Decodes an integer as encoded by encodeSignedVarInt.
+     * Value is in the lower word, and updated offset is in the upper word.
      */
-    public static int decodeSignedVarInt(byte[] b, int offset) {
-        int v = decodeUnsignedVarInt(b, offset);
-        return ((v & 1) != 0) ? ((~(v >> 1)) | (1 << 31)) : (v >>> 1);
+    public static long decodeSignedVarInt(byte[] b, int offset) {
+        long result = decodeUnsignedVarInt(b, offset);
+        int v = (int) result;
+        v = ((v & 1) != 0) ? ((~(v >> 1)) | (1 << 31)) : (v >>> 1);
+        return (result & ~0xffff_ffffL) | (v & 0xffff_ffffL);
     }
 
     /**
