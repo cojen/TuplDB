@@ -705,7 +705,7 @@ public class CrudTest {
 
         // Replace random entries and verify.
 
-        var replaced = new TreeMap<byte[], byte[]>(KeyComparator.THE);
+        var replaced = new TreeMap<byte[], byte[]>(Utils.KEY_COMPARATOR);
         rnd = new Random(seed2);
 
         for (int i=0; i<count; i++) {

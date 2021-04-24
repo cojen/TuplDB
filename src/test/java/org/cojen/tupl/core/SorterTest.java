@@ -191,7 +191,7 @@ public class SorterTest {
         // Verify entries.
 
         rnd = new Random(seed);
-        var expected = new TreeMap<byte[], byte[]>(KeyComparator.THE);
+        var expected = new TreeMap<byte[], byte[]>(Utils.KEY_COMPARATOR);
 
         for (int i=0; i<count; i++) {
             byte[] key = String.valueOf(rnd.nextInt(range)).getBytes();
@@ -273,7 +273,7 @@ public class SorterTest {
 
         Sorter s = mDatabase.newSorter();
 
-        var expected = new TreeMap<byte[], byte[]>(KeyComparator.THE);
+        var expected = new TreeMap<byte[], byte[]>(Utils.KEY_COMPARATOR);
 
         for (int i=0; i<count; i++) {
             byte[] key = String.valueOf(rnd.nextLong()).getBytes();
@@ -298,7 +298,7 @@ public class SorterTest {
             if (prev != null) {
                 assertTrue(scanner.comparator().compare(prev, k) < 0);
 
-                int cmp = KeyComparator.THE.compare(prev, k);
+                int cmp = Utils.KEY_COMPARATOR.compare(prev, k);
                 assertTrue(reverse ? cmp > 0 : cmp < 0);
             }
 

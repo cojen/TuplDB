@@ -206,7 +206,7 @@ public class BTreeMergerTest {
         // Verify entries.
 
         rnd = new Random(seed);
-        var expected = new TreeMap<byte[], byte[]>(KeyComparator.THE);
+        var expected = new TreeMap<byte[], byte[]>(Utils.KEY_COMPARATOR);
 
         for (int i=0; i<numSources; i++) {
             byte[] value = ("value-" + i).getBytes();

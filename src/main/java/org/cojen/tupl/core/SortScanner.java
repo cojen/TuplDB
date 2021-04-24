@@ -50,7 +50,7 @@ class SortScanner implements Scanner {
     public Comparator<byte[]> comparator() {
         BTreeCursor c = mCursor;
         if (c == null && (c = tryOpenCursor()) == null) {
-            return KeyComparator.THE;
+            return Utils.KEY_COMPARATOR;
         }
         return c.comparator();
     }

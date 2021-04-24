@@ -654,7 +654,7 @@ final class LocalDatabase extends CoreDatabase {
                 mOpenTreesById = new LHashTable.Obj<>(0);
                 mOpenTreesRefQueue = null;
             } else {
-                mOpenTrees = new ConcurrentSkipListMap<>(KeyComparator.THE);
+                mOpenTrees = new ConcurrentSkipListMap<>(KEY_COMPARATOR);
                 mOpenTreesById = new LHashTable.Obj<>(16);
                 mOpenTreesRefQueue = new ReferenceQueue<>();
             }

@@ -91,7 +91,7 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
 
     @Override
     public final Comparator<byte[]> comparator() {
-        return KeyComparator.THE;
+        return KEY_COMPARATOR;
     }
 
     @Override

@@ -25,6 +25,7 @@ import java.lang.invoke.VarHandle;
 import java.nio.charset.StandardCharsets;
 
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -50,6 +51,9 @@ import org.cojen.tupl.ext.Handler;
  */
 public class Utils extends org.cojen.tupl.io.Utils {
     public static final byte[] EMPTY_BYTES = new byte[0];
+
+    /** Comparator is used for special in-memory mappings. */
+    public static final Comparator<byte[]> KEY_COMPARATOR = Arrays::compareUnsigned;
 
     public static long toNanos(long timeout, TimeUnit unit) {
         return timeout < 0 ? -1 :

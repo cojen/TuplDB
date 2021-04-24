@@ -117,7 +117,7 @@ class BTree extends Tree implements View, Index {
 
     @Override
     public Comparator<byte[]> comparator() {
-        return KeyComparator.THE;
+        return KEY_COMPARATOR;
     }
 
     @Override
