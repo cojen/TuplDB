@@ -67,17 +67,13 @@ public interface Scanner extends Closeable {
      * Calls the given action for each remaining entry, and then closes the scanner.
      */
     default void scanAll(EntryConsumer action) throws IOException {
-        do {
-            byte[] key = key();
-            if (key == null) {
-                return;
-            }
+        for (byte[] key; (key = key()) != null; step()) {
             try {
                 action.accept(key, value());
             } catch (Throwable e) {
                 throw Utils.fail(this, e);
             }
-        } while (step());
+        }
     }
 
     @Override

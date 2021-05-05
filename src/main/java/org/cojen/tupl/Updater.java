@@ -59,11 +59,7 @@ public interface Updater extends Scanner, Flushable {
      * returns null. If the action returns {@link #NO_UPDATE}, then no update is performed.
      */
     default void updateAll(EntryFunction action) throws IOException {
-        while (true) {
-            byte[] key = key();
-            if (key == null) {
-                return;
-            }
+        for (byte[] key; (key = key()) != null; ) {
             byte[] value;
             try {
                 value = action.apply(key, value());
