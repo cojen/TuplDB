@@ -1,5 +1,4 @@
-Tupl
-====
+[![](https://jitpack.io/v/cojen/Tupl.svg)](https://jitpack.io/#cojen/Tupl)
 
 The Unnamed Persistence Library
 
