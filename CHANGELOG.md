@@ -4,7 +4,7 @@ Changelog
 v1.5.0
 ------
 
-* Depends on Java 11 and defines a module: org.cojen.tupl.
+* Depends on Java 12 and defines a module: org.cojen.tupl.
 * Fix page leak when deleting temporary trees which were created by the Sorter.
 * Fix data loss when replicating values using the ValueAccessor API.
 * Fix replication ABA race condition which caused a blank range of data (zeros) to appear as
