@@ -20,6 +20,7 @@ package org.cojen.tupl.rows;
 import java.io.IOException;
 
 import org.cojen.tupl.Cursor;
+import org.cojen.tupl.LockResult;
 import org.cojen.tupl.RowScanner;
 
 import org.cojen.tupl.io.Utils;
@@ -40,39 +41,40 @@ abstract class AbstractRowScanner<R> implements RowScanner<R> {
      * Must be called by subclass constructor.
      */
     protected void init() throws IOException {
-        // FIXME: filtering must release locks; subclass does that?
         Cursor c = mCursor;
-        c.first();
+        LockResult result = c.first();
         while (true) {
             byte[] key = c.key();
             if (key == null) {
                 return;
             }
             try {
-                if (decodeRow(key, c.value()) != null) {
+                if (decodeRow(result, key, c.value()) != null) {
                     return;
                 }
             } catch (Throwable e) {
                 Utils.closeQuietly(this);
                 throw e;
             }
-            c.next();
+            if (result == LockResult.ACQUIRED) {
+                c.link().unlock();
+            }
+            result = c.next();
         }
     }
 
     @Override
     public R step() throws IOException {
-        // FIXME: filtering must release locks; subclass does that?
         Cursor c = mCursor;
         while (true) {
-            c.next();
+            LockResult result = c.next();
             byte[] key = c.key();
             if (key == null) {
                 clearRow();
                 return null;
             }
             try {
-                R row = decodeRow(key, c.value());
+                R row = decodeRow(result, key, c.value());
                 if (row != null) {
                     return row;
                 }
@@ -80,27 +82,32 @@ abstract class AbstractRowScanner<R> implements RowScanner<R> {
                 Utils.closeQuietly(this);
                 throw e;
             }
+            if (result == LockResult.ACQUIRED) {
+                c.link().unlock();
+            }
         }
     }
 
     @Override
     public R step(R row) throws IOException {
-        // FIXME: filtering must release locks; subclass does that?
         Cursor c = mCursor;
         while (true) {
-            c.next();
+            LockResult result = c.next();
             byte[] key = c.key();
             if (key == null) {
                 clearRow();
                 return null;
             }
             try {
-                if (decodeRow(row, key, c.value())) {
+                if (decodeRow(result, key, c.value(), row)) {
                     return row;
                 }
             } catch (Throwable e) {
                 Utils.closeQuietly(this);
                 throw e;
+            }
+            if (result == LockResult.ACQUIRED) {
+                c.link().unlock();
             }
         }
     }
@@ -112,14 +119,15 @@ abstract class AbstractRowScanner<R> implements RowScanner<R> {
     }
 
     /**
-     * @return null if row is filtered out
+     * @return null if row is filtered out, and then caller releases the lock
      */
-    protected abstract R decodeRow(byte[] key, byte[] value) throws IOException;
+    protected abstract R decodeRow(LockResult result, byte[] key, byte[] value) throws IOException;
 
     /**
-     * @return false if row is filtered out
+     * @return false if row is filtered out, and then caller releases the lock
      */
-    protected abstract boolean decodeRow(R row, byte[] key, byte[] value) throws IOException;
+    protected abstract boolean decodeRow(LockResult result, byte[] key, byte[] value, R row)
+        throws IOException;
 
     protected abstract void clearRow();
 }

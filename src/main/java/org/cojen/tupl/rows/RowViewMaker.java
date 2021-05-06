@@ -38,11 +38,12 @@ import org.cojen.maker.Variable;
 import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DatabaseException;
+import org.cojen.tupl.LockResult;
 import org.cojen.tupl.RowScanner;
-import org.cojen.tupl.Scanner;
-import org.cojen.tupl.Transaction;
 import org.cojen.tupl.RowUpdater;
 import org.cojen.tupl.RowView;
+import org.cojen.tupl.Scanner;
+import org.cojen.tupl.Transaction;
 import org.cojen.tupl.Updater;
 import org.cojen.tupl.View;
 
@@ -1077,11 +1078,12 @@ class RowViewMaker {
 
         {
             MethodMaker mm = cm.addMethod
-                (Object.class, "decodeRow", byte[].class, byte[].class).protected_();
+                (Object.class, "decodeRow",
+                 LockResult.class, byte[].class, byte[].class).protected_();
             var viewVar = mm.var(lookup.lookupClass());
             var rowVar = mm.new_(rowClass);
-            viewVar.invoke("decodePrimaryKey", rowVar, mm.param(0));
-            viewVar.invoke("decodeValues", rowVar, mm.param(1));
+            viewVar.invoke("decodePrimaryKey", rowVar, mm.param(1));
+            viewVar.invoke("decodeValues", rowVar, mm.param(2));
             markAllClean(rowVar, rowInfo);
             mm.field("row").set(rowVar);
             mm.return_(rowVar);
@@ -1089,9 +1091,10 @@ class RowViewMaker {
 
         {
             MethodMaker mm = cm.addMethod
-                (boolean.class, "decodeRow", Object.class, byte[].class, byte[].class).protected_();
+                (boolean.class, "decodeRow",
+                 LockResult.class, byte[].class, byte[].class, Object.class).protected_();
             var viewVar = mm.var(lookup.lookupClass());
-            var rowVar = mm.param(0).cast(rowClass);
+            var rowVar = mm.param(3).cast(rowClass);
             viewVar.invoke("decodePrimaryKey", rowVar, mm.param(1));
             viewVar.invoke("decodeValues", rowVar, mm.param(2));
             markAllClean(rowVar, rowInfo);
