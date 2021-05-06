@@ -21,10 +21,13 @@ import java.io.IOException;
 
 import java.util.Objects;
 
+import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.RowIndex;
+import org.cojen.tupl.RowScanner;
+import org.cojen.tupl.RowUpdater;
 import org.cojen.tupl.RowView;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
@@ -54,6 +57,19 @@ abstract class AbstractRowView<R> implements RowIndex<R> {
     @Override
     public String nameString() {
         return (mSource instanceof Index) ? ((Index) mSource).nameString() : null;
+    }
+
+    @Override
+    public RowScanner<R> newScanner(Transaction txn) throws IOException {
+        return newScanner(mSource.newCursor(txn));
+    }
+
+    @Override
+    public RowUpdater<R> newUpdater(Transaction txn) throws IOException {
+        // FIXME: more types of updaters are required; see View.newUpdater
+        Cursor c = mSource.newCursor(txn);
+        // FIXME: register the cursor
+        return newUpdater(c);
     }
 
     @Override
@@ -108,5 +124,15 @@ abstract class AbstractRowView<R> implements RowIndex<R> {
         return txn;
     }
 
-    protected abstract AbstractRowView<R> newView(View source);
+    /**
+     * @param c unpositioned
+     */
+    protected abstract RowScanner<R> newScanner(Cursor c);
+
+    /**
+     * @param c unpositioned
+     */
+    protected abstract RowUpdater<R> newUpdater(Cursor c);
+
+    protected abstract RowView<R> newView(View source);
 }

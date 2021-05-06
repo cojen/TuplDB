@@ -41,11 +41,11 @@ public interface RowUpdater<R> extends RowScanner<R>, Flushable {
      * Update the current row and then step to the next row.
      *
      * @param row use this for the next row instead of creating a new one
-     * @return false if no more rows remain and updater has been closed
+     * @return the next row or null if no more rows remain and scanner has been closed
      * @throws NullPointerException if the given row object is null
      * @throws IllegalStateException if no current row; must call step for the first one
      */
-    boolean update(R row) throws IOException;
+    R update(R row) throws IOException;
 
     /**
      * Delete the current row and then step to the next row.
@@ -59,11 +59,11 @@ public interface RowUpdater<R> extends RowScanner<R>, Flushable {
      * Delete the current row and then step to the next row.
      *
      * @param row use this for the next row instead of creating a new one
-     * @return false if no more rows remain and updater has been closed
+     * @return the next row or null if no more rows remain and scanner has been closed
      * @throws NullPointerException if the given row object is null
      * @throws IllegalStateException if no current row; must call step for the first one
      */
-    boolean delete(R row) throws IOException;
+    R delete(R row) throws IOException;
 
     /**
      * Ensures that any queued update operations are applied; flushing is automatically

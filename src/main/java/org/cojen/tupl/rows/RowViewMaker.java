@@ -36,11 +36,13 @@ import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 import org.cojen.tupl.CorruptDatabaseException;
+import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.RowScanner;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.RowUpdater;
+import org.cojen.tupl.RowView;
 import org.cojen.tupl.Updater;
 import org.cojen.tupl.View;
 
@@ -85,7 +87,7 @@ class RowViewMaker {
         // Add the newView(View source) method (defined by AbstractRowView).
         {
             MethodMaker mm = mClassMaker.addMethod
-                (AbstractRowView.class, "newView", View.class).protected_();
+                (RowView.class, "newView", View.class).protected_();
             mm.return_(mm.new_(mClassMaker, mm.param(0)));
         }
 
@@ -1040,9 +1042,9 @@ class RowViewMaker {
      */
     private void addScannerMethod(Class<?> rowVariant) {
         String methodName = "new" + rowVariant.getSimpleName().substring(3);
-        MethodMaker mm = mClassMaker.addMethod(rowVariant, methodName, Transaction.class).public_();
+        MethodMaker mm = mClassMaker.addMethod(rowVariant, methodName, Cursor.class).public_();
         var indy = mm.var(RowViewMaker.class).indy("indyDefineScanner", mRowType, mRowClass);
-        mm.return_(indy.invoke(rowVariant, "_", null, mm.field("mSource"), mm.param(0)));
+        mm.return_(indy.invoke(rowVariant, "_", null, mm.param(0)));
     }
 
     /**
@@ -1063,8 +1065,14 @@ class RowViewMaker {
         cm.addField(rowClass, "row").private_();
 
         {
-            MethodMaker mm = cm.addConstructor(View.class, Transaction.class);
-            mm.invokeSuperConstructor(mm.param(0), mm.param(1));
+            MethodMaker mm = cm.addMethod(Object.class, "row").public_();
+            mm.return_(mm.field("row"));
+        }
+
+        {
+            MethodMaker mm = cm.addConstructor(Cursor.class);
+            mm.invokeSuperConstructor(mm.param(0));
+            mm.invoke("init");
         }
 
         {

@@ -21,8 +21,6 @@ import java.io.IOException;
 
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.RowUpdater;
-import org.cojen.tupl.Transaction;
-import org.cojen.tupl.View;
 
 /**
  * 
@@ -30,20 +28,7 @@ import org.cojen.tupl.View;
  * @author Brian S O'Neill
  */
 abstract class AbstractRowUpdater<R> extends AbstractRowScanner<R> implements RowUpdater<R> {
-    AbstractRowUpdater(View source, Transaction txn) {
-        super(source, txn);
-    }
-
-    @Override
-    protected Cursor initCursor() throws IOException {
-        Cursor c = mView.newCursor(mTxn);
-        c.first();
-        try {
-            c.register();
-        } catch (Throwable e) {
-            c.reset();
-            throw e;
-        }
-        return c;
+    AbstractRowUpdater(Cursor cursor) {
+        super(cursor);
     }
 }
