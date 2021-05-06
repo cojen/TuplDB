@@ -102,6 +102,6 @@ public class ShutdownTest {
         mDb = reopenTempDatabase(getClass(), mDb, mConfig);
 
         Index ix = mDb.openIndex("test");
-        assertEquals(lastNum.get(), ix.count(null, null));
+        assertTrue(ix.count(null, null) >= lastNum.get());
     }
 }

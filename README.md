@@ -1,5 +1,4 @@
-Tupl
-====
+[![](https://jitpack.io/v/cojen/Tupl.svg)](https://jitpack.io/#cojen/Tupl)
 
 The Unnamed Persistence Library
 
@@ -17,11 +16,18 @@ database is free to implement the most efficient format it requires.
 To depend on Tupl, use the following POM snippet:
 
 ```xml
-<dependency>
-    <groupId>org.cojen</groupId>
-    <artifactId>tupl</artifactId>
+  <repositories>
+    <repository>
+      <id>jitpack.io</id>
+      <url>https://jitpack.io</url>
+    </repository>
+  </repositories>
+
+  <dependency>
+    <groupId>com.github.cojen</groupId>
+    <artifactId>Tupl</artifactId>
     <version>[1.5.0, 2.0.0)</version>
-</dependency>
+  </dependency>
 ```
 
 The main entry point is the [Database](https://tupl.cojen.org/javadoc/org/cojen/tupl/Database.html) class. Here is a simple example for opening a non-durable database:
