@@ -1,7 +1,11 @@
 Changelog
 =========
 
-v1.5.0
+v1.5.1
+------
+* Support fully mapped databases when the page size doesn't match the OS page size.
+
+v1.5.0 (2021-05-05)
 ------
 
 * Depends on Java 12 and defines a module: org.cojen.tupl.
