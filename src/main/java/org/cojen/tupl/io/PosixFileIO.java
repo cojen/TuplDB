@@ -809,7 +809,9 @@ final class PosixFileIO extends AbstractFileIO {
         static {
             PlatformIO inst;
             if (Platform.isMac()) {
-                inst = new MacIO();
+                // The optimized fallocate implementation doesn't appear to do anything on M1 Macs.
+                inst = NullIO.INSTANCE;
+                //inst = new MacIO();
             } else {
                 try {
                     inst = new DefaultIO();
