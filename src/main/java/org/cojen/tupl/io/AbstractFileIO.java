@@ -37,7 +37,7 @@ import static org.cojen.tupl.io.Utils.rethrow;
  * @author Brian S O'Neill
  */
 abstract class AbstractFileIO extends FileIO {
-    private static final int PAGE_SIZE;
+    static final int PAGE_SIZE;
 
     private static final int MAPPING_SHIFT = 30;
     private static final int MAPPING_SIZE = 1 << MAPPING_SHIFT;

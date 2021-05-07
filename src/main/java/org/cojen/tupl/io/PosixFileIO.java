@@ -624,7 +624,9 @@ final class PosixFileIO extends AbstractFileIO {
     }
 
     static void msyncAddr(long addr, long length) throws IOException {
-        if (msync(addr, length, 4) == -1) { // flags = MS_SYNC
+        long endAddr = addr + length;
+        addr = (addr / PAGE_SIZE) * PAGE_SIZE;
+        if (msync(addr, endAddr - addr, 4) == -1) { // flags = MS_SYNC
             throw lastErrorToException();
         }
     }
