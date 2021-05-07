@@ -32,6 +32,8 @@ import org.cojen.tupl.RowView;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
 
+import org.cojen.tupl.io.Utils;
+
 /**
  * 
  *
@@ -66,10 +68,33 @@ abstract class AbstractRowView<R> implements RowIndex<R> {
 
     @Override
     public RowUpdater<R> newUpdater(Transaction txn) throws IOException {
-        // FIXME: more types of updaters are required; see View.newUpdater
-        Cursor c = mSource.newCursor(txn);
-        // FIXME: register the cursor
-        return newUpdater(c);
+        if (txn == null) {
+            txn = mSource.newTransaction(null);
+            Cursor c = mSource.newCursor(txn);
+            try {
+                return newAutoCommitUpdater(c);
+            } catch (Throwable e) {
+                try {
+                    txn.exit();
+                } catch (Throwable e2) {
+                    Utils.suppress(e, e2);
+                }
+                throw e;
+            }
+        } else {
+            Cursor c = mSource.newCursor(txn);
+            switch (txn.lockMode()) {
+            default:
+                return newSimpleUpdater(c);
+            case REPEATABLE_READ:
+                return newUpgradableUpdater(c);
+            case READ_COMMITTED:
+            case READ_UNCOMMITTED:
+                txn.enter();
+                txn.lockMode(LockMode.UPGRADABLE_READ);
+                return newNonRepeatableUpdater(c);
+            }
+        }
     }
 
     @Override
@@ -132,7 +157,22 @@ abstract class AbstractRowView<R> implements RowIndex<R> {
     /**
      * @param c unpositioned
      */
-    protected abstract RowUpdater<R> newUpdater(Cursor c);
+    protected abstract RowUpdater<R> newAutoCommitUpdater(Cursor c);
+
+    /**
+     * @param c unpositioned
+     */
+    protected abstract RowUpdater<R> newSimpleUpdater(Cursor c);
+
+    /**
+     * @param c unpositioned
+     */
+    protected abstract RowUpdater<R> newUpgradableUpdater(Cursor c);
+
+    /**
+     * @param c unpositioned
+     */
+    protected abstract RowUpdater<R> newNonRepeatableUpdater(Cursor c);
 
     protected abstract RowView<R> newView(View source);
 }

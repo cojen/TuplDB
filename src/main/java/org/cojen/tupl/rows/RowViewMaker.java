@@ -107,7 +107,7 @@ class RowViewMaker {
         {
             addCheckSet("checkPrimaryKeySet", mRowInfo.keyColumns);
 
-            //addCheckSet("checkValues", mRowInfo.valueColumns);
+            //addCheckSet("checkValue", mRowInfo.valueColumns);
 
             addCheckSet("checkAllSet", mRowInfo.allColumns);
             addRequireSet("requireAllSet", mRowInfo.allColumns);
@@ -118,7 +118,9 @@ class RowViewMaker {
                 i++;
             }
 
-            addCheckDirty("checkValuesDirty", mRowInfo.valueColumns);
+            addCheckAllDirty("checkValueAllDirty", mRowInfo.valueColumns);
+
+            addCheckAnyDirty("checkPrimaryKeyAnyDirty", mRowInfo.keyColumns);
         }
 
         // Add encode/decode methods.
@@ -148,8 +150,11 @@ class RowViewMaker {
         // FIXME: define update, merge, and remove methods that accept a match row
 
         // Add scanner and updater support.
-        addScannerMethod(RowScanner.class);
-        addScannerMethod(RowUpdater.class);
+        addScannerMethod(RowScanner.class, "newScanner");
+        addScannerMethod(RowUpdater.class, "newAutoCommitUpdater");
+        addScannerMethod(RowUpdater.class, "newSimpleUpdater");
+        addScannerMethod(RowUpdater.class, "newUpgradableUpdater");
+        addScannerMethod(RowUpdater.class, "newNonRepeatableUpdater");
 
         return (Class) mClassMaker.finish();
     }
@@ -161,8 +166,7 @@ class RowViewMaker {
      * @param name method name
      */
     private void addCheckSet(String name, Map<String, ColumnInfo> columns) {
-        MethodMaker mm = mClassMaker.addMethod
-            (boolean.class, name, mRowClass).static_().private_();
+        MethodMaker mm = mClassMaker.addMethod(boolean.class, name, mRowClass).static_();
 
         if (columns.isEmpty()) {
             mm.return_(true);
@@ -222,9 +226,8 @@ class RowViewMaker {
      *
      * @param name method name
      */
-    private void addCheckDirty(String name, Map<String, ColumnInfo> columns) {
-        MethodMaker mm = mClassMaker.addMethod
-            (boolean.class, name, mRowClass).static_().private_();
+    private void addCheckAllDirty(String name, Map<String, ColumnInfo> columns) {
+        MethodMaker mm = mClassMaker.addMethod(boolean.class, name, mRowClass).static_();
 
         int num = 0, mask = 0;
 
@@ -248,6 +251,39 @@ class RowViewMaker {
         }
 
         mm.return_(true);
+    }
+
+    /**
+     * Defines a static method which accepts a row and returns boolean. When it returns true,
+     * at least one of the given columns are dirty.
+     *
+     * @param name method name
+     */
+    private void addCheckAnyDirty(String name, Map<String, ColumnInfo> columns) {
+        MethodMaker mm = mClassMaker.addMethod(boolean.class, name, mRowClass).static_();
+
+        int num = 0, mask = 0;
+
+        for (int step = 0; step < 2; step++) {
+            // Key columns are numbered before value columns. Add checks in two steps.
+            var baseColumns = step == 0 ? mRowInfo.keyColumns : mRowInfo.valueColumns;
+
+            for (ColumnInfo info : baseColumns.values()) {
+                if (columns.containsKey(info.name)) {
+                    mask |= RowGen.stateFieldMask(num, 0b10);
+                }
+
+                if (isMaskReady(++num, mask)) {
+                    Label cont = mm.label();
+                    stateField(mm.param(0), num - 1).and(mask).ifEq(0, cont);
+                    mm.return_(true);
+                    cont.here();
+                    mask = 0;
+                }
+            }
+        }
+
+        mm.return_(false);
     }
 
     /**
@@ -286,7 +322,7 @@ class RowViewMaker {
      * @param name method name
      */
     private void addRequireSet(String name, Map<String, ColumnInfo> columns) {
-        MethodMaker mm = mClassMaker.addMethod(null, name, mRowClass).static_().private_();
+        MethodMaker mm = mClassMaker.addMethod(null, name, mRowClass).static_();
 
         String initMessage = "Some required columns are unset";
 
@@ -333,7 +369,7 @@ class RowViewMaker {
      * @param name method name
      */
     private void addEncodeColumns(String name, ColumnCodec[] codecs) {
-        MethodMaker mm = mClassMaker.addMethod(byte[].class, name, mRowClass).static_().private_();
+        MethodMaker mm = mClassMaker.addMethod(byte[].class, name, mRowClass).static_();
         addEncodeColumns(mm, ColumnCodec.bind(codecs, mm));
     }
 
@@ -392,8 +428,7 @@ class RowViewMaker {
      * definition has changed, but encoding will still fail.
      */
     private void addDynamicEncodeValueColumns() {
-        MethodMaker mm = mClassMaker.addMethod
-            (byte[].class, "encodeValues", mRowClass).static_().private_();
+        MethodMaker mm = mClassMaker.addMethod(byte[].class, "encodeValue", mRowClass).static_();
         var indy = mm.var(RowViewMaker.class).indy("indyEncodeValueColumns", mRowType, mStoreRef);
         mm.return_(indy.invoke(byte[].class, "_", null, mm.param(0)));
     }
@@ -490,7 +525,7 @@ class RowViewMaker {
 
     private void addDynamicDecodeValueColumns() {
         MethodMaker mm = mClassMaker.addMethod
-            (null, "decodeValues", mRowClass, byte[].class).static_();
+            (null, "decodeValue", mRowClass, byte[].class).static_();
 
         var data = mm.param(1);
         var schemaVersion = decodeSchemaVersion(mm, data);
@@ -594,7 +629,7 @@ class RowViewMaker {
             resetValueColumns(rowVar);
             mm.return_(false);
             notNull.here();
-            mm.invoke("decodeValues", rowVar, valueVar);
+            mm.invoke("decodeValue", rowVar, valueVar);
             mm.return_(true);
         }
     }
@@ -615,7 +650,7 @@ class RowViewMaker {
         ready.here();
 
         var keyVar = mm.invoke("encodePrimaryKey", rowVar);
-        var valueVar = mm.invoke("encodeValues", rowVar);
+        var valueVar = mm.invoke("encodeValue", rowVar);
 
         Variable resultVar = mm.field("mSource").invoke(variant, txnVar, keyVar, valueVar);
 
@@ -645,7 +680,7 @@ class RowViewMaker {
 
         var copyVar = mm.new_(mRowClass);
         copyFields(mm, rowVar, copyVar, mRowInfo.keyColumns.values());
-        mm.invoke("decodeValues", copyVar, resultVar);
+        mm.invoke("decodeValue", copyVar, resultVar);
         mm.return_(copyVar);
 
         // Now implement the bridge method.
@@ -685,7 +720,7 @@ class RowViewMaker {
      */
     private void addDoUpdateMethod() {
         MethodMaker mm = mClassMaker.addMethod
-            (boolean.class, "doUpdate", Transaction.class, mRowClass, boolean.class).private_();
+            (boolean.class, "doUpdate", Transaction.class, mRowClass, boolean.class);
 
         Variable txnVar = mm.param(0);
         Variable rowVar = mm.param(1);
@@ -711,7 +746,7 @@ class RowViewMaker {
         // If all value columns are dirty, replace the whole row and commit.
         {
             Label cont = mm.label();
-            mm.invoke("checkValuesDirty", rowVar).ifFalse(cont);
+            mm.invoke("checkValueAllDirty", rowVar).ifFalse(cont);
 
             cursorVar.invoke("autoload", false);
             cursorVar.invoke("find", keyVar);
@@ -719,7 +754,7 @@ class RowViewMaker {
             cursorVar.invoke("value").ifNe(null, replace);
             mm.return_(false);
             replace.here();
-            cursorVar.invoke("commit", mm.invoke("encodeValues", rowVar));
+            cursorVar.invoke("commit", mm.invoke("encodeValue", rowVar));
             mm.return_(true);
 
             cont.here();
@@ -767,8 +802,8 @@ class RowViewMaker {
         // row object, decode the value into it, and then create a new value from it.
         {
             var tempRowVar = mm.new_(rowVar);
-            viewVar.invoke("decodeValues", tempRowVar, valueVar);
-            valueVar.set(viewVar.invoke("encodeValues", tempRowVar));
+            viewVar.invoke("decodeValue", tempRowVar, valueVar);
+            valueVar.set(viewVar.invoke("encodeValue", tempRowVar));
         }
 
         sameVersion.here();
@@ -1039,29 +1074,43 @@ class RowViewMaker {
     }
 
     /**
-     * @param rowVariant RowScanner or RowUpdater
+     * @param type RowScanner or RowUpdater
+     * @param variant "newScanner", "newAutoCommitUpdater", "newSimpleUpdater",
+     * "newUpgradableUpdater", or "newNonRepeatableUpdater"
      */
-    private void addScannerMethod(Class<?> rowVariant) {
-        String methodName = "new" + rowVariant.getSimpleName().substring(3);
-        MethodMaker mm = mClassMaker.addMethod(rowVariant, methodName, Cursor.class).public_();
+    private void addScannerMethod(Class<?> type, String variant) {
+        MethodMaker mm = mClassMaker.addMethod(type, variant, Cursor.class).protected_();
         var indy = mm.var(RowViewMaker.class).indy("indyDefineScanner", mRowType, mRowClass);
-        mm.return_(indy.invoke(rowVariant, "_", null, mm.param(0)));
+        if (type == RowUpdater.class) {
+            // Pass in this View and the Cursor.
+            mm.return_(indy.invoke(type, variant, null, mm.this_(), mm.param(0)));
+        } else {
+            // Pass in just the Cursor.
+            mm.return_(indy.invoke(type, variant, null, mm.param(0)));
+        }
     }
 
     /**
      * Defines the scanner/updater class and returns a call to the constructor.
      */
-    static CallSite indyDefineScanner(MethodHandles.Lookup lookup, String name, MethodType mt,
+    static CallSite indyDefineScanner(MethodHandles.Lookup lookup, String variant, MethodType mt,
                                       Class rowType, Class rowClass)
     {
-        Class<?> variant = mt.returnType(); // RowScanner or RowUpdater
+        Class<?> type = mt.returnType(); // RowScanner or RowUpdater
 
         RowInfo rowInfo = RowInfo.find(rowType);
 
-        String variantName = variant.getSimpleName();
+        Class<?> baseClass;
+        switch (variant) {
+        default:                        baseClass = AbstractRowScanner.class; break;
+        case "newAutoCommitUpdater":    baseClass = AutoCommitRowUpdater.class; break;
+        case "newSimpleUpdater":        baseClass = AbstractRowUpdater.class; break;
+        case "newUpgradableUpdater":    baseClass = UpgradableRowUpdater.class; break;
+        case "newNonRepeatableUpdater": baseClass = NonRepeatableRowUpdater.class; break;
+        }
+
         ClassMaker cm = RowGen.beginClassMaker
-            (lookup, rowInfo, variantName.substring(3))
-            .extend(RowViewMaker.class.getPackageName() + ".Abstract" + variantName);
+            (lookup, rowInfo, type.getSimpleName()).extend(baseClass);
 
         cm.addField(rowClass, "row").private_();
 
@@ -1071,8 +1120,12 @@ class RowViewMaker {
         }
 
         {
-            MethodMaker mm = cm.addConstructor(Cursor.class);
-            mm.invokeSuperConstructor(mm.param(0));
+            MethodMaker mm = cm.addConstructor(mt);
+            if (type == RowUpdater.class) {
+                mm.invokeSuperConstructor(mm.param(0), mm.param(1)); // view, cursor
+            } else {
+                mm.invokeSuperConstructor(mm.param(0)); // cursor
+            }
             mm.invoke("init");
         }
 
@@ -1083,7 +1136,7 @@ class RowViewMaker {
             var viewVar = mm.var(lookup.lookupClass());
             var rowVar = mm.new_(rowClass);
             viewVar.invoke("decodePrimaryKey", rowVar, mm.param(1));
-            viewVar.invoke("decodeValues", rowVar, mm.param(2));
+            viewVar.invoke("decodeValue", rowVar, mm.param(2));
             markAllClean(rowVar, rowInfo);
             mm.field("row").set(rowVar);
             mm.return_(rowVar);
@@ -1096,7 +1149,7 @@ class RowViewMaker {
             var viewVar = mm.var(lookup.lookupClass());
             var rowVar = mm.param(3).cast(rowClass);
             viewVar.invoke("decodePrimaryKey", rowVar, mm.param(1));
-            viewVar.invoke("decodeValues", rowVar, mm.param(2));
+            viewVar.invoke("decodeValue", rowVar, mm.param(2));
             markAllClean(rowVar, rowInfo);
             mm.field("row").set(rowVar);
             mm.return_(true);
@@ -1107,8 +1160,23 @@ class RowViewMaker {
             mm.field("row").set(null);
         }
 
-        if (variant == RowUpdater.class) {
-            // FIXME: define update and delete methods
+        if (type == RowUpdater.class) {
+            {
+                MethodMaker mm = cm.addMethod(byte[].class, "encodeKey").protected_();
+                var rowVar = mm.field("row").get();
+                var viewVar = mm.var(lookup.lookupClass());
+                Label unchanged = mm.label();
+                viewVar.invoke("checkPrimaryKeyAnyDirty", rowVar).ifFalse(unchanged);
+                mm.return_(viewVar.invoke("encodePrimaryKey", rowVar));
+                unchanged.here();
+                mm.return_(null);
+            }
+
+            {
+                MethodMaker mm = cm.addMethod(byte[].class, "encodeValue").protected_();
+                var viewVar = mm.var(lookup.lookupClass());
+                mm.return_(viewVar.invoke("encodeValue", mm.field("row")));
+            }
         }
 
         var clazz = cm.finish();

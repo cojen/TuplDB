@@ -26,9 +26,6 @@ import java.io.IOException;
  * @author Brian S O'Neill
  */
 public interface RowUpdater<R> extends RowScanner<R>, Flushable {
-    // FIXME: If any changes have been made to columns which affect scan ordering, perform an
-    // out-of-band update or delete.
-
     /**
      * Update the current row and then step to the next row.
      *

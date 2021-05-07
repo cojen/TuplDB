@@ -22,6 +22,7 @@ import java.io.IOException;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.RowScanner;
+import org.cojen.tupl.UnpositionedCursorException;
 
 import org.cojen.tupl.io.Utils;
 
@@ -42,80 +43,94 @@ abstract class AbstractRowScanner<R> implements RowScanner<R> {
      */
     protected void init() throws IOException {
         Cursor c = mCursor;
-        LockResult result = c.first();
+        LockResult result = toFirst(c);
         while (true) {
             byte[] key = c.key();
             if (key == null) {
-                return;
+                break;
             }
             try {
                 if (decodeRow(result, key, c.value()) != null) {
                     return;
                 }
             } catch (Throwable e) {
-                Utils.closeQuietly(this);
-                throw e;
+                throw RowUtils.fail(this, e);
             }
             if (result == LockResult.ACQUIRED) {
                 c.link().unlock();
             }
-            result = c.next();
+            result = toNext(c);
         }
+        finished();
     }
 
     @Override
     public R step() throws IOException {
         Cursor c = mCursor;
-        while (true) {
-            LockResult result = c.next();
-            byte[] key = c.key();
-            if (key == null) {
-                clearRow();
-                return null;
-            }
-            try {
+        try {
+            while (true) {
+                LockResult result = toNext(c);
+                byte[] key = c.key();
+                if (key == null) {
+                    break;
+                }
                 R row = decodeRow(result, key, c.value());
                 if (row != null) {
                     return row;
                 }
-            } catch (Throwable e) {
-                Utils.closeQuietly(this);
-                throw e;
+                if (result == LockResult.ACQUIRED) {
+                    c.link().unlock();
+                }
             }
-            if (result == LockResult.ACQUIRED) {
-                c.link().unlock();
-            }
+        } catch (UnpositionedCursorException e) {
+        } catch (Throwable e) {
+            throw RowUtils.fail(this, e);
         }
+        finished();
+        return null;
     }
 
     @Override
     public R step(R row) throws IOException {
         Cursor c = mCursor;
-        while (true) {
-            LockResult result = c.next();
-            byte[] key = c.key();
-            if (key == null) {
-                clearRow();
-                return null;
-            }
-            try {
+        try {
+            while (true) {
+                LockResult result = toNext(c);
+                byte[] key = c.key();
+                if (key == null) {
+                    break;
+                }
                 if (decodeRow(result, key, c.value(), row)) {
                     return row;
                 }
-            } catch (Throwable e) {
-                Utils.closeQuietly(this);
-                throw e;
+                if (result == LockResult.ACQUIRED) {
+                    c.link().unlock();
+                }
             }
-            if (result == LockResult.ACQUIRED) {
-                c.link().unlock();
-            }
+        } catch (UnpositionedCursorException e) {
+        } catch (Throwable e) {
+            throw RowUtils.fail(this, e);
         }
+        finished();
+        return null;
     }
 
     @Override
     public void close() throws IOException {
-        clearRow();
+        finished();
         mCursor.reset();
+    }
+
+    protected LockResult toFirst(Cursor c) throws IOException {
+        return c.first();
+    }
+
+    protected LockResult toNext(Cursor c) throws IOException {
+        return c.next();
+    }
+
+    protected void finished() throws IOException {
+        clearRow();
     }
 
     /**
