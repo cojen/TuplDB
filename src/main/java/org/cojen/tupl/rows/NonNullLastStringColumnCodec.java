@@ -61,53 +61,23 @@ class NonNullLastStringColumnCodec extends StringColumnCodec {
     }
 
     @Override
-    Variable encode(Variable srcVar, Variable dstVar, Variable offsetVar, int fixedOffset) {
+    void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
         var rowUtils = mMaker.var(RowUtils.class);
-
-        // Note: Updating the offset var isn't really necessary for the last column, but
-        // it's consistent, and the compiler almost certainly optimizes dead stores.
-
-        if (offsetVar == null) {
-            offsetVar = rowUtils.invoke("encodeStringUTF", dstVar, fixedOffset, srcVar);
-        } else {
-            offsetVar.set(rowUtils.invoke("encodeStringUTF", dstVar, offsetVar, srcVar));
-        }
-
-        return offsetVar;
+        offsetVar.set(rowUtils.invoke("encodeStringUTF", dstVar, offsetVar, srcVar));
     }
 
     @Override
-    Variable decode(Variable dstVar, Variable srcVar, Variable offsetVar, int fixedOffset,
-                    Variable endVar)
-    {
+    void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
         var rowUtils = mMaker.var(RowUtils.class);
         var alengthVar = endVar == null ? srcVar.alength() : endVar;
-
-        Variable valueVar;
-        if (offsetVar == null) {
-            var lengthVar = alengthVar;
-            if (fixedOffset != 0) {
-                lengthVar = lengthVar.sub(fixedOffset);
-            }
-            valueVar = rowUtils.invoke("decodeStringUTF", srcVar, fixedOffset, lengthVar);
-        } else {
-            var lengthVar = alengthVar.sub(offsetVar);
-            valueVar = rowUtils.invoke("decodeStringUTF", srcVar, offsetVar, lengthVar);
-        }
-
+        var lengthVar = alengthVar.sub(offsetVar);
+        var valueVar = rowUtils.invoke("decodeStringUTF", srcVar, offsetVar, lengthVar);
+        offsetVar.set(alengthVar);
         dstVar.set(valueVar);
-
-        return alengthVar;
     }
 
     @Override
-    Variable decodeSkip(Variable srcVar, Variable offsetVar, int fixedOffset, Variable endVar) {
-        endVar = endVar == null ? srcVar.alength() : endVar;
-        if (offsetVar == null) {
-            offsetVar = endVar;
-        } else {
-            offsetVar.set(endVar);
-        }
-        return offsetVar;
+    void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
+        offsetVar.set(endVar == null ? srcVar.alength() : endVar);
     }
 }

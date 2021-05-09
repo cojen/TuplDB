@@ -66,31 +66,26 @@ class NullableLastBigIntegerColumnCodec extends NonNullLastBigIntegerColumnCodec
     }
 
     @Override
-    Variable encode(Variable srcVar, Variable dstVar, Variable offsetVar, int fixedOffset) {
+    void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
         Label end = mMaker.label();
-        offsetVar = encodeNullHeader(end, srcVar, dstVar, offsetVar, fixedOffset);
-        offsetVar = super.encode(srcVar, dstVar, offsetVar, fixedOffset);
+        encodeNullHeader(end, srcVar, dstVar, offsetVar);
+        super.encode(srcVar, dstVar, offsetVar);
         end.here();
-        return offsetVar;
     }
 
     @Override
-    Variable decode(Variable dstVar, Variable srcVar, Variable offsetVar, int fixedOffset,
-                    Variable endVar)
-    {
+    void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
         Label end = mMaker.label();
-        offsetVar = decodeNullHeader(end, dstVar, srcVar, offsetVar, fixedOffset);
-        offsetVar = super.decode(dstVar, srcVar, offsetVar, fixedOffset, endVar);
+        decodeNullHeader(end, dstVar, srcVar, offsetVar);
+        super.decode(dstVar, srcVar, offsetVar, endVar);
         end.here();
-        return offsetVar;
     }
 
     @Override
-    Variable decodeSkip(Variable srcVar, Variable offsetVar, int fixedOffset, Variable endVar) {
+    void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
         Label end = mMaker.label();
-        offsetVar = decodeNullHeader(end, null, srcVar, offsetVar, fixedOffset);
-        offsetVar = super.decodeSkip(srcVar, offsetVar, fixedOffset, endVar);
+        decodeNullHeader(end, null, srcVar, offsetVar);
+        super.decodeSkip(srcVar, offsetVar, endVar);
         end.here();
-        return offsetVar;
     }
 }

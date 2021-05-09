@@ -72,15 +72,8 @@ class NullableBigIntegerColumnCodec extends NonNullBigIntegerColumnCodec {
     }
 
     @Override
-    Variable decodeSkip(Variable srcVar, Variable offsetVar, int fixedOffset, Variable endVar) {
-        var rowUtils = mMaker.var(RowUtils.class);
-        Variable lengthVar;
-        if (offsetVar == null) {
-            offsetVar = rowUtils.invoke("skipNullableBytesPF", srcVar, fixedOffset);
-        } else {
-            offsetVar.set(rowUtils.invoke("skipNullableBytesPF", srcVar, offsetVar));
-        }
-        return offsetVar;
+    void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
+        offsetVar.set(mMaker.var(RowUtils.class).invoke("skipNullableBytesPF", srcVar, offsetVar));
     }
 
     @Override

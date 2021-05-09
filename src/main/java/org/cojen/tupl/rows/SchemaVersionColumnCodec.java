@@ -76,35 +76,23 @@ class SchemaVersionColumnCodec extends ColumnCodec {
     }
 
     @Override
-    Variable encode(Variable srcVar, Variable dstVar, Variable offsetVar, int fixedOffset) {
+    void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
         if (mVersion >= 0) {
-            if (offsetVar == null) {
-                dstVar.aset(fixedOffset, (byte) mVersion);
-            } else {
-                dstVar.aset(offsetVar, (byte) mVersion);
-                offsetVar.inc(1);
-            }
+            dstVar.aset(offsetVar, (byte) mVersion);
+            offsetVar.inc(1);
         } else {
-            var utils = mMaker.var(RowUtils.class);
-            if (offsetVar == null) {
-                utils.invoke("encodeIntBE", dstVar, fixedOffset, mVersion);
-            } else {
-                utils.invoke("encodeIntBE", dstVar, offsetVar, mVersion);
-                offsetVar.inc(4);
-            }
+            mMaker.var(RowUtils.class).invoke("encodeIntBE", dstVar, offsetVar, mVersion);
+            offsetVar.inc(4);
         }
-        return offsetVar;
     }
 
     @Override
-    Variable decode(Variable dstVar, Variable srcVar, Variable offsetVar, int fixedOffset,
-                    Variable endVar)
-    {
+    void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    Variable decodeSkip(Variable srcVar, Variable offsetVar, int fixedOffset, Variable endVar) {
+    void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
         throw new UnsupportedOperationException();
     }
 

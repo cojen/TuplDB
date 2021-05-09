@@ -56,66 +56,29 @@ class KeyStringColumnCodec extends StringColumnCodec {
     }
 
     @Override
-    Variable encode(Variable srcVar, Variable dstVar, Variable offsetVar, int fixedOffset) {
+    void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
         String methodName = "encodeStringKey";
         if (mInfo.isDescending()) {
             methodName += "Desc";
         }
-
-        var rowUtils = mMaker.var(RowUtils.class);
-
-        if (offsetVar == null) {
-            offsetVar = rowUtils.invoke(methodName, dstVar, fixedOffset, srcVar);
-        } else {
-            offsetVar.set(rowUtils.invoke(methodName, dstVar, offsetVar, srcVar));
-        }
-
-        return offsetVar;
+        offsetVar.set(mMaker.var(RowUtils.class).invoke(methodName, dstVar, offsetVar, srcVar));
     }
 
     @Override
-    Variable decode(Variable dstVar, Variable srcVar, Variable offsetVar, int fixedOffset,
-                    Variable endVar)
-    {
+    void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
         String methodName = "decodeStringKey";
         if (mInfo.isDescending()) {
             methodName += "Desc";
         }
-
         var rowUtils = mMaker.var(RowUtils.class);
-
-        Variable valueVar;
-        if (offsetVar == null) {
-            var lengthVar = rowUtils.invoke("lengthStringKey", srcVar, fixedOffset);
-            offsetVar = mMaker.var(int.class).set(lengthVar);
-            if (fixedOffset != 0) {
-                offsetVar.inc(fixedOffset);
-            }
-            valueVar = rowUtils.invoke(methodName, srcVar, fixedOffset, lengthVar);
-        } else {
-            var lengthVar = rowUtils.invoke("lengthStringKey", srcVar, offsetVar);
-            valueVar = rowUtils.invoke(methodName, srcVar, offsetVar, lengthVar);
-            offsetVar.inc(lengthVar);
-        }
-
+        var lengthVar = rowUtils.invoke("lengthStringKey", srcVar, offsetVar);
+        var valueVar = rowUtils.invoke(methodName, srcVar, offsetVar, lengthVar);
+        offsetVar.inc(lengthVar);
         dstVar.set(valueVar);
-
-        return offsetVar;
     }
 
     @Override
-    Variable decodeSkip(Variable srcVar, Variable offsetVar, int fixedOffset, Variable endVar) {
-        var rowUtils = mMaker.var(RowUtils.class);
-
-        if (offsetVar == null) {
-            offsetVar = rowUtils.invoke("lengthStringKey", srcVar, fixedOffset);
-            if (fixedOffset != 0) {
-                offsetVar.inc(fixedOffset);
-            }
-        } else {
-            offsetVar.inc(rowUtils.invoke("lengthStringKey", srcVar, offsetVar));
-        }
-
-        return offsetVar;
+    void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
+        offsetVar.inc(mMaker.var(RowUtils.class).invoke("lengthStringKey", srcVar, offsetVar));
     }
 }

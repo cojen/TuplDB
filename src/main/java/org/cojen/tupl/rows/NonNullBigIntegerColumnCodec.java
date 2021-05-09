@@ -80,18 +80,10 @@ class NonNullBigIntegerColumnCodec extends BigIntegerColumnCodec {
      * @param dstVar byte[] type
      */
     @Override
-    Variable encode(Variable srcVar, Variable dstVar, Variable offsetVar, int fixedOffset) {
+    void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
         var rowUtils = mMaker.var(RowUtils.class);
-
-        if (offsetVar == null) {
-            offsetVar = rowUtils.invoke("encodePrefixPF", dstVar, fixedOffset, mLengthVar);
-        } else {
-            offsetVar.set(rowUtils.invoke("encodePrefixPF", dstVar, offsetVar, mLengthVar));
-        }
-
+        offsetVar.set(rowUtils.invoke("encodePrefixPF", dstVar, offsetVar, mLengthVar));
         finishEncode(dstVar, offsetVar, mLengthVar);
-
-        return offsetVar;
     }
 
     /**
@@ -99,41 +91,18 @@ class NonNullBigIntegerColumnCodec extends BigIntegerColumnCodec {
      * @param srcVar byte[] type
      */
     @Override
-    Variable decode(Variable dstVar, Variable srcVar, Variable offsetVar, int fixedOffset,
-                    Variable endVar)
-    {
+    void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
         var rowUtils = mMaker.var(RowUtils.class);
-
-        Variable lengthVar;
-        if (offsetVar == null) {
-            lengthVar = rowUtils.invoke("decodePrefixPF", srcVar, fixedOffset);
-            offsetVar = rowUtils.invoke("lengthPrefixPF", lengthVar);
-            if (fixedOffset != 0) {
-                offsetVar.inc(fixedOffset);
-            }
-        } else {
-            lengthVar = rowUtils.invoke("decodePrefixPF", srcVar, offsetVar);
-            offsetVar.inc(rowUtils.invoke("lengthPrefixPF", lengthVar));
-        }
-
+        var lengthVar = rowUtils.invoke("decodePrefixPF", srcVar, offsetVar);
+        offsetVar.inc(rowUtils.invoke("lengthPrefixPF", lengthVar));
         finishDecode(dstVar, srcVar, offsetVar, lengthVar);
-
-        return offsetVar;
     }
 
     /**
      * @param srcVar byte[] type
      */
-    @Override
-    Variable decodeSkip(Variable srcVar, Variable offsetVar, int fixedOffset, Variable endVar) {
-        var rowUtils = mMaker.var(RowUtils.class);
-        Variable lengthVar;
-        if (offsetVar == null) {
-            offsetVar = rowUtils.invoke("skipBytesPF", srcVar, fixedOffset);
-        } else {
-            offsetVar.set(rowUtils.invoke("skipBytesPF", srcVar, offsetVar));
-        }
-        return offsetVar;
+    void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
+        offsetVar.set(mMaker.var(RowUtils.class).invoke("skipBytesPF", srcVar, offsetVar));
     }
 
     /**

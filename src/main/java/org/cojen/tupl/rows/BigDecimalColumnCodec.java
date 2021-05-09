@@ -118,114 +118,66 @@ class BigDecimalColumnCodec extends ColumnCodec {
     }
 
     @Override
-    Variable encode(Variable srcVar, Variable dstVar, Variable offsetVar, int fixedOffset) {
-        boolean newOffset = false;
-        if (offsetVar == null) {
-            offsetVar = mMaker.var(int.class);
-            newOffset = true;
-        }
-
+    void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
         Label end = null;
 
         if (mInfo.isNullable()) {
             end = mMaker.label();
             Label notNull = mMaker.label();
             srcVar.ifNe(null, notNull);
-            if (newOffset) {
-                dstVar.aset(fixedOffset, RowUtils.NULL_BYTE_HIGH);
-                offsetVar.set(mMaker.var(int.class).set(fixedOffset + 1));
-            } else {
-                dstVar.aset(offsetVar, RowUtils.NULL_BYTE_HIGH);
-                offsetVar.inc(1);
-            }
+            dstVar.aset(offsetVar, RowUtils.NULL_BYTE_HIGH);
+            offsetVar.inc(1);
             mMaker.goto_(end);
             notNull.here();
         }
 
         var rowUtils = mMaker.var(RowUtils.class);
+        offsetVar.set(rowUtils.invoke("encodeUnsignedVarInt", dstVar, offsetVar, mScaleVar));
 
-        if (newOffset) {
-            offsetVar.set(rowUtils.invoke("encodeUnsignedVarInt", dstVar, fixedOffset, mScaleVar));
-        } else {
-            offsetVar.set(rowUtils.invoke("encodeUnsignedVarInt", dstVar, offsetVar, mScaleVar));
-        }
-
-        offsetVar = mUnscaledCodec.encode(mUnscaledVar, dstVar, offsetVar, 0);
+        mUnscaledCodec.encode(mUnscaledVar, dstVar, offsetVar);
 
         if (end != null) {
             end.here();
         }
-
-        return offsetVar;
     }
 
     @Override
-    Variable decode(Variable dstVar, Variable srcVar, Variable offsetVar, int fixedOffset,
-                    Variable endVar)
-    {
-        boolean newOffset = false;
-        if (offsetVar == null) {
-            offsetVar = mMaker.var(int.class);
-            newOffset = true;
-        }
-
+    void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
         Label end = null;
 
         if (mInfo.isNullable()) {
             end = mMaker.label();
-            Variable h = srcVar.aget(newOffset ? fixedOffset : offsetVar).cast(int.class).and(0xff);
+            Variable h = srcVar.aget(offsetVar).cast(int.class).and(0xff);
             Label notNull = mMaker.label();
             h.ifLt(0xf8, notNull);
             dstVar.set(null);
-            if (newOffset) {
-                offsetVar.set(fixedOffset + 1);
-            } else {
-                offsetVar.inc(1);
-            }
+            offsetVar.inc(1);
             mMaker.goto_(end);
             notNull.here();
         }
 
         var rowUtils = mMaker.var(RowUtils.class);
-
-        Variable decodedVar;
-        if (newOffset) {
-            decodedVar = rowUtils.invoke("decodeSignedVarInt", srcVar, fixedOffset);
-        } else {
-            decodedVar = rowUtils.invoke("decodeSignedVarInt", srcVar, offsetVar);
-        }
+        var decodedVar = rowUtils.invoke("decodeSignedVarInt", srcVar, offsetVar);
 
         offsetVar.set(decodedVar.shr(32).cast(int.class));
         var scaleVar = decodedVar.cast(int.class);
         var unscaledVar = mMaker.var(BigInteger.class);
-        offsetVar = mUnscaledCodec.decode(unscaledVar, srcVar, offsetVar, 0, endVar);
+        mUnscaledCodec.decode(unscaledVar, srcVar, offsetVar, endVar);
         dstVar.set(mMaker.new_(dstVar, unscaledVar, scaleVar));
 
         if (end != null) {
             end.here();
         }
-
-        return offsetVar;
     }
 
     @Override
-    Variable decodeSkip(Variable srcVar, Variable offsetVar, int fixedOffset, Variable endVar) {
+    void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
         if (isLast()) {
-            return mUnscaledCodec.decodeSkip(srcVar, offsetVar, fixedOffset, endVar);
-        }
-
-        String method = mInfo.isNullable() ? "skipNullableBigDecimal" : "skipBigDecimal";
-        
-        var rowUtils = mMaker.var(RowUtils.class);
-
-        Variable lengthVar;
-        if (offsetVar == null) {
-            offsetVar = rowUtils.invoke(method, srcVar, fixedOffset);
+            mUnscaledCodec.decodeSkip(srcVar, offsetVar, endVar);
         } else {
-            offsetVar.set(rowUtils.invoke(method, srcVar, offsetVar));
+            String method = mInfo.isNullable() ? "skipNullableBigDecimal" : "skipBigDecimal";
+            offsetVar.set(mMaker.var(RowUtils.class).invoke(method, srcVar, offsetVar));
         }
-
-        return offsetVar;
     }
 
     @Override

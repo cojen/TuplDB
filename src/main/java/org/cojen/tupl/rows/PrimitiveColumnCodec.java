@@ -88,14 +88,14 @@ class PrimitiveColumnCodec extends ColumnCodec {
     }
 
     @Override
-    Variable encode(Variable srcVar, Variable dstVar, Variable offsetVar, int fixedOffset) {
+    void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
         Label end = null;
 
         int plain = mInfo.plainTypeCode();
 
         if (mInfo.isNullable() && plain != TYPE_BOOLEAN) {
             end = mMaker.label();
-            offsetVar = encodeNullHeader(end, srcVar, dstVar, offsetVar, fixedOffset);
+            encodeNullHeader(end, srcVar, dstVar, offsetVar);
         }
 
         doEncode: {
@@ -108,6 +108,9 @@ class PrimitiveColumnCodec extends ColumnCodec {
                         int mask = mInfo.isDescending() ? 0x7f : 0x80;
                         srcVar = srcVar.xor(mask).cast(byte.class);
                     }
+                } else if (plain == TYPE_UBYTE) {
+                    // FIXME
+                    throw null;
                 } else {
                     byte f, t, n;
                     n = NULL_BYTE_HIGH;
@@ -146,12 +149,8 @@ class PrimitiveColumnCodec extends ColumnCodec {
                     cont.here();
                 }
 
-                if (offsetVar == null) {
-                    dstVar.aset(fixedOffset, srcVar);
-                } else {
-                    dstVar.aset(offsetVar, srcVar);
-                    offsetVar.inc(1);
-                }
+                dstVar.aset(offsetVar, srcVar);
+                offsetVar.inc(1);
 
                 break doEncode;
             }
@@ -187,43 +186,37 @@ class PrimitiveColumnCodec extends ColumnCodec {
             }
 
             String methodName = "encode" + methodType + format;
-
-            var utils = mMaker.var(RowUtils.class);
-            if (offsetVar == null) {
-                utils.invoke(methodName, dstVar, fixedOffset, srcVar);
-            } else {
-                utils.invoke(methodName, dstVar, offsetVar, srcVar);
-                offsetVar.inc(mSize);
-            }
+            mMaker.var(RowUtils.class).invoke(methodName, dstVar, offsetVar, srcVar);
+            offsetVar.inc(mSize);
         }
 
         if (end != null) {
             end.here();
         }
-
-        return offsetVar;
     }
 
     @Override
-    Variable decode(Variable dstVar, Variable srcVar, Variable offsetVar, int fixedOffset,
-                    Variable endVar)
-    {
-        return decode(dstVar, srcVar, offsetVar, fixedOffset, false);
+    void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
+        decode(dstVar, srcVar, offsetVar, false);
     }
 
     /**
      * @param raw true to leave floating point values in their raw integer form
      */
-    private Variable decode(Variable dstVar,
-                            Variable srcVar, Variable offsetVar, int fixedOffset, boolean raw)
+    private void decode(Variable dstVar, Variable srcVar, Variable offsetVar, boolean raw) {
+        decode(dstVar, srcVar, offsetVar, raw, mInfo.isNullable());
+    }
+
+    private void decode(Variable dstVar, Variable srcVar, Variable offsetVar,
+                        boolean raw, boolean isNullable)
     {
         Label end = null;
 
         int plain = mInfo.plainTypeCode();
 
-        if (mInfo.isNullable() && plain != TYPE_BOOLEAN) {
+        if (isNullable && plain != TYPE_BOOLEAN) {
             end = mMaker.label();
-            offsetVar = decodeNullHeader(end, dstVar, srcVar, offsetVar, fixedOffset);
+            decodeNullHeader(end, dstVar, srcVar, offsetVar);
         }
 
         Variable valueVar;
@@ -233,14 +226,8 @@ class PrimitiveColumnCodec extends ColumnCodec {
 
             switch (plain) {
             case TYPE_BOOLEAN: case TYPE_BYTE: case TYPE_UBYTE: {
-                Variable byteVar;
-
-                if (offsetVar == null) {
-                    byteVar = srcVar.aget(fixedOffset);
-                } else {
-                    byteVar = srcVar.aget(offsetVar);
-                    offsetVar.inc(1);
-                }
+                var byteVar = srcVar.aget(offsetVar);
+                offsetVar.inc(1);
 
                 if (plain == TYPE_BYTE) {
                     if (mForKey) {
@@ -248,10 +235,13 @@ class PrimitiveColumnCodec extends ColumnCodec {
                         byteVar = byteVar.xor(mask).cast(byte.class);
                     }
                     valueVar = byteVar;
+                } else if (plain == TYPE_UBYTE) {
+                    // FIXME
+                    throw null;
                 } else {
                     Label cont = null;
 
-                    if (!mInfo.isNullable()) {
+                    if (!isNullable) {
                         valueVar = mMaker.var(boolean.class);
                     } else {
                         byte n = NULL_BYTE_HIGH;
@@ -298,14 +288,8 @@ class PrimitiveColumnCodec extends ColumnCodec {
             }
 
             String methodName = "decode" + methodType + (mForKey ? "BE" : "LE");
-
-            var utils = mMaker.var(RowUtils.class);
-            if (offsetVar == null) {
-                valueVar = utils.invoke(methodName, srcVar, fixedOffset);
-            } else {
-                valueVar = utils.invoke(methodName, srcVar, offsetVar);
-                offsetVar.inc(mSize);
-            }
+            valueVar = mMaker.var(RowUtils.class).invoke(methodName, srcVar, offsetVar);
+            offsetVar.inc(mSize);
 
             if (mForKey && !mInfo.isUnsigned()) {
                 valueVar = valueVar.xor(signMask());
@@ -336,17 +320,15 @@ class PrimitiveColumnCodec extends ColumnCodec {
         if (end != null) {
             end.here();
         }
-
-        return offsetVar;
     }
 
     @Override
-    Variable decodeSkip(Variable srcVar, Variable offsetVar, int fixedOffset, Variable endVar) {
+    void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
         Label end = null;
 
         if (mInfo.isNullable() && mInfo.plainTypeCode() != TYPE_BOOLEAN) {
             end = mMaker.label();
-            offsetVar = decodeNullHeader(end, null, srcVar, offsetVar, fixedOffset);
+            decodeNullHeader(end, null, srcVar, offsetVar);
         }
 
         if (offsetVar != null) {
@@ -356,8 +338,6 @@ class PrimitiveColumnCodec extends ColumnCodec {
         if (end != null) {
             end.here();
         }
-
-        return offsetVar;
     }
 
     @Override
@@ -386,9 +366,9 @@ class PrimitiveColumnCodec extends ColumnCodec {
         // For floating point, compare against raw bits to support NaN comparison.
         if (ColumnFilter.isExact(op)) {
             if (mInfo.type == float.class) {
-                fieldValue = mMaker.var(Float.class).invoke("floatToRawIntBits", fieldValue);
+                fieldValue = fieldValue.invoke("floatToRawIntBits", fieldValue);
             } else if (mInfo.type == double.class) {
-                fieldValue = mMaker.var(Double.class).invoke("doubleToRawLongBits", fieldValue);
+                fieldValue = fieldValue.invoke("doubleToRawLongBits", fieldValue);
             }
         }
 

@@ -225,44 +225,32 @@ abstract class ColumnCodec {
     abstract Variable encodeSize(Variable srcVar, Variable totalVar);
 
     /**
-     * Makes code which encodes the column. If no offset variable was provided, and none is
-     * returned, this implies that the amount of bytes encoded is the minSize.
+     * Makes code which encodes the column.
      *
      * @param srcVar variable or field of the correct type
      * @param dstVar destination byte array
-     * @param offsetVar int type, which can be null initially
-     * @param fixedOffset applicable only when offsetVar is null
-     * @return new or existing offset variable (can still be null)
+     * @param offsetVar int type; is incremented as a side-effect
      */
-    abstract Variable encode(Variable srcVar, Variable dstVar, Variable offsetVar, int fixedOffset);
+    abstract void encode(Variable srcVar, Variable dstVar, Variable offsetVar);
 
     /**
-     * Makes code which decodes the column. If no offset variable was provided, and none is
-     * returned, this implies that the amount of bytes decoded is the minSize.
+     * Makes code which decodes the column.
      *
      * @param dstVar variable or field of the correct type
      * @param srcVar source byte array
-     * @param offsetVar int type, which can be null initially
-     * @param fixedOffset applicable only when offsetVar is null
+     * @param offsetVar int type; is incremented as a side-effect
      * @param endVar end offset, which when null implies the end of the array
-     * @return new or existing offset variable (can still be null)
      */
-    abstract Variable decode(Variable dstVar, Variable srcVar, Variable offsetVar, int fixedOffset,
-                             Variable endVar);
+    abstract void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar);
 
     /**
-     * Makes code which skips the column instead of decoding it. If no offset variable was
-     * provided, and none is returned, this implies that the amount of bytes decoded is the
-     * minSize.
+     * Makes code which skips the column instead of decoding it.
      *
      * @param srcVar source byte array
-     * @param offsetVar int type, which can be null initially
-     * @param fixedOffset applicable only when offsetVar is null
+     * @param offsetVar int type; is incremented as a side-effect
      * @param endVar end offset, which when null implies the end of the array
-     * @return new or existing offset variable (can still be null)
      */
-    abstract Variable decodeSkip(Variable srcVar, Variable offsetVar, int fixedOffset,
-                                 Variable endVar);
+    abstract void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar);
 
     /**
      * Defines and initializes final field(s) for filter arguments. An exception is thrown at
@@ -306,16 +294,12 @@ abstract class ColumnCodec {
     /**
      * Encodes a null header byte and jumps to the end if the runtime column value is null.
      *
+     * @param offsetVar int type; is incremented as a side-effect
      * @param end required
-     * @return new or existing offset variable
      */
-    protected Variable encodeNullHeader(Label end, Variable srcVar,
-                                        Variable dstVar, Variable offsetVar, int fixedOffset)
+    protected void encodeNullHeader(Label end, Variable srcVar,
+                                    Variable dstVar, Variable offsetVar)
     {
-        if (offsetVar == null) {
-            offsetVar = mMaker.var(int.class).set(fixedOffset);
-        }
-
         Label notNull = mMaker.label();
         srcVar.ifNe(null, notNull);
 
@@ -334,8 +318,6 @@ abstract class ColumnCodec {
         notNull.here();
         dstVar.aset(offsetVar, notNullHeader);
         offsetVar.inc(1);
-
-        return offsetVar;
     }
 
     /**
@@ -343,19 +325,13 @@ abstract class ColumnCodec {
      *
      * @param end required
      * @param dst optional
-     * @return new or existing offset variable
+     * @param offsetVar int type; is incremented as a side-effect
      */
-    protected Variable decodeNullHeader(Label end, Variable dstVar,
-                                        Variable srcVar, Variable offsetVar, int fixedOffset)
+    protected void decodeNullHeader(Label end, Variable dstVar,
+                                    Variable srcVar, Variable offsetVar)
     {
-        Variable header;
-        if (offsetVar == null) {
-            header = srcVar.aget(fixedOffset);
-            offsetVar = mMaker.var(int.class).set(fixedOffset + 1);
-        } else {
-            header = srcVar.aget(offsetVar);
-            offsetVar.inc(1);
-        }
+        var header = srcVar.aget(offsetVar);
+        offsetVar.inc(1);
 
         byte nullHeader = NULL_BYTE_HIGH;
         if (mInfo.isDescending()) {
@@ -371,7 +347,5 @@ abstract class ColumnCodec {
             mMaker.goto_(end);
             notNull.here();
         }
-
-        return offsetVar;
     }
 }

@@ -80,40 +80,19 @@ class KeyBigIntegerColumnCodec extends BigIntegerColumnCodec {
     }
 
     @Override
-    Variable encode(Variable srcVar, Variable dstVar, Variable offsetVar, int fixedOffset) {
+    void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
         String methodName = "encodeBigIntegerKey";
         if (mInfo.isDescending()) {
             methodName += "Desc";
         }
-
-        var rowUtils = mMaker.var(RowUtils.class);
-
-        if (offsetVar == null) {
-            offsetVar = rowUtils.invoke(methodName, dstVar, fixedOffset, mBytesVar);
-        } else {
-            offsetVar.set(rowUtils.invoke(methodName, dstVar, offsetVar, mBytesVar));
-        }
-
-        return offsetVar;
+        offsetVar.set(mMaker.var(RowUtils.class).invoke(methodName, dstVar, offsetVar, mBytesVar));
     }
 
     @Override
-    Variable decode(Variable dstVar, Variable srcVar, Variable offsetVar, int fixedOffset,
-                    Variable endVar)
-    {
+    void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
         var rowUtils = mMaker.var(RowUtils.class);
-
-        Variable resultVar;
-        if (offsetVar == null) {
-            resultVar = rowUtils.invoke("decodeBigIntegerKeyHeader", srcVar, fixedOffset);
-            offsetVar = mMaker.var(int.class).set(resultVar.cast(int.class));
-            if (fixedOffset != 0) {
-                offsetVar.inc(fixedOffset);
-            }
-        } else {
-            resultVar = rowUtils.invoke("decodeBigIntegerKeyHeader", srcVar, offsetVar);
-            offsetVar.inc(resultVar.cast(int.class));
-        }
+        var resultVar = rowUtils.invoke("decodeBigIntegerKeyHeader", srcVar, offsetVar);
+        offsetVar.inc(resultVar.cast(int.class));
 
         var lengthVar = resultVar.shr(32).cast(int.class);
 
@@ -135,12 +114,10 @@ class KeyBigIntegerColumnCodec extends BigIntegerColumnCodec {
             offsetVar.inc(lengthVar);
             cont.here();
         }
-
-        return offsetVar;
     }
 
     @Override
-    Variable decodeSkip(Variable srcVar, Variable offsetVar, int fixedOffset, Variable endVar) {
-        return decode(null, srcVar, offsetVar, fixedOffset, endVar);
+    void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
+        decode(null, srcVar, offsetVar, endVar);
     }
 }

@@ -409,14 +409,9 @@ class RowViewMaker {
         }
 
         // Generate code which fills in the byte array.
-        Variable offsetVar = null;
-        int fixedOffset = 0;
+        var offsetVar = mm.var(int.class).set(0);
         for (ColumnCodec codec : codecs) {
-            Field srcVar = findField(mm.param(0), codec);
-            offsetVar = codec.encode(srcVar, dstVar, offsetVar, fixedOffset);
-            if (offsetVar == null) {
-                fixedOffset += codec.minSize();
-            }
+            codec.encode(findField(mm.param(0), codec), dstVar, offsetVar);
         }
 
         mm.return_(dstVar);
@@ -496,29 +491,25 @@ class RowViewMaker {
         srcCodecs = ColumnCodec.bind(srcCodecs, mm);
 
         Variable srcVar = mm.param(1);
-        Variable offsetVar = null;
+        Variable offsetVar = mm.var(int.class).set(fixedOffset);
 
         for (ColumnCodec srcCodec : srcCodecs) {
             String name = srcCodec.mInfo.name;
             ColumnInfo dstInfo = dstRowInfo.allColumns.get(name);
 
             if (dstInfo == null) {
-                offsetVar = srcCodec.decodeSkip(srcVar, offsetVar, fixedOffset, null);
+                srcCodec.decodeSkip(srcVar, offsetVar, null);
             } else {
                 var rowVar = mm.param(0);
                 Field dstVar = rowVar.field(name);
                 if (dstInfo.type.isAssignableFrom(srcCodec.mInfo.type)) {
-                    offsetVar = srcCodec.decode(dstVar, srcVar, offsetVar, fixedOffset, null);
+                    srcCodec.decode(dstVar, srcVar, offsetVar, null);
                 } else {
                     // Decode into a temp variable and then perform a best-effort conversion.
                     var tempVar = mm.var(srcCodec.mInfo.type);
-                    offsetVar = srcCodec.decode(tempVar, srcVar, offsetVar, fixedOffset, null);
+                    srcCodec.decode(tempVar, srcVar, offsetVar, null);
                     Converter.convert(mm, srcCodec.mInfo, tempVar, dstInfo, dstVar);
                 }
-            }
-
-            if (offsetVar == null) {
-                fixedOffset += srcCodec.minSize();
             }
         }
     }
@@ -818,26 +809,18 @@ class RowViewMaker {
         String stateFieldName = null;
         Variable stateField = null;
 
-        var columnOffsets = new int[codecs.length];   // start offsets for columns, if fixed
-        var columnVars = new Variable[codecs.length]; // start offsets when not fixed
+        var columnVars = new Variable[codecs.length];
 
-        Variable offsetVar = null;
         int fixedOffset = schemaVersion < 128 ? 1 : 4;
+        Variable offsetVar = mm.var(int.class).set(fixedOffset);
         var newSizeVar = mm.var(int.class).set(fixedOffset); // need room for schemaVersion
 
         for (int i=0; i<codecs.length; i++) {
             ColumnCodec codec = codecs[i];
             codec.encodePrepare();
 
-            if (offsetVar == null) {
-                columnOffsets[i] = fixedOffset;
-            } else {
-                columnVars[i] = offsetVar.get();
-            }
-            offsetVar = codec.decodeSkip(valueVar, offsetVar, fixedOffset, null);
-            if (offsetVar == null) {
-                fixedOffset += codec.minSize();
-            }
+            columnVars[i] = offsetVar.get();
+            codec.decodeSkip(valueVar, offsetVar, null);
 
             ColumnInfo info = codec.mInfo;
             int num = columnNumbers.get(info.name);
@@ -857,12 +840,7 @@ class RowViewMaker {
             // Add in the size of existing column, which won't be updated.
             {
                 codec.encodeSkip();
-                if (offsetVar == null) {
-                    newSizeVar.inc(fixedOffset - columnOffsets[i]);
-                } else {
-                    var startVar = columnVars[i];
-                    newSizeVar.inc(offsetVar.sub(startVar == null ? columnOffsets[i] : startVar));
-                }
+                newSizeVar.inc(offsetVar.sub(columnVars[i]));
                 mm.goto_(cont);
             }
 
@@ -890,17 +868,13 @@ class RowViewMaker {
 
             Variable columnLenVar;
             {
-                var startVar = columnVars[i];
                 Variable endVar;
                 if (i + 1 < codecs.length) {
                     endVar = columnVars[i + 1];
-                    if (endVar == null) {
-                        endVar = mm.var(int.class).set(columnOffsets[i + 1]);
-                    }
                 } else {
                     endVar = valueVar.alength();
                 }
-                columnLenVar = endVar.sub(startVar == null ? columnOffsets[i] : startVar);
+                columnLenVar = endVar.sub(columnVars[i]);
             }
 
             int sfMask = rowGen.stateFieldMask(num);
@@ -927,7 +901,7 @@ class RowViewMaker {
             }
 
             // Encode the dirty column, and skip over the original column value.
-            codec.encode(rowVar.field(info.name), newValueVar, dstOffsetVar, 0);
+            codec.encode(rowVar.field(info.name), newValueVar, dstOffsetVar);
             srcOffsetVar.inc(columnLenVar);
 
             cont.here();
@@ -962,12 +936,7 @@ class RowViewMaker {
             Label cont = mm.label();
             stateField.and(sfMask).ifEq(sfMask, cont);
 
-            offsetVar = columnVars[i];
-            if (offsetVar == null) {
-                fixedOffset = columnOffsets[i];
-            }
-
-            codec.decode(rowVar.field(info.name), valueVar, offsetVar, fixedOffset, null);
+            codec.decode(rowVar.field(info.name), valueVar, columnVars[i], null);
 
             cont.here();
         }

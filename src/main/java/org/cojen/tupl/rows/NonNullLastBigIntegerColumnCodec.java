@@ -71,27 +71,10 @@ class NonNullLastBigIntegerColumnCodec extends BigIntegerColumnCodec {
      * @param dstVar byte[] type
      */
     @Override
-    Variable encode(Variable srcVar, Variable dstVar, Variable offsetVar, int fixedOffset) {
-        var rowUtils = mMaker.var(RowUtils.class);
-
-        // Note: Updating the offset var isn't really necessary for the last column, but
-        // it's consistent, and the compiler almost certainly optimizes dead stores.
-
-        var system = mMaker.var(System.class);
-
-        if (offsetVar == null) {
-            offsetVar = mBytesVar.alength();
-            system.invoke("arraycopy", mBytesVar, 0, dstVar, fixedOffset, offsetVar);
-            if (fixedOffset != 0) {
-                offsetVar.inc(fixedOffset);
-            }
-        } else {
-            var lengthVar = mBytesVar.alength();
-            system.invoke("arraycopy", mBytesVar, 0, dstVar, offsetVar, lengthVar);
-            offsetVar.inc(lengthVar);
-        }
-
-        return offsetVar;
+    void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
+        var lengthVar = mBytesVar.alength();
+        mMaker.var(System.class).invoke("arraycopy", mBytesVar, 0, dstVar, offsetVar, lengthVar);
+        offsetVar.inc(lengthVar);
     }
 
     /**
@@ -99,39 +82,19 @@ class NonNullLastBigIntegerColumnCodec extends BigIntegerColumnCodec {
      * @param srcVar byte[] type
      */
     @Override
-    Variable decode(Variable dstVar, Variable srcVar, Variable offsetVar, int fixedOffset,
-                    Variable endVar)
-    {
+    void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
         var alengthVar = endVar == null ? srcVar.alength() : endVar;
-
-        Variable valueVar;
-        if (offsetVar == null) {
-            var lengthVar = alengthVar;
-            if (fixedOffset != 0) {
-                lengthVar = lengthVar.sub(fixedOffset);
-            }
-            valueVar = mMaker.new_(dstVar, srcVar, fixedOffset, lengthVar);
-        } else {
-            var lengthVar = alengthVar.sub(offsetVar);
-            valueVar = mMaker.new_(dstVar, srcVar, offsetVar, lengthVar);
-        }
-
+        var lengthVar = alengthVar.sub(offsetVar);
+        var valueVar = mMaker.new_(dstVar, srcVar, offsetVar, lengthVar);
         dstVar.set(valueVar);
-
-        return alengthVar;
+        offsetVar.set(alengthVar);
     }
 
     /**
      * @param srcVar byte[] type
      */
     @Override
-    Variable decodeSkip(Variable srcVar, Variable offsetVar, int fixedOffset, Variable endVar) {
-        endVar = endVar == null ? srcVar.alength() : endVar;
-        if (offsetVar == null) {
-            offsetVar = endVar;
-        } else {
-            offsetVar.set(endVar);
-        }
-        return offsetVar;
+    void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
+        offsetVar.set(endVar == null ? srcVar.alength() : endVar);
     }
 }
