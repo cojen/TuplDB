@@ -141,13 +141,7 @@ class RowViewMaker {
 
         // FIXME: define update, merge, and remove methods that accept a match row
 
-        // Add scanner and updater support, which depend on an unfiltered RowDecoderEncoder.
         addUnfilteredMethod();
-        addScannerMethod("newBasicScanner", BasicRowScanner.class);
-        addScannerMethod("newAutoCommitUpdater", AutoCommitRowUpdater.class);
-        addScannerMethod("newBasicUpdater", BasicRowUpdater.class);
-        addScannerMethod("newUpgradableUpdater", UpgradableRowUpdater.class);
-        addScannerMethod("newNonRepeatableUpdater", NonRepeatableRowUpdater.class);
 
         return (Class) mClassMaker.finish();
     }
@@ -1039,7 +1033,7 @@ class RowViewMaker {
      * Defines a method which returns a singleton RowDecoderEncoder instance.
      */
     private void addUnfilteredMethod() {
-        MethodMaker mm = mClassMaker.addMethod(RowDecoderEncoder.class, "unfiltered").static_();
+        MethodMaker mm = mClassMaker.addMethod(RowDecoderEncoder.class, "unfiltered").protected_();
         var condy = mm.var(RowViewMaker.class).condy("condyDefineUnfiltered", mRowType, mRowClass);
         mm.return_(condy.invoke(RowDecoderEncoder.class, "_"));
     }
@@ -1091,31 +1085,5 @@ class RowViewMaker {
         var clazz = cm.finish();
 
         return lookup.findConstructor(clazz, MethodType.methodType(void.class)).invoke();
-    }
-
-    private void addScannerMethod(String name, Class<?> type) {
-        Class<?> retType;
-        if (RowUpdater.class.isAssignableFrom(type)) {
-            retType = RowUpdater.class;
-        } else {
-            retType = RowScanner.class;
-        }
-
-        MethodMaker mm = mClassMaker.addMethod(retType, name, Cursor.class).protected_();
-
-        var cursorVar = mm.param(0);
-
-        // Obtain the singleton RowDecoderEncoder instance.
-        var unfilteredVar = mm.invoke("unfiltered");
-
-        Variable scanner;
-        if (retType == RowUpdater.class) {
-            scanner = mm.new_(type, mm.field("mSource"), cursorVar, unfilteredVar);
-        } else {
-            scanner = mm.new_(type, cursorVar, unfilteredVar);
-        }
-
-        scanner.invoke("init");
-        mm.return_(scanner);
     }
 }

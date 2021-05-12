@@ -63,16 +63,22 @@ abstract class AbstractRowView<R> implements RowIndex<R> {
 
     @Override
     public RowScanner<R> newScanner(Transaction txn) throws IOException {
-        return newBasicScanner(mSource.newCursor(txn));
+        RowDecoderEncoder<R> unfiltered = unfiltered();
+        var scanner = new BasicRowScanner<R>(mSource.newCursor(txn), unfiltered);
+        scanner.init();
+        return scanner;
     }
 
     @Override
     public RowUpdater<R> newUpdater(Transaction txn) throws IOException {
+        RowDecoderEncoder<R> unfiltered = unfiltered();
+
+        BasicRowUpdater<R> updater;
         if (txn == null) {
             txn = mSource.newTransaction(null);
             Cursor c = mSource.newCursor(txn);
             try {
-                return newAutoCommitUpdater(c);
+                updater = new AutoCommitRowUpdater<R>(mSource, c, unfiltered);
             } catch (Throwable e) {
                 try {
                     txn.exit();
@@ -85,16 +91,22 @@ abstract class AbstractRowView<R> implements RowIndex<R> {
             Cursor c = mSource.newCursor(txn);
             switch (txn.lockMode()) {
             default:
-                return newBasicUpdater(c);
+                updater = new BasicRowUpdater<R>(mSource, c, unfiltered);
+                break;
             case REPEATABLE_READ:
-                return newUpgradableUpdater(c);
+                updater = new UpgradableRowUpdater<R>(mSource, c, unfiltered);
+                break;
             case READ_COMMITTED:
             case READ_UNCOMMITTED:
                 txn.enter();
                 txn.lockMode(LockMode.UPGRADABLE_READ);
-                return newNonRepeatableUpdater(c);
+                updater = new NonRepeatableRowUpdater<R>(mSource, c, unfiltered);
+                break;
             }
         }
+
+        updater.init();
+        return updater;
     }
 
     @Override
@@ -150,27 +162,7 @@ abstract class AbstractRowView<R> implements RowIndex<R> {
     }
 
     /**
-     * @param c unpositioned
+     * Returns a singleton instance.
      */
-    protected abstract RowScanner<R> newBasicScanner(Cursor c);
-
-    /**
-     * @param c unpositioned
-     */
-    protected abstract RowUpdater<R> newAutoCommitUpdater(Cursor c);
-
-    /**
-     * @param c unpositioned
-     */
-    protected abstract RowUpdater<R> newBasicUpdater(Cursor c);
-
-    /**
-     * @param c unpositioned
-     */
-    protected abstract RowUpdater<R> newUpgradableUpdater(Cursor c);
-
-    /**
-     * @param c unpositioned
-     */
-    protected abstract RowUpdater<R> newNonRepeatableUpdater(Cursor c);
+    protected abstract RowDecoderEncoder<R> unfiltered();
 }
