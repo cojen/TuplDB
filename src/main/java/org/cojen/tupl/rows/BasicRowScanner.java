@@ -31,17 +31,20 @@ import org.cojen.tupl.io.Utils;
  *
  * @author Brian S O'Neill
  */
-abstract class AbstractRowScanner<R> implements RowScanner<R> {
-    protected final Cursor mCursor;
+class BasicRowScanner<R> implements RowScanner<R> {
+    final Cursor mCursor;
+    final RowDecoderEncoder<R> mDecoder;
+    R mRow;
 
-    protected AbstractRowScanner(Cursor cursor) {
+    BasicRowScanner(Cursor cursor, RowDecoderEncoder<R> decoder) {
         mCursor = cursor;
+        mDecoder = decoder;
     }
 
     /**
-     * Must be called by subclass constructor.
+     * Must be called after construction.
      */
-    protected void init() throws IOException {
+    void init() throws IOException {
         Cursor c = mCursor;
         LockResult result = toFirst(c);
         while (true) {
@@ -50,7 +53,9 @@ abstract class AbstractRowScanner<R> implements RowScanner<R> {
                 break;
             }
             try {
-                if (decodeRow(result, key, c.value()) != null) {
+                R decoded = mDecoder.decodeRow(key, c.value(), null);
+                if (decoded != null) {
+                    mRow = decoded;
                     return;
                 }
             } catch (Throwable e) {
@@ -65,29 +70,8 @@ abstract class AbstractRowScanner<R> implements RowScanner<R> {
     }
 
     @Override
-    public R step() throws IOException {
-        Cursor c = mCursor;
-        try {
-            while (true) {
-                LockResult result = toNext(c);
-                byte[] key = c.key();
-                if (key == null) {
-                    break;
-                }
-                R row = decodeRow(result, key, c.value());
-                if (row != null) {
-                    return row;
-                }
-                if (result == LockResult.ACQUIRED) {
-                    c.link().unlock();
-                }
-            }
-        } catch (UnpositionedCursorException e) {
-        } catch (Throwable e) {
-            throw RowUtils.fail(this, e);
-        }
-        finished();
-        return null;
+    public R row() {
+        return mRow;
     }
 
     @Override
@@ -100,8 +84,10 @@ abstract class AbstractRowScanner<R> implements RowScanner<R> {
                 if (key == null) {
                     break;
                 }
-                if (decodeRow(result, key, c.value(), row)) {
-                    return row;
+                R decoded = mDecoder.decodeRow(key, c.value(), row);
+                if (decoded != null) {
+                    mRow = decoded;
+                    return decoded;
                 }
                 if (result == LockResult.ACQUIRED) {
                     c.link().unlock();
@@ -130,19 +116,6 @@ abstract class AbstractRowScanner<R> implements RowScanner<R> {
     }
 
     protected void finished() throws IOException {
-        clearRow();
+        mRow = null;
     }
-
-    /**
-     * @return null if row is filtered out, and then caller releases the lock
-     */
-    protected abstract R decodeRow(LockResult result, byte[] key, byte[] value) throws IOException;
-
-    /**
-     * @return false if row is filtered out, and then caller releases the lock
-     */
-    protected abstract boolean decodeRow(LockResult result, byte[] key, byte[] value, R row)
-        throws IOException;
-
-    protected abstract void clearRow();
 }

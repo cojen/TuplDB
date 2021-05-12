@@ -63,7 +63,7 @@ abstract class AbstractRowView<R> implements RowIndex<R> {
 
     @Override
     public RowScanner<R> newScanner(Transaction txn) throws IOException {
-        return newScanner(mSource.newCursor(txn));
+        return newBasicScanner(mSource.newCursor(txn));
     }
 
     @Override
@@ -85,7 +85,7 @@ abstract class AbstractRowView<R> implements RowIndex<R> {
             Cursor c = mSource.newCursor(txn);
             switch (txn.lockMode()) {
             default:
-                return newSimpleUpdater(c);
+                return newBasicUpdater(c);
             case REPEATABLE_READ:
                 return newUpgradableUpdater(c);
             case READ_COMMITTED:
@@ -152,7 +152,7 @@ abstract class AbstractRowView<R> implements RowIndex<R> {
     /**
      * @param c unpositioned
      */
-    protected abstract RowScanner<R> newScanner(Cursor c);
+    protected abstract RowScanner<R> newBasicScanner(Cursor c);
 
     /**
      * @param c unpositioned
@@ -162,7 +162,7 @@ abstract class AbstractRowView<R> implements RowIndex<R> {
     /**
      * @param c unpositioned
      */
-    protected abstract RowUpdater<R> newSimpleUpdater(Cursor c);
+    protected abstract RowUpdater<R> newBasicUpdater(Cursor c);
 
     /**
      * @param c unpositioned
@@ -173,6 +173,4 @@ abstract class AbstractRowView<R> implements RowIndex<R> {
      * @param c unpositioned
      */
     protected abstract RowUpdater<R> newNonRepeatableUpdater(Cursor c);
-
-    protected abstract RowView<R> newView(View source);
 }

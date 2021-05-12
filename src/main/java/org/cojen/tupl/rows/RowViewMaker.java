@@ -38,7 +38,6 @@ import org.cojen.maker.Variable;
 import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DatabaseException;
-import org.cojen.tupl.LockResult;
 import org.cojen.tupl.RowScanner;
 import org.cojen.tupl.RowUpdater;
 import org.cojen.tupl.RowView;
@@ -84,13 +83,6 @@ class RowViewMaker {
 
         // Add the simple rowType method.
         mClassMaker.addMethod(Class.class, "rowType").public_().return_(mRowType);
-
-        // Add the newView(View source) method (defined by AbstractRowView).
-        {
-            MethodMaker mm = mClassMaker.addMethod
-                (RowView.class, "newView", View.class).protected_();
-            mm.return_(mm.new_(mClassMaker, mm.param(0)));
-        }
 
         // Add the newRow method and its bridge.
         {
@@ -149,12 +141,13 @@ class RowViewMaker {
 
         // FIXME: define update, merge, and remove methods that accept a match row
 
-        // Add scanner and updater support.
-        addScannerMethod(RowScanner.class, "newScanner");
-        addScannerMethod(RowUpdater.class, "newAutoCommitUpdater");
-        addScannerMethod(RowUpdater.class, "newSimpleUpdater");
-        addScannerMethod(RowUpdater.class, "newUpgradableUpdater");
-        addScannerMethod(RowUpdater.class, "newNonRepeatableUpdater");
+        // Add scanner and updater support, which depend on an unfiltered RowDecoderEncoder.
+        addUnfilteredMethod();
+        addScannerMethod("newBasicScanner", BasicRowScanner.class);
+        addScannerMethod("newAutoCommitUpdater", AutoCommitRowUpdater.class);
+        addScannerMethod("newBasicUpdater", BasicRowUpdater.class);
+        addScannerMethod("newUpgradableUpdater", UpgradableRowUpdater.class);
+        addScannerMethod("newNonRepeatableUpdater", NonRepeatableRowUpdater.class);
 
         return (Class) mClassMaker.finish();
     }
@@ -1043,118 +1036,86 @@ class RowViewMaker {
     }
 
     /**
-     * @param type RowScanner or RowUpdater
-     * @param variant "newScanner", "newAutoCommitUpdater", "newSimpleUpdater",
-     * "newUpgradableUpdater", or "newNonRepeatableUpdater"
+     * Defines a method which returns a singleton RowDecoderEncoder instance.
      */
-    private void addScannerMethod(Class<?> type, String variant) {
-        MethodMaker mm = mClassMaker.addMethod(type, variant, Cursor.class).protected_();
-        var indy = mm.var(RowViewMaker.class).indy("indyDefineScanner", mRowType, mRowClass);
-        if (type == RowUpdater.class) {
-            // Pass in this View and the Cursor.
-            mm.return_(indy.invoke(type, variant, null, mm.this_(), mm.param(0)));
-        } else {
-            // Pass in just the Cursor.
-            mm.return_(indy.invoke(type, variant, null, mm.param(0)));
-        }
+    private void addUnfilteredMethod() {
+        MethodMaker mm = mClassMaker.addMethod(RowDecoderEncoder.class, "unfiltered").static_();
+        var condy = mm.var(RowViewMaker.class).condy("condyDefineUnfiltered", mRowType, mRowClass);
+        mm.return_(condy.invoke(RowDecoderEncoder.class, "_"));
     }
 
-    /**
-     * Defines the scanner/updater class and returns a call to the constructor.
-     */
-    static CallSite indyDefineScanner(MethodHandles.Lookup lookup, String variant, MethodType mt,
-                                      Class rowType, Class rowClass)
+    static Object condyDefineUnfiltered(MethodHandles.Lookup lookup, String name, Class type,
+                                        Class rowType, Class rowClass)
+        throws Throwable
     {
-        Class<?> type = mt.returnType(); // RowScanner or RowUpdater
-
         RowInfo rowInfo = RowInfo.find(rowType);
 
-        Class<?> baseClass;
-        switch (variant) {
-        default:                        baseClass = AbstractRowScanner.class; break;
-        case "newAutoCommitUpdater":    baseClass = AutoCommitRowUpdater.class; break;
-        case "newSimpleUpdater":        baseClass = AbstractRowUpdater.class; break;
-        case "newUpgradableUpdater":    baseClass = UpgradableRowUpdater.class; break;
-        case "newNonRepeatableUpdater": baseClass = NonRepeatableRowUpdater.class; break;
-        }
+        ClassMaker cm = RowGen.beginClassMaker(lookup, rowInfo, "Unfiltered")
+            .implement(RowDecoderEncoder.class);
 
-        ClassMaker cm = RowGen.beginClassMaker
-            (lookup, rowInfo, type.getSimpleName()).extend(baseClass);
-
-        cm.addField(rowClass, "row").private_();
-
-        {
-            MethodMaker mm = cm.addMethod(Object.class, "row").public_();
-            mm.return_(mm.field("row"));
-        }
-
-        {
-            MethodMaker mm = cm.addConstructor(mt);
-            if (type == RowUpdater.class) {
-                mm.invokeSuperConstructor(mm.param(0), mm.param(1)); // view, cursor
-            } else {
-                mm.invokeSuperConstructor(mm.param(0)); // cursor
-            }
-            mm.invoke("init");
-        }
+        cm.addConstructor();
 
         {
             MethodMaker mm = cm.addMethod
-                (Object.class, "decodeRow",
-                 LockResult.class, byte[].class, byte[].class).protected_();
+                (Object.class, "decodeRow", byte[].class, byte[].class, Object.class).public_();
             var viewVar = mm.var(lookup.lookupClass());
-            var rowVar = mm.new_(rowClass);
-            viewVar.invoke("decodePrimaryKey", rowVar, mm.param(1));
-            viewVar.invoke("decodeValue", rowVar, mm.param(2));
+            var rowVar = mm.param(2).cast(rowClass);
+            Label ready = mm.label();
+            rowVar.ifNe(null, ready);
+            rowVar.set(mm.new_(rowClass));
+            ready.here();
+            viewVar.invoke("decodePrimaryKey", rowVar, mm.param(0));
+            viewVar.invoke("decodeValue", rowVar, mm.param(1));
             markAllClean(rowVar, rowInfo);
-            mm.field("row").set(rowVar);
             mm.return_(rowVar);
         }
 
         {
-            MethodMaker mm = cm.addMethod
-                (boolean.class, "decodeRow",
-                 LockResult.class, byte[].class, byte[].class, Object.class).protected_();
+            MethodMaker mm = cm.addMethod(byte[].class, "encodeKey", Object.class).public_();
+            var rowVar = mm.param(0).cast(rowClass);
             var viewVar = mm.var(lookup.lookupClass());
-            var rowVar = mm.param(3).cast(rowClass);
-            viewVar.invoke("decodePrimaryKey", rowVar, mm.param(1));
-            viewVar.invoke("decodeValue", rowVar, mm.param(2));
-            markAllClean(rowVar, rowInfo);
-            mm.field("row").set(rowVar);
-            mm.return_(true);
+            Label unchanged = mm.label();
+            viewVar.invoke("checkPrimaryKeyAnyDirty", rowVar).ifFalse(unchanged);
+            mm.return_(viewVar.invoke("encodePrimaryKey", rowVar));
+            unchanged.here();
+            mm.return_(null);
         }
 
         {
-            MethodMaker mm = cm.addMethod(null, "clearRow").protected_();
-            mm.field("row").set(null);
-        }
-
-        if (type == RowUpdater.class) {
-            {
-                MethodMaker mm = cm.addMethod(byte[].class, "encodeKey").protected_();
-                var rowVar = mm.field("row").get();
-                var viewVar = mm.var(lookup.lookupClass());
-                Label unchanged = mm.label();
-                viewVar.invoke("checkPrimaryKeyAnyDirty", rowVar).ifFalse(unchanged);
-                mm.return_(viewVar.invoke("encodePrimaryKey", rowVar));
-                unchanged.here();
-                mm.return_(null);
-            }
-
-            {
-                MethodMaker mm = cm.addMethod(byte[].class, "encodeValue").protected_();
-                var viewVar = mm.var(lookup.lookupClass());
-                mm.return_(viewVar.invoke("encodeValue", mm.field("row")));
-            }
+            MethodMaker mm = cm.addMethod(byte[].class, "encodeValue", Object.class).public_();
+            var rowVar = mm.param(0).cast(rowClass);
+            var viewVar = mm.var(lookup.lookupClass());
+            mm.return_(viewVar.invoke("encodeValue", rowVar));
         }
 
         var clazz = cm.finish();
 
-        try {
-            var mh = lookup.findConstructor(clazz, mt.changeReturnType(void.class));
-            return new ConstantCallSite(mh.asType(mt));
-        } catch (Throwable e) {
-            throw RowUtils.rethrow(e);
+        return lookup.findConstructor(clazz, MethodType.methodType(void.class)).invoke();
+    }
+
+    private void addScannerMethod(String name, Class<?> type) {
+        Class<?> retType;
+        if (RowUpdater.class.isAssignableFrom(type)) {
+            retType = RowUpdater.class;
+        } else {
+            retType = RowScanner.class;
         }
+
+        MethodMaker mm = mClassMaker.addMethod(retType, name, Cursor.class).protected_();
+
+        var cursorVar = mm.param(0);
+
+        // Obtain the singleton RowDecoderEncoder instance.
+        var unfilteredVar = mm.invoke("unfiltered");
+
+        Variable scanner;
+        if (retType == RowUpdater.class) {
+            scanner = mm.new_(type, mm.field("mSource"), cursorVar, unfilteredVar);
+        } else {
+            scanner = mm.new_(type, cursorVar, unfilteredVar);
+        }
+
+        scanner.invoke("init");
+        mm.return_(scanner);
     }
 }

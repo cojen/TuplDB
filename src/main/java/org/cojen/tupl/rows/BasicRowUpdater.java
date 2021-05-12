@@ -24,34 +24,22 @@ import org.cojen.tupl.LockResult;
 import org.cojen.tupl.RowUpdater;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnpositionedCursorException;
+import org.cojen.tupl.View;
 
 /**
  * 
  *
  * @author Brian S O'Neill
  */
-abstract class AbstractRowUpdater<R> extends AbstractRowScanner<R> implements RowUpdater<R> {
-    protected final AbstractRowView mView;
+class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
+    final View mView;
 
     /**
      * @param cursor linked transaction must not be null
      */
-    AbstractRowUpdater(AbstractRowView view, Cursor cursor) {
-        super(cursor);
+    BasicRowUpdater(View view, Cursor cursor, RowDecoderEncoder<R> decoder) {
+        super(cursor, decoder);
         mView = view;
-    }
-
-    @Override
-    public R update() throws IOException {
-        try {
-            doUpdate();
-        } catch (UnpositionedCursorException e) {
-            finished();
-            return null;
-        } catch (Throwable e) {
-            throw RowUtils.fail(this, e);
-        }
-        return step();
     }
 
     @Override
@@ -65,19 +53,6 @@ abstract class AbstractRowUpdater<R> extends AbstractRowScanner<R> implements Ro
             throw RowUtils.fail(this, e);
         }
         return step(row);
-    }
-
-    @Override
-    public R delete() throws IOException {
-        try {
-            mCursor.delete();
-        } catch (UnpositionedCursorException e) {
-            finished();
-            return null;
-        } catch (Throwable e) {
-            throw RowUtils.fail(this, e);
-        }
-        return step();
     }
 
     @Override
@@ -100,19 +75,11 @@ abstract class AbstractRowUpdater<R> extends AbstractRowScanner<R> implements Ro
         return result;
     }
 
-    /**
-     * @return null if the key columns didn't change
-     */
-    protected abstract byte[] encodeKey();
-
-    /**
-     * @return non-null value
-     */
-    protected abstract byte[] encodeValue();
-
     protected void doUpdate() throws IOException {
-        byte[] key = encodeKey();
-        byte[] value = encodeValue();
+        RowDecoderEncoder<R> encoder = mDecoder;
+        R row = mRow;
+        byte[] key = encoder.encodeKey(row);
+        byte[] value = encoder.encodeValue(row);
         Cursor c = mCursor;
         if (key == null) {
             // Key didn't change.
@@ -121,7 +88,7 @@ abstract class AbstractRowUpdater<R> extends AbstractRowScanner<R> implements Ro
             Transaction txn = c.link();
             txn.enter();
             try {
-                mView.mSource.store(txn, key, value);
+                mView.store(txn, key, value);
                 c.commit(null);
             } finally {
                 txn.exit();

@@ -21,6 +21,7 @@ import java.io.IOException;
 
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Transaction;
+import org.cojen.tupl.View;
 
 /**
  * Commits every transactional update, and exits the scope when closed. For any entry stepped
@@ -28,18 +29,20 @@ import org.cojen.tupl.Transaction;
  *
  * @author Brian S O'Neill
  */
-abstract class AutoCommitRowUpdater<R> extends NonRepeatableRowUpdater<R> {
+class AutoCommitRowUpdater<R> extends NonRepeatableRowUpdater<R> {
     /**
      * @param cursor linked transaction must not be null
      */
-    AutoCommitRowUpdater(AbstractRowView view, Cursor cursor) {
-        super(view, cursor);
+    AutoCommitRowUpdater(View view, Cursor cursor, RowDecoderEncoder<R> decoder) {
+        super(view, cursor, decoder);
     }
 
     @Override
     protected void doUpdate() throws IOException {
-        byte[] key = encodeKey();
-        byte[] value = encodeValue();
+        RowDecoderEncoder<R> encoder = mDecoder;
+        R row = mRow;
+        byte[] key = encoder.encodeKey(row);
+        byte[] value = encoder.encodeValue(row);
         Cursor c = mCursor;
         if (key == null) {
             // Key didn't change.
@@ -48,7 +51,7 @@ abstract class AutoCommitRowUpdater<R> extends NonRepeatableRowUpdater<R> {
             Transaction txn = c.link();
             txn.enter();
             try {
-                mView.mSource.store(txn, key, value);
+                mView.store(txn, key, value);
                 c.commit(null);
             } finally {
                 txn.exit();

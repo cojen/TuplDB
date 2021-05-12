@@ -23,20 +23,21 @@ import org.cojen.tupl.Cursor;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Transaction;
+import org.cojen.tupl.View;
 
 /**
  * Updater which uses the {@link LockMode#UPGRADABLE_READ} mode.
  *
  * @author Brian S O'Neill
  */
-abstract class UpgradableRowUpdater<R> extends AbstractRowUpdater<R> {
-    private LockMode mOriginalMode;
+class UpgradableRowUpdater<R> extends BasicRowUpdater<R> {
+    LockMode mOriginalMode;
 
     /**
      * @param cursor linked transaction must not be null
      */
-    UpgradableRowUpdater(AbstractRowView view, Cursor cursor) {
-        super(view, cursor);
+    UpgradableRowUpdater(View view, Cursor cursor, RowDecoderEncoder<R> decoder) {
+        super(view, cursor, decoder);
     }
 
     @Override

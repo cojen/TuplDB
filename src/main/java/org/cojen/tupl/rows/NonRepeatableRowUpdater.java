@@ -22,20 +22,21 @@ import java.io.IOException;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Transaction;
+import org.cojen.tupl.View;
 
 /**
  * Updater which releases acquired locks for rows which are stepped over.
  *
  * @author Brian S O'Neill
  */
-abstract class NonRepeatableRowUpdater<R> extends AbstractRowUpdater<R> {
-    protected LockResult mLockResult;
+class NonRepeatableRowUpdater<R> extends BasicRowUpdater<R> {
+    LockResult mLockResult;
 
     /**
      * @param cursor linked transaction must not be null; is exited when finished
      */
-    NonRepeatableRowUpdater(AbstractRowView view, Cursor cursor) {
-        super(view, cursor);
+    NonRepeatableRowUpdater(View view, Cursor cursor, RowDecoderEncoder<R> decoder) {
+        super(view, cursor, decoder);
     }
 
     @Override
