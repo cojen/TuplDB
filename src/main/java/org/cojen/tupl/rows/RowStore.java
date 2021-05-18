@@ -80,7 +80,10 @@ public class RowStore {
 
     @SuppressWarnings("unchecked")
     private <R> RowIndex<R> findOrOpen(Class<R> type, boolean open) throws IOException {
-        AbstractRowView rv;
+        AbstractRowView rv = mRowViewCache.get(type);
+        if (rv != null) {
+            return rv;
+        }
         synchronized (mRowViewCache) {
             rv = mRowViewCache.get(type);
             if (rv != null) {

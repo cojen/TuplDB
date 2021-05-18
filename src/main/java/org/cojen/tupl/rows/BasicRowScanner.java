@@ -53,7 +53,7 @@ class BasicRowScanner<R> implements RowScanner<R> {
                 break;
             }
             try {
-                R decoded = mDecoder.decodeRow(key, c.value(), null);
+                R decoded = mDecoder.decodeRow(key, c, null);
                 if (decoded != null) {
                     mRow = decoded;
                     return;
@@ -84,7 +84,7 @@ class BasicRowScanner<R> implements RowScanner<R> {
                 if (key == null) {
                     break;
                 }
-                R decoded = mDecoder.decodeRow(key, c.value(), row);
+                R decoded = mDecoder.decodeRow(key, c, row);
                 if (decoded != null) {
                     mRow = decoded;
                     return decoded;

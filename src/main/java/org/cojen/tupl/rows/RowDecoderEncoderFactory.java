@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Cojen.org
+ *  Copyright (C) 2021 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -12,36 +12,21 @@
  *  GNU Affero General Public License for more details.
  *
  *  You should have received a copy of the GNU Affero General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package org.cojen.tupl.rows;
 
-import org.cojen.maker.MethodMaker;
-import org.cojen.maker.Variable;
+import java.io.IOException;
 
 /**
- * Abstract class for encoding and decoding BigInteger type columns.
+ * 
  *
  * @author Brian S O'Neill
  */
-abstract class BigIntegerColumnCodec extends ColumnCodec {
+interface RowDecoderEncoderFactory<R> {
     /**
-     * @param info non-null
-     * @param mm is null for stateless instance
+     * Returns a new filtered instance.
      */
-    BigIntegerColumnCodec(ColumnInfo info, MethodMaker mm) {
-        super(info, mm);
-    }
-
-    @Override
-    int minSize() {
-        return 0;
-    }
-
-    @Override
-    void filterPrepare(int op, Variable argVar, int argNum) {
-        // FIXME
-        throw null;
-    }
+    RowDecoderEncoder<R> filtered(Object... args) throws IOException;
 }

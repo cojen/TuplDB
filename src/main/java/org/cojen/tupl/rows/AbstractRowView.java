@@ -32,6 +32,9 @@ import org.cojen.tupl.RowView;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
 
+import org.cojen.tupl.filter.Parser;
+import org.cojen.tupl.filter.RowFilter;
+
 import org.cojen.tupl.io.Utils;
 
 /**
@@ -42,8 +45,11 @@ import org.cojen.tupl.io.Utils;
 abstract class AbstractRowView<R> implements RowIndex<R> {
     protected final View mSource;
 
+    private final WeakCache<String, RowDecoderEncoderFactory<R>> mFactoryCache;
+
     protected AbstractRowView(View source) {
         mSource = Objects.requireNonNull(source);
+        mFactoryCache = new WeakCache<>();
     }
 
     @Override
@@ -63,22 +69,45 @@ abstract class AbstractRowView<R> implements RowIndex<R> {
 
     @Override
     public RowScanner<R> newScanner(Transaction txn) throws IOException {
-        RowDecoderEncoder<R> unfiltered = unfiltered();
-        var scanner = new BasicRowScanner<R>(mSource.newCursor(txn), unfiltered);
+        return newScanner(txn, unfiltered());
+    }
+
+    @Override
+    public RowScanner<R> newScanner(Transaction txn, String filter, Object... args)
+        throws IOException
+    {
+        return newScanner(txn, filtered(filter, args));
+    }
+
+    private RowScanner<R> newScanner(Transaction txn, RowDecoderEncoder<R> decoder)
+        throws IOException
+    {
+        var scanner = new BasicRowScanner<R>(mSource.newCursor(txn), decoder);
         scanner.init();
         return scanner;
     }
 
     @Override
     public RowUpdater<R> newUpdater(Transaction txn) throws IOException {
-        RowDecoderEncoder<R> unfiltered = unfiltered();
+        return newUpdater(txn, unfiltered());
+    }
 
+    @Override
+    public RowUpdater<R> newUpdater(Transaction txn, String filter, Object... args)
+        throws IOException
+    {
+        return newUpdater(txn, filtered(filter, args));
+    }
+
+    private RowUpdater<R> newUpdater(Transaction txn, RowDecoderEncoder<R> encoder)
+        throws IOException
+    {
         BasicRowUpdater<R> updater;
         if (txn == null) {
             txn = mSource.newTransaction(null);
             Cursor c = mSource.newCursor(txn);
             try {
-                updater = new AutoCommitRowUpdater<R>(mSource, c, unfiltered);
+                updater = new AutoCommitRowUpdater<R>(mSource, c, encoder);
             } catch (Throwable e) {
                 try {
                     txn.exit();
@@ -91,16 +120,16 @@ abstract class AbstractRowView<R> implements RowIndex<R> {
             Cursor c = mSource.newCursor(txn);
             switch (txn.lockMode()) {
             default:
-                updater = new BasicRowUpdater<R>(mSource, c, unfiltered);
+                updater = new BasicRowUpdater<R>(mSource, c, encoder);
                 break;
             case REPEATABLE_READ:
-                updater = new UpgradableRowUpdater<R>(mSource, c, unfiltered);
+                updater = new UpgradableRowUpdater<R>(mSource, c, encoder);
                 break;
             case READ_COMMITTED:
             case READ_UNCOMMITTED:
                 txn.enter();
                 txn.lockMode(LockMode.UPGRADABLE_READ);
-                updater = new NonRepeatableRowUpdater<R>(mSource, c, unfiltered);
+                updater = new NonRepeatableRowUpdater<R>(mSource, c, encoder);
                 break;
             }
         }
@@ -161,8 +190,44 @@ abstract class AbstractRowView<R> implements RowIndex<R> {
         return txn;
     }
 
+    private RowDecoderEncoder<R> filtered(String filter, Object... args) throws IOException {
+        RowDecoderEncoderFactory<R> factory = mFactoryCache.get(filter);
+        if (factory == null) {
+            factory = findFactory(filter);
+        }
+        return factory.filtered(args);
+    }
+
+    private RowDecoderEncoderFactory<R> findFactory(String filter) {
+        synchronized (mFactoryCache) {
+            RowDecoderEncoderFactory<R> factory = mFactoryCache.get(filter);
+            if (factory == null) {
+                RowFilter rf = parse(rowType(), filter);
+                String canonical = rf.toString();
+                factory = mFactoryCache.get(canonical);
+                if (factory == null) {
+                    factory = filteredFactory(canonical, rf);
+                    if (!filter.equals(canonical)) {
+                        mFactoryCache.put(canonical, factory);
+                    }
+                }
+                mFactoryCache.put(filter, factory);
+            }
+            return factory;
+        }
+    }
+
     /**
      * Returns a singleton instance.
      */
     protected abstract RowDecoderEncoder<R> unfiltered();
+
+    /**
+     * Returns a new factory instance, which is cached by the caller.
+     */
+    protected abstract RowDecoderEncoderFactory<R> filteredFactory(String str, RowFilter filter);
+
+    static RowFilter parse(Class<?> rowType, String filter) {
+        return new Parser(RowInfo.find(rowType).allColumns, filter).parse();
+    }
 }

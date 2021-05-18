@@ -40,6 +40,17 @@ public class Parser {
       ArgRef       = "?" [ uint ]
      */
 
+    /* FIXME: Support projection with a set of names, before the filter portion:
+       
+       // Only fully decode the "name" and "size" columns.
+       {name, size}: date < ? & ...
+
+       // Fully decode all columns except "blob".
+       !{blob}: data < ? & ...
+
+       By default, the projection is !{}. Empty set notation is legal, but not practical.
+     */
+
     private final Map<String, ColumnInfo> mAllColumns;
     private final String mFilter;
     private int mPos;

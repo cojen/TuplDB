@@ -22,6 +22,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.MutableCallSite;
+import java.lang.invoke.VarHandle;
 
 import java.util.function.IntFunction;
 
@@ -204,6 +205,7 @@ class SwitchCallSite extends MutableCallSite {
         int index = key & (entries.length - 1);
         Entry e = new Entry(key, mh);
         e.next = entries[index];
+        VarHandle.storeStoreFence(); // reduce likelihood of observing a broken chain
         entries[index] = e;
         mSize++;
     }

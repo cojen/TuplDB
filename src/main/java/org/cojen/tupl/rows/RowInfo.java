@@ -56,14 +56,17 @@ class RowInfo extends ColumnSet {
      * @throws IllegalArgumentException if row type is malformed
      */
     static RowInfo find(Class<?> rowType) {
-        synchronized (cache) {
-            RowInfo info = cache.get(rowType);
-            if (info == null) {
-                info = examine(rowType);
-                cache.put(rowType, info);
+        RowInfo info = cache.get(rowType);
+        if (info == null) {
+            synchronized (cache) {
+                info = cache.get(rowType);
+                if (info == null) {
+                    info = examine(rowType);
+                    cache.put(rowType, info);
+                }
             }
-            return info;
         }
+        return info;
     }
 
     /**

@@ -28,6 +28,8 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.filter.ColumnFilter;
+
 import static org.cojen.tupl.rows.ColumnInfo.*;
 import static org.cojen.tupl.rows.RowUtils.*;
 
@@ -253,25 +255,72 @@ abstract class ColumnCodec {
     abstract void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar);
 
     /**
-     * Defines and initializes final field(s) for filter arguments. An exception is thrown at
-     * runtime if the argVar cannot be cast to the actual column type.
+     * Makes code which defines and initializes final field(s) for filter arguments. An
+     * exception is thrown at runtime if the argVar cannot be cast to the actual column type.
      *
-     * Note: This method is only called when the codec has been bound to a constructor.
+     * This method is only called when the codec has been bound to a constructor, and it's
+     * called on the destination codec (the currently defined row version). The implementation
+     * should only consider the column type and not the specific encoding format.
      *
      * @param argVar argument value to compare against; variable type is Object
      * @param argNum zero-based filter argument number
      * @param op defined in ColumnFilter
-     * @return any object, which is passed into the compare code generation method
      */
-    // FIXME: Note that for the compare method, the codec is bound to the scanner step method.
-    abstract Object filterArgPrepare(Variable argVar, int argNum, int op);
+    abstract void filterPrepare(int op, Variable argVar, int argNum);
 
-    protected Field defineArgField(Object type, int argNum) {
-        return defineArgField(type, mInfo.name + '$' + argNum);
+    /**
+     * Makes code which identifies the location of an encoded column and optionally decodes it.
+     * When a non-null object is returned, it's treated as cached state that can be re-used for
+     * multiple invocations of filterCompare.
+     *
+     * This method is only called when the codec has been bound to a decode method, and it's
+     * called on the source codec (it might be different than the current row version). If a
+     * conversion must be applied, any special variables must be known by the returned object.
+     *
+     * @param dstInfo current definition for column
+     * @param srcVar source byte array
+     * @param offsetVar int type; is incremented as a side-effect
+     * @param endVar end offset, which when null implies the end of the array
+     * @param op defined in ColumnFilter
+     * @return an object with decoded state
+     */
+    // FIXME: abstract
+    Object filterDecode(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
+                        int op)
+    {
+        throw null;
     }
 
-    protected Field defineArgField(Object type, int argNum, String suffix) {
-        return defineArgField(type, mInfo.name + '$' + argNum + '$' + suffix);
+    /**
+     * Makes code which compares a column.
+     *
+     * This method is only called when the codec has been bound to a decode method, and it's
+     * called on the source codec.
+     *
+     * @param dstInfo current definition for column
+     * @param decoded object which was returned by the filterDecode method
+     * @param op defined in ColumnFilter
+     * @param argObjVar object which contains fields prepared earlier
+     * @param argNum zero-based filter argument number
+     * @param pass branch here when comparison passes
+     * @param fail branch here when comparison fails
+     */
+    // FIXME: abstract
+    void filterCompare(ColumnInfo dstInfo, Object decoded, int op, Variable argObjVar, int argNum,
+                       Label pass, Label fail)
+    {
+        throw null;
+    }
+
+    // FIXME: When filter passes, take advantage of existing decoded variables and avoid double
+    // decode if possible.
+
+    protected String argFieldName(int argNum) {
+        return mInfo.name + '$' + argNum;
+    }
+
+    protected String argFieldName(int argNum, String suffix) {
+        return mInfo.name + '$' + argNum + '$' + suffix;
     }
 
     protected Field defineArgField(Object type, String name) {
@@ -324,7 +373,7 @@ abstract class ColumnCodec {
      * Decode a null header byte and jumps to the end if the decoded column value is null.
      *
      * @param end required
-     * @param dst optional
+     * @param dst optional; if boolean, assigns true/false as null/not-null
      * @param offsetVar int type; is incremented as a side-effect
      */
     protected void decodeNullHeader(Label end, Variable dstVar,
@@ -340,6 +389,8 @@ abstract class ColumnCodec {
 
         if (dstVar == null) {
             header.ifEq(nullHeader, end);
+        } else if (dstVar.classType() == boolean.class) {
+            dstVar.set(header.eq(nullHeader));
         } else {
             Label notNull = mMaker.label();        
             header.ifNe(nullHeader, notNull);
@@ -347,5 +398,77 @@ abstract class ColumnCodec {
             mMaker.goto_(end);
             notNull.here();
         }
+    }
+
+    /**
+     * Makes code which compares a column and filter argument when one or both of them might be
+     * null. If either is null, then code flows to the pass or fail target. Otherwise, the flow
+     * continues on.
+     *
+     * @param srcVar source byte array or boolean (true means the column null)
+     * @param offsetVar int type; is incremented as a side-effect (ignored if srcVar is boolean)
+     * @param argVar boolean or Object (when boolean, true means the arg is null)
+     * @param op defined in ColumnFilter
+     * @param pass branch here when comparison passes
+     * @param fail branch here when comparison fails
+     */
+    protected void compareNullHeader(Variable srcVar, Variable offsetVar,
+                                     Variable argVar, int op, Label pass, Label fail)
+    {
+        Label isColumnNull = mMaker.label();
+        if (srcVar.classType() == boolean.class) {
+            srcVar.ifTrue(isColumnNull);
+        } else {
+            decodeNullHeader(isColumnNull, null, srcVar, offsetVar);
+        }
+
+        // Column isn't null...
+        if (argVar.classType() == boolean.class) {
+            argVar.ifTrue(CompareUtils.selectColumnToNullArg(op, pass, fail));
+        } else {
+            argVar.ifEq(null, CompareUtils.selectColumnToNullArg(op, pass, fail));
+        }
+        Label cont = mMaker.label();
+        mMaker.goto_(cont);
+
+        // Column is null...
+        isColumnNull.here();
+        if (argVar.classType() == boolean.class) {
+            argVar.ifTrue(CompareUtils.selectNullColumnToNullArg(op, pass, fail));
+        } else {
+            argVar.ifEq(null, CompareUtils.selectNullColumnToNullArg(op, pass, fail));
+        }
+        mMaker.goto_(CompareUtils.selectNullColumnToArg(op, pass, fail));
+
+        // Neither is null...
+        cont.here();
+    }
+
+    /**
+     * Makes code which compares a column and filter argument when one or both of them might be
+     * null. If either is null, then code flows to the pass or fail target. Otherwise, the flow
+     * continues on.
+     *
+     * @param columnVar Object
+     * @param argVar boolean or Object (when boolean, true means the arg is null)
+     * @param op defined in ColumnFilter
+     * @param pass branch here when comparison passes
+     * @param fail branch here when comparison fails
+     */
+    // FIXME: Not used. Move to CompareUtils? Similar code is at the start of the
+    // CompareUtils.compare method.
+    protected void compareNullable(Variable columnVar, Variable argVar,
+                                   int op, Label pass, Label fail)
+    {
+        Label argNotNull = mMaker.label();
+        if (argVar.classType() == boolean.class) {
+            argVar.ifFalse(argNotNull);
+        } else {
+            argVar.ifNe(null, argNotNull);
+        }
+        columnVar.ifEq(null, CompareUtils.selectNullColumnToNullArg(op, pass, fail));
+        mMaker.goto_(CompareUtils.selectColumnToNullArg(op, pass, fail));
+        argNotNull.here();
+        columnVar.ifEq(null, CompareUtils.selectNullColumnToArg(op, pass, fail));
     }
 }

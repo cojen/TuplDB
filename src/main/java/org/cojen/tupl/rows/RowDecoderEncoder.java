@@ -19,12 +19,24 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
+import org.cojen.tupl.Cursor;
+
 /**
  * See BasicRowScanner.
  *
  * @author Brian S O'Neill
  */
 interface RowDecoderEncoder<R> {
+    /**
+     * @param row can pass null to construct a new instance
+     * @return null if row is filtered out
+     */
+    // Note: This variant exists to support a potential optimization in which the cursor value
+    // isn't autoloaded. A filter might not need to eagerly load the cursor value.
+    default R decodeRow(byte[] key, Cursor c, R row) throws IOException {
+        return decodeRow(key, c.value(), row);
+    }
+
     /**
      * @param row can pass null to construct a new instance
      * @return null if row is filtered out

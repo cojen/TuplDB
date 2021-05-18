@@ -99,7 +99,7 @@ class KeyBigDecimalColumnCodec extends ColumnCodec {
     }
 
     @Override
-    Object filterArgPrepare(Variable argVar, int argNum, int op) {
+    void filterPrepare(int op, Variable argVar, int argNum) {
         // FIXME
         throw null;
     }

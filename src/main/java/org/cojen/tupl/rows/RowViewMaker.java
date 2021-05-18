@@ -46,6 +46,8 @@ import org.cojen.tupl.Transaction;
 import org.cojen.tupl.Updater;
 import org.cojen.tupl.View;
 
+import org.cojen.tupl.filter.RowFilter;
+
 /**
  * Makes RowView classes that extend AbstractRowView. RowIndex methods are supported when
  * constructed with a View source which is an Index.
@@ -142,6 +144,8 @@ class RowViewMaker {
         // FIXME: define update, merge, and remove methods that accept a match row
 
         addUnfilteredMethod();
+
+        addFilteredFactoryMethod();
 
         return (Class) mClassMaker.finish();
     }
@@ -418,7 +422,7 @@ class RowViewMaker {
     static CallSite indyEncodeValueColumns(MethodHandles.Lookup lookup, String name, MethodType mt,
                                            Class<?> rowType, WeakReference<RowStore> storeRef)
     {
-        return indyEncode(lookup, name, mt, rowType, storeRef, (mm, info, schemaVersion) -> {
+        return doIndyEncode(lookup, name, mt, rowType, storeRef, (mm, info, schemaVersion) -> {
             ColumnCodec[] codecs = info.rowGen().valueCodecs();
             addEncodeColumns(mm, ColumnCodec.bind(schemaVersion, codecs, mm));
         });
@@ -435,9 +439,9 @@ class RowViewMaker {
      * trying to obtain the schema version. If an exception was thrown, the finisher might be
      * called at a later time.
      */
-    private static CallSite indyEncode(MethodHandles.Lookup lookup, String name, MethodType mt,
-                                       Class<?> rowType, WeakReference<RowStore> storeRef,
-                                       EncodeFinisher finisher)
+    private static CallSite doIndyEncode(MethodHandles.Lookup lookup, String name, MethodType mt,
+                                         Class<?> rowType, WeakReference<RowStore> storeRef,
+                                         EncodeFinisher finisher)
     {
         return ExceptionCallSite.make(() -> {
             MethodMaker mm = MethodMaker.begin(lookup, name, mt);
@@ -563,7 +567,7 @@ class RowViewMaker {
     /**
      * Decodes the first 1 to 4 bytes of the given byte array into a schema version int variable.
      */
-    private static Variable decodeSchemaVersion(MethodMaker mm, Variable bytes) {
+    static Variable decodeSchemaVersion(MethodMaker mm, Variable bytes) {
         var schemaVersion = mm.var(int.class);
         schemaVersion.set(bytes.aget(0));
         Label cont = mm.label();
@@ -759,7 +763,7 @@ class RowViewMaker {
     static CallSite indyDoUpdate(MethodHandles.Lookup lookup, String name, MethodType mt,
                                  Class<?> rowType, WeakReference<RowStore> storeRef)
     {
-        return indyEncode(lookup, name, mt, rowType, storeRef, RowViewMaker::finishIndyDoUpdate);
+        return doIndyEncode(lookup, name, mt, rowType, storeRef, RowViewMaker::finishIndyDoUpdate);
     }
 
     private static void finishIndyDoUpdate(MethodMaker mm, RowInfo rowInfo, int schemaVersion) {
@@ -995,7 +999,7 @@ class RowViewMaker {
         markAllClean(rowVar, mRowInfo);
     }
 
-    private static void markAllClean(Variable rowVar, RowInfo info) {
+    static void markAllClean(Variable rowVar, RowInfo info) {
         markAll(rowVar, info, 0x5555_5555);
     }
 
@@ -1054,10 +1058,10 @@ class RowViewMaker {
                 (Object.class, "decodeRow", byte[].class, byte[].class, Object.class).public_();
             var viewVar = mm.var(lookup.lookupClass());
             var rowVar = mm.param(2).cast(rowClass);
-            Label ready = mm.label();
-            rowVar.ifNe(null, ready);
+            Label hasRow = mm.label();
+            rowVar.ifNe(null, hasRow);
             rowVar.set(mm.new_(rowClass));
-            ready.here();
+            hasRow.here();
             viewVar.invoke("decodePrimaryKey", rowVar, mm.param(0));
             viewVar.invoke("decodeValue", rowVar, mm.param(1));
             markAllClean(rowVar, rowInfo);
@@ -1085,5 +1089,15 @@ class RowViewMaker {
         var clazz = cm.finish();
 
         return lookup.findConstructor(clazz, MethodType.methodType(void.class)).invoke();
+    }
+
+    private void addFilteredFactoryMethod() {
+        MethodMaker mm = mClassMaker.addMethod
+            (RowDecoderEncoderFactory.class, "filteredFactory", String.class, RowFilter.class);
+        var storeRefVar = mm.var(WeakReference.class).setExact(mStoreRef);
+        var maker = mm.new_(RowFilterMaker.class, storeRefVar,
+                            mm.class_(), mm.invoke("unfiltered").invoke("getClass"),
+                            mRowType, mm.param(0), mm.param(1));
+        mm.return_(maker.invoke("finish"));
     }
 }

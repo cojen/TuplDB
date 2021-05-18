@@ -340,17 +340,22 @@ class PrimitiveColumnCodec extends ColumnCodec {
         }
     }
 
+    /**
+     * Defines a single field if the column isn't nullable, or if the column is boolean. If
+     * nullable, defines two fields: the usual one and the "is null" boolean field.
+     */
     @Override
-    Object filterArgPrepare(Variable argVar, int argNum, int op) {
+    void filterPrepare(int op, Variable argVar, int argNum) {
+        // FIXME: If boolean and op !isExact, blow up here with an exception.
+
         Label cont = null;
-        String isNullFieldName = null;
 
         if (mInfo.isNullable()) {
             if (mInfo.plainTypeCode() == TYPE_BOOLEAN) {
-                Field field = defineArgField(argVar, argNum).set(argVar);
-                return field.name();
+                defineArgField(argVar, argFieldName(argNum)).set(argVar);
+                return;
             }
-            Field isNullField = defineArgField(boolean.class, argNum, "isNull");
+            Field isNullField = defineArgField(boolean.class, argFieldName(argNum, "isNull"));
             Label notNull = mMaker.label();
             argVar.ifNe(null, notNull);
             isNullField.set(true);
@@ -358,7 +363,6 @@ class PrimitiveColumnCodec extends ColumnCodec {
             mMaker.goto_(cont);
             notNull.here();
             isNullField.set(false);
-            isNullFieldName = isNullField.name();
         }
 
         Variable fieldValue = argVar.cast(mInfo.boxedType()).unbox();
@@ -372,18 +376,101 @@ class PrimitiveColumnCodec extends ColumnCodec {
             }
         }
 
-        Field argField = defineArgField(fieldValue, argNum).set(fieldValue);
-        String argFieldName = argField.name();
+        defineArgField(fieldValue, argFieldName(argNum)).set(fieldValue);
 
         if (cont != null) {
             cont.here();
         }
+    }
 
-        if (isNullFieldName == null) {
-            return argFieldName;
-        } else {
-            return new String[] {argFieldName, isNullFieldName};
+    @Override
+    Object filterDecode(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
+                        int op)
+    {
+        if (dstInfo.typeCode != mInfo.typeCode) {
+            // FIXME: Convert it... (float/double must be raw when finished, if op isExact)
+            // FIXME: Need to create a general purpose compare maker, for any Java type. The
+            //        optimizations here avoid boxing, that's all. If the conversion yields
+            //        a primitive type, possibily nullable, use the optimizations.
+            throw null;
         }
+
+        final boolean rawColumn;
+        final Variable columnVar;
+        defineColumnVar: {
+            if (ColumnFilter.isExact(op)) {
+                if (dstInfo.type == float.class) {
+                    rawColumn = true;
+                    columnVar = mMaker.var(int.class);
+                    break defineColumnVar;
+                } else if (dstInfo.type == double.class) {
+                    rawColumn = true;
+                    columnVar = mMaker.var(long.class);
+                    break defineColumnVar;
+                }
+            }
+            rawColumn = false;
+            columnVar = mMaker.var(dstInfo.type);
+        }
+
+        Variable isNullVar = null;
+        Label end = null;
+
+        if (dstInfo.isNullable() && dstInfo.plainTypeCode() != TYPE_BOOLEAN) {
+            columnVar.set(0);
+            isNullVar = mMaker.var(boolean.class);
+            end = mMaker.label();
+            decodeNullHeader(end, isNullVar, srcVar, offsetVar);
+        }
+
+        decode(columnVar, srcVar, offsetVar, rawColumn, false);
+
+        if (end != null) {
+            end.here();
+        }
+
+        if (isNullVar == null) {
+            return columnVar;
+        } else {
+            return new Variable[] {columnVar, isNullVar};
+        }
+    }
+
+    @Override
+    void filterCompare(ColumnInfo dstInfo, Object decoded, int op, Variable argObjVar, int argNum,
+                       Label pass, Label fail)
+    {
+        Variable columnVar, isNullVar;
+        if (decoded instanceof Variable) {
+            columnVar = (Variable) decoded;
+            isNullVar = null;
+        } else {
+            var pair = (Variable[]) decoded;
+            columnVar = pair[0];
+            isNullVar = pair[1];
+        }
+
+        if (isNullVar != null) {
+            var isNullField = argObjVar.field(argFieldName(argNum, "isNull"));
+            compareNullHeader(isNullVar, null, isNullField, op, pass, fail);
+        }
+
+        var argField = argObjVar.field(argFieldName(argNum));
+
+        // FIXME: This switch can be in the general purpose maker. Both vars should be same
+        // type, but they can be widened if necessary.
+        // FIXME: Consider unsigned types!
+        switch (op) {
+        case ColumnFilter.OP_EQ: columnVar.ifEq(argField, pass); break;
+        case ColumnFilter.OP_NE: columnVar.ifNe(argField, pass); break;
+        case ColumnFilter.OP_LT: columnVar.ifLt(argField, pass); break;
+        case ColumnFilter.OP_GE: columnVar.ifGe(argField, pass); break;
+        case ColumnFilter.OP_GT: columnVar.ifGt(argField, pass); break;
+        case ColumnFilter.OP_LE: columnVar.ifLe(argField, pass); break;
+        default: throw new AssertionError();
+        }
+
+        mMaker.goto_(fail);
     }
 
     /**

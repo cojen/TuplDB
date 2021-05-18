@@ -24,8 +24,12 @@ package org.cojen.tupl.rows;
  */
 abstract class RowClassCache extends WeakCache<Class<?>, Class<?>> {
     Class<?> find(Class<?> rowType) {
+        Class clazz = get(rowType);
+        if (clazz != null) {
+            return clazz;
+        }
         synchronized (this) {
-            Class clazz = get(rowType);
+            clazz = get(rowType);
             if (clazz != null) {
                 return clazz;
             }
@@ -34,7 +38,7 @@ abstract class RowClassCache extends WeakCache<Class<?>, Class<?>> {
         RowGen rowGen = RowInfo.find(rowType).rowGen();
 
         synchronized (this) {
-            Class clazz = get(rowType);
+            clazz = get(rowType);
             if (clazz == null) {
                 clazz = generate(rowType, rowGen);
                 put(rowType, clazz);

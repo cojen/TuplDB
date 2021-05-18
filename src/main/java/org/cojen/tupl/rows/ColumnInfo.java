@@ -261,6 +261,19 @@ public class ColumnInfo implements Cloneable {
         }
     }
 
+    /**
+     * Returns this instance if already non-nullable, else a copy is returned.
+     */
+    ColumnInfo asNonNullable() {
+        if (!isNullable()) {
+            return this;
+        } else {
+            ColumnInfo info = copy();
+            info.typeCode &= ~TYPE_NULLABLE;
+            return info;
+        }
+    }
+
     ColumnInfo copy() {
         try {
             return (ColumnInfo) clone();

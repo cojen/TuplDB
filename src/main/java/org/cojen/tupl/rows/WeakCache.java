@@ -17,12 +17,17 @@
 
 package org.cojen.tupl.rows;
 
+import java.lang.invoke.VarHandle;
+
 import java.lang.ref.WeakReference;
 import java.lang.ref.ReferenceQueue;
 
 /**
  * Simple cache of weakly referenced values. Not thread safe. I would really like it if a class
  * like this was actually provided by the JDK.
+ *
+ * Note: Entries can be safely retrieved without explicit synchronization, but they might
+ * sometimes appear to go missing. Double check with synchronization.
  *
  * @author Brian S O'Neill
  */
@@ -65,6 +70,7 @@ public class WeakCache<K, V> extends ReferenceQueue<Object> {
                 } else {
                     prev.mNext = e.mNext;
                 }
+                VarHandle.storeStoreFence(); // ensure that entry value is safely visible
                 entries[index] = newEntry;
                 return replaced;
             } else {
@@ -117,6 +123,7 @@ public class WeakCache<K, V> extends ReferenceQueue<Object> {
 
         var newEntry = new Entry<K, V>(key, value, hash, this);
         newEntry.mNext = entries[index];
+        VarHandle.storeStoreFence(); // ensure that entry value is safely visible
         entries[index] = newEntry;
         mSize++;
 
