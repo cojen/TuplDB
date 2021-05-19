@@ -56,6 +56,11 @@ class NonRepeatableRowUpdater<R> extends BasicRowUpdater<R> {
     }
 
     @Override
+    protected void unlocked() {
+        mLockResult = null;
+    }
+
+    @Override
     protected void finished() throws IOException {
         if (mLockResult != null) {
             mLockResult = null;

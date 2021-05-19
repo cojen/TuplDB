@@ -63,6 +63,7 @@ class BasicRowScanner<R> implements RowScanner<R> {
             }
             if (result == LockResult.ACQUIRED) {
                 c.link().unlock();
+                unlocked();
             }
             result = toNext(c);
         }
@@ -91,6 +92,7 @@ class BasicRowScanner<R> implements RowScanner<R> {
                 }
                 if (result == LockResult.ACQUIRED) {
                     c.link().unlock();
+                    unlocked();
                 }
             }
         } catch (UnpositionedCursorException e) {
@@ -113,6 +115,9 @@ class BasicRowScanner<R> implements RowScanner<R> {
 
     protected LockResult toNext(Cursor c) throws IOException {
         return c.next();
+    }
+
+    protected void unlocked() {
     }
 
     protected void finished() throws IOException {
