@@ -131,6 +131,9 @@ class RowFilterMaker<R> {
                                    schemaVersion, mm.this_(), mm.param(0), valueVar, mm.param(2)));
         }
 
+        // Define a field which refers to the filter's own factory. See comments below.
+        mFilterMaker.addField(RowDecoderEncoderFactory.class, "factory").static_().volatile_();
+
         // FIXME: Need a special ClassLoader to allow filter classes to unload.
         Class<?> filterClass = mFilterMaker.finish();
 
@@ -139,18 +142,16 @@ class RowFilterMaker<R> {
         ClassMaker cm = mRowGen.beginClassMaker("FilterFactory")
             .final_().implement(RowDecoderEncoderFactory.class);
 
-        cm.addConstructor().private_();
-
         // Factory instances are weakly cached by AbstractRowView, and so this can cause the
-        // generated class to get lost. It will eventually be GC'd, but this takes longer. To
-        // prevent a pile up of duplicate classes, maintain a singleton reference to the
-        // factory. As long as the class exists, the singleton instance exists, and so the
-        // cache entry exists.
+        // generated classes to get lost. They will eventually be GC'd, but this takes longer.
+        // To prevent a pile up of duplicate classes, maintain a singleton reference to the
+        // factory. As long as the filter class exists, the singleton instance factory exists,
+        // and so the cache entry exists.
 
         {
-            cm.addField(RowDecoderEncoderFactory.class, "THE").static_().final_();
-            MethodMaker mm = cm.addClinit();
-            mm.field("THE").set(mm.new_(cm));
+            MethodMaker mm = cm.addConstructor().private_();
+            mm.invokeSuperConstructor();
+            mm.var(filterClass).field("factory").set(mm.this_());
         }
 
         {
@@ -162,8 +163,9 @@ class RowFilterMaker<R> {
         MethodHandles.Lookup factoryLookup = cm.finishHidden();
 
         try {
-            return (RowDecoderEncoderFactory<R>) factoryLookup.findStaticVarHandle
-                (factoryLookup.lookupClass(), "THE", RowDecoderEncoderFactory.class).get();
+            var ctor = factoryLookup.findConstructor
+                (factoryLookup.lookupClass(), MethodType.methodType(void.class));
+            return (RowDecoderEncoderFactory<R>) ctor.invoke();
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
