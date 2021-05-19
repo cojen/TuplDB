@@ -341,6 +341,7 @@ class RowFilterMaker<R> {
 
             highestLocated.resetTail();
 
+            mMaker.goto_(originalFail);
             mFail = originalFail;
         }
 
@@ -366,6 +367,7 @@ class RowFilterMaker<R> {
 
             highestLocated.resetTail();
 
+            mMaker.goto_(originalPass);
             mPass = originalPass;
         }
 
@@ -398,9 +400,8 @@ class RowFilterMaker<R> {
             ColumnCodec codec = codecFor(colNum);
             codec.filterCompare(dstInfo, located.mDecoded, op, argObjVar, argNum, mPass, mFail);
 
-            // FIXME: Is this right? Should be updated by locateColumn?
             // Parent node (AndFilter/OrFilter) needs this to be updated.
-            mHighestLocated = located.mNext;
+            mHighestLocated = located;
         }
 
         @Override
