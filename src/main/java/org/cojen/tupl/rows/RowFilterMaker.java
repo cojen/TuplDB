@@ -314,6 +314,7 @@ class RowFilterMaker<R> {
             rowVar.set(mMaker.new_(mRowClass));
             hasRow.here();
             viewVar.invoke("decodePrimaryKey", rowVar, mMaker.param(1));
+            // FIXME: Bypass the SwitchCallSite. No need to check the schemaVersion again.
             viewVar.invoke("decodeValue", rowVar, mMaker.param(2));
             RowViewMaker.markAllClean(rowVar, mDstRowInfo);
             mMaker.return_(rowVar);
