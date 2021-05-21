@@ -401,7 +401,8 @@ class RowFilterMaker<R> {
             LocatedColumn located = locateColumn(colNum, dstInfo, op);
             Variable argObjVar = mMaker.param(0); // contains the arg fields prepared earlier
             ColumnCodec codec = codecFor(colNum);
-            codec.filterCompare(dstInfo, located.mDecoded, op, argObjVar, argNum, mPass, mFail);
+            codec.filterCompare(dstInfo, located.mSrcVar, located.mOffsetVar, null,
+                                op, located.mDecoded, argObjVar, argNum, mPass, mFail);
 
             // Parent node (AndFilter/OrFilter) needs this to be updated.
             mHighestLocated = located;
@@ -453,7 +454,7 @@ class RowFilterMaker<R> {
                     startOffset = RowUtils.lengthPrefixPF(mSchemaVersion);
                 }
                 located[0] = new LocatedColumn(null);
-                located[0].located(mMaker.var(int.class).set(startOffset));
+                located[0].located(srcVar, mMaker.var(int.class).set(startOffset));
             }
 
             // Scan backwards for filling in the gaps.
@@ -469,7 +470,7 @@ class RowFilterMaker<R> {
 
             for (; readyNum <= colNum; readyNum++) {
                 // Offset will be mutated, and so a copy must be made before calling decode.
-                Variable offsetVar = located[readyNum].mOffset;
+                Variable offsetVar = located[readyNum].mOffsetVar;
 
                 LocatedColumn next;
                 copyOffsetVar: {
@@ -482,7 +483,7 @@ class RowFilterMaker<R> {
                             located[readyNum + 1] = next;
                         } else {
                             // Next offset variable is free because state is UNLOCATED.
-                            Variable freeVar = next.mOffset;
+                            Variable freeVar = next.mOffsetVar;
                             if (freeVar != null) {
                                 freeVar.set(offsetVar);
                                 offsetVar = freeVar;
@@ -504,7 +505,7 @@ class RowFilterMaker<R> {
 
                 if (next != null) {
                     // The decode call incremented offsetVar as a side-effect.
-                    next.located(offsetVar);
+                    next.located(srcVar, offsetVar);
                 }
             }
 
@@ -518,8 +519,11 @@ class RowFilterMaker<R> {
 
         int mState;
 
+        // Source byte array. Is valid when mState is LOCATED or DECODED.
+        Variable mSrcVar;
+
         // Offset into the byte array. Is valid when mState is LOCATED or DECODED.
-        Variable mOffset;
+        Variable mOffsetVar;
 
         // Optional Object from ColumnCodec.filterDecode. Is valid when mState is DECODED.
         Object mDecoded;
@@ -534,10 +538,12 @@ class RowFilterMaker<R> {
         }
 
         /**
-         * @param offset start offset into the byte array
+         * @param srcVar source byte array
+         * @param offsetVar start offset into the byte array
          */
-        void located(Variable offset) {
-            mOffset = offset;
+        void located(Variable srcVar, Variable offsetVar) {
+            mSrcVar = srcVar;
+            mOffsetVar = offsetVar;
             mState = LOCATED;
         }
 

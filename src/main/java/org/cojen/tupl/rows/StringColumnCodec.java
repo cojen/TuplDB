@@ -17,6 +17,10 @@
 
 package org.cojen.tupl.rows;
 
+import java.nio.charset.StandardCharsets;
+
+import org.cojen.maker.Field;
+import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
@@ -39,9 +43,93 @@ abstract class StringColumnCodec extends ColumnCodec {
         return 0;
     }
 
+    /**
+     * Defines a byte[] arg field set to null or a UTF-8 encoded string, and also defines a
+     * String field with the original argument.
+     *
+     * @param argVar expected to be a String at runtime
+     */
     @Override
     void filterPrepare(int op, Variable argVar, int argNum) {
-        // FIXME
-        throw null;
+        argVar = argVar.cast(String.class);
+
+        defineArgField(String.class, argFieldName(argNum, "str")).set(argVar);
+
+        Field argField = defineArgField(byte[].class, argFieldName(argNum));
+        Label cont = mMaker.label();
+        argVar.ifEq(null, cont);
+        argField.set(argVar.invoke("getBytes", mMaker.var(StandardCharsets.class).field("UTF_8")));
+        cont.here();
     }
+
+    @Override
+    Object filterDecode(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
+                        int op)
+    {
+        if (dstInfo.plainTypeCode() != mInfo.plainTypeCode()) {
+            // FIXME: Need to convert to String and compare that.
+            throw null;
+        }
+
+        Variable lengthVar = mMaker.var(int.class);
+        Variable isNullVar = mInfo.isNullable() ? mMaker.var(boolean.class) : null;
+
+        decodeHeader(srcVar, offsetVar, endVar, lengthVar, isNullVar);
+
+        Variable dataOffsetVar = offsetVar.get(); // need a stable copy
+
+        return new Variable[] {dataOffsetVar, lengthVar, isNullVar};
+    }
+
+    /**
+     * @param decoded the string end offset, unless a String compare should be performed
+     */
+    @Override
+    void filterCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
+                       int op, Object decoded, Variable argObjVar, int argNum,
+                       Label pass, Label fail)
+    {
+        if (dstInfo.plainTypeCode() != mInfo.plainTypeCode()) {
+            // FIXME: Compare to String.
+            throw null;
+        }
+
+        var decodedVars = (Variable[]) decoded;
+        Variable dataOffsetVar = decodedVars[0];
+        Variable lengthVar = decodedVars[1];
+        Variable isNullVar = decodedVars[2];
+
+        var argVar = argObjVar.field(argFieldName(argNum)).get();
+
+        Label notNull = mMaker.label();
+        argVar.ifNe(null, notNull);
+        // Argument is null...
+        if (isNullVar != null) {
+            isNullVar.ifTrue(CompareUtils.selectNullColumnToNullArg(op, pass, fail));
+        }
+        mMaker.goto_(CompareUtils.selectColumnToNullArg(op, pass, fail));
+
+        // Argument is isn't null...
+        notNull.here();
+        if (isNullVar != null) {
+            isNullVar.ifTrue(CompareUtils.selectNullColumnToArg(op, pass, fail));
+        }
+        CompareUtils.compareArrays(mMaker,
+                                   srcVar, dataOffsetVar, dataOffsetVar.add(lengthVar),
+                                   argVar, 0, argVar.alength(),
+                                   op, pass, fail);
+    }
+
+    /**
+     * Decode the string header and advance the offset to the start of the string data.
+     *
+     * @param srcVar source byte array
+     * @param offsetVar int type; is incremented as a side-effect
+     * @param endVar end offset, which when null implies the end of the array
+     * @param lengthVar set to the decoded length; must be definitely assigned
+     * @param isNullVar set to true/false if applicable; must be definitely assigned for
+     * nullable strings
+     */
+    protected abstract void decodeHeader(Variable srcVar, Variable offsetVar, Variable endVar,
+                                         Variable lengthVar, Variable isNullVar);
 }

@@ -298,15 +298,19 @@ abstract class ColumnCodec {
      * called on the source codec.
      *
      * @param dstInfo current definition for column
-     * @param decoded object which was returned by the filterDecode method
+     * @param srcVar source byte array
+     * @param offsetVar int type; must not be modified
+     * @param endVar end offset, which when null implies the end of the array
      * @param op defined in ColumnFilter
+     * @param decoded object which was returned by the filterDecode method
      * @param argObjVar object which contains fields prepared earlier
      * @param argNum zero-based filter argument number
      * @param pass branch here when comparison passes
      * @param fail branch here when comparison fails
      */
     // FIXME: abstract
-    void filterCompare(ColumnInfo dstInfo, Object decoded, int op, Variable argObjVar, int argNum,
+    void filterCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
+                       int op, Object decoded, Variable argObjVar, int argNum,
                        Label pass, Label fail)
     {
         throw null;
@@ -372,7 +376,7 @@ abstract class ColumnCodec {
     /**
      * Decode a null header byte and jumps to the end if the decoded column value is null.
      *
-     * @param end required
+     * @param end required except when dst is boolean
      * @param dst optional; if boolean, assigns true/false as null/not-null
      * @param offsetVar int type; is incremented as a side-effect
      */

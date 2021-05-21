@@ -17,8 +17,11 @@
 
 package org.cojen.tupl.rows;
 
+import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
+
+import org.cojen.tupl.filter.ColumnFilter;
 
 /**
  * Encoding suitable for non-last key columns which supports nulls.
@@ -80,5 +83,56 @@ class KeyStringColumnCodec extends StringColumnCodec {
     @Override
     void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
         offsetVar.inc(mMaker.var(RowUtils.class).invoke("lengthStringKey", srcVar, offsetVar));
+    }
+
+    /**
+     * Defines a byte[] arg field encoded using the string key format.
+     *
+     * @param argVar expected to be a String at runtime
+     */
+    @Override
+    void filterPrepare(int op, Variable argVar, int argNum) {
+        argVar = argVar.cast(String.class);
+
+        var rowUtils = mMaker.var(RowUtils.class);
+        var lengthVar = rowUtils.invoke("lengthStringKey", argVar);
+        var bytesVar = mMaker.new_(byte[].class, lengthVar);
+        String methodName = "encodeStringKey";
+        if (mInfo.isDescending()) {
+            methodName += "Desc";
+        }
+        rowUtils.invoke(methodName, bytesVar, 0, argVar);
+        defineArgField(byte[].class, argFieldName(argNum)).set(bytesVar);
+    }
+
+    @Override
+    Object filterDecode(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
+                        int op)
+    {
+        decodeSkip(srcVar, offsetVar, endVar);
+        // Return a stable copy to the end offset.
+        return offsetVar.get();
+    }
+
+    /**
+     * @param decoded the string end offset
+     */
+    @Override
+    void filterCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
+                       int op, Object decoded, Variable argObjVar, int argNum,
+                       Label pass, Label fail)
+    {
+        endVar = (Variable) decoded;
+        var argVar = argObjVar.field(argFieldName(argNum)).get();
+        CompareUtils.compareArrays(mMaker,
+                                   srcVar, offsetVar, endVar,
+                                   argVar, 0, argVar.alength(),
+                                   op, pass, fail);
+    }
+
+    @Override
+    protected void decodeHeader(Variable srcVar, Variable offsetVar, Variable endVar,
+                                Variable lengthVar, Variable isNullVar){
+        throw new UnsupportedOperationException();
     }
 }

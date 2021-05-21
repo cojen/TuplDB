@@ -96,6 +96,15 @@ class NonNullStringColumnCodec extends StringColumnCodec {
         offsetVar.set(mMaker.var(RowUtils.class).invoke("skipBytesPF", srcVar, offsetVar));
     }
 
+    @Override
+    protected void decodeHeader(Variable srcVar, Variable offsetVar, Variable endVar,
+                                Variable lengthVar, Variable isNullVar)
+    {
+        var rowUtils = mMaker.var(RowUtils.class);
+        lengthVar.set(rowUtils.invoke("decodePrefixPF", srcVar, offsetVar));
+        offsetVar.inc(rowUtils.invoke("lengthPrefixPF", lengthVar));
+    }
+
     /**
      * @param offsetVar never null
      */

@@ -80,4 +80,12 @@ class NonNullLastStringColumnCodec extends StringColumnCodec {
     void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
         offsetVar.set(endVar == null ? srcVar.alength() : endVar);
     }
+
+    @Override
+    protected void decodeHeader(Variable srcVar, Variable offsetVar, Variable endVar,
+                                Variable lengthVar, Variable isNullVar)
+    {
+        var alengthVar = endVar == null ? srcVar.alength() : endVar;
+        lengthVar.set(alengthVar.sub(offsetVar));
+    }
 }

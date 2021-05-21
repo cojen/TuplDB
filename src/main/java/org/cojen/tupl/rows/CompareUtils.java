@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.rows;
 
+import java.util.Arrays;
+
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
@@ -179,5 +181,43 @@ class CompareUtils {
         case ColumnFilter.OP_LE: return pass; // null <= null? true
         default: throw new AssertionError();
         }
+    }
+
+    /**
+     * Makes code which compares two arrays.
+     *
+     * @param op defined in ColumnFilter
+     * @param pass branch here when comparison passes
+     * @param fail branch here when comparison fails
+     */
+    static void compareArrays(MethodMaker mm,
+                              Object a, Object aFrom, Object aTo,
+                              Object b, Object bFrom, Object bTo,
+                              int op, Label pass, Label fail)
+    {
+        var arraysVar = mm.var(Arrays.class);
+
+        switch (op) {
+        case ColumnFilter.OP_EQ: case ColumnFilter.OP_NE: {
+            var resultVar = arraysVar.invoke("equals", a, aFrom, aTo, b, bFrom, bTo);
+            if (op == ColumnFilter.OP_EQ) {
+                resultVar.ifTrue(pass);
+            } else {
+                resultVar.ifFalse(pass);
+            }
+            break;
+        }
+        default:
+            var resultVar = arraysVar.invoke("compare", a, aFrom, aTo, b, bFrom, bTo);
+            switch (op) {
+            case ColumnFilter.OP_LT: resultVar.ifLt(0, pass); break;
+            case ColumnFilter.OP_GE: resultVar.ifGe(0, pass); break;
+            case ColumnFilter.OP_GT: resultVar.ifGt(0, pass); break;
+            case ColumnFilter.OP_LE: resultVar.ifLe(0, pass); break;
+            default: throw new AssertionError();
+            }
+        }
+
+        mm.goto_(fail);
     }
 }

@@ -414,20 +414,14 @@ class PrimitiveColumnCodec extends ColumnCodec {
         }
 
         Variable isNullVar = null;
-        Label end = null;
 
         if (dstInfo.isNullable() && dstInfo.plainTypeCode() != TYPE_BOOLEAN) {
             columnVar.set(0);
             isNullVar = mMaker.var(boolean.class);
-            end = mMaker.label();
-            decodeNullHeader(end, isNullVar, srcVar, offsetVar);
+            decodeNullHeader(null, isNullVar, srcVar, offsetVar);
         }
 
         decode(columnVar, srcVar, offsetVar, rawColumn, false);
-
-        if (end != null) {
-            end.here();
-        }
 
         if (isNullVar == null) {
             return columnVar;
@@ -437,7 +431,8 @@ class PrimitiveColumnCodec extends ColumnCodec {
     }
 
     @Override
-    void filterCompare(ColumnInfo dstInfo, Object decoded, int op, Variable argObjVar, int argNum,
+    void filterCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
+                       int op, Object decoded, Variable argObjVar, int argNum,
                        Label pass, Label fail)
     {
         Variable columnVar, isNullVar;
