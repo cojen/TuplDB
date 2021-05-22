@@ -499,7 +499,7 @@ class RowViewMaker {
                     // Decode into a temp variable and then perform a best-effort conversion.
                     var tempVar = mm.var(srcCodec.mInfo.type);
                     srcCodec.decode(tempVar, srcVar, offsetVar, null);
-                    Converter.convert(mm, srcCodec.mInfo, tempVar, dstInfo, dstVar);
+                    Converter.convertLossy(mm, srcCodec.mInfo, tempVar, dstInfo, dstVar);
                 }
             }
         }

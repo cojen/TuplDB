@@ -75,7 +75,7 @@ public class ConverterTest {
             mm.return_(mm.param(0));
         } else {
             var dstVar = mm.var(dstInfo.type);
-            Converter.convert(mm, srcInfo, mm.param(0), dstInfo, dstVar);
+            Converter.convertLossy(mm, srcInfo, mm.param(0), dstInfo, dstVar);
             mm.return_(dstVar);
         }
         return mm.finish();

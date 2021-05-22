@@ -33,10 +33,14 @@ class Converter {
     /**
      * Generates code which converts a source variable into something that the destination
      * variable can accept. The given variable types must not already match.
+     *
+     * The conversion never results in an exception, but data loss is possible. Numerical
+     * conversions are clamped to fit within a target range, for example. If a conversion is
+     * completely impossible, then a suitable default value is chosen. See setDefault.
      */
-    static void convert(final MethodMaker mm,
-                        final ColumnInfo srcInfo, final Variable srcVar,
-                        final ColumnInfo dstInfo, final Variable dstVar)
+    static void convertLossy(final MethodMaker mm,
+                             final ColumnInfo srcInfo, final Variable srcVar,
+                             final ColumnInfo dstInfo, final Variable dstVar)
     {
         if (dstInfo.isArray() || srcInfo.isArray()) {
             // TODO: Need this when arrays are supported.
