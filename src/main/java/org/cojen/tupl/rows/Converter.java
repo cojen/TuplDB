@@ -719,12 +719,7 @@ class Converter {
     {
         Label tryStart = mm.label().here();
         dstVar.set(dstVar.invoke(method, srcVar));
-        Label cont = mm.label();
-        mm.goto_(cont);
-        Label tryEnd = mm.label().here();
-        mm.catch_(tryStart, tryEnd, NumberFormatException.class);
-        setDefault(dstInfo, dstVar);
-        cont.here();
+        mm.catch_(tryStart, NumberFormatException.class, ex -> setDefault(dstInfo, dstVar));
     }
 
     /**
@@ -1062,13 +1057,10 @@ class Converter {
             dstVar.set(bd);
             bd = null;
         }
-        Label cont = mm.label();
-        mm.goto_(cont);
-        Label tryEnd = mm.label().here();
-        mm.catch_(tryStart, tryEnd, NumberFormatException.class);
-        setDefault(dstInfo, dstVar);
-        mm.goto_(end);
-        cont.here();
+        mm.catch_(tryStart, NumberFormatException.class, exVar -> {
+            setDefault(dstInfo, dstVar);
+            mm.goto_(end);
+        });
         return bd;
     }
 

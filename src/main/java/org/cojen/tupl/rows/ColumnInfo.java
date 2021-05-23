@@ -161,36 +161,12 @@ public class ColumnInfo implements Cloneable {
      * Assigns the type by examining the typeCode.
      */
     void assignType() {
-        final Class<?> plainType;
-        plain: {
-            if (isNullable()) {
-                Class<?> boxedType = boxedType();
-                if (boxedType != null) {
-                    plainType = boxedType;
-                    break plain;
-                }
-            }
-            switch (plainTypeCode()) {
-            case TYPE_BOOLEAN:                 plainType = boolean.class;    break plain;
-            case TYPE_BYTE:  case TYPE_UBYTE:  plainType = byte.class;       break plain;
-            case TYPE_SHORT: case TYPE_USHORT: plainType = short.class;      break plain;
-            case TYPE_INT:   case TYPE_UINT:   plainType = int.class;        break plain;
-            case TYPE_LONG:  case TYPE_ULONG:  plainType = long.class;       break plain;
-            case TYPE_FLOAT:                   plainType = float.class;      break plain;
-            case TYPE_DOUBLE:                  plainType = double.class;     break plain;
-            case TYPE_UTF8:                    plainType = String.class;     break plain;
-            case TYPE_BIG_INTEGER:             plainType = BigInteger.class; break plain;
-            case TYPE_BIG_DECIMAL:             plainType = BigDecimal.class; break plain;
-            case TYPE_CHAR:                    plainType = char.class;       break plain;
-            default:                           plainType = Object.class;     break plain;
-            }
-        }
-
+        final Class<?> plainType = isNullable() ? boxedType() : unboxedType();
         this.type = isArray() ? plainType.arrayType() : plainType;
     }
 
     /**
-     * Return the primitive boxed type or null if not applicable.
+     * Return the primitive boxed type or the regular type if not primitive.
      */
     Class<?> boxedType() {
         switch (plainTypeCode()) {
@@ -201,8 +177,31 @@ public class ColumnInfo implements Cloneable {
         case TYPE_LONG:  case TYPE_ULONG:  return Long.class;
         case TYPE_FLOAT:                   return Float.class;
         case TYPE_DOUBLE:                  return Double.class;
+        case TYPE_UTF8:                    return String.class;
+        case TYPE_BIG_INTEGER:             return BigInteger.class;
+        case TYPE_BIG_DECIMAL:             return BigDecimal.class;
         case TYPE_CHAR:                    return Character.class;
-        default: return null;
+        default:                           return Object.class;
+        }
+    }
+
+    /**
+     * Return the primitive unboxed type or the regular type if not primitive.
+     */
+    Class<?> unboxedType() {
+        switch (plainTypeCode()) {
+        case TYPE_BOOLEAN:                 return boolean.class;
+        case TYPE_BYTE:  case TYPE_UBYTE:  return byte.class;
+        case TYPE_SHORT: case TYPE_USHORT: return short.class;
+        case TYPE_INT:   case TYPE_UINT:   return int.class;
+        case TYPE_LONG:  case TYPE_ULONG:  return long.class;
+        case TYPE_FLOAT:                   return float.class;
+        case TYPE_DOUBLE:                  return double.class;
+        case TYPE_UTF8:                    return String.class;
+        case TYPE_BIG_INTEGER:             return BigInteger.class;
+        case TYPE_BIG_DECIMAL:             return BigDecimal.class;
+        case TYPE_CHAR:                    return char.class;
+        default:                           return Object.class;
         }
     }
 

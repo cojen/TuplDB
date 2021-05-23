@@ -365,13 +365,14 @@ class PrimitiveColumnCodec extends ColumnCodec {
             isNullField.set(false);
         }
 
-        Variable fieldValue = argVar.cast(mInfo.boxedType()).unbox();
+        Class<?> fieldType = mInfo.unboxedType();
+        Variable fieldValue = ConvertCallSite.make(mMaker, fieldType, argVar);
 
         // For floating point, compare against raw bits to support NaN comparison.
         if (ColumnFilter.isExact(op)) {
-            if (mInfo.type == float.class) {
+            if (fieldType == float.class) {
                 fieldValue = fieldValue.invoke("floatToRawIntBits", fieldValue);
-            } else if (mInfo.type == double.class) {
+            } else if (fieldType == double.class) {
                 fieldValue = fieldValue.invoke("doubleToRawLongBits", fieldValue);
             }
         }

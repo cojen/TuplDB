@@ -51,7 +51,7 @@ abstract class StringColumnCodec extends ColumnCodec {
      */
     @Override
     void filterPrepare(int op, Variable argVar, int argNum) {
-        argVar = argVar.cast(String.class);
+        argVar = ConvertCallSite.make(mMaker, String.class, argVar);
 
         defineArgField(String.class, argFieldName(argNum, "str")).set(argVar);
 
