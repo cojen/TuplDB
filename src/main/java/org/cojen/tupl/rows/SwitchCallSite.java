@@ -68,7 +68,7 @@ class SwitchCallSite extends MutableCallSite {
         MethodMaker mm = MethodMaker.begin(lookup, "switch", fullMt);
 
         if (mSize == 0) {
-            makeDefault(lookup, mt, mm);
+            makeDefault(mt, mm);
         } else {
             var remainingParams = new Object[mt.parameterCount()];
             for (int i=0; i<remainingParams.length; i++) {
@@ -120,27 +120,12 @@ class SwitchCallSite extends MutableCallSite {
 
             defLabel.here();
 
-            /*
-              The default case is handled by a separate method, which is almost never executed.
-              This helps with inlining by keeping the core switch code small, but the main
-              reason is to workaround a problem in HotSpot which prevents the core switch code
-              from being compiled. The default case isn't executed, and so it refers to
-              unresolved dynamic constants. Moving the default case to a separate method causes
-              HotSpot to skip over it.
-
-              In c1_GraphBuilder.cpp:
-
-              void GraphBuilder::load_constant() {
-                ciConstant con = stream()->get_constant();
-                if (con.basic_type() == T_ILLEGAL) {
-                  // FIXME: an unresolved Dynamic constant can get here,
-                  // and that should not terminate the whole compilation.
-                  BAILOUT("could not resolve a constant");
-             */
+            //The default case is handled by a separate method, which is almost never executed.
+            // This helps with inlining by keeping the core switch code small.
 
             MethodMaker defMaker = mm.classMaker().addMethod("default", fullMt);
             defMaker.static_().private_();
-            makeDefault(lookup, mt, defMaker);
+            makeDefault(mt, defMaker);
 
             var allParams = new Object[fullMt.parameterCount()];
             for (int i=0; i<allParams.length; i++) {
@@ -164,9 +149,9 @@ class SwitchCallSite extends MutableCallSite {
     /**
      * @param mm first param must be the key
      */
-    private void makeDefault(MethodHandles.Lookup lookup, MethodType mt, MethodMaker mm) {
+    private void makeDefault(MethodType mt, MethodMaker mm) {
         var dcsVar = mm.var(SwitchCallSite.class).setExact(this);
-        var lookupVar = mm.var(MethodHandles.Lookup.class).setExact(lookup);
+        var lookupVar = mm.var(MethodHandles.class).invoke("lookup");
         var newCaseVar = dcsVar.invoke("newCase", lookupVar, mm.param(0), mt);
 
         var allParams = new Object[1 + mt.parameterCount()];
