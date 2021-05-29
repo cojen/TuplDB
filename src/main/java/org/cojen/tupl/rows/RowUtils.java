@@ -28,7 +28,7 @@ import org.cojen.tupl.core.Utils;
  *
  * @author Brian S O'Neill
  */
-class RowUtils extends Utils {
+public class RowUtils extends Utils {
     /** Byte to use for null, low ordering */
     static final byte NULL_BYTE_LOW = 0;
 

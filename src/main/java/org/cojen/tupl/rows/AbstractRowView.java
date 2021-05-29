@@ -42,7 +42,7 @@ import org.cojen.tupl.io.Utils;
  *
  * @author Brian S O'Neill
  */
-abstract class AbstractRowView<R> implements RowIndex<R> {
+public abstract class AbstractRowView<R> implements RowIndex<R> {
     protected final View mSource;
 
     private final WeakCache<String, RowDecoderEncoderFactory<R>> mFactoryCache;

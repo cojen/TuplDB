@@ -26,7 +26,7 @@ import org.cojen.tupl.Cursor;
  *
  * @author Brian S O'Neill
  */
-interface RowDecoderEncoder<R> {
+public interface RowDecoderEncoder<R> {
     /**
      * @param row can pass null to construct a new instance
      * @return null if row is filtered out

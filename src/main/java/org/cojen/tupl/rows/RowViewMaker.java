@@ -54,7 +54,7 @@ import org.cojen.tupl.filter.RowFilter;
  *
  * @author Brian S O'Neill
  */
-class RowViewMaker {
+public class RowViewMaker {
     private final RowStore mStore;
     private final WeakReference<RowStore> mStoreRef;
     private final Class<?> mRowType;
@@ -76,10 +76,12 @@ class RowViewMaker {
         mClassMaker = gen.beginClassMaker("View").extend(AbstractRowView.class).final_();
     }
 
-    @SuppressWarnings("unchecked")
-    public Class<? extends AbstractRowView> finish() {
+    /**
+     * @return a constructor which accepts a View and returns a AbstractRowView implementation
+     */
+    MethodHandle finish() {
         {
-            MethodMaker mm = mClassMaker.addConstructor(View.class).public_();
+            MethodMaker mm = mClassMaker.addConstructor(View.class);
             mm.invokeSuperConstructor(mm.param(0));
         }
 
@@ -147,7 +149,13 @@ class RowViewMaker {
 
         addFilteredFactoryMethod();
 
-        return (Class) mClassMaker.finish();
+        try {
+            var lookup = mClassMaker.finishLookup();
+            return lookup.findConstructor(lookup.lookupClass(),
+                                          MethodType.methodType(void.class, View.class));
+        } catch (Throwable e) {
+            throw RowUtils.rethrow(e);
+        }
     }
 
     /**
@@ -416,11 +424,12 @@ class RowViewMaker {
     private void addDynamicEncodeValueColumns() {
         MethodMaker mm = mClassMaker.addMethod(byte[].class, "encodeValue", mRowClass).static_();
         var indy = mm.var(RowViewMaker.class).indy("indyEncodeValueColumns", mRowType, mStoreRef);
-        mm.return_(indy.invoke(byte[].class, "_", null, mm.param(0)));
+        mm.return_(indy.invoke(byte[].class, "encodeValue", null, mm.param(0)));
     }
 
-    static CallSite indyEncodeValueColumns(MethodHandles.Lookup lookup, String name, MethodType mt,
-                                           Class<?> rowType, WeakReference<RowStore> storeRef)
+    public static CallSite indyEncodeValueColumns
+        (MethodHandles.Lookup lookup, String name, MethodType mt,
+         Class<?> rowType, WeakReference<RowStore> storeRef)
     {
         return doIndyEncode(lookup, name, mt, rowType, storeRef, (mm, info, schemaVersion) -> {
             ColumnCodec[] codecs = info.rowGen().valueCodecs();
@@ -513,16 +522,17 @@ class RowViewMaker {
         var schemaVersion = decodeSchemaVersion(mm, data);
 
         var indy = mm.var(RowViewMaker.class).indy("indyDecodeValueColumns", mRowType, mStoreRef);
-        indy.invoke(null, "_", null, schemaVersion, mm.param(0), data);
+        indy.invoke(null, "decodeValue", null, schemaVersion, mm.param(0), data);
     }
 
-    static CallSite indyDecodeValueColumns(MethodHandles.Lookup lookup, String name, MethodType mt,
-                                           Class<?> rowType, WeakReference<RowStore> storeRef)
+    public static CallSite indyDecodeValueColumns
+        (MethodHandles.Lookup lookup, String name, MethodType mt,
+         Class<?> rowType, WeakReference<RowStore> storeRef)
     {
         Class<?> rowClass = mt.parameterType(1);
 
         return new SwitchCallSite(lookup, mt, schemaVersion -> {
-            MethodMaker mm = MethodMaker.begin(lookup, null, "_", rowClass, byte[].class);
+            MethodMaker mm = MethodMaker.begin(lookup, null, "case", rowClass, byte[].class);
 
             RowStore store = storeRef.get();
             if (store == null) {
@@ -753,15 +763,15 @@ class RowViewMaker {
         // of the current schema version.
 
         var indy = mm.var(RowViewMaker.class).indy("indyDoUpdate", mRowType, mStoreRef);
-        indy.invoke(null, "_", null, mm.this_(), rowVar, mergeVar, cursorVar);
+        indy.invoke(null, "doUpdate", null, mm.this_(), rowVar, mergeVar, cursorVar);
         Label tryEnd = mm.label().here();
         mm.return_(true);
 
         mm.finally_(tryStart, () -> cursorVar.invoke("reset"));
     }
 
-    static CallSite indyDoUpdate(MethodHandles.Lookup lookup, String name, MethodType mt,
-                                 Class<?> rowType, WeakReference<RowStore> storeRef)
+    public static CallSite indyDoUpdate(MethodHandles.Lookup lookup, String name, MethodType mt,
+                                        Class<?> rowType, WeakReference<RowStore> storeRef)
     {
         return doIndyEncode(lookup, name, mt, rowType, storeRef, RowViewMaker::finishIndyDoUpdate);
     }
@@ -1039,16 +1049,16 @@ class RowViewMaker {
     private void addUnfilteredMethod() {
         MethodMaker mm = mClassMaker.addMethod(RowDecoderEncoder.class, "unfiltered").protected_();
         var condy = mm.var(RowViewMaker.class).condy("condyDefineUnfiltered", mRowType, mRowClass);
-        mm.return_(condy.invoke(RowDecoderEncoder.class, "_"));
+        mm.return_(condy.invoke(RowDecoderEncoder.class, "unfiltered"));
     }
 
-    static Object condyDefineUnfiltered(MethodHandles.Lookup lookup, String name, Class type,
-                                        Class rowType, Class rowClass)
+    public static Object condyDefineUnfiltered(MethodHandles.Lookup lookup, String name, Class type,
+                                               Class rowType, Class rowClass)
         throws Throwable
     {
         RowInfo rowInfo = RowInfo.find(rowType);
 
-        ClassMaker cm = RowGen.beginClassMaker(lookup, rowInfo, "Unfiltered")
+        ClassMaker cm = RowGen.beginClassMaker(rowInfo, "Unfiltered")
             .implement(RowDecoderEncoder.class);
 
         cm.addConstructor();

@@ -25,7 +25,7 @@ import java.math.BigInteger;
  *
  * @author Brian S O'Neill
  */
-class BigDecimalUtils extends RowUtils {
+public class BigDecimalUtils extends RowUtils {
     static final BigInteger ONE_HUNDRED = BigInteger.valueOf(100);
     static final BigInteger ONE_THOUSAND = BigInteger.valueOf(1000);
 

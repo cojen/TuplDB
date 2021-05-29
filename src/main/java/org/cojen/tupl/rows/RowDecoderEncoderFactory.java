@@ -24,7 +24,7 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-interface RowDecoderEncoderFactory<R> {
+public interface RowDecoderEncoderFactory<R> {
     /**
      * Returns a new filtered instance.
      */

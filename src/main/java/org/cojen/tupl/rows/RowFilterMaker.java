@@ -55,7 +55,7 @@ import org.cojen.tupl.io.Utils;
  *
  * @author Brian S O'Neill
  */
-class RowFilterMaker<R> {
+public class RowFilterMaker<R> {
     private final WeakReference<RowStore> mStoreRef;
     private final Class<?> mViewClass;
     private final Class<R> mRowType;
@@ -72,9 +72,9 @@ class RowFilterMaker<R> {
      * @param storeRef is passed along to the generated code
      * @param base defines the encode methods; the decode method will be overridden
      */
-    RowFilterMaker(WeakReference<RowStore> storeRef, Class<?> viewClass,
-                   Class<? extends RowDecoderEncoder<R>> base,
-                   Class<R> rowType, String filterStr, RowFilter filter)
+    public RowFilterMaker(WeakReference<RowStore> storeRef, Class<?> viewClass,
+                          Class<? extends RowDecoderEncoder<R>> base,
+                          Class<R> rowType, String filterStr, RowFilter filter)
     {
         mStoreRef = storeRef;
         mViewClass = viewClass;
@@ -83,6 +83,7 @@ class RowFilterMaker<R> {
         mFilterStr = filterStr;
         mFilter = filter;
 
+        // FIXME: Define filters in numbered sub-packages to facilitate unloading.
         mFilterMaker = mRowGen.beginClassMaker("Filter")
             .final_().extend(base).implement(RowDecoderEncoder.class);
 
@@ -127,14 +128,13 @@ class RowFilterMaker<R> {
             var valueVar = mm.param(1);
             var schemaVersion = RowViewMaker.decodeSchemaVersion(mm, valueVar);
 
-            mm.return_(indy.invoke(Object.class, "_", null,
+            mm.return_(indy.invoke(Object.class, "decodeRow", null,
                                    schemaVersion, mm.this_(), mm.param(0), valueVar, mm.param(2)));
         }
 
         // Define a field which refers to the filter's own factory. See comments below.
         mFilterMaker.addField(RowDecoderEncoderFactory.class, "factory").static_().volatile_();
 
-        // FIXME: Need a special ClassLoader to allow filter classes to unload.
         Class<?> filterClass = mFilterMaker.finish();
 
         // Finish the factory class...
@@ -160,7 +160,7 @@ class RowFilterMaker<R> {
             mm.return_(mm.new_(filterClass, mm.param(0)));
         }
 
-        MethodHandles.Lookup factoryLookup = cm.finishHidden();
+        MethodHandles.Lookup factoryLookup = cm.finishLookup();
 
         try {
             var ctor = factoryLookup.findConstructor
@@ -180,10 +180,10 @@ class RowFilterMaker<R> {
         return colNum < codecs.length ? codecs[colNum] : mValueCodecs[colNum - codecs.length];
     }
 
-    static CallSite indyDecodeRow(MethodHandles.Lookup lookup, String name, MethodType mt,
-                                  WeakReference<RowStore> storeRef,
-                                  Class<?> viewClass, Class<?> rowType,
-                                  String filterStr, RowFilter filter)
+    public static CallSite indyDecodeRow(MethodHandles.Lookup lookup, String name, MethodType mt,
+                                         WeakReference<RowStore> storeRef,
+                                         Class<?> viewClass, Class<?> rowType,
+                                         String filterStr, RowFilter filter)
     {
         var dm = new DecodeMaker(lookup, mt, storeRef, viewClass, rowType, filterStr, filter);
         return new SwitchCallSite(lookup, mt, dm);
@@ -220,7 +220,7 @@ class RowFilterMaker<R> {
          */
         @Override
         public Object apply(int schemaVersion) {
-            MethodMaker mm = MethodMaker.begin(mLookup, "_", mMethodType);
+            MethodMaker mm = MethodMaker.begin(mLookup, "case", mMethodType);
 
             RowFilter filter = mFilterRef.get();
             if (filter == null) {

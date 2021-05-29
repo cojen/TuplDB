@@ -17,8 +17,6 @@
 
 package org.cojen.tupl.rows;
 
-import java.lang.invoke.MethodHandles;
-
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -31,6 +29,8 @@ import org.cojen.maker.ClassMaker;
  * @author Brian S O'Neill
  */
 class RowGen {
+    private static final Object KEY = new Object();
+
     final RowInfo info;
 
     private volatile String[] mStateFields;
@@ -43,21 +43,32 @@ class RowGen {
     }
 
     /**
-     * @param suffix appended to simple name
+     * @param suffix appended to class name
      */
     public ClassMaker beginClassMaker(String suffix) {
-        return beginClassMaker(MethodHandles.lookup(), info, suffix);
+        return beginClassMaker(info, suffix);
     }
 
     /**
-     * @param suffix appended to simple name
+     * @param suffix appended to class name
      */
-    public static ClassMaker beginClassMaker(MethodHandles.Lookup lookup,
-                                             RowInfo info, String suffix)
-    {
-        // Define all classes in this package, to access package-private classes.
-        String name = RowGen.class.getPackage().getName() + "." + info.simpleName() + suffix;
-        return ClassMaker.begin(name, lookup);
+    public static ClassMaker beginClassMaker(RowInfo info, String suffix) {
+        String name, packageName;
+        {
+            name = info.name + suffix;
+            int ix = name.lastIndexOf('.');
+            packageName = ix <= 0 ? "" : name.substring(0, ix);
+        }
+
+        ClassMaker cm = ClassMaker.begin(name, RowGen.class.getClassLoader(), KEY);
+
+        // Provide access to the public classes in this module which aren't generally
+        // exported. The use of a private key isolates the ClassLoader of the generated class
+        // such that other generated classes in the same package don't have access to this
+        // module. This protection only works when the module system is used.
+        RowGen.class.getModule().addExports(packageName, cm.classLoader().getUnnamedModule());
+
+        return cm;
     }
 
     /**

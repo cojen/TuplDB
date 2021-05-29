@@ -38,7 +38,7 @@ import org.cojen.tupl.io.Utils;
  *
  * @author Brian S O'Neill
  */
-class ConvertCallSite extends MutableCallSite {
+public class ConvertCallSite extends MutableCallSite {
     // FIXME: testing
     public static void main(String[] args) throws Throwable {
         MethodMaker mm = MethodMaker.begin(MethodHandles.lookup(), null, "test", Object.class);
@@ -114,9 +114,9 @@ class ConvertCallSite extends MutableCallSite {
     /**
      * Indy bootstrap method.
      *
-     * @param mt accepts one param, an Object, and returns non-void toType
+     * @param mt accepts one param, an Object, and returns a non-void toType
      */
-    static CallSite makeNext(MethodHandles.Lookup lookup, String name, MethodType mt) {
+    public static CallSite makeNext(MethodHandles.Lookup lookup, String name, MethodType mt) {
         var cs = new ConvertCallSite(mt);
         cs.setTarget(cImplementHandle.bindTo(cs).asType(mt));
         return cs;

@@ -144,15 +144,6 @@ class RowInfo extends ColumnSet {
         this.name = name;
     }
 
-    String simpleName() {
-        String name = this.name;
-        int ix = name.lastIndexOf('.');
-        if (ix >= 0) {
-            name = name.substring(ix + 1);
-        }
-        return name;
-    }
-
     /**
      * Returns a new or cached RowGen instance.
      */

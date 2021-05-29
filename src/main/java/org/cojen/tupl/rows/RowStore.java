@@ -104,9 +104,9 @@ public class RowStore {
             }
 
             try {
-                var clazz = new RowViewMaker(this, type, gen).finish();
-                rv = clazz.getConstructor(View.class).newInstance(ix);
-            } catch (Exception e) {
+                var mh = new RowViewMaker(this, type, gen).finish();
+                rv = (AbstractRowView) mh.invoke(ix);
+            } catch (Throwable e) {
                 throw rethrow(e);
             }
 

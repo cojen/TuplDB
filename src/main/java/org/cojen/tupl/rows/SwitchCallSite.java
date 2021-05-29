@@ -34,7 +34,7 @@ import org.cojen.maker.MethodMaker;
  *
  * @author Brian S O'Neill
  */
-class SwitchCallSite extends MutableCallSite {
+public class SwitchCallSite extends MutableCallSite {
     private final IntFunction<Object> mGenerator;
 
     // Hashtable which maps int keys to MethodHandles.
@@ -172,7 +172,7 @@ class SwitchCallSite extends MutableCallSite {
      * @param mt must not have the key parameter
      * @return the delegator (usually a big switch statement)
      */
-    synchronized MethodHandle newCase(MethodHandles.Lookup lookup, int key, MethodType mt) {
+    public synchronized MethodHandle newCase(MethodHandles.Lookup lookup, int key, MethodType mt) {
         if (mEntries != null && getCase(key) != null) {
             return getTarget();
         } else {
@@ -186,7 +186,9 @@ class SwitchCallSite extends MutableCallSite {
      * @param mt must not have the key parameter
      * @return the case itself
      */
-    synchronized MethodHandle newCaseDirect(MethodHandles.Lookup lookup, int key, MethodType mt) {
+    public synchronized MethodHandle newCaseDirect(MethodHandles.Lookup lookup, int key,
+                                                   MethodType mt)
+    {
         MethodHandle caseHandle = getCase(key);
         if (caseHandle == null) {
             CallSite cs = ExceptionCallSite.make(() -> mGenerator.apply(key));
@@ -201,7 +203,7 @@ class SwitchCallSite extends MutableCallSite {
      * call isn't synchronized. If the case isn't found due to a race condition, the delegator
      * calls newCaseDirect, which is synchronized and does a double check first.
      */
-    MethodHandle getCase(int key) {
+    public MethodHandle getCase(int key) {
         Entry[] entries = mEntries;
         for (Entry e = entries[key & (entries.length - 1)]; e != null; e = e.next) {
             if (e.key == key) {

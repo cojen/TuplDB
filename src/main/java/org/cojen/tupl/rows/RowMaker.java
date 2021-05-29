@@ -43,7 +43,7 @@ import static org.cojen.tupl.rows.ColumnInfo.*;
  *
  * @author Brian S O'Neill
  */
-class RowMaker {
+public class RowMaker {
     /**
      * Returns the Row implementation class, creating if necessary.
      */
@@ -134,8 +134,8 @@ class RowMaker {
         state.set(state.or(RowGen.stateFieldMask(columnNum))); // set dirty
     }
 
-    static CallSite indyObjectMethod(MethodHandles.Lookup lookup, String name, MethodType mt,
-                                     Class<?> rowType)
+    public static CallSite indyObjectMethod(MethodHandles.Lookup lookup, String name, MethodType mt,
+                                            Class<?> rowType)
     {
         MethodMaker mm = MethodMaker.begin(lookup, name, mt);
 
@@ -157,7 +157,7 @@ class RowMaker {
             mm.return_(0);
         } else {
             var indy = mm.var(RowMaker.class).indy("indyObjectMethod", mRowType);
-            mm.return_(indy.invoke(int.class, "_", null, mm.this_()));
+            mm.return_(indy.invoke(int.class, "hashCode", null, mm.this_()));
         }
     }
 
@@ -205,7 +205,7 @@ class RowMaker {
     private void addEquals() {
         MethodMaker mm = mClassMaker.addMethod(boolean.class, "equals", Object.class).public_();
         var indy = mm.var(RowMaker.class).indy("indyObjectMethod", mRowType);
-        mm.return_(indy.invoke(boolean.class, "_", null, mm.this_(), mm.param(0)));
+        mm.return_(indy.invoke(boolean.class, "equals", null, mm.this_(), mm.param(0)));
     }
 
     private static void addEquals(MethodMaker mm, Class<?> rowType,
@@ -256,7 +256,7 @@ class RowMaker {
     private void addToString() {
         MethodMaker mm = mClassMaker.addMethod(String.class, "toString").public_();
         var indy = mm.var(RowMaker.class).indy("indyObjectMethod", mRowType);
-        mm.return_(indy.invoke(String.class, "_", null, mm.this_()));
+        mm.return_(indy.invoke(String.class, "toString", null, mm.this_()));
     }
 
     private static void addToString(MethodMaker mm, Class<?> rowType, Variable rowObject) {
