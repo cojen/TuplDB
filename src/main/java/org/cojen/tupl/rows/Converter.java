@@ -29,7 +29,7 @@ import static org.cojen.tupl.rows.ColumnInfo.*;
 /**
  * @author Brian S O'Neill
  */
-class Converter {
+public class Converter {
     /**
      * Generates code which converts a source variable into something that the destination
      * variable can accept. The given variable types must not already match.
@@ -1069,7 +1069,7 @@ class Converter {
     }
 
     // Called by generated code.
-    static boolean charToBoolean(char c) {
+    public static boolean charToBoolean(char c) {
         // Note: For numbers, boolean is treated as an int clamped to the range [0, 1].
         switch (c) {
         case 0: case '0': case 'f': case 'F':
@@ -1084,7 +1084,7 @@ class Converter {
     }
 
     // Called by generated code.
-    static Boolean charToBoolean(char c, Boolean default_) {
+    public static Boolean charToBoolean(char c, Boolean default_) {
         // Note: For numbers, boolean is treated as an int clamped to the range [0, 1].
         switch (c) {
         case 0: case '0': case 'f': case 'F':
@@ -1099,7 +1099,7 @@ class Converter {
     }
 
     // Called by generated code.
-    static boolean stringToBoolean(String str) {
+    public static boolean stringToBoolean(String str) {
         // Note: For numbers, boolean is treated as an int clamped to the range [0, 1].
         if (str.equalsIgnoreCase("false")) {
             return false;
@@ -1115,7 +1115,7 @@ class Converter {
     }
 
     // Called by generated code.
-    static Boolean stringToBoolean(String str, Boolean default_) {
+    public static Boolean stringToBoolean(String str, Boolean default_) {
         // Note: For numbers, boolean is treated as an int clamped to the range [0, 1].
         if (str.equalsIgnoreCase("false")) {
             return false;

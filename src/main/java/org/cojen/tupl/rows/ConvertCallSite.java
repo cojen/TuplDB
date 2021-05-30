@@ -39,43 +39,6 @@ import org.cojen.tupl.io.Utils;
  * @author Brian S O'Neill
  */
 public class ConvertCallSite extends MutableCallSite {
-    // FIXME: testing
-    public static void main(String[] args) throws Throwable {
-        MethodMaker mm = MethodMaker.begin(MethodHandles.lookup(), null, "test", Object.class);
-
-        /*
-        var result = make(mm, long.class, mm.param(0));
-        mm.var(System.class).field("out").invoke("println", result);
-        MethodHandle mh = mm.finish();
-        mh.invoke(Integer.valueOf(100));
-        mh.invoke(Long.valueOf(Long.MAX_VALUE));
-        mh.invoke(Long.valueOf(Long.MAX_VALUE));
-        mh.invoke("123");
-        */
-
-        /*
-        var result = make(mm, String.class, mm.param(0));
-        mm.var(System.class).field("out").invoke("println", result);
-        MethodHandle mh = mm.finish();
-        mh.invoke(100);
-        mh.invoke("hello");
-        mh.invoke(1001L);
-        mh.invoke(null);
-        mh.invoke(true);
-        mh.invoke("true!");
-        */
-
-        var result = make(mm, boolean.class, mm.param(0));
-        mm.var(System.class).field("out").invoke("println", result);
-        MethodHandle mh = mm.finish();
-        mh.invoke(true);
-        mh.invoke("true");
-        mh.invoke(0);
-        mh.invoke(1);
-        mh.invoke(1L);
-        mh.invoke("true!");
-    }
-
     private static final MethodHandle cImplementHandle;
     private static final VarHandle cImplementedHandle;
 
@@ -205,7 +168,7 @@ public class ConvertCallSite extends MutableCallSite {
             mm.return_(result);
         } else {
             mm.new_(IllegalArgumentException.class,
-                    "Unable to convert " + (fromType == null ? null : fromType.getSimpleName()) +
+                    "Cannot convert " + (fromType == null ? null : fromType.getSimpleName()) +
                     " to " + toType.getSimpleName()).throw_();
         }
 
@@ -221,73 +184,166 @@ public class ConvertCallSite extends MutableCallSite {
         if (fromType == Boolean.class) {
             return from.cast(Boolean.class);
         } else if (fromType == String.class) {
-            return mm.var(Boolean.class).invoke("parseBoolean", from.cast(String.class));
+            return mm.var(ConvertCallSite.class).invoke("stringToBoolean", from.cast(String.class));
         } else {
             return null;
         }
     }
 
     private static Variable toByte(MethodMaker mm, Class fromType, Variable from) {
-        // FIXME
-        return null;
+        if (fromType == Byte.class) {
+            return from.cast(Byte.class);
+        } else if (fromType == Integer.class) {
+            return mm.var(ConvertCallSite.class).invoke("intToByte", from.cast(Integer.class));
+        } else if (fromType == Long.class) {
+            return mm.var(ConvertCallSite.class).invoke("longToByte", from.cast(Long.class));
+        } else if (fromType == String.class) {
+            return mm.var(Byte.class).invoke("parseByte", from.cast(String.class));
+        } else if (fromType == Double.class) {
+            return mm.var(ConvertCallSite.class).invoke("doubleToByte", from.cast(Double.class));
+        } else if (fromType == Float.class) {
+            return mm.var(ConvertCallSite.class).invoke("floatToByte", from.cast(Float.class));
+        } else if (fromType == Short.class) {
+            return mm.var(ConvertCallSite.class).invoke("shortToByte", from.cast(Short.class));
+        } else if (fromType == BigInteger.class) {
+            return from.cast(BigInteger.class).invoke("byteValueExact");
+        } else if (fromType == BigDecimal.class) {
+            return from.cast(BigDecimal.class).invoke("byteValueExact");
+        } else {
+            return null;
+        }
     }
 
     private static Variable toShort(MethodMaker mm, Class fromType, Variable from) {
-        // FIXME
-        return null;
+        if (fromType == Short.class) {
+            return from.cast(Short.class);
+        } else if (fromType == Integer.class) {
+            return mm.var(ConvertCallSite.class).invoke("intToShort", from.cast(Integer.class));
+        } else if (fromType == Long.class) {
+            return mm.var(ConvertCallSite.class).invoke("longToShort", from.cast(Long.class));
+        } else if (fromType == String.class) {
+            return mm.var(Short.class).invoke("parseShort", from.cast(String.class));
+        } else if (fromType == Double.class) {
+            return mm.var(ConvertCallSite.class).invoke("doubleToShort", from.cast(Double.class));
+        } else if (fromType == Float.class) {
+            return mm.var(ConvertCallSite.class).invoke("floatToShort", from.cast(Float.class));
+        } else if (fromType == Byte.class) {
+            return from.cast(Byte.class);
+        } else if (fromType == BigInteger.class) {
+            return from.cast(BigInteger.class).invoke("shortValueExact");
+        } else if (fromType == BigDecimal.class) {
+            return from.cast(BigDecimal.class).invoke("shortValueExact");
+        } else {
+            return null;
+        }
     }
 
     private static Variable toInt(MethodMaker mm, Class fromType, Variable from) {
-        // FIXME: more types
         if (fromType == Integer.class) {
             return from.cast(Integer.class);
         } else if (fromType == Long.class) {
             return mm.var(Math.class).invoke("toIntExact", from.cast(Long.class));
         } else if (fromType == String.class) {
             return mm.var(Integer.class).invoke("parseInt", from.cast(String.class));
+        } else if (fromType == Double.class) {
+            return mm.var(ConvertCallSite.class).invoke("doubleToInt", from.cast(Double.class));
+        } else if (fromType == Float.class) {
+            return mm.var(ConvertCallSite.class).invoke("floatToInt", from.cast(Float.class));
+        } else if (fromType == Byte.class) {
+            return from.cast(Byte.class);
+        } else if (fromType == Short.class) {
+            return from.cast(Short.class);
+        } else if (fromType == BigInteger.class) {
+            return from.cast(BigInteger.class).invoke("intValueExact");
+        } else if (fromType == BigDecimal.class) {
+            return from.cast(BigDecimal.class).invoke("intValueExact");
         } else {
             return null;
         }
     }
 
     private static Variable toLong(MethodMaker mm, Class fromType, Variable from) {
-        // FIXME: more types
         if (fromType == Long.class) {
             return from.cast(Long.class);
         } else if (fromType == Integer.class) {
             return from.cast(Integer.class);
         } else if (fromType == String.class) {
             return mm.var(Long.class).invoke("parseLong", from.cast(String.class));
+        } else if (fromType == Double.class) {
+            return mm.var(ConvertCallSite.class).invoke("doubleToLong", from.cast(Double.class));
+        } else if (fromType == Float.class) {
+            return mm.var(ConvertCallSite.class).invoke("floatToLong", from.cast(Float.class));
+        } else if (fromType == Byte.class) {
+            return from.cast(Byte.class);
+        } else if (fromType == Short.class) {
+            return from.cast(Short.class);
+        } else if (fromType == BigInteger.class) {
+            return from.cast(BigInteger.class).invoke("longValueExact");
+        } else if (fromType == BigDecimal.class) {
+            return from.cast(BigDecimal.class).invoke("longValueExact");
         } else {
             return null;
         }
     }
 
     private static Variable toFloat(MethodMaker mm, Class fromType, Variable from) {
-        // FIXME: more types
         if (fromType == Float.class) {
             return from.cast(Float.class);
         } else if (fromType == String.class) {
             return mm.var(Float.class).invoke("parseFloat", from.cast(String.class));
+        } else if (fromType == Integer.class) {
+            return mm.var(ConvertCallSite.class).invoke("intToFloat", from.cast(Integer.class));
+        } else if (fromType == Double.class) {
+            return mm.var(ConvertCallSite.class).invoke("doubleToFloat", from.cast(Double.class));
+        } else if (fromType == Long.class) {
+            return mm.var(ConvertCallSite.class).invoke("longToFloat", from.cast(Long.class));
+        } else if (fromType == Byte.class) {
+            return from.cast(Byte.class);
+        } else if (fromType == Short.class) {
+            return from.cast(Short.class);
+        } else if (fromType == BigInteger.class) {
+            var intVar = from.cast(BigInteger.class).invoke("intValueExact");
+            return mm.var(ConvertCallSite.class).invoke("intToFloat", intVar);
+        } else if (fromType == BigDecimal.class) {
+            return mm.var(ConvertCallSite.class).invoke("bdToFloat", from.cast(BigDecimal.class));
         } else {
             return null;
         }
     }
 
     private static Variable toDouble(MethodMaker mm, Class fromType, Variable from) {
-        // FIXME: more types
         if (fromType == Double.class) {
             return from.cast(Double.class);
         } else if (fromType == String.class) {
             return mm.var(Double.class).invoke("parseDouble", from.cast(String.class));
+        } else if (fromType == Integer.class) {
+            return from.cast(Integer.class);
+        } else if (fromType == Long.class) {
+            return mm.var(ConvertCallSite.class).invoke("longToDouble", from.cast(Long.class));
+        } else if (fromType == Float.class) {
+            return from.cast(Float.class);
+        } else if (fromType == Byte.class) {
+            return from.cast(Byte.class);
+        } else if (fromType == Short.class) {
+            return from.cast(Short.class);
+        } else if (fromType == BigInteger.class) {
+            var longVar = from.cast(BigInteger.class).invoke("longValueExact");
+            return mm.var(ConvertCallSite.class).invoke("longToDouble", longVar);
+        } else if (fromType == BigDecimal.class) {
+            return mm.var(ConvertCallSite.class).invoke("bdToDouble", from.cast(BigDecimal.class));
         } else {
             return null;
         }
     }
 
     private static Variable toChar(MethodMaker mm, Class fromType, Variable from) {
-        // FIXME
-        return null;
+        if (fromType == Character.class) {
+            return from.cast(Character.class);
+        } else if (fromType == String.class) {
+            return mm.var(ConvertCallSite.class).invoke("stringToChar", from.cast(String.class));
+        } else {
+            return null;
+        }
     }
 
     private static Variable toString(MethodMaker mm, Class fromType, Variable from) {
@@ -299,12 +355,253 @@ public class ConvertCallSite extends MutableCallSite {
     }
 
     private static Variable toBigInteger(MethodMaker mm, Class fromType, Variable from) {
-        // FIXME
-        return null;
+        Variable longVar;
+
+        if (fromType == BigInteger.class) {
+            return from.cast(BigInteger.class);
+        } else if (fromType == Integer.class) {
+            longVar = from.cast(Integer.class);
+        } else if (fromType == Long.class) {
+            longVar = from.cast(Long.class);
+        } else if (fromType == String.class) {
+            return mm.new_(BigInteger.class, from.cast(String.class));
+        } else if (fromType == Double.class) {
+            longVar = mm.var(ConvertCallSite.class).invoke("doubleToLong", from.cast(Double.class));
+        } else if (fromType == Float.class) {
+            longVar = mm.var(ConvertCallSite.class).invoke("floatToLong", from.cast(Float.class));
+        } else if (fromType == Byte.class) {
+            longVar = from.cast(Byte.class);
+        } else if (fromType == Short.class) {
+            longVar = from.cast(Short.class);
+        } else if (fromType == BigDecimal.class) {
+            return from.cast(BigDecimal.class).invoke("toBigIntegerExact");
+        } else {
+            return null;
+        }
+
+        return mm.var(BigInteger.class).invoke("valueOf", longVar);
     }
 
     private static Variable toBigDecimal(MethodMaker mm, Class fromType, Variable from) {
-        // FIXME
-        return null;
+        Variable numVar;
+
+        if (fromType == BigDecimal.class) {
+            return from.cast(BigDecimal.class);
+        } else if (fromType == String.class) {
+            return mm.new_(BigDecimal.class, from.cast(String.class));
+        } else if (fromType == Integer.class) {
+            numVar = from.cast(Integer.class);
+        } else if (fromType == Long.class) {
+            numVar = from.cast(Long.class);
+        } else if (fromType == Double.class) {
+            numVar = from.cast(Double.class);
+        } else if (fromType == Float.class) {
+            numVar = from.cast(Float.class);
+        } else if (fromType == Byte.class) {
+            numVar = from.cast(Byte.class);
+        } else if (fromType == Short.class) {
+            numVar = from.cast(Short.class);
+        } else if (fromType == BigInteger.class) {
+            return mm.new_(BigDecimal.class, from.cast(BigInteger.class));
+        } else {
+            return null;
+        }
+
+        return mm.var(BigDecimal.class).invoke("valueOf", numVar);
+    }
+
+    // Called by generated code.
+    public static boolean stringToBoolean(String str) {
+        if (str.equalsIgnoreCase("false")) {
+            return false;
+        }
+        if (str.equalsIgnoreCase("true")) {
+            return true;
+        }
+        throw new IllegalArgumentException("Cannot convert to Boolean: " + str);
+    }
+
+    // Called by generated code.
+    public static char stringToChar(String str) {
+        if (str.length() == 1) {
+            return str.charAt(0);
+        }
+        throw new IllegalArgumentException("Cannot convert to Character: " + str);
+    }
+
+    // Called by generated code.
+    public static int doubleToInt(double d) {
+        int i = (int) d;
+        if ((double) i != d) {
+            throw loss(Integer.class, d);
+        }
+        return i;
+    }
+
+    // Called by generated code.
+    public static long doubleToLong(double d) {
+        long i = (int) d;
+        if ((double) i != d) {
+            throw loss(Long.class, d);
+        }
+        return i;
+    }
+
+    // Called by generated code.
+    public static float doubleToFloat(double d) {
+        float f = (float) d;
+        if ((double) f != d) {
+            throw loss(Float.class, d);
+        }
+        return f;
+    }
+
+    // Called by generated code.
+    public static byte doubleToByte(double d) {
+        byte b = (byte) d;
+        if ((double) b != d) {
+            throw loss(Byte.class, d);
+        }
+        return b;
+    }
+
+    // Called by generated code.
+    public static short doubleToShort(double d) {
+        short s = (short) d;
+        if ((double) s != d) {
+            throw loss(Short.class, d);
+        }
+        return s;
+    }
+
+    // Called by generated code.
+    public static int floatToInt(float f) {
+        int i = (int) f;
+        if ((float) i != f) {
+            throw loss(Integer.class, f);
+        }
+        return i;
+    }
+
+    // Called by generated code.
+    public static long floatToLong(float f) {
+        long i = (int) f;
+        if ((float) i != f) {
+            throw loss(Long.class, f);
+        }
+        return i;
+    }
+
+    // Called by generated code.
+    public static byte floatToByte(float f) {
+        byte b = (byte) f;
+        if ((float) b != f) {
+            throw loss(Byte.class, f);
+        }
+        return b;
+    }
+
+    // Called by generated code.
+    public static short floatToShort(float f) {
+        short s = (short) f;
+        if ((float) s != f) {
+            throw loss(Short.class, f);
+        }
+        return s;
+    }
+
+    // Called by generated code.
+    public static byte shortToByte(short i) {
+        byte b = (byte) i;
+        if ((short) b != i) {
+            throw loss(Byte.class, i);
+        }
+        return b;
+    }
+
+    // Called by generated code.
+    public static byte intToByte(int i) {
+        byte b = (byte) i;
+        if ((int) b != i) {
+            throw loss(Byte.class, i);
+        }
+        return b;
+    }
+
+    // Called by generated code.
+    public static short intToShort(int i) {
+        short s = (short) i;
+        if ((int) s != i) {
+            throw loss(Short.class, i);
+        }
+        return s;
+    }
+
+    // Called by generated code.
+    public static float intToFloat(int i) {
+        float f = (float) i;
+        if ((int) f != i) {
+            throw loss(Float.class, i);
+        }
+        return f;
+    }
+
+    // Called by generated code.
+    public static byte longToByte(long i) {
+        byte b = (byte) i;
+        if ((long) b != i) {
+            throw loss(Byte.class, i);
+        }
+        return b;
+    }
+
+    // Called by generated code.
+    public static short longToShort(long i) {
+        short s = (short) i;
+        if ((long) s != i) {
+            throw loss(Short.class, i);
+        }
+        return s;
+    }
+
+    // Called by generated code.
+    public static float longToFloat(long i) {
+        float f = (float) i;
+        if ((long) f != i) {
+            throw loss(Float.class, i);
+        }
+        return f;
+    }
+
+    // Called by generated code.
+    public static double longToDouble(long i) {
+        double d = (double) i;
+        if ((long) d != i) {
+            throw loss(Double.class, i);
+        }
+        return d;
+    }
+
+    // Called by generated code.
+    public static float bdToFloat(BigDecimal bd) {
+        float f = bd.floatValue();
+        if (BigDecimal.valueOf(f).compareTo(bd) != 0) {
+            throw loss(Float.class, bd);
+        }
+        return f;
+    }
+
+    // Called by generated code.
+    public static double bdToDouble(BigDecimal bd) {
+        double d = bd.doubleValue();
+        if (BigDecimal.valueOf(d).compareTo(bd) != 0) {
+            throw loss(Double.class, bd);
+        }
+        return d;
+    }
+
+    private static ArithmeticException loss(Class to, Object value) {
+        return new ArithmeticException("Cannot convert to " + to.getSimpleName()
+                                       + " without loss: " + value);
     }
 }
