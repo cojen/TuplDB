@@ -1103,7 +1103,7 @@ public class RowViewMaker {
 
     private void addFilteredFactoryMethod() {
         MethodMaker mm = mClassMaker.addMethod
-            (RowDecoderEncoderFactory.class, "filteredFactory", String.class, RowFilter.class);
+            (MethodHandle.class, "filteredFactory", String.class, RowFilter.class);
         var storeRefVar = mm.var(WeakReference.class).setExact(mStoreRef);
         var maker = mm.new_(RowFilterMaker.class, storeRefVar,
                             mm.class_(), mm.invoke("unfiltered").invoke("getClass"),

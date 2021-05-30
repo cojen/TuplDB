@@ -19,6 +19,8 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
+import java.lang.invoke.MethodHandle;
+
 import java.util.Objects;
 
 import org.cojen.tupl.Cursor;
@@ -45,11 +47,12 @@ import org.cojen.tupl.io.Utils;
 public abstract class AbstractRowView<R> implements RowIndex<R> {
     protected final View mSource;
 
-    private final WeakCache<String, RowDecoderEncoderFactory<R>> mFactoryCache;
+    // MethodHandle signature: RowDecoderEncoder filtered(Object... args)
+    private final WeakCache<String, MethodHandle> mFilterFactoryCache;
 
     protected AbstractRowView(View source) {
         mSource = Objects.requireNonNull(source);
-        mFactoryCache = new WeakCache<>();
+        mFilterFactoryCache = new WeakCache<>();
     }
 
     @Override
@@ -191,27 +194,33 @@ public abstract class AbstractRowView<R> implements RowIndex<R> {
     }
 
     private RowDecoderEncoder<R> filtered(String filter, Object... args) throws IOException {
-        RowDecoderEncoderFactory<R> factory = mFactoryCache.get(filter);
-        if (factory == null) {
-            factory = findFactory(filter);
+        try {
+            MethodHandle factory = mFilterFactoryCache.get(filter);
+            if (factory == null) {
+                factory = findFilterFactory(filter);
+            }
+            return (RowDecoderEncoder<R>) factory.invokeExact(args);
+        } catch (IOException e) {
+            throw e;
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
         }
-        return factory.filtered(args);
     }
 
-    private RowDecoderEncoderFactory<R> findFactory(String filter) {
-        synchronized (mFactoryCache) {
-            RowDecoderEncoderFactory<R> factory = mFactoryCache.get(filter);
+    private MethodHandle findFilterFactory(String filter) {
+        synchronized (mFilterFactoryCache) {
+            MethodHandle factory = mFilterFactoryCache.get(filter);
             if (factory == null) {
                 RowFilter rf = parse(rowType(), filter);
                 String canonical = rf.toString();
-                factory = mFactoryCache.get(canonical);
+                factory = mFilterFactoryCache.get(canonical);
                 if (factory == null) {
                     factory = filteredFactory(canonical, rf);
                     if (!filter.equals(canonical)) {
-                        mFactoryCache.put(canonical, factory);
+                        mFilterFactoryCache.put(canonical, factory);
                     }
                 }
-                mFactoryCache.put(filter, factory);
+                mFilterFactoryCache.put(filter, factory);
             }
             return factory;
         }
@@ -224,8 +233,10 @@ public abstract class AbstractRowView<R> implements RowIndex<R> {
 
     /**
      * Returns a new factory instance, which is cached by the caller.
+     *
+     * MethodHandle signature: RowDecoderEncoder filtered(Object... args)
      */
-    protected abstract RowDecoderEncoderFactory<R> filteredFactory(String str, RowFilter filter);
+    protected abstract MethodHandle filteredFactory(String str, RowFilter filter);
 
     static RowFilter parse(Class<?> rowType, String filter) {
         return new Parser(RowInfo.find(rowType).allColumns, filter).parse();
