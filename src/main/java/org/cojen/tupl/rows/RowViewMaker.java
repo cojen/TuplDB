@@ -1064,6 +1064,7 @@ public class RowViewMaker {
         cm.addConstructor();
 
         {
+            // Defined by RowDecoderEncoder.
             MethodMaker mm = cm.addMethod
                 (Object.class, "decodeRow", byte[].class, byte[].class, Object.class).public_();
             var viewVar = mm.var(lookup.lookupClass());
@@ -1079,6 +1080,7 @@ public class RowViewMaker {
         }
 
         {
+            // Defined by RowDecoderEncoder.
             MethodMaker mm = cm.addMethod(byte[].class, "encodeKey", Object.class).public_();
             var rowVar = mm.param(0).cast(rowClass);
             var viewVar = mm.var(lookup.lookupClass());
@@ -1090,6 +1092,7 @@ public class RowViewMaker {
         }
 
         {
+            // Defined by RowDecoderEncoder.
             MethodMaker mm = cm.addMethod(byte[].class, "encodeValue", Object.class).public_();
             var rowVar = mm.param(0).cast(rowClass);
             var viewVar = mm.var(lookup.lookupClass());

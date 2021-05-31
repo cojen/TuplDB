@@ -122,6 +122,7 @@ public class RowFilterMaker<R> {
 
         // The decode method is implemented using indy, to support multiple schema versions.
         {
+            // Defined by RowDecoderEncoder.
             MethodMaker mm = mFilterMaker.addMethod
                 (Object.class, "decodeRow", byte[].class, byte[].class, Object.class).public_();
 
