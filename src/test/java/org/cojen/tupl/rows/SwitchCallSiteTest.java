@@ -36,6 +36,8 @@ public class SwitchCallSiteTest {
         org.junit.runner.JUnitCore.main(SwitchCallSiteTest.class.getName());
     }
 
+    public static boolean cFaulty;
+
     @Test
     public void noParams() throws Throwable {
         MethodHandle mh = makeNoParams().dynamicInvoker();
@@ -48,11 +50,52 @@ public class SwitchCallSiteTest {
         }
     }
 
+    @Test
+    public void noParamsFaulty() throws Throwable {
+        // Tests ExceptionCallSite.
+
+        MethodHandle mh = makeNoParams().dynamicInvoker();
+
+        int faults = 0;
+
+        cFaulty = true;
+        try {
+            for (int t=0; t<2; t++) {
+                for (int i=0; i<1000; i++) {
+                    try {
+                        String str = (String) mh.invokeExact(i);
+                        assertEquals("version " + i, str);
+                    } catch (Exception e) {
+                        assertEquals("faulty-" + i, e.getMessage());
+                        assertTrue((i & 1) != 0);
+                        faults++;
+                    }
+                }
+            }
+        } finally {
+            cFaulty = false;
+        }
+
+        assertEquals(1000, faults);
+
+        for (int t=0; t<2; t++) {
+            for (int i=0; i<1000; i++) {
+                String str = (String) mh.invokeExact(i);
+                assertEquals("version " + i, str);
+            }
+        }
+    }
+
     private static SwitchCallSite makeNoParams() {
         IntFunction<Object> generator = version -> {
             var mm = MethodMaker.begin(MethodHandles.lookup(), String.class, "_");
-            mm.return_("version " + version);
-            return mm.finish();
+            if (!cFaulty || (version & 1) == 0) {
+                mm.return_("version " + version);
+                return mm.finish();
+            } else {
+                var mt = MethodType.methodType(String.class);
+                return new ExceptionCallSite.Failed(mt, mm, new Exception("faulty-" + version));
+            }
         };
 
         return new SwitchCallSite(MethodHandles.lookup(),
@@ -72,11 +115,54 @@ public class SwitchCallSiteTest {
         }
     }
 
+    @Test
+    public void oneParamFaulty() throws Throwable {
+        // Tests ExceptionCallSite.
+
+        MethodHandle mh = makeOneParam().dynamicInvoker();
+
+        int faults = 0;
+
+        cFaulty = true;
+        try {
+            for (int t=0; t<2; t++) {
+                for (int i=0; i<1000; i++) {
+                    try {
+                        String hex = Integer.toHexString(i);
+                        String str = (String) mh.invokeExact(i, hex);
+                        assertEquals("version " + i + ":" + hex, str);
+                    } catch (Exception e) {
+                        assertEquals("faulty-" + i, e.getMessage());
+                        assertTrue((i & 1) != 0);
+                        faults++;
+                    }
+                }
+            }
+        } finally {
+            cFaulty = false;
+        }
+
+        assertEquals(1000, faults);
+
+        for (int t=0; t<2; t++) {
+            for (int i=0; i<1000; i++) {
+                String hex = Integer.toHexString(i);
+                String str = (String) mh.invokeExact(i, hex);
+                assertEquals("version " + i + ":" + hex, str);
+            }
+        }
+    }
+
     private static SwitchCallSite makeOneParam() {
         IntFunction<Object> generator = version -> {
             var mm = MethodMaker.begin(MethodHandles.lookup(), String.class, "_", String.class);
-            mm.return_(mm.concat("version ", version, ":",  mm.param(0)));
-            return mm.finish();
+            if (!cFaulty || (version & 1) == 0) {
+                mm.return_(mm.concat("version ", version, ":",  mm.param(0)));
+                return mm.finish();
+            } else {
+                var mt = MethodType.methodType(String.class, String.class);
+                return new ExceptionCallSite.Failed(mt, mm, new Exception("faulty-" + version));
+            }
         };
 
         return new SwitchCallSite(MethodHandles.lookup(),
