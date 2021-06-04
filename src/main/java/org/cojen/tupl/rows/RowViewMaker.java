@@ -73,7 +73,7 @@ public class RowViewMaker {
         mRowGen = gen;
         mRowInfo = gen.info;
         mRowClass = RowMaker.find(type);
-        mClassMaker = gen.beginClassMaker("View").extend(AbstractRowView.class).final_();
+        mClassMaker = gen.beginClassMaker("View").extend(AbstractRowView.class).final_().public_();
     }
 
     /**
@@ -477,7 +477,7 @@ public class RowViewMaker {
      * @param name method name
      */
     private void addDecodeColumns(String name, ColumnCodec[] codecs) {
-        MethodMaker mm = mClassMaker.addMethod(null, name, mRowClass, byte[].class).static_();
+        MethodMaker mm = mClassMaker.addMethod(null, name, mRowClass, byte[].class).static_().public_();
         addDecodeColumns(mm, mRowInfo, codecs, 0);
     }
 
@@ -516,7 +516,7 @@ public class RowViewMaker {
 
     private void addDynamicDecodeValueColumns() {
         MethodMaker mm = mClassMaker.addMethod
-            (null, "decodeValue", mRowClass, byte[].class).static_();
+            (null, "decodeValue", mRowClass, byte[].class).static_().public_();
 
         var data = mm.param(1);
         var schemaVersion = decodeSchemaVersion(mm, data);
@@ -1058,10 +1058,11 @@ public class RowViewMaker {
     {
         RowInfo rowInfo = RowInfo.find(rowType);
 
-        ClassMaker cm = RowGen.beginClassMaker(rowInfo, "Unfiltered")
-            .implement(RowDecoderEncoder.class);
+        ClassMaker cm = RowGen.beginClassMaker(rowInfo, null, "Unfiltered")
+            .implement(RowDecoderEncoder.class).public_();
 
-        cm.addConstructor();
+        // Subclassed by filter implementations.
+        cm.addConstructor().protected_();
 
         {
             // Defined by RowDecoderEncoder.
@@ -1097,6 +1098,12 @@ public class RowViewMaker {
             var rowVar = mm.param(0).cast(rowClass);
             var viewVar = mm.var(lookup.lookupClass());
             mm.return_(viewVar.invoke("encodeValue", rowVar));
+        }
+
+        {
+            // Used by filter subclasses.
+            MethodMaker mm = cm.addMethod(null, "markAllClean", rowClass).protected_();
+            RowViewMaker.markAllClean(mm.param(0), rowInfo);
         }
 
         var clazz = cm.finish();

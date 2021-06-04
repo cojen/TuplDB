@@ -30,7 +30,8 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 
 /**
- * A SwitchCallSite delegates to MethodHandles selected by an int key.
+ * A SwitchCallSite delegates to MethodHandles selected by an int key. The cases are built
+ * dynamically upon first use.
  *
  * @author Brian S O'Neill
  */

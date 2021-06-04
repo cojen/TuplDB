@@ -71,11 +71,12 @@ public class RowMaker {
         mRowType = type;
         mRowGen = gen;
         mRowInfo = gen.info;
-        mClassMaker = gen.beginClassMaker("").implement(type).implement(Cloneable.class).final_();
+        mClassMaker = gen.beginClassMaker("")
+            .implement(type).implement(Cloneable.class).final_().public_();
     }
 
     private Class<?> finish() {
-        mClassMaker.addConstructor();
+        mClassMaker.addConstructor().public_();
 
         // Add column fields.
         for (ColumnInfo info : mRowInfo.allColumns.values()) {

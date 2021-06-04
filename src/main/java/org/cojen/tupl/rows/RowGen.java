@@ -46,18 +46,40 @@ class RowGen {
      * @param suffix appended to class name
      */
     public ClassMaker beginClassMaker(String suffix) {
-        return beginClassMaker(info, suffix);
+        return beginClassMaker(info, null, suffix);
     }
 
     /**
+     * @param subPackage optional
      * @param suffix appended to class name
      */
-    public static ClassMaker beginClassMaker(RowInfo info, String suffix) {
+    public ClassMaker beginClassMaker(String subPackage, String suffix) {
+        return beginClassMaker(info, subPackage, suffix);
+    }
+
+    /**
+     * @param subPackage optional
+     * @param suffix appended to class name
+     */
+    public static ClassMaker beginClassMaker(RowInfo info, String subPackage, String suffix) {
         String name, packageName;
         {
-            name = info.name + suffix;
-            int ix = name.lastIndexOf('.');
-            packageName = ix <= 0 ? "" : name.substring(0, ix);
+            int ix = info.name.lastIndexOf('.');
+            if (ix > 0) {
+                packageName = info.name.substring(0, ix);
+                if (subPackage == null) {
+                    name = info.name + suffix;
+                } else {
+                    packageName = packageName + '.' + subPackage;
+                    name = packageName + '.' + info.name.substring(ix + 1) + suffix;
+                }
+            } else if (subPackage == null) {
+                packageName = "";
+                name = info.name + suffix;
+            } else {
+                packageName = subPackage;
+                name = packageName + '.' + info.name + suffix;
+            }
         }
 
         ClassMaker cm = ClassMaker.begin(name, RowGen.class.getClassLoader(), KEY);

@@ -21,6 +21,7 @@ import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.lang.invoke.VarHandle;
 
 import java.lang.ref.WeakReference;
 
@@ -56,6 +57,19 @@ import org.cojen.tupl.io.Utils;
  * @author Brian S O'Neill
  */
 public class RowFilterMaker<R> {
+    private static long cFilterNum;
+    private static final VarHandle cFilterNumHandle;
+
+    static {
+        try {
+            cFilterNumHandle =
+                MethodHandles.lookup().findStaticVarHandle
+                (RowFilterMaker.class, "cFilterNum", long.class);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
+    }
+
     private final WeakReference<RowStore> mStoreRef;
     private final Class<?> mViewClass;
     private final Class<R> mRowType;
@@ -83,8 +97,9 @@ public class RowFilterMaker<R> {
         mFilterStr = filterStr;
         mFilter = filter;
 
-        // FIXME: Define filters in numbered sub-packages to facilitate unloading.
-        mFilterMaker = mRowGen.beginClassMaker("Filter")
+        // Generate a sub-package with an increasing number to facilitate unloading.
+        long filterNum = (long) cFilterNumHandle.getAndAdd(1L);
+        mFilterMaker = mRowGen.beginClassMaker("f" + filterNum, "Filter")
             .final_().extend(base).implement(RowDecoderEncoder.class);
 
         mFilterCtorMaker = mFilterMaker.addConstructor(Object[].class).varargs().private_();
@@ -134,6 +149,13 @@ public class RowFilterMaker<R> {
 
             mm.return_(indy.invoke(Object.class, "decodeRow", null,
                                    schemaVersion, mm.this_(), mm.param(0), valueVar, mm.param(2)));
+        }
+
+        // Provide access to the inherited markAllClean method.
+        {
+            Class<?> rowClass = RowMaker.find(mRowType);
+            MethodMaker mm = mFilterMaker.addMethod(null, "markAllClean", rowClass);
+            mm.super_().invoke("markAllClean", mm.param(0));
         }
 
         // Factory instances are weakly cached by AbstractRowView, and so this can cause the
@@ -307,7 +329,11 @@ public class RowFilterMaker<R> {
             viewVar.invoke("decodePrimaryKey", rowVar, mMaker.param(1));
             // FIXME: Bypass the SwitchCallSite. No need to check the schemaVersion again.
             viewVar.invoke("decodeValue", rowVar, mMaker.param(2));
-            RowViewMaker.markAllClean(rowVar, mDstRowInfo);
+
+            // Param(0) is the generated filter class, which has access to the inherited
+            // markAllClean method.
+            mMaker.param(0).invoke("markAllClean", rowVar);
+
             mMaker.return_(rowVar);
         }
 
