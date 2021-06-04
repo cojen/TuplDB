@@ -185,4 +185,24 @@ class BigDecimalColumnCodec extends ColumnCodec {
         // FIXME
         throw null;
     }
+
+    @Override
+    Object filterDecode(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
+                        int op)
+    {
+        // FIXME
+        throw null;
+    }
+
+    /**
+     * @param decoded the string end offset, unless a String compare should be performed
+     */
+    @Override
+    void filterCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
+                       int op, Object decoded, Variable argObjVar, int argNum,
+                       Label pass, Label fail)
+    {
+        // FIXME
+        throw null;
+    }
 }

@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.rows;
 
+import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
@@ -98,6 +99,24 @@ class SchemaVersionColumnCodec extends ColumnCodec {
 
     @Override
     void filterPrepare(int op, Variable argVar, int argNum) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    Object filterDecode(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
+                        int op)
+    {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * @param decoded the string end offset, unless a String compare should be performed
+     */
+    @Override
+    void filterCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
+                       int op, Object decoded, Variable argObjVar, int argNum,
+                       Label pass, Label fail)
+    {
         throw new UnsupportedOperationException();
     }
 }

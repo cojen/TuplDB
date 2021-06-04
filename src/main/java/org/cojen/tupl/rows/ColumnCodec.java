@@ -284,12 +284,8 @@ abstract class ColumnCodec {
      * @param op defined in ColumnFilter
      * @return an object with decoded state
      */
-    // FIXME: abstract
-    Object filterDecode(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
-                        int op)
-    {
-        throw null;
-    }
+    abstract Object filterDecode(ColumnInfo dstInfo,
+                                 Variable srcVar, Variable offsetVar, Variable endVar, int op);
 
     /**
      * Makes code which compares a column.
@@ -308,13 +304,10 @@ abstract class ColumnCodec {
      * @param pass branch here when comparison passes
      * @param fail branch here when comparison fails
      */
-    // FIXME: abstract
-    void filterCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
-                       int op, Object decoded, Variable argObjVar, int argNum,
-                       Label pass, Label fail)
-    {
-        throw null;
-    }
+    abstract void filterCompare(ColumnInfo dstInfo,
+                                Variable srcVar, Variable offsetVar, Variable endVar,
+                                int op, Object decoded, Variable argObjVar, int argNum,
+                                Label pass, Label fail);
 
     // FIXME: When filter passes, take advantage of existing decoded variables and avoid double
     // decode if possible.
@@ -461,6 +454,7 @@ abstract class ColumnCodec {
      */
     // FIXME: Not used. Move to CompareUtils? Similar code is at the start of the
     // CompareUtils.compare method.
+    /*
     protected void compareNullable(Variable columnVar, Variable argVar,
                                    int op, Label pass, Label fail)
     {
@@ -475,4 +469,5 @@ abstract class ColumnCodec {
         argNotNull.here();
         columnVar.ifEq(null, CompareUtils.selectNullColumnToArg(op, pass, fail));
     }
+    */
 }

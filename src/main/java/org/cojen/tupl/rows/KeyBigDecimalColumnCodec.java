@@ -19,6 +19,7 @@ package org.cojen.tupl.rows;
 
 import java.math.BigDecimal;
 
+import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
@@ -100,6 +101,26 @@ class KeyBigDecimalColumnCodec extends ColumnCodec {
 
     @Override
     void filterPrepare(int op, Variable argVar, int argNum) {
+        // FIXME
+        throw null;
+    }
+
+    @Override
+    Object filterDecode(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
+                        int op)
+    {
+        // FIXME
+        throw null;
+    }
+
+    /**
+     * @param decoded the string end offset, unless a String compare should be performed
+     */
+    @Override
+    void filterCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
+                       int op, Object decoded, Variable argObjVar, int argNum,
+                       Label pass, Label fail)
+    {
         // FIXME
         throw null;
     }
