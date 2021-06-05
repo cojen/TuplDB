@@ -36,6 +36,8 @@ import org.cojen.maker.MethodMaker;
  * @author Brian S O'Neill
  */
 public class SwitchCallSite extends MutableCallSite {
+    private static final int MAX_CASES = 100;
+
     private final IntFunction<Object> mGenerator;
 
     // Hashtable which maps int keys to MethodHandles.
@@ -54,23 +56,22 @@ public class SwitchCallSite extends MutableCallSite {
     SwitchCallSite(MethodHandles.Lookup lookup, MethodType mt, IntFunction<Object> generator) {
         super(mt);
         mGenerator = generator;
-        makeDelegator(lookup, mt.dropParameterTypes(0, 1));
+        makeDelegator(lookup);
     }
 
     /**
      * Makes the delegator and sets it as the current target.
      *
-     * @param mt must not have the key parameter
      * @return the delegator (usually a big switch statement)
      */
-    synchronized MethodHandle makeDelegator(MethodHandles.Lookup lookup, MethodType mt) {
-        // Insert the key as the first parameter.
-        MethodType fullMt = mt.insertParameterTypes(0, int.class);
-        MethodMaker mm = MethodMaker.begin(lookup, "switch", fullMt);
+    private synchronized MethodHandle makeDelegator(MethodHandles.Lookup lookup) {
+        MethodMaker mm = MethodMaker.begin(lookup, "switch", type());
 
         if (mSize == 0) {
-            makeDefault(mt, mm);
+            makeDefault(mm);
         } else {
+            MethodType mt = type().dropParameterTypes(0, 1);
+
             var remainingParams = new Object[mt.parameterCount()];
             for (int i=0; i<remainingParams.length; i++) {
                 remainingParams[i] = mm.param(i + 1);
@@ -78,15 +79,14 @@ public class SwitchCallSite extends MutableCallSite {
 
             var keyVar = mm.param(0);
 
-            if (mSize > 100) {
+            if (mSize >= MAX_CASES) {
                 // The switch statement is getting big, and rebuilding it each time gets more
                 // expensive. Generate a final delegator which accesses the hashtable.
                 var dcsVar = mm.var(SwitchCallSite.class).setExact(this);
-                var caseVar = dcsVar.invoke("getCase", keyVar);
+                var caseVar = dcsVar.invoke("findCase", keyVar);
                 Label found = mm.label();
                 caseVar.ifNe(null, found);
-                var lookupVar = mm.var(MethodHandles.Lookup.class).setExact(lookup);
-                caseVar.set(dcsVar.invoke("newCaseDirect", lookupVar, keyVar, mt));
+                caseVar.set(dcsVar.invoke("newCaseDirect", keyVar));
                 found.here();
                 mm.return_(caseVar.invoke(mt.returnType(), "invokeExact", null, remainingParams));
                 var mh = mm.finish();
@@ -111,7 +111,7 @@ public class SwitchCallSite extends MutableCallSite {
 
             for (int i=0; i<cases.length; i++) {
                 labels[i].here();
-                var result = mm.invoke(getCase(cases[i]), remainingParams);
+                var result = mm.invoke(findCase(cases[i]), remainingParams);
                 if (result == null) {
                     mm.return_();
                 } else {
@@ -121,14 +121,14 @@ public class SwitchCallSite extends MutableCallSite {
 
             defLabel.here();
 
-            //The default case is handled by a separate method, which is almost never executed.
-            // This helps with inlining by keeping the core switch code small.
+            // The default case is handled by a separate method, which is almost never
+            // executed. This helps with inlining by keeping the core switch code small.
 
-            MethodMaker defMaker = mm.classMaker().addMethod("default", fullMt);
+            MethodMaker defMaker = mm.classMaker().addMethod("default", type());
             defMaker.static_().private_();
-            makeDefault(mt, defMaker);
+            makeDefault(defMaker);
 
-            var allParams = new Object[fullMt.parameterCount()];
+            var allParams = new Object[type().parameterCount()];
             for (int i=0; i<allParams.length; i++) {
                 allParams[i] = mm.param(i);
             }
@@ -150,17 +150,17 @@ public class SwitchCallSite extends MutableCallSite {
     /**
      * @param mm first param must be the key
      */
-    private void makeDefault(MethodType mt, MethodMaker mm) {
+    private void makeDefault(MethodMaker mm) {
         var dcsVar = mm.var(SwitchCallSite.class).setExact(this);
         var lookupVar = mm.var(MethodHandles.class).invoke("lookup");
-        var newCaseVar = dcsVar.invoke("newCase", lookupVar, mm.param(0), mt);
+        var newCaseVar = dcsVar.invoke("newCase", lookupVar, mm.param(0));
 
-        var allParams = new Object[1 + mt.parameterCount()];
+        var allParams = new Object[type().parameterCount()];
         for (int i=0; i<allParams.length; i++) {
             allParams[i] = mm.param(i);
         }
 
-        var result = newCaseVar.invoke(mt.returnType(), "invokeExact", null, allParams);
+        var result = newCaseVar.invoke(type().returnType(), "invokeExact", null, allParams);
 
         if (result == null) {
             mm.return_();
@@ -170,27 +170,27 @@ public class SwitchCallSite extends MutableCallSite {
     }
 
     /**
-     * @param mt must not have the key parameter
+     * Is called by generated code.
+     *
      * @return the delegator (usually a big switch statement)
      */
-    public synchronized MethodHandle newCase(MethodHandles.Lookup lookup, int key, MethodType mt) {
-        if (mEntries != null && getCase(key) != null) {
+    public synchronized MethodHandle newCase(MethodHandles.Lookup lookup, int key) {
+        if (mEntries != null && findCase(key) != null) {
             return getTarget();
         } else {
             CallSite cs = ExceptionCallSite.make(() -> mGenerator.apply(key));
             putCase(key, cs.dynamicInvoker());
-            return makeDelegator(lookup, mt);
+            return makeDelegator(lookup);
         }
     }
 
     /**
-     * @param mt must not have the key parameter
+     * Is called by generated code.
+     *
      * @return the case itself
      */
-    public synchronized MethodHandle newCaseDirect(MethodHandles.Lookup lookup, int key,
-                                                   MethodType mt)
-    {
-        MethodHandle caseHandle = getCase(key);
+    public synchronized MethodHandle newCaseDirect(int key) {
+        MethodHandle caseHandle = findCase(key);
         if (caseHandle == null) {
             CallSite cs = ExceptionCallSite.make(() -> mGenerator.apply(key));
             caseHandle = cs.dynamicInvoker();
@@ -204,14 +204,36 @@ public class SwitchCallSite extends MutableCallSite {
      * call isn't synchronized. If the case isn't found due to a race condition, the delegator
      * calls newCaseDirect, which is synchronized and does a double check first.
      */
-    public MethodHandle getCase(int key) {
+    public MethodHandle findCase(int key) {
         Entry[] entries = mEntries;
-        for (Entry e = entries[key & (entries.length - 1)]; e != null; e = e.next) {
-            if (e.key == key) {
-                return e.mh;
+        if (entries != null) {
+            for (Entry e = entries[key & (entries.length - 1)]; e != null; e = e.next) {
+                if (e.key == key) {
+                    return e.mh;
+                }
             }
         }
         return null;
+    }
+
+    /**
+     * Returns a case handle for the given key, generating it if necessary.
+     */
+    public MethodHandle getCase(MethodHandles.Lookup lookup, int key) {
+        MethodHandle mh = findCase(key);
+
+        if (mh == null) {
+            synchronized (this) {
+                if (mSize <= MAX_CASES) {
+                    newCase(lookup, key);
+                    mh = findCase(key);
+                } else {
+                    mh = newCaseDirect(key);
+                }
+            }
+        }
+
+        return mh;
     }
 
     /**

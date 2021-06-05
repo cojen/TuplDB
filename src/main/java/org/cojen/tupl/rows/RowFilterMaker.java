@@ -154,7 +154,7 @@ public class RowFilterMaker<R> {
         // Provide access to the inherited markAllClean method.
         {
             Class<?> rowClass = RowMaker.find(mRowType);
-            MethodMaker mm = mFilterMaker.addMethod(null, "markAllClean", rowClass);
+            MethodMaker mm = mFilterMaker.addMethod(null, "markAllClean", rowClass).static_();
             mm.super_().invoke("markAllClean", mm.param(0));
         }
 
@@ -246,13 +246,21 @@ public class RowFilterMaker<R> {
             }
 
             RowInfo rowInfo;
+            MethodHandle decoder;
+
             try {
                 rowInfo = store.rowInfo(mRowType, schemaVersion);
                 if (rowInfo == null) {
                     throw new CorruptDatabaseException
                         ("Schema version not found: " + schemaVersion);
                 }
-            } catch (Exception e) {
+
+                // Obtain the MethodHandle which fully decodes the value columns.
+                decoder = (MethodHandle) mLookup.findStatic
+                    (mLookup.lookupClass(), "decodeValueHandle",
+                     MethodType.methodType(MethodHandle.class, int.class))
+                    .invokeExact(schemaVersion);
+            } catch (Throwable e) {
                 return new ExceptionCallSite.Failed(mMethodType, mm, e);
             }
 
@@ -261,7 +269,7 @@ public class RowFilterMaker<R> {
             RowGen rowGen = rowInfo.rowGen();
 
             var visitor = new DecodeVisitor
-                (mm, schemaVersion, mViewClass, dstRowInfo, rowClass, rowGen);
+                (mm, schemaVersion, mViewClass, dstRowInfo, rowClass, rowGen, decoder);
             filter.accept(visitor);
             visitor.done();
 
@@ -279,6 +287,7 @@ public class RowFilterMaker<R> {
         private final RowInfo mDstRowInfo;
         private final Class<?> mRowClass;
         private final RowGen mRowGen;
+        private final MethodHandle mDecoder;
 
         private final ColumnCodec[] mKeyCodecs, mValueCodecs;
 
@@ -294,9 +303,11 @@ public class RowFilterMaker<R> {
          * @param dstRowInfo current row defintion
          * @param rowClass current row implementation
          * @param rowGen actual row defintion to be decoded (can differ from dstRowInfo)
+         * @param decoder performs full decoding of the value columns
          */
         DecodeVisitor(MethodMaker mm, int schemaVersion,
-                      Class<?> viewClass, RowInfo dstRowInfo, Class<?> rowClass, RowGen rowGen)
+                      Class<?> viewClass, RowInfo dstRowInfo, Class<?> rowClass, RowGen rowGen,
+                      MethodHandle decoder)
         {
             mMaker = mm;
             mSchemaVersion = schemaVersion;
@@ -304,6 +315,7 @@ public class RowFilterMaker<R> {
             mDstRowInfo = dstRowInfo;
             mRowClass = rowClass;
             mRowGen = rowGen;
+            mDecoder = decoder;
 
             mKeyCodecs = ColumnCodec.bind(rowGen.keyCodecs(), mm);
             mValueCodecs = ColumnCodec.bind(rowGen.valueCodecs(), mm);
@@ -327,8 +339,10 @@ public class RowFilterMaker<R> {
             rowVar.set(mMaker.new_(mRowClass));
             hasRow.here();
             viewVar.invoke("decodePrimaryKey", rowVar, mMaker.param(1));
-            // FIXME: Bypass the SwitchCallSite. No need to check the schemaVersion again.
-            viewVar.invoke("decodeValue", rowVar, mMaker.param(2));
+
+            // Invoke the schema-specific decoder directly, instead of calling the decodeValue
+            // method which redundantly examines the schema version and switches on it.
+            mMaker.invoke(mDecoder, rowVar, mMaker.param(2)); // param(2) is the byte array
 
             // Param(0) is the generated filter class, which has access to the inherited
             // markAllClean method.
