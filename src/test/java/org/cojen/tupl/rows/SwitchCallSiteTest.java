@@ -86,6 +86,58 @@ public class SwitchCallSiteTest {
         }
     }
 
+    @Test
+    public void noParamsDirect() throws Throwable {
+        MethodHandles.Lookup lookup = MethodHandles.lookup();
+        SwitchCallSite scs = makeNoParams();
+
+        for (int i=0; i<1000; i++) {
+            String str = (String) scs.getCase(lookup, i).invokeExact();
+            assertEquals("version " + i, str);
+        }
+
+        // Verify that it still works when invoked the "normal" way.
+
+        MethodHandle mh = scs.dynamicInvoker();
+
+        for (int i=0; i<1000; i++) {
+            String str = (String) mh.invokeExact(i);
+            assertEquals("version " + i, str);
+        }
+    }
+
+    @Test
+    public void noParamsDirectInterleaved() throws Throwable {
+        // Call the direct and "normal" way together in the same loop.
+
+        MethodHandles.Lookup lookup = MethodHandles.lookup();
+        SwitchCallSite scs = makeNoParams();
+        MethodHandle mh = scs.dynamicInvoker();
+
+        for (int i=0; i<1000; i++) {
+            String str = (String) scs.getCase(lookup, i).invokeExact();
+            assertEquals("version " + i, str);
+            str = (String) mh.invokeExact(i);
+            assertEquals("version " + i, str);
+        }
+    }
+
+    @Test
+    public void noParamsDirectInterleaved2() throws Throwable {
+        // Same as noParamsDirectInterleaved except the invocation order is swapped.
+
+        MethodHandles.Lookup lookup = MethodHandles.lookup();
+        SwitchCallSite scs = makeNoParams();
+        MethodHandle mh = scs.dynamicInvoker();
+
+        for (int i=0; i<1000; i++) {
+            String str = (String) mh.invokeExact(i);
+            assertEquals("version " + i, str);
+            str = (String) scs.getCase(lookup, i).invokeExact();
+            assertEquals("version " + i, str);
+        }
+    }
+
     private static SwitchCallSite makeNoParams() {
         IntFunction<Object> generator = version -> {
             var mm = MethodMaker.begin(MethodHandles.lookup(), String.class, "_");

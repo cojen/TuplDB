@@ -224,7 +224,9 @@ public class SwitchCallSite extends MutableCallSite {
 
         if (mh == null) {
             synchronized (this) {
-                if (mSize <= MAX_CASES) {
+                if (mSize < MAX_CASES) {
+                    // Could call newCase all the time, but then it re-generates the "final"
+                    // delegator which accesses the hashtable. Harmless, but inefficient.
                     newCase(lookup, key);
                     mh = findCase(key);
                 } else {
