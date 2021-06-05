@@ -32,7 +32,7 @@ import org.cojen.maker.MethodMaker;
  *
  * @author Brian S O'Neill
  */
-class ExceptionCallSite extends MutableCallSite {
+public class ExceptionCallSite extends MutableCallSite {
     /**
      * Returns a ConstantCallSite when the generator doesn't fail, which means that it's just a
      * plain wrapper around a MethodHandle. Otherwise, returns an ExceptionCallSite which calls
@@ -100,7 +100,7 @@ class ExceptionCallSite extends MutableCallSite {
         setTarget(f.mm.finish());
     }
     
-    MethodHandle call() throws Throwable {
+    public MethodHandle call() throws Throwable {
         Throwable e = mException;
         if (e != null && mOrigin == Thread.currentThread()) {
             // Throw the initial exception, and then retry later.
