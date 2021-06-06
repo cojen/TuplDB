@@ -5,6 +5,7 @@ v1.5.0.1
 --------
 * Support fully mapped databases when the page size doesn't match the OS page size.
 * Use a faster hash implementation for the lock manager.
+* Fix edge case where a non-stored database would prematurely run out of space.
 
 v1.5.0 (2021-05-05)
 ------
