@@ -45,23 +45,25 @@ class RowGen {
     /**
      * @param suffix appended to class name
      */
-    public ClassMaker beginClassMaker(String suffix) {
-        return beginClassMaker(info, null, suffix);
+    public ClassMaker beginClassMaker(Class<?> rowType, String suffix) {
+        return beginClassMaker(rowType, info, null, suffix);
     }
 
     /**
      * @param subPackage optional
      * @param suffix appended to class name
      */
-    public ClassMaker beginClassMaker(String subPackage, String suffix) {
-        return beginClassMaker(info, subPackage, suffix);
+    public ClassMaker beginClassMaker(Class<?> rowType, String subPackage, String suffix) {
+        return beginClassMaker(rowType, info, subPackage, suffix);
     }
 
     /**
      * @param subPackage optional
      * @param suffix appended to class name
      */
-    public static ClassMaker beginClassMaker(RowInfo info, String subPackage, String suffix) {
+    public static ClassMaker beginClassMaker(Class<?> rowType, RowInfo info,
+                                             String subPackage, String suffix)
+    {
         String name, packageName;
         {
             int ix = info.name.lastIndexOf('.');
@@ -82,7 +84,7 @@ class RowGen {
             }
         }
 
-        ClassMaker cm = ClassMaker.begin(name, RowGen.class.getClassLoader(), KEY);
+        ClassMaker cm = ClassMaker.begin(name, rowType.getClassLoader(), KEY);
 
         // Provide access to the public classes in this module which aren't generally
         // exported. The use of a private key isolates the ClassLoader of the generated class

@@ -369,7 +369,7 @@ public class RowUtils extends Utils {
      * @param src source of encoded data
      * @param srcOffset offset into encoded data
      */
-    public int lengthStringKey(byte[] src, int srcOffset) {
+    public static int lengthStringKey(byte[] src, int srcOffset) {
         // Look for the terminator.
         final int start = srcOffset;
         while (true) {

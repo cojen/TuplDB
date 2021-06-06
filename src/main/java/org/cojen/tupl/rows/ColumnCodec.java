@@ -54,18 +54,20 @@ abstract class ColumnCodec {
      * @param forKey true to use key encoding (lexicographical order)
      */
     static ColumnCodec[] make(Collection<ColumnInfo> infos, boolean forKey) {
-        ColumnCodec[] codecs = new ColumnCodec[infos.size()];
+        var codecs = new ColumnCodec[infos.size()];
 
-        int slot = 0;
-        Iterator<ColumnInfo> it = infos.iterator();
-        ColumnInfo info = it.next();
-        while (true) {
-            boolean hasNext = it.hasNext();
-            codecs[slot++] = make(info, forKey, !hasNext);
-            if (!hasNext) {
-                break;
+        if (codecs.length != 0) {
+            int slot = 0;
+            Iterator<ColumnInfo> it = infos.iterator();
+            ColumnInfo info = it.next();
+            while (true) {
+                boolean hasNext = it.hasNext();
+                codecs[slot++] = make(info, forKey, !hasNext);
+                if (!hasNext) {
+                    break;
+                }
+                info = it.next();
             }
-            info = it.next();
         }
 
         return codecs;

@@ -71,7 +71,7 @@ public class RowMaker {
         mRowType = type;
         mRowGen = gen;
         mRowInfo = gen.info;
-        mClassMaker = gen.beginClassMaker("")
+        mClassMaker = gen.beginClassMaker(type, "")
             .implement(type).implement(Cloneable.class).final_().public_();
     }
 

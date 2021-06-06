@@ -99,7 +99,7 @@ public class RowFilterMaker<R> {
 
         // Generate a sub-package with an increasing number to facilitate unloading.
         long filterNum = (long) cFilterNumHandle.getAndAdd(1L);
-        mFilterMaker = mRowGen.beginClassMaker("f" + filterNum, "Filter")
+        mFilterMaker = mRowGen.beginClassMaker(rowType, "f" + filterNum, "Filter")
             .final_().extend(base).implement(RowDecoderEncoder.class);
 
         mFilterCtorMaker = mFilterMaker.addConstructor(Object[].class).varargs().private_();

@@ -73,7 +73,8 @@ public class RowViewMaker {
         mRowGen = gen;
         mRowInfo = gen.info;
         mRowClass = RowMaker.find(type);
-        mClassMaker = gen.beginClassMaker("View").extend(AbstractRowView.class).final_().public_();
+        mClassMaker = gen.beginClassMaker(type, "View")
+            .extend(AbstractRowView.class).final_().public_();
     }
 
     /**
@@ -477,7 +478,8 @@ public class RowViewMaker {
      * @param name method name
      */
     private void addDecodeColumns(String name, ColumnCodec[] codecs) {
-        MethodMaker mm = mClassMaker.addMethod(null, name, mRowClass, byte[].class).static_().public_();
+        MethodMaker mm = mClassMaker.addMethod(null, name, mRowClass, byte[].class)
+            .static_().public_();
         addDecodeColumns(mm, mRowInfo, codecs, 0);
     }
 
@@ -570,6 +572,7 @@ public class RowViewMaker {
 
                 RowInfo srcRowInfo;
                 try {
+                    // FIXME: When schemaVersion is 0, no columns to decode.
                     srcRowInfo = store.rowInfo(rowType, schemaVersion);
                     if (srcRowInfo == null) {
                         throw new CorruptDatabaseException
@@ -615,12 +618,18 @@ public class RowViewMaker {
     }
 
     /**
-     * Decodes the first 1 to 4 bytes of the given byte array into a schema version int variable.
+     * Decodes the first 1 to 4 bytes of the given byte array into a schema version int
+     * variable. When the given byte array is empty, the schema version is zero.
      */
     static Variable decodeSchemaVersion(MethodMaker mm, Variable bytes) {
         var schemaVersion = mm.var(int.class);
-        schemaVersion.set(bytes.aget(0));
+        Label notEmpty = mm.label();
+        bytes.alength().ifNe(0, notEmpty);
+        schemaVersion.set(0);
         Label cont = mm.label();
+        mm.goto_(cont);
+        notEmpty.here();
+        schemaVersion.set(bytes.aget(0));
         schemaVersion.ifGe(0, cont);
         schemaVersion.set(mm.var(RowUtils.class).invoke("decodeIntBE", bytes, 0).and(~(1 << 31)));
         cont.here();
@@ -1098,7 +1107,7 @@ public class RowViewMaker {
     {
         RowInfo rowInfo = RowInfo.find(rowType);
 
-        ClassMaker cm = RowGen.beginClassMaker(rowInfo, null, "Unfiltered")
+        ClassMaker cm = RowGen.beginClassMaker(rowType, rowInfo, null, "Unfiltered")
             .implement(RowDecoderEncoder.class).public_();
 
         // Subclassed by filter implementations.

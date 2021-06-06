@@ -105,8 +105,8 @@ class PrimitiveColumnCodec extends ColumnCodec {
             case TYPE_BOOLEAN: case TYPE_BYTE: case TYPE_UBYTE: {
                 if (plain == TYPE_BYTE) {
                     if (mForKey) {
-                        int mask = mInfo.isDescending() ? 0x7f : 0x80;
-                        srcVar = srcVar.xor(mask).cast(byte.class);
+                        byte mask = (byte) (mInfo.isDescending() ? 0x7f : 0x80);
+                        srcVar = srcVar.xor(mask);
                     }
                 } else if (plain == TYPE_UBYTE) {
                     // FIXME
@@ -181,7 +181,7 @@ class PrimitiveColumnCodec extends ColumnCodec {
             } else {
                 format = "BE";
                 if (!mInfo.isUnsigned()) {
-                    srcVar = srcVar.xor(signMask());
+                    srcVar = srcVar.unbox().xor(signMask());
                 }
             }
 
@@ -231,8 +231,8 @@ class PrimitiveColumnCodec extends ColumnCodec {
 
                 if (plain == TYPE_BYTE) {
                     if (mForKey) {
-                        int mask = mInfo.isDescending() ? 0x7f : 0x80;
-                        byteVar = byteVar.xor(mask).cast(byte.class);
+                        byte mask = (byte) (mInfo.isDescending() ? 0x7f : 0x80);
+                        byteVar = byteVar.xor(mask);
                     }
                     valueVar = byteVar;
                 } else if (plain == TYPE_UBYTE) {
@@ -479,12 +479,18 @@ class PrimitiveColumnCodec extends ColumnCodec {
                 lmask = ~lmask;
             }
             return lmask;
-        } else {
-            int imask = mSize == 4 ? (1 << 31) : (1 << 15);
+        } else if (mSize == 4) {
+            int imask = 1 << 31;
             if (mInfo.isDescending()) {
                 imask = ~imask;
             }
             return imask;
+        } else {
+            int imask = 1 << 15;
+            if (mInfo.isDescending()) {
+                imask = ~imask;
+            }
+            return mInfo.plainTypeCode() == TYPE_CHAR ? (char) imask : (short) imask;
         }
     }
 }
