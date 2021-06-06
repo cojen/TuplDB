@@ -30,11 +30,9 @@ public interface RowUpdater<R> extends RowScanner<R>, Flushable {
      * Update the current row and then step to the next row.
      *
      * @return the next row or null if no more rows remain and scanner has been closed
-     * @throws IllegalStateException if no current row; must call step for the first one
+     * @throws IllegalStateException if no current row
      */
-    default R update() throws IOException {
-        return update(null);
-    }
+    R update() throws IOException;
 
     /**
      * Update the current row and then step to the next row.
@@ -43,7 +41,7 @@ public interface RowUpdater<R> extends RowScanner<R>, Flushable {
      * is created anyhow
      * @return the next row or null if no more rows remain and scanner has been closed
      * @throws NullPointerException if the given row object is null
-     * @throws IllegalStateException if no current row; must call step for the first one
+     * @throws IllegalStateException if no current row
      */
     R update(R row) throws IOException;
 
@@ -51,11 +49,9 @@ public interface RowUpdater<R> extends RowScanner<R>, Flushable {
      * Delete the current row and then step to the next row.
      *
      * @return the next row or null if no more rows remain and scanner has been closed
-     * @throws IllegalStateException if no current row; must call step for the first one
+     * @throws IllegalStateException if no current row
      */
-    default R delete() throws IOException {
-        return delete(null);
-    }
+    R delete() throws IOException;
 
     /**
      * Delete the current row and then step to the next row.
@@ -64,7 +60,7 @@ public interface RowUpdater<R> extends RowScanner<R>, Flushable {
      * is created anyhow
      * @return the next row or null if no more rows remain and scanner has been closed
      * @throws NullPointerException if the given row object is null
-     * @throws IllegalStateException if no current row; must call step for the first one
+     * @throws IllegalStateException if no current row
      */
     R delete(R row) throws IOException;
 

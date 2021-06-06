@@ -36,9 +36,7 @@ public interface RowScanner<R> extends Closeable {
      *
      * @return the next row or null if no more rows remain and scanner has been closed
      */
-    default R step() throws IOException {
-        return step(null);
-    }
+    R step() throws IOException;
 
     /**
      * Step to the next row.

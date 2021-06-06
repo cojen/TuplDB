@@ -19,6 +19,8 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
+import java.util.Objects;
+
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.RowScanner;
@@ -44,7 +46,7 @@ class BasicRowScanner<R> implements RowScanner<R> {
     /**
      * Must be called after construction.
      */
-    void init() throws IOException {
+    final void init() throws IOException {
         Cursor c = mCursor;
         LockResult result = toFirst(c);
         while (true) {
@@ -71,12 +73,22 @@ class BasicRowScanner<R> implements RowScanner<R> {
     }
 
     @Override
-    public R row() {
+    public final R row() {
         return mRow;
     }
 
     @Override
-    public R step(R row) throws IOException {
+    public final R step() throws IOException {
+        return doStep(null);
+    }
+
+    @Override
+    public final R step(R row) throws IOException {
+        Objects.requireNonNull(row);
+        return doStep(row);
+    }
+
+    protected final R doStep(R row) throws IOException {
         Cursor c = mCursor;
         try {
             while (true) {
@@ -104,7 +116,7 @@ class BasicRowScanner<R> implements RowScanner<R> {
     }
 
     @Override
-    public void close() throws IOException {
+    public final void close() throws IOException {
         finished();
         mCursor.reset();
     }

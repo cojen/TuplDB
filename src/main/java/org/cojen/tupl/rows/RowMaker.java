@@ -165,17 +165,13 @@ public class RowMaker {
     private static void addHashCode(MethodMaker mm, Class<?> rowType, Variable rowObject) {
         RowInfo rowInfo = RowInfo.find(rowType);
 
-        var hash = mm.var(int.class);
+        // Start with an initially complex hash, in case all the columns are reset.
+        final var hash = mm.var(int.class).set(rowInfo.name.hashCode());
 
         // Hash in column states.
         String[] stateFields = rowInfo.rowGen().stateFields();
         for (int i=0; i<stateFields.length; i++) {
-            String name = stateFields[i];
-            if (i == 0) {
-                hash.set(rowObject.field(name));
-            } else {
-                hash.set(hash.mul(31).add(rowObject.field(name)));
-            } 
+            hash.set(hash.mul(31).add(rowObject.field(stateFields[i])));
         }
 
         // Hash in column fields.

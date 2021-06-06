@@ -51,14 +51,140 @@ public class FuzzTest {
 
         for (int i=0; i<100; i++) {
             Class<?> rowType = randomRowType(rnd);
-            var rowIndex = rs.openRowIndex(rowType);
+            RowIndex rowIndex = rs.openRowIndex(rowType);
+
+            basicTests(rowType, rowIndex);
+
             // FIXME: Perform some operations on it.
         }
+
+        rsRef = null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void basicTests(Class<?> rowType, RowIndex rowIndex) throws Exception {
+        // Tests on an empty row instance and index.
+
+        assertEquals(rowType.getName(), rowIndex.nameString());
+        assertTrue(rowIndex.isEmpty());
+
+        var row = rowIndex.newRow();
+        assertTrue(rowType.isInstance(row));
+        var clone = row.getClass().getMethod("clone").invoke(row);
+        assertTrue(row != clone);
+        assertEquals(row, clone);
+        assertEquals(row.hashCode(), clone.hashCode());
+        assertEquals(row.toString(), clone.toString());
+        assertEquals(rowType.getName() + "{}", row.toString());
+        rowIndex.reset(clone);
+        assertEquals(row, clone);
+
+        try {
+            rowIndex.load(null, row);
+            fail();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().indexOf("isn't fully specified") >= 0);
+        }
+
+        try {
+            rowIndex.exists(null, row);
+            fail();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().indexOf("isn't fully specified") >= 0);
+        }
+
+        try {
+            rowIndex.delete(null, row);
+            fail();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().indexOf("isn't fully specified") >= 0);
+        }
+
+        try {
+            rowIndex.store(null, row);
+            fail();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().indexOf("columns are unset") >= 0);
+        }
+
+        try {
+            rowIndex.exchange(null, row);
+            fail();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().indexOf("columns are unset") >= 0);
+        }
+
+        try {
+            rowIndex.insert(null, row);
+            fail();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().indexOf("columns are unset") >= 0);
+        }
+
+        try {
+            rowIndex.replace(null, row);
+            fail();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().indexOf("columns are unset") >= 0);
+        }
+
+        try {
+            rowIndex.update(null, row);
+            fail();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().indexOf("isn't fully specified") >= 0);
+        }
+
+        try {
+            rowIndex.merge(null, row);
+            fail();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().indexOf("isn't fully specified") >= 0);
+        }
+
+        RowScanner scanner = rowIndex.newScanner(null);
+        assertNull(scanner.row());
+        assertNull(scanner.step());
+        assertNull(scanner.step(row));
+        try {
+            scanner.step(null);
+            fail();
+        } catch (NullPointerException e) {
+        }
+        scanner.close();
+
+        RowUpdater updater = rowIndex.newUpdater(null);
+        assertNull(updater.row());
+        assertNull(updater.step());
+        assertNull(updater.step(row));
+        try {
+            updater.update();
+            fail();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().indexOf("current") >= 0);
+        }
+        try {
+            updater.update(null);
+            fail();
+        } catch (NullPointerException e) {
+        }
+        try {
+            updater.delete();
+            fail();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().indexOf("current") >= 0);
+        }
+        try {
+            updater.delete(null);
+            fail();
+        } catch (NullPointerException e) {
+        }
+        updater.close();
     }
 
     // Prevent GC. The generated code depends on weak references. When the feature is finished,
     // the RowStore will be referenced by the Database and won't go away immediately.
-    private static Object rsRef;
+    private static volatile Object rsRef;
 
     private static final AtomicLong packageNum = new AtomicLong();
 
@@ -66,6 +192,7 @@ public class FuzzTest {
      * @return an interface
      */
     static Class randomRowType(Random rnd) {
+        // Generate different packages to faciliate class unloading.
         ClassMaker cm = ClassMaker.begin("test.p" + packageNum.getAndIncrement() + ".TestRow");
         cm.public_().interface_();
 

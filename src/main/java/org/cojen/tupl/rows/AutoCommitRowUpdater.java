@@ -38,9 +38,8 @@ class AutoCommitRowUpdater<R> extends NonRepeatableRowUpdater<R> {
     }
 
     @Override
-    protected void doUpdate() throws IOException {
+    protected void doUpdate(R row) throws IOException {
         RowDecoderEncoder<R> encoder = mDecoder;
-        R row = mRow;
         byte[] key = encoder.encodeKey(row);
         byte[] value = encoder.encodeValue(row);
         Cursor c = mCursor;

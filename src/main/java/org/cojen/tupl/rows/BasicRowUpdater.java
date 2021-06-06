@@ -19,6 +19,8 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
+import java.util.Objects;
+
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.RowUpdater;
@@ -43,29 +45,53 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
     }
 
     @Override
-    public R update(R row) throws IOException {
-        try {
-            doUpdate();
-        } catch (UnpositionedCursorException e) {
-            finished();
-            return null;
-        } catch (Throwable e) {
-            throw RowUtils.fail(this, e);
-        }
-        return step(row);
+    public final R update() throws IOException {
+        return doUpdateAndStep(null);
     }
 
     @Override
-    public R delete(R row) throws IOException {
+    public final R update(R row) throws IOException {
+        Objects.requireNonNull(row);
+        return doUpdateAndStep(row);
+    }
+
+    private R doUpdateAndStep(R row) throws IOException {
+        try {
+            R current = mRow;
+            if (current == null) {
+                throw new IllegalStateException("No current row");
+            }
+            doUpdate(current);
+        } catch (UnpositionedCursorException e) {
+            finished();
+            throw new IllegalStateException("No current row");
+        } catch (Throwable e) {
+            throw RowUtils.fail(this, e);
+        }
+        return doStep(row);
+    }
+
+    @Override
+    public final R delete() throws IOException {
+        return doDeleteAndStep(null);
+    }
+
+    @Override
+    public final R delete(R row) throws IOException {
+        Objects.requireNonNull(row);
+        return doDeleteAndStep(row);
+    }
+
+    private R doDeleteAndStep(R row) throws IOException {
         try {
             mCursor.delete();
         } catch (UnpositionedCursorException e) {
             finished();
-            return null;
+            throw new IllegalStateException("No current row");
         } catch (Throwable e) {
             throw RowUtils.fail(this, e);
         }
-        return step(row);
+        return doStep(row);
     }
 
     @Override
@@ -75,9 +101,8 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
         return result;
     }
 
-    protected void doUpdate() throws IOException {
+    protected void doUpdate(R row) throws IOException {
         RowDecoderEncoder<R> encoder = mDecoder;
-        R row = mRow;
         byte[] key = encoder.encodeKey(row);
         byte[] value = encoder.encodeValue(row);
         Cursor c = mCursor;

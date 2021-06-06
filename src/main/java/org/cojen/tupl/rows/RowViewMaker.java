@@ -18,11 +18,9 @@
 package org.cojen.tupl.rows;
 
 import java.lang.invoke.CallSite;
-import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.lang.invoke.MutableCallSite;
 
 import java.lang.ref.WeakReference;
 
@@ -36,14 +34,8 @@ import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 import org.cojen.tupl.CorruptDatabaseException;
-import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DatabaseException;
-import org.cojen.tupl.RowScanner;
-import org.cojen.tupl.RowUpdater;
-import org.cojen.tupl.RowView;
-import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Transaction;
-import org.cojen.tupl.Updater;
 import org.cojen.tupl.View;
 
 import org.cojen.tupl.filter.RowFilter;
