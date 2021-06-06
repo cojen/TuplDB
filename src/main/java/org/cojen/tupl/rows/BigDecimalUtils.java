@@ -198,13 +198,13 @@ public class BigDecimalUtils extends RowUtils {
             if (bdRef != null) {
                 bdRef[0] = null;
             }
-            return 1;
+            return srcOffset;
 
         case 0x7f: case 0x80:
             if (bdRef != null) {
                 bdRef[0] = BigDecimal.ZERO;
             }
-            return 1;
+            return srcOffset;
 
         case 1: case 0x7e:
             digitAdjust = 999 + 12;

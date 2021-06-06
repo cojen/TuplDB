@@ -385,7 +385,7 @@ public class RowUtils extends Utils {
      *
      * @param src source of encoded data
      * @param srcOffset offset into encoded data
-     * @param length number of bytes to decode
+     * @param length number of bytes to decode, including the terminator
      */
     public static String decodeStringKey(byte[] src, int srcOffset, int length) {
         return decodeStringKey(src, srcOffset, length, 0);
@@ -411,7 +411,7 @@ public class RowUtils extends Utils {
         char[] chars = new char[length - 1];
         int charLen = 0;
 
-        int endOffset = srcOffset + length;
+        int endOffset = srcOffset + length - 1; // stop short of the terminator
         while (srcOffset < endOffset) {
             int c = (src[srcOffset++] ^ xorMask) & 0xff;
             switch (c >> 5) {

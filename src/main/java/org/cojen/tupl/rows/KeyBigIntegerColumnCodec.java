@@ -92,7 +92,7 @@ class KeyBigIntegerColumnCodec extends BigIntegerColumnCodec {
     void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
         var rowUtils = mMaker.var(RowUtils.class);
         var resultVar = rowUtils.invoke("decodeBigIntegerKeyHeader", srcVar, offsetVar);
-        offsetVar.inc(resultVar.cast(int.class));
+        offsetVar.set(resultVar.cast(int.class));
 
         var lengthVar = resultVar.shr(32).cast(int.class);
 

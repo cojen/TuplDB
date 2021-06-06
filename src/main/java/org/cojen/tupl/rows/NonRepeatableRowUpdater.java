@@ -62,6 +62,7 @@ class NonRepeatableRowUpdater<R> extends BasicRowUpdater<R> {
 
     @Override
     protected void finished() throws IOException {
+        mRow = null;
         if (mLockResult != null) {
             mLockResult = null;
             Transaction txn = mCursor.link();

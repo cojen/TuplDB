@@ -68,6 +68,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
         } catch (Throwable e) {
             throw RowUtils.fail(this, e);
         }
+        unlocked(); // prevent subclass from attempting to release the lock
         return doStep(row);
     }
 
@@ -91,6 +92,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
         } catch (Throwable e) {
             throw RowUtils.fail(this, e);
         }
+        unlocked(); // prevent subclass from attempting to release the lock
         return doStep(row);
     }
 

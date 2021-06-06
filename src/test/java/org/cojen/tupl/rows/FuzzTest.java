@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.rows;
 
+import java.lang.reflect.Method;
+
 import java.math.*;
 
 import java.util.*;
@@ -41,7 +43,12 @@ public class FuzzTest {
         org.junit.runner.JUnitCore.main(FuzzTest.class.getName());
     }
 
+    // Prevent GC. The generated code depends on weak references. When the feature is finished,
+    // the RowStore will be referenced by the Database and won't go away immediately.
+    private static volatile Object rsRef;
+
     @Test
+    @SuppressWarnings("unchecked")
     public void fuzz() throws Exception {
         var rnd = new Random(8675309);
 
@@ -50,10 +57,21 @@ public class FuzzTest {
         rsRef = rs;
 
         for (int i=0; i<100; i++) {
-            Class<?> rowType = randomRowType(rnd);
+            Column[] columns = randomColumns(rnd);
+            Class<?> rowType = randomRowType(rnd, columns);
             RowIndex rowIndex = rs.openRowIndex(rowType);
 
             basicTests(rowType, rowIndex);
+
+            for (int j=0; j<10; j++) {
+                var row = rowIndex.newRow();
+                fillInColumns(rnd, columns, row);
+                rowIndex.store(null, row);
+                //System.out.println(row);
+                //rowIndex.load(null, row); FIXME
+            }
+
+            truncateAndClose(rowIndex);
 
             // FIXME: Perform some operations on it.
         }
@@ -182,21 +200,31 @@ public class FuzzTest {
         updater.close();
     }
 
-    // Prevent GC. The generated code depends on weak references. When the feature is finished,
-    // the RowStore will be referenced by the Database and won't go away immediately.
-    private static volatile Object rsRef;
+    private static void truncateAndClose(RowIndex ix) throws Exception {
+        var updater = ix.newUpdater(null);
+        while (updater.row() != null) {
+            updater.delete();
+        }
+        ix.close();
+    }
+
+    private static void fillInColumns(Random rnd, Column[] columns, Object row) throws Exception {
+        Class<?> rowClass = row.getClass();
+        for (Column c : columns) {
+            Method m = rowClass.getMethod(c.name, c.type.clazz);
+            m.invoke(row, c.type.randomValue(rnd));
+        }
+    }
 
     private static final AtomicLong packageNum = new AtomicLong();
 
     /**
      * @return an interface
      */
-    static Class randomRowType(Random rnd) {
+    static Class randomRowType(Random rnd, Column[] columns) {
         // Generate different packages to faciliate class unloading.
         ClassMaker cm = ClassMaker.begin("test.p" + packageNum.getAndIncrement() + ".TestRow");
         cm.public_().interface_();
-
-        Column[] columns = randomColumns(rnd);
 
         for (Column c : columns) {
             Type t = c.type;
@@ -215,6 +243,10 @@ public class FuzzTest {
 
         for (int i=0; i<pkNames.length; i++) {
             pkNames[i] = columns[i].name;
+            if (rnd.nextBoolean()) {
+                // Descending order.
+                pkNames[i] = '-' + pkNames[i];
+            }
         }
 
         AnnotationMaker am = cm.addAnnotation(PrimaryKey.class, true);
@@ -246,11 +278,11 @@ public class FuzzTest {
     }
 
     static Type randomType(Random rnd) {
-        int n = rnd.nextInt(19);
+        int code = rnd.nextInt(19);
 
         final Class clazz;
 
-        switch (n) {
+        switch (code) {
         default: throw new AssertionError();
         case 0: clazz = boolean.class; break;
         case 1: clazz = byte.class; break;
@@ -280,16 +312,79 @@ public class FuzzTest {
             nullable = rnd.nextBoolean();
         }
 
-        return new Type(clazz, nullable);
+        return new Type(code, clazz, nullable);
     }
 
     static class Type {
+        final int code;
         final Class clazz;
         final boolean nullable;
 
-        Type(Class clazz, boolean nullable) {
+        Type(int code, Class clazz, boolean nullable) {
+            this.code = code;
             this.clazz = clazz;
             this.nullable = nullable;
+        }
+
+        Object randomValue(Random rnd) {
+            if (nullable && rnd.nextInt(5) == 0) {
+                return null;
+            }
+
+            switch (code) {
+            default: throw new AssertionError();
+            case 0: case 8: return rnd.nextBoolean();
+            case 1: case 9: return (byte) rnd.nextInt();
+            case 2: case 10: return (short) rnd.nextInt();
+            case 3: case 11: return rnd.nextInt();
+            case 4: case 12: return rnd.nextLong();
+            case 5: case 13: return rnd.nextFloat();
+            case 6: case 14: return rnd.nextDouble();
+            case 7: case 15: return randomChar(rnd);
+
+            case 16: {
+                var chars = new char[rnd.nextInt(20)];
+                for (int i=0; i<chars.length; i++) {
+                    chars[i] = randomChar(rnd);
+                }
+                return new String(chars);
+            }
+
+            case 17: {
+                var digits = new char[1 + rnd.nextInt(20)];
+                for (int i=0; i<digits.length; i++) {
+                    digits[i] = randomDigit(rnd);
+                }
+                if (digits.length > 1 && rnd.nextBoolean()) {
+                    digits[0] = '-';
+                }
+                return new BigInteger(new String(digits));
+            }
+
+            case 18: 
+                var digits = new char[1 + rnd.nextInt(20)];
+                for (int i=0; i<digits.length; i++) {
+                    digits[i] = randomDigit(rnd);
+                }
+                if (digits.length > 1 && rnd.nextBoolean()) {
+                    digits[0] = '-';
+                }
+                if (digits.length > 2) {
+                    int decimalPos = rnd.nextInt(digits.length - 1);
+                    if (decimalPos > 1) {
+                        digits[decimalPos] = '.';
+                    }
+                }
+                return new BigDecimal(new String(digits));
+            }
+        }
+
+        static char randomChar(Random rnd) {
+            return (char) ('a' + rnd.nextInt(26));
+        }
+
+        static char randomDigit(Random rnd) {
+            return (char) ('0' + rnd.nextInt(10));
         }
     }
 }
