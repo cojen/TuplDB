@@ -67,13 +67,19 @@ public class FuzzTest {
                 var row = rowIndex.newRow();
                 fillInColumns(rnd, columns, row);
                 rowIndex.store(null, row);
-                //System.out.println(row);
-                //rowIndex.load(null, row); FIXME
+
+                var clone = row.getClass().getMethod("clone").invoke(row);
+                assertEquals(row, clone);
+                assertEquals(row.hashCode(), clone.hashCode());
+                assertEquals(row.toString(), clone.toString());
+
+                rowIndex.load(null, row);
+                assertEquals(clone, row);
             }
 
             truncateAndClose(rowIndex);
 
-            // FIXME: Perform some operations on it.
+            // FIXME: Perform more operations.
         }
 
         rsRef = null;

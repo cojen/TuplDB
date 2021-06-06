@@ -299,7 +299,7 @@ public class RowViewMaker {
     private int maskRemainder(int num, int mask) {
         if (num >= mRowInfo.allColumns.size()) {
             int shift = (num & 0b1111) << 1;
-            if (shift < 32) {
+            if (shift != 0) {
                 mask |= 0xffff_ffff << shift;
             }
         }
