@@ -72,6 +72,9 @@ public class BigDecimalUtilsTest {
             new BigDecimal("-0.0001"),
             new BigDecimal("-0.00001"),
             BigDecimal.ZERO,
+            new BigDecimal("0.0"),
+            new BigDecimal("0.00"),
+            new BigDecimal("0.000"),
             new BigDecimal("0.00001"),
             new BigDecimal("0.0001"),
             new BigDecimal("0.001"),
@@ -189,7 +192,10 @@ public class BigDecimalUtilsTest {
             }
             assertEquals(encoded.length, offset);
 
-            if (lastEncoded != null) {
+            if (lastEncoded != null &&
+                (value.compareTo(BigDecimal.ZERO) != 0 ||
+                 lastValue.compareTo(BigDecimal.ZERO) != 0))
+            {
                 int sgn = Integer.signum(value.compareTo(lastValue));
                 if (desc) {
                     sgn = -sgn;

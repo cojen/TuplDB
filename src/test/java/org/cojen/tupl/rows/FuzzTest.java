@@ -48,9 +48,21 @@ public class FuzzTest {
     private static volatile Object rsRef;
 
     @Test
-    @SuppressWarnings("unchecked")
     public void fuzz() throws Exception {
-        var rnd = new Random(8675309);
+        long seed = 8675309;
+        for (int i=0; i<30; i++) {
+            try {
+                fuzz(seed);
+            } catch (Throwable e) {
+                throw new AssertionError("seed: " + seed, e);
+            }
+            seed++;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void fuzz(long seed) throws Exception {
+        var rnd = new Random(seed);
 
         Database db = Database.open(new DatabaseConfig());
         RowStore rs = new RowStore(db);
@@ -101,6 +113,7 @@ public class FuzzTest {
         }
 
         rsRef = null;
+        db.close();
     }
 
     @SuppressWarnings("unchecked")

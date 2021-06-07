@@ -48,8 +48,8 @@ public class BigDecimalUtils extends RowUtils {
            0x02..0x3f: negative signum; positive exponent; 3e range, 61..0
            0x40..0x7d: negative signum; negative exponent; 3e range, -1..-62
            0x7e:       negative signum; four bytes follow for negative exponent
-           0x7f:       negative zero
-           0x80:       zero
+           0x7f:       negative zero; four bytes follow for scale
+           0x80:       zero; four bytes follow for scale
            0x81:       positive signum; four bytes follow for negative exponent
            0x82..0xbf: positive signum; negative exponent; 3e range, -62..-1
            0xc0..0xfd: positive signum; positive exponent; 3e range, 0..61
@@ -62,7 +62,10 @@ public class BigDecimalUtils extends RowUtils {
         }
 
         if (bd.signum() == 0) {
-            return new byte[] {(byte) (0x80 ^ xor)};
+            var bytes = new byte[5];
+            bytes[0] = (byte) (0x80 ^ xor);
+            encodeIntBE(bytes, 1, bd.scale() ^ 0x80000000 ^ xor);
+            return bytes;
         }
 
         // Significand must be decimal encoded to maintain proper sort order. Base 1000 is
@@ -202,9 +205,16 @@ public class BigDecimalUtils extends RowUtils {
 
         case 0x7f: case 0x80:
             if (bdRef != null) {
-                bdRef[0] = BigDecimal.ZERO;
+                int scale = decodeIntBE(src, srcOffset) ^ 0x80000000 ^ xor;
+                BigDecimal bd;
+                if (scale == 0) {
+                    bd = BigDecimal.ZERO;
+                } else {
+                    bd = new BigDecimal(BigInteger.ZERO, scale);
+                }
+                bdRef[0] = bd;
             }
-            return srcOffset;
+            return srcOffset + 4;
 
         case 1: case 0x7e:
             digitAdjust = 999 + 12;

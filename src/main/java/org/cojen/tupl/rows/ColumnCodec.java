@@ -107,7 +107,10 @@ abstract class ColumnCodec {
             return new PrimitiveColumnCodec(info, null, forKey, 2);
 
         case TYPE_UTF8:
-            if (isLast) {
+            if (isLast && !info.isDescending()) {
+                // Note that with descending order, key format is still required. Otherwise,
+                // two strings which share a common prefix would be ordered wrong, even when
+                // all the bits are flipped.
                 if (info.isNullable()) {
                     return new NullableLastStringColumnCodec(info, null);
                 } else {

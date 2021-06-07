@@ -106,8 +106,12 @@ class KeyBigIntegerColumnCodec extends BigIntegerColumnCodec {
             mMaker.goto_(cont);
             notNull.here();
             if (mInfo.isDescending()) {
-                var copyVar = rowUtils.invoke("copyAndFlip", srcVar, offsetVar, lengthVar);
-                dstVar.set(mMaker.new_(dstVar, copyVar));
+                rowUtils.invoke("flip", srcVar, offsetVar, lengthVar);
+                Label tryStart = mMaker.label().here();
+                dstVar.set(mMaker.new_(dstVar, srcVar, offsetVar, lengthVar));
+                mMaker.finally_(tryStart, () -> {
+                    rowUtils.invoke("flip", srcVar, offsetVar, lengthVar);
+                });
             } else {
                 dstVar.set(mMaker.new_(dstVar, srcVar, offsetVar, lengthVar));
             }

@@ -563,14 +563,12 @@ public class RowUtils extends Utils {
     }
 
     /**
-     * Copies the range of bytes and flips the bits.
+     * Flips all the bits.
      */
-    public static byte[] copyAndFlip(byte[] b, int off, int len) {
-        b = Arrays.copyOfRange(b, off, off + len);
+    public static void flip(byte[] b, int off, int len) {
         for (int i=0; i<b.length; i++) {
             b[i] = (byte) ~b[i];
         }
-        return b;
     }
 
     /**
