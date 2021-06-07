@@ -23,6 +23,8 @@ import java.math.*;
 
 import java.util.*;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.cojen.maker.*;
@@ -49,14 +51,13 @@ public class FuzzTest {
 
     @Test
     public void fuzz() throws Exception {
-        long seed = 8675309;
         for (int i=0; i<30; i++) {
+            long seed = ThreadLocalRandom.current().nextLong();
             try {
                 fuzz(seed);
             } catch (Throwable e) {
                 throw new AssertionError("seed: " + seed, e);
             }
-            seed++;
         }
     }
 
@@ -341,6 +342,13 @@ public class FuzzTest {
                     result = -1;
                 } else {
                     result = ((Comparable) a).compareTo((Comparable) b);
+                    if (result == 0 && a instanceof BigDecimal && !a.equals(b)) {
+                        result = Integer.compare(((BigDecimal) a).scale(),
+                                                 ((BigDecimal) b).scale());
+                        if (((BigDecimal) a).signum() < 0) {
+                            result = -result;
+                        }
+                    }
                 }
 
                 if (flip) {
