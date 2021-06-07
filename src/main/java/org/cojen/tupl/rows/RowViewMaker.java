@@ -562,30 +562,36 @@ public class RowViewMaker {
             } else {
                 RowInfo dstRowInfo = RowInfo.find(rowType);
 
-                RowInfo srcRowInfo;
-                try {
-                    // FIXME: When schemaVersion is 0, no columns to decode.
-                    srcRowInfo = store.rowInfo(rowType, schemaVersion);
-                    if (srcRowInfo == null) {
-                        throw new CorruptDatabaseException
-                            ("Schema version not found: " + schemaVersion);
-                    }
-                } catch (Exception e) {
-                    return new ExceptionCallSite.Failed
-                        (MethodType.methodType(void.class, rowClass, byte[].class), mm, e);
-                }
-
-                ColumnCodec[] srcCodecs = srcRowInfo.rowGen().valueCodecs();
-                int fixedOffset = schemaVersion < 128 ? 1 : 4;
-
-                addDecodeColumns(mm, dstRowInfo, srcCodecs, fixedOffset);
-
-                if (dstRowInfo != srcRowInfo) {
-                    // Assign defaults for any missing columns.
+                if (schemaVersion == 0) {
+                    // No columns to decode, so assign defaults.
                     for (Map.Entry<String, ColumnInfo> e : dstRowInfo.valueColumns.entrySet()) {
-                        String fieldName = e.getKey();
-                        if (!srcRowInfo.valueColumns.containsKey(fieldName)) {
-                            Converter.setDefault(e.getValue(), mm.param(0).field(fieldName));
+                        Converter.setDefault(e.getValue(), mm.param(0).field(e.getKey()));
+                    }
+                } else {
+                    RowInfo srcRowInfo;
+                    try {
+                        srcRowInfo = store.rowInfo(rowType, schemaVersion);
+                        if (srcRowInfo == null) {
+                            throw new CorruptDatabaseException
+                                ("Schema version not found: " + schemaVersion);
+                        }
+                    } catch (Exception e) {
+                        return new ExceptionCallSite.Failed
+                            (MethodType.methodType(void.class, rowClass, byte[].class), mm, e);
+                    }
+
+                    ColumnCodec[] srcCodecs = srcRowInfo.rowGen().valueCodecs();
+                    int fixedOffset = schemaVersion < 128 ? 1 : 4;
+
+                    addDecodeColumns(mm, dstRowInfo, srcCodecs, fixedOffset);
+
+                    if (dstRowInfo != srcRowInfo) {
+                        // Assign defaults for any missing columns.
+                        for (Map.Entry<String, ColumnInfo> e : dstRowInfo.valueColumns.entrySet()) {
+                            String fieldName = e.getKey();
+                            if (!srcRowInfo.valueColumns.containsKey(fieldName)) {
+                                Converter.setDefault(e.getValue(), mm.param(0).field(fieldName));
+                            }
                         }
                     }
                 }

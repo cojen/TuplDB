@@ -178,10 +178,14 @@ abstract class ColumnCodec {
     }
 
     /**
-     * Return stateful instances suitable for making code. The first element in the returned
-     * array is a SchemaVersionColumnCodec, which can only be used for encoding.
+     * Return stateful instances suitable for making code. Unless the given array is empty, the
+     * first element in the returned array is a SchemaVersionColumnCodec, which can only be
+     * used for encoding.
      */
     static ColumnCodec[] bind(int schemaVersion, ColumnCodec[] codecs, MethodMaker mm) {
+        if (codecs.length == 0) {
+            return codecs;
+        }
         var copy = new ColumnCodec[1 + codecs.length];
         copy[0] = new SchemaVersionColumnCodec(schemaVersion, mm);
         for (int i=0; i<codecs.length; i++) {
