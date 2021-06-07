@@ -510,7 +510,7 @@ public class RowUtils extends Utils {
         */
 
         if (key == null) {
-            dst[dstOffset++] = NULL_BYTE_HIGH;
+            dst[dstOffset++] = NULL_BYTE_LOW;
             return dstOffset;
         }
 

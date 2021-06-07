@@ -63,6 +63,9 @@ public class FuzzTest {
 
             basicTests(rowType, rowIndex);
 
+            var cmp = keyComparator(columns, rowType);
+            var set = new TreeSet<Object>(cmp);
+
             for (int j=0; j<10; j++) {
                 var row = rowIndex.newRow();
                 fillInColumns(rnd, columns, row);
@@ -75,11 +78,26 @@ public class FuzzTest {
 
                 rowIndex.load(null, row);
                 assertEquals(clone, row);
+
+                if (!set.add(row)) {
+                    set.remove(row);
+                    set.add(row);
+                }
             }
 
-            truncateAndClose(rowIndex);
+            // Verify correct ordering.
 
-            // FIXME: Perform more operations.
+            int count = 0;
+            Iterator<Object> it = set.iterator();
+            RowScanner scanner = rowIndex.newScanner(null);
+            for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+                count++;
+                assertEquals(it.next(), row);
+            }
+
+            assertEquals(set.size(), count);
+
+            truncateAndClose(rowIndex);
         }
 
         rsRef = null;
@@ -252,6 +270,9 @@ public class FuzzTest {
             if (rnd.nextBoolean()) {
                 // Descending order.
                 pkNames[i] = '-' + pkNames[i];
+                columns[i].pk = -1;
+            } else {
+                columns[i].pk = 1;
             }
         }
 
@@ -273,9 +294,61 @@ public class FuzzTest {
         return columns;
     }
 
+    /**
+     * Returns a comparator against the row's primary key.
+     */
+    static Comparator<Object> keyComparator(Column[] columns, Class<?> rowType) throws Exception {
+        Comparator<Object> cmp = null;
+
+        for (Column c : columns) {
+            if (c.pk == 0) {
+                continue;
+            }
+
+            Method m = rowType.getMethod(c.name);
+            boolean flip = c.pk < 0;
+
+            @SuppressWarnings("unchecked")
+            Comparator<Object> sub = (a, b) -> {
+                try {
+                    a = m.invoke(a);
+                    b = m.invoke(b);
+                } catch (Exception e) {
+                    throw RowUtils.rethrow(e);
+                }
+
+                int result;
+                if (a == null) {
+                    if (b == null) {
+                        result = 0;
+                    } else {
+                        result = 1;
+                    }
+                } else if (b == null) {
+                    result = -1;
+                } else {
+                    result = ((Comparable) a).compareTo((Comparable) b);
+                }
+
+                if (flip) {
+                    result = -result;
+                }
+
+                return result;
+            };
+
+            cmp = cmp == null ? sub : cmp.thenComparing(sub);
+        }
+
+        return cmp;
+    }
+
     static class Column {
         final Type type;
         final String name;
+
+        // 0: not part of primary key, 1: ascending order, -1: descending order
+        int pk;
 
         Column(Type type, String name) {
             this.type = type;

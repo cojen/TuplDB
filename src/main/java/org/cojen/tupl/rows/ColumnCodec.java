@@ -122,14 +122,16 @@ abstract class ColumnCodec {
             }
 
         case TYPE_BIG_INTEGER:
-            if (isLast) {
+            if (forKey) {
+                // Must always use key format, even when the last because of variable length
+                // encoding, and numerical ordering rules are different than for strings.
+                return new KeyBigIntegerColumnCodec(info, null);
+            } else if (isLast) {
                 if (info.isNullable()) {
                     return new NullableLastBigIntegerColumnCodec(info, null);
                 } else {
                     return new NonNullLastBigIntegerColumnCodec(info, null);
                 }
-            } else if (forKey) {
-                return new KeyBigIntegerColumnCodec(info, null);
             } else if (info.isNullable()) {
                 return new NullableBigIntegerColumnCodec(info, null);
             } else {
