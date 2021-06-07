@@ -23,15 +23,11 @@ import java.lang.ref.WeakReference;
 import java.lang.ref.ReferenceQueue;
 
 /**
- * Simple cache of weakly referenced values. Not thread safe. I would really like it if a class
- * like this was actually provided by the JDK.
- *
- * Note: Entries can be safely retrieved without explicit synchronization, but they might
- * sometimes appear to go missing. Double check with synchronization.
+ * Simple cache of weakly referenced values.
  *
  * @author Brian S O'Neill
  */
-public class WeakCache<K, V> extends ReferenceQueue<Object> {
+class WeakCache<K, V> extends ReferenceQueue<Object> {
     private Entry<K, V>[] mEntries;
     private int mSize;
 
@@ -41,13 +37,25 @@ public class WeakCache<K, V> extends ReferenceQueue<Object> {
         mEntries = new Entry[2];
     }
 
+    /**
+     * Can be called without explicit synchronization, but entries can appear to go missing.
+     * Double check with synchronization.
+     */
     public V get(K key) {
+        Object obj = poll();
+        if (obj != null) {
+            synchronized (this) {
+                cleanup(obj);
+            }
+        }
+
         var entries = mEntries;
         for (var e = entries[key.hashCode() & (entries.length - 1)]; e != null; e = e.mNext) {
             if (e.mKey.equals(key)) {
                 return e.get();
             }
         }
+
         return null;
     }
 
@@ -55,7 +63,12 @@ public class WeakCache<K, V> extends ReferenceQueue<Object> {
      * @return replaced value, or null if none
      */
     @SuppressWarnings({"unchecked"})
-    public V put(K key, V value) {
+    public synchronized V put(K key, V value) {
+        Object obj = poll();
+        if (obj != null) {
+            cleanup(obj);
+        }
+
         var entries = mEntries;
         int hash = key.hashCode();
         int index = hash & (entries.length - 1);
@@ -76,28 +89,6 @@ public class WeakCache<K, V> extends ReferenceQueue<Object> {
             } else {
                 prev = e;
             }
-        }
-
-        // Remove cleared entries.
-        Object obj = poll();
-        if (obj != null) {
-            do {
-                var cleared = (Entry<K, V>) obj;
-                int ix = cleared.mHash & (entries.length - 1);
-                for (Entry<K, V> e = entries[ix], prev = null; e != null; e = e.mNext) {
-                    if (e == cleared) {
-                        if (prev == null) {
-                            entries[ix] = e.mNext;
-                        } else {
-                            prev.mNext = e.mNext;
-                        }
-                        mSize--;
-                        break;
-                    } else {
-                        prev = e;
-                    }
-                }
-            } while ((obj = poll()) != null);
         }
 
         if (mSize >= mEntries.length) {
@@ -130,24 +121,31 @@ public class WeakCache<K, V> extends ReferenceQueue<Object> {
         return null;
     }
 
-    public void remove(K key) {
+    /**
+     * Caller must be synchronized.
+     *
+     * @param obj not null
+     */
+    @SuppressWarnings({"unchecked"})
+    private void cleanup(Object obj) {
         var entries = mEntries;
-        int index = key.hashCode() & (entries.length - 1);
-
-        for (Entry<K, V> e = entries[index], prev = null; e != null; e = e.mNext) {
-            if (e.mKey.equals(key)) {
-                e.clear();
-                if (prev == null) {
-                    entries[index] = e.mNext;
+        do {
+            var cleared = (Entry<K, V>) obj;
+            int ix = cleared.mHash & (entries.length - 1);
+            for (Entry<K, V> e = entries[ix], prev = null; e != null; e = e.mNext) {
+                if (e == cleared) {
+                    if (prev == null) {
+                        entries[ix] = e.mNext;
+                    } else {
+                        prev.mNext = e.mNext;
+                    }
+                    mSize--;
+                    break;
                 } else {
-                    prev.mNext = e.mNext;
+                    prev = e;
                 }
-                mSize--;
-                return;
-            } else {
-                prev = e;
             }
-        }
+        } while ((obj = poll()) != null);
     }
 
     private static final class Entry<K, V> extends WeakReference<V> {
