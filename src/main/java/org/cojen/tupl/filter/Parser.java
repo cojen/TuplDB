@@ -49,6 +49,10 @@ public class Parser {
        !{blob}: data < ? & ...
 
        By default, the projection is !{}. Empty set notation is legal, but not practical.
+
+       This might be going to far. Composability with "view" methods generally works, but filters
+       have arguments and that makes them special.
+
      */
 
     private final Map<String, ColumnInfo> mAllColumns;

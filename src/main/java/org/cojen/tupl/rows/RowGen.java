@@ -151,7 +151,7 @@ class RowGen {
         for (ColumnInfo info : info.keyColumns.values()) {
             map.put(info.name, num++);
         }
-        for (ColumnCodec codec : valueCodecs()) { // use corrected ordering
+        for (ColumnCodec codec : valueCodecs()) { // use encoding order
             if (!(codec instanceof SchemaVersionColumnCodec)) {
                 map.put(codec.mInfo.name, num++);
             }
@@ -177,6 +177,10 @@ class RowGen {
         return state << ((columnNum & 0b1111) << 1);
     }
 
+    /**
+     * Returns the value codecs in the order in which they should be encoded, which is the same
+     * as RowInfo.keyColumns order (declaration order).
+     */
     public ColumnCodec[] keyCodecs() {
         ColumnCodec[] codecs = mKeyCodecs;
         if (codecs == null) {
@@ -185,6 +189,10 @@ class RowGen {
         return codecs;
     }
 
+    /**
+     * Returns the value codecs in the order in which they should be encoded, which can differ
+     * from RowInfo.valueColumns order (lexicographical order).
+     */
     public ColumnCodec[] valueCodecs() {
         ColumnCodec[] codecs = mValueCodecs;
 

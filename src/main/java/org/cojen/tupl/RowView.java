@@ -121,7 +121,7 @@ public interface RowView<R> {
      * @return false if a matching row doesn't exist
      * @throws IllegalStateException if no primary or alternate key is fully specified
      */
-    public boolean update(Transaction txn, R match, R row) throws IOException;
+    //public boolean update(Transaction txn, R match, R row) throws IOException;
 
     /**
      * Updates an existing row with the modified columns of the given row, and then loads the
@@ -142,7 +142,7 @@ public interface RowView<R> {
      * @return false if a matching row doesn't exist
      * @throws IllegalStateException if no primary or alternate key is fully specified
      */
-    public boolean merge(Transaction txn, R match, R row) throws IOException;
+    //public boolean merge(Transaction txn, R match, R row) throws IOException;
 
     /**
      * Unconditionally removes an existing row by a primary or alternate key.
@@ -159,7 +159,7 @@ public interface RowView<R> {
      * @return false if a matching row doesn't exist
      * @throws IllegalStateException if no primary or alternate key is fully specified
      */
-    public boolean remove(Transaction txn, R match) throws IOException;
+    //public boolean remove(Transaction txn, R match) throws IOException;
 
     /**
      * Returns a view which is filtered by the given expression and arguments.
@@ -185,7 +185,7 @@ public interface RowView<R> {
     // more view layers after performing projection, for example.
     //public RowView<R> viewFiltered(String filter, Object... args);
 
-    // FIXME: viewOf? viewSelection? viewProjection?
+    // FIXME: viewOf? viewSelection? viewProjection? viewOnly? viewWith? viewWithout?
     // Projection.
     //public RowView<R> viewSelect(String... columns);
 

@@ -271,7 +271,7 @@ public class RowMaker {
             append(mm, rowGen, rowObject, bob, initSize, num, info);
             num++;
         }
-        for (ColumnCodec codec : rowGen.valueCodecs()) { // use corrected ordering
+        for (ColumnCodec codec : rowGen.valueCodecs()) { // use encoding order
             append(mm, rowGen, rowObject, bob, initSize, num, codec.mInfo);
             num++;
         }
