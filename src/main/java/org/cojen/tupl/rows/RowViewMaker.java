@@ -107,7 +107,9 @@ public class RowViewMaker {
                 i++;
             }
 
-            addCheckAllDirty("checkValueAllDirty", mRowInfo.valueColumns);
+            if (!mRowInfo.valueColumns.isEmpty()) {
+                addCheckAllDirty("checkValueAllDirty", mRowInfo.valueColumns);
+            }
 
             addCheckAnyDirty("checkPrimaryKeyAnyDirty", mRowInfo.keyColumns);
         }
@@ -784,8 +786,14 @@ public class RowViewMaker {
 
         // If all value columns are dirty, replace the whole row and commit.
         {
-            Label cont = mm.label();
-            mm.invoke("checkValueAllDirty", rowVar).ifFalse(cont);
+            Label cont;
+            if (mRowInfo.valueColumns.isEmpty()) {
+                // If the checkValueAllDirty method was defined, it would always return true.
+                cont = null;
+            } else {
+                cont = mm.label();
+                mm.invoke("checkValueAllDirty", rowVar).ifFalse(cont);
+            }
 
             cursorVar.invoke("autoload", false);
             cursorVar.invoke("find", keyVar);
@@ -795,6 +803,10 @@ public class RowViewMaker {
             replace.here();
             cursorVar.invoke("commit", mm.invoke("encodeValue", rowVar));
             mm.return_(true);
+
+            if (cont == null) {
+                return;
+            }
 
             cont.here();
         }
