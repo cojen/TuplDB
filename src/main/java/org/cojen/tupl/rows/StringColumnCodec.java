@@ -46,8 +46,6 @@ abstract class StringColumnCodec extends ColumnCodec {
     /**
      * Defines a byte[] arg field set to null or a UTF-8 encoded string, and also defines a
      * String field with the original argument.
-     *
-     * @param argVar expected to be a String at runtime
      */
     @Override
     void filterPrepare(int op, Variable argVar, int argNum) {
