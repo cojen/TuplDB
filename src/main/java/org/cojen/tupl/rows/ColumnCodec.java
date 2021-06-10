@@ -486,34 +486,4 @@ abstract class ColumnCodec {
                                    argVar, 0, argVar.alength(),
                                    op, pass, fail);
     }
-
-    /**
-     * Makes code which compares a column and filter argument when one or both of them might be
-     * null. If either is null, then code flows to the pass or fail target. Otherwise, the flow
-     * continues on.
-     *
-     * @param columnVar Object
-     * @param argVar boolean or Object (when boolean, true means the arg is null)
-     * @param op defined in ColumnFilter
-     * @param pass branch here when comparison passes
-     * @param fail branch here when comparison fails
-     */
-    // FIXME: Not used. Move to CompareUtils? Similar code is at the start of the
-    // CompareUtils.compare method.
-    /*
-    protected void compareNullable(Variable columnVar, Variable argVar,
-                                   int op, Label pass, Label fail)
-    {
-        Label argNotNull = mMaker.label();
-        if (argVar.classType() == boolean.class) {
-            argVar.ifFalse(argNotNull);
-        } else {
-            argVar.ifNe(null, argNotNull);
-        }
-        columnVar.ifEq(null, CompareUtils.selectNullColumnToNullArg(op, pass, fail));
-        mMaker.goto_(CompareUtils.selectColumnToNullArg(op, pass, fail));
-        argNotNull.here();
-        columnVar.ifEq(null, CompareUtils.selectNullColumnToArg(op, pass, fail));
-    }
-    */
 }

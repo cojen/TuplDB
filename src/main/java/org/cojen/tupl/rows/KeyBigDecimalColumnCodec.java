@@ -99,18 +99,29 @@ class KeyBigDecimalColumnCodec extends ColumnCodec {
         decode(null, srcVar, offsetVar, endVar);
     }
 
+    /**
+     * Defines a byte[] arg field encoded using the BigDecimal key format.
+     */
     @Override
     void filterPrepare(int op, Variable argVar, int argNum) {
-        // FIXME
-        throw null;
+        argVar = ConvertCallSite.make(mMaker, BigDecimal.class, argVar);
+
+        String methodName = "encodeBigDecimalKey";
+        if (mInfo.isDescending()) {
+            methodName += "Desc";
+        }
+        var bytesVar = mMaker.var(byte[].class);
+        bytesVar.set(mMaker.var(BigDecimalUtils.class).invoke(methodName, argVar));
+        defineArgField(byte[].class, argFieldName(argNum)).set(bytesVar);
     }
 
     @Override
     Object filterDecode(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
                         int op)
     {
-        // FIXME
-        throw null;
+        decodeSkip(srcVar, offsetVar, endVar);
+        // Return a stable copy to the end offset.
+        return offsetVar.get();
     }
 
     /**
@@ -121,7 +132,11 @@ class KeyBigDecimalColumnCodec extends ColumnCodec {
                        int op, Object decoded, Variable argObjVar, int argNum,
                        Label pass, Label fail)
     {
-        // FIXME
-        throw null;
+        endVar = (Variable) decoded;
+        var argVar = argObjVar.field(argFieldName(argNum)).get();
+        CompareUtils.compareArrays(mMaker,
+                                   srcVar, offsetVar, endVar,
+                                   argVar, 0, argVar.alength(),
+                                   op, pass, fail);
     }
 }

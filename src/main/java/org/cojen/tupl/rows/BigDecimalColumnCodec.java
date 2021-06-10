@@ -17,11 +17,14 @@
 
 package org.cojen.tupl.rows;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
+
+import org.cojen.tupl.filter.ColumnFilter;
 
 /**
  * 
@@ -180,18 +183,42 @@ class BigDecimalColumnCodec extends ColumnCodec {
         }
     }
 
+    /**
+     * Defines a BigDecimal field and stores the argument there. If an "exact" op, then a
+     * pre-encoded byte[] field is set too.
+     */
     @Override
     void filterPrepare(int op, Variable argVar, int argNum) {
-        // FIXME
-        throw null;
+        argVar = ConvertCallSite.make(mMaker, BigDecimal.class, argVar);
+        defineArgField(argVar, argFieldName(argNum)).set(argVar);
+
+        /* FIXME: define bytes field
+        if (ColumnFilter.isExact(op)) {
+            encodePrepare();
+            var lengthVar = encodeSize(argVar, null);
+            var bytesVar = mMaker.new_(byte[].class, lengthVar);
+            encode(argVar, bytesVar, mMaker.var(int.class).set(0));
+            defineArgField(bytesVar, argFieldName(argNum, "bytes")).set(bytesVar);
+        }
+        */
     }
 
     @Override
     Object filterDecode(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
                         int op)
     {
-        // FIXME
-        throw null;
+        if (dstInfo.plainTypeCode() != mInfo.plainTypeCode()) {
+            // FIXME: Need to convert to BigDecimal and compare that.
+            throw null;
+        }
+
+        if (ColumnFilter.isExact(op)) {
+            // FIXME: use bytes field
+        }
+
+        var decodedVar = mMaker.var(BigDecimal.class);
+        decode(decodedVar, srcVar, offsetVar, endVar);
+        return decodedVar;
     }
 
     /**
@@ -202,7 +229,19 @@ class BigDecimalColumnCodec extends ColumnCodec {
                        int op, Object decoded, Variable argObjVar, int argNum,
                        Label pass, Label fail)
     {
-        // FIXME
-        throw null;
+        if (dstInfo.plainTypeCode() != mInfo.plainTypeCode()) {
+            // FIXME: Compare to BigDecimal.
+            throw null;
+        }
+
+        if (ColumnFilter.isExact(op)) {
+            // FIXME: use bytes field
+        }
+
+        // Type is BigDecimal.
+        var decodedVar = (Variable) decoded;
+
+        var argVar = argObjVar.field(argFieldName(argNum)).get();
+        CompareUtils.compare(mMaker, dstInfo, decodedVar, dstInfo, argVar, op, pass, fail);
     }
 }
