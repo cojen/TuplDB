@@ -36,7 +36,7 @@ import static org.junit.Assert.*;
 
 
 /**
- * 
+ * Easy way to test all sorts of permutations and discover bugs against the row format.
  *
  * @author Brian S O'Neill
  */
@@ -109,6 +109,14 @@ public class FuzzTest {
             }
 
             assertEquals(set.size(), count);
+
+            // Verify filtering which matches the exact row.
+
+            String filter = filterAll(rnd, columns);
+            scanner = rowIndex.newScanner(null);
+            for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+                filterAllMatch(rowIndex, filter, columns, row);
+            }
 
             truncateAndClose(rowIndex);
         }
@@ -252,6 +260,51 @@ public class FuzzTest {
             Method m = rowClass.getMethod(c.name, c.type.clazz);
             m.invoke(row, c.type.randomValue(rnd));
         }
+    }
+
+    /**
+     * Returns a filter over all the columns, combined with the 'and' operator. The order of
+     * the column array is shuffled as a side-effect.
+     */
+    private static String filterAll(Random rnd, Column[] columns) {
+        Collections.shuffle(Arrays.asList(columns), rnd);
+        var bob = new StringBuilder();
+        for (Column c : columns) {
+            if (!bob.isEmpty()) {
+                bob.append(" & ");
+            }
+            bob.append(c.name).append(" == ?");
+        }
+        return bob.toString();
+    }
+
+    /**
+     * Fills in the arguments corresponding to the last invocation of filterAll.
+     */
+    private static Object[] filterAllArgs(Column[] columns, Object row) throws Exception {
+        var args = new Object[columns.length];
+        Class<?> rowClass = row.getClass();
+        for (int i=0; i<args.length; i++) {
+            args[i] = rowClass.getMethod(columns[i].name).invoke(row);
+        }
+        return args;
+    }
+
+    /**
+     * Verifies that the given filter matches only the given row, corresponding to the last
+     * invocation of filterAll.
+     */
+    private static void filterAllMatch(RowIndex ri, String filter, Column[] columns, Object row)
+        throws Exception
+    {
+        Object[] args = filterAllArgs(columns, row);
+        RowScanner scanner = ri.newScanner(null, filter, args);
+        Object matchRow = scanner.row();
+        assertNotNull(matchRow);
+        assertEquals(row, matchRow);
+        Object nextRow = scanner.step();
+        assertNull(nextRow);
+        scanner.close();
     }
 
     private static final AtomicLong packageNum = new AtomicLong();
