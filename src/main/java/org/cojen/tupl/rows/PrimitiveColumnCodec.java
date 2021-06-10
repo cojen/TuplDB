@@ -396,39 +396,45 @@ class PrimitiveColumnCodec extends ColumnCodec {
             throw null;
         }
 
+        if (dstInfo.plainTypeCode() == TYPE_BOOLEAN) {
+            var columnVar = mMaker.var(dstInfo.type);
+            decode(columnVar, srcVar, offsetVar, false);
+            return columnVar;
+        }
+
+        Class<?> fieldType = dstInfo.unboxedType();
+
         final boolean rawColumn;
-        final Variable columnVar;
-        defineColumnVar: {
+        rawCheck: {
             if (ColumnFilter.isExact(op)) {
-                if (dstInfo.type == float.class) {
+                if (fieldType == float.class) {
                     rawColumn = true;
-                    columnVar = mMaker.var(int.class);
-                    break defineColumnVar;
-                } else if (dstInfo.type == double.class) {
+                    fieldType = int.class;
+                    break rawCheck;
+                } else if (fieldType == double.class) {
                     rawColumn = true;
-                    columnVar = mMaker.var(long.class);
-                    break defineColumnVar;
+                    fieldType = long.class;
+                    break rawCheck;
                 }
             }
             rawColumn = false;
-            columnVar = mMaker.var(dstInfo.type);
         }
 
-        Variable isNullVar = null;
+        var columnVar = mMaker.var(fieldType);
 
-        if (dstInfo.isNullable() && dstInfo.plainTypeCode() != TYPE_BOOLEAN) {
-            columnVar.set(0);
-            isNullVar = mMaker.var(boolean.class);
-            decodeNullHeader(null, isNullVar, srcVar, offsetVar);
-        }
-
-        decode(columnVar, srcVar, offsetVar, rawColumn, false);
-
-        if (isNullVar == null) {
+        if (!dstInfo.isNullable()) {
+            decode(columnVar, srcVar, offsetVar, rawColumn, false);
             return columnVar;
-        } else {
-            return new Variable[] {columnVar, isNullVar};
         }
+
+        columnVar.set(0);
+        Variable isNullVar = mMaker.var(boolean.class);
+        decodeNullHeader(null, isNullVar, srcVar, offsetVar);
+        Label isNull = mMaker.label();
+        isNullVar.ifTrue(isNull);
+        decode(columnVar, srcVar, offsetVar, rawColumn, false);
+        isNull.here();
+        return new Variable[] {columnVar, isNullVar};
     }
 
     @Override

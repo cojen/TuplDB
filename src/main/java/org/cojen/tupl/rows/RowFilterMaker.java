@@ -245,26 +245,34 @@ public class RowFilterMaker<R> {
                 return mm.finish();
             }
 
-            RowInfo rowInfo;
+            RowInfo rowInfo, dstRowInfo;
             MethodHandle decoder;
 
-            try {
-                rowInfo = store.rowInfo(mRowType, schemaVersion);
-                if (rowInfo == null) {
-                    throw new CorruptDatabaseException
-                        ("Schema version not found: " + schemaVersion);
-                }
+            if (schemaVersion == 0) {
+                // No value columns to decode, and the primary key cannot change.
+                rowInfo = RowInfo.find(mRowType);
+                dstRowInfo = rowInfo;
+                decoder = null;
+            } else {
+                try {
+                    rowInfo = store.rowInfo(mRowType, schemaVersion);
+                    if (rowInfo == null) {
+                        throw new CorruptDatabaseException
+                            ("Schema version not found: " + schemaVersion);
+                    }
 
-                // Obtain the MethodHandle which fully decodes the value columns.
-                decoder = (MethodHandle) mLookup.findStatic
-                    (mLookup.lookupClass(), "decodeValueHandle",
-                     MethodType.methodType(MethodHandle.class, int.class))
-                    .invokeExact(schemaVersion);
-            } catch (Throwable e) {
-                return new ExceptionCallSite.Failed(mMethodType, mm, e);
+                    dstRowInfo = RowInfo.find(mRowType);
+
+                    // Obtain the MethodHandle which fully decodes the value columns.
+                    decoder = (MethodHandle) mLookup.findStatic
+                        (mLookup.lookupClass(), "decodeValueHandle",
+                         MethodType.methodType(MethodHandle.class, int.class))
+                        .invokeExact(schemaVersion);
+                } catch (Throwable e) {
+                    return new ExceptionCallSite.Failed(mMethodType, mm, e);
+                }
             }
 
-            RowInfo dstRowInfo = RowInfo.find(mRowType);
             Class<?> rowClass = RowMaker.find(mRowType);
             RowGen rowGen = rowInfo.rowGen();
 
@@ -303,7 +311,7 @@ public class RowFilterMaker<R> {
          * @param dstRowInfo current row defintion
          * @param rowClass current row implementation
          * @param rowGen actual row defintion to be decoded (can differ from dstRowInfo)
-         * @param decoder performs full decoding of the value columns
+         * @param decoder performs full decoding of the value columns; can be null if none
          */
         DecodeVisitor(MethodMaker mm, int schemaVersion,
                       Class<?> viewClass, RowInfo dstRowInfo, Class<?> rowClass, RowGen rowGen,
@@ -341,8 +349,11 @@ public class RowFilterMaker<R> {
             viewVar.invoke("decodePrimaryKey", rowVar, mMaker.param(1));
 
             // Invoke the schema-specific decoder directly, instead of calling the decodeValue
-            // method which redundantly examines the schema version and switches on it.
-            mMaker.invoke(mDecoder, rowVar, mMaker.param(2)); // param(2) is the byte array
+            // method which redundantly examines the schema version and switches on it. The
+            // decoder can be null if no value columns exist.
+            if (mDecoder != null) {
+                mMaker.invoke(mDecoder, rowVar, mMaker.param(2)); // param(2) is the byte array
+            }
 
             // Param(0) is the generated filter class, which has access to the inherited
             // markAllClean method.
