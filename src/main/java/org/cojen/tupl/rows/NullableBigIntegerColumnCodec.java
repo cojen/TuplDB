@@ -77,6 +77,23 @@ class NullableBigIntegerColumnCodec extends NonNullBigIntegerColumnCodec {
     }
 
     @Override
+    protected void decodeHeader(Variable srcVar, Variable offsetVar, Variable endVar,
+                                Variable lengthVar, Variable isNullVar)
+    {
+        super.decodeHeader(srcVar, offsetVar, endVar, lengthVar, null);
+        // Actual length is encoded plus one, and zero means null.
+        Label notNull = mMaker.label();
+        lengthVar.ifNe(0, notNull);
+        isNullVar.set(true);
+        Label cont = mMaker.label();
+        mMaker.goto_(cont);
+        notNull.here();
+        isNullVar.set(false);
+        lengthVar.inc(-1);
+        cont.here();
+    }
+
+    @Override
     protected void finishEncode(Variable dstVar, Variable offsetVar, Variable lengthVar) {
         Label isNull = mMaker.label();
         mBytesVar.ifEq(null, isNull);

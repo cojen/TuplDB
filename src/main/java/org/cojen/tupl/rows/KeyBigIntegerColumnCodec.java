@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.rows;
 
+import java.math.BigInteger;
+
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
@@ -61,17 +63,21 @@ class KeyBigIntegerColumnCodec extends BigIntegerColumnCodec {
 
     @Override
     Variable encodeSize(Variable srcVar, Variable totalVar) {
+        return encodeSize(srcVar, totalVar, mBytesVar);
+    }
+
+    private Variable encodeSize(Variable srcVar, Variable totalVar, Variable bytesVar) {
         if (totalVar == null) {
             totalVar = mMaker.var(int.class).set(0);
         }
         Label notNull = mMaker.label();
         srcVar.ifNe(null, notNull);
-        mBytesVar.set(null);
+        bytesVar.set(null);
         Label cont = mMaker.label();
         mMaker.goto_(cont);
         notNull.here();
-        mBytesVar.set(srcVar.invoke("toByteArray"));
-        var lengthVar = mBytesVar.alength();
+        bytesVar.set(srcVar.invoke("toByteArray"));
+        var lengthVar = bytesVar.alength();
         totalVar.inc(lengthVar);
         lengthVar.ifLt(0x7f, cont);
         totalVar.inc(4);
@@ -123,5 +129,56 @@ class KeyBigIntegerColumnCodec extends BigIntegerColumnCodec {
     @Override
     void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
         decode(null, srcVar, offsetVar, endVar);
+    }
+
+    /**
+     * Defines a byte[] arg field encoded using the BigInteger key format.
+     */
+    @Override
+    void filterPrepare(int op, Variable argVar, int argNum) {
+        argVar = ConvertCallSite.make(mMaker, BigInteger.class, argVar);
+
+        String methodName = "encodeBigIntegerKey";
+        if (mInfo.isDescending()) {
+            methodName += "Desc";
+        }
+
+        var bytesVar = mMaker.var(byte[].class);
+        var lengthVar = encodeSize(argVar, mMaker.var(int.class).set(minSize()), bytesVar);
+        var encodedBytesVar = mMaker.new_(byte[].class, lengthVar);
+        mMaker.var(RowUtils.class).invoke(methodName, encodedBytesVar, 0, bytesVar);
+
+        defineArgField(byte[].class, argFieldName(argNum)).set(encodedBytesVar);
+    }
+
+    @Override
+    Object filterDecode(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
+                        int op)
+    {
+        decodeSkip(srcVar, offsetVar, endVar);
+        // Return a stable copy to the end offset.
+        return offsetVar.get();
+    }
+
+    /**
+     * @param decoded the string end offset, unless a String compare should be performed
+     */
+    @Override
+    void filterCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
+                       int op, Object decoded, Variable argObjVar, int argNum,
+                       Label pass, Label fail)
+    {
+        endVar = (Variable) decoded;
+        var argVar = argObjVar.field(argFieldName(argNum)).get();
+        CompareUtils.compareArrays(mMaker,
+                                   srcVar, offsetVar, endVar,
+                                   argVar, 0, argVar.alength(),
+                                   op, pass, fail);
+    }
+
+    @Override
+    protected void decodeHeader(Variable srcVar, Variable offsetVar, Variable endVar,
+                                Variable lengthVar, Variable isNullVar){
+        throw new UnsupportedOperationException();
     }
 }

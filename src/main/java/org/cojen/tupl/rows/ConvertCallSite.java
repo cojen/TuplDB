@@ -112,6 +112,7 @@ public class ConvertCallSite extends MutableCallSite {
     }
 
     private void doImplement(Object obj) {
+        // FIXME: consider caching these; cache key is lookup and MethodType
         MethodMaker mm = MethodMaker.begin(MethodHandles.lookup(), "convert", type());
         Label next = mm.label();
         Variable from = mm.param(0);

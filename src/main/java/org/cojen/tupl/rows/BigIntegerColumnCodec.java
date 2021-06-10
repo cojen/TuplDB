@@ -17,6 +17,9 @@
 
 package org.cojen.tupl.rows;
 
+import java.math.BigInteger;
+
+import org.cojen.maker.Field;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
@@ -40,29 +43,65 @@ abstract class BigIntegerColumnCodec extends ColumnCodec {
         return 0;
     }
 
+    /**
+     * Defines a byte[] arg field set to null or an encoded BigInteger, and also defines a
+     * BigInteger field with the original argument.
+     */
     @Override
     void filterPrepare(int op, Variable argVar, int argNum) {
-        // FIXME
-        throw null;
+        argVar = ConvertCallSite.make(mMaker, BigInteger.class, argVar);
+
+        defineArgField(BigInteger.class, argFieldName(argNum, "big")).set(argVar);
+
+        Field argField = defineArgField(byte[].class, argFieldName(argNum));
+        Label cont = mMaker.label();
+        argVar.ifEq(null, cont);
+        argField.set(argVar.invoke("toByteArray"));
+        cont.here();
     }
 
     @Override
     Object filterDecode(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
                         int op)
     {
-        // FIXME
-        throw null;
+        if (dstInfo.plainTypeCode() != mInfo.plainTypeCode()) {
+            // FIXME: Need to convert to BigInteger and compare that.
+            throw null;
+        }
+
+        Variable lengthVar = mMaker.var(int.class);
+        Variable isNullVar = mInfo.isNullable() ? mMaker.var(boolean.class) : null;
+
+        decodeHeader(srcVar, offsetVar, endVar, lengthVar, isNullVar);
+
+        Variable dataOffsetVar = offsetVar.get(); // need a stable copy
+
+        return new Variable[] {dataOffsetVar, lengthVar, isNullVar};
     }
 
-    /**
-     * @param decoded the string end offset, unless a String compare should be performed
-     */
     @Override
     void filterCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
                        int op, Object decoded, Variable argObjVar, int argNum,
                        Label pass, Label fail)
     {
-        // FIXME
-        throw null;
+        if (dstInfo.plainTypeCode() != mInfo.plainTypeCode()) {
+            // FIXME: Compare to BigInteger.
+            throw null;
+        }
+
+        compareEncoded(srcVar, op, (Variable[]) decoded, argObjVar, argNum, pass, fail);
     }
+
+    /**
+     * Decode the BigInteger header and advance the offset to the start of the BigInteger data.
+     *
+     * @param srcVar source byte array
+     * @param offsetVar int type; is incremented as a side-effect
+     * @param endVar end offset, which when null implies the end of the array
+     * @param lengthVar set to the decoded length; must be definitely assigned
+     * @param isNullVar set to true/false if applicable; must be definitely assigned for
+     * nullable BigIntegers
+     */
+    protected abstract void decodeHeader(Variable srcVar, Variable offsetVar, Variable endVar,
+                                         Variable lengthVar, Variable isNullVar);
 }

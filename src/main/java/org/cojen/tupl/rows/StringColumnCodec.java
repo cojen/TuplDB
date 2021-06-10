@@ -79,9 +79,6 @@ abstract class StringColumnCodec extends ColumnCodec {
         return new Variable[] {dataOffsetVar, lengthVar, isNullVar};
     }
 
-    /**
-     * @param decoded the string end offset, unless a String compare should be performed
-     */
     @Override
     void filterCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
                        int op, Object decoded, Variable argObjVar, int argNum,
@@ -92,30 +89,7 @@ abstract class StringColumnCodec extends ColumnCodec {
             throw null;
         }
 
-        var decodedVars = (Variable[]) decoded;
-        Variable dataOffsetVar = decodedVars[0];
-        Variable lengthVar = decodedVars[1];
-        Variable isNullVar = decodedVars[2];
-
-        var argVar = argObjVar.field(argFieldName(argNum)).get();
-
-        Label notNull = mMaker.label();
-        argVar.ifNe(null, notNull);
-        // Argument is null...
-        if (isNullVar != null) {
-            isNullVar.ifTrue(CompareUtils.selectNullColumnToNullArg(op, pass, fail));
-        }
-        mMaker.goto_(CompareUtils.selectColumnToNullArg(op, pass, fail));
-
-        // Argument is isn't null...
-        notNull.here();
-        if (isNullVar != null) {
-            isNullVar.ifTrue(CompareUtils.selectNullColumnToArg(op, pass, fail));
-        }
-        CompareUtils.compareArrays(mMaker,
-                                   srcVar, dataOffsetVar, dataOffsetVar.add(lengthVar),
-                                   argVar, 0, argVar.alength(),
-                                   op, pass, fail);
+        compareEncoded(srcVar, op, (Variable[]) decoded, argObjVar, argNum, pass, fail);
     }
 
     /**

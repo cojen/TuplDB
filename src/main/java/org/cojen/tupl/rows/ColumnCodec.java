@@ -453,6 +453,41 @@ abstract class ColumnCodec {
     }
 
     /**
+     * Common code used by BigIntegerColumnCodec and StringColumnCodec for comparing non-key
+     * values and their binary encoded format.
+     *
+     * @param decodedVars dataOffsetVar, lengthVar, and optional isNullVar
+     */
+    protected void compareEncoded(Variable srcVar,
+                                  int op, Variable[] decodedVars, Variable argObjVar, int argNum,
+                                  Label pass, Label fail)
+    {
+        Variable dataOffsetVar = decodedVars[0];
+        Variable lengthVar = decodedVars[1];
+        Variable isNullVar = decodedVars[2];
+
+        var argVar = argObjVar.field(argFieldName(argNum)).get();
+
+        Label notNull = mMaker.label();
+        argVar.ifNe(null, notNull);
+        // Argument is null...
+        if (isNullVar != null) {
+            isNullVar.ifTrue(CompareUtils.selectNullColumnToNullArg(op, pass, fail));
+        }
+        mMaker.goto_(CompareUtils.selectColumnToNullArg(op, pass, fail));
+
+        // Argument is isn't null...
+        notNull.here();
+        if (isNullVar != null) {
+            isNullVar.ifTrue(CompareUtils.selectNullColumnToArg(op, pass, fail));
+        }
+        CompareUtils.compareArrays(mMaker,
+                                   srcVar, dataOffsetVar, dataOffsetVar.add(lengthVar),
+                                   argVar, 0, argVar.alength(),
+                                   op, pass, fail);
+    }
+
+    /**
      * Makes code which compares a column and filter argument when one or both of them might be
      * null. If either is null, then code flows to the pass or fail target. Otherwise, the flow
      * continues on.

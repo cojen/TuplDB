@@ -88,4 +88,19 @@ class NullableLastBigIntegerColumnCodec extends NonNullLastBigIntegerColumnCodec
         super.decodeSkip(srcVar, offsetVar, endVar);
         end.here();
     }
+
+    @Override
+    protected void decodeHeader(Variable srcVar, Variable offsetVar, Variable endVar,
+                                Variable lengthVar, Variable isNullVar)
+    {
+        decodeNullHeader(null, isNullVar, srcVar, offsetVar);
+        Label notNull = mMaker.label();
+        isNullVar.ifFalse(notNull);
+        lengthVar.set(0);
+        Label cont = mMaker.label();
+        mMaker.goto_(cont);
+        notNull.here();
+        super.decodeHeader(srcVar, offsetVar, endVar, lengthVar, null);
+        cont.here();
+    }
 }
