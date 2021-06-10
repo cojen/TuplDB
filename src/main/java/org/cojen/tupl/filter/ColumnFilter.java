@@ -71,7 +71,7 @@ public abstract class ColumnFilter extends RowFilter {
 
         String opStr;
         switch (mOperator) {
-        case OP_EQ: opStr = "=";  break;
+        case OP_EQ: opStr = "=="; break;
         case OP_NE: opStr = "!="; break;
         case OP_LT: opStr = "<";  break;
         case OP_GE: opStr = ">="; break;

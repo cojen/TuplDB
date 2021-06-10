@@ -151,9 +151,9 @@ public class SwitchCallSite extends MutableCallSite {
      * @param mm first param must be the key
      */
     private void makeDefault(MethodMaker mm) {
-        var dcsVar = mm.var(SwitchCallSite.class).setExact(this);
+        var scsVar = mm.var(SwitchCallSite.class).setExact(this);
         var lookupVar = mm.var(MethodHandles.class).invoke("lookup");
-        var newCaseVar = dcsVar.invoke("newCase", lookupVar, mm.param(0));
+        var newCaseVar = scsVar.invoke("newCase", lookupVar, mm.param(0));
 
         var allParams = new Object[type().parameterCount()];
         for (int i=0; i<allParams.length; i++) {
