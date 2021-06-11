@@ -192,7 +192,6 @@ class BigDecimalColumnCodec extends ColumnCodec {
         argVar = ConvertCallSite.make(mMaker, BigDecimal.class, argVar);
         defineArgField(argVar, argFieldName(argNum)).set(argVar);
 
-        /* FIXME: define bytes field
         if (ColumnFilter.isExact(op)) {
             encodePrepare();
             var lengthVar = encodeSize(argVar, null);
@@ -200,7 +199,6 @@ class BigDecimalColumnCodec extends ColumnCodec {
             encode(argVar, bytesVar, mMaker.var(int.class).set(0));
             defineArgField(bytesVar, argFieldName(argNum, "bytes")).set(bytesVar);
         }
-        */
     }
 
     @Override
@@ -213,7 +211,9 @@ class BigDecimalColumnCodec extends ColumnCodec {
         }
 
         if (ColumnFilter.isExact(op)) {
-            // FIXME: use bytes field
+            decodeSkip(srcVar, offsetVar, endVar);
+            // Return a stable copy to the end offset.
+            return offsetVar.get();
         }
 
         var decodedVar = mMaker.var(BigDecimal.class);
@@ -235,7 +235,13 @@ class BigDecimalColumnCodec extends ColumnCodec {
         }
 
         if (ColumnFilter.isExact(op)) {
-            // FIXME: use bytes field
+            endVar = (Variable) decoded;
+            var argVar = argObjVar.field(argFieldName(argNum, "bytes")).get();
+            CompareUtils.compareArrays(mMaker,
+                                       srcVar, offsetVar, endVar,
+                                       argVar, 0, argVar.alength(),
+                                       op, pass, fail);
+            return;
         }
 
         // Type is BigDecimal.
