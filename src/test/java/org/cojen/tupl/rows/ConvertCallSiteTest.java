@@ -45,23 +45,23 @@ public class ConvertCallSiteTest {
 
     @Test
     public void convertToBoolean() throws Throwable {
-        MethodHandle mh = make(Boolean.class);
+        MethodHandle[] handles = { make(boolean.class), make(Boolean.class) };
 
-        pass(mh,
+        pass(handles,
              true, true,
              null, null,
              "truE", true,
              "false", false
              );
 
-        fail(mh, (byte) 1, (short) 1, 1, 1L, 1f, 1d, '1', "1", BigInteger.ONE, BigDecimal.ONE);
+        fail(handles, (byte) 1, (short) 1, 1, 1L, 1f, 1d, '1', "1", BigInteger.ONE, BigDecimal.ONE);
     }
 
     @Test
     public void convertToByte() throws Throwable {
-        MethodHandle mh = make(Byte.class);
+        MethodHandle[] handles = { make(byte.class), make(Byte.class) };
 
-        pass(mh,
+        pass(handles,
              (byte) 10, (byte) 10,
              null, null,
              (short) 100, (byte) 100,
@@ -74,15 +74,15 @@ public class ConvertCallSiteTest {
              BigDecimal.valueOf(10), (byte) 10
              );
 
-        fail(mh, false, 1000, 10.1f, 10.1d, "hello",
+        fail(handles, false, 1000, 10.1f, 10.1d, "hello",
              BigInteger.valueOf(1000), BigDecimal.valueOf(10.1));
     }
 
     @Test
     public void convertToShort() throws Throwable {
-        MethodHandle mh = make(Short.class);
+        MethodHandle[] handles = { make(short.class), make(Short.class) };
 
-        pass(mh,
+        pass(handles,
              (byte) 10, (short) 10,
              (short) 100, (short) 100,
              null, null,
@@ -95,15 +95,15 @@ public class ConvertCallSiteTest {
              BigDecimal.valueOf(1234), (short) 1234
              );
 
-        fail(mh, false, 100_000, 10_000_000_000L, 10.1f, 10.1d, "hello",
+        fail(handles, false, 100_000, 10_000_000_000L, 10.1f, 10.1d, "hello",
              BigInteger.valueOf(10_000_000_000L), BigDecimal.valueOf(10.1));
     }
 
     @Test
     public void convertToInteger() throws Throwable {
-        MethodHandle mh = make(Integer.class);
+        MethodHandle[] handles = { make(int.class), make(Integer.class) };
 
-        pass(mh,
+        pass(handles,
              (byte) 10, 10,
              (short) 100, 100,
              1000, 1000,
@@ -116,15 +116,15 @@ public class ConvertCallSiteTest {
              BigDecimal.valueOf(1234), 1234
              );
 
-        fail(mh, false, 10_000_000_000L, 10.1f, 10.1d, "hello",
+        fail(handles, false, 10_000_000_000L, 10.1f, 10.1d, "hello",
              BigInteger.valueOf(10_000_000_000L), BigDecimal.valueOf(10.1));
     }
 
     @Test
     public void convertToLong() throws Throwable {
-        MethodHandle mh = make(Long.class);
+        MethodHandle[] handles = { make(long.class), make(Long.class) };
 
-        pass(mh,
+        pass(handles,
              (byte) 10, 10L,
              (short) 100, 100L,
              1000, 1000L,
@@ -137,15 +137,15 @@ public class ConvertCallSiteTest {
              BigDecimal.valueOf(10_000_000_000L), 10_000_000_000L
              );
 
-        fail(mh, true, 10.1f, 10.1d, "hello",
+        fail(handles, true, 10.1f, 10.1d, "hello",
              new BigInteger("999999999999999999999999"), BigDecimal.valueOf(10.1));
     }
 
     @Test
     public void convertToFloat() throws Throwable {
-        MethodHandle mh = make(Float.class);
+        MethodHandle[] handles = { make(float.class), make(Float.class) };
 
-        pass(mh,
+        pass(handles,
              (byte) 10, 10f,
              (short) 100, 100f,
              1000, 1000f,
@@ -158,15 +158,16 @@ public class ConvertCallSiteTest {
              BigDecimal.valueOf(1234.125), 1234.125f
              );
 
-        fail(mh, false, Integer.MAX_VALUE - 1, 10_000_000_001L, Math.PI, "hello",
+        fail(handles,
+             false, Integer.MAX_VALUE - 1, 10_000_000_001L, Math.PI, "hello",
              BigInteger.valueOf(10_000_000_000L), BigDecimal.valueOf(1234.1d));
     }
 
     @Test
     public void convertToDouble() throws Throwable {
-        MethodHandle mh = make(Double.class);
+        MethodHandle[] handles = { make(double.class), make(Double.class) };
 
-        pass(mh,
+        pass(handles,
              (byte) 10, 10d,
              (short) 100, 100d,
              1000, 1000d,
@@ -179,29 +180,29 @@ public class ConvertCallSiteTest {
              BigDecimal.valueOf(1234.125), 1234.125d
              );
 
-        fail(mh, true, Long.MAX_VALUE - 1, "hello",
+        fail(handles, true, Long.MAX_VALUE - 1, "hello",
              BigInteger.valueOf(Long.MAX_VALUE - 1),
              new BigDecimal("1234.1111111111111111111111"));
     }
 
     @Test
     public void convertToCharacter() throws Throwable {
-        MethodHandle mh = make(Character.class);
+        MethodHandle[] handles = { make(char.class), make(Character.class) };
 
-        pass(mh,
+        pass(handles,
              'a', 'a',
              null, null,
              "a", 'a'
              );
 
-        fail(mh, true, 10, 1, 10.1, "hello");
+        fail(handles, true, 10, 1, 10.1, "hello");
     }
 
     @Test
     public void convertToString() throws Throwable {
-        MethodHandle mh = make(String.class);
+        MethodHandle[] handles = { make(String.class) };
 
-        pass(mh,
+        pass(handles,
              true, "true",
              (byte) 10, "10",
              (short) 100, "100",
@@ -219,9 +220,9 @@ public class ConvertCallSiteTest {
 
     @Test
     public void convertToBigInteger() throws Throwable {
-        MethodHandle mh = make(BigInteger.class);
+        MethodHandle[] handles = { make(BigInteger.class) };
 
-        pass(mh,
+        pass(handles,
              (byte) 10, BigInteger.valueOf(10),
              (short) 100, BigInteger.valueOf(100),
              1000, BigInteger.valueOf(1000),
@@ -234,14 +235,14 @@ public class ConvertCallSiteTest {
              BigDecimal.valueOf(10_000_000_000L), BigInteger.valueOf(10_000_000_000L)
              );
 
-        fail(mh, true, 10.1f, 10.1d, "hello", 'a', BigDecimal.valueOf(10.1));
+        fail(handles, true, 10.1f, 10.1d, "hello", 'a', BigDecimal.valueOf(10.1));
     }
 
     @Test
     public void convertToBigDecimal() throws Throwable {
-        MethodHandle mh = make(BigDecimal.class);
+        MethodHandle[] handles = { make(BigDecimal.class) };
 
-        pass(mh,
+        pass(handles,
              (byte) 10, BigDecimal.valueOf(10),
              (short) 100, BigDecimal.valueOf(100),
              1000, BigDecimal.valueOf(1000),
@@ -254,22 +255,35 @@ public class ConvertCallSiteTest {
              null, null
              );
 
-        fail(mh, true, "hello", 'a');
+        fail(handles, true, "hello", 'a');
     }
 
-    private void pass(MethodHandle mh, Object... cases) throws Throwable {
-        for (int i=0; i<cases.length; i+=2) {
-            Object result = mh.invoke(cases[i]);
-            assertEquals(cases[i + 1], result);
+    private void pass(MethodHandle[] handles, Object... cases) throws Throwable {
+        for (MethodHandle mh : handles) {
+            for (int i=0; i<cases.length; i+=2) {
+                if (cases[i] != null || !mh.type().returnType().isPrimitive()) {
+                    Object result = mh.invoke(cases[i]);
+                    assertEquals(cases[i + 1], result);
+                }
+            }
         }
     }
 
-    private void fail(MethodHandle mh, Object... cases) throws Throwable {
-        for (int i=0; i<cases.length; i++) {
-            try {
-                mh.invoke(cases[i]);
-                Assert.fail("" + cases[i]);
-            } catch (IllegalArgumentException | ArithmeticException e) {
+    private void fail(MethodHandle[] handles, Object... cases) throws Throwable {
+        for (MethodHandle mh : handles) {
+            for (int i=0; i<cases.length; i++) {
+                try {
+                    mh.invoke(cases[i]);
+                    Assert.fail("" + cases[i]);
+                } catch (IllegalArgumentException | ArithmeticException e) {
+                }
+            }
+            if (mh.type().returnType().isPrimitive()) {
+                try {
+                    mh.invoke(null);
+                    Assert.fail("null");
+                } catch (IllegalArgumentException e) {
+                }
             }
         }
     }

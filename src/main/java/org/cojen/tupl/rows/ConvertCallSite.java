@@ -93,7 +93,7 @@ public class ConvertCallSite extends MutableCallSite {
             }
             if (state == 0 && cImplementedHandle.compareAndSet(this, 0, 1)) {
                 try {
-                    doImplement(obj);
+                    setTarget(converterFor(obj, type()));
                     mImplemented = 2;
                     break;
                 } catch (Throwable e) {
@@ -111,16 +111,72 @@ public class ConvertCallSite extends MutableCallSite {
         }
     }
 
-    private void doImplement(Object obj) {
-        // FIXME: consider caching these; cache key is lookup and MethodType
-        MethodMaker mm = MethodMaker.begin(MethodHandles.lookup(), "convert", type());
+    private static class CacheKey {
+        private final Class<?> mFromType, mToType;
+
+        CacheKey(Class<?> fromType, Class<?> toType) {
+            mFromType = fromType;
+            mToType = toType;
+        }
+
+        @Override
+        public int hashCode() {
+            return mFromType.hashCode() * 31 + mToType.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj instanceof CacheKey) {
+                var other = (CacheKey) obj;
+                return mFromType == other.mFromType && mToType == other.mToType;
+            }
+            return false;
+        }
+    }
+
+    private static final WeakCache<Object, MethodHandle> cCache = new WeakCache<>();
+
+    /**
+     * @param obj defines the "from" type, which can be null
+     * @param mt defines the "to" type (the return type)
+     */
+    private static MethodHandle converterFor(Object obj, MethodType mt) {
+        Class<?> toType = mt.returnType();
+        Class<?> fromType;
+        Object key;
+
+        if (obj == null) {
+            fromType = null;
+            key = toType;
+        } else {
+            fromType = obj.getClass();
+            key = new CacheKey(fromType, toType);
+        }
+
+        MethodHandle mh = cCache.get(key);
+
+        if (mh == null) {
+            synchronized (cCache) {
+                mh = cCache.get(key);
+                if (mh == null) {
+                    mh = makeConverter(mt, fromType, toType);
+                    cCache.put(key, mh);
+                }
+            }
+        }
+
+        return mh;
+    }
+
+    private static MethodHandle makeConverter(MethodType mt, Class<?> fromType, Class<?> toType) {
+        MethodMaker mm = MethodMaker.begin(MethodHandles.lookup(), "convert", mt);
         Label next = mm.label();
         Variable from = mm.param(0);
 
-        Class fromType = obj == null ? null : obj.getClass();
-        Class toType = type().returnType();
-
-        Variable result;
+        final Variable result;
         if (fromType == null) {
             if (toType.isPrimitive()) {
                 result = null;
@@ -128,10 +184,14 @@ public class ConvertCallSite extends MutableCallSite {
                 from.ifNe(null, next);
                 result = mm.var(toType).set(null);
             }
-        } else {
+        } else fromInstance: {
             from.instanceOf(fromType).ifFalse(next);
 
             if (!toType.isPrimitive()) {
+                if (toType.isAssignableFrom(fromType)) {
+                    result = from.cast(toType);
+                    break fromInstance;
+                }
                 Label notNull = mm.label();
                 from.ifNe(null, notNull);
                 mm.return_(null);
@@ -177,8 +237,7 @@ public class ConvertCallSite extends MutableCallSite {
         var indy = mm.var(ConvertCallSite.class).indy("makeNext");
         mm.return_(indy.invoke(toType, "_", null, from));
 
-        MethodHandle mh = mm.finish();
-        setTarget(mh);
+        return mm.finish();
     }
 
     private static Variable toBoolean(MethodMaker mm, Class fromType, Variable from) {
@@ -229,7 +288,7 @@ public class ConvertCallSite extends MutableCallSite {
         } else if (fromType == Float.class) {
             return mm.var(ConvertCallSite.class).invoke("floatToShort", from.cast(Float.class));
         } else if (fromType == Byte.class) {
-            return from.cast(Byte.class);
+            return from.cast(Byte.class).invoke("shortValue");
         } else if (fromType == BigInteger.class) {
             return from.cast(BigInteger.class).invoke("shortValueExact");
         } else if (fromType == BigDecimal.class) {
@@ -251,9 +310,9 @@ public class ConvertCallSite extends MutableCallSite {
         } else if (fromType == Float.class) {
             return mm.var(ConvertCallSite.class).invoke("floatToInt", from.cast(Float.class));
         } else if (fromType == Byte.class) {
-            return from.cast(Byte.class);
+            return from.cast(Byte.class).invoke("intValue");
         } else if (fromType == Short.class) {
-            return from.cast(Short.class);
+            return from.cast(Short.class).invoke("intValue");
         } else if (fromType == BigInteger.class) {
             return from.cast(BigInteger.class).invoke("intValueExact");
         } else if (fromType == BigDecimal.class) {
@@ -267,7 +326,7 @@ public class ConvertCallSite extends MutableCallSite {
         if (fromType == Long.class) {
             return from.cast(Long.class);
         } else if (fromType == Integer.class) {
-            return from.cast(Integer.class);
+            return from.cast(Integer.class).invoke("longValue");
         } else if (fromType == String.class) {
             return mm.var(Long.class).invoke("parseLong", from.cast(String.class));
         } else if (fromType == Double.class) {
@@ -275,9 +334,9 @@ public class ConvertCallSite extends MutableCallSite {
         } else if (fromType == Float.class) {
             return mm.var(ConvertCallSite.class).invoke("floatToLong", from.cast(Float.class));
         } else if (fromType == Byte.class) {
-            return from.cast(Byte.class);
+            return from.cast(Byte.class).invoke("longValue");
         } else if (fromType == Short.class) {
-            return from.cast(Short.class);
+            return from.cast(Short.class).invoke("longValue");
         } else if (fromType == BigInteger.class) {
             return from.cast(BigInteger.class).invoke("longValueExact");
         } else if (fromType == BigDecimal.class) {
@@ -299,9 +358,9 @@ public class ConvertCallSite extends MutableCallSite {
         } else if (fromType == Long.class) {
             return mm.var(ConvertCallSite.class).invoke("longToFloat", from.cast(Long.class));
         } else if (fromType == Byte.class) {
-            return from.cast(Byte.class);
+            return from.cast(Byte.class).invoke("floatValue");
         } else if (fromType == Short.class) {
-            return from.cast(Short.class);
+            return from.cast(Short.class).invoke("floatValue");
         } else if (fromType == BigInteger.class) {
             var intVar = from.cast(BigInteger.class).invoke("intValueExact");
             return mm.var(ConvertCallSite.class).invoke("intToFloat", intVar);
@@ -322,11 +381,11 @@ public class ConvertCallSite extends MutableCallSite {
         } else if (fromType == Long.class) {
             return mm.var(ConvertCallSite.class).invoke("longToDouble", from.cast(Long.class));
         } else if (fromType == Float.class) {
-            return from.cast(Float.class);
+            return from.cast(Float.class).invoke("doubleValue");
         } else if (fromType == Byte.class) {
-            return from.cast(Byte.class);
+            return from.cast(Byte.class).invoke("doubleValue");
         } else if (fromType == Short.class) {
-            return from.cast(Short.class);
+            return from.cast(Short.class).invoke("doubleValue");
         } else if (fromType == BigInteger.class) {
             var longVar = from.cast(BigInteger.class).invoke("longValueExact");
             return mm.var(ConvertCallSite.class).invoke("longToDouble", longVar);
@@ -348,19 +407,13 @@ public class ConvertCallSite extends MutableCallSite {
     }
 
     private static Variable toString(MethodMaker mm, Class fromType, Variable from) {
-        if (fromType == String.class) {
-            return from.cast(String.class);
-        } else {
-            return mm.var(String.class).invoke("valueOf", from);
-        }
+        return mm.var(String.class).invoke("valueOf", from);
     }
 
     private static Variable toBigInteger(MethodMaker mm, Class fromType, Variable from) {
         Variable longVar;
 
-        if (fromType == BigInteger.class) {
-            return from.cast(BigInteger.class);
-        } else if (fromType == Integer.class) {
+        if (fromType == Integer.class) {
             longVar = from.cast(Integer.class);
         } else if (fromType == Long.class) {
             longVar = from.cast(Long.class);
@@ -386,9 +439,7 @@ public class ConvertCallSite extends MutableCallSite {
     private static Variable toBigDecimal(MethodMaker mm, Class fromType, Variable from) {
         Variable numVar;
 
-        if (fromType == BigDecimal.class) {
-            return from.cast(BigDecimal.class);
-        } else if (fromType == String.class) {
+        if (fromType == String.class) {
             return mm.new_(BigDecimal.class, from.cast(String.class));
         } else if (fromType == Integer.class) {
             numVar = from.cast(Integer.class);
