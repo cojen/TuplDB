@@ -1,7 +1,7 @@
 Changelog
 =========
 
-v1.5.0.1
+v1.5.0.1 (2021-06-08)
 --------
 * Support fully mapped databases when the page size doesn't match the OS page size.
 * Use a faster hash implementation for the lock manager.
