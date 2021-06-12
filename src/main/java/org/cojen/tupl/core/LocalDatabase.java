@@ -3244,8 +3244,9 @@ final class LocalDatabase extends CoreDatabase {
         mOpenTreesLatch.acquireExclusive();
         try {
             if ((cursorRegistry = mCursorRegistry) == null) {
-                mCursorRegistry = cursorRegistry =
-                    openInternalTree(Tree.CURSOR_REGISTRY_ID, ixOption);
+                cursorRegistry = openInternalTree(Tree.CURSOR_REGISTRY_ID, ixOption);
+                VarHandle.storeStoreFence();
+                mCursorRegistry = cursorRegistry;
             }
         } finally {
             mOpenTreesLatch.releaseExclusive();
@@ -3312,8 +3313,9 @@ final class LocalDatabase extends CoreDatabase {
         mOpenTreesLatch.acquireExclusive();
         try {
             if ((preparedTxns = mPreparedTxns) == null) {
-                mPreparedTxns = preparedTxns =
-                    openInternalTree(Tree.PREPARED_TXNS_ID, ixOption);
+                preparedTxns = openInternalTree(Tree.PREPARED_TXNS_ID, ixOption);
+                VarHandle.storeStoreFence();
+                mPreparedTxns = preparedTxns;
             }
         } finally {
             mOpenTreesLatch.releaseExclusive();
@@ -5701,7 +5703,9 @@ final class LocalDatabase extends CoreDatabase {
         mOpenTreesLatch.acquireExclusive();
         try {
             if ((trash = mFragmentedTrash) == null) {
-                mFragmentedTrash = trash = openInternalTree(Tree.FRAGMENTED_TRASH_ID, ixOption);
+                trash = openInternalTree(Tree.FRAGMENTED_TRASH_ID, ixOption);
+                VarHandle.storeStoreFence();
+                mFragmentedTrash = trash;
             }
         } finally {
             mOpenTreesLatch.releaseExclusive();
