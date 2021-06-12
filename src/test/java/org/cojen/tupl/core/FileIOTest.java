@@ -92,7 +92,8 @@ public class FileIOTest {
         }
     }
 
-    @Test
+    //@Ignore
+    //@Test
     public void preallocate() throws Exception {
         try {
             doPreallocate();
