@@ -40,7 +40,8 @@ abstract class Tree implements Index {
         REGISTRY_KEY_MAP_ID = 1,
         CURSOR_REGISTRY_ID = 2,
         FRAGMENTED_TRASH_ID = 3,
-        PREPARED_TXNS_ID = 4;
+        PREPARED_TXNS_ID = 4,
+        SCHEMATA_ID = 5;
 
     static boolean isInternal(long id) {
         return (id & ~0xff) == 0;

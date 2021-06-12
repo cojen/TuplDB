@@ -85,6 +85,7 @@ import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.LockTimeoutException;
+import org.cojen.tupl.RowIndex;
 import org.cojen.tupl.Snapshot;
 import org.cojen.tupl.Sorter;
 import org.cojen.tupl.Transaction;
@@ -102,6 +103,8 @@ import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
 
 import org.cojen.tupl.repl.StreamReplicator;
+
+import org.cojen.tupl.rows.RowStore;
 
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.Runner;
@@ -276,6 +279,8 @@ final class LocalDatabase extends CoreDatabase {
 
     // Maps transaction id to the handler id and optional message.
     private BTree mPreparedTxns;
+
+    private RowStore mRowStore;
 
     private volatile int mClosed;
     private volatile Throwable mClosedCause;
@@ -1310,9 +1315,21 @@ final class LocalDatabase extends CoreDatabase {
             return fragmentedTrash();
         } else if (id == Tree.PREPARED_TXNS_ID) {
             return preparedTxns();
+        } else if (id == Tree.SCHEMATA_ID) {
+            return rowStore().schemata();
         } else {
             throw new CorruptDatabaseException("Internal index referenced by redo log: " + id);
         }
+    }
+
+    @Override
+    public <R> RowIndex<R> findRowIndex(Class<R> type) throws IOException {
+        return rowStore().findOrOpen(type, false);
+    }
+    
+    @Override
+    public <R> RowIndex<R> openRowIndex(Class<R> type) throws IOException {
+        return rowStore().findOrOpen(type, true);
     }
 
     @Override
@@ -2911,6 +2928,11 @@ final class LocalDatabase extends CoreDatabase {
 
                     trees.add(mPreparedTxns);
                     mPreparedTxns = null;
+
+                    if (mRowStore != null) {
+                        trees.add((Tree) mRowStore.schemata());
+                        mRowStore = null;
+                    }
                 } finally {
                     mOpenTreesLatch.releaseExclusive();
                     if (lock != null) {
@@ -3322,6 +3344,29 @@ final class LocalDatabase extends CoreDatabase {
         }
 
         return preparedTxns;
+    }
+
+    RowStore rowStore() throws IOException {
+        RowStore rs = mRowStore;
+        return rs != null ? rs : openRowStore();
+    }
+
+    private RowStore openRowStore() throws IOException {
+        RowStore rs;
+
+        mOpenTreesLatch.acquireExclusive();
+        try {
+            if ((rs = mRowStore) == null) {
+                Index schemata = openInternalTree(Tree.SCHEMATA_ID, IX_CREATE);
+                rs = new RowStore(this, schemata);
+                VarHandle.storeStoreFence();
+                mRowStore = rs;
+            }
+        } finally {
+            mOpenTreesLatch.releaseExclusive();
+        }
+
+        return rs;
     }
 
     /**

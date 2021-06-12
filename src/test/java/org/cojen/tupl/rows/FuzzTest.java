@@ -45,10 +45,6 @@ public class FuzzTest {
         org.junit.runner.JUnitCore.main(FuzzTest.class.getName());
     }
 
-    // Prevent GC. The generated code depends on weak references. When the feature is finished,
-    // the RowStore will be referenced by the Database and won't go away immediately.
-    private static volatile Object rsRef;
-
     @Test
     public void fuzz() throws Exception {
         for (int i=0; i<30; i++) {
@@ -66,13 +62,11 @@ public class FuzzTest {
         var rnd = new Random(seed);
 
         Database db = Database.open(new DatabaseConfig());
-        RowStore rs = new RowStore(db);
-        rsRef = rs;
 
         for (int i=0; i<100; i++) {
             Column[] columns = randomColumns(rnd);
             Class<?> rowType = randomRowType(rnd, columns);
-            RowIndex rowIndex = rs.openRowIndex(rowType);
+            RowIndex rowIndex = db.openRowIndex(rowType);
 
             basicTests(rowType, rowIndex);
 
@@ -121,7 +115,6 @@ public class FuzzTest {
             truncateAndClose(rowIndex);
         }
 
-        rsRef = null;
         db.close();
     }
 

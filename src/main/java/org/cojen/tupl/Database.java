@@ -149,6 +149,22 @@ public interface Database extends CauseCloseable, Flushable {
     }
 
     /**
+     * Returns an index for the given row type, returning null if not found. The underlying
+     * index name matches the fully qualified row type name.
+     *
+     * @return shared RowIndex instance; null if not found
+     */
+    public <R> RowIndex<R> findRowIndex(Class<R> type) throws IOException;
+    
+    /**
+     * Returns an index for the given row type, creating it if necessary. The underlying
+     * index name matches the fully qualified row type name.
+     *
+     * @return shared RowIndex instance
+     */
+    public <R> RowIndex<R> openRowIndex(Class<R> type) throws IOException;
+
+    /**
      * Renames the given index to the one given.
      *
      * @param index non-null open index

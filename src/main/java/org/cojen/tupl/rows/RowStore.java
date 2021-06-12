@@ -60,26 +60,22 @@ public class RowStore {
        preventing collisions. Also, schemaVersion cannot be zero, allowing this form to be
        reserved for future key types.
      */
-    private final View mSchemata;
+    private final Index mSchemata;
 
     private final WeakCache<Class<?>, AbstractRowView<?>> mRowViewCache;
 
-    public RowStore(Database db) throws IOException {
+    public RowStore(Database db, Index schemata) throws IOException {
         mDatabase = db;
-        mSchemata = db.openIndex(RowStore.class.getName() + ".Schemata");
+        mSchemata = schemata;
         mRowViewCache = new WeakCache<>();
     }
 
-    public <R> RowIndex<R> findRowIndex(Class<R> type) throws IOException {
-        return findOrOpen(type, false);
-    }
-    
-    public <R> RowIndex<R> openRowIndex(Class<R> type) throws IOException {
-        return findOrOpen(type, true);
+    public Index schemata() {
+        return mSchemata;
     }
 
     @SuppressWarnings("unchecked")
-    private <R> RowIndex<R> findOrOpen(Class<R> type, boolean open) throws IOException {
+    public <R> RowIndex<R> findOrOpen(Class<R> type, boolean open) throws IOException {
         AbstractRowView rv = mRowViewCache.get(type);
         if (rv != null) {
             return rv;
