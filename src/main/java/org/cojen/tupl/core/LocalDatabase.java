@@ -1267,7 +1267,7 @@ final class LocalDatabase extends CoreDatabase {
 
         if (index == null) {
             // Registry needs to be repaired to fix this.
-            throw new DatabaseException("Unable to find index in registry");
+            throw new CorruptDatabaseException("Unable to find index in registry");
         }
 
         return index;
