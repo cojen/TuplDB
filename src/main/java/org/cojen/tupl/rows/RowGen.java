@@ -64,33 +64,32 @@ class RowGen {
     public static ClassMaker beginClassMaker(Class<?> rowType, RowInfo info,
                                              String subPackage, String suffix)
     {
-        String name, packageName;
+        String name;
         {
             int ix = info.name.lastIndexOf('.');
             if (ix > 0) {
-                packageName = info.name.substring(0, ix);
                 if (subPackage == null) {
                     name = info.name + suffix;
                 } else {
-                    packageName = packageName + '.' + subPackage;
+                    String packageName = info.name.substring(0, ix) + '.' + subPackage;
                     name = packageName + '.' + info.name.substring(ix + 1) + suffix;
                 }
             } else if (subPackage == null) {
-                packageName = "";
                 name = info.name + suffix;
             } else {
-                packageName = subPackage;
-                name = packageName + '.' + info.name + suffix;
+                name = subPackage + '.' + info.name + suffix;
             }
         }
 
         ClassMaker cm = ClassMaker.begin(name, rowType.getClassLoader(), KEY);
 
-        // Provide access to the public classes in this module which aren't generally
-        // exported. The use of a private key isolates the ClassLoader of the generated class
-        // such that other generated classes in the same package don't have access to this
-        // module. This protection only works when the module system is used.
-        RowGen.class.getModule().addExports(packageName, cm.classLoader().getUnnamedModule());
+        var thisModule = RowGen.class.getModule();
+        var thatModule = cm.classLoader().getUnnamedModule();
+
+        // Generated code needs access to these non-exported packages.
+        thisModule.addExports("org.cojen.tupl.core", thatModule);
+        thisModule.addExports("org.cojen.tupl.filter", thatModule);
+        thisModule.addExports("org.cojen.tupl.rows", thatModule);
 
         return cm;
     }
