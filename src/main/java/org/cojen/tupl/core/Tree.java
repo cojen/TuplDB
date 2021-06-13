@@ -34,7 +34,8 @@ import org.cojen.tupl.views.ViewUtils;
  * @author Brian S O'Neill
  */
 abstract class Tree implements Index {
-    // Reserved internal index ids.
+    // Reserved internal index ids. When defining a new internal index, be sure to update the
+    // LocalDatabase.scanAllIndexes and stats methods to consider the new index.
     static final int
         REGISTRY_ID = 0,
         REGISTRY_KEY_MAP_ID = 1,
