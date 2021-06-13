@@ -2438,6 +2438,11 @@ final class LocalDatabase extends CoreDatabase {
                 + countCursors(mFragmentedTrash, strict) + countCursors(mCursorRegistry, strict)
                 + countCursors(mPreparedTxns, strict);
 
+            RowStore rs = mRowStore;
+            if (rs != null) {
+                cursorCount += countCursors((BTree) rs.schemata(), strict);
+            }
+
             stats.openIndexes = openTreesCount;
             stats.cursorCount = cursorCount;
 
@@ -2771,6 +2776,11 @@ final class LocalDatabase extends CoreDatabase {
             || !scan(visitor, openPreparedTxns(IX_FIND)))
         {
             return false;
+        }
+
+        RowStore rs = openRowStore(IX_FIND);
+        if (rs != null) {
+            visitor.apply((Tree) rs.schemata());
         }
 
         // Note that temporary indexes aren't scanned. Some operations performed on them (the
@@ -3348,16 +3358,19 @@ final class LocalDatabase extends CoreDatabase {
 
     RowStore rowStore() throws IOException {
         RowStore rs = mRowStore;
-        return rs != null ? rs : openRowStore();
+        return rs != null ? rs : openRowStore(IX_CREATE);
     }
 
-    private RowStore openRowStore() throws IOException {
+    /**
+     * @param ixOption IX_FIND or IX_CREATE
+     */
+    private RowStore openRowStore(long ixOption) throws IOException {
         RowStore rs;
 
         mOpenTreesLatch.acquireExclusive();
         try {
             if ((rs = mRowStore) == null) {
-                Index schemata = openInternalTree(Tree.SCHEMATA_ID, IX_CREATE);
+                Index schemata = openInternalTree(Tree.SCHEMATA_ID, ixOption);
                 rs = new RowStore(this, schemata);
                 VarHandle.storeStoreFence();
                 mRowStore = rs;
