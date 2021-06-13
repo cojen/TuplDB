@@ -93,20 +93,37 @@ public class RowStore {
         String name = type.getName();
         Index ix = open ? mDatabase.openIndex(name) : mDatabase.findIndex(name);
 
-        synchronized (mRowViewCache) {
-            rv = mRowViewCache.get(type);
-            if (rv != null) {
-                return rv;
+        byte[] typeKey = key(name);        
+        Transaction txn = mSchemata.newTransaction(DurabilityMode.SYNC);
+        try {
+            // With a txn lock held, check if the primary key definition has changed.
+            byte[] value = mSchemata.load(txn, typeKey);
+
+            if (value != null) {
+                int schemaVersion = decodeIntLE(value, 0);
+                RowInfo currentInfo = decodeExisting(txn, name, typeKey, value, schemaVersion);
+                if (!gen.info.keyColumns.equals(currentInfo.keyColumns) && !ix.isEmpty()) {
+                    throw new IllegalStateException("Cannot alter primary key: " + name);
+                }
             }
 
-            try {
-                var mh = new RowViewMaker(this, type, gen).finish();
-                rv = (AbstractRowView) mh.invoke(ix);
-            } catch (Throwable e) {
-                throw rethrow(e);
-            }
+            synchronized (mRowViewCache) {
+                rv = mRowViewCache.get(type);
+                if (rv != null) {
+                    return rv;
+                }
 
-            mRowViewCache.put(type, rv);
+                try {
+                    var mh = new RowViewMaker(this, type, gen).finish();
+                    rv = (AbstractRowView) mh.invoke(ix);
+                } catch (Throwable e) {
+                    throw rethrow(e);
+                }
+
+                mRowViewCache.put(type, rv);
+            }
+        } finally {
+            txn.reset();
         }
 
         return rv;
@@ -125,7 +142,18 @@ public class RowStore {
         try (Cursor current = mSchemata.newCursor(txn)) {
             current.find(typeKey);
 
-            if (current.value() != null) {
+            Index ix = mDatabase.findIndex(name);
+            if (ix != null && ix.isEmpty() && current.value() != null) {
+                // The underlying index is empty, and so all existing schema versions can be
+                // deleted. This can happen when the index is dropped and later re-created.
+                try (Cursor c = mSchemata.viewPrefix(typeKey, 0).newCursor(txn)) {
+                    c.autoload(false);
+                    for (c.first(); c.key() != null; c.next()) {
+                        c.delete();
+                    }
+                }
+                // FIXME: drop alt keys and indexes too
+           } else if (current.value() != null) {
                 // Check if the currently defined schema matches.
 
                 schemaVersion = decodeIntLE(current.value(), 0);
@@ -143,7 +171,9 @@ public class RowStore {
                     throw new IllegalStateException("alt keys and indexes don't match");
                 }
 
-                // FIXME: Disallow any changes to the primary key.
+                if (!info.keyColumns.equals(currentInfo.keyColumns)) {
+                    throw new IllegalStateException("Cannot alter primary key: " + name);
+                }
             }
 
             final var encoded = new EncodedRowInfo(info);
