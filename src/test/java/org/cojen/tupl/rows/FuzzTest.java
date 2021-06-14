@@ -25,8 +25,6 @@ import java.util.*;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-import java.util.concurrent.atomic.AtomicLong;
-
 import org.cojen.maker.*;
 
 import org.cojen.tupl.*;
@@ -300,15 +298,11 @@ public class FuzzTest {
         scanner.close();
     }
 
-    private static final AtomicLong packageNum = new AtomicLong();
-
     /**
      * @return an interface
      */
     static Class randomRowType(Random rnd, Column[] columns) {
-        // Generate different packages to faciliate class unloading.
-        ClassMaker cm = ClassMaker.begin("test.p" + packageNum.getAndIncrement() + ".TestRow");
-        cm.public_().interface_();
+        ClassMaker cm = RowTestUtils.newRowTypeMaker();
 
         for (Column c : columns) {
             Type t = c.type;
