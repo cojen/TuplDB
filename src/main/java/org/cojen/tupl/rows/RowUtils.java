@@ -157,9 +157,7 @@ public class RowUtils extends Utils {
                         int c2 = value.charAt(i + 1);
                         if (c2 >= 0xdc00 && c2 <= 0xdfff) {
                             i++;
-                            if (c >= 0x40) {
-                                encodedLen++;
-                            }
+                            encodedLen++;
                         }
                     }
                 }
@@ -188,22 +186,22 @@ public class RowUtils extends Utils {
                 dst[dstOffset++] = (byte) (0xc0 | (c >> 6));
                 dst[dstOffset++] = (byte) (0x80 | (c & 0x3f));
             } else {
-                if (c >= 0xd800 && c <= 0xdbff) {
-                    // Found a high surrogate. Verify that surrogate pair is well-formed. Low
-                    // surrogate must follow high surrogate.
-                    if (i + 1 < value.length()) {
-                        int c2 = value.charAt(i + 1);
-                        if (c2 >= 0xdc00 && c2 <= 0xdfff) {
-                            c = 0x10000 + (((c & 0x3ff) << 10) | (c2 & 0x3ff));
-                            i++;
+                pair: {
+                    if (c >= 0xd800 && c <= 0xdbff) {
+                        // Found a high surrogate. Verify that surrogate pair is well-formed. Low
+                        // surrogate must follow high surrogate.
+                        if (i + 1 < value.length()) {
+                            int c2 = value.charAt(i + 1);
+                            if (c2 >= 0xdc00 && c2 <= 0xdfff) {
+                                c = 0x10000 + (((c & 0x3ff) << 10) | (c2 & 0x3ff));
+                                i++;
+                                dst[dstOffset++] = (byte) (0xf0 | (c >> 18));
+                                dst[dstOffset++] = (byte) (0x80 | ((c >> 12) & 0x3f));
+                                break pair;
+                            }
                         }
                     }
-                }
-                if (c < 0x10000) {
                     dst[dstOffset++] = (byte) (0xe0 | (c >> 12));
-                } else {
-                    dst[dstOffset++] = (byte) (0xf0 | (c >> 18));
-                    dst[dstOffset++] = (byte) (0x80 | ((c >> 12) & 0x3f));
                 }
                 dst[dstOffset++] = (byte) (0x80 | ((c >> 6) & 0x3f));
                 dst[dstOffset++] = (byte) (0x80 | (c & 0x3f));
