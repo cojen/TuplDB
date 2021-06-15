@@ -17,7 +17,13 @@
 
 package org.cojen.tupl.rows;
 
+import java.lang.reflect.Method;
+
+import java.math.BigDecimal;
+import java.math.BigInteger;
+
 import java.util.ArrayList;
+import java.util.Random;
 
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -51,10 +57,13 @@ public class RowTestUtils extends TestUtils {
      * @param rowTypeName can be null to assign automatically
      */
     public static ClassMaker newRowTypeMaker(String rowTypeName) {
+        ClassMaker cm;
         if (rowTypeName == null) {
-            rowTypeName = newRowTypeName();
+            cm = ClassMaker.begin(newRowTypeName());
+        } else {
+            cm = ClassMaker.beginExternal(rowTypeName);
         }
-        return ClassMaker.begin(rowTypeName).public_().interface_();
+        return cm.public_().interface_();
     }
 
     /**
@@ -64,7 +73,7 @@ public class RowTestUtils extends TestUtils {
      *
      * @param rowTypeName can be null to assign automatically
      */
-    public static Class newRowType(String rowTypeName, Object... spec) {
+    public static Class<?> newRowType(String rowTypeName, Object... spec) {
         if ((spec.length & 1) != 0) {
             throw new IllegalArgumentException("Odd spec length");
         }
@@ -101,5 +110,113 @@ public class RowTestUtils extends TestUtils {
         am.put("value", pkNames.toArray());
 
         return cm.finish();
+    }
+
+    /**
+     * Returns the getters and setters for the generated row type.
+     */
+    static Method[][] access(Object[] spec, Class<?> rowType) throws Exception {
+        var getters = new Method[spec.length / 2];
+        var setters = new Method[spec.length / 2];
+
+        for (int i=0; i<setters.length; i++) {
+            var type = (Class) spec[i * 2];
+
+            var name = (String) spec[i * 2 + 1];
+            if (name.startsWith("+") || name.startsWith("-")) {
+                name = name.substring(1);
+            }
+            if (name.endsWith("?")) {
+                name = name.substring(0, name.length() - 1);
+            }
+
+            getters[i] = rowType.getMethod(name);
+            setters[i] = rowType.getMethod(name, type);
+        }
+
+        return new Method[][] {getters, setters};
+    }
+
+    static Object randomValue(Random rnd, Object[] spec, int colNum) {
+        var type = (Class) spec[colNum * 2];
+        var name = (String) spec[colNum * 2 + 1];
+        return randomValue(rnd, type, name.endsWith("?"));
+    }
+
+    static Object randomValue(Random rnd, Class<?> type, boolean nullable) {
+        if (nullable && rnd.nextInt(10) == 0) {
+            return null;
+        }
+
+        if (type == boolean.class || type == Boolean.class) {
+            return rnd.nextBoolean();
+        } else if (type == byte.class || type == Byte.class) {
+            return (byte) rnd.nextInt();
+        } else if (type == char.class || type == Character.class) {
+            return randomChar(rnd);
+        } else if (type == double.class || type == Double.class) {
+            return rnd.nextDouble();
+        } else if (type == float.class || type == Float.class) {
+            return rnd.nextFloat();
+        } else if (type == int.class || type == Integer.class) {
+            return rnd.nextInt();
+        } else if (type == long.class || type == Long.class) {
+            return rnd.nextLong();
+        } else if (type == short.class || type == Short.class) {
+            return (short) rnd.nextInt();
+        } else if (type == String.class) {
+            var codepoints = new int[rnd.nextInt(10)];
+            for (int i=0; i<codepoints.length; i++) {
+                codepoints[i] = rnd.nextInt(Character.MAX_CODE_POINT + 1);
+            }
+            return new String(codepoints, 0, codepoints.length);
+        } else if (type == BigInteger.class) {
+            return RowTestUtils.randomBigInteger(rnd);
+        } else if (type == BigDecimal.class) {
+            return RowTestUtils.randomBigDecimal(rnd);
+        } else {
+            throw new AssertionError();
+        }
+    }
+
+    static char randomChar(Random rnd) {
+        while (true) {
+            char c = (char) rnd.nextInt();
+            if (c < Character.MIN_SURROGATE || c > Character.MAX_SURROGATE) {
+                return c;
+            }
+        }
+    }
+
+    static char randomDigit(Random rnd) {
+        return (char) ('0' + rnd.nextInt(10));
+    }
+
+    static BigInteger randomBigInteger(Random rnd) {
+        var digits = new char[1 + rnd.nextInt(20)];
+        for (int i=0; i<digits.length; i++) {
+            digits[i] = randomDigit(rnd);
+        }
+        if (digits.length > 1 && rnd.nextBoolean()) {
+            digits[0] = '-';
+        }
+        return new BigInteger(new String(digits));
+    }
+
+    static BigDecimal randomBigDecimal(Random rnd) {
+        var digits = new char[1 + rnd.nextInt(20)];
+        for (int i=0; i<digits.length; i++) {
+            digits[i] = randomDigit(rnd);
+        }
+        if (digits.length > 1 && rnd.nextBoolean()) {
+            digits[0] = '-';
+        }
+        if (digits.length > 2) {
+            int decimalPos = rnd.nextInt(digits.length - 1);
+            if (decimalPos > 1) {
+                digits[decimalPos] = '.';
+            }
+        }
+        return new BigDecimal(new String(digits));
     }
 }

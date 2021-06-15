@@ -490,41 +490,13 @@ public class FuzzTest {
                 return new String(chars);
             }
 
-            case 17: {
-                var digits = new char[1 + rnd.nextInt(20)];
-                for (int i=0; i<digits.length; i++) {
-                    digits[i] = randomDigit(rnd);
-                }
-                if (digits.length > 1 && rnd.nextBoolean()) {
-                    digits[0] = '-';
-                }
-                return new BigInteger(new String(digits));
-            }
-
-            case 18: 
-                var digits = new char[1 + rnd.nextInt(20)];
-                for (int i=0; i<digits.length; i++) {
-                    digits[i] = randomDigit(rnd);
-                }
-                if (digits.length > 1 && rnd.nextBoolean()) {
-                    digits[0] = '-';
-                }
-                if (digits.length > 2) {
-                    int decimalPos = rnd.nextInt(digits.length - 1);
-                    if (decimalPos > 1) {
-                        digits[decimalPos] = '.';
-                    }
-                }
-                return new BigDecimal(new String(digits));
+            case 17: return RowTestUtils.randomBigInteger(rnd);
+            case 18: return RowTestUtils.randomBigDecimal(rnd);
             }
         }
 
         static char randomChar(Random rnd) {
             return (char) ('a' + rnd.nextInt(26));
-        }
-
-        static char randomDigit(Random rnd) {
-            return (char) ('0' + rnd.nextInt(10));
         }
     }
 }

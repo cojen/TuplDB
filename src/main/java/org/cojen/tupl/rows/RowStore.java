@@ -144,6 +144,7 @@ public class RowStore {
 
             Index ix = mDatabase.findIndex(name);
             if (ix != null && ix.isEmpty() && current.value() != null) {
+                /* FIXME: This isn't safe when multiple ClassLoaders are used.
                 // The underlying index is empty, and so all existing schema versions can be
                 // deleted. This can happen when the index is dropped and later re-created.
                 try (Cursor c = mSchemata.viewPrefix(typeKey, 0).newCursor(txn)) {
@@ -153,6 +154,7 @@ public class RowStore {
                     }
                 }
                 // FIXME: drop alt keys and indexes too
+                */
            } else if (current.value() != null) {
                 // Check if the currently defined schema matches.
 
