@@ -54,7 +54,7 @@ public class RowTestUtils extends TestUtils {
         if (rowTypeName == null) {
             rowTypeName = newRowTypeName();
         }
-        return ClassMaker.begin(newRowTypeName()).public_().interface_();
+        return ClassMaker.begin(rowTypeName).public_().interface_();
     }
 
     /**
