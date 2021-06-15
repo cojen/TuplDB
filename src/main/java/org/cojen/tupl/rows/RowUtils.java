@@ -157,6 +157,9 @@ public class RowUtils extends Utils {
                         int c2 = value.charAt(i + 1);
                         if (c2 >= 0xdc00 && c2 <= 0xdfff) {
                             i++;
+                            if (c >= 0x40) {
+                                encodedLen++;
+                            }
                         }
                     }
                 }
@@ -196,7 +199,12 @@ public class RowUtils extends Utils {
                         }
                     }
                 }
-                dst[dstOffset++] = (byte) (0xe0 | (c >> 12));
+                if (c < 0x10000) {
+                    dst[dstOffset++] = (byte) (0xe0 | (c >> 12));
+                } else {
+                    dst[dstOffset++] = (byte) (0xf0 | (c >> 18));
+                    dst[dstOffset++] = (byte) (0x80 | ((c >> 12) & 0x3f));
+                }
                 dst[dstOffset++] = (byte) (0x80 | ((c >> 6) & 0x3f));
                 dst[dstOffset++] = (byte) (0x80 | (c & 0x3f));
             }
