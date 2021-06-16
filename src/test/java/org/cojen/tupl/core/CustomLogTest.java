@@ -29,7 +29,7 @@ import org.cojen.tupl.*;
 
 import org.cojen.tupl.ext.CustomHandler;
 
-import static org.cojen.tupl.core.TestUtils.*;
+import static org.cojen.tupl.TestUtils.*;
 
 /**
  * 

@@ -42,7 +42,7 @@ import org.cojen.tupl.*;
 import org.cojen.tupl.util.Runner;
 
 import static org.cojen.tupl.LockResult.*;
-import static org.cojen.tupl.core.TestUtils.startAndWaitUntilBlocked;
+import static org.cojen.tupl.TestUtils.startAndWaitUntilBlocked;
 
 /**
  * 

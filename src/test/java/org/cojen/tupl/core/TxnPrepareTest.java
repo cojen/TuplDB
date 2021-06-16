@@ -31,7 +31,7 @@ import org.cojen.tupl.ext.PrepareHandler;
 
 import org.cojen.tupl.*;
 
-import static org.cojen.tupl.core.TestUtils.*;
+import static org.cojen.tupl.TestUtils.*;
 
 /**
  * Tests for the Transaction.prepare method.

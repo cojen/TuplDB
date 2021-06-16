@@ -22,6 +22,8 @@ import java.util.ArrayList;
 import org.junit.*;
 import static org.junit.Assert.*;
 
+import org.cojen.tupl.TestUtils;
+
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.LatchCondition;
 

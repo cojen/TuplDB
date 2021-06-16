@@ -31,7 +31,7 @@ import org.cojen.tupl.io.JoinedPageArray;
 import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
 
-import static org.cojen.tupl.core.TestUtils.*;
+import static org.cojen.tupl.TestUtils.*;
 
 /**
  * 

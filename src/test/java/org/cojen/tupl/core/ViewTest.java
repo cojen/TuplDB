@@ -23,7 +23,7 @@ import static org.junit.Assert.*;
 import org.cojen.tupl.*;
 import org.cojen.tupl.views.*;
 
-import static org.cojen.tupl.core.TestUtils.*;
+import static org.cojen.tupl.TestUtils.*;
 
 /**
  * 

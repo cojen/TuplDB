@@ -40,7 +40,7 @@ import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.LatchCondition;
 import org.cojen.tupl.util.Worker;
 
-import org.cojen.tupl.core.TestUtils;
+import org.cojen.tupl.TestUtils;
 
 import org.cojen.tupl.io.Utils;
 

@@ -24,7 +24,7 @@ import org.cojen.tupl.io.PageCompressor;
 
 import org.junit.*;
 
-import static org.cojen.tupl.core.TestUtils.*;
+import static org.cojen.tupl.TestUtils.*;
 
 /**
  * 

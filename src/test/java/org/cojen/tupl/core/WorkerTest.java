@@ -29,6 +29,8 @@ import java.util.concurrent.atomic.LongAdder;
 import org.junit.*;
 import static org.junit.Assert.*;
 
+import org.cojen.tupl.TestUtils;
+
 import org.cojen.tupl.util.Worker;
 import org.cojen.tupl.util.WorkerGroup;
 

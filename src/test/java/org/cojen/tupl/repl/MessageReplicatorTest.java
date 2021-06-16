@@ -33,7 +33,7 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.EventListener;
 
-import org.cojen.tupl.core.TestUtils;
+import org.cojen.tupl.TestUtils;
 
 import static org.cojen.tupl.repl.MessageReplicator.*;
 

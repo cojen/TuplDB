@@ -19,7 +19,7 @@ package org.cojen.tupl.core;
 
 import org.junit.*;
 
-import static org.cojen.tupl.core.TestUtils.*;
+import static org.cojen.tupl.TestUtils.*;
 
 /**
  * 

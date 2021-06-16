@@ -30,7 +30,7 @@ import java.util.Random;
 import org.junit.*;
 import static org.junit.Assert.*;
 
-import org.cojen.tupl.core.TestUtils;
+import org.cojen.tupl.TestUtils;
 
 import org.cojen.tupl.io.Utils;
 

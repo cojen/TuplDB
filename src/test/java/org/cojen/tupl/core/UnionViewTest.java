@@ -22,7 +22,7 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
-import static org.cojen.tupl.core.TestUtils.*;
+import static org.cojen.tupl.TestUtils.*;
 
 /**
  * Tests specialized union view operations. See MergeViewTest for more tests.

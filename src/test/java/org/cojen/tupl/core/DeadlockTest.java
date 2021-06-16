@@ -26,8 +26,8 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
-import static org.cojen.tupl.core.TestUtils.sleep;
-import static org.cojen.tupl.core.TestUtils.startAndWaitUntilBlocked;
+import static org.cojen.tupl.TestUtils.sleep;
+import static org.cojen.tupl.TestUtils.startAndWaitUntilBlocked;
 
 /**
  * 

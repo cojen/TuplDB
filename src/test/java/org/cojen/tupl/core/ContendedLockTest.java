@@ -24,7 +24,7 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
-import static org.cojen.tupl.core.TestUtils.*;
+import static org.cojen.tupl.TestUtils.*;
 
 /**
  * Tests the slow path modes when loading a single index entry.
