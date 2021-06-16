@@ -3371,9 +3371,11 @@ final class LocalDatabase extends CoreDatabase {
         try {
             if ((rs = mRowStore) == null) {
                 Index schemata = openInternalTree(Tree.SCHEMATA_ID, ixOption);
-                rs = new RowStore(this, schemata);
-                VarHandle.storeStoreFence();
-                mRowStore = rs;
+                if (schemata != null) {
+                    rs = new RowStore(this, schemata);
+                    VarHandle.storeStoreFence();
+                    mRowStore = rs;
+                }
             }
         } finally {
             mOpenTreesLatch.releaseExclusive();
