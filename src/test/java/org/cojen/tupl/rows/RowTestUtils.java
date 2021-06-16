@@ -34,14 +34,12 @@ import org.cojen.maker.MethodMaker;
 import org.cojen.tupl.Nullable;
 import org.cojen.tupl.PrimaryKey;
 
-import org.cojen.tupl.core.TestUtils;
-
 /**
  * 
  *
  * @author Brian S O'Neill
  */
-public class RowTestUtils extends TestUtils {
+public class RowTestUtils {
     private static final AtomicLong packageNum = new AtomicLong();
 
     public static String newRowTypeName() {
@@ -165,11 +163,7 @@ public class RowTestUtils extends TestUtils {
         } else if (type == short.class || type == Short.class) {
             return (short) rnd.nextInt();
         } else if (type == String.class) {
-            var codepoints = new int[rnd.nextInt(10)];
-            for (int i=0; i<codepoints.length; i++) {
-                codepoints[i] = rnd.nextInt(Character.MAX_CODE_POINT + 1);
-            }
-            return new String(codepoints, 0, codepoints.length);
+            return randomString(rnd, 0, 10);
         } else if (type == BigInteger.class) {
             return RowTestUtils.randomBigInteger(rnd);
         } else if (type == BigDecimal.class) {
@@ -190,6 +184,29 @@ public class RowTestUtils extends TestUtils {
 
     static char randomDigit(Random rnd) {
         return (char) ('0' + rnd.nextInt(10));
+    }
+
+    static String randomString(Random rnd, int minLen, int maxLen) {
+        return randomString(rnd, minLen, maxLen, Character.MAX_CODE_POINT);
+    }
+
+    static String randomString(Random rnd, int minLen, int maxLen, int maxCodePoint) {
+        var codepoints = new int[minLen + rnd.nextInt(maxLen - minLen + 1)];
+        for (int i=0; i<codepoints.length; i++) {
+            while (true) {
+                int cp = rnd.nextInt(maxCodePoint + 1);
+                // Exclude codepoints in the surrogate pair range. The Java String constructor
+                // that accepts a UTF-8 charset is fast, but it's also defective. Supporting
+                // illegal surrogate pair sequences with UTF-8 is trivial, and doing so would
+                // prevent potential data loss bugs from cropping up. But the Java String
+                // constructor rejects these sequences and replaces them with 0xfffd.
+                if (!(0xd800 <= cp && cp <= 0xdfff)) {
+                    codepoints[i] = cp;
+                    break;
+                }
+            }
+        }
+        return new String(codepoints, 0, codepoints.length);
     }
 
     static BigInteger randomBigInteger(Random rnd) {
