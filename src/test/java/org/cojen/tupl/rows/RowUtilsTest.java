@@ -28,7 +28,7 @@ import java.util.TreeMap;
 import org.junit.*;
 import static org.junit.Assert.*;
 
-import org.cojen.tupl.core.TestUtils;
+import org.cojen.tupl.TestUtils;
 
 /**
  * 

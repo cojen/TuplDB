@@ -19,6 +19,8 @@ package org.cojen.tupl.core;
 
 import org.junit.*;
 
+import org.cojen.tupl.TestUtils;
+
 /**
  * 
  *

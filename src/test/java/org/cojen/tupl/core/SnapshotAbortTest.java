@@ -26,7 +26,7 @@ import org.cojen.tupl.*;
 import org.junit.*;
 import static org.junit.Assert.*;
 
-import static org.cojen.tupl.core.TestUtils.*;
+import static org.cojen.tupl.TestUtils.*;
 
 /**
  * Test various snapshot abort modes.

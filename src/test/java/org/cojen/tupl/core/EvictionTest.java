@@ -17,8 +17,8 @@
 
 package org.cojen.tupl.core;
 
-import static org.cojen.tupl.core.TestUtils.deleteTempDatabases;
-import static org.cojen.tupl.core.TestUtils.newTempDatabase;
+import static org.cojen.tupl.TestUtils.deleteTempDatabases;
+import static org.cojen.tupl.TestUtils.newTempDatabase;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;

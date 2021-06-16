@@ -39,6 +39,7 @@ import org.cojen.tupl.PrimaryKey;
  *
  * @author Brian S O'Neill
  */
+@org.junit.Ignore
 public class RowTestUtils {
     private static final AtomicLong packageNum = new AtomicLong();
 

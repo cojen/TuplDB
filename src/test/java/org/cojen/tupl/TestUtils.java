@@ -15,14 +15,14 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.core;
+package org.cojen.tupl;
 
 import java.io.*;
 import java.net.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
-import org.cojen.tupl.*;
+import org.cojen.tupl.core.Utils;
 
 import org.cojen.tupl.io.MappedPageArray;
 import org.cojen.tupl.io.OpenOption;
@@ -67,7 +67,7 @@ public class TestUtils {
         }
     }
 
-    static enum OpenMode {NORMAL, DIRECT, DIRECT_MAPPED};
+    public static enum OpenMode {NORMAL, DIRECT, DIRECT_MAPPED};
 
     public static Database newTempDatabase(Class context) throws IOException {
         return newTempDatabase(context, -1, OpenMode.NORMAL);

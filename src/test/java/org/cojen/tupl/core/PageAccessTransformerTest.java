@@ -23,6 +23,8 @@ import java.util.*;
 import org.junit.*;
 import static org.junit.Assert.*;
 
+import org.cojen.tupl.TestUtils;
+
 /**
  * 
  *

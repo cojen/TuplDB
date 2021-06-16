@@ -19,7 +19,7 @@ package org.cojen.tupl.core;
 
 import static org.junit.Assume.*;
 import static org.junit.Assert.*;
-import static org.cojen.tupl.core.TestUtils.*;
+import static org.cojen.tupl.TestUtils.*;
 
 import java.io.File;
 import java.nio.ByteBuffer;
