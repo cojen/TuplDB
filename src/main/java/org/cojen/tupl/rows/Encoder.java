@@ -51,6 +51,12 @@ class Encoder {
         mLength += 4;
     }
 
+    public void writeLongLE(long v) {
+        ensureCapacity(8);
+        encodeLongLE(mBuffer, mLength, v);
+        mLength += 8;
+    }
+
     public void writePrefixPF(int value) {
         int prefixLen = lengthPrefixPF(value);
         ensureCapacity(prefixLen);

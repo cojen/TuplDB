@@ -74,6 +74,7 @@ public class RowFilterMaker<R> {
     private final Class<?> mViewClass;
     private final Class<R> mRowType;
     private final RowGen mRowGen;
+    private final long mIndexId;
     private final String mFilterStr;
     private final RowFilter mFilter;
     private final ClassMaker mFilterMaker;
@@ -88,12 +89,13 @@ public class RowFilterMaker<R> {
      */
     public RowFilterMaker(WeakReference<RowStore> storeRef, Class<?> viewClass,
                           Class<? extends RowDecoderEncoder<R>> base,
-                          Class<R> rowType, String filterStr, RowFilter filter)
+                          Class<R> rowType, long indexId, String filterStr, RowFilter filter)
     {
         mStoreRef = storeRef;
         mViewClass = viewClass;
         mRowType = rowType;
         mRowGen = RowInfo.find(rowType).rowGen();
+        mIndexId = indexId;
         mFilterStr = filterStr;
         mFilter = filter;
 
@@ -142,7 +144,7 @@ public class RowFilterMaker<R> {
                 (Object.class, "decodeRow", byte[].class, byte[].class, Object.class).public_();
 
             var indy = mm.var(RowFilterMaker.class).indy
-                ("indyDecodeRow", mStoreRef, mViewClass, mRowType, mFilterStr, mFilter);
+                ("indyDecodeRow", mStoreRef, mViewClass, mRowType, mIndexId, mFilterStr, mFilter);
 
             var valueVar = mm.param(1);
             var schemaVersion = RowViewMaker.decodeSchemaVersion(mm, valueVar);
@@ -193,10 +195,11 @@ public class RowFilterMaker<R> {
 
     public static CallSite indyDecodeRow(MethodHandles.Lookup lookup, String name, MethodType mt,
                                          WeakReference<RowStore> storeRef,
-                                         Class<?> viewClass, Class<?> rowType,
+                                         Class<?> viewClass, Class<?> rowType, long indexId,
                                          String filterStr, RowFilter filter)
     {
-        var dm = new DecodeMaker(lookup, mt, storeRef, viewClass, rowType, filterStr, filter);
+        var dm = new DecodeMaker
+            (lookup, mt, storeRef, viewClass, rowType, indexId, filterStr, filter);
         return new SwitchCallSite(lookup, mt, dm);
     }
 
@@ -206,13 +209,15 @@ public class RowFilterMaker<R> {
         private final WeakReference<RowStore> mStoreRef;
         private final Class<?> mViewClass;
         private final Class<?> mRowType;
+        private final long mIndexId;
         private final String mFilterStr;
 
         // The DecodeMaker isn't defined as a lambda function because this field cannot be final.
         private WeakReference<RowFilter> mFilterRef;
 
         DecodeMaker(MethodHandles.Lookup lookup, MethodType mt,
-                    WeakReference<RowStore> storeRef, Class<?> viewClass, Class<?> rowType,
+                    WeakReference<RowStore> storeRef, Class<?> viewClass,
+                    Class<?> rowType, long indexId,
                     String filterStr, RowFilter filter)
         {
             mLookup = lookup;
@@ -220,6 +225,7 @@ public class RowFilterMaker<R> {
             mStoreRef = storeRef;
             mViewClass = viewClass;
             mRowType = rowType;
+            mIndexId = indexId;
             mFilterStr = filterStr;
             mFilterRef = new WeakReference<>(filter);
         }
@@ -255,7 +261,7 @@ public class RowFilterMaker<R> {
                 decoder = null;
             } else {
                 try {
-                    rowInfo = store.rowInfo(mRowType, schemaVersion);
+                    rowInfo = store.rowInfo(mRowType, mIndexId, schemaVersion);
                     if (rowInfo == null) {
                         throw new CorruptDatabaseException
                             ("Schema version not found: " + schemaVersion);

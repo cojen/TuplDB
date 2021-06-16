@@ -53,18 +53,20 @@ public class RowViewMaker {
     private final RowGen mRowGen;
     private final RowInfo mRowInfo;
     private final Class<?> mRowClass;
+    private final long mIndexId;
     private final ClassMaker mClassMaker;
 
     /**
      * @param store generated class is pinned to this specific instance
      */
-    RowViewMaker(RowStore store, Class<?> type, RowGen gen) {
+    RowViewMaker(RowStore store, Class<?> type, RowGen gen, long indexId) {
         mStore = store;
         mStoreRef = new WeakReference<RowStore>(mStore);
         mRowType = type;
         mRowGen = gen;
         mRowInfo = gen.info;
         mRowClass = RowMaker.find(type);
+        mIndexId = indexId;
         mClassMaker = gen.beginClassMaker(type, "View")
             .extend(AbstractRowView.class).final_().public_();
     }
@@ -418,15 +420,17 @@ public class RowViewMaker {
      */
     private void addDynamicEncodeValueColumns() {
         MethodMaker mm = mClassMaker.addMethod(byte[].class, "encodeValue", mRowClass).static_();
-        var indy = mm.var(RowViewMaker.class).indy("indyEncodeValueColumns", mRowType, mStoreRef);
+        var indy = mm.var(RowViewMaker.class).indy
+            ("indyEncodeValueColumns", mStoreRef, mRowType, mIndexId);
         mm.return_(indy.invoke(byte[].class, "encodeValue", null, mm.param(0)));
     }
 
     public static CallSite indyEncodeValueColumns
         (MethodHandles.Lookup lookup, String name, MethodType mt,
-         Class<?> rowType, WeakReference<RowStore> storeRef)
+         WeakReference<RowStore> storeRef, Class<?> rowType, long indexId)
     {
-        return doIndyEncode(lookup, name, mt, rowType, storeRef, (mm, info, schemaVersion) -> {
+        return doIndyEncode
+            (lookup, name, mt, storeRef, rowType, indexId, (mm, info, schemaVersion) -> {
             ColumnCodec[] codecs = info.rowGen().valueCodecs();
             addEncodeColumns(mm, ColumnCodec.bind(schemaVersion, codecs, mm));
         });
@@ -444,7 +448,8 @@ public class RowViewMaker {
      * called at a later time.
      */
     private static CallSite doIndyEncode(MethodHandles.Lookup lookup, String name, MethodType mt,
-                                         Class<?> rowType, WeakReference<RowStore> storeRef,
+                                         WeakReference<RowStore> storeRef,
+                                         Class<?> rowType, long indexId,
                                          EncodeFinisher finisher)
     {
         return ExceptionCallSite.make(() -> {
@@ -456,7 +461,7 @@ public class RowViewMaker {
                 RowInfo info = RowInfo.find(rowType);
                 int schemaVersion;
                 try {
-                    schemaVersion = store.schemaVersion(info);
+                    schemaVersion = store.schemaVersion(info, indexId);
                 } catch (Exception e) {
                     return new ExceptionCallSite.Failed(mt, mm, e);
                 }
@@ -516,7 +521,7 @@ public class RowViewMaker {
             MethodMaker mm = mClassMaker.addMethod
                 (SwitchCallSite.class, "decodeValueSwitchCallSite").static_();
             var condy = mm.var(RowViewMaker.class).condy
-                ("condyDecodeValueColumns", mRowType, mRowClass, mStoreRef);
+                ("condyDecodeValueColumns",  mStoreRef, mRowType, mRowClass, mIndexId);
             mm.return_(condy.invoke(SwitchCallSite.class, "_"));
         }
 
@@ -551,7 +556,7 @@ public class RowViewMaker {
      */
     public static SwitchCallSite condyDecodeValueColumns
         (MethodHandles.Lookup lookup, String name, Class<?> type,
-         Class<?> rowType, Class<?> rowClass, WeakReference<RowStore> storeRef)
+         WeakReference<RowStore> storeRef, Class<?> rowType, Class<?> rowClass, long indexId)
     {
         MethodType mt = MethodType.methodType(void.class, int.class, rowClass, byte[].class);
 
@@ -572,7 +577,7 @@ public class RowViewMaker {
                 } else {
                     RowInfo srcRowInfo;
                     try {
-                        srcRowInfo = store.rowInfo(rowType, schemaVersion);
+                        srcRowInfo = store.rowInfo(rowType, indexId, schemaVersion);
                         if (srcRowInfo == null) {
                             throw new CorruptDatabaseException
                                 ("Schema version not found: " + schemaVersion);
@@ -821,7 +826,7 @@ public class RowViewMaker {
         // The bulk of the method isn't implemented until needed, delaying acquisition/creation
         // of the current schema version.
 
-        var indy = mm.var(RowViewMaker.class).indy("indyDoUpdate", mRowType, mStoreRef);
+        var indy = mm.var(RowViewMaker.class).indy("indyDoUpdate", mStoreRef, mRowType, mIndexId);
         indy.invoke(null, "doUpdate", null, mm.this_(), rowVar, mergeVar, cursorVar);
         Label tryEnd = mm.label().here();
         mm.return_(true);
@@ -830,9 +835,11 @@ public class RowViewMaker {
     }
 
     public static CallSite indyDoUpdate(MethodHandles.Lookup lookup, String name, MethodType mt,
-                                        Class<?> rowType, WeakReference<RowStore> storeRef)
+                                        WeakReference<RowStore> storeRef,
+                                        Class<?> rowType, long indexId)
     {
-        return doIndyEncode(lookup, name, mt, rowType, storeRef, RowViewMaker::finishIndyDoUpdate);
+        return doIndyEncode(lookup, name, mt, storeRef, rowType, indexId,
+                            RowViewMaker::finishIndyDoUpdate);
     }
 
     private static void finishIndyDoUpdate(MethodMaker mm, RowInfo rowInfo, int schemaVersion) {
@@ -1184,7 +1191,7 @@ public class RowViewMaker {
         var storeRefVar = mm.var(WeakReference.class).setExact(mStoreRef);
         var maker = mm.new_(RowFilterMaker.class, storeRefVar,
                             mm.class_(), mm.invoke("unfiltered").invoke("getClass"),
-                            mRowType, mm.param(0), mm.param(1));
+                            mRowType, mIndexId, mm.param(0), mm.param(1));
         mm.return_(maker.invoke("finish"));
     }
 }
