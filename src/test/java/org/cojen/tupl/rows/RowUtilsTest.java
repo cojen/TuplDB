@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.rows;
 
+import java.math.BigInteger;
+
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Map;
@@ -169,5 +171,95 @@ public class RowUtilsTest {
         public int compare(String a, String b) {
             return Arrays.compare(a.codePoints().toArray(), b.codePoints().toArray());
         }
+    }
+
+    @Test
+    public void bigIntegerKey() {
+        bigIntegerKey(false);
+    }
+
+    @Test
+    public void bigIntegerKeyDesc() {
+        bigIntegerKey(true);
+    }
+
+    private void bigIntegerKey(boolean desc) {
+        var rnd = new Random(1316229822956025521L);
+
+        var all = new TreeMap<BigInteger, byte[]>();
+
+        for (int i=0; i<1000; i++) {
+            bigIntegerKey(all, desc, rnd, 500);
+        }
+
+        var allEncoded = new byte[all.size()][];
+        {
+            int i = 0;
+            for (byte[] encoded : all.values()) {
+                allEncoded[i++] = encoded;
+            }
+            Arrays.sort(allEncoded, Arrays::compareUnsigned);
+        }
+
+        if (desc) {
+            int i = 0;
+            for (Map.Entry<BigInteger, byte[]> e : all.descendingMap().entrySet()) {
+                TestUtils.fastAssertArrayEquals(e.getValue(), allEncoded[i++]);
+            }
+        } else {
+            int i = 0;
+            for (Map.Entry<BigInteger, byte[]> e : all.entrySet()) {
+                TestUtils.fastAssertArrayEquals(e.getValue(), allEncoded[i++]);
+            }
+        }
+    }
+
+    private void bigIntegerKey(Map<BigInteger, byte[]> all, boolean desc, Random rnd, int maxLen) {
+        BigInteger bi;
+        do {
+            bi = RowTestUtils.randomBigInteger(rnd, maxLen);
+        } while (all.containsKey(bi));
+
+        byte[] encoded;
+        {
+            var bytes = bi.toByteArray();
+
+            int len = bytes.length;
+            if (len >= 0x7f) {
+                len += 4;
+            }
+
+            encoded = new byte[1 + len];
+
+            int offset;
+            if (desc) {
+                offset = RowUtils.encodeBigIntegerKeyDesc(encoded, 0, bytes);
+            } else {
+                offset = RowUtils.encodeBigIntegerKey(encoded, 0, bytes);
+            }
+
+            assertEquals(encoded.length, offset);
+        }
+
+        long result = RowUtils.decodeBigIntegerKeyHeader(encoded, 0);
+
+        int offset = (int) result;
+        int remaining = (int) (result >> 32);
+
+        assertEquals(encoded.length, offset + remaining);
+
+        if (desc) {
+            RowUtils.flip(encoded, offset, remaining);
+        }
+
+        var decoded = new BigInteger(encoded, offset, remaining);
+
+        if (desc) {
+            RowUtils.flip(encoded, offset, remaining);
+        }
+
+        assertEquals(bi, decoded);
+
+        all.put(bi, encoded);
     }
 }

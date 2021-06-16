@@ -210,7 +210,11 @@ public class RowTestUtils {
     }
 
     static BigInteger randomBigInteger(Random rnd) {
-        var digits = new char[1 + rnd.nextInt(20)];
+        return randomBigInteger(rnd, 20);
+    }
+
+    static BigInteger randomBigInteger(Random rnd, int maxLen) {
+        var digits = new char[1 + rnd.nextInt(maxLen)];
         for (int i=0; i<digits.length; i++) {
             digits[i] = randomDigit(rnd);
         }
