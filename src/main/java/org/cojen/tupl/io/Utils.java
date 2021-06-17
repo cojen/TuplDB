@@ -46,6 +46,8 @@ import java.util.Set;
  * @author Brian S O'Neill
  */
 public class Utils {
+    private static final VarHandle cShortArrayLEHandle;
+    private static final VarHandle cShortArrayBEHandle;
     private static final VarHandle cIntArrayLEHandle;
     private static final VarHandle cIntArrayBEHandle;
     private static final VarHandle cLongArrayLEHandle;
@@ -53,6 +55,10 @@ public class Utils {
 
     static {
         try {
+            cShortArrayLEHandle = MethodHandles.byteArrayViewVarHandle
+                (short[].class, ByteOrder.LITTLE_ENDIAN);
+            cShortArrayBEHandle = MethodHandles.byteArrayViewVarHandle
+                (short[].class, ByteOrder.BIG_ENDIAN);
             cIntArrayLEHandle = MethodHandles.byteArrayViewVarHandle
                 (int[].class, ByteOrder.LITTLE_ENDIAN);
             cIntArrayBEHandle = MethodHandles.byteArrayViewVarHandle
@@ -117,8 +123,7 @@ public class Utils {
      * @param v value to encode
      */
     public static final void encodeShortBE(byte[] b, int offset, int v) {
-        b[offset    ] = (byte)(v >> 8);
-        b[offset + 1] = (byte)v;
+        cShortArrayBEHandle.set(b, offset, (short) v);
     }
 
     /**
@@ -129,8 +134,7 @@ public class Utils {
      * @param v value to encode
      */
     public static final void encodeShortLE(byte[] b, int offset, int v) {
-        b[offset    ] = (byte)v;
-        b[offset + 1] = (byte)(v >> 8);
+        cShortArrayLEHandle.set(b, offset, (short) v);
     }
 
     /**
@@ -202,6 +206,28 @@ public class Utils {
     }
 
     /**
+     * Decodes a 16-bit integer, in big-endian format.
+     *
+     * @param b decode source
+     * @param offset offset into byte array
+     * @return decoded value
+     */
+    public static final short decodeShortBE(byte[] b, int offset) {
+        return (short) cShortArrayBEHandle.get(b, offset);
+    }
+
+    /**
+     * Decodes a 16-bit integer, in little-endian format.
+     *
+     * @param b decode source
+     * @param offset offset into byte array
+     * @return decoded value
+     */
+    public static final short decodeShortLE(byte[] b, int offset) {
+        return (short) cShortArrayLEHandle.get(b, offset);
+    }
+
+    /**
      * Decodes a 16-bit unsigned integer, in big-endian format.
      *
      * @param b decode source
@@ -209,7 +235,7 @@ public class Utils {
      * @return decoded value
      */
     public static final int decodeUnsignedShortBE(byte[] b, int offset) {
-        return ((b[offset] & 0xff) << 8) | ((b[offset + 1] & 0xff));
+        return ((short) cShortArrayBEHandle.get(b, offset)) & 0xffff;
     }
 
     /**
@@ -220,7 +246,7 @@ public class Utils {
      * @return decoded value
      */
     public static final int decodeUnsignedShortLE(byte[] b, int offset) {
-        return ((b[offset] & 0xff)) | ((b[offset + 1] & 0xff) << 8);
+        return ((short) cShortArrayLEHandle.get(b, offset)) & 0xffff;
     }
 
     /**
@@ -246,6 +272,28 @@ public class Utils {
     }
 
     /**
+     * Decodes a 32-bit unsigned integer, in big-endian format.
+     *
+     * @param b decode source
+     * @param offset offset into byte array
+     * @return decoded value
+     */
+    public static final long decodeUnsignedIntBE(byte[] b, int offset) {
+        return ((int) cIntArrayBEHandle.get(b, offset)) & 0xffff_ffffL;
+    }
+
+    /**
+     * Decodes a 32-bit unsigned integer, in little-endian format.
+     *
+     * @param b decode source
+     * @param offset offset into byte array
+     * @return decoded value
+     */
+    public static final long decodeUnsignedIntLE(byte[] b, int offset) {
+        return ((int) cIntArrayLEHandle.get(b, offset)) & 0xffff_ffffL;
+    }
+
+    /**
      * Decodes a 48-bit unsigned integer, in big-endian format.
      *
      * @param b decode source
@@ -254,7 +302,7 @@ public class Utils {
      */
     public static final long decodeUnsignedInt48BE(byte[] b, int offset) {
         return (((long) decodeUnsignedShortBE(b, offset)) << 32)
-            | (decodeIntBE(b, offset + 2) & 0xffff_ffffL);
+            | decodeUnsignedIntBE(b, offset + 2);
     }
 
     /**
@@ -265,7 +313,7 @@ public class Utils {
      * @return decoded value
      */
     public static final long decodeUnsignedInt48LE(byte[] b, int offset) {
-        return (decodeIntLE(b, offset) & 0xffff_ffffL)
+        return decodeUnsignedIntLE(b, offset)
             | (((long) decodeUnsignedShortLE(b, offset + 4)) << 32);
     }
 

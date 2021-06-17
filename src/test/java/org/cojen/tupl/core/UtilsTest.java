@@ -241,7 +241,7 @@ public class UtilsTest {
         var b = new byte[2];
         encodeShortBE(b, 0, 0x8182);
         assertArrayEquals(new byte[] {(byte) 0x81, (byte) 0x82}, b);
-        assertEquals(0x8182, decodeUnsignedShortBE(b, 0));
+        assertEquals((short) 0x8182, decodeShortBE(b, 0));
     }
 
     @Test
@@ -249,7 +249,23 @@ public class UtilsTest {
         var b = new byte[2];
         encodeShortLE(b, 0, 0x8182);
         assertArrayEquals(new byte[] {(byte) 0x82, (byte) 0x81}, b);
-        assertEquals(0x8281, decodeUnsignedShortBE(b, 0));
+        assertEquals((short) 0x8182, decodeShortLE(b, 0));
+    }
+
+    @Test
+    public void ushortBE() {
+        var b = new byte[2];
+        encodeShortBE(b, 0, 0x8182);
+        assertArrayEquals(new byte[] {(byte) 0x81, (byte) 0x82}, b);
+        assertEquals(0x8182, decodeUnsignedShortBE(b, 0));
+    }
+
+    @Test
+    public void ushortLE() {
+        var b = new byte[2];
+        encodeShortLE(b, 0, 0x8182);
+        assertArrayEquals(new byte[] {(byte) 0x82, (byte) 0x81}, b);
+        assertEquals(0x8182, decodeUnsignedShortLE(b, 0));
     }
 
     @Test
@@ -269,7 +285,7 @@ public class UtilsTest {
     }
 
     @Test
-    public void int48BE() {
+    public void uint48BE() {
         var b = new byte[6];
         encodeInt48BE(b, 0, 0x818283848586L);
         assertArrayEquals(new byte[] {(byte) 0x81, (byte) 0x82, (byte) 0x83, (byte) 0x84,
@@ -278,7 +294,7 @@ public class UtilsTest {
     }
 
     @Test
-    public void int48LE() {
+    public void uint48LE() {
         var b = new byte[6];
         encodeInt48LE(b, 0, 0x818283848586L);
         assertArrayEquals(new byte[] {(byte) 0x86, (byte) 0x85, (byte) 0x84, (byte) 0x83,
