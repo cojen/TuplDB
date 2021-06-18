@@ -49,13 +49,64 @@ public class EvolutionTest {
     }
 
     @Test
-    public void addColumns() throws Exception {
-        // When adding new columns, columns for old rows should be null, 0, "", etc. When
-        // loading new rows with old schema, new columns should be dropped.
+    public void defaults() throws Exception {
+        // When adding new columns, columns for old rows should be null, 0, "", etc.
 
         Database db = Database.open(new DatabaseConfig());
 
-        Object[] toAdd = {
+        // First insert a row with no value columns.
+        {
+            Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", int.class, "+key");
+            RowIndex ix = db.openRowIndex(rowType);
+            Method setter = rowType.getMethod("key", int.class);
+            var row = ix.newRow();
+            setter.invoke(row, 0);
+            ix.store(null, row);
+        }
+
+        // Now update the definition with value columns of all supported types.
+
+        Object[] toAdd = specToAdd();
+        Object[] spec = new Object[2 + toAdd.length];
+        spec[0] = int.class;
+        spec[1] = "+key";
+        System.arraycopy(toAdd, 0, spec, 2, toAdd.length);
+
+        Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", spec);
+        RowIndex ix = db.openRowIndex(rowType);
+        Method setter = rowType.getMethod("key", int.class);
+        var row = ix.newRow();
+        setter.invoke(row, 0);
+        ix.load(null, row);
+
+        for (int i=0; i<toAdd.length; i+=2) {
+            Class type = (Class) toAdd[i];
+            String name = (String) toAdd[i + 1];
+
+            boolean nullable = false;
+            if (name.endsWith("?")) {
+                nullable = true;
+                name = name.substring(0, name.length() - 1);
+            }
+
+            Object value = rowType.getMethod(name).invoke(row);
+
+            if (nullable) {
+                assertNull(value);
+            } else if (type == String.class) {
+                assertEquals("", value);
+            } else if (type == boolean.class || type == Boolean.class) {
+                assertEquals(false, value);
+            } else if (type == char.class || type == Character.class) {
+                assertEquals('\0', value);
+            } else {
+                assertEquals(0, BigDecimal.ZERO.compareTo(new BigDecimal(String.valueOf(value))));
+            }
+        }
+    }
+
+    private static Object[] specToAdd() {
+        return new Object[] {
             boolean.class, "bo",
             byte.class, "by",
             char.class, "ch",
@@ -91,6 +142,16 @@ public class EvolutionTest {
             BigInteger.class, "bint?",
             BigDecimal.class, "bdec?",
         };
+    }
+
+    @Test
+    public void addColumns() throws Exception {
+        // When adding new columns, columns for old rows should be null, 0, "", etc. When
+        // loading new rows with old schema, new columns should be dropped.
+
+        Database db = Database.open(new DatabaseConfig());
+
+        Object[] toAdd = specToAdd();
 
         var specs = new ArrayList<Object[]>();
         var indexes = new ArrayList<RowIndex<?>>();
@@ -207,5 +268,67 @@ public class EvolutionTest {
             ix.load(null, row);
             assertEquals(inserted[i], row);
         }
+    }
+
+    @Test
+    public void alterColumns() throws Exception {
+        // Test a few column type conversions. ConverterTest does a more exhaustive test.
+
+        Object[] initSpec = {
+            int.class, "+key",
+            double.class, "a",
+            Integer.class, "b?",
+            String.class, "c",
+            BigInteger.class, "d",
+            BigDecimal.class, "e?",
+        };
+
+        Database db = Database.open(new DatabaseConfig());
+
+        {
+            Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
+            RowIndex ix = db.openRowIndex(rowType);
+            var row = ix.newRow();
+
+            rowType.getMethod("key", int.class).invoke(row, 0);
+
+            rowType.getMethod("a", double.class).invoke(row, 123.9);
+            rowType.getMethod("b", Integer.class).invoke(row, -100);
+            rowType.getMethod("c", String.class).invoke(row, "hello");
+            rowType.getMethod("d", BigInteger.class).invoke(row, new BigInteger("9999999999999"));
+            rowType.getMethod("e", BigDecimal.class).invoke(row, new BigDecimal("123.987"));
+
+            ix.store(null, row);
+        }
+
+        Object[] newSpec = {
+            int.class, "+key",
+            int.class, "a",
+            Double.class, "b?",
+            String.class, "c?",
+            int.class, "d",
+            String.class, "e",
+        };
+
+        Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
+        RowIndex ix = db.openRowIndex(rowType);
+        var row = ix.newRow();
+        rowType.getMethod("key", int.class).invoke(row, 0);
+        ix.load(null, row);
+
+        // Cast double to int.
+        assertEquals(123, rowType.getMethod("a").invoke(row));
+
+        // Cast int to double.
+        assertEquals(-100.0, rowType.getMethod("b").invoke(row));
+
+        // String is now nullable, but value shouldn't change.
+        assertEquals("hello", rowType.getMethod("c").invoke(row));
+
+        // BigInteger was too big to fit into an int and so it got clamped.
+        assertEquals(Integer.MAX_VALUE, rowType.getMethod("d").invoke(row));
+
+        // Convert BigDecimal to String.
+        assertEquals("123.987", rowType.getMethod("e").invoke(row));
     }
 }
