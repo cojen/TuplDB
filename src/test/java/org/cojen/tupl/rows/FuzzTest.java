@@ -110,6 +110,12 @@ public class FuzzTest {
                 filterAllMatch(rowIndex, filter, columns, row);
             }
 
+            filter = filterAll2(rnd, columns);
+            scanner = rowIndex.newScanner(null);
+            for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+                filterAllMatch(rowIndex, filter, columns, row);
+            }
+
             truncateAndClose(rowIndex);
         }
 
@@ -260,11 +266,36 @@ public class FuzzTest {
     private static String filterAll(Random rnd, Column[] columns) {
         Collections.shuffle(Arrays.asList(columns), rnd);
         var bob = new StringBuilder();
-        for (Column c : columns) {
+        for (int i=0; i<columns.length; i++) {
             if (!bob.isEmpty()) {
                 bob.append(" & ");
             }
+            Column c = columns[i];
             bob.append(c.name).append(" == ?");
+        }
+        return bob.toString();
+    }
+
+    /**
+     * Returns a filter over all the columns, combined with the 'and' operator. The order of
+     * the column array is shuffled as a side-effect.
+     *
+     * This variant uses ranges and explicit argument ordinals.
+     */
+    private static String filterAll2(Random rnd, Column[] columns) {
+        Collections.shuffle(Arrays.asList(columns), rnd);
+        var bob = new StringBuilder();
+        for (int i=0; i<columns.length; i++) {
+            if (!bob.isEmpty()) {
+                bob.append(" & ");
+            }
+            Column c = columns[i];
+            if (c.type.clazz == boolean.class || c.type.clazz == Boolean.class) {
+                bob.append(c.name).append(" == ?").append(i);
+            } else {
+                bob.append(c.name).append(" >= ?").append(i).append(" & ");
+                bob.append(c.name).append(" <= ?").append(i);
+            }
         }
         return bob.toString();
     }

@@ -346,8 +346,6 @@ class PrimitiveColumnCodec extends ColumnCodec {
      */
     @Override
     void filterPrepare(int op, Variable argVar, int argNum) {
-        // FIXME: If boolean and op !isExact, blow up here with an exception.
-
         Label cont = null;
 
         if (mInfo.isNullable()) {

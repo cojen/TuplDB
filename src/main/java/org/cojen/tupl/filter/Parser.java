@@ -169,6 +169,7 @@ public class Parser {
 
         // parseColumnFilter
 
+        int startPos = mPos;
         ColumnInfo column = parseColumn();
 
         c = nextCharIgnoreWhitespace();
@@ -248,10 +249,15 @@ public class Parser {
             if (op >= ColumnFilter.OP_IN) {
                 throw error("Argument number or '?' expected");
             }
-            return new ColumnToColumnFilter(column, op, parseColumn());
+            checkColumnOperator(startPos, column, op);
+            startPos = mPos;
+            ColumnInfo match = parseColumn();
+            checkColumnOperator(startPos, match, op);
+            return new ColumnToColumnFilter(column, op, match);
         }
 
         if (op < ColumnFilter.OP_IN) {
+            checkColumnOperator(startPos, column, op);
             return new ColumnToArgFilter(column, op, arg);
         } else {
             return new InFilter(column, arg);
@@ -313,6 +319,12 @@ public class Parser {
         }
 
         return column;
+    }
+
+    private void checkColumnOperator(int pos, ColumnInfo column, int op) {
+        if (!ColumnFilter.isExact(op) && column.plainTypeCode() == ColumnInfo.TYPE_BOOLEAN) {
+            throw error("Cannot perform relational comparison against a boolean column", pos);
+        }
     }
 
     /**

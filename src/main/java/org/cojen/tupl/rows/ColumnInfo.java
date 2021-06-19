@@ -77,7 +77,7 @@ public class ColumnInfo implements Cloneable {
       0b..1.....: array
     */
 
-    static final int
+    public static final int
         TYPE_BOOLEAN     = 0b000_00000,
         TYPE_UBYTE       = 0b000_00011,
         TYPE_USHORT      = 0b000_00100,
@@ -109,7 +109,7 @@ public class ColumnInfo implements Cloneable {
         return name;
     }
 
-    int plainTypeCode() {
+    public int plainTypeCode() {
         return plainTypeCode(typeCode);
     }
 
