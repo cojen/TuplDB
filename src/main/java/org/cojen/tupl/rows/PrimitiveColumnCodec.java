@@ -387,11 +387,18 @@ class PrimitiveColumnCodec extends ColumnCodec {
                         int op)
     {
         if (dstInfo.typeCode != mInfo.typeCode) {
-            // FIXME: Convert it... (float/double must be raw when finished, if op isExact)
-            // FIXME: Need to create a general purpose compare maker, for any Java type. The
-            //        optimizations here avoid boxing, that's all. If the conversion yields
-            //        a primitive type, possibily nullable, use the optimizations.
-            throw null;
+            if (dstInfo.isPrimitive()) {
+                // FIXME: Convert it... (float/double must be raw when finished, if op isExact)
+                // The optimizations here avoid boxing, that's all. If the conversion yields a
+                // primitive type, possibily nullable, use the optimizations.
+                throw null;
+            }
+
+            var decodedVar = mMaker.var(mInfo.type);
+            decode(decodedVar, srcVar, offsetVar, false);
+            var columnVar = mMaker.var(dstInfo.type);
+            Converter.convertLossy(mMaker, mInfo, decodedVar, dstInfo, columnVar);
+            return columnVar;
         }
 
         if (dstInfo.plainTypeCode() == TYPE_BOOLEAN) {
@@ -440,6 +447,18 @@ class PrimitiveColumnCodec extends ColumnCodec {
                        int op, Object decoded, Variable argObjVar, int argNum,
                        Label pass, Label fail)
     {
+        var argField = argObjVar.field(argFieldName(argNum));
+
+        if (dstInfo.typeCode != mInfo.typeCode) {
+            if (dstInfo.isPrimitive()) {
+                // FIXME
+                throw null;
+            }
+            var columnVar = (Variable) decoded;
+            CompareUtils.compare(mMaker, dstInfo, columnVar, dstInfo, argField, op, pass, fail);
+            return;
+        }
+
         Variable columnVar, isNullVar;
         if (decoded instanceof Variable) {
             columnVar = (Variable) decoded;
@@ -454,8 +473,6 @@ class PrimitiveColumnCodec extends ColumnCodec {
             var isNullField = argObjVar.field(argFieldName(argNum, "isNull"));
             compareNullHeader(isNullVar, null, isNullField, op, pass, fail);
         }
-
-        var argField = argObjVar.field(argFieldName(argNum));
 
         CompareUtils.comparePrimitives(mMaker, mInfo, columnVar, mInfo, argField, op, pass, fail);
     }

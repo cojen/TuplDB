@@ -458,7 +458,7 @@ abstract class ColumnCodec {
      *
      * @param decodedVars dataOffsetVar, lengthVar, and optional isNullVar
      */
-    protected void compareEncoded(Variable srcVar,
+    protected void compareEncoded(ColumnInfo dstInfo, Variable srcVar,
                                   int op, Variable[] decodedVars, Variable argObjVar, int argNum,
                                   Label pass, Label fail)
     {
@@ -466,7 +466,17 @@ abstract class ColumnCodec {
         Variable lengthVar = decodedVars[1];
         Variable isNullVar = decodedVars[2];
 
-        var argVar = argObjVar.field(argFieldName(argNum)).get();
+        if (!dstInfo.isNullable() && mInfo.isNullable()) {
+            Label cont = mMaker.label();
+            isNullVar.ifFalse(cont);
+            var columnVar = mMaker.var(dstInfo.type);
+            Converter.setDefault(dstInfo, columnVar);
+            var argField = argObjVar.field(argFieldName(argNum));
+            CompareUtils.compare(mMaker, dstInfo, columnVar, dstInfo, argField, op, pass, fail);
+            cont.here();
+        }
+
+        var argVar = argObjVar.field(argFieldName(argNum, "bytes")).get();
 
         Label notNull = mMaker.label();
         argVar.ifNe(null, notNull);

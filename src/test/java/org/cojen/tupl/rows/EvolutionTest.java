@@ -341,6 +341,8 @@ public class EvolutionTest {
             double.class, "a",
             Integer.class, "b?",
             String.class, "c?",
+            BigInteger.class, "d",
+            BigDecimal.class, "e?",
         };
 
         Database db = Database.open(new DatabaseConfig());
@@ -353,6 +355,8 @@ public class EvolutionTest {
             var setA = rowType.getMethod("a", double.class);
             var setB = rowType.getMethod("b", Integer.class);
             var setC = rowType.getMethod("c", String.class);
+            var setD = rowType.getMethod("d", BigInteger.class);
+            var setE = rowType.getMethod("e", BigDecimal.class);
 
             {
                 var row = ix.newRow();
@@ -360,6 +364,8 @@ public class EvolutionTest {
                 setA.invoke(row, 123.9);
                 setB.invoke(row, 1);
                 setC.invoke(row, "str1");
+                setD.invoke(row, BigInteger.valueOf(100));
+                setE.invoke(row, (Object) null);
                 ix.store(null, row);
             }
 
@@ -369,6 +375,8 @@ public class EvolutionTest {
                 setA.invoke(row, 0.0/0.0);
                 setB.invoke(row, 2);
                 setC.invoke(row, "str2");
+                setD.invoke(row, BigInteger.valueOf(200));
+                setE.invoke(row, new BigDecimal("123.456"));
                 ix.store(null, row);
             }
 
@@ -378,6 +386,8 @@ public class EvolutionTest {
                 setA.invoke(row, 100.0/0.0);
                 setB.invoke(row, 11);
                 setC.invoke(row, (Object) null);
+                setD.invoke(row, BigInteger.valueOf(300));
+                setE.invoke(row, new BigDecimal("-123.456"));
                 ix.store(null, row);
             }
 
@@ -387,6 +397,8 @@ public class EvolutionTest {
                 setA.invoke(row, 0);
                 setB.invoke(row, (Object) null);
                 setC.invoke(row, "str4");
+                setD.invoke(row, BigInteger.valueOf(-400));
+                setE.invoke(row, new BigDecimal("999999999999999.1"));
                 ix.store(null, row);
             }
         }
@@ -396,15 +408,20 @@ public class EvolutionTest {
             String.class, "a",  // double to String
             String.class, "b?", // Integer? to String?
             String.class, "c",  // String? to String
+            String.class, "d",  // BigInteger to String
+            String.class, "e",  // BigDecimal? to String
         };
 
         Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
         RowIndex ix = db.openRowIndex(rowType);
 
         var setKey = rowType.getMethod("key", int.class);
+        var getKey = rowType.getMethod("key");
         var getA = rowType.getMethod("a");
         var getB = rowType.getMethod("b");
         var getC = rowType.getMethod("c");
+        var getD = rowType.getMethod("d");
+        var getE = rowType.getMethod("e");
 
         {
             var row = ix.newRow();
@@ -413,6 +430,8 @@ public class EvolutionTest {
             assertEquals("123.9", getA.invoke(row));
             assertEquals("1", getB.invoke(row));
             assertEquals("str1", getC.invoke(row));
+            assertEquals("100", getD.invoke(row));
+            assertEquals("", getE.invoke(row)); // Default for non-null String is "".
         }
 
         {
@@ -422,6 +441,8 @@ public class EvolutionTest {
             assertEquals("NaN", getA.invoke(row));
             assertEquals("2", getB.invoke(row));
             assertEquals("str2", getC.invoke(row));
+            assertEquals("200", getD.invoke(row));
+            assertEquals("123.456", getE.invoke(row));
         }
 
         {
@@ -431,6 +452,8 @@ public class EvolutionTest {
             assertEquals("Infinity", getA.invoke(row));
             assertEquals("11", getB.invoke(row));
             assertEquals("", getC.invoke(row)); // Default for non-null String is "".
+            assertEquals("300", getD.invoke(row));
+            assertEquals("-123.456", getE.invoke(row));
         }
 
         {
@@ -440,15 +463,109 @@ public class EvolutionTest {
             assertEquals("0.0", getA.invoke(row));
             assertEquals(null, getB.invoke(row));
             assertEquals("str4", getC.invoke(row));
+            assertEquals("-400", getD.invoke(row));
+            assertEquals("999999999999999.1", getE.invoke(row));
         }
 
         // Now test some filters.
 
-        /* FIXME
         RowScanner scanner = ix.newScanner(null, "a == ?", "0.0");
+        int count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
-            System.out.println(row);
+            assertEquals(4, getKey.invoke(row));
+            assertEquals("0.0", getA.invoke(row));
+            assertEquals(null, getB.invoke(row));
+            assertEquals("str4", getC.invoke(row));
+            assertEquals("-400", getD.invoke(row));
+            assertEquals("999999999999999.1", getE.invoke(row));
+            count++;
         }
-        */
+
+        assertEquals(1, count);
+
+        scanner = ix.newScanner(null, "b >= ?", "11");
+        count = 0;
+        for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+            switch ((int) getKey.invoke(row)) {
+            default: fail(); break;
+            case 2:
+                assertEquals("NaN", getA.invoke(row));
+                assertEquals("2", getB.invoke(row));
+                assertEquals("str2", getC.invoke(row));
+                assertEquals("200", getD.invoke(row));
+                assertEquals("123.456", getE.invoke(row));
+                break;
+            case 3:
+                assertEquals("Infinity", getA.invoke(row));
+                assertEquals("11", getB.invoke(row));
+                assertEquals("", getC.invoke(row));
+                assertEquals("300", getD.invoke(row));
+                assertEquals("-123.456", getE.invoke(row));
+                break;
+            case 4:
+                assertEquals("0.0", getA.invoke(row));
+                assertEquals(null, getB.invoke(row));
+                assertEquals("str4", getC.invoke(row));
+                assertEquals("-400", getD.invoke(row));
+                assertEquals("999999999999999.1", getE.invoke(row));
+                break;
+            }
+            count++;
+        }
+
+        assertEquals(3, count);
+
+        scanner = ix.newScanner(null, "c == ?", "");
+        count = 0;
+        for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+            assertEquals(3, getKey.invoke(row));
+            assertEquals("Infinity", getA.invoke(row));
+            assertEquals("11", getB.invoke(row));
+            assertEquals("", getC.invoke(row));
+            assertEquals("300", getD.invoke(row));
+            assertEquals("-123.456", getE.invoke(row));
+            count++;
+        }
+
+        assertEquals(1, count);
+
+        scanner = ix.newScanner(null, "d >= ?", "300");
+        count = 0;
+        for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+            assertEquals(3, getKey.invoke(row));
+            assertEquals("Infinity", getA.invoke(row));
+            assertEquals("11", getB.invoke(row));
+            assertEquals("", getC.invoke(row));
+            assertEquals("300", getD.invoke(row));
+            assertEquals("-123.456", getE.invoke(row));
+            count++;
+        }
+
+        assertEquals(1, count);
+
+        scanner = ix.newScanner(null, "e > ? | e == ?", "123.456", "");
+        count = 0;
+        for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+            switch ((int) getKey.invoke(row)) {
+            default: fail(); break;
+            case 1:
+                assertEquals("123.9", getA.invoke(row));
+                assertEquals("1", getB.invoke(row));
+                assertEquals("str1", getC.invoke(row));
+                assertEquals("100", getD.invoke(row));
+                assertEquals("", getE.invoke(row));
+                break;
+            case 4:
+                assertEquals("0.0", getA.invoke(row));
+                assertEquals(null, getB.invoke(row));
+                assertEquals("str4", getC.invoke(row));
+                assertEquals("-400", getD.invoke(row));
+                assertEquals("999999999999999.1", getE.invoke(row));
+                break;
+            }
+            count++;
+        }
+
+        assertEquals(2, count);
     }
 }

@@ -51,9 +51,9 @@ abstract class StringColumnCodec extends ColumnCodec {
     void filterPrepare(int op, Variable argVar, int argNum) {
         argVar = ConvertCallSite.make(mMaker, String.class, argVar);
 
-        defineArgField(String.class, argFieldName(argNum, "str")).set(argVar);
+        defineArgField(String.class, argFieldName(argNum)).set(argVar);
 
-        Field argField = defineArgField(byte[].class, argFieldName(argNum));
+        Field argField = defineArgField(byte[].class, argFieldName(argNum, "bytes"));
         Label cont = mMaker.label();
         argVar.ifEq(null, cont);
         argField.set(argVar.invoke("getBytes", mMaker.var(StandardCharsets.class).field("UTF_8")));
@@ -65,7 +65,7 @@ abstract class StringColumnCodec extends ColumnCodec {
                         int op)
     {
         if (dstInfo.plainTypeCode() != mInfo.plainTypeCode()) {
-            // FIXME: Need to convert to String and compare that.
+            // FIXME: Need to convert to dst type and compare that.
             throw null;
         }
 
@@ -85,11 +85,11 @@ abstract class StringColumnCodec extends ColumnCodec {
                        Label pass, Label fail)
     {
         if (dstInfo.plainTypeCode() != mInfo.plainTypeCode()) {
-            // FIXME: Compare to String.
+            // FIXME: Compare to dst type.
             throw null;
         }
 
-        compareEncoded(srcVar, op, (Variable[]) decoded, argObjVar, argNum, pass, fail);
+        compareEncoded(dstInfo, srcVar, op, (Variable[]) decoded, argObjVar, argNum, pass, fail);
     }
 
     /**

@@ -206,8 +206,11 @@ class BigDecimalColumnCodec extends ColumnCodec {
                         int op)
     {
         if (dstInfo.plainTypeCode() != mInfo.plainTypeCode()) {
-            // FIXME: Need to convert to BigDecimal and compare that.
-            throw null;
+            var decodedVar = mMaker.var(mInfo.type);
+            decode(decodedVar, srcVar, offsetVar, endVar);
+            var columnVar = mMaker.var(dstInfo.type);
+            Converter.convertLossy(mMaker, mInfo, decodedVar, dstInfo, columnVar);
+            return columnVar;
         }
 
         if (ColumnFilter.isExact(op)) {
@@ -230,9 +233,14 @@ class BigDecimalColumnCodec extends ColumnCodec {
                        Label pass, Label fail)
     {
         if (dstInfo.plainTypeCode() != mInfo.plainTypeCode()) {
-            // FIXME: Compare to BigDecimal.
-            throw null;
+            var columnVar = (Variable) decoded;
+            var argField = argObjVar.field(argFieldName(argNum));
+            CompareUtils.compare(mMaker, dstInfo, columnVar, dstInfo, argField, op, pass, fail);
+            return;
         }
+
+        // FIXME: Special handling when dst isn't nullable but src is nullable. See
+        // ColumnCodec.compareEncoded.
 
         if (ColumnFilter.isExact(op)) {
             endVar = (Variable) decoded;
