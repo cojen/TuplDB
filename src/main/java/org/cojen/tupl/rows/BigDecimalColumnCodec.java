@@ -184,21 +184,16 @@ class BigDecimalColumnCodec extends ColumnCodec {
     }
 
     /**
-     * Defines a BigDecimal field and stores the argument there. If an "exact" op, then a
-     * pre-encoded byte[] field is set too.
+     * Defines a BigDecimal field and stores the argument there.
      */
     @Override
     void filterPrepare(int op, Variable argVar, int argNum) {
         argVar = ConvertCallSite.make(mMaker, BigDecimal.class, argVar);
         defineArgField(argVar, argFieldName(argNum)).set(argVar);
 
-        if (ColumnFilter.isExact(op)) {
-            encodePrepare();
-            var lengthVar = encodeSize(argVar, null);
-            var bytesVar = mMaker.new_(byte[].class, lengthVar);
-            encode(argVar, bytesVar, mMaker.var(int.class).set(0));
-            defineArgField(bytesVar, argFieldName(argNum, "bytes")).set(bytesVar);
-        }
+        // Note: If op is "==" or "!=", it's tempting to pre-encode a byte array and simply
+        // compare that. The problem is that 0 and 0.0 won't be considered equal. Also see how
+        // CompareUtils handles this case. It calls BigDecimal.compareTo instead of equals.
     }
 
     @Override
@@ -213,14 +208,16 @@ class BigDecimalColumnCodec extends ColumnCodec {
             return columnVar;
         }
 
-        if (ColumnFilter.isExact(op)) {
-            decodeSkip(srcVar, offsetVar, endVar);
-            // Return a stable copy to the end offset.
-            return offsetVar.get();
-        }
-
         var decodedVar = mMaker.var(BigDecimal.class);
         decode(decodedVar, srcVar, offsetVar, endVar);
+
+        if (!dstInfo.isNullable() && mInfo.isNullable()) {
+            Label cont = mMaker.label();
+            decodedVar.ifNe(null, cont);
+            Converter.setDefault(dstInfo, decodedVar);
+            cont.here();
+        }
+
         return decodedVar;
     }
 
@@ -236,19 +233,6 @@ class BigDecimalColumnCodec extends ColumnCodec {
             var columnVar = (Variable) decoded;
             var argField = argObjVar.field(argFieldName(argNum));
             CompareUtils.compare(mMaker, dstInfo, columnVar, dstInfo, argField, op, pass, fail);
-            return;
-        }
-
-        // FIXME: Special handling when dst isn't nullable but src is nullable. See
-        // ColumnCodec.compareEncoded.
-
-        if (ColumnFilter.isExact(op)) {
-            endVar = (Variable) decoded;
-            var argVar = argObjVar.field(argFieldName(argNum, "bytes")).get();
-            CompareUtils.compareArrays(mMaker,
-                                       srcVar, offsetVar, endVar,
-                                       argVar, 0, argVar.alength(),
-                                       op, pass, fail);
             return;
         }
 

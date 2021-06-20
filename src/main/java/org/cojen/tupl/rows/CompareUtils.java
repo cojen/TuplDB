@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.rows;
 
+import java.math.BigDecimal;
+
 import java.util.Arrays;
 
 import org.cojen.maker.Label;
@@ -83,11 +85,24 @@ class CompareUtils {
         }
 
         if (ColumnFilter.isExact(op)) {
-            var result = columnVar.invoke("equals", argVar);
-            if (op == ColumnFilter.OP_EQ) {
-                result.ifTrue(pass);
+            if (columnVar.classType() != BigDecimal.class
+                && argVar.classType() != BigDecimal.class)
+            {
+                var result = columnVar.invoke("equals", argVar);
+                if (op == ColumnFilter.OP_EQ) {
+                    result.ifTrue(pass);
+                } else {
+                    result.ifFalse(pass);
+                }
             } else {
-                result.ifFalse(pass);
+                // BigDecimal.equals is too strict and would lead to much confusion. For
+                // example, 0 isn't considered equal to 0.0.
+                var result = columnVar.invoke("compareTo", argVar);
+                if (op == ColumnFilter.OP_EQ) {
+                    result.ifEq(0, pass);
+                } else {
+                    result.ifNe(0, pass);
+                }
             }
         } else {
             // Assume both variables are Comparable.

@@ -615,8 +615,13 @@ public class Converter {
                 dstVar.set(srcVar.invoke("toBigInteger"));
                 break;
             case TYPE_FLOAT: case TYPE_DOUBLE:
+                Label tryStart = mm.label().here();
                 dstVar.set(mm.var(BigDecimal.class).invoke("valueOf", srcVar)
                            .invoke("toBigInteger"));
+                mm.catch_(tryStart, NumberFormatException.class, exVar -> {
+                    setDefault(dstInfo, dstVar);
+                    mm.goto_(end);
+                });
                 break;
             case TYPE_UTF8:
                 var bd = parseBigDecimal(mm, srcVar, dstInfo, dstVar, end);
@@ -640,7 +645,12 @@ public class Converter {
                 break;
             case TYPE_BYTE: case TYPE_SHORT: case TYPE_INT: case TYPE_LONG:
             case TYPE_FLOAT: case TYPE_DOUBLE:
+                Label tryStart = mm.label().here();
                 dstVar.set(bd.invoke("valueOf", srcVar));
+                mm.catch_(tryStart, NumberFormatException.class, exVar -> {
+                    setDefault(dstInfo, dstVar);
+                    mm.goto_(end);
+                });
                 break;
             case TYPE_UBYTE:
                 dstVar.set(bd.invoke("valueOf", srcVar.cast(long.class).and(0xffL)));

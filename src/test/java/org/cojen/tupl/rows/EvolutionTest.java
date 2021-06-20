@@ -568,4 +568,507 @@ public class EvolutionTest {
 
         assertEquals(2, count);
     }
+
+    @Test
+    public void toBigIntegerCompare() throws Exception {
+        // Test converting to BigInteger columns and running filters.
+
+        Object[] initSpec = {
+            int.class, "+key",
+            double.class, "a",
+            Integer.class, "b?",
+            String.class, "c",
+            BigInteger.class, "d?",
+            BigDecimal.class, "e",
+        };
+
+        Database db = Database.open(new DatabaseConfig());
+
+        {
+            Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
+            RowIndex ix = db.openRowIndex(rowType);
+
+            var setKey = rowType.getMethod("key", int.class);
+            var setA = rowType.getMethod("a", double.class);
+            var setB = rowType.getMethod("b", Integer.class);
+            var setC = rowType.getMethod("c", String.class);
+            var setD = rowType.getMethod("d", BigInteger.class);
+            var setE = rowType.getMethod("e", BigDecimal.class);
+
+            {
+                var row = ix.newRow();
+                setKey.invoke(row, 1);
+                setA.invoke(row, 123.9);
+                setB.invoke(row, 1);
+                setC.invoke(row, "8888888888888888888");
+                setD.invoke(row, BigInteger.valueOf(100));
+                setE.invoke(row, BigDecimal.ZERO);
+                ix.store(null, row);
+            }
+
+            {
+                var row = ix.newRow();
+                setKey.invoke(row, 2);
+                setA.invoke(row, 0.0/0.0);
+                setB.invoke(row, 2);
+                setC.invoke(row, "10.9");
+                setD.invoke(row, (Object) null);
+                setE.invoke(row, new BigDecimal("123.456"));
+                ix.store(null, row);
+            }
+
+            {
+                var row = ix.newRow();
+                setKey.invoke(row, 3);
+                setA.invoke(row, 100.0/0.0);
+                setB.invoke(row, 11);
+                setC.invoke(row, "000");
+                setD.invoke(row, BigInteger.valueOf(300));
+                setE.invoke(row, new BigDecimal("-123.456"));
+                ix.store(null, row);
+            }
+
+            {
+                var row = ix.newRow();
+                setKey.invoke(row, 4);
+                setA.invoke(row, 0);
+                setB.invoke(row, (Object) null);
+                setC.invoke(row, "-10");
+                setD.invoke(row, BigInteger.valueOf(-400));
+                setE.invoke(row, new BigDecimal("999999999999999.1"));
+                ix.store(null, row);
+            }
+        }
+
+        Object[] newSpec = {
+            int.class, "+key",
+            BigInteger.class, "a",  // double to BigInteger
+            BigInteger.class, "b?", // Integer? to BigInteger?
+            BigInteger.class, "c",  // String to BigInteger
+            BigInteger.class, "d",  // BigInteger? to BigInteger
+            BigInteger.class, "e",  // BigDecimal to BigInteger
+        };
+
+        Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
+        RowIndex ix = db.openRowIndex(rowType);
+
+        var setKey = rowType.getMethod("key", int.class);
+        var getKey = rowType.getMethod("key");
+        var getA = rowType.getMethod("a");
+        var getB = rowType.getMethod("b");
+        var getC = rowType.getMethod("c");
+        var getD = rowType.getMethod("d");
+        var getE = rowType.getMethod("e");
+
+        {
+            var row = ix.newRow();
+            setKey.invoke(row, 1);
+            ix.load(null, row);
+            assertEquals(new BigInteger("123"), getA.invoke(row));
+            assertEquals(BigInteger.ONE, getB.invoke(row));
+            assertEquals(new BigInteger("8888888888888888888"), getC.invoke(row));
+            assertEquals(new BigInteger("100"), getD.invoke(row));
+            assertEquals(BigInteger.ZERO, getE.invoke(row));
+        }
+
+        {
+            var row = ix.newRow();
+            setKey.invoke(row, 2);
+            ix.load(null, row);
+            assertEquals(BigInteger.ZERO, getA.invoke(row));
+            assertEquals(new BigInteger("2"), getB.invoke(row));
+            assertEquals(new BigInteger("10"), getC.invoke(row));
+            assertEquals(BigInteger.ZERO, getD.invoke(row));
+            assertEquals(new BigInteger("123"), getE.invoke(row));
+        }
+
+        {
+            var row = ix.newRow();
+            setKey.invoke(row, 3);
+            ix.load(null, row);
+            assertEquals(BigInteger.ZERO, getA.invoke(row));
+            assertEquals(new BigInteger("11"), getB.invoke(row));
+            assertEquals(BigInteger.ZERO, getC.invoke(row));
+            assertEquals(new BigInteger("300"), getD.invoke(row));
+            assertEquals(new BigInteger("-123"), getE.invoke(row));
+        }
+
+        {
+            var row = ix.newRow();
+            setKey.invoke(row, 4);
+            ix.load(null, row);
+            assertEquals(BigInteger.ZERO, getA.invoke(row));
+            assertEquals(null, getB.invoke(row));
+            assertEquals(new BigInteger("-10"), getC.invoke(row));
+            assertEquals(new BigInteger("-400"), getD.invoke(row));
+            assertEquals(new BigInteger("999999999999999"), getE.invoke(row));
+        }
+
+        // Now test some filters.
+
+        RowScanner scanner = ix.newScanner(null, "a == ?", "0");
+        int count = 0;
+        for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+            switch ((int) getKey.invoke(row)) {
+            default: fail(); break;
+            case 2:
+                assertEquals(BigInteger.ZERO, getA.invoke(row));
+                assertEquals(new BigInteger("2"), getB.invoke(row));
+                assertEquals(new BigInteger("10"), getC.invoke(row));
+                assertEquals(BigInteger.ZERO, getD.invoke(row));
+                assertEquals(new BigInteger("123"), getE.invoke(row));
+                break;
+            case 3:
+                assertEquals(BigInteger.ZERO, getA.invoke(row));
+                assertEquals(new BigInteger("11"), getB.invoke(row));
+                assertEquals(BigInteger.ZERO, getC.invoke(row));
+                assertEquals(new BigInteger("300"), getD.invoke(row));
+                assertEquals(new BigInteger("-123"), getE.invoke(row));
+                break;
+            case 4:
+                assertEquals(BigInteger.ZERO, getA.invoke(row));
+                assertEquals(null, getB.invoke(row));
+                assertEquals(new BigInteger("-10"), getC.invoke(row));
+                assertEquals(new BigInteger("-400"), getD.invoke(row));
+                assertEquals(new BigInteger("999999999999999"), getE.invoke(row));
+                break;
+            }
+            count++;
+        }
+
+        assertEquals(3, count);
+
+        scanner = ix.newScanner(null, "b > ?", 2);
+        count = 0;
+        for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+            switch ((int) getKey.invoke(row)) {
+            default: fail(); break;
+            case 3:
+                assertEquals(BigInteger.ZERO, getA.invoke(row));
+                assertEquals(new BigInteger("11"), getB.invoke(row));
+                assertEquals(BigInteger.ZERO, getC.invoke(row));
+                assertEquals(new BigInteger("300"), getD.invoke(row));
+                assertEquals(new BigInteger("-123"), getE.invoke(row));
+                break;
+            case 4:
+                assertEquals(BigInteger.ZERO, getA.invoke(row));
+                assertEquals(null, getB.invoke(row));
+                assertEquals(new BigInteger("-10"), getC.invoke(row));
+                assertEquals(new BigInteger("-400"), getD.invoke(row));
+                assertEquals(new BigInteger("999999999999999"), getE.invoke(row));
+                break;
+            }
+            count++;
+        }
+
+        assertEquals(2, count);
+
+        scanner = ix.newScanner(null, "c == ?", 0);
+        count = 0;
+        for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+            assertEquals(3, getKey.invoke(row));
+            assertEquals(BigInteger.ZERO, getA.invoke(row));
+            assertEquals(new BigInteger("11"), getB.invoke(row));
+            assertEquals(BigInteger.ZERO, getC.invoke(row));
+            assertEquals(new BigInteger("300"), getD.invoke(row));
+            assertEquals(new BigInteger("-123"), getE.invoke(row));
+            count++;
+        }
+
+        assertEquals(1, count);
+
+        scanner = ix.newScanner(null, "d <= ?", 0);
+        count = 0;
+        for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+            switch ((int) getKey.invoke(row)) {
+            default: fail(); break;
+            case 2:
+                assertEquals(BigInteger.ZERO, getA.invoke(row));
+                assertEquals(new BigInteger("2"), getB.invoke(row));
+                assertEquals(new BigInteger("10"), getC.invoke(row));
+                assertEquals(BigInteger.ZERO, getD.invoke(row));
+                assertEquals(new BigInteger("123"), getE.invoke(row));
+                break;
+            case 4:
+                assertEquals(BigInteger.ZERO, getA.invoke(row));
+                assertEquals(null, getB.invoke(row));
+                assertEquals(new BigInteger("-10"), getC.invoke(row));
+                assertEquals(new BigInteger("-400"), getD.invoke(row));
+                assertEquals(new BigInteger("999999999999999"), getE.invoke(row));
+                break;
+            }
+            count++;
+        }
+
+        assertEquals(2, count);
+
+        scanner = ix.newScanner(null, "e == ?", new BigInteger("999999999999999"));
+        count = 0;
+        for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+            assertEquals(4, getKey.invoke(row));
+            assertEquals(BigInteger.ZERO, getA.invoke(row));
+            assertEquals(null, getB.invoke(row));
+            assertEquals(new BigInteger("-10"), getC.invoke(row));
+            assertEquals(new BigInteger("-400"), getD.invoke(row));
+            assertEquals(new BigInteger("999999999999999"), getE.invoke(row));
+            count++;
+        }
+
+        assertEquals(1, count);
+    }
+
+    @Test
+    public void toBigDecimalCompare() throws Exception {
+        // Test converting to BigDecimal columns and running filters.
+
+        Object[] initSpec = {
+            int.class, "+key",
+            double.class, "a",
+            Integer.class, "b?",
+            String.class, "c",
+            BigInteger.class, "d",
+            BigDecimal.class, "e?",
+        };
+
+        Database db = Database.open(new DatabaseConfig());
+
+        {
+            Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
+            RowIndex ix = db.openRowIndex(rowType);
+
+            var setKey = rowType.getMethod("key", int.class);
+            var setA = rowType.getMethod("a", double.class);
+            var setB = rowType.getMethod("b", Integer.class);
+            var setC = rowType.getMethod("c", String.class);
+            var setD = rowType.getMethod("d", BigInteger.class);
+            var setE = rowType.getMethod("e", BigDecimal.class);
+
+            {
+                var row = ix.newRow();
+                setKey.invoke(row, 1);
+                setA.invoke(row, 123.9);
+                setB.invoke(row, 1);
+                setC.invoke(row, "8888888888888888888");
+                setD.invoke(row, BigInteger.valueOf(100));
+                setE.invoke(row, new BigDecimal("0.000"));
+                ix.store(null, row);
+            }
+
+            {
+                var row = ix.newRow();
+                setKey.invoke(row, 2);
+                setA.invoke(row, 0.0/0.0);
+                setB.invoke(row, 2);
+                setC.invoke(row, "10.9");
+                setD.invoke(row, BigInteger.ZERO);
+                setE.invoke(row, (Object) null);
+                ix.store(null, row);
+            }
+
+            {
+                var row = ix.newRow();
+                setKey.invoke(row, 3);
+                setA.invoke(row, 100.0/0.0);
+                setB.invoke(row, 11);
+                setC.invoke(row, "000");
+                setD.invoke(row, BigInteger.valueOf(300));
+                setE.invoke(row, new BigDecimal("-123.456"));
+                ix.store(null, row);
+            }
+
+            {
+                var row = ix.newRow();
+                setKey.invoke(row, 4);
+                setA.invoke(row, 0);
+                setB.invoke(row, (Object) null);
+                setC.invoke(row, "-10");
+                setD.invoke(row, BigInteger.valueOf(-400));
+                setE.invoke(row, new BigDecimal("999999999999999.1"));
+                ix.store(null, row);
+            }
+        }
+
+        Object[] newSpec = {
+            int.class, "+key",
+            BigDecimal.class, "a",  // double to BigDecimal
+            BigDecimal.class, "b?", // Integer? to BigDecimal?
+            BigDecimal.class, "c",  // String to BigDecimal
+            BigDecimal.class, "d",  // BigInteger to BigDecimal
+            BigDecimal.class, "e",  // BigDecimal? to BigDecimal
+        };
+
+        Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
+        RowIndex ix = db.openRowIndex(rowType);
+
+        var setKey = rowType.getMethod("key", int.class);
+        var getKey = rowType.getMethod("key");
+        var getA = rowType.getMethod("a");
+        var getB = rowType.getMethod("b");
+        var getC = rowType.getMethod("c");
+        var getD = rowType.getMethod("d");
+        var getE = rowType.getMethod("e");
+
+        {
+            var row = ix.newRow();
+            setKey.invoke(row, 1);
+            ix.load(null, row);
+            assertEquals(new BigDecimal("123.9"), getA.invoke(row));
+            assertEquals(BigDecimal.ONE, getB.invoke(row));
+            assertEquals(new BigDecimal("8888888888888888888"), getC.invoke(row));
+            assertEquals(new BigDecimal("100"), getD.invoke(row));
+            assertEquals(new BigDecimal("0.000"), getE.invoke(row));
+        }
+
+        {
+            var row = ix.newRow();
+            setKey.invoke(row, 2);
+            ix.load(null, row);
+            assertEquals(BigDecimal.ZERO, getA.invoke(row));
+            assertEquals(new BigDecimal("2"), getB.invoke(row));
+            assertEquals(new BigDecimal("10.9"), getC.invoke(row));
+            assertEquals(BigDecimal.ZERO, getD.invoke(row));
+            assertEquals(BigDecimal.ZERO, getE.invoke(row));
+        }
+
+        {
+            var row = ix.newRow();
+            setKey.invoke(row, 3);
+            ix.load(null, row);
+            assertEquals(BigDecimal.ZERO, getA.invoke(row));
+            assertEquals(new BigDecimal("11"), getB.invoke(row));
+            assertEquals(BigDecimal.ZERO, getC.invoke(row));
+            assertEquals(new BigDecimal("300"), getD.invoke(row));
+            assertEquals(new BigDecimal("-123.456"), getE.invoke(row));
+        }
+
+        {
+            var row = ix.newRow();
+            setKey.invoke(row, 4);
+            ix.load(null, row);
+            assertEquals(new BigDecimal("0.0"), getA.invoke(row));
+            assertEquals(null, getB.invoke(row));
+            assertEquals(new BigDecimal("-10"), getC.invoke(row));
+            assertEquals(new BigDecimal("-400"), getD.invoke(row));
+            assertEquals(new BigDecimal("999999999999999.1"), getE.invoke(row));
+        }
+
+        // Now test some filters.
+
+        RowScanner scanner = ix.newScanner(null, "a == ?", "0");
+        int count = 0;
+        for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+            switch ((int) getKey.invoke(row)) {
+            default: fail(); break;
+            case 2:
+                assertEquals(BigDecimal.ZERO, getA.invoke(row));
+                assertEquals(new BigDecimal("2"), getB.invoke(row));
+                assertEquals(new BigDecimal("10.9"), getC.invoke(row));
+                assertEquals(BigDecimal.ZERO, getD.invoke(row));
+                assertEquals(BigDecimal.ZERO, getE.invoke(row));
+                break;
+            case 3:
+                assertEquals(BigDecimal.ZERO, getA.invoke(row));
+                assertEquals(new BigDecimal("11"), getB.invoke(row));
+                assertEquals(BigDecimal.ZERO, getC.invoke(row));
+                assertEquals(new BigDecimal("300"), getD.invoke(row));
+                assertEquals(new BigDecimal("-123.456"), getE.invoke(row));
+                break;
+            case 4:
+                assertEquals(new BigDecimal("0.0"), getA.invoke(row));
+                assertEquals(null, getB.invoke(row));
+                assertEquals(new BigDecimal("-10"), getC.invoke(row));
+                assertEquals(new BigDecimal("-400"), getD.invoke(row));
+                assertEquals(new BigDecimal("999999999999999.1"), getE.invoke(row));
+                break;
+            }
+            count++;
+        }
+
+        assertEquals(3, count);
+
+        scanner = ix.newScanner(null, "b >= ?", 11);
+        count = 0;
+        for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+            switch ((int) getKey.invoke(row)) {
+            default: fail(); break;
+            case 3:
+                assertEquals(BigDecimal.ZERO, getA.invoke(row));
+                assertEquals(new BigDecimal("11"), getB.invoke(row));
+                assertEquals(BigDecimal.ZERO, getC.invoke(row));
+                assertEquals(new BigDecimal("300"), getD.invoke(row));
+                assertEquals(new BigDecimal("-123.456"), getE.invoke(row));
+                break;
+            case 4:
+                assertEquals(new BigDecimal("0.0"), getA.invoke(row));
+                assertEquals(null, getB.invoke(row));
+                assertEquals(new BigDecimal("-10"), getC.invoke(row));
+                assertEquals(new BigDecimal("-400"), getD.invoke(row));
+                assertEquals(new BigDecimal("999999999999999.1"), getE.invoke(row));
+                break;
+            }
+            count++;
+        }
+
+        assertEquals(2, count);
+
+        scanner = ix.newScanner(null, "c == ?", 0);
+        count = 0;
+        for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+            assertEquals(3, getKey.invoke(row));
+            assertEquals(BigDecimal.ZERO, getA.invoke(row));
+            assertEquals(new BigDecimal("11"), getB.invoke(row));
+            assertEquals(BigDecimal.ZERO, getC.invoke(row));
+            assertEquals(new BigDecimal("300"), getD.invoke(row));
+            assertEquals(new BigDecimal("-123.456"), getE.invoke(row));
+            count++;
+        }
+
+        assertEquals(1, count);
+
+        scanner = ix.newScanner(null, "d <= ? & d > ?", 0, -100);
+        count = 0;
+        for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+            assertEquals(2, getKey.invoke(row));
+            assertEquals(BigDecimal.ZERO, getA.invoke(row));
+            assertEquals(new BigDecimal("2"), getB.invoke(row));
+            assertEquals(new BigDecimal("10.9"), getC.invoke(row));
+            assertEquals(BigDecimal.ZERO, getD.invoke(row));
+            assertEquals(BigDecimal.ZERO, getE.invoke(row));
+            count++;
+        }
+
+        assertEquals(1, count);
+
+        scanner = ix.newScanner(null, "e == ? | e == ?", 0, "999999999999999.1");
+        count = 0;
+        for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+            switch ((int) getKey.invoke(row)) {
+            default: fail(); break;
+            case 1:
+                assertEquals(new BigDecimal("123.9"), getA.invoke(row));
+                assertEquals(BigDecimal.ONE, getB.invoke(row));
+                assertEquals(new BigDecimal("8888888888888888888"), getC.invoke(row));
+                assertEquals(new BigDecimal("100"), getD.invoke(row));
+                assertEquals(new BigDecimal("0.000"), getE.invoke(row));
+                break;
+            case 2:
+                assertEquals(BigDecimal.ZERO, getA.invoke(row));
+                assertEquals(new BigDecimal("2"), getB.invoke(row));
+                assertEquals(new BigDecimal("10.9"), getC.invoke(row));
+                assertEquals(BigDecimal.ZERO, getD.invoke(row));
+                assertEquals(BigDecimal.ZERO, getE.invoke(row));
+                break;
+            case 4:
+                assertEquals(new BigDecimal("0.0"), getA.invoke(row));
+                assertEquals(null, getB.invoke(row));
+                assertEquals(new BigDecimal("-10"), getC.invoke(row));
+                assertEquals(new BigDecimal("-400"), getD.invoke(row));
+                assertEquals(new BigDecimal("999999999999999.1"), getE.invoke(row));
+                break;
+            }
+            count++;
+        }
+
+        assertEquals(3, count);
+    }
 }

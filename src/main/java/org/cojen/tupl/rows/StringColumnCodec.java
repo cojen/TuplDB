@@ -65,8 +65,11 @@ abstract class StringColumnCodec extends ColumnCodec {
                         int op)
     {
         if (dstInfo.plainTypeCode() != mInfo.plainTypeCode()) {
-            // FIXME: Need to convert to dst type and compare that.
-            throw null;
+            var decodedVar = mMaker.var(mInfo.type);
+            decode(decodedVar, srcVar, offsetVar, endVar);
+            var columnVar = mMaker.var(dstInfo.type);
+            Converter.convertLossy(mMaker, mInfo, decodedVar, dstInfo, columnVar);
+            return columnVar;
         }
 
         Variable lengthVar = mMaker.var(int.class);
@@ -85,8 +88,10 @@ abstract class StringColumnCodec extends ColumnCodec {
                        Label pass, Label fail)
     {
         if (dstInfo.plainTypeCode() != mInfo.plainTypeCode()) {
-            // FIXME: Compare to dst type.
-            throw null;
+            var columnVar = (Variable) decoded;
+            var argField = argObjVar.field(argFieldName(argNum));
+            CompareUtils.compare(mMaker, dstInfo, columnVar, dstInfo, argField, op, pass, fail);
+            return;
         }
 
         compareEncoded(dstInfo, srcVar, op, (Variable[]) decoded, argObjVar, argNum, pass, fail);
