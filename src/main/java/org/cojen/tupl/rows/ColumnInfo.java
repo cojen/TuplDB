@@ -125,6 +125,14 @@ public class ColumnInfo implements Cloneable {
         return plainTypeCode(typeCode) < 0b000_01000;
     }
 
+    boolean isUnsignedInteger() {
+        return isUnsignedInteger(typeCode);
+    }
+
+    static boolean isUnsignedInteger(int typeCode) {
+        return isUnsigned(typeCode) && plainTypeCode(typeCode) != TYPE_BOOLEAN;
+    }
+
     boolean isDescending() {
         return isDescending(typeCode);
     }

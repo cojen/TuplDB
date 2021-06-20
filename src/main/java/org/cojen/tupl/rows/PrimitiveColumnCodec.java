@@ -457,20 +457,7 @@ class PrimitiveColumnCodec extends ColumnCodec {
 
         var argField = argObjVar.field(argFieldName(argNum));
 
-        // FIXME: This switch can be in the general purpose maker. Both vars should be same
-        // type, but they can be widened if necessary.
-        // FIXME: Consider unsigned types!
-        switch (op) {
-        case ColumnFilter.OP_EQ: columnVar.ifEq(argField, pass); break;
-        case ColumnFilter.OP_NE: columnVar.ifNe(argField, pass); break;
-        case ColumnFilter.OP_LT: columnVar.ifLt(argField, pass); break;
-        case ColumnFilter.OP_GE: columnVar.ifGe(argField, pass); break;
-        case ColumnFilter.OP_GT: columnVar.ifGt(argField, pass); break;
-        case ColumnFilter.OP_LE: columnVar.ifLe(argField, pass); break;
-        default: throw new AssertionError();
-        }
-
-        mMaker.goto_(fail);
+        CompareUtils.comparePrimitives(mMaker, mInfo, columnVar, mInfo, argField, op, pass, fail);
     }
 
     /**

@@ -303,11 +303,11 @@ public class EvolutionTest {
 
         Object[] newSpec = {
             int.class, "+key",
-            int.class, "a",
-            Double.class, "b?",
-            String.class, "c?",
-            int.class, "d",
-            String.class, "e",
+            int.class, "a",      // double to int
+            Double.class, "b?",  // Integer? to Double?
+            String.class, "c?",  // String to String?
+            int.class, "d",      // BigInteger to int
+            String.class, "e",   // BigDecimal? to String
         };
 
         Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
@@ -330,5 +330,125 @@ public class EvolutionTest {
 
         // Convert BigDecimal to String.
         assertEquals("123.987", rowType.getMethod("e").invoke(row));
+    }
+
+    @Test
+    public void toStringCompare() throws Exception {
+        // Test converting to string columns and running filters.
+
+        Object[] initSpec = {
+            int.class, "+key",
+            double.class, "a",
+            Integer.class, "b?",
+            String.class, "c?",
+        };
+
+        Database db = Database.open(new DatabaseConfig());
+
+        {
+            Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
+            RowIndex ix = db.openRowIndex(rowType);
+
+            var setKey = rowType.getMethod("key", int.class);
+            var setA = rowType.getMethod("a", double.class);
+            var setB = rowType.getMethod("b", Integer.class);
+            var setC = rowType.getMethod("c", String.class);
+
+            {
+                var row = ix.newRow();
+                setKey.invoke(row, 1);
+                setA.invoke(row, 123.9);
+                setB.invoke(row, 1);
+                setC.invoke(row, "str1");
+                ix.store(null, row);
+            }
+
+            {
+                var row = ix.newRow();
+                setKey.invoke(row, 2);
+                setA.invoke(row, 0.0/0.0);
+                setB.invoke(row, 2);
+                setC.invoke(row, "str2");
+                ix.store(null, row);
+            }
+
+            {
+                var row = ix.newRow();
+                setKey.invoke(row, 3);
+                setA.invoke(row, 100.0/0.0);
+                setB.invoke(row, 11);
+                setC.invoke(row, (Object) null);
+                ix.store(null, row);
+            }
+
+            {
+                var row = ix.newRow();
+                setKey.invoke(row, 4);
+                setA.invoke(row, 0);
+                setB.invoke(row, (Object) null);
+                setC.invoke(row, "str4");
+                ix.store(null, row);
+            }
+        }
+
+        Object[] newSpec = {
+            int.class, "+key",
+            String.class, "a",  // double to String
+            String.class, "b?", // Integer? to String?
+            String.class, "c",  // String? to String
+        };
+
+        Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
+        RowIndex ix = db.openRowIndex(rowType);
+
+        var setKey = rowType.getMethod("key", int.class);
+        var getA = rowType.getMethod("a");
+        var getB = rowType.getMethod("b");
+        var getC = rowType.getMethod("c");
+
+        {
+            var row = ix.newRow();
+            setKey.invoke(row, 1);
+            ix.load(null, row);
+            assertEquals("123.9", getA.invoke(row));
+            assertEquals("1", getB.invoke(row));
+            assertEquals("str1", getC.invoke(row));
+        }
+
+        {
+            var row = ix.newRow();
+            setKey.invoke(row, 2);
+            ix.load(null, row);
+            assertEquals("NaN", getA.invoke(row));
+            assertEquals("2", getB.invoke(row));
+            assertEquals("str2", getC.invoke(row));
+        }
+
+        {
+            var row = ix.newRow();
+            setKey.invoke(row, 3);
+            ix.load(null, row);
+            assertEquals("Infinity", getA.invoke(row));
+            assertEquals("11", getB.invoke(row));
+            assertEquals("", getC.invoke(row)); // Default for non-null String is "".
+        }
+
+        {
+            var row = ix.newRow();
+            setKey.invoke(row, 4);
+            ix.load(null, row);
+            assertEquals("0.0", getA.invoke(row));
+            assertEquals(null, getB.invoke(row));
+            assertEquals("str4", getC.invoke(row));
+        }
+
+        // Now test some filters.
+
+        /* FIXME
+        RowScanner scanner = ix.newScanner(null, "a == ?", "0.0");
+        for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+            System.out.println(row);
+        }
+        */
     }
 }

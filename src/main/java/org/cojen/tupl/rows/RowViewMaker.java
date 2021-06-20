@@ -503,7 +503,10 @@ public class RowViewMaker {
             } else {
                 var rowVar = mm.param(0);
                 Field dstVar = rowVar.field(name);
-                if (dstInfo.type.isAssignableFrom(srcCodec.mInfo.type)) {
+
+                if (dstInfo.type.isAssignableFrom(srcCodec.mInfo.type)
+                    && (!srcCodec.mInfo.isNullable() || dstInfo.isNullable()))
+                {
                     srcCodec.decode(dstVar, srcVar, offsetVar, null);
                 } else {
                     // Decode into a temp variable and then perform a best-effort conversion.

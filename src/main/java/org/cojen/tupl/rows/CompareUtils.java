@@ -67,24 +67,7 @@ class CompareUtils {
             if (!argInfo.isPrimitive()) {
                 throw new IllegalArgumentException("Incomparable types");
             }
-
-            if (columnInfo.isUnsigned() || argInfo.isUnsigned()) {
-                // FIXME: If possible, widen to int or long. If ulong, need special method. If
-                // an "exact" comparison and both are unsigned, nothing special is needed.
-                throw null;
-            }
-
-            switch (op) {
-            case ColumnFilter.OP_EQ: columnVar.ifEq(argVar, pass); break;
-            case ColumnFilter.OP_NE: columnVar.ifNe(argVar, pass); break;
-            case ColumnFilter.OP_LT: columnVar.ifLt(argVar, pass); break;
-            case ColumnFilter.OP_GE: columnVar.ifGe(argVar, pass); break;
-            case ColumnFilter.OP_GT: columnVar.ifGt(argVar, pass); break;
-            case ColumnFilter.OP_LE: columnVar.ifLe(argVar, pass); break;
-            default: throw new AssertionError();
-            }
-
-            mm.goto_(fail);
+            comparePrimitives(mm, columnInfo, columnVar, argInfo, argVar, op, pass, fail);
             return;
         }
 
@@ -116,6 +99,42 @@ class CompareUtils {
             case ColumnFilter.OP_LE: result.ifLe(0, pass); break;
             default: throw new AssertionError();
             }
+        }
+
+        mm.goto_(fail);
+    }
+
+    /**
+     * Generates code which compares a column to an argument and branches to a pass or fail
+     * target. Both must be unboxed primitives. One of the variables can be widened if
+     * necessary, but not both of them. For example, int cannot be compared to float. Such a
+     * comparison requires that both be widened to double.
+     *
+     * FIXME: Support widening of both variables.
+     *
+     * @param op defined in ColumnFilter
+     * @param pass branch here when comparison passes
+     * @param fail branch here when comparison fails
+     */
+    static void comparePrimitives(MethodMaker mm,
+                                  ColumnInfo columnInfo, Variable columnVar,
+                                  ColumnInfo argInfo, Variable argVar,
+                                  int op, Label pass, Label fail)
+    {
+        if (columnInfo.isUnsignedInteger() || argInfo.isUnsignedInteger()) {
+            // FIXME: If possible, widen to int or long. If ulong, need special method. If
+            // an "exact" comparison and both are unsigned, nothing special is needed.
+            throw null;
+        }
+
+        switch (op) {
+        case ColumnFilter.OP_EQ: columnVar.ifEq(argVar, pass); break;
+        case ColumnFilter.OP_NE: columnVar.ifNe(argVar, pass); break;
+        case ColumnFilter.OP_LT: columnVar.ifLt(argVar, pass); break;
+        case ColumnFilter.OP_GE: columnVar.ifGe(argVar, pass); break;
+        case ColumnFilter.OP_GT: columnVar.ifGt(argVar, pass); break;
+        case ColumnFilter.OP_LE: columnVar.ifLe(argVar, pass); break;
+        default: throw new AssertionError();
         }
 
         mm.goto_(fail);
@@ -184,7 +203,7 @@ class CompareUtils {
     }
 
     /**
-     * Makes code which compares two arrays.
+     * Makes code which compares two arrays of the same type.
      *
      * @param op defined in ColumnFilter
      * @param pass branch here when comparison passes
