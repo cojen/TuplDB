@@ -331,9 +331,7 @@ class PrimitiveColumnCodec extends ColumnCodec {
             decodeNullHeader(end, null, srcVar, offsetVar);
         }
 
-        if (offsetVar != null) {
-            offsetVar.inc(mSize);
-        }
+        offsetVar.inc(mSize);
 
         if (end != null) {
             end.here();
