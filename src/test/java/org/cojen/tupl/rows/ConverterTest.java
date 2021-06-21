@@ -469,4 +469,12 @@ public class ConverterTest {
             return bob.toString();
         }
     }
+
+    @Test
+    public void doubleToUnsignedLong() {
+        // Make sure that special cases are handled properly.
+        assertEquals(0L, Converter.doubleToUnsignedLong(-10.0 / 0.0));
+        assertEquals(-1L, Converter.doubleToUnsignedLong(10.0 / 0.0));
+        assertEquals(0L, Converter.doubleToUnsignedLong(0.0 / 0.0));
+    }
 }

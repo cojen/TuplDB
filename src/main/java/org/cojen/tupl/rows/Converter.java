@@ -423,8 +423,7 @@ public class Converter {
                 dstVar.set(srcVar.cast(long.class).and(0xffff_ffffL));
                 break;
             case TYPE_FLOAT: case TYPE_DOUBLE:
-                clampBigDecimalU_narrow(mm, mm.var(BigDecimal.class).invoke("valueOf", srcVar),
-                                        dstInfo, dstVar);
+                dstVar.set(mm.var(Converter.class).invoke("doubleToUnsignedLong", srcVar));
                 break;
             case TYPE_BIG_INTEGER:
                 clampBigIntegerU_narrow(mm, srcVar, dstInfo, dstVar);
@@ -1138,5 +1137,20 @@ public class Converter {
         } catch (NumberFormatException e) {
         }
         return default_;
+    }
+
+    // Called by generated code.
+    public static long doubleToUnsignedLong(double d) {
+        if (d <= 0) {
+            return 0; // min unsigned long
+        }
+        long result = (long) d;
+        if (result < Long.MAX_VALUE) {
+            return result;
+        }
+        if (d >= 18446744073709551615.0) {
+            return -1; // max unsigned long
+        }
+        return BigDecimal.valueOf(d).longValue();
     }
 }
