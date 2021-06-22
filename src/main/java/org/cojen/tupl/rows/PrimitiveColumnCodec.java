@@ -339,45 +339,12 @@ class PrimitiveColumnCodec extends ColumnCodec {
     }
 
     /**
-     * Defines a single field if the column isn't nullable, or if the column is boolean. If
-     * nullable, defines two fields: the usual one and the "is null" boolean field.
+     * Defines a field which stores the original argument, converted to the correct type.
      */
     @Override
     void filterPrepare(int op, Variable argVar, int argNum) {
-        Label cont = null;
-
-        if (mInfo.isNullable()) {
-            if (mInfo.plainTypeCode() == TYPE_BOOLEAN) {
-                defineArgField(argVar, argFieldName(argNum)).set(argVar);
-                return;
-            }
-            Field isNullField = defineArgField(boolean.class, argFieldName(argNum, "isNull"));
-            Label notNull = mMaker.label();
-            argVar.ifNe(null, notNull);
-            isNullField.set(true);
-            cont = mMaker.label();
-            mMaker.goto_(cont);
-            notNull.here();
-            isNullField.set(false);
-        }
-
-        Class<?> fieldType = mInfo.unboxedType();
-        Variable fieldValue = ConvertCallSite.make(mMaker, fieldType, argVar);
-
-        // For floating point, compare against raw bits to support NaN comparison.
-        if (ColumnFilter.isExact(op)) {
-            if (fieldType == float.class) {
-                fieldValue = fieldValue.invoke("floatToRawIntBits", fieldValue);
-            } else if (fieldType == double.class) {
-                fieldValue = fieldValue.invoke("doubleToRawLongBits", fieldValue);
-            }
-        }
-
-        defineArgField(fieldValue, argFieldName(argNum)).set(fieldValue);
-
-        if (cont != null) {
-            cont.here();
-        }
+        argVar = ConvertCallSite.make(mMaker, mInfo.type, argVar);
+        defineArgField(mInfo.type, argFieldName(argNum)).set(argVar);
     }
 
     @Override
@@ -411,18 +378,6 @@ class PrimitiveColumnCodec extends ColumnCodec {
                 Converter.convertLossy(mMaker, mInfo, decodedVar, dstInfo, columnVar);
             }
 
-            boolean rawColumn = false;
-            if (ColumnFilter.isExact(op)) {
-                Class<?> columnType = dstInfo.unboxedType();
-                if (columnType == float.class) {
-                    rawColumn = true;
-                    columnVar = columnVar.invoke("floatToRawIntBits", columnVar);
-                } else if (columnType == double.class) {
-                    rawColumn = true;
-                    columnVar = columnVar.invoke("doubleToRawLongBits", columnVar);
-                }
-            }
-
             if (isNullVar == null) {
                 return columnVar;
             }
@@ -442,23 +397,10 @@ class PrimitiveColumnCodec extends ColumnCodec {
             return columnVar;
         }
 
-        Class<?> columnType = dstInfo.unboxedType();
-
-        boolean rawColumn = false;
-        if (ColumnFilter.isExact(op)) {
-            if (columnType == float.class) {
-                rawColumn = true;
-                columnType = int.class;
-            } else if (columnType == double.class) {
-                rawColumn = true;
-                columnType = long.class;
-            }
-        }
-
-        var columnVar = mMaker.var(columnType);
+        var columnVar = mMaker.var(dstInfo.unboxedType());
 
         if (!dstInfo.isNullable()) {
-            decode(columnVar, srcVar, offsetVar, rawColumn, false);
+            decode(columnVar, srcVar, offsetVar, false, false);
             return columnVar;
         }
 
@@ -467,7 +409,7 @@ class PrimitiveColumnCodec extends ColumnCodec {
         decodeNullHeader(null, isNullVar, srcVar, offsetVar);
         Label isNull = mMaker.label();
         isNullVar.ifTrue(isNull);
-        decode(columnVar, srcVar, offsetVar, rawColumn, false);
+        decode(columnVar, srcVar, offsetVar, false, false);
         isNull.here();
         return new Variable[] {columnVar, isNullVar};
     }
@@ -502,12 +444,10 @@ class PrimitiveColumnCodec extends ColumnCodec {
         }
 
         if (isNullVar != null) {
-            if (!mInfo.isNullable()) {
-                // FIXME: Can this happen?
-                throw new Error("no null arg");
-            }
-            var isNullField = argObjVar.field(argFieldName(argNum, "isNull"));
-            compareNullHeader(isNullVar, null, isNullField, op, pass, fail);
+            compareNullHeader(isNullVar, null, argField, op, pass, fail);
+        } else if (mInfo.isNullable()) {
+            CompareUtils.compare(mMaker, dstInfo, columnVar, dstInfo, argField, op, pass, fail);
+            return;
         }
 
         CompareUtils.comparePrimitives(mMaker, dstInfo, columnVar,

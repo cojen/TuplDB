@@ -121,32 +121,71 @@ class CompareUtils {
 
     /**
      * Generates code which compares a column to an argument and branches to a pass or fail
-     * target. Both must be unboxed primitives. One of the variables can be widened if
-     * necessary, but not both of them. For example, int cannot be compared to float. Such a
-     * comparison requires that both be widened to double.
+     * target. Both must be non-null. One of the variables can be widened if necessary, but not
+     * both of them. For example, int cannot be compared to float. Such a comparison requires
+     * that both be widened to double.
      *
      * @param op defined in ColumnFilter
      * @param pass branch here when comparison passes
      * @param fail branch here when comparison fails
      */
     static void comparePrimitives(MethodMaker mm,
-                                  ColumnInfo columnInfo, Variable columnVar,
+                                  ColumnInfo colInfo, Variable colVar,
                                   ColumnInfo argInfo, Variable argVar,
                                   int op, Label pass, Label fail)
     {
-        if (columnInfo.isUnsignedInteger() || argInfo.isUnsignedInteger()) {
+        if (colInfo.isUnsignedInteger() || argInfo.isUnsignedInteger()) {
             // FIXME: If possible, widen to int or long. If ulong, need special method. If
             // an "exact" comparison and both are unsigned, nothing special is needed.
             throw null;
         }
 
+        Class<?> colType = colVar.classType();
+        if (!colType.isPrimitive()) {
+            colVar = colVar.unbox();
+            colType = colVar.classType();
+        }
+
+        Class<?> argType = argVar.classType();
+        if (!argType.isPrimitive()) {
+            argVar = argVar.unbox();
+            argType = argVar.classType();
+        }
+
+        raw: if (ColumnFilter.isExact(op)) {
+            // If floating point, must perform raw comparison for finding NaN.
+
+            if (colType == float.class) {
+                if (argType == float.class) {
+                    colVar = colVar.invoke("floatToRawIntBits", colVar);
+                    argVar = argVar.invoke("floatToRawIntBits", argVar);
+                    break raw;
+                }
+                if (argType != double.class) {
+                    break raw;
+                }
+                colVar = colVar.cast(double.class);
+            } else if (colType == double.class) {
+                if (argType == float.class) {
+                    argVar = argVar.cast(double.class);
+                } else if (argType != double.class) {
+                    break raw;
+                }
+            } else {
+                break raw;
+            }
+            
+            colVar = colVar.invoke("doubleToRawLongBits", colVar);
+            argVar = argVar.invoke("doubleToRawLongBits", argVar);
+        }
+
         switch (op) {
-        case ColumnFilter.OP_EQ: columnVar.ifEq(argVar, pass); break;
-        case ColumnFilter.OP_NE: columnVar.ifNe(argVar, pass); break;
-        case ColumnFilter.OP_LT: columnVar.ifLt(argVar, pass); break;
-        case ColumnFilter.OP_GE: columnVar.ifGe(argVar, pass); break;
-        case ColumnFilter.OP_GT: columnVar.ifGt(argVar, pass); break;
-        case ColumnFilter.OP_LE: columnVar.ifLe(argVar, pass); break;
+        case ColumnFilter.OP_EQ: colVar.ifEq(argVar, pass); break;
+        case ColumnFilter.OP_NE: colVar.ifNe(argVar, pass); break;
+        case ColumnFilter.OP_LT: colVar.ifLt(argVar, pass); break;
+        case ColumnFilter.OP_GE: colVar.ifGe(argVar, pass); break;
+        case ColumnFilter.OP_GT: colVar.ifGt(argVar, pass); break;
+        case ColumnFilter.OP_LE: colVar.ifLe(argVar, pass); break;
         default: throw new AssertionError();
         }
 
