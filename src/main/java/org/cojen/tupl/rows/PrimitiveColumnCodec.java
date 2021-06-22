@@ -385,18 +385,55 @@ class PrimitiveColumnCodec extends ColumnCodec {
                         int op)
     {
         if (dstInfo.typeCode != mInfo.typeCode) {
-            if (dstInfo.isPrimitive()) {
-                // FIXME: Convert it... (float/double must be raw when finished, if op isExact)
-                // The optimizations here avoid boxing, that's all. If the conversion yields a
-                // primitive type, possibily nullable, use the optimizations.
+            if (mInfo.plainTypeCode() == TYPE_BOOLEAN || dstInfo.plainTypeCode() == TYPE_BOOLEAN) {
+                // FIXME
                 throw null;
             }
 
-            var decodedVar = mMaker.var(mInfo.type);
-            decode(decodedVar, srcVar, offsetVar, false);
-            var columnVar = mMaker.var(dstInfo.type);
-            Converter.convertLossy(mMaker, mInfo, decodedVar, dstInfo, columnVar);
-            return columnVar;
+            Variable columnVar;
+            Variable isNullVar = null;
+            Label isNull = null;
+
+            if (mInfo.isNullable() && dstInfo.isNullablePrimitiveNumber()) {
+                isNullVar = mMaker.var(boolean.class);
+                decodeNullHeader(null, isNullVar, srcVar, offsetVar);
+                isNull = mMaker.label();
+                isNullVar.ifTrue(isNull);
+                var decodedVar = mMaker.var(mInfo.unboxedType());
+                decode(decodedVar, srcVar, offsetVar, false, false);
+                columnVar = mMaker.var(dstInfo.unboxedType());
+                Converter.convertLossy(mMaker, mInfo.asNonNullable(), decodedVar,
+                                       dstInfo.asNonNullable(), columnVar);
+            } else {
+                var decodedVar = mMaker.var(mInfo.type);
+                decode(decodedVar, srcVar, offsetVar, false);
+                columnVar = mMaker.var(dstInfo.type);
+                Converter.convertLossy(mMaker, mInfo, decodedVar, dstInfo, columnVar);
+            }
+
+            boolean rawColumn = false;
+            if (ColumnFilter.isExact(op)) {
+                Class<?> columnType = dstInfo.unboxedType();
+                if (columnType == float.class) {
+                    rawColumn = true;
+                    columnVar = columnVar.invoke("floatToRawIntBits", columnVar);
+                } else if (columnType == double.class) {
+                    rawColumn = true;
+                    columnVar = columnVar.invoke("doubleToRawLongBits", columnVar);
+                }
+            }
+
+            if (isNullVar == null) {
+                return columnVar;
+            }
+
+            Label cont = mMaker.label();
+            mMaker.goto_(cont);
+            isNull.here();
+            columnVar.set(0); // make verfier happy (definite assignment)
+            cont.here();
+
+            return new Variable[] {columnVar, isNullVar};
         }
 
         if (dstInfo.plainTypeCode() == TYPE_BOOLEAN) {
@@ -405,25 +442,20 @@ class PrimitiveColumnCodec extends ColumnCodec {
             return columnVar;
         }
 
-        Class<?> fieldType = dstInfo.unboxedType();
+        Class<?> columnType = dstInfo.unboxedType();
 
-        final boolean rawColumn;
-        rawCheck: {
-            if (ColumnFilter.isExact(op)) {
-                if (fieldType == float.class) {
-                    rawColumn = true;
-                    fieldType = int.class;
-                    break rawCheck;
-                } else if (fieldType == double.class) {
-                    rawColumn = true;
-                    fieldType = long.class;
-                    break rawCheck;
-                }
+        boolean rawColumn = false;
+        if (ColumnFilter.isExact(op)) {
+            if (columnType == float.class) {
+                rawColumn = true;
+                columnType = int.class;
+            } else if (columnType == double.class) {
+                rawColumn = true;
+                columnType = long.class;
             }
-            rawColumn = false;
         }
 
-        var columnVar = mMaker.var(fieldType);
+        var columnVar = mMaker.var(columnType);
 
         if (!dstInfo.isNullable()) {
             decode(columnVar, srcVar, offsetVar, rawColumn, false);
@@ -448,13 +480,15 @@ class PrimitiveColumnCodec extends ColumnCodec {
         var argField = argObjVar.field(argFieldName(argNum));
 
         if (dstInfo.typeCode != mInfo.typeCode) {
-            if (dstInfo.isPrimitive()) {
+            if (mInfo.plainTypeCode() == TYPE_BOOLEAN || dstInfo.plainTypeCode() == TYPE_BOOLEAN) {
                 // FIXME
                 throw null;
             }
-            var columnVar = (Variable) decoded;
-            CompareUtils.compare(mMaker, dstInfo, columnVar, dstInfo, argField, op, pass, fail);
-            return;
+            if (!mInfo.isNullable() || !dstInfo.isNullablePrimitiveNumber()) {
+                var columnVar = (Variable) decoded;
+                CompareUtils.compare(mMaker, dstInfo, columnVar, dstInfo, argField, op, pass, fail);
+                return;
+            }
         }
 
         Variable columnVar, isNullVar;
@@ -468,11 +502,16 @@ class PrimitiveColumnCodec extends ColumnCodec {
         }
 
         if (isNullVar != null) {
+            if (!mInfo.isNullable()) {
+                // FIXME: Can this happen?
+                throw new Error("no null arg");
+            }
             var isNullField = argObjVar.field(argFieldName(argNum, "isNull"));
             compareNullHeader(isNullVar, null, isNullField, op, pass, fail);
         }
 
-        CompareUtils.comparePrimitives(mMaker, mInfo, columnVar, mInfo, argField, op, pass, fail);
+        CompareUtils.comparePrimitives(mMaker, dstInfo, columnVar,
+                                       dstInfo, argField, op, pass, fail);
     }
 
     /**

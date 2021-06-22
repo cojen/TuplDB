@@ -157,12 +157,27 @@ public class ColumnInfo implements Cloneable {
         return (typeCode & TYPE_ARRAY) != 0;
     }
 
+    /**
+     * @return true if type is primitive and not nullable
+     */
     boolean isPrimitive() {
         return isPrimitive(typeCode);
     }
 
+    /**
+     * @return true if type is primitive and not nullable
+     */
     static boolean isPrimitive(int typeCode) {
         return (typeCode & ~TYPE_DESCENDING) < 0b000_11000;
+    }
+
+    boolean isNullablePrimitiveNumber() {
+        return isNullablePrimitiveNumber(typeCode);
+    }
+
+    static boolean isNullablePrimitiveNumber(int typeCode) {
+        typeCode = (typeCode & ~TYPE_DESCENDING) ^ TYPE_NULLABLE;
+        return TYPE_BOOLEAN < typeCode && typeCode < 0b000_11000;
     }
 
     /**

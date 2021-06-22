@@ -50,8 +50,8 @@ class CompareUtils {
                         ColumnInfo argInfo, Variable argVar,
                         int op, Label pass, Label fail)
     {
-        if (columnInfo.isNullable()) {
-            if (argInfo.isNullable()) {
+        if (columnInfo.isNullable() && !columnVar.classType().isPrimitive()) {
+            if (argInfo.isNullable() && !argVar.classType().isPrimitive()) {
                 Label argNotNull = mm.label();
                 argVar.ifNe(null, argNotNull);
                 columnVar.ifEq(null, CompareUtils.selectNullColumnToNullArg(op, pass, fail));
@@ -59,7 +59,7 @@ class CompareUtils {
                 argNotNull.here();
             }
             columnVar.ifEq(null, selectNullColumnToArg(op, pass, fail));
-        } else if (argInfo.isNullable()) {
+        } else if (argInfo.isNullable() && !argVar.classType().isPrimitive()) {
             argVar.ifEq(null, selectColumnToNullArg(op, pass, fail));
         }
 
@@ -124,8 +124,6 @@ class CompareUtils {
      * target. Both must be unboxed primitives. One of the variables can be widened if
      * necessary, but not both of them. For example, int cannot be compared to float. Such a
      * comparison requires that both be widened to double.
-     *
-     * FIXME: Support widening of both variables.
      *
      * @param op defined in ColumnFilter
      * @param pass branch here when comparison passes
