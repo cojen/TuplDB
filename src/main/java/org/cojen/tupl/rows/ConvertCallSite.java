@@ -184,21 +184,12 @@ public class ConvertCallSite extends MutableCallSite {
                 from.ifNe(null, next);
                 result = mm.var(toType).set(null);
             }
-        } else fromInstance: {
+        } else {
             from.instanceOf(fromType).ifFalse(next);
 
-            if (!toType.isPrimitive()) {
-                if (toType.isAssignableFrom(fromType)) {
-                    result = from.cast(toType);
-                    break fromInstance;
-                }
-                Label notNull = mm.label();
-                from.ifNe(null, notNull);
-                mm.return_(null);
-                notNull.here();
-            }
-
-            if (toType == String.class) {
+            if (!toType.isPrimitive() && toType.isAssignableFrom(fromType)) {
+                result = from.cast(toType);
+            } else if (toType == String.class) {
                 result = toString(mm, fromType, from);
             } else if (toType == long.class || toType == Long.class) {
                 result = toLong(mm, fromType, from);
