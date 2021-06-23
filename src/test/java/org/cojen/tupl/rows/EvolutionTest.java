@@ -1293,7 +1293,7 @@ public class EvolutionTest {
 
     @Test
     public void toFloatCompare() throws Exception {
-        // Test converting to int columns and running filters.
+        // Test converting to float columns and running filters.
 
         Object[] initSpec = {
             int.class, "+key",
@@ -1533,5 +1533,253 @@ public class EvolutionTest {
         }
 
         assertEquals(1, count);
+    }
+
+    @Test
+    public void toBooleanCompare() throws Exception {
+        // Test converting to boolean columns and running filters.
+
+        Object[] initSpec = {
+            int.class, "+key",
+            Boolean.class, "a?",
+            Boolean.class, "b",
+            boolean.class, "c",
+            String.class, "d?",
+            int.class, "e",
+        };
+
+        Database db = Database.open(new DatabaseConfig());
+
+        {
+            Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
+            RowIndex ix = db.openRowIndex(rowType);
+
+            var setKey = rowType.getMethod("key", int.class);
+            var setA = rowType.getMethod("a", Boolean.class);
+            var setB = rowType.getMethod("b", Boolean.class);
+            var setC = rowType.getMethod("c", boolean.class);
+            var setD = rowType.getMethod("d", String.class);
+            var setE = rowType.getMethod("e", int.class);
+
+            {
+                var row = ix.newRow();
+                setKey.invoke(row, 1);
+                setA.invoke(row, true);
+                setB.invoke(row, true);
+                setC.invoke(row, true);
+                setD.invoke(row, "true");
+                setE.invoke(row, 1);
+                ix.store(null, row);
+            }
+
+            {
+                var row = ix.newRow();
+                setKey.invoke(row, 2);
+                setA.invoke(row, false);
+                setB.invoke(row, false);
+                setC.invoke(row, false);
+                setD.invoke(row, "false");
+                setE.invoke(row, 0);
+                ix.store(null, row);
+            }
+
+            {
+                var row = ix.newRow();
+                setKey.invoke(row, 3);
+                setA.invoke(row, (Object) null);
+                setB.invoke(row, false);
+                setC.invoke(row, false);
+                setD.invoke(row, (Object) null);
+                setE.invoke(row, -1);
+                ix.store(null, row);
+            }
+
+            {
+                var row = ix.newRow();
+                setKey.invoke(row, 4);
+                setA.invoke(row, false);
+                setB.invoke(row, false);
+                setC.invoke(row, false);
+                setD.invoke(row, "xxx");
+                setE.invoke(row, 10);
+                ix.store(null, row);
+            }
+        }
+
+        Object[] newSpec = {
+            int.class, "+key",
+            boolean.class, "a",  // Boolean? to boolean
+            boolean.class, "b",  // Boolean to boolean
+            Boolean.class, "c",  // boolean to Boolean
+            Boolean.class, "d?", // String? to Boolean?
+            Boolean.class, "e?", // int to Boolean?
+        };
+
+        Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
+        RowIndex ix = db.openRowIndex(rowType);
+
+        var setKey = rowType.getMethod("key", int.class);
+        var getKey = rowType.getMethod("key");
+        var getA = rowType.getMethod("a");
+        var getB = rowType.getMethod("b");
+        var getC = rowType.getMethod("c");
+        var getD = rowType.getMethod("d");
+        var getE = rowType.getMethod("e");
+
+        {
+            var row = ix.newRow();
+            setKey.invoke(row, 1);
+            ix.load(null, row);
+            assertEquals(true, getA.invoke(row));
+            assertEquals(true, getB.invoke(row));
+            assertEquals(true, getC.invoke(row));
+            assertEquals(true, getD.invoke(row));
+            assertEquals(true, getE.invoke(row));
+        }
+
+        {
+            var row = ix.newRow();
+            setKey.invoke(row, 2);
+            ix.load(null, row);
+            assertEquals(false, getA.invoke(row));
+            assertEquals(false, getB.invoke(row));
+            assertEquals(false, getC.invoke(row));
+            assertEquals(false, getD.invoke(row));
+            assertEquals(false, getE.invoke(row));
+        }
+
+        {
+            var row = ix.newRow();
+            setKey.invoke(row, 3);
+            ix.load(null, row);
+            assertEquals(false, getA.invoke(row));
+            assertEquals(false, getB.invoke(row));
+            assertEquals(false, getC.invoke(row));
+            assertEquals(null, getD.invoke(row));
+            assertEquals(false, getE.invoke(row));
+        }
+
+        {
+            var row = ix.newRow();
+            setKey.invoke(row, 4);
+            ix.load(null, row);
+            assertEquals(false, getA.invoke(row));
+            assertEquals(false, getB.invoke(row));
+            assertEquals(false, getC.invoke(row));
+            assertEquals(null, getD.invoke(row));
+            assertEquals(true, getE.invoke(row));
+        }
+
+        // Now test some filters.
+
+        RowScanner scanner = ix.newScanner(null, "a == ?", "true");
+        int count = 0;
+        for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+            assertEquals(1, getKey.invoke(row));
+            assertEquals(true, getA.invoke(row));
+            assertEquals(true, getB.invoke(row));
+            assertEquals(true, getC.invoke(row));
+            assertEquals(true, getD.invoke(row));
+            assertEquals(true, getE.invoke(row));
+            count++;
+        }
+
+        assertEquals(1, count);
+
+        scanner = ix.newScanner(null, "b != ?", false);
+        count = 0;
+        for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+            assertEquals(1, getKey.invoke(row));
+            assertEquals(true, getA.invoke(row));
+            assertEquals(true, getB.invoke(row));
+            assertEquals(true, getC.invoke(row));
+            assertEquals(true, getD.invoke(row));
+            assertEquals(true, getE.invoke(row));
+            count++;
+        }
+
+        assertEquals(1, count);
+
+        scanner = ix.newScanner(null, "c == ?", false);
+        count = 0;
+        for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+            switch ((int) getKey.invoke(row)) {
+            default: fail(); break;
+            case 2:
+                assertEquals(false, getA.invoke(row));
+                assertEquals(false, getB.invoke(row));
+                assertEquals(false, getC.invoke(row));
+                assertEquals(false, getD.invoke(row));
+                assertEquals(false, getE.invoke(row));
+                break;
+            case 3:
+                assertEquals(false, getA.invoke(row));
+                assertEquals(false, getB.invoke(row));
+                assertEquals(false, getC.invoke(row));
+                assertEquals(null, getD.invoke(row));
+                assertEquals(false, getE.invoke(row));
+                break;
+            case 4:
+                assertEquals(false, getA.invoke(row));
+                assertEquals(false, getB.invoke(row));
+                assertEquals(false, getC.invoke(row));
+                assertEquals(null, getD.invoke(row));
+                assertEquals(true, getE.invoke(row));
+                break;
+            }
+            count++;
+        }
+
+        assertEquals(3, count);
+
+        scanner = ix.newScanner(null, "d == ?", (Object) null);
+        count = 0;
+        for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+            switch ((int) getKey.invoke(row)) {
+            default: fail(); break;
+            case 3:
+                assertEquals(false, getA.invoke(row));
+                assertEquals(false, getB.invoke(row));
+                assertEquals(false, getC.invoke(row));
+                assertEquals(null, getD.invoke(row));
+                assertEquals(false, getE.invoke(row));
+                break;
+            case 4:
+                assertEquals(false, getA.invoke(row));
+                assertEquals(false, getB.invoke(row));
+                assertEquals(false, getC.invoke(row));
+                assertEquals(null, getD.invoke(row));
+                assertEquals(true, getE.invoke(row));
+                break;
+            }
+            count++;
+        }
+
+        assertEquals(2, count);
+
+        scanner = ix.newScanner(null, "e == ?", "TRUe");
+        count = 0;
+        for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+            switch ((int) getKey.invoke(row)) {
+            default: fail(); break;
+            case 1:
+                assertEquals(true, getA.invoke(row));
+                assertEquals(true, getB.invoke(row));
+                assertEquals(true, getC.invoke(row));
+                assertEquals(true, getD.invoke(row));
+                assertEquals(true, getE.invoke(row));
+                break;
+            case 4:
+                assertEquals(false, getA.invoke(row));
+                assertEquals(false, getB.invoke(row));
+                assertEquals(false, getC.invoke(row));
+                assertEquals(null, getD.invoke(row));
+                assertEquals(true, getE.invoke(row));
+                break;
+            }
+            count++;
+        }
+
+        assertEquals(2, count);
     }
 }

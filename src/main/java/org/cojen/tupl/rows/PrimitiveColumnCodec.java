@@ -352,43 +352,11 @@ class PrimitiveColumnCodec extends ColumnCodec {
                         int op)
     {
         if (dstInfo.typeCode != mInfo.typeCode) {
-            if (mInfo.plainTypeCode() == TYPE_BOOLEAN || dstInfo.plainTypeCode() == TYPE_BOOLEAN) {
-                // FIXME
-                throw null;
-            }
-
-            Variable columnVar;
-            Variable isNullVar = null;
-            Label isNull = null;
-
-            if (mInfo.isNullable() && dstInfo.isNullablePrimitiveNumber()) {
-                isNullVar = mMaker.var(boolean.class);
-                decodeNullHeader(null, isNullVar, srcVar, offsetVar);
-                isNull = mMaker.label();
-                isNullVar.ifTrue(isNull);
-                var decodedVar = mMaker.var(mInfo.unboxedType());
-                decode(decodedVar, srcVar, offsetVar, false, false);
-                columnVar = mMaker.var(dstInfo.unboxedType());
-                Converter.convertLossy(mMaker, mInfo.asNonNullable(), decodedVar,
-                                       dstInfo.asNonNullable(), columnVar);
-            } else {
-                var decodedVar = mMaker.var(mInfo.type);
-                decode(decodedVar, srcVar, offsetVar, false);
-                columnVar = mMaker.var(dstInfo.type);
-                Converter.convertLossy(mMaker, mInfo, decodedVar, dstInfo, columnVar);
-            }
-
-            if (isNullVar == null) {
-                return columnVar;
-            }
-
-            Label cont = mMaker.label();
-            mMaker.goto_(cont);
-            isNull.here();
-            columnVar.set(0); // make verfier happy (definite assignment)
-            cont.here();
-
-            return new Variable[] {columnVar, isNullVar};
+            var decodedVar = mMaker.var(mInfo.type);
+            decode(decodedVar, srcVar, offsetVar, false);
+            var columnVar = mMaker.var(dstInfo.type);
+            Converter.convertLossy(mMaker, mInfo, decodedVar, dstInfo, columnVar);
+            return columnVar;
         }
 
         if (dstInfo.plainTypeCode() == TYPE_BOOLEAN) {
@@ -422,15 +390,9 @@ class PrimitiveColumnCodec extends ColumnCodec {
         var argField = argObjVar.field(argFieldName(argNum));
 
         if (dstInfo.typeCode != mInfo.typeCode) {
-            if (mInfo.plainTypeCode() == TYPE_BOOLEAN || dstInfo.plainTypeCode() == TYPE_BOOLEAN) {
-                // FIXME
-                throw null;
-            }
-            if (!mInfo.isNullable() || !dstInfo.isNullablePrimitiveNumber()) {
-                var columnVar = (Variable) decoded;
-                CompareUtils.compare(mMaker, dstInfo, columnVar, dstInfo, argField, op, pass, fail);
-                return;
-            }
+            var columnVar = (Variable) decoded;
+            CompareUtils.compare(mMaker, dstInfo, columnVar, dstInfo, argField, op, pass, fail);
+            return;
         }
 
         Variable columnVar, isNullVar;

@@ -171,15 +171,6 @@ public class ColumnInfo implements Cloneable {
         return (typeCode & ~TYPE_DESCENDING) < 0b000_11000;
     }
 
-    boolean isNullablePrimitiveNumber() {
-        return isNullablePrimitiveNumber(typeCode);
-    }
-
-    static boolean isNullablePrimitiveNumber(int typeCode) {
-        typeCode = (typeCode & ~TYPE_DESCENDING) ^ TYPE_NULLABLE;
-        return TYPE_BOOLEAN < typeCode && typeCode < 0b000_11000;
-    }
-
     /**
      * Assigns the type by examining the typeCode.
      */
@@ -280,19 +271,6 @@ public class ColumnInfo implements Cloneable {
             }
         default:
             return false;
-        }
-    }
-
-    /**
-     * Returns this instance if already non-nullable, else a copy is returned.
-     */
-    ColumnInfo asNonNullable() {
-        if (!isNullable()) {
-            return this;
-        } else {
-            ColumnInfo info = copy();
-            info.typeCode &= ~TYPE_NULLABLE;
-            return info;
         }
     }
 
