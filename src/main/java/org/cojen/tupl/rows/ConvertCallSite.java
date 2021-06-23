@@ -93,7 +93,7 @@ public class ConvertCallSite extends MutableCallSite {
             }
             if (state == 0 && cImplementedHandle.compareAndSet(this, 0, 1)) {
                 try {
-                    setTarget(converterFor(obj, type()));
+                    setTarget(makeConverter(obj, type()));
                     mImplemented = 2;
                     break;
                 } catch (Throwable e) {
@@ -111,67 +111,18 @@ public class ConvertCallSite extends MutableCallSite {
         }
     }
 
-    private static class CacheKey {
-        private final Class<?> mFromType, mToType;
-
-        CacheKey(Class<?> fromType, Class<?> toType) {
-            mFromType = fromType;
-            mToType = toType;
-        }
-
-        @Override
-        public int hashCode() {
-            return mFromType.hashCode() * 31 + mToType.hashCode();
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj instanceof CacheKey) {
-                var other = (CacheKey) obj;
-                return mFromType == other.mFromType && mToType == other.mToType;
-            }
-            return false;
-        }
-    }
-
-    private static final WeakCache<Object, MethodHandle> cCache = new WeakCache<>();
-
     /**
      * @param obj defines the "from" type, which can be null
      * @param mt defines the "to" type (the return type)
      */
-    private static MethodHandle converterFor(Object obj, MethodType mt) {
+    private static MethodHandle makeConverter(Object obj, MethodType mt) {
+        // It's tempting to want to cache the generated converters, but each conversion chain
+        // is unique to the initial call site it's generated for. A converter cannot therefore
+        // be identified by just the from/to types and be shared.
+
+        Class<?> fromType = obj == null ? null : obj.getClass();
         Class<?> toType = mt.returnType();
-        Class<?> fromType;
-        Object key;
 
-        if (obj == null) {
-            fromType = null;
-            key = toType;
-        } else {
-            fromType = obj.getClass();
-            key = new CacheKey(fromType, toType);
-        }
-
-        MethodHandle mh = cCache.get(key);
-
-        if (mh == null) {
-            synchronized (cCache) {
-                mh = cCache.get(key);
-                if (mh == null) {
-                    mh = makeConverter(mt, fromType, toType);
-                    cCache.put(key, mh);
-                }
-            }
-        }
-
-        return mh;
-    }
-
-    private static MethodHandle makeConverter(MethodType mt, Class<?> fromType, Class<?> toType) {
         MethodMaker mm = MethodMaker.begin(MethodHandles.lookup(), "convert", mt);
         Label next = mm.label();
         Variable from = mm.param(0);
