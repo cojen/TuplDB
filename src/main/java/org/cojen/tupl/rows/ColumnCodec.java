@@ -323,8 +323,12 @@ abstract class ColumnCodec {
     // FIXME: When filter passes, take advantage of existing decoded variables and avoid double
     // decode if possible.
 
+    static String argFieldName(ColumnInfo info, int argNum) {
+        return info.name + '$' + argNum;
+    }
+
     protected String argFieldName(int argNum) {
-        return mInfo.name + '$' + argNum;
+        return argFieldName(mInfo, argNum);
     }
 
     protected String argFieldName(int argNum, String suffix) {

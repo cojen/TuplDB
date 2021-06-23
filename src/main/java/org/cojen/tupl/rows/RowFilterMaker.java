@@ -26,7 +26,9 @@ import java.lang.invoke.VarHandle;
 import java.lang.ref.WeakReference;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.TreeMap;
 
 import java.util.function.IntFunction;
 
@@ -251,32 +253,33 @@ public class RowFilterMaker<R> {
                 return mm.finish();
             }
 
-            RowInfo rowInfo, dstRowInfo;
+            RowInfo dstRowInfo = RowInfo.find(mRowType);
+
+            RowInfo rowInfo;
             MethodHandle decoder;
 
-            if (schemaVersion == 0) {
-                // No value columns to decode, and the primary key cannot change.
-                rowInfo = RowInfo.find(mRowType);
-                dstRowInfo = rowInfo;
-                decoder = null;
-            } else {
-                try {
+            try {
+                if (schemaVersion != 0) {
                     rowInfo = store.rowInfo(mRowType, mIndexId, schemaVersion);
                     if (rowInfo == null) {
                         throw new CorruptDatabaseException
                             ("Schema version not found: " + schemaVersion);
                     }
-
-                    dstRowInfo = RowInfo.find(mRowType);
-
-                    // Obtain the MethodHandle which fully decodes the value columns.
-                    decoder = (MethodHandle) mLookup.findStatic
-                        (mLookup.lookupClass(), "decodeValueHandle",
-                         MethodType.methodType(MethodHandle.class, int.class))
-                        .invokeExact(schemaVersion);
-                } catch (Throwable e) {
-                    return new ExceptionCallSite.Failed(mMethodType, mm, e);
+                } else {
+                    // No value columns to decode, and the primary key cannot change.
+                    rowInfo = new RowInfo(dstRowInfo.name);
+                    rowInfo.keyColumns = dstRowInfo.keyColumns;
+                    rowInfo.valueColumns = Collections.emptyNavigableMap();
+                    rowInfo.allColumns = new TreeMap<>(rowInfo.keyColumns);
                 }
+
+                // Obtain the MethodHandle which fully decodes the value columns.
+                decoder = (MethodHandle) mLookup.findStatic
+                    (mLookup.lookupClass(), "decodeValueHandle",
+                     MethodType.methodType(MethodHandle.class, int.class))
+                    .invokeExact(schemaVersion);
+            } catch (Throwable e) {
+                return new ExceptionCallSite.Failed(mMethodType, mm, e);
             }
 
             Class<?> rowClass = RowMaker.find(mRowType);
@@ -317,7 +320,7 @@ public class RowFilterMaker<R> {
          * @param dstRowInfo current row defintion
          * @param rowClass current row implementation
          * @param rowGen actual row defintion to be decoded (can differ from dstRowInfo)
-         * @param decoder performs full decoding of the value columns; can be null if none
+         * @param decoder performs full decoding of the value columns
          */
         DecodeVisitor(MethodMaker mm, int schemaVersion,
                       Class<?> viewClass, RowInfo dstRowInfo, Class<?> rowClass, RowGen rowGen,
@@ -355,11 +358,8 @@ public class RowFilterMaker<R> {
             viewVar.invoke("decodePrimaryKey", rowVar, mMaker.param(1));
 
             // Invoke the schema-specific decoder directly, instead of calling the decodeValue
-            // method which redundantly examines the schema version and switches on it. The
-            // decoder can be null if no value columns exist.
-            if (mDecoder != null) {
-                mMaker.invoke(mDecoder, rowVar, mMaker.param(2)); // param(2) is the byte array
-            }
+            // method which redundantly examines the schema version and switches on it.
+            mMaker.invoke(mDecoder, rowVar, mMaker.param(2)); // param(2) is the byte array
 
             // Param(0) is the generated filter class, which has access to the inherited
             // markAllClean method.
@@ -388,7 +388,9 @@ public class RowFilterMaker<R> {
                 mFail.here();
             }
 
-            highestLocated.resetTail();
+            if (highestLocated != null) {
+                highestLocated.resetTail();
+            }
 
             mMaker.goto_(originalFail);
             mFail = originalFail;
@@ -414,7 +416,9 @@ public class RowFilterMaker<R> {
                 mPass.here();
             }
 
-            highestLocated.resetTail();
+            if (highestLocated != null) {
+                highestLocated.resetTail();
+            }
 
             mMaker.goto_(originalPass);
             mPass = originalPass;
@@ -430,25 +434,30 @@ public class RowFilterMaker<R> {
         public void visit(ColumnToArgFilter filter) {
             String name = filter.column().name();
             ColumnInfo dstInfo = mDstRowInfo.allColumns.get(name);
+            int op = filter.operator();
+            Variable argObjVar = mMaker.param(0); // contains the arg fields prepared earlier
             int argNum = filter.argument();
 
-            int colNum;
-            {
-                Integer colNumObj = mRowGen.columnNumbers().get(name);
-                if (colNumObj == null) {
-                    // FIXME: Generate default and compare against that.
-                    //        See Converter.setDefault and CompareUtils.
-                    throw null;
-                }
-                colNum = colNumObj;
-            }
+            LocatedColumn located;
 
-            int op = filter.operator();
-            LocatedColumn located = locateColumn(colNum, dstInfo, op);
-            Variable argObjVar = mMaker.param(0); // contains the arg fields prepared earlier
-            ColumnCodec codec = codecFor(colNum);
-            codec.filterCompare(dstInfo, located.mSrcVar, located.mOffsetVar, null,
-                                op, located.mDecoded, argObjVar, argNum, mPass, mFail);
+            Integer colNumObj = mRowGen.columnNumbers().get(name);
+            if (colNumObj != null) {
+                int colNum = colNumObj;
+                located = locateColumn(colNum, dstInfo, op);
+                ColumnCodec codec = codecFor(colNum);
+                codec.filterCompare(dstInfo, located.mSrcVar, located.mOffsetVar, null,
+                                    op, located.mDecoded, argObjVar, argNum, mPass, mFail);
+            } else {
+                // Column doesn't exist in the row, so compare against a default. This code
+                // assumes that value codecs always define an arg field which preserves the
+                // original argument, possibly converted to the correct type.
+                located = null;
+                var argField = argObjVar.field(ColumnCodec.argFieldName(dstInfo, argNum));
+                var columnVar = mMaker.var(dstInfo.type);
+                Converter.setDefault(dstInfo, columnVar);
+                CompareUtils.compare(mMaker, dstInfo, columnVar,
+                                     dstInfo, argField, op, mPass, mFail);
+            }
 
             // Parent node (AndFilter/OrFilter) needs this to be updated.
             mHighestLocated = located;

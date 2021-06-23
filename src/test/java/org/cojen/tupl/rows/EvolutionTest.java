@@ -1782,4 +1782,132 @@ public class EvolutionTest {
 
         assertEquals(2, count);
     }
+
+    @Test
+    public void toDefaultCompare() throws Exception {
+        // Test filtering against default column values.
+
+        Object[] initSpec = {
+            int.class, "+key",
+        };
+
+        Database db = Database.open(new DatabaseConfig());
+
+        {
+            Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
+            RowIndex ix = db.openRowIndex(rowType);
+
+            var setKey = rowType.getMethod("key", int.class);
+
+            var row = ix.newRow();
+            setKey.invoke(row, 1);
+            ix.store(null, row);
+        }
+
+        {
+            Object[] newSpec = {
+                int.class, "+key",
+                double.class, "a",
+                String.class, "b",
+                BigInteger.class, "c",
+            };
+
+            Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
+            RowIndex ix = db.openRowIndex(rowType);
+
+            var setKey = rowType.getMethod("key", int.class);
+            var getKey = rowType.getMethod("key");
+            var setA = rowType.getMethod("a", double.class);
+            var getA = rowType.getMethod("a");
+            var setB = rowType.getMethod("b", String.class);
+            var getB = rowType.getMethod("b");
+            var setC = rowType.getMethod("c", BigInteger.class);
+            var getC = rowType.getMethod("c");
+
+            {
+                var row = ix.newRow();
+                setKey.invoke(row, 2);
+                setA.invoke(row, 1.1);
+                setB.invoke(row, "one");
+                setC.invoke(row, BigInteger.ONE);
+                ix.store(null, row);
+            }
+
+            RowScanner scanner = ix.newScanner(null, "a == ? & b == ? & c == ?",
+                                               0.0, "", BigInteger.ZERO);
+            int count = 0;
+            for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+                assertEquals(1, getKey.invoke(row));
+                assertEquals(0.0, getA.invoke(row));
+                assertEquals("", getB.invoke(row));
+                assertEquals(BigInteger.ZERO, getC.invoke(row));
+                count++;
+            }
+
+            assertEquals(1, count);
+        }
+
+        // Add some more columns.
+
+        Object[] newSpec = {
+            int.class, "+key",
+            double.class, "a",
+            String.class, "b",
+            BigInteger.class, "c",
+            BigDecimal.class, "d",
+            Integer.class, "e?",
+        };
+
+        Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
+        RowIndex ix = db.openRowIndex(rowType);
+
+        var setKey = rowType.getMethod("key", int.class);
+        var getKey = rowType.getMethod("key");
+        var setA = rowType.getMethod("a", double.class);
+        var getA = rowType.getMethod("a");
+        var setB = rowType.getMethod("b", String.class);
+        var getB = rowType.getMethod("b");
+        var setC = rowType.getMethod("c", BigInteger.class);
+        var getC = rowType.getMethod("c");
+        var setD = rowType.getMethod("d", BigDecimal.class);
+        var getD = rowType.getMethod("d");
+        var setE = rowType.getMethod("e", Integer.class);
+        var getE = rowType.getMethod("e");
+
+        {
+            var row = ix.newRow();
+            setKey.invoke(row, 3);
+            setA.invoke(row, 1.2);
+            setB.invoke(row, "two");
+            setC.invoke(row, BigInteger.TWO);
+            setD.invoke(row, BigDecimal.valueOf(2));
+            setE.invoke(row, 1);
+            ix.store(null, row);
+        }
+
+        RowScanner scanner = ix.newScanner(null, "d == ? & e == ?", BigDecimal.ZERO, null);
+        int count = 0;
+        for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+            switch ((int) getKey.invoke(row)) {
+            default: fail(); break;
+            case 1:
+                assertEquals(0.0, getA.invoke(row));
+                assertEquals("", getB.invoke(row));
+                assertEquals(BigInteger.ZERO, getC.invoke(row));
+                assertEquals(BigDecimal.ZERO, getD.invoke(row));
+                assertEquals(null, getE.invoke(row));
+                break;
+            case 2:
+                assertEquals(1.1, getA.invoke(row));
+                assertEquals("one", getB.invoke(row));
+                assertEquals(BigInteger.ONE, getC.invoke(row));
+                assertEquals(BigDecimal.ZERO, getD.invoke(row));
+                assertEquals(null, getE.invoke(row));
+                break;
+            }
+            count++;
+        }
+
+        assertEquals(2, count);
+    }
 }
