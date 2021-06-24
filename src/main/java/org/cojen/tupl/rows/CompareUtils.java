@@ -96,7 +96,10 @@ class CompareUtils {
                 }
             } else {
                 // BigDecimal.equals is too strict and would lead to much confusion. For
-                // example, 0 isn't considered equal to 0.0.
+                // example, 0 isn't considered equal to 0.0. Note that Float.equals is
+                // similarly fuzzy with respect to how it compares NaN values.
+                // FIXME: When searching against a BigDecimal key, must use a range for
+                // consistency. That code won't go here, however.
                 var result = columnVar.invoke("compareTo", argVar);
                 if (op == ColumnFilter.OP_EQ) {
                     result.ifEq(0, pass);
@@ -153,12 +156,16 @@ class CompareUtils {
         }
 
         raw: if (ColumnFilter.isExact(op)) {
-            // If floating point, must perform raw comparison for finding NaN.
+            // If floating point, must perform raw comparison for finding NaN. Note that the
+            // "raw" bits form isn't used, and thus all NaN forms can be found. This is
+            // consistent with the Float.equals method.
+            // FIXME: When searching against a floating point key, must use a range for
+            // consistency. That code won't go here, however.
 
             if (colType == float.class) {
                 if (argType == float.class) {
-                    colVar = colVar.invoke("floatToRawIntBits", colVar);
-                    argVar = argVar.invoke("floatToRawIntBits", argVar);
+                    colVar = colVar.invoke("floatToIntBits", colVar);
+                    argVar = argVar.invoke("floatToIntBits", argVar);
                     break raw;
                 }
                 if (argType != double.class) {
@@ -174,9 +181,9 @@ class CompareUtils {
             } else {
                 break raw;
             }
-            
-            colVar = colVar.invoke("doubleToRawLongBits", colVar);
-            argVar = argVar.invoke("doubleToRawLongBits", argVar);
+
+            colVar = colVar.invoke("doubleToLongBits", colVar);
+            argVar = argVar.invoke("doubleToLongBits", argVar);
         }
 
         switch (op) {
