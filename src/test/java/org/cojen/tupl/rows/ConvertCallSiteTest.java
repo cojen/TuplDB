@@ -153,6 +153,8 @@ public class ConvertCallSiteTest {
              10f, 10f,
              null, null,
              100d, 100f,
+             1.0d/0.0d, 1.0f/0.0f,
+             0.0d/0.0d, 0.0f/0.0f,
              "10.1", 10.1f,
              BigInteger.valueOf(1234), 1234f,
              BigDecimal.valueOf(1234.125), 1234.125f

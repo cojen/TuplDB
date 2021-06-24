@@ -444,7 +444,7 @@ public class ConvertCallSite extends MutableCallSite {
     // Called by generated code.
     public static float doubleToFloat(double d) {
         float f = (float) d;
-        if ((double) f != d) {
+        if ((double) f != d && !Double.isNaN(d)) {
             throw loss(Float.class, d);
         }
         return f;
