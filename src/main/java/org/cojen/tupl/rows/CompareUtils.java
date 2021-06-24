@@ -27,6 +27,8 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.filter.ColumnFilter;
 
+import static org.cojen.tupl.rows.ColumnInfo.*;
+
 /**
  * 
  *
@@ -137,12 +139,6 @@ class CompareUtils {
                                   ColumnInfo argInfo, Variable argVar,
                                   int op, Label pass, Label fail)
     {
-        if (colInfo.isUnsignedInteger() || argInfo.isUnsignedInteger()) {
-            // FIXME: If possible, widen to int or long. If ulong, need special method. If
-            // an "exact" comparison and both are unsigned, nothing special is needed.
-            throw null;
-        }
-
         Class<?> colType = colVar.classType();
         if (!colType.isPrimitive()) {
             colVar = colVar.unbox();
@@ -155,7 +151,31 @@ class CompareUtils {
             argType = argVar.classType();
         }
 
-        raw: if (ColumnFilter.isExact(op)) {
+        special: if (!ColumnFilter.isExact(op)) {
+            // Special handling is required for non-exact comparison of unsigned types.
+
+            if (colInfo.isUnsignedInteger()) {
+                if (argInfo.isUnsignedInteger()) {
+                    colVar = toLong(colInfo, colVar).add(Long.MIN_VALUE);
+                    argVar = toLong(argInfo, argVar).add(Long.MIN_VALUE);
+                    break special;
+                }
+            } else if (!argInfo.isUnsignedInteger()) {
+                // Both are signed.
+                break special;
+            }
+
+            // Mixed signed/unsigned comparison.
+
+            colVar = toLong(colInfo, colVar);
+            argVar = toLong(argInfo, argVar);
+
+            if (colInfo.plainTypeCode() == TYPE_ULONG) {
+                signMismatch(colVar, argVar, ColumnFilter.flipOperator(op), pass, fail);
+            } else if (argInfo.plainTypeCode() == TYPE_ULONG) {
+                signMismatch(colVar, argVar, op, pass, fail);
+            }
+        } else {
             // If floating point, must perform raw comparison for finding NaN. Note that the
             // "raw" bits form isn't used, and thus all NaN forms can be found. This is
             // consistent with the Float.equals method.
@@ -166,20 +186,32 @@ class CompareUtils {
                 if (argType == float.class) {
                     colVar = colVar.invoke("floatToIntBits", colVar);
                     argVar = argVar.invoke("floatToIntBits", argVar);
-                    break raw;
+                    break special;
                 }
                 if (argType != double.class) {
-                    break raw;
+                    break special;
                 }
                 colVar = colVar.cast(double.class);
             } else if (colType == double.class) {
                 if (argType == float.class) {
                     argVar = argVar.cast(double.class);
                 } else if (argType != double.class) {
-                    break raw;
+                    break special;
                 }
             } else {
-                break raw;
+                // Special handling is required for exact comparison of unsigned types.
+                if (colInfo.isUnsignedInteger() || argInfo.isUnsignedInteger()) {
+                    colVar = toLong(colInfo, colVar);
+                    argVar = toLong(argInfo, argVar);
+                    if ((colInfo.isUnsigned() ^ argInfo.isUnsigned()) &&
+                        (colInfo.plainTypeCode() == TYPE_ULONG ||
+                         argInfo.plainTypeCode() == TYPE_ULONG))
+                    {
+                        signMismatch(colVar, argVar, op, pass, fail);
+                    }
+                }
+
+                break special;
             }
 
             colVar = colVar.invoke("doubleToLongBits", colVar);
@@ -197,6 +229,45 @@ class CompareUtils {
         }
 
         mm.goto_(fail);
+    }
+
+    /**
+     * Convert signed or unsigned value to long.
+     */
+    private static Variable toLong(ColumnInfo info, Variable var) {
+        if (var.classType() != long.class) {
+            var = var.cast(long.class);
+            doMask: {
+                long mask;
+                switch (info.plainTypeCode()) {
+                case TYPE_UBYTE:  mask = 0xffL;        break;
+                case TYPE_USHORT: mask = 0xffffL;      break;
+                case TYPE_UINT:   mask = 0xffff_ffffL; break;
+                default: break doMask;
+                }
+                var = var.and(mask);
+            }
+        }
+
+        return var;
+    }
+
+    /**
+     * Short-circuit branches to pass or fail only if the value ranges don't overlap. One of
+     * the variables must be signed and the othe rmust be unsigned.
+     */
+    private static void signMismatch(Variable a, Variable b, int op, Label pass, Label fail) {
+        switch (op) {
+        case ColumnFilter.OP_LT: case ColumnFilter.OP_LE: case ColumnFilter.OP_NE:
+            a.ifLt(0, pass);
+            b.ifLt(0, pass);
+            break;
+        case ColumnFilter.OP_GE: case ColumnFilter.OP_GT: case ColumnFilter.OP_EQ:
+            a.ifLt(0, fail);
+            b.ifLt(0, fail);
+            break;
+        default: throw new AssertionError();
+        }
     }
 
     /**
