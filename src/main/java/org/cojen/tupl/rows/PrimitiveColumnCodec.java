@@ -103,15 +103,7 @@ class PrimitiveColumnCodec extends ColumnCodec {
 
             switch (plain) {
             case TYPE_BOOLEAN: case TYPE_BYTE: case TYPE_UBYTE: {
-                if (plain == TYPE_BYTE) {
-                    if (mForKey) {
-                        byte mask = (byte) (mInfo.isDescending() ? 0x7f : 0x80);
-                        srcVar = srcVar.xor(mask);
-                    }
-                } else if (plain == TYPE_UBYTE) {
-                    // FIXME
-                    throw null;
-                } else {
+                if (plain == TYPE_BOOLEAN) {
                     byte f, t, n;
                     n = NULL_BYTE_HIGH;
                     if (!mForKey) {
@@ -147,6 +139,9 @@ class PrimitiveColumnCodec extends ColumnCodec {
                     srcVar = byteVar;
 
                     cont.here();
+                } else if (plain == TYPE_BYTE && mForKey) {
+                    byte mask = (byte) (mInfo.isDescending() ? 0x7f : 0x80);
+                    srcVar = srcVar.unbox().xor(mask);
                 }
 
                 dstVar.aset(offsetVar, srcVar);
@@ -229,16 +224,7 @@ class PrimitiveColumnCodec extends ColumnCodec {
                 var byteVar = srcVar.aget(offsetVar);
                 offsetVar.inc(1);
 
-                if (plain == TYPE_BYTE) {
-                    if (mForKey) {
-                        byte mask = (byte) (mInfo.isDescending() ? 0x7f : 0x80);
-                        byteVar = byteVar.xor(mask);
-                    }
-                    valueVar = byteVar;
-                } else if (plain == TYPE_UBYTE) {
-                    // FIXME
-                    throw null;
-                } else {
+                if (plain == TYPE_BOOLEAN) {
                     Label cont = null;
 
                     if (!isNullable) {
@@ -266,6 +252,12 @@ class PrimitiveColumnCodec extends ColumnCodec {
                     if (cont != null) {
                         cont.here();
                     }
+                } else {
+                    if (plain == TYPE_BYTE && mForKey) {
+                        byte mask = (byte) (mInfo.isDescending() ? 0x7f : 0x80);
+                        byteVar = byteVar.xor(mask);
+                    }
+                    valueVar = byteVar;
                 }
 
                 break doDecode;
