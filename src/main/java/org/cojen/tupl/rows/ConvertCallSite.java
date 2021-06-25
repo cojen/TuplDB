@@ -63,11 +63,11 @@ public class ConvertCallSite extends MutableCallSite {
     }
 
     /**
-     * Makes code which converts a value declared as Object to a specific type. If the
+     * Makes code which converts a value declared as an object type to a specific type. If the
      * conversion cannot be performed, an exception is thrown at runtime.
      *
      * @param toType the specific desired "to" type
-     * @param from variable declared as Object type which contains the "from" value
+     * @param from variable declared as an object type which contains the "from" value
      * @return the "to" value, of type "toType"
      */
     static Variable make(MethodMaker mm, Class toType, Variable from) {
@@ -77,7 +77,7 @@ public class ConvertCallSite extends MutableCallSite {
     /**
      * Indy bootstrap method.
      *
-     * @param mt accepts one param, an Object, and returns a non-void toType
+     * @param mt accepts one param, an object, and returns a non-void toType
      */
     public static CallSite makeNext(MethodHandles.Lookup lookup, String name, MethodType mt) {
         var cs = new ConvertCallSite(mt);
@@ -124,19 +124,28 @@ public class ConvertCallSite extends MutableCallSite {
         Class<?> toType = mt.returnType();
 
         MethodMaker mm = MethodMaker.begin(MethodHandles.lookup(), "convert", mt);
-        Label next = mm.label();
         Variable from = mm.param(0);
 
+        final Label next;
         final Variable result;
+
         if (fromType == null) {
             if (toType.isPrimitive()) {
+                next = null;
                 result = null;
             } else {
+                next = mm.label();
                 from.ifNe(null, next);
                 result = mm.var(toType).set(null);
             }
         } else {
-            from.instanceOf(fromType).ifFalse(next);
+            if (fromType.isAssignableFrom(from.classType())) {
+                // InstanceOf check will always be true.
+                next = null;
+            } else {
+                next = mm.label();
+                from.instanceOf(fromType).ifFalse(next);
+            }
 
             if (!toType.isPrimitive() && toType.isAssignableFrom(fromType)) {
                 result = from.cast(toType);
@@ -175,9 +184,11 @@ public class ConvertCallSite extends MutableCallSite {
                     " to " + toType.getSimpleName()).throw_();
         }
 
-        next.here();
-        var indy = mm.var(ConvertCallSite.class).indy("makeNext");
-        mm.return_(indy.invoke(toType, "_", null, from));
+        if (next != null) {
+            next.here();
+            var indy = mm.var(ConvertCallSite.class).indy("makeNext");
+            mm.return_(indy.invoke(toType, "_", null, from));
+        }
 
         return mm.finish();
     }
