@@ -61,6 +61,11 @@ class AutoCommitRowUpdater<R> extends NonRepeatableRowUpdater<R> {
     }
 
     @Override
+    protected void doDelete() throws IOException {
+        mCursor.commit(null);
+    }
+
+    @Override
     protected void finished() throws IOException {
         mRow = null;
         if (mLockResult != null) {

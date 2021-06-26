@@ -85,7 +85,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
 
     private R doDeleteAndStep(R row) throws IOException {
         try {
-            mCursor.delete();
+            doDelete();
         } catch (UnpositionedCursorException e) {
             finished();
             throw new IllegalStateException("No current row");
@@ -121,5 +121,9 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
                 txn.exit();
             }
         }
+    }
+
+    protected void doDelete() throws IOException {
+        mCursor.delete();
     }
 }

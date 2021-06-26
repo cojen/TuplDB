@@ -85,7 +85,6 @@ import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.LockTimeoutException;
-import org.cojen.tupl.RowIndex;
 import org.cojen.tupl.Snapshot;
 import org.cojen.tupl.Sorter;
 import org.cojen.tupl.Transaction;
@@ -1320,16 +1319,6 @@ final class LocalDatabase extends CoreDatabase {
         } else {
             throw new CorruptDatabaseException("Internal index referenced by redo log: " + id);
         }
-    }
-
-    @Override
-    public <R> RowIndex<R> findRowIndex(Class<R> type) throws IOException {
-        return rowStore().findOrOpen(type, false);
-    }
-    
-    @Override
-    public <R> RowIndex<R> openRowIndex(Class<R> type) throws IOException {
-        return rowStore().findOrOpen(type, true);
     }
 
     @Override
@@ -3205,6 +3194,11 @@ final class LocalDatabase extends CoreDatabase {
             // instance is modified directly.
             nameKey[0] = 1;
             mRegistryKeyMap.store(txn, trashIdKey, nameKey);
+        }
+
+        RowStore rs = openRowStore(IX_FIND);
+        if (rs != null) {
+            rs.deleteSchemata(txn, treeIdBytes);
         }
         
         return true;

@@ -27,7 +27,6 @@ import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockMode;
-import org.cojen.tupl.RowIndex;
 import org.cojen.tupl.RowScanner;
 import org.cojen.tupl.RowUpdater;
 import org.cojen.tupl.RowView;
@@ -44,7 +43,7 @@ import org.cojen.tupl.io.Utils;
  *
  * @author Brian S O'Neill
  */
-public abstract class AbstractRowView<R> implements RowIndex<R> {
+public abstract class AbstractRowView<R> implements RowView<R> {
     protected final View mSource;
 
     // MethodHandle signature: RowDecoderEncoder filtered(Object... args)
@@ -53,21 +52,6 @@ public abstract class AbstractRowView<R> implements RowIndex<R> {
     protected AbstractRowView(View source) {
         mSource = Objects.requireNonNull(source);
         mFilterFactoryCache = new WeakCache<>();
-    }
-
-    @Override
-    public long id() {
-        return (mSource instanceof Index) ? ((Index) mSource).id() : 0;
-    }
-
-    @Override
-    public byte[] name() {
-        return (mSource instanceof Index) ? ((Index) mSource).name() : null;
-    }
-
-    @Override
-    public String nameString() {
-        return (mSource instanceof Index) ? ((Index) mSource).nameString() : null;
     }
 
     @Override
@@ -142,32 +126,8 @@ public abstract class AbstractRowView<R> implements RowIndex<R> {
     }
 
     @Override
-    public void close() throws IOException {
-        if (mSource instanceof Index) {
-            ((Index) mSource).close();
-        }
-    }
-
-    @Override
-    public boolean isClosed() {
-        return (mSource instanceof Index) ? ((Index) mSource).isClosed() : false;
-    }
-
-    @Override
     public String toString() {
-        if (!(mSource instanceof Index)) {
-            return super.toString();
-        }
-        var b = new StringBuilder();
-        b.append(getClass().getName()).append('@').append(Integer.toHexString(hashCode()));
-        b.append('{');
-        String nameStr = nameString();
-        if (nameStr != null) {
-            b.append("name").append(": ").append(nameStr);
-            b.append(", ");
-        }
-        b.append("id").append(": ").append(id());
-        return b.append('}').toString();
+        return mSource.toString();
     }
 
     @Override

@@ -34,7 +34,7 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseConfig;
-import org.cojen.tupl.RowIndex;
+import org.cojen.tupl.RowView;
 import org.cojen.tupl.RowScanner;
 
 /**
@@ -57,11 +57,11 @@ public class EvolutionTest {
         // First insert a row with no value columns.
         {
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", int.class, "+key");
-            RowIndex ix = db.openRowIndex(rowType);
+            RowView view = db.openRowView(rowType);
             Method setter = rowType.getMethod("key", int.class);
-            var row = ix.newRow();
+            var row = view.newRow();
             setter.invoke(row, 0);
-            ix.store(null, row);
+            view.store(null, row);
         }
 
         // Now update the definition with value columns of all supported types.
@@ -73,11 +73,11 @@ public class EvolutionTest {
         System.arraycopy(toAdd, 0, spec, 2, toAdd.length);
 
         Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", spec);
-        RowIndex ix = db.openRowIndex(rowType);
+        RowView view = db.openRowView(rowType);
         Method setter = rowType.getMethod("key", int.class);
-        var row = ix.newRow();
+        var row = view.newRow();
         setter.invoke(row, 0);
-        ix.load(null, row);
+        view.load(null, row);
 
         for (int i=0; i<toAdd.length; i+=2) {
             Class type = (Class) toAdd[i];
@@ -154,7 +154,7 @@ public class EvolutionTest {
         Object[] toAdd = specToAdd();
 
         var specs = new ArrayList<Object[]>();
-        var indexes = new ArrayList<RowIndex<?>>();
+        var views = new ArrayList<RowView<?>>();
 
         for (int i = 0; i <= toAdd.length; i += 2) {
             var spec = new Object[2 + i];
@@ -168,21 +168,21 @@ public class EvolutionTest {
             specs.add(spec);
 
             Class<?> type = RowTestUtils.newRowType("test.evolve.MyStuff", spec);
-            RowIndex<?> ix = db.openRowIndex(type);
-            indexes.add(ix);
+            RowView<?> view = db.openRowView(type);
+            views.add(view);
 
-            insertRandom(RowUtils.scramble(8675309 + i), spec, ix, 10);
+            insertRandom(RowUtils.scramble(8675309 + i), spec, view, 10);
         }
 
         TreeMap<Object, List<TreeMap<String, Object>>> extracted = new TreeMap<>();
 
         for (int i=0; i<specs.size(); i++) {
             Object[] spec = specs.get(i);
-            RowIndex<?> ix = indexes.get(i);
+            RowView<?> view = views.get(i);
 
-            Method[] getters = RowTestUtils.access(spec, ix.rowType())[0];
+            Method[] getters = RowTestUtils.access(spec, view.rowType())[0];
 
-            RowScanner scanner = ix.newScanner(null);
+            RowScanner scanner = view.newScanner(null);
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
                 TreeMap<String, Object> columns = extractColumns(getters, row);
                 Object key = columns.remove("key");
@@ -232,10 +232,10 @@ public class EvolutionTest {
         return map;
     }
 
-    private static void insertRandom(long seed, Object[] spec, RowIndex ix, int amt)
+    private static void insertRandom(long seed, Object[] spec, RowView view, int amt)
         throws Exception
     {
-        Method[][] access = RowTestUtils.access(spec, ix.rowType());
+        Method[][] access = RowTestUtils.access(spec, view.rowType());
         Method[] getters = access[0];
         Method[] setters = access[1];
 
@@ -244,12 +244,12 @@ public class EvolutionTest {
         var inserted = new Object[amt];
 
         for (int i=0; i<amt; i++) {
-            var row = ix.newRow();
+            var row = view.newRow();
             for (int j=0; j<setters.length; j++) {
                 setters[j].invoke(row, RowTestUtils.randomValue(rnd, spec, j));
             }
             // Collision is possible here, although unlikely.
-            assertTrue(ix.insert(null, row));
+            assertTrue(view.insert(null, row));
             inserted[i] = row;
         }
 
@@ -258,14 +258,14 @@ public class EvolutionTest {
         rnd = new Random(seed);
 
         for (int i=0; i<inserted.length; i++) {
-            var row = ix.newRow();
+            var row = view.newRow();
             for (int j=0; j<setters.length; j++) {
                 Object value = RowTestUtils.randomValue(rnd, spec, j);
                 if (j == 0) {
                     setters[j].invoke(row, value);
                 }
             }
-            ix.load(null, row);
+            view.load(null, row);
             assertEquals(inserted[i], row);
         }
     }
@@ -287,8 +287,8 @@ public class EvolutionTest {
 
         {
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
-            RowIndex ix = db.openRowIndex(rowType);
-            var row = ix.newRow();
+            RowView view = db.openRowView(rowType);
+            var row = view.newRow();
 
             rowType.getMethod("key", int.class).invoke(row, 0);
 
@@ -298,7 +298,7 @@ public class EvolutionTest {
             rowType.getMethod("d", BigInteger.class).invoke(row, new BigInteger("9999999999999"));
             rowType.getMethod("e", BigDecimal.class).invoke(row, new BigDecimal("123.987"));
 
-            ix.store(null, row);
+            view.store(null, row);
         }
 
         Object[] newSpec = {
@@ -311,10 +311,10 @@ public class EvolutionTest {
         };
 
         Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
-        RowIndex ix = db.openRowIndex(rowType);
-        var row = ix.newRow();
+        RowView view = db.openRowView(rowType);
+        var row = view.newRow();
         rowType.getMethod("key", int.class).invoke(row, 0);
-        ix.load(null, row);
+        view.load(null, row);
 
         // Cast double to int.
         assertEquals(123, rowType.getMethod("a").invoke(row));
@@ -349,7 +349,7 @@ public class EvolutionTest {
 
         {
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
-            RowIndex ix = db.openRowIndex(rowType);
+            RowView view = db.openRowView(rowType);
 
             var setKey = rowType.getMethod("key", int.class);
             var setA = rowType.getMethod("a", double.class);
@@ -359,47 +359,47 @@ public class EvolutionTest {
             var setE = rowType.getMethod("e", BigDecimal.class);
 
             {
-                var row = ix.newRow();
+                var row = view.newRow();
                 setKey.invoke(row, 1);
                 setA.invoke(row, 123.9);
                 setB.invoke(row, 1);
                 setC.invoke(row, "str1");
                 setD.invoke(row, BigInteger.valueOf(100));
                 setE.invoke(row, (Object) null);
-                ix.store(null, row);
+                view.store(null, row);
             }
 
             {
-                var row = ix.newRow();
+                var row = view.newRow();
                 setKey.invoke(row, 2);
                 setA.invoke(row, 0.0/0.0);
                 setB.invoke(row, 2);
                 setC.invoke(row, "str2");
                 setD.invoke(row, BigInteger.valueOf(200));
                 setE.invoke(row, new BigDecimal("123.456"));
-                ix.store(null, row);
+                view.store(null, row);
             }
 
             {
-                var row = ix.newRow();
+                var row = view.newRow();
                 setKey.invoke(row, 3);
                 setA.invoke(row, 100.0/0.0);
                 setB.invoke(row, 11);
                 setC.invoke(row, (Object) null);
                 setD.invoke(row, BigInteger.valueOf(300));
                 setE.invoke(row, new BigDecimal("-123.456"));
-                ix.store(null, row);
+                view.store(null, row);
             }
 
             {
-                var row = ix.newRow();
+                var row = view.newRow();
                 setKey.invoke(row, 4);
                 setA.invoke(row, 0);
                 setB.invoke(row, (Object) null);
                 setC.invoke(row, "str4");
                 setD.invoke(row, BigInteger.valueOf(-400));
                 setE.invoke(row, new BigDecimal("999999999999999.1"));
-                ix.store(null, row);
+                view.store(null, row);
             }
         }
 
@@ -413,7 +413,7 @@ public class EvolutionTest {
         };
 
         Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
-        RowIndex ix = db.openRowIndex(rowType);
+        RowView view = db.openRowView(rowType);
 
         var setKey = rowType.getMethod("key", int.class);
         var getKey = rowType.getMethod("key");
@@ -424,9 +424,9 @@ public class EvolutionTest {
         var getE = rowType.getMethod("e");
 
         {
-            var row = ix.newRow();
+            var row = view.newRow();
             setKey.invoke(row, 1);
-            ix.load(null, row);
+            view.load(null, row);
             assertEquals("123.9", getA.invoke(row));
             assertEquals("1", getB.invoke(row));
             assertEquals("str1", getC.invoke(row));
@@ -435,9 +435,9 @@ public class EvolutionTest {
         }
 
         {
-            var row = ix.newRow();
+            var row = view.newRow();
             setKey.invoke(row, 2);
-            ix.load(null, row);
+            view.load(null, row);
             assertEquals("NaN", getA.invoke(row));
             assertEquals("2", getB.invoke(row));
             assertEquals("str2", getC.invoke(row));
@@ -446,9 +446,9 @@ public class EvolutionTest {
         }
 
         {
-            var row = ix.newRow();
+            var row = view.newRow();
             setKey.invoke(row, 3);
-            ix.load(null, row);
+            view.load(null, row);
             assertEquals("Infinity", getA.invoke(row));
             assertEquals("11", getB.invoke(row));
             assertEquals("", getC.invoke(row)); // Default for non-null String is "".
@@ -457,9 +457,9 @@ public class EvolutionTest {
         }
 
         {
-            var row = ix.newRow();
+            var row = view.newRow();
             setKey.invoke(row, 4);
-            ix.load(null, row);
+            view.load(null, row);
             assertEquals("0.0", getA.invoke(row));
             assertEquals(null, getB.invoke(row));
             assertEquals("str4", getC.invoke(row));
@@ -469,7 +469,7 @@ public class EvolutionTest {
 
         // Now test some filters.
 
-        RowScanner scanner = ix.newScanner(null, "a == ?", "0.0");
+        RowScanner scanner = view.newScanner(null, "a == ?", "0.0");
         int count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(4, getKey.invoke(row));
@@ -483,7 +483,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = ix.newScanner(null, "b >= ?", "11");
+        scanner = view.newScanner(null, "b >= ?", "11");
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -515,7 +515,7 @@ public class EvolutionTest {
 
         assertEquals(3, count);
 
-        scanner = ix.newScanner(null, "c == ?", "");
+        scanner = view.newScanner(null, "c == ?", "");
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(3, getKey.invoke(row));
@@ -529,7 +529,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = ix.newScanner(null, "d >= ?", "300");
+        scanner = view.newScanner(null, "d >= ?", "300");
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(3, getKey.invoke(row));
@@ -543,7 +543,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = ix.newScanner(null, "e > ? | e == ?", "123.456", "");
+        scanner = view.newScanner(null, "e > ? | e == ?", "123.456", "");
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -586,7 +586,7 @@ public class EvolutionTest {
 
         {
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
-            RowIndex ix = db.openRowIndex(rowType);
+            RowView view = db.openRowView(rowType);
 
             var setKey = rowType.getMethod("key", int.class);
             var setA = rowType.getMethod("a", double.class);
@@ -596,47 +596,47 @@ public class EvolutionTest {
             var setE = rowType.getMethod("e", BigDecimal.class);
 
             {
-                var row = ix.newRow();
+                var row = view.newRow();
                 setKey.invoke(row, 1);
                 setA.invoke(row, 123.9);
                 setB.invoke(row, 1);
                 setC.invoke(row, "8888888888888888888");
                 setD.invoke(row, BigInteger.valueOf(100));
                 setE.invoke(row, BigDecimal.ZERO);
-                ix.store(null, row);
+                view.store(null, row);
             }
 
             {
-                var row = ix.newRow();
+                var row = view.newRow();
                 setKey.invoke(row, 2);
                 setA.invoke(row, 0.0/0.0);
                 setB.invoke(row, 2);
                 setC.invoke(row, "10.9");
                 setD.invoke(row, (Object) null);
                 setE.invoke(row, new BigDecimal("123.456"));
-                ix.store(null, row);
+                view.store(null, row);
             }
 
             {
-                var row = ix.newRow();
+                var row = view.newRow();
                 setKey.invoke(row, 3);
                 setA.invoke(row, 100.0/0.0);
                 setB.invoke(row, 11);
                 setC.invoke(row, "000");
                 setD.invoke(row, BigInteger.valueOf(300));
                 setE.invoke(row, new BigDecimal("-123.456"));
-                ix.store(null, row);
+                view.store(null, row);
             }
 
             {
-                var row = ix.newRow();
+                var row = view.newRow();
                 setKey.invoke(row, 4);
                 setA.invoke(row, 0);
                 setB.invoke(row, (Object) null);
                 setC.invoke(row, "-10");
                 setD.invoke(row, BigInteger.valueOf(-400));
                 setE.invoke(row, new BigDecimal("999999999999999.1"));
-                ix.store(null, row);
+                view.store(null, row);
             }
         }
 
@@ -650,7 +650,7 @@ public class EvolutionTest {
         };
 
         Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
-        RowIndex ix = db.openRowIndex(rowType);
+        RowView view = db.openRowView(rowType);
 
         var setKey = rowType.getMethod("key", int.class);
         var getKey = rowType.getMethod("key");
@@ -661,9 +661,9 @@ public class EvolutionTest {
         var getE = rowType.getMethod("e");
 
         {
-            var row = ix.newRow();
+            var row = view.newRow();
             setKey.invoke(row, 1);
-            ix.load(null, row);
+            view.load(null, row);
             assertEquals(new BigInteger("123"), getA.invoke(row));
             assertEquals(BigInteger.ONE, getB.invoke(row));
             assertEquals(new BigInteger("8888888888888888888"), getC.invoke(row));
@@ -672,9 +672,9 @@ public class EvolutionTest {
         }
 
         {
-            var row = ix.newRow();
+            var row = view.newRow();
             setKey.invoke(row, 2);
-            ix.load(null, row);
+            view.load(null, row);
             assertEquals(BigInteger.ZERO, getA.invoke(row));
             assertEquals(new BigInteger("2"), getB.invoke(row));
             assertEquals(new BigInteger("10"), getC.invoke(row));
@@ -683,9 +683,9 @@ public class EvolutionTest {
         }
 
         {
-            var row = ix.newRow();
+            var row = view.newRow();
             setKey.invoke(row, 3);
-            ix.load(null, row);
+            view.load(null, row);
             assertEquals(BigInteger.ZERO, getA.invoke(row));
             assertEquals(new BigInteger("11"), getB.invoke(row));
             assertEquals(BigInteger.ZERO, getC.invoke(row));
@@ -694,9 +694,9 @@ public class EvolutionTest {
         }
 
         {
-            var row = ix.newRow();
+            var row = view.newRow();
             setKey.invoke(row, 4);
-            ix.load(null, row);
+            view.load(null, row);
             assertEquals(BigInteger.ZERO, getA.invoke(row));
             assertEquals(null, getB.invoke(row));
             assertEquals(new BigInteger("-10"), getC.invoke(row));
@@ -706,7 +706,7 @@ public class EvolutionTest {
 
         // Now test some filters.
 
-        RowScanner scanner = ix.newScanner(null, "a == ?", "0");
+        RowScanner scanner = view.newScanner(null, "a == ?", "0");
         int count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -738,7 +738,7 @@ public class EvolutionTest {
 
         assertEquals(3, count);
 
-        scanner = ix.newScanner(null, "b > ?", 2);
+        scanner = view.newScanner(null, "b > ?", 2);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -763,7 +763,7 @@ public class EvolutionTest {
 
         assertEquals(2, count);
 
-        scanner = ix.newScanner(null, "c == ?", 0);
+        scanner = view.newScanner(null, "c == ?", 0);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(3, getKey.invoke(row));
@@ -777,7 +777,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = ix.newScanner(null, "d <= ?", 0);
+        scanner = view.newScanner(null, "d <= ?", 0);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -802,7 +802,7 @@ public class EvolutionTest {
 
         assertEquals(2, count);
 
-        scanner = ix.newScanner(null, "e == ?", new BigInteger("999999999999999"));
+        scanner = view.newScanner(null, "e == ?", new BigInteger("999999999999999"));
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(4, getKey.invoke(row));
@@ -834,7 +834,7 @@ public class EvolutionTest {
 
         {
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
-            RowIndex ix = db.openRowIndex(rowType);
+            RowView view = db.openRowView(rowType);
 
             var setKey = rowType.getMethod("key", int.class);
             var setA = rowType.getMethod("a", double.class);
@@ -844,47 +844,47 @@ public class EvolutionTest {
             var setE = rowType.getMethod("e", BigDecimal.class);
 
             {
-                var row = ix.newRow();
+                var row = view.newRow();
                 setKey.invoke(row, 1);
                 setA.invoke(row, 123.9);
                 setB.invoke(row, 1);
                 setC.invoke(row, "8888888888888888888");
                 setD.invoke(row, BigInteger.valueOf(100));
                 setE.invoke(row, new BigDecimal("0.000"));
-                ix.store(null, row);
+                view.store(null, row);
             }
 
             {
-                var row = ix.newRow();
+                var row = view.newRow();
                 setKey.invoke(row, 2);
                 setA.invoke(row, 0.0/0.0);
                 setB.invoke(row, 2);
                 setC.invoke(row, "10.9");
                 setD.invoke(row, BigInteger.ZERO);
                 setE.invoke(row, (Object) null);
-                ix.store(null, row);
+                view.store(null, row);
             }
 
             {
-                var row = ix.newRow();
+                var row = view.newRow();
                 setKey.invoke(row, 3);
                 setA.invoke(row, 100.0/0.0);
                 setB.invoke(row, 11);
                 setC.invoke(row, "000");
                 setD.invoke(row, BigInteger.valueOf(300));
                 setE.invoke(row, new BigDecimal("-123.456"));
-                ix.store(null, row);
+                view.store(null, row);
             }
 
             {
-                var row = ix.newRow();
+                var row = view.newRow();
                 setKey.invoke(row, 4);
                 setA.invoke(row, 0);
                 setB.invoke(row, (Object) null);
                 setC.invoke(row, "-10");
                 setD.invoke(row, BigInteger.valueOf(-400));
                 setE.invoke(row, new BigDecimal("999999999999999.1"));
-                ix.store(null, row);
+                view.store(null, row);
             }
         }
 
@@ -898,7 +898,7 @@ public class EvolutionTest {
         };
 
         Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
-        RowIndex ix = db.openRowIndex(rowType);
+        RowView view = db.openRowView(rowType);
 
         var setKey = rowType.getMethod("key", int.class);
         var getKey = rowType.getMethod("key");
@@ -909,9 +909,9 @@ public class EvolutionTest {
         var getE = rowType.getMethod("e");
 
         {
-            var row = ix.newRow();
+            var row = view.newRow();
             setKey.invoke(row, 1);
-            ix.load(null, row);
+            view.load(null, row);
             assertEquals(new BigDecimal("123.9"), getA.invoke(row));
             assertEquals(BigDecimal.ONE, getB.invoke(row));
             assertEquals(new BigDecimal("8888888888888888888"), getC.invoke(row));
@@ -920,9 +920,9 @@ public class EvolutionTest {
         }
 
         {
-            var row = ix.newRow();
+            var row = view.newRow();
             setKey.invoke(row, 2);
-            ix.load(null, row);
+            view.load(null, row);
             assertEquals(BigDecimal.ZERO, getA.invoke(row));
             assertEquals(new BigDecimal("2"), getB.invoke(row));
             assertEquals(new BigDecimal("10.9"), getC.invoke(row));
@@ -931,9 +931,9 @@ public class EvolutionTest {
         }
 
         {
-            var row = ix.newRow();
+            var row = view.newRow();
             setKey.invoke(row, 3);
-            ix.load(null, row);
+            view.load(null, row);
             assertEquals(BigDecimal.ZERO, getA.invoke(row));
             assertEquals(new BigDecimal("11"), getB.invoke(row));
             assertEquals(BigDecimal.ZERO, getC.invoke(row));
@@ -942,9 +942,9 @@ public class EvolutionTest {
         }
 
         {
-            var row = ix.newRow();
+            var row = view.newRow();
             setKey.invoke(row, 4);
-            ix.load(null, row);
+            view.load(null, row);
             assertEquals(new BigDecimal("0.0"), getA.invoke(row));
             assertEquals(null, getB.invoke(row));
             assertEquals(new BigDecimal("-10"), getC.invoke(row));
@@ -954,7 +954,7 @@ public class EvolutionTest {
 
         // Now test some filters.
 
-        RowScanner scanner = ix.newScanner(null, "a == ?", "0");
+        RowScanner scanner = view.newScanner(null, "a == ?", "0");
         int count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -986,7 +986,7 @@ public class EvolutionTest {
 
         assertEquals(3, count);
 
-        scanner = ix.newScanner(null, "b >= ?", 11);
+        scanner = view.newScanner(null, "b >= ?", 11);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -1011,7 +1011,7 @@ public class EvolutionTest {
 
         assertEquals(2, count);
 
-        scanner = ix.newScanner(null, "c == ?", 0);
+        scanner = view.newScanner(null, "c == ?", 0);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(3, getKey.invoke(row));
@@ -1025,7 +1025,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = ix.newScanner(null, "d <= ? & d > ?", 0, -100);
+        scanner = view.newScanner(null, "d <= ? & d > ?", 0, -100);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(2, getKey.invoke(row));
@@ -1039,7 +1039,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = ix.newScanner(null, "e == ? | e == ?", 0, "999999999999999.1");
+        scanner = view.newScanner(null, "e == ? | e == ?", 0, "999999999999999.1");
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -1089,7 +1089,7 @@ public class EvolutionTest {
 
         {
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
-            RowIndex ix = db.openRowIndex(rowType);
+            RowView view = db.openRowView(rowType);
 
             var setKey = rowType.getMethod("key", int.class);
             var setA = rowType.getMethod("a", Double.class);
@@ -1099,47 +1099,47 @@ public class EvolutionTest {
             var setE = rowType.getMethod("e", BigDecimal.class);
 
             {
-                var row = ix.newRow();
+                var row = view.newRow();
                 setKey.invoke(row, 1);
                 setA.invoke(row, 123.9);
                 setB.invoke(row, 1);
                 setC.invoke(row, "8888888888888888888");
                 setD.invoke(row, BigInteger.valueOf(100));
                 setE.invoke(row, BigDecimal.ZERO);
-                ix.store(null, row);
+                view.store(null, row);
             }
 
             {
-                var row = ix.newRow();
+                var row = view.newRow();
                 setKey.invoke(row, 2);
                 setA.invoke(row, 0.0/0.0);
                 setB.invoke(row, 2);
                 setC.invoke(row, "10.9");
                 setD.invoke(row, (Object) null);
                 setE.invoke(row, new BigDecimal("123.456"));
-                ix.store(null, row);
+                view.store(null, row);
             }
 
             {
-                var row = ix.newRow();
+                var row = view.newRow();
                 setKey.invoke(row, 3);
                 setA.invoke(row, 100.0/0.0);
                 setB.invoke(row, 11);
                 setC.invoke(row, "000");
                 setD.invoke(row, BigInteger.valueOf(300));
                 setE.invoke(row, new BigDecimal("-123.456"));
-                ix.store(null, row);
+                view.store(null, row);
             }
 
             {
-                var row = ix.newRow();
+                var row = view.newRow();
                 setKey.invoke(row, 4);
                 setA.invoke(row, (Object) null);
                 setB.invoke(row, (Object) null);
                 setC.invoke(row, "-10");
                 setD.invoke(row, BigInteger.valueOf(-400));
                 setE.invoke(row, new BigDecimal("999999999999999.1"));
-                ix.store(null, row);
+                view.store(null, row);
             }
         }
 
@@ -1153,7 +1153,7 @@ public class EvolutionTest {
         };
 
         Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
-        RowIndex ix = db.openRowIndex(rowType);
+        RowView view = db.openRowView(rowType);
 
         var setKey = rowType.getMethod("key", int.class);
         var getKey = rowType.getMethod("key");
@@ -1164,9 +1164,9 @@ public class EvolutionTest {
         var getE = rowType.getMethod("e");
 
         {
-            var row = ix.newRow();
+            var row = view.newRow();
             setKey.invoke(row, 1);
-            ix.load(null, row);
+            view.load(null, row);
             assertEquals(123, getA.invoke(row));
             assertEquals(1, getB.invoke(row));
             assertEquals(Integer.MAX_VALUE, getC.invoke(row));
@@ -1175,9 +1175,9 @@ public class EvolutionTest {
         }
 
         {
-            var row = ix.newRow();
+            var row = view.newRow();
             setKey.invoke(row, 2);
-            ix.load(null, row);
+            view.load(null, row);
             assertEquals(0, getA.invoke(row));
             assertEquals(2, getB.invoke(row));
             assertEquals(10, getC.invoke(row));
@@ -1186,9 +1186,9 @@ public class EvolutionTest {
         }
 
         {
-            var row = ix.newRow();
+            var row = view.newRow();
             setKey.invoke(row, 3);
-            ix.load(null, row);
+            view.load(null, row);
             assertEquals(Integer.MAX_VALUE, getA.invoke(row));
             assertEquals(11, getB.invoke(row));
             assertEquals(0, getC.invoke(row));
@@ -1197,9 +1197,9 @@ public class EvolutionTest {
         }
 
         {
-            var row = ix.newRow();
+            var row = view.newRow();
             setKey.invoke(row, 4);
-            ix.load(null, row);
+            view.load(null, row);
             assertEquals(null, getA.invoke(row));
             assertEquals(0, getB.invoke(row));
             assertEquals(-10, getC.invoke(row));
@@ -1209,7 +1209,7 @@ public class EvolutionTest {
 
         // Now test some filters.
 
-        RowScanner scanner = ix.newScanner(null, "a == ?", "0");
+        RowScanner scanner = view.newScanner(null, "a == ?", "0");
         int count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(2, getKey.invoke(row));
@@ -1223,7 +1223,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = ix.newScanner(null, "b > ?", 2);
+        scanner = view.newScanner(null, "b > ?", 2);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(3, getKey.invoke(row));
@@ -1237,7 +1237,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = ix.newScanner(null, "c == ?", 0);
+        scanner = view.newScanner(null, "c == ?", 0);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(3, getKey.invoke(row));
@@ -1251,7 +1251,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = ix.newScanner(null, "d > ?", 250);
+        scanner = view.newScanner(null, "d > ?", 250);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -1276,7 +1276,7 @@ public class EvolutionTest {
 
         assertEquals(2, count);
 
-        scanner = ix.newScanner(null, "e == ?", Integer.MAX_VALUE);
+        scanner = view.newScanner(null, "e == ?", Integer.MAX_VALUE);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(4, getKey.invoke(row));
@@ -1308,7 +1308,7 @@ public class EvolutionTest {
 
         {
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
-            RowIndex ix = db.openRowIndex(rowType);
+            RowView view = db.openRowView(rowType);
 
             var setKey = rowType.getMethod("key", int.class);
             var setA = rowType.getMethod("a", Double.class);
@@ -1318,47 +1318,47 @@ public class EvolutionTest {
             var setE = rowType.getMethod("e", BigDecimal.class);
 
             {
-                var row = ix.newRow();
+                var row = view.newRow();
                 setKey.invoke(row, 1);
                 setA.invoke(row, 123.9);
                 setB.invoke(row, 1);
                 setC.invoke(row, "8888888888888888888");
                 setD.invoke(row, BigInteger.valueOf(100));
                 setE.invoke(row, BigDecimal.ZERO);
-                ix.store(null, row);
+                view.store(null, row);
             }
 
             {
-                var row = ix.newRow();
+                var row = view.newRow();
                 setKey.invoke(row, 2);
                 setA.invoke(row, 0.0/0.0);
                 setB.invoke(row, 2);
                 setC.invoke(row, "10.9");
                 setD.invoke(row, (Object) null);
                 setE.invoke(row, new BigDecimal("123.456"));
-                ix.store(null, row);
+                view.store(null, row);
             }
 
             {
-                var row = ix.newRow();
+                var row = view.newRow();
                 setKey.invoke(row, 3);
                 setA.invoke(row, 100.0/0.0);
                 setB.invoke(row, 11);
                 setC.invoke(row, "000");
                 setD.invoke(row, BigInteger.valueOf(300));
                 setE.invoke(row, new BigDecimal("-123.456"));
-                ix.store(null, row);
+                view.store(null, row);
             }
 
             {
-                var row = ix.newRow();
+                var row = view.newRow();
                 setKey.invoke(row, 4);
                 setA.invoke(row, (Object) null);
                 setB.invoke(row, (Object) null);
                 setC.invoke(row, "-10");
                 setD.invoke(row, BigInteger.valueOf(-400));
                 setE.invoke(row, new BigDecimal("999999999999999.1"));
-                ix.store(null, row);
+                view.store(null, row);
             }
         }
 
@@ -1372,7 +1372,7 @@ public class EvolutionTest {
         };
 
         Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
-        RowIndex ix = db.openRowIndex(rowType);
+        RowView view = db.openRowView(rowType);
 
         var setKey = rowType.getMethod("key", int.class);
         var getKey = rowType.getMethod("key");
@@ -1383,9 +1383,9 @@ public class EvolutionTest {
         var getE = rowType.getMethod("e");
 
         {
-            var row = ix.newRow();
+            var row = view.newRow();
             setKey.invoke(row, 1);
-            ix.load(null, row);
+            view.load(null, row);
             assertEquals(123.9f, getA.invoke(row));
             assertEquals(1f, getB.invoke(row));
             assertEquals(8888888888888888888f, getC.invoke(row));
@@ -1394,9 +1394,9 @@ public class EvolutionTest {
         }
 
         {
-            var row = ix.newRow();
+            var row = view.newRow();
             setKey.invoke(row, 2);
-            ix.load(null, row);
+            view.load(null, row);
             assertEquals(0.0f/0.0f, getA.invoke(row));
             assertEquals(2f, getB.invoke(row));
             assertEquals(10.9f, getC.invoke(row));
@@ -1405,9 +1405,9 @@ public class EvolutionTest {
         }
 
         {
-            var row = ix.newRow();
+            var row = view.newRow();
             setKey.invoke(row, 3);
-            ix.load(null, row);
+            view.load(null, row);
             assertEquals(1.0f/0.0f, getA.invoke(row));
             assertEquals(11f, getB.invoke(row));
             assertEquals(0f, getC.invoke(row));
@@ -1416,9 +1416,9 @@ public class EvolutionTest {
         }
 
         {
-            var row = ix.newRow();
+            var row = view.newRow();
             setKey.invoke(row, 4);
-            ix.load(null, row);
+            view.load(null, row);
             assertEquals(null, getA.invoke(row));
             assertEquals(0f, getB.invoke(row));
             assertEquals(-10f, getC.invoke(row));
@@ -1428,7 +1428,7 @@ public class EvolutionTest {
 
         // Now test some filters.
 
-        RowScanner scanner = ix.newScanner(null, "a == ?", "NaN");
+        RowScanner scanner = view.newScanner(null, "a == ?", "NaN");
         int count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(2, getKey.invoke(row));
@@ -1442,7 +1442,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = ix.newScanner(null, "b > ?", 2);
+        scanner = view.newScanner(null, "b > ?", 2);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(3, getKey.invoke(row));
@@ -1456,7 +1456,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = ix.newScanner(null, "c == ?", 0.0);
+        scanner = view.newScanner(null, "c == ?", 0.0);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(3, getKey.invoke(row));
@@ -1470,7 +1470,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = ix.newScanner(null, "d > ?", 250);
+        scanner = view.newScanner(null, "d > ?", 250);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -1495,7 +1495,7 @@ public class EvolutionTest {
 
         assertEquals(2, count);
 
-        scanner = ix.newScanner(null, "d == ? | d == ?", null, 300);
+        scanner = view.newScanner(null, "d == ? | d == ?", null, 300);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -1520,7 +1520,7 @@ public class EvolutionTest {
 
         assertEquals(2, count);
 
-        scanner = ix.newScanner(null, "e == ?", 999999999999999.0f);
+        scanner = view.newScanner(null, "e == ?", 999999999999999.0f);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(4, getKey.invoke(row));
@@ -1552,7 +1552,7 @@ public class EvolutionTest {
 
         {
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
-            RowIndex ix = db.openRowIndex(rowType);
+            RowView view = db.openRowView(rowType);
 
             var setKey = rowType.getMethod("key", int.class);
             var setA = rowType.getMethod("a", Boolean.class);
@@ -1562,47 +1562,47 @@ public class EvolutionTest {
             var setE = rowType.getMethod("e", int.class);
 
             {
-                var row = ix.newRow();
+                var row = view.newRow();
                 setKey.invoke(row, 1);
                 setA.invoke(row, true);
                 setB.invoke(row, true);
                 setC.invoke(row, true);
                 setD.invoke(row, "true");
                 setE.invoke(row, 1);
-                ix.store(null, row);
+                view.store(null, row);
             }
 
             {
-                var row = ix.newRow();
+                var row = view.newRow();
                 setKey.invoke(row, 2);
                 setA.invoke(row, false);
                 setB.invoke(row, false);
                 setC.invoke(row, false);
                 setD.invoke(row, "false");
                 setE.invoke(row, 0);
-                ix.store(null, row);
+                view.store(null, row);
             }
 
             {
-                var row = ix.newRow();
+                var row = view.newRow();
                 setKey.invoke(row, 3);
                 setA.invoke(row, (Object) null);
                 setB.invoke(row, false);
                 setC.invoke(row, false);
                 setD.invoke(row, (Object) null);
                 setE.invoke(row, -1);
-                ix.store(null, row);
+                view.store(null, row);
             }
 
             {
-                var row = ix.newRow();
+                var row = view.newRow();
                 setKey.invoke(row, 4);
                 setA.invoke(row, false);
                 setB.invoke(row, false);
                 setC.invoke(row, false);
                 setD.invoke(row, "xxx");
                 setE.invoke(row, 10);
-                ix.store(null, row);
+                view.store(null, row);
             }
         }
 
@@ -1616,7 +1616,7 @@ public class EvolutionTest {
         };
 
         Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
-        RowIndex ix = db.openRowIndex(rowType);
+        RowView view = db.openRowView(rowType);
 
         var setKey = rowType.getMethod("key", int.class);
         var getKey = rowType.getMethod("key");
@@ -1627,9 +1627,9 @@ public class EvolutionTest {
         var getE = rowType.getMethod("e");
 
         {
-            var row = ix.newRow();
+            var row = view.newRow();
             setKey.invoke(row, 1);
-            ix.load(null, row);
+            view.load(null, row);
             assertEquals(true, getA.invoke(row));
             assertEquals(true, getB.invoke(row));
             assertEquals(true, getC.invoke(row));
@@ -1638,9 +1638,9 @@ public class EvolutionTest {
         }
 
         {
-            var row = ix.newRow();
+            var row = view.newRow();
             setKey.invoke(row, 2);
-            ix.load(null, row);
+            view.load(null, row);
             assertEquals(false, getA.invoke(row));
             assertEquals(false, getB.invoke(row));
             assertEquals(false, getC.invoke(row));
@@ -1649,9 +1649,9 @@ public class EvolutionTest {
         }
 
         {
-            var row = ix.newRow();
+            var row = view.newRow();
             setKey.invoke(row, 3);
-            ix.load(null, row);
+            view.load(null, row);
             assertEquals(false, getA.invoke(row));
             assertEquals(false, getB.invoke(row));
             assertEquals(false, getC.invoke(row));
@@ -1660,9 +1660,9 @@ public class EvolutionTest {
         }
 
         {
-            var row = ix.newRow();
+            var row = view.newRow();
             setKey.invoke(row, 4);
-            ix.load(null, row);
+            view.load(null, row);
             assertEquals(false, getA.invoke(row));
             assertEquals(false, getB.invoke(row));
             assertEquals(false, getC.invoke(row));
@@ -1672,7 +1672,7 @@ public class EvolutionTest {
 
         // Now test some filters.
 
-        RowScanner scanner = ix.newScanner(null, "a == ?", "true");
+        RowScanner scanner = view.newScanner(null, "a == ?", "true");
         int count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(1, getKey.invoke(row));
@@ -1686,7 +1686,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = ix.newScanner(null, "b != ?", false);
+        scanner = view.newScanner(null, "b != ?", false);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(1, getKey.invoke(row));
@@ -1700,7 +1700,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = ix.newScanner(null, "c == ?", false);
+        scanner = view.newScanner(null, "c == ?", false);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -1732,7 +1732,7 @@ public class EvolutionTest {
 
         assertEquals(3, count);
 
-        scanner = ix.newScanner(null, "d == ?", (Object) null);
+        scanner = view.newScanner(null, "d == ?", (Object) null);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -1757,7 +1757,7 @@ public class EvolutionTest {
 
         assertEquals(2, count);
 
-        scanner = ix.newScanner(null, "e == ?", "TRUe");
+        scanner = view.newScanner(null, "e == ?", "TRUe");
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -1795,13 +1795,13 @@ public class EvolutionTest {
 
         {
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
-            RowIndex ix = db.openRowIndex(rowType);
+            RowView view = db.openRowView(rowType);
 
             var setKey = rowType.getMethod("key", int.class);
 
-            var row = ix.newRow();
+            var row = view.newRow();
             setKey.invoke(row, 1);
-            ix.store(null, row);
+            view.store(null, row);
         }
 
         {
@@ -1813,7 +1813,7 @@ public class EvolutionTest {
             };
 
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
-            RowIndex ix = db.openRowIndex(rowType);
+            RowView view = db.openRowView(rowType);
 
             var setKey = rowType.getMethod("key", int.class);
             var getKey = rowType.getMethod("key");
@@ -1825,16 +1825,16 @@ public class EvolutionTest {
             var getC = rowType.getMethod("c");
 
             {
-                var row = ix.newRow();
+                var row = view.newRow();
                 setKey.invoke(row, 2);
                 setA.invoke(row, 1.1);
                 setB.invoke(row, "one");
                 setC.invoke(row, BigInteger.ONE);
-                ix.store(null, row);
+                view.store(null, row);
             }
 
-            RowScanner scanner = ix.newScanner(null, "a == ? & b == ? & c == ?",
-                                               0.0, "", BigInteger.ZERO);
+            RowScanner scanner = view.newScanner(null, "a == ? & b == ? & c == ?",
+                                                 0.0, "", BigInteger.ZERO);
             int count = 0;
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
                 assertEquals(1, getKey.invoke(row));
@@ -1859,7 +1859,7 @@ public class EvolutionTest {
         };
 
         Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
-        RowIndex ix = db.openRowIndex(rowType);
+        RowView view = db.openRowView(rowType);
 
         var setKey = rowType.getMethod("key", int.class);
         var getKey = rowType.getMethod("key");
@@ -1875,17 +1875,17 @@ public class EvolutionTest {
         var getE = rowType.getMethod("e");
 
         {
-            var row = ix.newRow();
+            var row = view.newRow();
             setKey.invoke(row, 3);
             setA.invoke(row, 1.2);
             setB.invoke(row, "two");
             setC.invoke(row, BigInteger.TWO);
             setD.invoke(row, BigDecimal.valueOf(2));
             setE.invoke(row, 1);
-            ix.store(null, row);
+            view.store(null, row);
         }
 
-        RowScanner scanner = ix.newScanner(null, "d == ? & e == ?", BigDecimal.ZERO, null);
+        RowScanner scanner = view.newScanner(null, "d == ? & e == ?", BigDecimal.ZERO, null);
         int count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {

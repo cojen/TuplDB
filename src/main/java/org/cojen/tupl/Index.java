@@ -48,6 +48,15 @@ public interface Index extends View, Closeable {
     public String nameString();
 
     /**
+     * Returns a {@code RowView} instance which stores rows in this index. Storing directly into
+     * this index should be avoided, since it interferes with row encoding. Mixing encoding
+     * strategies can cause data corruption.
+     *
+     * @return shared RowView instance
+     */
+    public <R> RowView<R> asRowView(Class<R> type) throws IOException;
+
+    /**
      * Select a few entries, and delete them from the index. Implementation should attempt to
      * evict entries which haven't been recently used, but it might select them at random.
      *

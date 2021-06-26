@@ -149,20 +149,27 @@ public interface Database extends CauseCloseable, Flushable {
     }
 
     /**
-     * Returns an index for the given row type, returning null if not found. The underlying
-     * index name matches the fully qualified row type name.
+     * Convenience method which returns a {@code RowView} that uses the index named by the row
+     * type itself.
      *
-     * @return shared RowIndex instance; null if not found
+     * @return shared RowView instance; null if not found
+     * @see Index#asRowView
      */
-    public <R> RowIndex<R> findRowIndex(Class<R> type) throws IOException;
+    public default <R> RowView<R> findRowView(Class<R> type) throws IOException {
+        Index ix = findIndex(type.getName());
+        return ix == null ? null : ix.asRowView(type);
+    }
     
     /**
-     * Returns an index for the given row type, creating it if necessary. The underlying
-     * index name matches the fully qualified row type name.
+     * Convenience method which returns a {@code RowView} that uses the index named by the row
+     * type itself.
      *
-     * @return shared RowIndex instance
+     * @return shared RowView instance
+     * @see Index#asRowView
      */
-    public <R> RowIndex<R> openRowIndex(Class<R> type) throws IOException;
+    public default <R> RowView<R> openRowView(Class<R> type) throws IOException {
+        return openIndex(type.getName()).asRowView(type);
+    }
 
     /**
      * Renames the given index to the one given.

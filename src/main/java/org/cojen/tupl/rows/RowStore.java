@@ -37,7 +37,7 @@ import org.cojen.tupl.Database;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockMode;
-import org.cojen.tupl.RowIndex;
+import org.cojen.tupl.RowView;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
 
@@ -53,15 +53,14 @@ public class RowStore {
 
     /* Schema metadata for all types.
      
-       (typeName) ->
-         long indexId,
+       (indexId) ->
          int current schemaVersion,
          ColumnSet[] alternateKeys,
          ColumnSet[] secondaryIndexes
 
-       (typeName, schemaVersion) -> primary ColumnSet
+       (indexId, schemaVersion) -> primary ColumnSet
 
-       (typeName, hash(primary ColumnSet)) -> schemaVersion[]    // hash collision chain
+       (indexId, hash(primary ColumnSet)) -> schemaVersion[]    // hash collision chain
      
        The schemaVersion is limited to 2^31, and the hash is encoded with bit 31 set,
        preventing collisions. Also, schemaVersion cannot be zero, allowing this form to be
@@ -69,7 +68,7 @@ public class RowStore {
      */
     private final Index mSchemata;
 
-    private final WeakCache<Class<?>, AbstractRowView<?>> mRowViewCache;
+    private final WeakCache<Pair, AbstractRowView<?>> mRowViewCache;
 
     public RowStore(Database db, Index schemata) throws IOException {
         mDatabase = db;
@@ -82,13 +81,16 @@ public class RowStore {
     }
 
     @SuppressWarnings("unchecked")
-    public <R> RowIndex<R> findOrOpen(Class<R> type, boolean open) throws IOException {
-        AbstractRowView rv = mRowViewCache.get(type);
+    public <R> RowView<R> asRowView(Index ix, Class<R> type) throws IOException {
+        final var key = new Pair(ix, type);
+
+        AbstractRowView rv = mRowViewCache.get(key);
         if (rv != null) {
             return rv;
         }
+
         synchronized (mRowViewCache) {
-            rv = mRowViewCache.get(type);
+            rv = mRowViewCache.get(key);
             if (rv != null) {
                 return rv;
             }
@@ -97,25 +99,22 @@ public class RowStore {
         // Throws an exception if type is malformed.
         RowGen gen = RowInfo.find(type).rowGen();
 
-        String name = type.getName();
-        Index ix = open ? mDatabase.openIndex(name) : mDatabase.findIndex(name);
-
-        byte[] typeKey = key(name);        
         Transaction txn = mSchemata.newTransaction(DurabilityMode.SYNC);
         try {
             // With a txn lock held, check if the primary key definition has changed.
-            byte[] value = mSchemata.load(txn, typeKey);
+            byte[] value = mSchemata.load(txn, key(ix.id()));
 
-            if (value != null && decodeLongLE(value, 0) == ix.id()) {
-                int schemaVersion = decodeIntLE(value, 8);
-                RowInfo currentInfo = decodeExisting(txn, name, typeKey, value, schemaVersion);
+            if (value != null) {
+                int schemaVersion = decodeIntLE(value, 0);
+                String name = type.getName();
+                RowInfo currentInfo = decodeExisting(txn, name, ix.id(), value, schemaVersion);
                 if (!gen.info.keyColumns.equals(currentInfo.keyColumns)) {
                     throw new IllegalStateException("Cannot alter primary key: " + name);
                 }
             }
 
             synchronized (mRowViewCache) {
-                rv = mRowViewCache.get(type);
+                rv = mRowViewCache.get(key);
                 if (rv != null) {
                     return rv;
                 }
@@ -127,7 +126,7 @@ public class RowStore {
                     throw rethrow(e);
                 }
 
-                mRowViewCache.put(type, rv);
+                mRowViewCache.put(key, rv);
             }
         } finally {
             txn.reset();
@@ -137,37 +136,36 @@ public class RowStore {
     }
 
     /**
+     * Should be called when the index is being dropped. Does nothing if index wasn't used for
+     * storing rows.
+     *
+     * @param indexKey long index id, big-endian encoded
+     */
+    public void deleteSchemata(Transaction txn, byte[] indexKey) throws IOException {
+        try (Cursor c = mSchemata.viewPrefix(indexKey, 0).newCursor(txn)) {
+            c.autoload(false);
+            for (c.first(); c.key() != null; c.next()) {
+                c.delete();
+            }
+        }
+    }
+
+    /**
      * Returns the schema version for the given row info, creating a new version if necessary.
      */
     int schemaVersion(final RowInfo info, final long indexId) throws IOException {
-        final String name = info.name;
-        final byte[] typeKey = key(name);
-
         int schemaVersion;
 
         Transaction txn = mSchemata.newTransaction(DurabilityMode.SYNC);
         try (Cursor current = mSchemata.newCursor(txn)) {
-            current.find(typeKey);
+            current.find(key(indexId));
 
             matches: if (current.value() != null) {
                 // Check if the currently defined schema matches.
 
-                Index ix = mDatabase.findIndex(name);
-                if (ix != null && ix.id() != indexId) {
-                    // The underlying index changed, and so all existing schema metadata can be
-                    // deleted. This can happen when the index is dropped and later re-created.
-                    try (Cursor c = mSchemata.viewPrefix(typeKey, 0).newCursor(txn)) {
-                        c.autoload(false);
-                        for (c.first(); c.key() != null; c.next()) {
-                            c.delete();
-                        }
-                    }
-                    break matches;
-                }
-
-                schemaVersion = decodeIntLE(current.value(), 8);
+                schemaVersion = decodeIntLE(current.value(), 0);
                 RowInfo currentInfo = decodeExisting
-                    (txn, name, typeKey, current.value(), schemaVersion);
+                    (txn, info.name, indexId, current.value(), schemaVersion);
 
                 if (info.matches(currentInfo)) {
                     if (info.alternateKeysMatch(currentInfo) &&
@@ -181,22 +179,23 @@ public class RowStore {
                 }
 
                 if (!info.keyColumns.equals(currentInfo.keyColumns)) {
-                    throw new IllegalStateException("Cannot alter primary key: " + name);
+                    throw new IllegalStateException("Cannot alter primary key: " + info.name);
                 }
             }
 
-            final var encoded = new EncodedRowInfo(info, indexId);
+            final var encoded = new EncodedRowInfo(info);
 
             // Find an existing schemaVersion or create a new one.
 
             assignVersion: try (Cursor byHash = mSchemata.newCursor(txn)) {
-                byHash.find(key(typeKey, encoded.primaryHash | (1 << 31)));
+                byHash.find(key(indexId, encoded.primaryHash | (1 << 31)));
 
                 byte[] schemaVersions = byHash.value();
                 if (schemaVersions != null) {
                     for (int pos=0; pos<schemaVersions.length; pos+=4) {
                         schemaVersion = decodeIntLE(schemaVersions, pos);
-                        RowInfo existing = decodeExisting(txn, name, typeKey, null, schemaVersion);
+                        RowInfo existing = decodeExisting
+                            (txn, info.name, indexId, null, schemaVersion);
                         if (info.matches(existing)) {
                             break assignVersion;
                         }
@@ -228,7 +227,7 @@ public class RowStore {
                 */
 
 
-                View versionView = mSchemata.viewGt(typeKey).viewLt(key(typeKey, 1 << 31));
+                View versionView = mSchemata.viewGt(key(indexId)).viewLt(key(indexId, 1 << 31));
                 try (Cursor highest = versionView.newCursor(txn)) {
                     highest.autoload(false);
                     highest.last();
@@ -241,7 +240,7 @@ public class RowStore {
                         schemaVersion = decodeIntBE(key, key.length - 4) + 1;
                     }
 
-                    highest.findNearby(key(typeKey, schemaVersion));
+                    highest.findNearby(key(indexId, schemaVersion));
                     highest.store(encoded.primaryData);
                 }
 
@@ -256,7 +255,7 @@ public class RowStore {
                 byHash.store(schemaVersions);
             }
 
-            encodeIntLE(encoded.currentData, 8, schemaVersion);
+            encodeIntLE(encoded.currentData, 0, schemaVersion);
             current.store(encoded.currentData);
 
             txn.commit();
@@ -274,23 +273,16 @@ public class RowStore {
      * @return null if not found
      */
     RowInfo rowInfo(Class<?> rowType, long indexId, int schemaVersion) throws IOException {
-        final String name = rowType.getName();
-        final byte[] typeKey = key(name);
-
         Transaction txn = mSchemata.newTransaction(DurabilityMode.NO_FLUSH);
         txn.lockMode(LockMode.REPEATABLE_READ);
         try (Cursor c = mSchemata.newCursor(txn)) {
             // Check if the indexId matches and the schemaVersion is the current one.
             c.autoload(false);
-            c.find(typeKey);
+            c.find(key(indexId));
             RowInfo current = null;
             if (c.value() != null) {
-                var buf = new byte[8 + 4];
-                c.valueRead(0, buf, 0, buf.length);
-                if (decodeLongLE(buf, 0) != indexId) {
-                    return null;
-                }
-                if (decodeIntLE(buf, 8) == schemaVersion) {
+                var buf = new byte[4];
+                if (decodeIntLE(buf, 0) == schemaVersion) {
                     // Matches, but don't simply return it. The current one might not have been
                     // updated yet.
                     current = RowInfo.find(rowType);
@@ -298,9 +290,9 @@ public class RowStore {
             }
 
             c.autoload(true);
-            c.findNearby(key(typeKey, schemaVersion));
+            c.findNearby(key(indexId, schemaVersion));
 
-            RowInfo info = decodeExisting(txn, name, null, c.value());
+            RowInfo info = decodeExisting(txn, rowType.getName(), null, c.value());
 
             if (current != null && current.allColumns.equals(info.allColumns)) {
                 // Current one matches, so use the canonical RowInfo instance.
@@ -320,11 +312,11 @@ public class RowStore {
      * @return null if not found
      */
     private RowInfo decodeExisting(Transaction txn,
-                                   String typeName, byte[] typeKey,
+                                   String typeName, long indexId,
                                    byte[] currentData, int schemaVersion)
         throws IOException
     {
-        byte[] primaryData = mSchemata.load(txn, key(typeKey, schemaVersion));
+        byte[] primaryData = mSchemata.load(txn, key(indexId, schemaVersion));
         return decodeExisting(txn, typeName, currentData, primaryData);
     }
 
@@ -384,7 +376,7 @@ public class RowStore {
 
         if (currentData != null) {
             info.alternateKeys = new TreeSet<>(ColumnSetComparator.THE);
-            pos = decodeColumnSets(currentData, 8 + 4, names, info.alternateKeys);
+            pos = decodeColumnSets(currentData, 4, names, info.alternateKeys);
             if (info.alternateKeys.isEmpty()) {
                 info.alternateKeys = Collections.emptyNavigableSet();
             }
@@ -449,17 +441,16 @@ public class RowStore {
         return pos;
     }
 
-    private static byte[] key(String typeName) {
-        // Note that UTF-8 format would work, but using Key format prevents collisions with
-        // keys that have a suffix.
-        var key = new byte[lengthStringKey(typeName)];
-        encodeStringKey(key, 0, typeName);
+    private static byte[] key(long indexId) {
+        var key = new byte[8];
+        encodeLongBE(key, 0, indexId);
         return key;
     }
 
-    private static byte[] key(byte[] typeKey, int suffix) {
-        var key = Arrays.copyOfRange(typeKey, 0, typeKey.length + 4);
-        encodeIntBE(key, typeKey.length, suffix);
+    private static byte[] key(long indexId, int suffix) {
+        var key = new byte[8 + 4];
+        encodeLongBE(key, 0, indexId);
+        encodeIntBE(key, 8, suffix);
         return key;
     }
 
@@ -479,7 +470,7 @@ public class RowStore {
         /**
          * Constructor for encoding and writing.
          */
-        EncodedRowInfo(RowInfo info, long indexId) {
+        EncodedRowInfo(RowInfo info) {
             names = new String[info.allColumns.size()];
             var nameToIndex = new HashMap<String, Integer>();
             var encoder = new Encoder(names.length * 16); // with initial capacity guess
@@ -503,7 +494,6 @@ public class RowStore {
             primaryHash = Arrays.hashCode(primaryData);
 
             encoder.reset(0);
-            encoder.writeLongLE(indexId);
             encoder.writeIntLE(0); // slot for current schemaVersion
             encodeColumnSets(encoder, info.alternateKeys, nameToIndex);
             encodeColumnSets(encoder, info.secondaryIndexes, nameToIndex);

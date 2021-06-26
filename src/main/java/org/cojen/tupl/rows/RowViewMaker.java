@@ -41,8 +41,7 @@ import org.cojen.tupl.View;
 import org.cojen.tupl.filter.RowFilter;
 
 /**
- * Makes RowView classes that extend AbstractRowView. RowIndex methods are supported when
- * constructed with a View source which is an Index.
+ * Makes RowView classes that extend AbstractRowView.
  *
  * @author Brian S O'Neill
  */
