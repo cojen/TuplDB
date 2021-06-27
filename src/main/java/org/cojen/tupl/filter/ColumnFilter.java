@@ -52,17 +52,31 @@ public abstract class ColumnFilter extends RowFilter {
     }
 
     /**
-     * @return true if operator is OP_EQ or OP_NE.
+     * @return true if operator is OP_EQ or OP_NE
      */
     public boolean isExact() {
         return isExact(mOperator);
     }
 
     /**
-     * @return true if operator is OP_EQ or OP_NE.
+     * @return true if operator is OP_EQ or OP_NE
      */
     public static boolean isExact(int op) {
         return op <= OP_NE;
+    }
+
+    /**
+     * @return true if operator is OP_IN or OP_NOT_IN
+     */
+    public boolean isIn() {
+        return isIn(mOperator);
+    }
+
+    /**
+     * @return true if operator is OP_IN or OP_NOT_IN
+     */
+    public static boolean isIn(int op) {
+        return op >= OP_IN;
     }
 
     @Override

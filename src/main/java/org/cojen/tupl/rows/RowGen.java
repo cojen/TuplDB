@@ -45,23 +45,25 @@ class RowGen {
     /**
      * @param suffix appended to class name
      */
-    public ClassMaker beginClassMaker(Class<?> rowType, String suffix) {
-        return beginClassMaker(rowType, info, null, suffix);
+    public ClassMaker beginClassMaker(Class<?> who, Class<?> rowType, String suffix) {
+        return beginClassMaker(who, rowType, info, null, suffix);
     }
 
     /**
      * @param subPackage optional
      * @param suffix appended to class name
      */
-    public ClassMaker beginClassMaker(Class<?> rowType, String subPackage, String suffix) {
-        return beginClassMaker(rowType, info, subPackage, suffix);
+    public ClassMaker beginClassMaker(Class<?> who, Class<?> rowType,
+                                      String subPackage, String suffix)
+    {
+        return beginClassMaker(who, rowType, info, subPackage, suffix);
     }
 
     /**
      * @param subPackage optional
      * @param suffix appended to class name
      */
-    public static ClassMaker beginClassMaker(Class<?> rowType, RowInfo info,
+    public static ClassMaker beginClassMaker(Class<?> who, Class<?> rowType, RowInfo info,
                                              String subPackage, String suffix)
     {
         String name;
@@ -82,6 +84,10 @@ class RowGen {
         }
 
         ClassMaker cm = ClassMaker.begin(name, rowType.getClassLoader(), KEY);
+
+        if (who != null) {
+            cm.sourceFile(who.getSimpleName());
+        }
 
         var thisModule = RowGen.class.getModule();
         var thatModule = cm.classLoader().getUnnamedModule();

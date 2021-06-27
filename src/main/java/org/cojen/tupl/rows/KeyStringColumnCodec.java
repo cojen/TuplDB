@@ -89,7 +89,12 @@ class KeyStringColumnCodec extends StringColumnCodec {
      * Defines a byte[] arg field encoded using the string key format.
      */
     @Override
-    void filterPrepare(int op, Variable argVar, int argNum) {
+    Variable filterPrepare(int op, Variable argVar, int argNum) {
+        if (ColumnFilter.isIn(op)) {
+            // FIXME: array of byte arrays
+            throw null;
+        }
+
         argVar = ConvertCallSite.make(mMaker, String.class, argVar);
 
         var rowUtils = mMaker.var(RowUtils.class);
@@ -101,6 +106,8 @@ class KeyStringColumnCodec extends StringColumnCodec {
         }
         rowUtils.invoke(methodName, bytesVar, 0, argVar);
         defineArgField(byte[].class, argFieldName(argNum)).set(bytesVar);
+
+        return argVar;
     }
 
     @Override

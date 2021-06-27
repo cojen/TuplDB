@@ -66,7 +66,7 @@ public class RowViewMaker {
         mRowInfo = gen.info;
         mRowClass = RowMaker.find(type);
         mIndexId = indexId;
-        mClassMaker = gen.beginClassMaker(type, "View")
+        mClassMaker = gen.beginClassMaker(getClass(), type, "View")
             .extend(AbstractRowView.class).final_().public_();
     }
 
@@ -1126,7 +1126,8 @@ public class RowViewMaker {
     {
         RowInfo rowInfo = RowInfo.find(rowType);
 
-        ClassMaker cm = RowGen.beginClassMaker(rowType, rowInfo, null, "Unfiltered")
+        ClassMaker cm = RowGen.beginClassMaker
+            (RowViewMaker.class, rowType, rowInfo, null, "Unfiltered")
             .implement(RowDecoderEncoder.class).public_();
 
         // Subclassed by filter implementations.

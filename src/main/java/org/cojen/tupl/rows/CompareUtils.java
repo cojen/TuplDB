@@ -48,30 +48,43 @@ class CompareUtils {
      * @param fail branch here when comparison fails
      */
     static void compare(MethodMaker mm,
-                        ColumnInfo columnInfo, Variable columnVar,
+                        ColumnInfo colInfo, Variable colVar,
                         ColumnInfo argInfo, Variable argVar,
                         int op, Label pass, Label fail)
     {
-        if (columnInfo.isNullable() && !columnVar.classType().isPrimitive()) {
+        if (ColumnFilter.isIn(op)) {
+            if (colInfo.isPrimitive() && !colInfo.isNullable() &&
+                argInfo.isPrimitive() && !argInfo.isNullable())
+            {
+                // If the column is boxed, it will be unboxed once before the loop.
+                comparePrimitives(mm, colInfo, colVar, argInfo, argVar, op, pass, fail);
+            } else {
+                compareIn(mm, colInfo, colVar, argInfo, argVar, op, pass, fail);
+            }
+            return;
+        }
+
+        if (colInfo.isNullable() && !colVar.classType().isPrimitive()) {
             if (argInfo.isNullable() && !argVar.classType().isPrimitive()) {
                 Label argNotNull = mm.label();
                 argVar.ifNe(null, argNotNull);
-                columnVar.ifEq(null, CompareUtils.selectNullColumnToNullArg(op, pass, fail));
+                colVar.ifEq(null, CompareUtils.selectNullColumnToNullArg(op, pass, fail));
                 mm.goto_(CompareUtils.selectColumnToNullArg(op, pass, fail));
                 argNotNull.here();
             }
-            columnVar.ifEq(null, selectNullColumnToArg(op, pass, fail));
+            colVar.ifEq(null, selectNullColumnToArg(op, pass, fail));
         } else if (argInfo.isNullable() && !argVar.classType().isPrimitive()) {
             argVar.ifEq(null, selectColumnToNullArg(op, pass, fail));
         }
 
-        // At this point, neither variable is null.
+        // At this point, neither variable is null. Note that a column which is primitive can
+        // still be boxed.
 
-        if (columnInfo.isPrimitive()) {
+        if (colInfo.isPrimitive()) {
             if (!argInfo.isPrimitive()) {
                 throw new IllegalArgumentException("Incomparable types");
             }
-            comparePrimitives(mm, columnInfo, columnVar, argInfo, argVar, op, pass, fail);
+            comparePrimitives(mm, colInfo, colVar, argInfo, argVar, op, pass, fail);
             return;
         }
 
@@ -81,16 +94,14 @@ class CompareUtils {
 
         // At this point, both variables are non-null objects.
 
-        if (columnInfo.isArray() || argInfo.isArray()) {
+        if (colInfo.isArray() || argInfo.isArray()) {
             // FIXME
             throw null;
         }
 
         if (ColumnFilter.isExact(op)) {
-            if (columnVar.classType() != BigDecimal.class
-                && argVar.classType() != BigDecimal.class)
-            {
-                var result = columnVar.invoke("equals", argVar);
+            if (colVar.classType() != BigDecimal.class && argVar.classType() != BigDecimal.class) {
+                var result = colVar.invoke("equals", argVar);
                 if (op == ColumnFilter.OP_EQ) {
                     result.ifTrue(pass);
                 } else {
@@ -102,7 +113,7 @@ class CompareUtils {
                 // similarly fuzzy with respect to how it compares NaN values.
                 // FIXME: When searching against a BigDecimal key, must use a range for
                 // consistency. That code won't go here, however.
-                var result = columnVar.invoke("compareTo", argVar);
+                var result = colVar.invoke("compareTo", argVar);
                 if (op == ColumnFilter.OP_EQ) {
                     result.ifEq(0, pass);
                 } else {
@@ -111,7 +122,7 @@ class CompareUtils {
             }
         } else {
             // Assume both variables are Comparable.
-            var result = columnVar.invoke("compareTo", argVar);
+            var result = colVar.invoke("compareTo", argVar);
             switch (op) {
             case ColumnFilter.OP_LT: result.ifLt(0, pass); break;
             case ColumnFilter.OP_GE: result.ifGe(0, pass); break;
@@ -143,6 +154,11 @@ class CompareUtils {
         if (!colType.isPrimitive()) {
             colVar = colVar.unbox();
             colType = colVar.classType();
+        }
+
+        if (ColumnFilter.isIn(op)) {
+            compareIn(mm, colInfo, colVar, argInfo, argVar, op, pass, fail);
+            return;
         }
 
         Class<?> argType = argVar.classType();
@@ -229,6 +245,42 @@ class CompareUtils {
         }
 
         mm.goto_(fail);
+    }
+
+    /**
+     * Generates code for "in" and "not in" filters, which are expected to operate over an
+     * argument array.
+     *
+     * @param argVar expected to be anarray
+     * @param op OP_IN or OP_NOT_IN
+     * @param pass branch here when comparison passes
+     * @param fail branch here when comparison fails
+     */
+    private static void compareIn(MethodMaker mm,
+                                  ColumnInfo colInfo, Variable colVar,
+                                  ColumnInfo argInfo, Variable argVar,
+                                  int op, Label pass, Label fail)
+    {
+        // FIXME: Use binary search if large enough. Must have already been sorted.
+
+        if (op == ColumnFilter.OP_NOT_IN) {
+            Label tmp = pass;
+            pass = fail;
+            fail = tmp;
+        }
+
+        // Basic for-loop over the array.
+        var lengthVar = argVar.alength();
+        var ixVar = mm.var(int.class).set(0);
+        Label start = mm.label().here();
+        ixVar.ifGe(lengthVar, fail);
+        Label next = mm.label();
+        compare(mm, colInfo, colVar, argInfo, argVar.aget(ixVar), ColumnFilter.OP_EQ, pass, next);
+        next.here();
+
+        // End of loop.
+        ixVar.inc(1);
+        mm.goto_(start);
     }
 
     /**

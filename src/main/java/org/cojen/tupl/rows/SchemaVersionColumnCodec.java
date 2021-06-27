@@ -98,11 +98,6 @@ class SchemaVersionColumnCodec extends ColumnCodec {
     }
 
     @Override
-    void filterPrepare(int op, Variable argVar, int argNum) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     Object filterDecode(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
                         int op)
     {

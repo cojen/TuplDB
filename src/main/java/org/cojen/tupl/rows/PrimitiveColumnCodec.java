@@ -22,8 +22,6 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.filter.ColumnFilter;
-
 import static org.cojen.tupl.rows.ColumnInfo.*;
 import static org.cojen.tupl.rows.RowUtils.*;
 
@@ -330,15 +328,6 @@ class PrimitiveColumnCodec extends ColumnCodec {
         }
     }
 
-    /**
-     * Defines a field which stores the original argument, converted to the correct type.
-     */
-    @Override
-    void filterPrepare(int op, Variable argVar, int argNum) {
-        argVar = ConvertCallSite.make(mMaker, mInfo.type, argVar);
-        defineArgField(mInfo.type, argFieldName(argNum)).set(argVar);
-    }
-
     @Override
     Object filterDecode(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
                         int op)
@@ -398,6 +387,7 @@ class PrimitiveColumnCodec extends ColumnCodec {
         }
 
         if (isNullVar != null) {
+            // FIXME: OP_IN and OP_NOT_IN
             compareNullHeader(isNullVar, null, argField, op, pass, fail);
         } else if (mInfo.isNullable()) {
             CompareUtils.compare(mMaker, dstInfo, columnVar, dstInfo, argField, op, pass, fail);

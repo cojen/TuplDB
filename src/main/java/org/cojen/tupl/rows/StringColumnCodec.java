@@ -24,6 +24,8 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.filter.ColumnFilter;
+
 /**
  * Abstract class for encoding and decoding string type columns.
  *
@@ -48,16 +50,21 @@ abstract class StringColumnCodec extends ColumnCodec {
      * String field with the original argument.
      */
     @Override
-    void filterPrepare(int op, Variable argVar, int argNum) {
-        argVar = ConvertCallSite.make(mMaker, String.class, argVar);
+    Variable filterPrepare(int op, Variable argVar, int argNum) {
+        argVar = super.filterPrepare(op, argVar, argNum);
 
-        defineArgField(String.class, argFieldName(argNum)).set(argVar);
+        if (ColumnFilter.isIn(op)) {
+            // FIXME: array of byte arrays
+            throw null;
+        }
 
         Field argField = defineArgField(byte[].class, argFieldName(argNum, "bytes"));
         Label cont = mMaker.label();
         argVar.ifEq(null, cont);
         argField.set(argVar.invoke("getBytes", mMaker.var(StandardCharsets.class).field("UTF_8")));
         cont.here();
+
+        return argVar;
     }
 
     @Override

@@ -276,8 +276,19 @@ abstract class ColumnCodec {
      * @param argVar argument value to compare against; variable type is Object
      * @param argNum zero-based filter argument number
      * @param op defined in ColumnFilter
+     * @return the converted argVar
      */
-    abstract void filterPrepare(int op, Variable argVar, int argNum);
+    Variable filterPrepare(int op, Variable argVar, int argNum) {
+        Class<?> argType = mInfo.type;
+        if (ColumnFilter.isIn(op)) {
+            // FIXME: Sort and use binary search if large enough. Be sure to clone array if it
+            // wasn't converted.
+            argType = argType.arrayType();
+        }
+        argVar = ConvertCallSite.make(mMaker, argType, argVar);
+        defineArgField(argVar, argFieldName(argNum)).set(argVar);
+        return argVar;
+    }
 
     /**
      * Makes code which identifies the location of an encoded column and optionally decodes it.

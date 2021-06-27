@@ -23,6 +23,8 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.filter.ColumnFilter;
+
 /**
  * Encoding suitable for non-last key columns which supports nulls.
  *
@@ -103,7 +105,12 @@ class KeyBigDecimalColumnCodec extends ColumnCodec {
      * Defines a byte[] arg field encoded using the BigDecimal key format.
      */
     @Override
-    void filterPrepare(int op, Variable argVar, int argNum) {
+    Variable filterPrepare(int op, Variable argVar, int argNum) {
+        if (ColumnFilter.isIn(op)) {
+            // FIXME: array of byte arrays
+            throw null;
+        }
+
         argVar = ConvertCallSite.make(mMaker, BigDecimal.class, argVar);
 
         String methodName = "encodeBigDecimalKey";
@@ -113,6 +120,8 @@ class KeyBigDecimalColumnCodec extends ColumnCodec {
         var bytesVar = mMaker.var(byte[].class);
         bytesVar.set(mMaker.var(BigDecimalUtils.class).invoke(methodName, argVar));
         defineArgField(byte[].class, argFieldName(argNum)).set(bytesVar);
+
+        return argVar;
     }
 
     @Override
