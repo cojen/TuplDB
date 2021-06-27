@@ -20,6 +20,12 @@ package org.cojen.tupl.rows;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 
+import java.lang.reflect.Array;
+
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
 import java.math.*;
 
 import org.cojen.maker.MethodMaker;
@@ -38,7 +44,11 @@ public class ConvertCallSiteTest {
     }
 
     private static MethodHandle make(Class toType) {
-        MethodMaker mm = MethodMaker.begin(MethodHandles.lookup(), toType, "test", Object.class);
+        return make(Object.class, toType);
+    }
+
+    private static MethodHandle make(Class fromType, Class toType) {
+        MethodMaker mm = MethodMaker.begin(MethodHandles.lookup(), toType, "test", fromType);
         mm.return_(ConvertCallSite.make(mm, toType, mm.param(0)));
         return mm.finish();
     }
@@ -260,12 +270,45 @@ public class ConvertCallSiteTest {
         fail(handles, true, "hello", 'a');
     }
 
+    @Test
+    public void convertToLongArray() throws Throwable {
+        MethodHandle[] handles = { make(long[].class) };
+
+        pass(handles,
+             new int[] {10, -20}, new long[] {10, -20},
+             List.of(BigInteger.valueOf(100), BigDecimal.valueOf(-200)), new long[] {100, -200},
+             new LinkedList<>(List.of("11", "22")), new long[] {11, 22},
+             Map.of(-1, "x").keySet(), new long[] {-1},
+             null, null
+             );
+    }
+
+    @Test
+    public void convertToStringArray() throws Throwable {
+        MethodHandle[] handles = { make(String[].class) };
+
+        pass(handles,
+             new int[] {10, -20}, new String[] {"10", "-20"},
+             List.of(BigInteger.valueOf(10), BigDecimal.valueOf(-20)), new String[] {"10", "-20"},
+             new LinkedList<>(List.of("11", "22")), new String[] {"11", "22"},
+             Map.of(-1, "x").keySet(), new String[] {"-1"},
+             null, null
+             );
+    }
+
     private void pass(MethodHandle[] handles, Object... cases) throws Throwable {
         for (MethodHandle mh : handles) {
             for (int i=0; i<cases.length; i+=2) {
                 if (cases[i] != null || !mh.type().returnType().isPrimitive()) {
                     Object result = mh.invoke(cases[i]);
-                    assertEquals(cases[i + 1], result);
+                    Object expect = cases[i + 1];
+                    if (result != null && result.getClass().isArray() &&
+                        expect != null && expect.getClass().isArray())
+                    {
+                        assertTrue(equalArrays(expect, result));
+                    } else {
+                        assertEquals(expect, result);
+                    }
                 }
             }
         }
@@ -288,5 +331,20 @@ public class ConvertCallSiteTest {
                 }
             }
         }
+    }
+
+    private boolean equalArrays(Object a, Object b) {
+        int length = Array.getLength(a);
+        if (Array.getLength(b) != length) {
+            return false;
+        }
+        for (int i=0; i<length; i++) {
+            Object ai = Array.get(a, i);
+            Object bi = Array.get(b, i);
+            if (!ai.equals(bi)) {
+                return false;
+            }
+        }
+        return true;
     }
 }

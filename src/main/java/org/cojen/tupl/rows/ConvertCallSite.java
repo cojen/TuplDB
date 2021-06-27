@@ -24,8 +24,16 @@ import java.lang.invoke.MethodType;
 import java.lang.invoke.MutableCallSite;
 import java.lang.invoke.VarHandle;
 
+import java.lang.reflect.Modifier;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.RandomAccess;
 
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
@@ -144,7 +152,7 @@ public class ConvertCallSite extends MutableCallSite {
                 next = null;
             } else {
                 next = mm.label();
-                from.instanceOf(fromType).ifFalse(next);
+                instanceOf(from, fromType, next);
             }
 
             if (!toType.isPrimitive() && toType.isAssignableFrom(fromType)) {
@@ -171,6 +179,8 @@ public class ConvertCallSite extends MutableCallSite {
                 result = toByte(mm, fromType, from);
             } else if (toType == short.class || toType == Short.class) {
                 result = toShort(mm, fromType, from);
+            } else if (toType.isArray()) {
+                result = toArray(mm, toType, fromType, from);
             } else {
                 result = null;
             }
@@ -191,6 +201,62 @@ public class ConvertCallSite extends MutableCallSite {
         }
 
         return mm.finish();
+    }
+
+    /**
+     * @fail branch here if not instanceOf
+     */
+    private static void instanceOf(Variable fromVar, Class<?> fromType, Label fail) {
+        if (Modifier.isPublic(fromType.getModifiers())) {
+            fromVar.instanceOf(fromType).ifFalse(fail);
+            return;
+        }
+
+        // Cannot generate code against a non-public type. Instead, generate a chain of
+        // instanceOf checks against all publicly available super classes and interfaces.
+
+        var types = new HashSet<Class<?>>();
+        gatherAccessibleTypes(types, fromType);
+
+        // Remove redundant interfaces.
+        Iterator<Class<?>> it = types.iterator();
+        outer: while (it.hasNext()) {
+            Class<?> type = it.next();
+            for (Class<?> other : types) {
+                if (other != type && type.isAssignableFrom(other)) {
+                    it.remove();
+                    continue outer;
+                }
+            }
+        }
+
+        for (Class<?> type : types) {
+            fromVar.instanceOf(type).ifFalse(fail);
+        }
+    }
+
+    private static void gatherAccessibleTypes(HashSet<Class<?>> types, Class<?> type) {
+        if (types.contains(type)) {
+            return;
+        }
+
+        if (Modifier.isPublic(type.getModifiers())) {
+            types.add(type);
+        }
+
+        Class<?> superType = type.getSuperclass();
+        if (superType != null && superType != Object.class) {
+            gatherAccessibleTypes(types, superType);
+        }
+
+        Class<?>[] ifaces = type.getInterfaces();
+        if (ifaces != null) {
+            for (var iface : ifaces) {
+                if (iface != java.io.Serializable.class) {
+                    gatherAccessibleTypes(types, iface);
+                }
+            }
+        }
     }
 
     private static Variable toBoolean(MethodMaker mm, Class fromType, Variable from) {
@@ -413,6 +479,73 @@ public class ConvertCallSite extends MutableCallSite {
         }
 
         return mm.var(BigDecimal.class).invoke("valueOf", numVar);
+    }
+
+    private static Variable toArray(MethodMaker mm, Class toType, Class fromType, Variable from) {
+        Class toElementType = toType.getComponentType();
+
+        if (fromType.isArray()) {
+            var fromArrayVar = from.cast(fromType);
+            var lengthVar = fromArrayVar.alength();
+            var toArrayVar = mm.new_(toType, lengthVar);
+
+            // Copy and conversion loop. Note that the from elements are always boxed for
+            // simplicity. The generated code is expected to have inlining and autoboxing
+            // optimizations applied anyhow.
+
+            var ixVar = mm.var(int.class).set(0);
+            Label start = mm.label().here();
+            Label end = mm.label();
+            ixVar.ifGe(lengthVar, end);
+            var toElementVar = make(mm, toElementType, fromArrayVar.aget(ixVar).box());
+            toArrayVar.aset(ixVar, toElementVar);
+            ixVar.inc(1);
+            mm.goto_(start);
+            end.here();
+
+            return toArrayVar;
+        } else if (List.class.isAssignableFrom(fromType) &&
+                   RandomAccess.class.isAssignableFrom(fromType))
+        {
+            var fromListVar = from.cast(List.class);
+            var lengthVar = fromListVar.invoke("size");
+            var toArrayVar = mm.new_(toType, lengthVar);
+
+            // Copy and conversion loop.
+
+            var ixVar = mm.var(int.class).set(0);
+            Label start = mm.label().here();
+            Label end = mm.label();
+            ixVar.ifGe(lengthVar, end);
+            var toElementVar = make(mm, toElementType, fromListVar.invoke("get", ixVar));
+            toArrayVar.aset(ixVar, toElementVar);
+            ixVar.inc(1);
+            mm.goto_(start);
+            end.here();
+
+            return toArrayVar;
+        } else if (Collection.class.isAssignableFrom(fromType)) {
+            var fromCollectionVar = from.cast(Collection.class);
+            var lengthVar = fromCollectionVar.invoke("size");
+            var toArrayVar = mm.new_(toType, lengthVar);
+
+            // Copy and conversion loop.
+
+            var ixVar = mm.var(int.class).set(0);
+            var itVar = fromCollectionVar.invoke("iterator");
+            Label start = mm.label().here();
+            Label end = mm.label();
+            ixVar.ifGe(lengthVar, end);
+            var toElementVar = make(mm, toElementType, itVar.invoke("next"));
+            toArrayVar.aset(ixVar, toElementVar);
+            ixVar.inc(1);
+            mm.goto_(start);
+            end.here();
+
+            return toArrayVar;
+        } else {
+            return null;
+        }
     }
 
     // Called by generated code.
