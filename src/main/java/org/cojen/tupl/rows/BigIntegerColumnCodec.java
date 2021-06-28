@@ -53,18 +53,25 @@ abstract class BigIntegerColumnCodec extends ColumnCodec {
     Variable filterPrepare(int op, Variable argVar, int argNum) {
         argVar = super.filterPrepare(op, argVar, argNum);
 
+        Variable bytesVar;
+
         if (ColumnFilter.isIn(op)) {
-            // FIXME: array of byte arrays
-            throw null;
+            var lengthVar = argVar.alength();
+            final var fargVar = argVar;
+            bytesVar = ConvertUtils.convertArray(mMaker, byte[][].class, lengthVar, ixVar -> {
+                return encodeBigInteger(fargVar.aget(ixVar));
+            });
+        } else {
+            bytesVar = encodeBigInteger(argVar);
         }
 
-        Field argField = defineArgField(byte[].class, argFieldName(argNum, "bytes"));
-        Label cont = mMaker.label();
-        argVar.ifEq(null, cont);
-        argField.set(argVar.invoke("toByteArray"));
-        cont.here();
+        defineArgField(bytesVar, argFieldName(argNum, "bytes")).set(bytesVar);
 
         return argVar;
+    }
+
+    private Variable encodeBigInteger(Variable biVar) {
+        return mMaker.var(RowUtils.class).invoke("encodeBigInteger", biVar);
     }
 
     @Override

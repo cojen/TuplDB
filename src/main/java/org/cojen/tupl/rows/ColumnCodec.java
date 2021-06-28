@@ -469,20 +469,19 @@ abstract class ColumnCodec {
 
     /**
      * Common code used by BigIntegerColumnCodec and StringColumnCodec for comparing non-key
-     * values and their binary encoded format.
+     * values and their binary encoded format. Is called on the source codec.
      *
+     * @param dstInfo current definition for column
+     * @param srcVar source byte array
      * @param decodedVars dataOffsetVar, lengthVar, and optional isNullVar
      */
     protected void compareEncoded(ColumnInfo dstInfo, Variable srcVar,
                                   int op, Variable[] decodedVars, Variable argObjVar, int argNum,
                                   Label pass, Label fail)
     {
-        Variable dataOffsetVar = decodedVars[0];
-        Variable lengthVar = decodedVars[1];
-        Variable isNullVar = decodedVars[2];
-
         if (!dstInfo.isNullable() && mInfo.isNullable()) {
             Label cont = mMaker.label();
+            Variable isNullVar = decodedVars[2];
             isNullVar.ifFalse(cont);
             var columnVar = mMaker.var(dstInfo.type);
             Converter.setDefault(dstInfo, columnVar);
@@ -493,6 +492,27 @@ abstract class ColumnCodec {
 
         var argVar = argObjVar.field(argFieldName(argNum, "bytes")).get();
 
+        if (ColumnFilter.isIn(op)) {
+            CompareUtils.compareIn(mMaker, argVar, op, pass, fail, (a, p, f) -> {
+                compareEncodedElement(srcVar, ColumnFilter.OP_EQ, decodedVars, a, p, f);
+            });
+        } else {
+            compareEncodedElement(srcVar, op, decodedVars, argVar, pass, fail);
+        }
+    }
+
+    /**
+     * @param decodedVars dataOffsetVar, lengthVar, and optional isNullVar
+     * @param argVar byte array
+     */
+    private void compareEncodedElement(Variable srcVar,
+                                       int op, Variable[] decodedVars, Variable argVar,
+                                       Label pass, Label fail)
+    {
+        Variable dataOffsetVar = decodedVars[0];
+        Variable lengthVar = decodedVars[1];
+        Variable isNullVar = decodedVars[2];
+
         Label notNull = mMaker.label();
         argVar.ifNe(null, notNull);
         // Argument is null...
@@ -501,11 +521,12 @@ abstract class ColumnCodec {
         }
         mMaker.goto_(CompareUtils.selectColumnToNullArg(op, pass, fail));
 
-        // Argument is isn't null...
+        // Argument isn't null...
         notNull.here();
         if (isNullVar != null) {
             isNullVar.ifTrue(CompareUtils.selectNullColumnToArg(op, pass, fail));
         }
+
         CompareUtils.compareArrays(mMaker,
                                    srcVar, dataOffsetVar, dataOffsetVar.add(lengthVar),
                                    argVar, 0, argVar.alength(),

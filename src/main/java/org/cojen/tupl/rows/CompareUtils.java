@@ -247,19 +247,23 @@ class CompareUtils {
         mm.goto_(fail);
     }
 
+    @FunctionalInterface
+    static interface CompareArg {
+        void apply(Variable argVar, Label pass, Label fail);
+    }
+
     /**
      * Generates code for "in" and "not in" filters, which are expected to operate over an
      * argument array.
      *
-     * @param argVar expected to be anarray
+     * @param argVar expected to be an array
      * @param op OP_IN or OP_NOT_IN
      * @param pass branch here when comparison passes
      * @param fail branch here when comparison fails
+     * @param compareArg called for each element
      */
-    private static void compareIn(MethodMaker mm,
-                                  ColumnInfo colInfo, Variable colVar,
-                                  ColumnInfo argInfo, Variable argVar,
-                                  int op, Label pass, Label fail)
+    static void compareIn(MethodMaker mm, Variable argVar, int op, Label pass, Label fail,
+                          CompareArg compareArg)
     {
         // FIXME: Use binary search if large enough. Must have already been sorted.
 
@@ -270,17 +274,35 @@ class CompareUtils {
         }
 
         // Basic for-loop over the array.
+
         var lengthVar = argVar.alength();
         var ixVar = mm.var(int.class).set(0);
         Label start = mm.label().here();
         ixVar.ifGe(lengthVar, fail);
         Label next = mm.label();
-        compare(mm, colInfo, colVar, argInfo, argVar.aget(ixVar), ColumnFilter.OP_EQ, pass, next);
+        compareArg.apply(argVar.aget(ixVar), pass, next);
         next.here();
-
-        // End of loop.
         ixVar.inc(1);
         mm.goto_(start);
+    }
+
+    /**
+     * Generates code for "in" and "not in" filters, which are expected to operate over an
+     * argument array.
+     *
+     * @param argVar expected to be an array
+     * @param op OP_IN or OP_NOT_IN
+     * @param pass branch here when comparison passes
+     * @param fail branch here when comparison fails
+     */
+    private static void compareIn(MethodMaker mm,
+                                  ColumnInfo colInfo, Variable colVar,
+                                  ColumnInfo argInfo, Variable argVar,
+                                  int op, Label pass, Label fail)
+    {
+        compareIn(mm, argVar, op, pass, fail, (a, p, f) -> {
+            compare(mm, colInfo, colVar, argInfo, a, ColumnFilter.OP_EQ, p, f);
+        });
     }
 
     /**

@@ -487,62 +487,27 @@ public class ConvertCallSite extends MutableCallSite {
         if (fromType.isArray()) {
             var fromArrayVar = from.cast(fromType);
             var lengthVar = fromArrayVar.alength();
-            var toArrayVar = mm.new_(toType, lengthVar);
-
             // Copy and conversion loop. Note that the from elements are always boxed for
             // simplicity. The generated code is expected to have inlining and autoboxing
             // optimizations applied anyhow.
-
-            var ixVar = mm.var(int.class).set(0);
-            Label start = mm.label().here();
-            Label end = mm.label();
-            ixVar.ifGe(lengthVar, end);
-            var toElementVar = make(mm, toElementType, fromArrayVar.aget(ixVar).box());
-            toArrayVar.aset(ixVar, toElementVar);
-            ixVar.inc(1);
-            mm.goto_(start);
-            end.here();
-
-            return toArrayVar;
+            return ConvertUtils.convertArray(mm, toType, lengthVar, ixVar -> {
+                return make(mm, toElementType, fromArrayVar.aget(ixVar).box());
+            });
         } else if (List.class.isAssignableFrom(fromType) &&
                    RandomAccess.class.isAssignableFrom(fromType))
         {
             var fromListVar = from.cast(List.class);
             var lengthVar = fromListVar.invoke("size");
-            var toArrayVar = mm.new_(toType, lengthVar);
-
-            // Copy and conversion loop.
-
-            var ixVar = mm.var(int.class).set(0);
-            Label start = mm.label().here();
-            Label end = mm.label();
-            ixVar.ifGe(lengthVar, end);
-            var toElementVar = make(mm, toElementType, fromListVar.invoke("get", ixVar));
-            toArrayVar.aset(ixVar, toElementVar);
-            ixVar.inc(1);
-            mm.goto_(start);
-            end.here();
-
-            return toArrayVar;
+            return ConvertUtils.convertArray(mm, toType, lengthVar, ixVar -> {
+                return make(mm, toElementType, fromListVar.invoke("get", ixVar));
+            });
         } else if (Collection.class.isAssignableFrom(fromType)) {
             var fromCollectionVar = from.cast(Collection.class);
             var lengthVar = fromCollectionVar.invoke("size");
-            var toArrayVar = mm.new_(toType, lengthVar);
-
-            // Copy and conversion loop.
-
-            var ixVar = mm.var(int.class).set(0);
             var itVar = fromCollectionVar.invoke("iterator");
-            Label start = mm.label().here();
-            Label end = mm.label();
-            ixVar.ifGe(lengthVar, end);
-            var toElementVar = make(mm, toElementType, itVar.invoke("next"));
-            toArrayVar.aset(ixVar, toElementVar);
-            ixVar.inc(1);
-            mm.goto_(start);
-            end.here();
-
-            return toArrayVar;
+            return ConvertUtils.convertArray(mm, toType, lengthVar, ixVar -> {
+                return make(mm, toElementType, itVar.invoke("next"));
+            });
         } else {
             return null;
         }

@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.rows;
 
+import java.math.BigInteger;
+
 import java.util.Arrays;
 
 import java.nio.charset.StandardCharsets;
@@ -209,6 +211,14 @@ public class RowUtils extends Utils {
         }
 
         return dstOffset;
+    }
+
+    /**
+     * Encodes the given optional String into a variable amount of bytes without any length
+     * prefix.
+     */
+    public static byte[] encodeStringUTF(String value) {
+        return value == null ? null : value.getBytes(StandardCharsets.UTF_8);
     }
 
     /**
@@ -455,6 +465,14 @@ public class RowUtils extends Utils {
         }
 
         return new String(chars, 0, charLen);
+    }
+
+    /**
+     * Encodes the given optional BigInteger into a variable amount of bytes without any length
+     * prefix.
+     */
+    public static byte[] encodeBigInteger(BigInteger value) {
+        return value == null ? null : value.toByteArray();
     }
 
     /**
