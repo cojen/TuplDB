@@ -864,7 +864,7 @@ class BTree extends Tree implements View, Index {
     }
 
     @Override
-    public final void close() throws IOException {
+    public final void close() {
         close(false, false, false);
     }
 
@@ -872,7 +872,7 @@ class BTree extends Tree implements View, Index {
      * @param rootLatched true if root node is already latched by the current thread
      * @return root node if forDelete; null if already closed
      */
-    final Node close(boolean forDelete, final boolean rootLatched) throws IOException {
+    final Node close(boolean forDelete, final boolean rootLatched) {
         return close(forDelete, rootLatched, false);
     }
 
@@ -880,7 +880,7 @@ class BTree extends Tree implements View, Index {
      * Close any kind of index, even an internal one.
      */
     @Override
-    final void forceClose() throws IOException {
+    final void forceClose() {
         close(false, false, true);
     }
 
@@ -888,9 +888,7 @@ class BTree extends Tree implements View, Index {
      * @param rootLatched true if root node is already latched by the current thread
      * @return root node if forDelete; null if already closed
      */
-    private Node close(boolean forDelete, final boolean rootLatched, boolean force)
-        throws IOException
-    {
+    private Node close(boolean forDelete, final boolean rootLatched, boolean force) {
         Node root = mRoot;
 
         if (!rootLatched) {

@@ -17,8 +17,6 @@
 
 package org.cojen.tupl.core;
 
-import java.io.InterruptedIOException;
-
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -59,15 +57,6 @@ public class CommitLockTest {
         // Can still acquire shared.
         assertTrue(lock.tryLock());
 
-        // Exclusive isn't reentrant.
-        LockTest.selfInterrupt(1000);
-        try {
-            lock.acquireExclusive();
-            fail();
-        } catch (InterruptedIOException e) {
-            // Good.
-        }
-
         // Release all the locks.
         lock.releaseExclusive();
         lock.unlock();
@@ -88,14 +77,6 @@ public class CommitLockTest {
         });
 
         TestUtils.startAndWaitUntilBlocked(holder);
-
-        LockTest.selfInterrupt(1000);
-        try {
-            lock.acquireExclusive();
-            fail();
-        } catch (InterruptedIOException e) {
-            // Good.
-        }
 
         holder.interrupt();
 
@@ -118,7 +99,7 @@ public class CommitLockTest {
                 while (true) {
                     Thread.sleep(100_000);
                 }
-            } catch (InterruptedException | InterruptedIOException e) {
+            } catch (InterruptedException e) {
                 lock.releaseExclusive();
             }
         });
