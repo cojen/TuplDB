@@ -17,8 +17,6 @@
 
 package org.cojen.tupl.core;
 
-import java.io.InterruptedIOException;
-
 import java.lang.ref.WeakReference;
 
 import java.util.concurrent.atomic.LongAdder;
@@ -232,7 +230,7 @@ final class CommitLock implements Lock {
         throw new UnsupportedOperationException();
     }
 
-    void acquireExclusive() throws InterruptedIOException {
+    void acquireExclusive() {
         // If full exclusive lock cannot be immediately obtained, it's due to a shared lock
         // being held for a long time. While waiting for the exclusive lock, all other shared
         // requests are queued. By waiting a timed amount and giving up, the exclusive lock
@@ -245,12 +243,8 @@ final class CommitLock implements Lock {
         }
     }
 
-    private boolean finishAcquireExclusive(long nanosTimeout) throws InterruptedIOException {
-        try {
-            mFullLatch.acquireExclusiveInterruptibly();
-        } catch (InterruptedException e) {
-            throw new InterruptedIOException();
-        }
+    private boolean finishAcquireExclusive(long nanosTimeout) {
+        mFullLatch.acquireExclusive();
 
         // Signal that shared locks cannot be granted anymore.
         mExclusiveThread = Thread.currentThread();
@@ -275,9 +269,8 @@ final class CommitLock implements Lock {
                             Parker.parkNanos(this, nanosTimeout);
                         }
 
-                        if (Thread.interrupted()) {
-                            throw new InterruptedIOException();
-                        }
+                        // Ignore and clear the interrupted status.
+                        Thread.interrupted();
 
                         if (!hasSharedLockers()) {
                             break;

@@ -129,7 +129,7 @@ abstract class Tree implements Index {
     /**
      * Close any kind of index, even an internal one.
      */
-    abstract void forceClose() throws IOException;
+    abstract void forceClose();
 
     @Override
     public String toString() {
