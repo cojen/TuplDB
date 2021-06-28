@@ -28,7 +28,6 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.InputStream;
-import java.io.InterruptedIOException;
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -5923,9 +5922,7 @@ final class LocalDatabase extends CoreDatabase {
      * @param committed can be null if empty
      * @return false if database is closed
      */
-    private boolean waitForCommitted(LHashTable.Obj<Object> committed)
-        throws InterruptedIOException
-    {
+    private boolean waitForCommitted(LHashTable.Obj<Object> committed) {
         if (committed == null) {
             return true;
         }
@@ -5950,7 +5947,7 @@ final class LocalDatabase extends CoreDatabase {
             try {
                 Thread.sleep(1);
             } catch (InterruptedException e) {
-                throw new InterruptedIOException();
+                // Ignore.
             }
         }
     }
@@ -5960,7 +5957,7 @@ final class LocalDatabase extends CoreDatabase {
      * finish. Should be called after redo writer is closed to prevent new transactions from
      * entering the committed state.
      */
-    boolean waitForCommitted() throws InterruptedIOException {
+    boolean waitForCommitted() {
         // Acquire exclusive lock to wait for all threads which are concurrently entering the
         // committed state. They'll be holding the shared lock (see LocalTransaction.commit).
         // There's no need to retain the exclusive lock after waiting.
