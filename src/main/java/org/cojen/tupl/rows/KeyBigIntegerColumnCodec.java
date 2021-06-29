@@ -177,12 +177,8 @@ class KeyBigIntegerColumnCodec extends BigIntegerColumnCodec {
                        int op, Object decoded, Variable argObjVar, int argNum,
                        Label pass, Label fail)
     {
-        endVar = (Variable) decoded;
-        var argVar = argObjVar.field(argFieldName(argNum)).get();
-        CompareUtils.compareArrays(mMaker,
-                                   srcVar, offsetVar, endVar,
-                                   argVar, 0, argVar.alength(),
-                                   op, pass, fail);
+        compareEncodedBytes(dstInfo, srcVar, offsetVar, (Variable) decoded,
+                            op, argObjVar, argNum, pass, fail);
     }
 
     @Override

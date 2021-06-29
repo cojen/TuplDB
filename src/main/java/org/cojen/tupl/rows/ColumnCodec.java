@@ -532,4 +532,34 @@ abstract class ColumnCodec {
                                    argVar, 0, argVar.alength(),
                                    op, pass, fail);
     }
+
+    /**
+     * Implementation of filterCompare method for some codecs.
+     *
+     * @param dstInfo current definition for column
+     * @param srcVar source byte array
+     * @param offsetVar int type; must not be modified
+     * @param endVar non-null end offset
+     * @param op defined in ColumnFilter
+     * @param argObjVar object which contains fields prepared earlier
+     * @param argNum zero-based filter argument number
+     * @param pass branch here when comparison passes
+     * @param fail branch here when comparison fails
+     */
+    protected void compareEncodedBytes(ColumnInfo dstInfo,
+                                       Variable srcVar, Variable offsetVar, Variable endVar,
+                                       int op, Variable argObjVar, int argNum,
+                                       Label pass, Label fail)
+    {
+        var argVar = argObjVar.field(argFieldName(argNum)).get();
+
+        if (dstInfo.isDescending()) {
+            op = ColumnFilter.descendingOperator(op);
+        }
+
+        CompareUtils.compareArrays(mMaker,
+                                   srcVar, offsetVar, endVar,
+                                   argVar, 0, argVar.alength(),
+                                   op, pass, fail);
+    }
 }

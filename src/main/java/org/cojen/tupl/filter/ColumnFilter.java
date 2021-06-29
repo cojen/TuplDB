@@ -34,6 +34,16 @@ public abstract class ColumnFilter extends RowFilter {
         return op ^ 1;
     }
 
+    public static int descendingOperator(int op) {
+        switch (op) {
+        case OP_LT: return OP_GT;
+        case OP_GE: return OP_LE;
+        case OP_GT: return OP_LT;
+        case OP_LE: return OP_GE;
+        default: return op;
+        }
+    }
+
     final ColumnInfo mColumn;
     final int mOperator;
 
