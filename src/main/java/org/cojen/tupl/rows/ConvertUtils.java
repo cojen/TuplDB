@@ -23,6 +23,10 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.filter.ColumnFilter;
+
+import static org.cojen.tupl.rows.ColumnInfo.*;
+
 /**
  * 
  *
@@ -48,5 +52,257 @@ class ConvertUtils {
         mm.goto_(start);
         end.here();
         return toArrayVar;
+    }
+
+    /**
+     * Finds a common type which two columns can be converted to without loss. The name of the
+     * returned ColumnInfo is undefined (it might be null).
+     *
+     * @param op defined in ColumnFilter
+     * @return null if a common type cannot be inferred or is ambiguous
+     */
+    static ColumnInfo commonType(ColumnInfo aInfo, ColumnInfo bInfo, int op) {
+        int aTypeCode = aInfo.typeCode & ~TYPE_DESCENDING;
+        int bTypeCode = bInfo.typeCode & ~TYPE_DESCENDING;
+
+        if (aTypeCode == bTypeCode) {
+            return aInfo;
+        }
+
+        if (isNullable(aTypeCode) != isNullable(bTypeCode)) {
+            // Common type shall be nullable.
+            aTypeCode |= TYPE_NULLABLE;
+            bTypeCode |= TYPE_NULLABLE;
+        }
+
+        if (isArray(aTypeCode) || isArray(bTypeCode)) {
+            // FIXME: If both are arrays, then compare the element type.
+            return null;
+        }
+
+        // Order aTypeCode to be less than bTypeCode to reduce the number of permutations.
+        if (bTypeCode < aTypeCode) {
+            int tmp = aTypeCode;
+            aTypeCode = bTypeCode;
+            bTypeCode = tmp;
+        }
+
+        int aPlainCode = plainTypeCode(aTypeCode);
+        int bPlainCode = plainTypeCode(bTypeCode);
+
+        final int cPlainCode;
+
+        select: if (aPlainCode == bPlainCode) {
+            cPlainCode = aPlainCode;
+        } else {
+            switch (aPlainCode) {
+            case TYPE_BOOLEAN:
+                if (!ColumnFilter.isExact(op)) {
+                    return null;
+                }
+                // Note: Boolean to number is always 0 or 1. Boolean to char is 'f' or 't', and
+                // boolean to string is "false" or "true".
+                switch (bPlainCode) {
+                case TYPE_UBYTE:
+                case TYPE_USHORT:
+                case TYPE_UINT:
+                case TYPE_ULONG:
+                case TYPE_BYTE:
+                case TYPE_SHORT:
+                case TYPE_INT:
+                case TYPE_LONG:
+                case TYPE_FLOAT:
+                case TYPE_DOUBLE:
+                case TYPE_CHAR:
+                case TYPE_UTF8:
+                case TYPE_BIG_INTEGER:
+                case TYPE_BIG_DECIMAL: cPlainCode = bPlainCode; break select;
+                default: return null;
+                }
+
+            case TYPE_UBYTE:
+                switch (bPlainCode) {
+                case TYPE_USHORT: cPlainCode = TYPE_USHORT; break select;
+                case TYPE_UINT: cPlainCode = TYPE_UINT; break select;
+                case TYPE_ULONG: cPlainCode = TYPE_ULONG; break select;
+                case TYPE_BYTE:
+                case TYPE_SHORT: cPlainCode = TYPE_SHORT; break select;
+                case TYPE_INT: cPlainCode = TYPE_INT; break select;
+                case TYPE_LONG: cPlainCode = TYPE_LONG; break select;
+                case TYPE_FLOAT: cPlainCode = TYPE_FLOAT; break select;
+                case TYPE_DOUBLE: cPlainCode = TYPE_DOUBLE; break select;
+                case TYPE_CHAR: cPlainCode = TYPE_USHORT; break select;
+                case TYPE_UTF8: cPlainCode = -1; break select;
+                case TYPE_BIG_INTEGER: cPlainCode = TYPE_BIG_INTEGER; break select;
+                case TYPE_BIG_DECIMAL: cPlainCode = TYPE_BIG_DECIMAL; break select;
+                default: return null;
+                }
+
+            case TYPE_USHORT:
+                switch (bPlainCode) {
+                case TYPE_UINT: cPlainCode = TYPE_UINT; break select;
+                case TYPE_ULONG: cPlainCode = TYPE_ULONG; break select;
+                case TYPE_BYTE:
+                case TYPE_SHORT:
+                case TYPE_INT: cPlainCode = TYPE_INT; break select;
+                case TYPE_LONG: cPlainCode = TYPE_LONG; break select;
+                case TYPE_FLOAT: cPlainCode = TYPE_FLOAT; break select;
+                case TYPE_DOUBLE: cPlainCode = TYPE_DOUBLE; break select;
+                case TYPE_CHAR: cPlainCode = TYPE_USHORT; break select;
+                case TYPE_UTF8: cPlainCode = -1; break select;
+                case TYPE_BIG_INTEGER: cPlainCode = TYPE_BIG_INTEGER; break select;
+                case TYPE_BIG_DECIMAL: cPlainCode = TYPE_BIG_DECIMAL; break select;
+                default: return null;
+                }
+
+            case TYPE_UINT:
+                switch (bPlainCode) {
+                case TYPE_ULONG: cPlainCode = TYPE_ULONG; break select;
+                case TYPE_BYTE:
+                case TYPE_SHORT:
+                case TYPE_INT:
+                case TYPE_LONG: cPlainCode = TYPE_LONG; break select;
+                case TYPE_FLOAT: cPlainCode = TYPE_DOUBLE; break select;
+                case TYPE_DOUBLE: cPlainCode = TYPE_BIG_DECIMAL; break select;
+                case TYPE_CHAR: cPlainCode = TYPE_UINT; break select;
+                case TYPE_UTF8: cPlainCode = -1; break select;
+                case TYPE_BIG_INTEGER: cPlainCode = TYPE_BIG_INTEGER; break select;
+                case TYPE_BIG_DECIMAL: cPlainCode = TYPE_BIG_DECIMAL; break select;
+                default: return null;
+                }
+
+            case TYPE_ULONG:
+                switch (bPlainCode) {
+                case TYPE_BYTE:
+                case TYPE_SHORT:
+                case TYPE_INT:
+                case TYPE_LONG: cPlainCode = TYPE_BIG_INTEGER; break select;
+                case TYPE_FLOAT:
+                case TYPE_DOUBLE: cPlainCode = TYPE_BIG_DECIMAL; break select;
+                case TYPE_CHAR: cPlainCode = TYPE_ULONG; break select;
+                case TYPE_UTF8: cPlainCode = -1; break select;
+                case TYPE_BIG_INTEGER: cPlainCode = TYPE_BIG_INTEGER; break select;
+                case TYPE_BIG_DECIMAL: cPlainCode = TYPE_BIG_DECIMAL; break select;
+                default: return null;
+                }
+
+            case TYPE_BYTE:
+                switch (bPlainCode) {
+                case TYPE_SHORT: cPlainCode = TYPE_SHORT; break select;
+                case TYPE_INT: cPlainCode = TYPE_INT; break select;
+                case TYPE_LONG: cPlainCode = TYPE_LONG; break select;
+                case TYPE_FLOAT: cPlainCode = TYPE_FLOAT; break select;
+                case TYPE_DOUBLE: cPlainCode = TYPE_DOUBLE; break select;
+                case TYPE_CHAR: cPlainCode = TYPE_INT; break select;
+                case TYPE_UTF8: cPlainCode = -1; break select;
+                case TYPE_BIG_INTEGER: cPlainCode = TYPE_BIG_INTEGER; break select;
+                case TYPE_BIG_DECIMAL: cPlainCode = TYPE_BIG_DECIMAL; break select;
+                default: return null;
+                }
+
+            case TYPE_SHORT:
+                switch (bPlainCode) {
+                case TYPE_INT: cPlainCode = TYPE_INT; break select;
+                case TYPE_LONG: cPlainCode = TYPE_LONG; break select;
+                case TYPE_FLOAT: cPlainCode = TYPE_FLOAT; break select;
+                case TYPE_DOUBLE: cPlainCode = TYPE_DOUBLE; break select;
+                case TYPE_CHAR: cPlainCode = TYPE_INT; break select;
+                case TYPE_UTF8: cPlainCode = -1; break select;
+                case TYPE_BIG_INTEGER: cPlainCode = TYPE_BIG_INTEGER; break select;
+                case TYPE_BIG_DECIMAL: cPlainCode = TYPE_BIG_DECIMAL; break select;
+                default: return null;
+                }
+
+            case TYPE_INT:
+                switch (bPlainCode) {
+                case TYPE_LONG: cPlainCode = TYPE_LONG; break select;
+                case TYPE_FLOAT:
+                case TYPE_DOUBLE: cPlainCode = TYPE_DOUBLE; break select;
+                case TYPE_CHAR: cPlainCode = TYPE_INT; break select;
+                case TYPE_UTF8: cPlainCode = -1; break select;
+                case TYPE_BIG_INTEGER: cPlainCode = TYPE_BIG_INTEGER; break select;
+                case TYPE_BIG_DECIMAL: cPlainCode = TYPE_BIG_DECIMAL; break select;
+                default: return null;
+                }
+
+            case TYPE_LONG:
+                switch (bPlainCode) {
+                case TYPE_FLOAT:
+                case TYPE_DOUBLE: cPlainCode = TYPE_BIG_DECIMAL; break select;
+                case TYPE_CHAR: cPlainCode = TYPE_LONG; break select;
+                case TYPE_UTF8: cPlainCode = -1; break select;
+                case TYPE_BIG_INTEGER: cPlainCode = TYPE_BIG_INTEGER; break select;
+                case TYPE_BIG_DECIMAL: cPlainCode = TYPE_BIG_DECIMAL; break select;
+                default: return null;
+                }
+
+            case TYPE_FLOAT:
+                switch (bPlainCode) {
+                case TYPE_DOUBLE: cPlainCode = TYPE_DOUBLE; break select;
+                case TYPE_CHAR: cPlainCode = TYPE_FLOAT; break select;
+                case TYPE_UTF8: cPlainCode = -1; break select;
+                case TYPE_BIG_INTEGER:
+                case TYPE_BIG_DECIMAL: cPlainCode = TYPE_BIG_DECIMAL; break select;
+                default: return null;
+                }
+
+            case TYPE_DOUBLE:
+                switch (bPlainCode) {
+                case TYPE_CHAR: cPlainCode = TYPE_DOUBLE; break select;
+                case TYPE_UTF8: cPlainCode = -1; break select;
+                case TYPE_BIG_INTEGER:
+                case TYPE_BIG_DECIMAL: cPlainCode = TYPE_BIG_DECIMAL; break select;
+                default: return null;
+                }
+
+            case TYPE_CHAR:
+                switch (bPlainCode) {
+                case TYPE_UTF8: cPlainCode = TYPE_UTF8; break select;
+                case TYPE_BIG_INTEGER: cPlainCode = TYPE_BIG_INTEGER; break select;
+                case TYPE_BIG_DECIMAL: cPlainCode = TYPE_BIG_DECIMAL; break select;
+                default: return null;
+                }
+
+            case TYPE_UTF8:
+                switch (bPlainCode) {
+                case TYPE_BIG_INTEGER:
+                case TYPE_BIG_DECIMAL: cPlainCode = -1; break select;
+                default: return null;
+                }
+
+            case TYPE_BIG_INTEGER:
+                switch (bPlainCode) {
+                case TYPE_BIG_DECIMAL: cPlainCode = TYPE_BIG_DECIMAL; break select;
+                default: return null;
+                }
+
+            case TYPE_BIG_DECIMAL:
+                switch (bPlainCode) {
+                default: return null;
+                }
+
+            default: return null;
+            }
+        }
+
+        int cTypeCode = cPlainCode;
+
+        if (cTypeCode == -1) {
+            // Mixed numerical and string comparison is ambiguous if not an exact comparison.
+            // What does 5 < "a" mean? Is this a numerical or lexicographical comparison?
+            if (!ColumnFilter.isExact(op)) {
+                return null;
+            }
+            cTypeCode = TYPE_UTF8;
+        }
+
+        cTypeCode |= (aTypeCode & TYPE_NULLABLE);
+
+        var cInfo = new ColumnInfo();
+
+        cInfo.typeCode = cTypeCode;
+        cInfo.assignType();
+
+        return cInfo;
     }
 }
