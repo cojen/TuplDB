@@ -461,7 +461,12 @@ abstract class ColumnCodec {
         } else {
             argVar.ifEq(null, CompareUtils.selectNullColumnToNullArg(op, pass, fail));
         }
-        mMaker.goto_(CompareUtils.selectNullColumnToArg(op, pass, fail));
+
+        if (ColumnFilter.isIn(op)) {
+            CompareUtils.compareIn(mMaker, argVar, op, pass, fail, (a, p, f) -> a.ifEq(null, p));
+        } else {
+            mMaker.goto_(CompareUtils.selectNullColumnToArg(op, pass, fail));
+        }
 
         // Neither is null...
         cont.here();

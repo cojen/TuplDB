@@ -68,8 +68,8 @@ class CompareUtils {
             if (argInfo.isNullable() && !argVar.classType().isPrimitive()) {
                 Label argNotNull = mm.label();
                 argVar.ifNe(null, argNotNull);
-                colVar.ifEq(null, CompareUtils.selectNullColumnToNullArg(op, pass, fail));
-                mm.goto_(CompareUtils.selectColumnToNullArg(op, pass, fail));
+                colVar.ifEq(null, selectNullColumnToNullArg(op, pass, fail));
+                mm.goto_(selectColumnToNullArg(op, pass, fail));
                 argNotNull.here();
             }
             colVar.ifEq(null, selectNullColumnToArg(op, pass, fail));
@@ -382,6 +382,11 @@ class CompareUtils {
         case ColumnFilter.OP_GE: return fail; // !null >= null? false
         case ColumnFilter.OP_GT: return fail; // !null >  null? false
         case ColumnFilter.OP_LE: return pass; // !null <= null? true
+
+        // Treat a null "in" array as if it was empty.
+        case ColumnFilter.OP_IN: return fail;
+        case ColumnFilter.OP_NOT_IN: return pass;
+
         default: throw new AssertionError();
         }
     }
@@ -402,6 +407,11 @@ class CompareUtils {
         case ColumnFilter.OP_GE: return pass; // null >= null? true
         case ColumnFilter.OP_GT: return fail; // null >  null? false
         case ColumnFilter.OP_LE: return pass; // null <= null? true
+
+        // Treat a null "in" array as if it was empty.
+        case ColumnFilter.OP_IN: return fail;
+        case ColumnFilter.OP_NOT_IN: return pass;
+
         default: throw new AssertionError();
         }
     }

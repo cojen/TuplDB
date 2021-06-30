@@ -387,7 +387,6 @@ class PrimitiveColumnCodec extends ColumnCodec {
         }
 
         if (isNullVar != null) {
-            // FIXME: OP_IN and OP_NOT_IN
             compareNullHeader(isNullVar, null, argField, op, pass, fail);
         } else if (mInfo.isNullable()) {
             CompareUtils.compare(mMaker, dstInfo, columnVar, dstInfo, argField, op, pass, fail);
