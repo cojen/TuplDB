@@ -138,26 +138,22 @@ class KeyBigIntegerColumnCodec extends BigIntegerColumnCodec {
      */
     @Override
     Variable filterPrepare(int op, Variable argVar, int argNum) {
-        if (ColumnFilter.isIn(op)) {
-            // FIXME: array of byte arrays
-            throw null;
-        }
+        Variable bytesVar = filterPrepareBytes(op, argVar, argNum, false);
+        defineArgField(bytesVar, argFieldName(argNum)).set(bytesVar);
+        return argVar;
+    }
 
-        argVar = ConvertCallSite.make(mMaker, BigInteger.class, argVar);
-
+    @Override
+    protected Variable filterEncodeBytes(Variable argVar) {
         String methodName = "encodeBigIntegerKey";
         if (mInfo.isDescending()) {
             methodName += "Desc";
         }
-
         var bytesVar = mMaker.var(byte[].class);
         var lengthVar = encodeSize(argVar, mMaker.var(int.class).set(minSize()), bytesVar);
         var encodedBytesVar = mMaker.new_(byte[].class, lengthVar);
         mMaker.var(RowUtils.class).invoke(methodName, encodedBytesVar, 0, bytesVar);
-
-        defineArgField(byte[].class, argFieldName(argNum)).set(encodedBytesVar);
-
-        return argVar;
+        return encodedBytesVar;
     }
 
     @Override

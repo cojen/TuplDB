@@ -106,22 +106,20 @@ class KeyBigDecimalColumnCodec extends ColumnCodec {
      */
     @Override
     Variable filterPrepare(int op, Variable argVar, int argNum) {
-        if (ColumnFilter.isIn(op)) {
-            // FIXME: array of byte arrays
-            throw null;
-        }
+        Variable bytesVar = filterPrepareBytes(op, argVar, argNum, false);
+        defineArgField(bytesVar, argFieldName(argNum)).set(bytesVar);
+        return argVar;
+    }
 
-        argVar = ConvertCallSite.make(mMaker, BigDecimal.class, argVar);
-
+    @Override
+    protected Variable filterEncodeBytes(Variable argVar) {
         String methodName = "encodeBigDecimalKey";
         if (mInfo.isDescending()) {
             methodName += "Desc";
         }
         var bytesVar = mMaker.var(byte[].class);
         bytesVar.set(mMaker.var(BigDecimalUtils.class).invoke(methodName, argVar));
-        defineArgField(byte[].class, argFieldName(argNum)).set(bytesVar);
-
-        return argVar;
+        return bytesVar;
     }
 
     @Override

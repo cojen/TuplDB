@@ -534,7 +534,44 @@ abstract class ColumnCodec {
     }
 
     /**
-     * Implementation of filterCompare method for some codecs.
+     * Partial implementation of filterPrepare method for some codecs. Must implement the
+     * filterEncodeBytes method too.
+     *
+     * @param argVar argument value to compare against; variable type is Object
+     * @param argNum zero-based filter argument number
+     * @param op defined in ColumnFilter
+     * @param converted true if argVar has already been convered to the correct type
+     * @return byte[] or byte[][] variable
+     */
+    protected Variable filterPrepareBytes(int op, Variable argVar, int argNum, boolean converted) {
+        if (ColumnFilter.isIn(op)) {
+            if (!converted) {
+                argVar = ConvertCallSite.make(mMaker, mInfo.type.arrayType(), argVar);
+            }
+            var lengthVar = argVar.alength();
+            final var fargVar = argVar;
+            return ConvertUtils.convertArray(mMaker, byte[][].class, lengthVar, ixVar -> {
+                return filterEncodeBytes(fargVar.aget(ixVar));
+            });
+        } else {
+            if (!converted) {
+                argVar = ConvertCallSite.make(mMaker, mInfo.type, argVar);
+            }
+            return filterEncodeBytes(argVar);
+        }
+    }
+
+    /**
+     * Called by filterPrepareBytes.
+     *
+     * @return byte[] variable
+     */
+    protected Variable filterEncodeBytes(Variable argVar) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Partial implementation of filterCompare method for some codecs.
      *
      * @param dstInfo current definition for column
      * @param srcVar source byte array
@@ -557,9 +594,18 @@ abstract class ColumnCodec {
             op = ColumnFilter.descendingOperator(op);
         }
 
-        CompareUtils.compareArrays(mMaker,
-                                   srcVar, offsetVar, endVar,
-                                   argVar, 0, argVar.alength(),
-                                   op, pass, fail);
+        if (ColumnFilter.isIn(op)) {
+            CompareUtils.compareIn(mMaker, argVar, op, pass, fail, (a, p, f) -> {
+                CompareUtils.compareArrays(mMaker,
+                                           srcVar, offsetVar, endVar,
+                                           a, 0, a.alength(),
+                                           ColumnFilter.OP_EQ, p, f);
+            });
+        } else {
+            CompareUtils.compareArrays(mMaker,
+                                       srcVar, offsetVar, endVar,
+                                       argVar, 0, argVar.alength(),
+                                       op, pass, fail);
+        }
     }
 }

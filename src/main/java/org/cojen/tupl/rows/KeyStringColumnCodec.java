@@ -90,24 +90,22 @@ class KeyStringColumnCodec extends StringColumnCodec {
      */
     @Override
     Variable filterPrepare(int op, Variable argVar, int argNum) {
-        if (ColumnFilter.isIn(op)) {
-            // FIXME: array of byte arrays
-            throw null;
-        }
+        Variable bytesVar = filterPrepareBytes(op, argVar, argNum, false);
+        defineArgField(bytesVar, argFieldName(argNum)).set(bytesVar);
+        return argVar;
+    }
 
-        argVar = ConvertCallSite.make(mMaker, String.class, argVar);
-
+    @Override
+    protected Variable filterEncodeBytes(Variable strVar) {
         var rowUtils = mMaker.var(RowUtils.class);
-        var lengthVar = rowUtils.invoke("lengthStringKey", argVar);
+        var lengthVar = rowUtils.invoke("lengthStringKey", strVar);
         var bytesVar = mMaker.new_(byte[].class, lengthVar);
         String methodName = "encodeStringKey";
         if (mInfo.isDescending()) {
             methodName += "Desc";
         }
-        rowUtils.invoke(methodName, bytesVar, 0, argVar);
-        defineArgField(byte[].class, argFieldName(argNum)).set(bytesVar);
-
-        return argVar;
+        rowUtils.invoke(methodName, bytesVar, 0, strVar);
+        return bytesVar;
     }
 
     @Override
