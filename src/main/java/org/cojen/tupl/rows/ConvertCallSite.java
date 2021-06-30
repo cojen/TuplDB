@@ -134,24 +134,21 @@ public class ConvertCallSite extends MutableCallSite {
         MethodMaker mm = MethodMaker.begin(MethodHandles.lookup(), "convert", mt);
         Variable from = mm.param(0);
 
-        final Label next;
+        final Label next = mm.label();
         final Variable result;
 
         if (fromType == null) {
             if (toType.isPrimitive()) {
-                next = null;
                 result = null;
             } else {
-                next = mm.label();
                 from.ifNe(null, next);
                 result = mm.var(toType).set(null);
             }
         } else {
             if (fromType.isAssignableFrom(from.classType())) {
-                // InstanceOf check will always be true.
-                next = null;
+                // InstanceOf check will always be true, but must still check for null.
+                from.ifEq(null, next);
             } else {
-                next = mm.label();
                 instanceOf(from, fromType, next);
             }
 
