@@ -38,6 +38,7 @@ public abstract class Visitor {
     }
 
     public void visit(InFilter filter) {
+        visit((ColumnToArgFilter) filter);
     }
 
     public void visit(ColumnToArgFilter filter) {

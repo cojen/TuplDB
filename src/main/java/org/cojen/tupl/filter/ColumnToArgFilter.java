@@ -58,8 +58,7 @@ public class ColumnToArgFilter extends ColumnFilter {
         if (obj == this) {
             return true;
         }
-        // Note: Not using instanceof because InFilter is a subclass.
-        if (getClass() == obj.getClass()) {
+        if (obj instanceof ColumnToArgFilter) {
             var other = (ColumnToArgFilter) obj;
             return mColumn.equals(other.mColumn) && mOperator == other.mOperator
                 && mArgNum == other.mArgNum;

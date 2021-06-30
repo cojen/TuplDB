@@ -45,7 +45,6 @@ import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.filter.AndFilter;
 import org.cojen.tupl.filter.ColumnToArgFilter;
 import org.cojen.tupl.filter.ColumnToColumnFilter;
-import org.cojen.tupl.filter.InFilter;
 import org.cojen.tupl.filter.OrFilter;
 import org.cojen.tupl.filter.Parser;
 import org.cojen.tupl.filter.RowFilter;
@@ -124,11 +123,6 @@ public class RowFilterMaker<R> {
             private HashSet<Integer> mAdded = new HashSet<>();
 
             @Override
-            public void visit(InFilter filter) {
-                visit((ColumnToArgFilter) filter);
-            }
-
-            @Override
             public void visit(ColumnToArgFilter filter) {
                 int argNum = filter.argument();
                 if (mAdded.add(argNum)) {
@@ -186,7 +180,7 @@ public class RowFilterMaker<R> {
         return factory;
     }
 
-    private int columnNumberFor(String colName) {
+    private Integer columnNumberFor(String colName) {
         return mRowGen.columnNumbers().get(colName);
     }
 
@@ -425,11 +419,6 @@ public class RowFilterMaker<R> {
         }
 
         @Override
-        public void visit(InFilter filter) {
-            visit((ColumnToArgFilter) filter);
-        }
-
-        @Override
         public void visit(ColumnToArgFilter filter) {
             String name = filter.column().name();
             ColumnInfo dstInfo = mDstRowInfo.allColumns.get(name);
@@ -439,7 +428,7 @@ public class RowFilterMaker<R> {
 
             LocatedColumn located;
 
-            Integer colNumObj = mRowGen.columnNumbers().get(name);
+            Integer colNumObj = columnNumberFor(name);
             if (colNumObj != null) {
                 int colNum = colNumObj;
                 located = locateColumn(colNum, dstInfo, op);
@@ -468,7 +457,7 @@ public class RowFilterMaker<R> {
             throw null;
         }
 
-        private int columnNumberFor(String colName) {
+        private Integer columnNumberFor(String colName) {
             return mRowGen.columnNumbers().get(colName);
         }
 
