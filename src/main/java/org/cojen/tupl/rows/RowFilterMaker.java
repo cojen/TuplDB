@@ -423,31 +423,28 @@ public class RowFilterMaker<R> {
 
         @Override
         public void visit(ColumnToArgFilter filter) {
-            String name = filter.column().name();
-            ColumnInfo dstInfo = mDstRowInfo.allColumns.get(name);
+            ColumnInfo colInfo = filter.column();
             int op = filter.operator();
             Variable argObjVar = mMaker.param(0); // contains the arg fields prepared earlier
             int argNum = filter.argument();
 
-            LocatedColumn located;
+            Integer colNumObj = columnNumberFor(colInfo.name);
 
-            Integer colNumObj = columnNumberFor(name);
             if (colNumObj != null) {
                 int colNum = colNumObj;
-                located = locateColumn(colNum, dstInfo, op);
+                LocatedColumn located = decodeColumn(colNum, colInfo, op);
                 ColumnCodec codec = codecFor(colNum);
-                codec.filterCompare(dstInfo, located.mSrcVar, located.mOffsetVar, null,
+                codec.filterCompare(colInfo, located.mSrcVar, located.mOffsetVar, null,
                                     op, located.mDecoded, argObjVar, argNum, mPass, mFail);
             } else {
                 // Column doesn't exist in the row, so compare against a default. This code
                 // assumes that value codecs always define an arg field which preserves the
                 // original argument, possibly converted to the correct type.
-                located = null;
-                var argField = argObjVar.field(ColumnCodec.argFieldName(dstInfo, argNum));
-                var columnVar = mMaker.var(dstInfo.type);
-                Converter.setDefault(dstInfo, columnVar);
-                CompareUtils.compare(mMaker, dstInfo, columnVar,
-                                     dstInfo, argField, op, mPass, mFail);
+                var argField = argObjVar.field(ColumnCodec.argFieldName(colInfo, argNum));
+                var columnVar = mMaker.var(colInfo.type);
+                Converter.setDefault(colInfo, columnVar);
+                CompareUtils.compare(mMaker, colInfo, columnVar,
+                                     colInfo, argField, op, mPass, mFail);
             }
         }
 
@@ -467,10 +464,12 @@ public class RowFilterMaker<R> {
         }
 
         /**
-         * @param dstInfo current definition for column
+         * Decodes a column and remembers it if requested again later.
+         *
+         * @param colInfo current definition for column
          * @param op defined in ColumnFilter
          */
-        private LocatedColumn locateColumn(int colNum, ColumnInfo dstInfo, int op) {
+        private LocatedColumn decodeColumn(int colNum, ColumnInfo colInfo, int op) {
             Variable srcVar;
             LocatedColumn[] located;
             ColumnCodec[] codecs = mKeyCodecs;
@@ -548,7 +547,7 @@ public class RowFilterMaker<R> {
                 if (highestNum < colNum) {
                     codec.decodeSkip(srcVar, offsetVar, endVar);
                 } else {
-                    Object decoded = codec.filterDecode(dstInfo, srcVar, offsetVar, endVar, op);
+                    Object decoded = codec.filterDecode(colInfo, srcVar, offsetVar, endVar, op);
                     located[highestNum].decoded(decoded);
                 }
 
