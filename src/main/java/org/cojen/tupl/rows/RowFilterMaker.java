@@ -304,9 +304,11 @@ public class RowFilterMaker<R> {
 
         private Label mPass, mFail;
 
-        private LocatedColumn[] mLocatedKeys, mLocatedValues;
+        private LocatedColumn[] mLocatedKeys;
+        private int mHighestLocatedKey;
 
-        private LocatedColumn mHighestLocated;
+        private LocatedColumn[] mLocatedValues;
+        private int mHighestLocatedValue;
 
         /**
          * @param mm signature: R decodeRow(Decoder/filter, byte[] key, byte[] value, R row)
@@ -374,7 +376,8 @@ public class RowFilterMaker<R> {
 
             // Only the state observed on the left tree path can be preserved, because it's
             // guaranteed to have executed.
-            final LocatedColumn highestLocated = mHighestLocated;
+            final int hk = mHighestLocatedKey;
+            final int hv = mHighestLocatedValue;
 
             for (int i=1; i<subFilters.length; i++) {
                 mFail = mMaker.label();
@@ -382,9 +385,8 @@ public class RowFilterMaker<R> {
                 mFail.here();
             }
 
-            if (highestLocated != null) {
-                highestLocated.resetTail();
-            }
+            resetHighestLocatedKey(hk);
+            resetHighestLocatedValue(hv);
 
             mMaker.goto_(originalFail);
             mFail = originalFail;
@@ -402,7 +404,8 @@ public class RowFilterMaker<R> {
 
             // Only the state observed on the left tree path can be preserved, because it's
             // guaranteed to have executed.
-            final LocatedColumn highestLocated = mHighestLocated;
+            final int hk = mHighestLocatedKey;
+            final int hv = mHighestLocatedValue;
 
             for (int i=1; i<subFilters.length; i++) {
                 mPass = mMaker.label();
@@ -410,9 +413,8 @@ public class RowFilterMaker<R> {
                 mPass.here();
             }
 
-            if (highestLocated != null) {
-                highestLocated.resetTail();
-            }
+            resetHighestLocatedKey(hk);
+            resetHighestLocatedValue(hv);
 
             mMaker.goto_(originalPass);
             mPass = originalPass;
@@ -446,9 +448,6 @@ public class RowFilterMaker<R> {
                 CompareUtils.compare(mMaker, dstInfo, columnVar,
                                      dstInfo, argField, op, mPass, mFail);
             }
-
-            // Parent node (AndFilter/OrFilter) needs this to be updated.
-            mHighestLocated = located;
         }
 
         @Override
@@ -474,11 +473,13 @@ public class RowFilterMaker<R> {
             Variable srcVar;
             LocatedColumn[] located;
             ColumnCodec[] codecs = mKeyCodecs;
+            int highestNum;
 
             init: {
                 int startOffset;
                 if (colNum < codecs.length) {
                     // Key column.
+                    highestNum = mHighestLocatedKey;
                     srcVar = mMaker.param(1);
                     if ((located = mLocatedKeys) != null) {
                         break init;
@@ -487,8 +488,9 @@ public class RowFilterMaker<R> {
                     startOffset = 0;
                 } else {
                     // Value column.
-                    srcVar = mMaker.param(2);
                     colNum -= codecs.length;
+                    highestNum = mHighestLocatedValue;
+                    srcVar = mMaker.param(2);
                     codecs = mValueCodecs;
                     if ((located = mLocatedValues) != null) {
                         break init;
@@ -496,36 +498,39 @@ public class RowFilterMaker<R> {
                     mLocatedValues = located = new LocatedColumn[mRowGen.info.valueColumns.size()];
                     startOffset = RowUtils.lengthPrefixPF(mSchemaVersion);
                 }
-                located[0] = new LocatedColumn(null);
+                located[0] = new LocatedColumn();
                 located[0].located(srcVar, mMaker.var(int.class).set(startOffset));
             }
 
-            // Scan backwards for filling in the gaps.
-
-            int readyNum = colNum;
-            while (true) {
-                LocatedColumn ready = located[readyNum];
-                if (ready != null && ready.mState >= LocatedColumn.LOCATED) {
-                    break;
+            if (colNum <= highestNum) {
+                LocatedColumn col = located[colNum];
+                if (col.isDecoded()) {
+                    return col;
                 }
-                readyNum--;
+                // Regress the highest to force the column to be decoded. The highest field
+                // won't regress, since the field assignment (at the end) checks this.
+                highestNum = colNum;
             }
 
-            for (; readyNum <= colNum; readyNum++) {
+            if (!located[highestNum].isLocated()) {
+                throw new AssertionError();
+            }
+
+            for (; highestNum <= colNum; highestNum++) {
                 // Offset will be mutated, and so a copy must be made before calling decode.
-                Variable offsetVar = located[readyNum].mOffsetVar;
+                Variable offsetVar = located[highestNum].mOffsetVar;
 
                 LocatedColumn next;
                 copyOffsetVar: {
-                    if (readyNum >= colNum) {
+                    if (highestNum + 1 >= located.length) {
                         next = null;
                     } else {
-                        next = located[readyNum + 1];
+                        next = located[highestNum + 1];
                         if (next == null) {
-                            next = new LocatedColumn(located[readyNum]);
-                            located[readyNum + 1] = next;
-                        } else {
-                            // Next offset variable is free because state is UNLOCATED.
+                            next = new LocatedColumn();
+                            located[highestNum + 1] = next;
+                        } else if (!next.isLocated()) {
+                            // Can recycle the offset variable because it's not used.
                             Variable freeVar = next.mOffsetVar;
                             if (freeVar != null) {
                                 freeVar.set(offsetVar);
@@ -537,22 +542,71 @@ public class RowFilterMaker<R> {
                     offsetVar = offsetVar.get();
                 }
 
-                ColumnCodec codec = codecs[readyNum];
+                ColumnCodec codec = codecs[highestNum];
                 Variable endVar = null;
-                if (readyNum < colNum) {
+                if (highestNum < colNum) {
                     codec.decodeSkip(srcVar, offsetVar, endVar);
                 } else {
                     Object decoded = codec.filterDecode(dstInfo, srcVar, offsetVar, endVar, op);
-                    located[readyNum].decoded(decoded);
+                    located[highestNum].decoded(decoded);
                 }
 
-                if (next != null) {
-                    // The decode call incremented offsetVar as a side-effect.
+                if (next != null && !next.isLocated()) {
+                    // The decode call incremented offsetVar as a side-effect. Note that if the
+                    // column is already located, then newly discovered offset will match. It
+                    // can simply be replaced, but by discarding it, the compiler can discard
+                    // some of the redundant steps which computed the offset again.
                     next.located(srcVar, offsetVar);
                 }
             }
 
+            highestNum = Math.min(highestNum, located.length - 1);
+
+            if (located == mLocatedKeys) {
+                if (highestNum > mHighestLocatedKey) {
+                    mHighestLocatedKey = highestNum;
+                }
+            } else {
+                if (highestNum > mHighestLocatedValue) {
+                    mHighestLocatedValue = highestNum;
+                }
+            }
+
             return located[colNum];
+        }
+
+        /**
+         * Reset the highest located key column. The trailing LocatedColumn instances can be
+         * re-used, reducing the number of Variables created.
+         */
+        private void resetHighestLocatedKey(int colNum) {
+            if (colNum < mHighestLocatedKey) {
+                mHighestLocatedKey = colNum;
+                finishReset(mLocatedKeys, colNum);
+            }
+        }
+
+        /**
+         * Reset the highest located value column. The trailing LocatedColumn instances can be
+         * re-used, reducing the number of Variables created.
+         *
+         * @param colNum column number among all value columns
+         */
+        private void resetHighestLocatedValue(int colNum) {
+            if (colNum < mHighestLocatedValue) {
+                mHighestLocatedValue = colNum;
+                finishReset(mLocatedValues, colNum);
+            }
+        }
+
+        private static void finishReset(LocatedColumn[] columns, int colNum) {
+            while (++colNum < columns.length) {
+                var col = columns[colNum];
+                if (col == null) {
+                    break;
+                }
+                col.unlocated();
+            }
         }
     }
 
@@ -560,7 +614,7 @@ public class RowFilterMaker<R> {
         // Used by mState field.
         private static final int UNLOCATED = 0, LOCATED = 1, DECODED = 2;
 
-        int mState;
+        private int mState;
 
         // Source byte array. Is valid when mState is LOCATED or DECODED.
         Variable mSrcVar;
@@ -571,13 +625,15 @@ public class RowFilterMaker<R> {
         // Optional Object from ColumnCodec.filterDecode. Is valid when mState is DECODED.
         Object mDecoded;
 
-        // Link order matches runtime decode order.
-        LocatedColumn mNext;
+        LocatedColumn() {
+        }
 
-        LocatedColumn(LocatedColumn prev) {
-            if (prev != null) {
-                prev.mNext = this;
-            }
+        boolean isLocated() {
+            return mState >= LOCATED;
+        }
+
+        boolean isDecoded() {
+            return mState == DECODED;
         }
 
         /**
@@ -601,15 +657,9 @@ public class RowFilterMaker<R> {
             mState = DECODED;
         }
 
-        /**
-         * Reset all next DecodedColumns such that they become unlocated. The tail instances
-         * can be re-used, reducing the number of Variables created.
-         */
-        void resetTail() {
-            for (LocatedColumn next = mNext; next != null; next = next.mNext) {
-                next.mDecoded = null;
-                next.mState = UNLOCATED;
-            }
+        void unlocated() {
+            mDecoded = null;
+            mState = UNLOCATED;
         }
     }
 }

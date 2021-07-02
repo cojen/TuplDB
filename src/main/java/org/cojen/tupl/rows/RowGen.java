@@ -138,7 +138,8 @@ class RowGen {
     }
 
     /**
-     * Returns a mapping of columns to zero-based column numbers. Keys are ordered first.
+     * Returns a mapping of columns to zero-based column numbers. Keys are ordered
+     * first. Within the two groups, column order matches encoding order.
      */
     public Map<String, Integer> columnNumbers() {
         Map<String, Integer> map = mColumnNumbers;

@@ -80,6 +80,7 @@ abstract class BigIntegerColumnCodec extends ColumnCodec {
         decodeHeader(srcVar, offsetVar, endVar, lengthVar, isNullVar);
 
         Variable dataOffsetVar = offsetVar.get(); // need a stable copy
+        offsetVar.inc(lengthVar);
 
         return new Variable[] {dataOffsetVar, lengthVar, isNullVar};
     }
