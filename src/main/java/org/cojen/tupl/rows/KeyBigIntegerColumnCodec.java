@@ -23,8 +23,6 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.filter.ColumnFilter;
-
 /**
  * Encoding suitable for non-last key columns which supports nulls.
  *
@@ -137,8 +135,8 @@ class KeyBigIntegerColumnCodec extends BigIntegerColumnCodec {
      * Defines a byte[] arg field encoded using the BigInteger key format.
      */
     @Override
-    Variable filterPrepare(int op, Variable argVar, int argNum) {
-        Variable bytesVar = filterPrepareBytes(op, argVar, argNum, false);
+    Variable filterPrepare(boolean in, Variable argVar, int argNum) {
+        Variable bytesVar = filterPrepareBytes(in, argVar, argNum, false);
         defineArgField(bytesVar, argFieldName(argNum)).set(bytesVar);
         return argVar;
     }

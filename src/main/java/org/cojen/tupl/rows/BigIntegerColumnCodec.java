@@ -24,8 +24,6 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.filter.ColumnFilter;
-
 /**
  * Abstract class for encoding and decoding BigInteger type columns.
  *
@@ -50,9 +48,9 @@ abstract class BigIntegerColumnCodec extends ColumnCodec {
      * BigInteger field with the original argument.
      */
     @Override
-    Variable filterPrepare(int op, Variable argVar, int argNum) {
-        argVar = super.filterPrepare(op, argVar, argNum);
-        Variable bytesVar = filterPrepareBytes(op, argVar, argNum, true);
+    Variable filterPrepare(boolean in, Variable argVar, int argNum) {
+        argVar = super.filterPrepare(in, argVar, argNum);
+        Variable bytesVar = filterPrepareBytes(in, argVar, argNum, true);
         defineArgField(bytesVar, argFieldName(argNum, "bytes")).set(bytesVar);
         return argVar;
     }

@@ -273,14 +273,15 @@ abstract class ColumnCodec {
      * called on the destination codec (the currently defined row version). The implementation
      * should only consider the column type and not the specific encoding format.
      *
+     * @param in true if argument is a collection for "in" filtering
      * @param argVar argument value to compare against; variable type is Object
      * @param argNum zero-based filter argument number
      * @param op defined in ColumnFilter
      * @return the converted argVar
      */
-    Variable filterPrepare(int op, Variable argVar, int argNum) {
+    Variable filterPrepare(boolean in, Variable argVar, int argNum) {
         Class<?> argType = mInfo.type;
-        if (ColumnFilter.isIn(op)) {
+        if (in) {
             // FIXME: Sort and use binary search if large enough. Be sure to clone array if it
             // wasn't converted.
             argType = argType.arrayType();
@@ -310,7 +311,7 @@ abstract class ColumnCodec {
                                  Variable srcVar, Variable offsetVar, Variable endVar, int op);
 
     /**
-     * Makes code which compares a column.
+     * Makes code which compares a decoded column to an argument.
      *
      * This method is only called when the codec has been bound to a decode method, and it's
      * called on the source codec.
@@ -560,14 +561,17 @@ abstract class ColumnCodec {
      * Partial implementation of filterPrepare method for some codecs. Must implement the
      * filterEncodeBytes method too.
      *
+     * @param in true if argument is a collection for "in" filtering
      * @param argVar argument value to compare against; variable type is Object
      * @param argNum zero-based filter argument number
      * @param op defined in ColumnFilter
      * @param converted true if argVar has already been convered to the correct type
      * @return byte[] or byte[][] variable
      */
-    protected Variable filterPrepareBytes(int op, Variable argVar, int argNum, boolean converted) {
-        if (ColumnFilter.isIn(op)) {
+    protected Variable filterPrepareBytes(boolean in, Variable argVar, int argNum,
+                                          boolean converted)
+    {
+        if (in) {
             if (!converted) {
                 argVar = ConvertCallSite.make(mMaker, mInfo.type.arrayType(), argVar);
             }

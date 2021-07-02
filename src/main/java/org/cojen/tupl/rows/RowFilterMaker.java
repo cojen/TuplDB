@@ -127,8 +127,9 @@ public class RowFilterMaker<R> {
                 int argNum = filter.argument();
                 if (mAdded.add(argNum)) {
                     int colNum = columnNumberFor(filter.column().name());
-                    codecFor(colNum).filterPrepare
-                        (filter.operator(), mFilterCtorMaker.param(0).aget(argNum), argNum);
+                    boolean in = filter.isIn(filter.operator());
+                    Variable argVar = mFilterCtorMaker.param(0).aget(argNum);
+                    codecFor(colNum).filterPrepare(in, argVar, argNum);
                 }
             }
         });

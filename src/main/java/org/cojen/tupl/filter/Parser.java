@@ -18,6 +18,7 @@
 package org.cojen.tupl.filter;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.cojen.tupl.rows.ColumnInfo;
@@ -58,8 +59,10 @@ public class Parser {
 
     private final Map<String, ColumnInfo> mAllColumns;
     private final String mFilter;
+
     private int mPos;
     private int mNextArg;
+    private Map<Integer, Boolean> mInArgs;
 
     public Parser(Map<String, ColumnInfo> allColumns, String filter) {
         mAllColumns = allColumns;
@@ -67,6 +70,7 @@ public class Parser {
     }
 
     public RowFilter parse() {
+        mInArgs = new HashMap<>();
         RowFilter filter = parseFilter();
         int c = nextCharIgnoreWhitespace();
         if (c >= 0) {
@@ -270,12 +274,25 @@ public class Parser {
             return new ColumnToColumnFilter(column, op, match, common);
         }
 
+        ColumnToArgFilter filter;
+        Boolean in;
+
         if (op < ColumnFilter.OP_IN) {
             checkColumnOperator(startPos, column, op);
-            return new ColumnToArgFilter(column, op, arg);
+            filter = new ColumnToArgFilter(column, op, arg);
+            in = Boolean.FALSE;
         } else {
-            return new InFilter(column, arg);
+            filter = new InFilter(column, arg);
+            in = Boolean.TRUE;
         }
+
+        Boolean existing = mInArgs.putIfAbsent(arg, in);
+
+        if (existing != null && existing != in) {
+            throw error("Mismatched argument usage with 'in' operator", startPos);
+        }
+
+        return filter;
     }
 
     // Left paren has already been consumed.
