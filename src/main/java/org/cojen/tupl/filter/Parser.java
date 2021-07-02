@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Map;
 
 import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.ConvertUtils;
 
 /**
  * 
@@ -240,20 +241,33 @@ public class Parser {
 
         int arg;
         if (c == '?') {
+            // column-to-arg comparison
             arg = tryParseArgNumber();
             if (arg < 0) {
                 arg = mNextArg++;
             }
         } else {
+            // column-to-column comparison
+
             mPos--;
             if (op >= ColumnFilter.OP_IN) {
                 throw error("Argument number or '?' expected");
             }
+
             checkColumnOperator(startPos, column, op);
-            startPos = mPos;
+
+            int startPos2 = mPos;
             ColumnInfo match = parseColumn();
-            checkColumnOperator(startPos, match, op);
-            return new ColumnToColumnFilter(column, op, match);
+            checkColumnOperator(startPos2, match, op);
+
+            ColumnInfo common = ConvertUtils.commonType(column, match, op);
+
+            if (common == null) {
+                throw error("Cannot compare '" + column.name() + "' to '" + match.name() + "' " +
+                            "due to type mismatch", startPos);
+            }
+
+            return new ColumnToColumnFilter(column, op, match, common);
         }
 
         if (op < ColumnFilter.OP_IN) {

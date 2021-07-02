@@ -25,11 +25,16 @@ import org.cojen.tupl.rows.ColumnInfo;
  * @author Brian S O'Neill
  */
 public final class ColumnToColumnFilter extends ColumnFilter {
-    final ColumnInfo mMatchColumn;
+    private final ColumnInfo mMatchColumn;
+    private final ColumnInfo mCommon;
 
-    ColumnToColumnFilter(ColumnInfo column, int op, ColumnInfo match) {
+    /**
+     * @param common only needs to have a type and typeCode assigned
+     */
+    ColumnToColumnFilter(ColumnInfo column, int op, ColumnInfo match, ColumnInfo common) {
         super(hash(column, op, match), column, op);
         mMatchColumn = match;
+        mCommon = common;
     }
 
     private static int hash(ColumnInfo column, int op, ColumnInfo match) {
@@ -46,7 +51,19 @@ public final class ColumnToColumnFilter extends ColumnFilter {
 
     @Override
     public ColumnToColumnFilter not() {
-        return new ColumnToColumnFilter(mColumn, flipOperator(mOperator), mMatchColumn);
+        return new ColumnToColumnFilter(mColumn, flipOperator(mOperator), mMatchColumn, mCommon);
+    }
+
+    public ColumnInfo matchColumn() {
+        return mMatchColumn;
+    }
+
+    /**
+     * Returns a ColumnInfo that only has the type and typeCode assigned, which represents a
+     * common type that both columns can be converted to for comparison.
+     */
+    public ColumnInfo common() {
+        return mCommon;
     }
 
     @Override
