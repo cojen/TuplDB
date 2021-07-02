@@ -68,8 +68,12 @@ class CompareUtils {
             if (argInfo.isNullable() && !argVar.classType().isPrimitive()) {
                 Label argNotNull = mm.label();
                 argVar.ifNe(null, argNotNull);
-                colVar.ifEq(null, selectNullColumnToNullArg(op, pass, fail));
-                mm.goto_(selectColumnToNullArg(op, pass, fail));
+                Label match = selectNullColumnToNullArg(op, pass, fail);
+                Label mismatch = selectColumnToNullArg(op, pass, fail);
+                if (match != mismatch) {
+                    colVar.ifEq(null, match);
+                }
+                mm.goto_(mismatch);
                 argNotNull.here();
             }
             colVar.ifEq(null, selectNullColumnToArg(op, pass, fail));

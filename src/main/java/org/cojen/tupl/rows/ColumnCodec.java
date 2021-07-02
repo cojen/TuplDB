@@ -446,26 +446,40 @@ abstract class ColumnCodec {
         }
 
         // Column isn't null...
+
+        Label match = CompareUtils.selectColumnToNullArg(op, pass, fail);
+
         if (argVar.classType() == boolean.class) {
-            argVar.ifTrue(CompareUtils.selectColumnToNullArg(op, pass, fail));
+            argVar.ifTrue(match);
         } else {
-            argVar.ifEq(null, CompareUtils.selectColumnToNullArg(op, pass, fail));
+            argVar.ifEq(null, match);
         }
+
         Label cont = mMaker.label();
         mMaker.goto_(cont);
 
         // Column is null...
+
         isColumnNull.here();
-        if (argVar.classType() == boolean.class) {
-            argVar.ifTrue(CompareUtils.selectNullColumnToNullArg(op, pass, fail));
-        } else {
-            argVar.ifEq(null, CompareUtils.selectNullColumnToNullArg(op, pass, fail));
-        }
+        match = CompareUtils.selectNullColumnToNullArg(op, pass, fail);
 
         if (ColumnFilter.isIn(op)) {
+            if (argVar.classType() == boolean.class) {
+                argVar.ifTrue(match);
+            } else {
+                argVar.ifEq(null, match);
+            }
             CompareUtils.compareIn(mMaker, argVar, op, pass, fail, (a, p, f) -> a.ifEq(null, p));
         } else {
-            mMaker.goto_(CompareUtils.selectNullColumnToArg(op, pass, fail));
+            Label mismatch = CompareUtils.selectNullColumnToArg(op, pass, fail);
+            if (match != mismatch) {
+                if (argVar.classType() == boolean.class) {
+                    argVar.ifTrue(match);
+                } else {
+                    argVar.ifEq(null, match);
+                }
+            }
+            mMaker.goto_(mismatch);
         }
 
         // Neither is null...
@@ -521,10 +535,14 @@ abstract class ColumnCodec {
         Label notNull = mMaker.label();
         argVar.ifNe(null, notNull);
         // Argument is null...
+        Label mismatch = CompareUtils.selectColumnToNullArg(op, pass, fail);
         if (isNullVar != null) {
-            isNullVar.ifTrue(CompareUtils.selectNullColumnToNullArg(op, pass, fail));
+            Label match = CompareUtils.selectNullColumnToNullArg(op, pass, fail);
+            if (match != mismatch) {
+                isNullVar.ifTrue(match);
+            }
         }
-        mMaker.goto_(CompareUtils.selectColumnToNullArg(op, pass, fail));
+        mMaker.goto_(mismatch);
 
         // Argument isn't null...
         notNull.here();
