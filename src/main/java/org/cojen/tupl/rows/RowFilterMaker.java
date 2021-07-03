@@ -248,8 +248,6 @@ public class RowFilterMaker<R> {
                 return mm.finish();
             }
 
-            RowInfo dstRowInfo = RowInfo.find(mRowType);
-
             RowInfo rowInfo;
             MethodHandle decoder;
 
@@ -262,6 +260,7 @@ public class RowFilterMaker<R> {
                     }
                 } else {
                     // No value columns to decode, and the primary key cannot change.
+                    RowInfo dstRowInfo = RowInfo.find(mRowType);
                     rowInfo = new RowInfo(dstRowInfo.name);
                     rowInfo.keyColumns = dstRowInfo.keyColumns;
                     rowInfo.valueColumns = Collections.emptyNavigableMap();
@@ -281,7 +280,7 @@ public class RowFilterMaker<R> {
             RowGen rowGen = rowInfo.rowGen();
 
             var visitor = new DecodeVisitor
-                (mm, schemaVersion, mViewClass, dstRowInfo, rowClass, rowGen, decoder);
+                (mm, schemaVersion, mViewClass, rowClass, rowGen, decoder);
             filter.accept(visitor);
             visitor.done();
 
@@ -296,7 +295,6 @@ public class RowFilterMaker<R> {
         private final MethodMaker mMaker;
         private final int mSchemaVersion;
         private final Class<?> mViewClass;
-        private final RowInfo mDstRowInfo;
         private final Class<?> mRowClass;
         private final RowGen mRowGen;
         private final MethodHandle mDecoder;
@@ -314,19 +312,16 @@ public class RowFilterMaker<R> {
         /**
          * @param mm signature: R decodeRow(Decoder/filter, byte[] key, byte[] value, R row)
          * @param viewClass current row view implementation class
-         * @param dstRowInfo current row defintion
          * @param rowClass current row implementation
-         * @param rowGen actual row defintion to be decoded (can differ from dstRowInfo)
+         * @param rowGen actual row defintion to be decoded
          * @param decoder performs full decoding of the value columns
          */
         DecodeVisitor(MethodMaker mm, int schemaVersion,
-                      Class<?> viewClass, RowInfo dstRowInfo, Class<?> rowClass, RowGen rowGen,
-                      MethodHandle decoder)
+                      Class<?> viewClass, Class<?> rowClass, RowGen rowGen, MethodHandle decoder)
         {
             mMaker = mm;
             mSchemaVersion = schemaVersion;
             mViewClass = viewClass;
-            mDstRowInfo = dstRowInfo;
             mRowClass = rowClass;
             mRowGen = rowGen;
             mDecoder = decoder;
@@ -428,14 +423,20 @@ public class RowFilterMaker<R> {
             Variable argObjVar = mMaker.param(0); // contains the arg fields prepared earlier
             int argNum = filter.argument();
 
-            Integer colNumObj = columnNumberFor(colInfo.name);
+            Integer colNum = columnNumberFor(colInfo.name);
 
-            if (colNumObj != null) {
-                int colNum = colNumObj;
-                LocatedColumn located = decodeColumn(colNum, colInfo, op);
+            if (colNum != null) {
                 ColumnCodec codec = codecFor(colNum);
-                codec.filterCompare(colInfo, located.mSrcVar, located.mOffsetVar, null,
-                                    op, located.mDecoded, argObjVar, argNum, mPass, mFail);
+                LocatedColumn located = decodeColumn(colNum, colInfo, true);
+                Object decoded = located.mDecodedQuick;
+                if (decoded != null) {
+                    codec.filterQuickCompare(colInfo, located.mSrcVar, located.mOffsetVar, op,
+                                             decoded, argObjVar, argNum, mPass, mFail);
+                } else {
+                    var argField = argObjVar.field(ColumnCodec.argFieldName(colInfo, argNum));
+                    CompareUtils.compare(mMaker, colInfo, located.mDecodedVar,
+                                         colInfo, argField, op, mPass, mFail);
+                }
             } else {
                 // Column doesn't exist in the row, so compare against a default. This code
                 // assumes that value codecs always define an arg field which preserves the
@@ -467,9 +468,9 @@ public class RowFilterMaker<R> {
          * Decodes a column and remembers it if requested again later.
          *
          * @param colInfo current definition for column
-         * @param op defined in ColumnFilter
+         * @param quick allow quick decode
          */
-        private LocatedColumn decodeColumn(int colNum, ColumnInfo colInfo, int op) {
+        private LocatedColumn decodeColumn(int colNum, ColumnInfo colInfo, boolean quick) {
             Variable srcVar;
             LocatedColumn[] located;
             ColumnCodec[] codecs = mKeyCodecs;
@@ -504,7 +505,7 @@ public class RowFilterMaker<R> {
 
             if (colNum <= highestNum) {
                 LocatedColumn col = located[colNum];
-                if (col.isDecoded()) {
+                if (col.isDecoded(quick)) {
                     return col;
                 }
                 // Regress the highest to force the column to be decoded. The highest field
@@ -546,9 +547,13 @@ public class RowFilterMaker<R> {
                 Variable endVar = null;
                 if (highestNum < colNum) {
                     codec.decodeSkip(srcVar, offsetVar, endVar);
+                } else if (quick && codec.canFilterQuick(colInfo)) {
+                    Object decoded = codec.filterQuickDecode(colInfo, srcVar, offsetVar, endVar);
+                    located[highestNum].decodedQuick(decoded);
                 } else {
-                    Object decoded = codec.filterDecode(colInfo, srcVar, offsetVar, endVar, op);
-                    located[highestNum].decoded(decoded);
+                    Variable dstVar = mMaker.var(colInfo.type);
+                    Converter.decode(mMaker, srcVar, offsetVar, endVar, codec, colInfo, dstVar);
+                    located[highestNum].decodedVar(dstVar);
                 }
 
                 if (next != null && !next.isLocated()) {
@@ -622,8 +627,11 @@ public class RowFilterMaker<R> {
         // Offset into the byte array. Is valid when mState is LOCATED or DECODED.
         Variable mOffsetVar;
 
-        // Optional Object from ColumnCodec.filterDecode. Is valid when mState is DECODED.
-        Object mDecoded;
+        // Is only valid when mState is DECODED and canFilterQuick returned true.
+        Object mDecodedQuick;
+
+        // Is only valid when mState is DECODED.
+        Variable mDecodedVar;
 
         LocatedColumn() {
         }
@@ -632,8 +640,12 @@ public class RowFilterMaker<R> {
             return mState >= LOCATED;
         }
 
-        boolean isDecoded() {
-            return mState == DECODED;
+        /**
+         * @param quick when true, accepts quick or fully decoded forms; when false, only
+         * accepts the fully decoded form
+         */
+        boolean isDecoded(boolean quick) {
+            return mState == DECODED && (quick || mDecodedVar != null);
         }
 
         /**
@@ -647,18 +659,27 @@ public class RowFilterMaker<R> {
         }
 
         /**
-         * @param decoded object returned from ColumnCodec.filterDecode
+         * @param decoded object returned from ColumnCodec.filterQuickDecode
          */
-        void decoded(Object decoded) {
+        void decodedQuick(Object decoded) {
             if (mState == UNLOCATED) {
                 throw new IllegalStateException();
             }
-            mDecoded = decoded;
+            mDecodedQuick = decoded;
+            mState = DECODED;
+        }
+
+        void decodedVar(Variable decodedVar) {
+            if (mState == UNLOCATED) {
+                throw new IllegalStateException();
+            }
+            mDecodedVar = decodedVar;
             mState = DECODED;
         }
 
         void unlocated() {
-            mDecoded = null;
+            mDecodedQuick = null;
+            mDecodedVar = null;
             mState = UNLOCATED;
         }
     }

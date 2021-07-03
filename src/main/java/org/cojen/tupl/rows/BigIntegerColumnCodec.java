@@ -50,7 +50,7 @@ abstract class BigIntegerColumnCodec extends ColumnCodec {
     @Override
     Variable filterPrepare(boolean in, Variable argVar, int argNum) {
         argVar = super.filterPrepare(in, argVar, argNum);
-        Variable bytesVar = filterPrepareBytes(in, argVar, argNum, true);
+        Variable bytesVar = filterPrepareBytes(in, argVar, argNum);
         defineArgField(bytesVar, argFieldName(argNum, "bytes")).set(bytesVar);
         return argVar;
     }
@@ -61,17 +61,14 @@ abstract class BigIntegerColumnCodec extends ColumnCodec {
     }
 
     @Override
-    Object filterDecode(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
-                        int op)
-    {
-        if (dstInfo.plainTypeCode() != mInfo.plainTypeCode()) {
-            var decodedVar = mMaker.var(mInfo.type);
-            decode(decodedVar, srcVar, offsetVar, endVar);
-            var columnVar = mMaker.var(dstInfo.type);
-            Converter.convertLossy(mMaker, mInfo, decodedVar, dstInfo, columnVar);
-            return columnVar;
-        }
+    boolean canFilterQuick(ColumnInfo dstInfo) {
+        return dstInfo.plainTypeCode() == mInfo.plainTypeCode();
+    }
 
+    @Override
+    Object filterQuickDecode(ColumnInfo dstInfo,
+                             Variable srcVar, Variable offsetVar, Variable endVar)
+    {
         Variable lengthVar = mMaker.var(int.class);
         Variable isNullVar = mInfo.isNullable() ? mMaker.var(boolean.class) : null;
 
@@ -84,17 +81,10 @@ abstract class BigIntegerColumnCodec extends ColumnCodec {
     }
 
     @Override
-    void filterCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
-                       int op, Object decoded, Variable argObjVar, int argNum,
-                       Label pass, Label fail)
+    void filterQuickCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar,
+                            int op, Object decoded, Variable argObjVar, int argNum,
+                            Label pass, Label fail)
     {
-        if (dstInfo.plainTypeCode() != mInfo.plainTypeCode()) {
-            var columnVar = (Variable) decoded;
-            var argField = argObjVar.field(argFieldName(argNum));
-            CompareUtils.compare(mMaker, dstInfo, columnVar, dstInfo, argField, op, pass, fail);
-            return;
-        }
-
         compareEncoded(dstInfo, srcVar, op, (Variable[]) decoded, argObjVar, argNum, pass, fail);
     }
 

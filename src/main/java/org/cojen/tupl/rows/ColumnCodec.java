@@ -292,9 +292,21 @@ abstract class ColumnCodec {
     }
 
     /**
+     * Returns true if the filterQuick methods can be used instead of performing a full decode.
+     *
+     * This method is only called when the codec has been bound to a decode method, and it's
+     * called on the source codec (it might be different than the current row version).
+     *
+     * @param dstInfo current definition for column
+     */
+    boolean canFilterQuick(ColumnInfo dstInfo) {
+        return false;
+    }
+
+    /**
      * Makes code which identifies the location of an encoded column and optionally decodes it.
-     * When a non-null object is returned, it's treated as cached state that can be re-used for
-     * multiple invocations of filterCompare.
+     * The object is which is returned is treated as cached state that can be re-used for
+     * multiple invocations of filterQuickCompare.
      *
      * This method is only called when the codec has been bound to a decode method, and it's
      * called on the source codec (it might be different than the current row version). If a
@@ -304,11 +316,13 @@ abstract class ColumnCodec {
      * @param srcVar source byte array
      * @param offsetVar int type; is incremented as a side-effect
      * @param endVar end offset, which when null implies the end of the array
-     * @param op defined in ColumnFilter
-     * @return an object with decoded state
+     * @return a non-null object with decoded state
      */
-    abstract Object filterDecode(ColumnInfo dstInfo,
-                                 Variable srcVar, Variable offsetVar, Variable endVar, int op);
+    Object filterQuickDecode(ColumnInfo dstInfo,
+                             Variable srcVar, Variable offsetVar, Variable endVar)
+    {
+        throw new UnsupportedOperationException();
+    }
 
     /**
      * Makes code which compares a decoded column to an argument.
@@ -319,18 +333,20 @@ abstract class ColumnCodec {
      * @param dstInfo current definition for column
      * @param srcVar source byte array
      * @param offsetVar int type; must not be modified
-     * @param endVar end offset, which when null implies the end of the array
      * @param op defined in ColumnFilter
-     * @param decoded object which was returned by the filterDecode method
+     * @param decoded object which was returned by the filterQuickDecode method
      * @param argObjVar object which contains fields prepared earlier
      * @param argNum zero-based filter argument number
      * @param pass branch here when comparison passes
      * @param fail branch here when comparison fails
      */
-    abstract void filterCompare(ColumnInfo dstInfo,
-                                Variable srcVar, Variable offsetVar, Variable endVar,
-                                int op, Object decoded, Variable argObjVar, int argNum,
-                                Label pass, Label fail);
+    void filterQuickCompare(ColumnInfo dstInfo,
+                            Variable srcVar, Variable offsetVar,
+                            int op, Object decoded, Variable argObjVar, int argNum,
+                            Label pass, Label fail)
+    {
+        throw new UnsupportedOperationException();
+    }
 
     // FIXME: When filter passes, take advantage of existing decoded variables and avoid double
     // decode if possible.
@@ -565,25 +581,16 @@ abstract class ColumnCodec {
      * @param argVar argument value to compare against; variable type is Object
      * @param argNum zero-based filter argument number
      * @param op defined in ColumnFilter
-     * @param converted true if argVar has already been convered to the correct type
      * @return byte[] or byte[][] variable
      */
-    protected Variable filterPrepareBytes(boolean in, Variable argVar, int argNum,
-                                          boolean converted)
-    {
+    protected Variable filterPrepareBytes(boolean in, Variable argVar, int argNum) {
         if (in) {
-            if (!converted) {
-                argVar = ConvertCallSite.make(mMaker, mInfo.type.arrayType(), argVar);
-            }
             var lengthVar = argVar.alength();
             final var fargVar = argVar;
             return ConvertUtils.convertArray(mMaker, byte[][].class, lengthVar, ixVar -> {
                 return filterEncodeBytes(fargVar.aget(ixVar));
             });
         } else {
-            if (!converted) {
-                argVar = ConvertCallSite.make(mMaker, mInfo.type, argVar);
-            }
             return filterEncodeBytes(argVar);
         }
     }
@@ -598,7 +605,7 @@ abstract class ColumnCodec {
     }
 
     /**
-     * Partial implementation of filterCompare method for some codecs.
+     * Partial implementation of filterQuickCompare method for some codecs.
      *
      * @param dstInfo current definition for column
      * @param srcVar source byte array
@@ -615,7 +622,7 @@ abstract class ColumnCodec {
                                        int op, Variable argObjVar, int argNum,
                                        Label pass, Label fail)
     {
-        var argVar = argObjVar.field(argFieldName(argNum)).get();
+        var argVar = argObjVar.field(argFieldName(argNum, "bytes")).get();
 
         if (dstInfo.isDescending()) {
             op = ColumnFilter.descendingOperator(op);

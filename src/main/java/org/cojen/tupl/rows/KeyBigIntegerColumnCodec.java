@@ -131,16 +131,6 @@ class KeyBigIntegerColumnCodec extends BigIntegerColumnCodec {
         decode(null, srcVar, offsetVar, endVar);
     }
 
-    /**
-     * Defines a byte[] arg field encoded using the BigInteger key format.
-     */
-    @Override
-    Variable filterPrepare(boolean in, Variable argVar, int argNum) {
-        Variable bytesVar = filterPrepareBytes(in, argVar, argNum, false);
-        defineArgField(bytesVar, argFieldName(argNum)).set(bytesVar);
-        return argVar;
-    }
-
     @Override
     protected Variable filterEncodeBytes(Variable argVar) {
         String methodName = "encodeBigIntegerKey";
@@ -155,8 +145,13 @@ class KeyBigIntegerColumnCodec extends BigIntegerColumnCodec {
     }
 
     @Override
-    Object filterDecode(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
-                        int op)
+    boolean canFilterQuick(ColumnInfo dstInfo) {
+        return dstInfo.typeCode == mInfo.typeCode;
+    }
+
+    @Override
+    Object filterQuickDecode(ColumnInfo dstInfo,
+                             Variable srcVar, Variable offsetVar, Variable endVar)
     {
         decodeSkip(srcVar, offsetVar, endVar);
         // Return a stable copy to the end offset.
@@ -167,9 +162,9 @@ class KeyBigIntegerColumnCodec extends BigIntegerColumnCodec {
      * @param decoded the string end offset, unless a String compare should be performed
      */
     @Override
-    void filterCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
-                       int op, Object decoded, Variable argObjVar, int argNum,
-                       Label pass, Label fail)
+    void filterQuickCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar,
+                            int op, Object decoded, Variable argObjVar, int argNum,
+                            Label pass, Label fail)
     {
         compareEncodedBytes(dstInfo, srcVar, offsetVar, (Variable) decoded,
                             op, argObjVar, argNum, pass, fail);

@@ -182,17 +182,14 @@ class BigDecimalColumnCodec extends ColumnCodec {
     }
 
     @Override
-    Object filterDecode(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
-                        int op)
-    {
-        if (dstInfo.plainTypeCode() != mInfo.plainTypeCode()) {
-            var decodedVar = mMaker.var(mInfo.type);
-            decode(decodedVar, srcVar, offsetVar, endVar);
-            var columnVar = mMaker.var(dstInfo.type);
-            Converter.convertLossy(mMaker, mInfo, decodedVar, dstInfo, columnVar);
-            return columnVar;
-        }
+    boolean canFilterQuick(ColumnInfo dstInfo) {
+        return dstInfo.plainTypeCode() == mInfo.plainTypeCode();
+    }
 
+    @Override
+    Object filterQuickDecode(ColumnInfo dstInfo,
+                             Variable srcVar, Variable offsetVar, Variable endVar)
+    {
         var decodedVar = mMaker.var(BigDecimal.class);
         decode(decodedVar, srcVar, offsetVar, endVar);
 
@@ -210,17 +207,10 @@ class BigDecimalColumnCodec extends ColumnCodec {
      * @param decoded the string end offset, unless a String compare should be performed
      */
     @Override
-    void filterCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
-                       int op, Object decoded, Variable argObjVar, int argNum,
-                       Label pass, Label fail)
+    void filterQuickCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar,
+                            int op, Object decoded, Variable argObjVar, int argNum,
+                            Label pass, Label fail)
     {
-        if (dstInfo.plainTypeCode() != mInfo.plainTypeCode()) {
-            var columnVar = (Variable) decoded;
-            var argField = argObjVar.field(argFieldName(argNum));
-            CompareUtils.compare(mMaker, dstInfo, columnVar, dstInfo, argField, op, pass, fail);
-            return;
-        }
-
         // Type is BigDecimal.
         var decodedVar = (Variable) decoded;
 

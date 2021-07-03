@@ -96,22 +96,4 @@ class SchemaVersionColumnCodec extends ColumnCodec {
     void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
         throw new UnsupportedOperationException();
     }
-
-    @Override
-    Object filterDecode(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
-                        int op)
-    {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
-     * @param decoded the string end offset, unless a String compare should be performed
-     */
-    @Override
-    void filterCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
-                       int op, Object decoded, Variable argObjVar, int argNum,
-                       Label pass, Label fail)
-    {
-        throw new UnsupportedOperationException();
-    }
 }

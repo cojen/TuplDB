@@ -83,16 +83,6 @@ class KeyStringColumnCodec extends StringColumnCodec {
         offsetVar.inc(mMaker.var(RowUtils.class).invoke("lengthStringKey", srcVar, offsetVar));
     }
 
-    /**
-     * Defines a byte[] arg field encoded using the string key format.
-     */
-    @Override
-    Variable filterPrepare(boolean in, Variable argVar, int argNum) {
-        Variable bytesVar = filterPrepareBytes(in, argVar, argNum, false);
-        defineArgField(bytesVar, argFieldName(argNum)).set(bytesVar);
-        return argVar;
-    }
-
     @Override
     protected Variable filterEncodeBytes(Variable strVar) {
         var rowUtils = mMaker.var(RowUtils.class);
@@ -107,8 +97,13 @@ class KeyStringColumnCodec extends StringColumnCodec {
     }
 
     @Override
-    Object filterDecode(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
-                        int op)
+    boolean canFilterQuick(ColumnInfo dstInfo) {
+        return dstInfo.typeCode == mInfo.typeCode;
+    }
+
+    @Override
+    Object filterQuickDecode(ColumnInfo dstInfo,
+                             Variable srcVar, Variable offsetVar, Variable endVar)
     {
         decodeSkip(srcVar, offsetVar, endVar);
         // Return a stable copy to the end offset.
@@ -119,9 +114,9 @@ class KeyStringColumnCodec extends StringColumnCodec {
      * @param decoded the string end offset
      */
     @Override
-    void filterCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
-                       int op, Object decoded, Variable argObjVar, int argNum,
-                       Label pass, Label fail)
+    void filterQuickCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar,
+                            int op, Object decoded, Variable argObjVar, int argNum,
+                            Label pass, Label fail)
     {
         compareEncodedBytes(dstInfo, srcVar, offsetVar, (Variable) decoded,
                             op, argObjVar, argNum, pass, fail);

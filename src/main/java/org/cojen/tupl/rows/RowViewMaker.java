@@ -502,17 +502,7 @@ public class RowViewMaker {
             } else {
                 var rowVar = mm.param(0);
                 Field dstVar = rowVar.field(name);
-
-                if (dstInfo.type.isAssignableFrom(srcCodec.mInfo.type)
-                    && (!srcCodec.mInfo.isNullable() || dstInfo.isNullable()))
-                {
-                    srcCodec.decode(dstVar, srcVar, offsetVar, null);
-                } else {
-                    // Decode into a temp variable and then perform a best-effort conversion.
-                    var tempVar = mm.var(srcCodec.mInfo.type);
-                    srcCodec.decode(tempVar, srcVar, offsetVar, null);
-                    Converter.convertLossy(mm, srcCodec.mInfo, tempVar, dstInfo, dstVar);
-                }
+                Converter.decode(mm, srcVar, offsetVar, null, srcCodec, dstInfo, dstVar);
             }
         }
     }

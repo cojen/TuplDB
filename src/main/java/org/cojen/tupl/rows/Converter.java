@@ -31,6 +31,30 @@ import static org.cojen.tupl.rows.ColumnInfo.*;
  */
 public class Converter {
     /**
+     * Generates code which decodes a column and stores it in dstVar, applying a lossy
+     * conversion if necessary.
+     *
+     * @param srcVar source byte array
+     * @param offsetVar int type; is incremented as a side-effect
+     * @param endVar end offset, which when null implies the end of the array
+     */
+    static void decode(final MethodMaker mm,
+                       final Variable srcVar, final Variable offsetVar, final Variable endVar,
+                       final ColumnCodec srcCodec, final ColumnInfo dstInfo, final Variable dstVar)
+    {
+        if (dstInfo.type.isAssignableFrom(srcCodec.mInfo.type)
+            && (!srcCodec.mInfo.isNullable() || dstInfo.isNullable()))
+        {
+            srcCodec.decode(dstVar, srcVar, offsetVar, null);
+        } else {
+            // Decode into a temp variable and then perform a best-effort conversion.
+            var tempVar = mm.var(srcCodec.mInfo.type);
+            srcCodec.decode(tempVar, srcVar, offsetVar, endVar);
+            convertLossy(mm, srcCodec.mInfo, tempVar, dstInfo, dstVar);
+        }
+    }
+
+    /**
      * Generates code which converts a source variable into something that the destination
      * variable can accept. The given variable types must not already match.
      *

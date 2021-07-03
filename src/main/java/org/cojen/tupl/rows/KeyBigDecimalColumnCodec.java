@@ -98,26 +98,4 @@ class KeyBigDecimalColumnCodec extends ColumnCodec {
     void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
         decode(null, srcVar, offsetVar, endVar);
     }
-
-    @Override
-    Object filterDecode(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
-                        int op)
-    {
-        var decodedVar = mMaker.var(BigDecimal.class);
-        decode(decodedVar, srcVar, offsetVar, endVar);
-        return decodedVar;
-    }
-
-    /**
-     * @param decoded the string end offset, unless a String compare should be performed
-     */
-    @Override
-    void filterCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
-                       int op, Object decoded, Variable argObjVar, int argNum,
-                       Label pass, Label fail)
-    {
-        var decodedVar = (Variable) decoded;
-        var argVar = argObjVar.field(argFieldName(argNum)).get();
-        CompareUtils.compare(mMaker, dstInfo, decodedVar, dstInfo, argVar, op, pass, fail);
-    }
 }

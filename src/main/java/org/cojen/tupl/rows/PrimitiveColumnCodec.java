@@ -329,17 +329,14 @@ class PrimitiveColumnCodec extends ColumnCodec {
     }
 
     @Override
-    Object filterDecode(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
-                        int op)
-    {
-        if (dstInfo.typeCode != mInfo.typeCode) {
-            var decodedVar = mMaker.var(mInfo.type);
-            decode(decodedVar, srcVar, offsetVar, false);
-            var columnVar = mMaker.var(dstInfo.type);
-            Converter.convertLossy(mMaker, mInfo, decodedVar, dstInfo, columnVar);
-            return columnVar;
-        }
+    boolean canFilterQuick(ColumnInfo dstInfo) {
+        return dstInfo.typeCode == mInfo.typeCode;
+    }
 
+    @Override
+    Object filterQuickDecode(ColumnInfo dstInfo,
+                             Variable srcVar, Variable offsetVar, Variable endVar)
+    {
         if (dstInfo.plainTypeCode() == TYPE_BOOLEAN) {
             var columnVar = mMaker.var(dstInfo.type);
             decode(columnVar, srcVar, offsetVar, false);
@@ -364,18 +361,10 @@ class PrimitiveColumnCodec extends ColumnCodec {
     }
 
     @Override
-    void filterCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
-                       int op, Object decoded, Variable argObjVar, int argNum,
-                       Label pass, Label fail)
+    void filterQuickCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar,
+                            int op, Object decoded, Variable argObjVar, int argNum,
+                            Label pass, Label fail)
     {
-        var argField = argObjVar.field(argFieldName(argNum));
-
-        if (dstInfo.typeCode != mInfo.typeCode) {
-            var columnVar = (Variable) decoded;
-            CompareUtils.compare(mMaker, dstInfo, columnVar, dstInfo, argField, op, pass, fail);
-            return;
-        }
-
         Variable columnVar, isNullVar;
         if (decoded instanceof Variable) {
             columnVar = (Variable) decoded;
@@ -385,6 +374,8 @@ class PrimitiveColumnCodec extends ColumnCodec {
             columnVar = pair[0];
             isNullVar = pair[1];
         }
+
+        var argField = argObjVar.field(argFieldName(argNum));
 
         if (isNullVar != null) {
             compareNullHeader(isNullVar, null, argField, op, pass, fail);
