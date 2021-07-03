@@ -99,34 +99,13 @@ class KeyBigDecimalColumnCodec extends ColumnCodec {
         decode(null, srcVar, offsetVar, endVar);
     }
 
-    /**
-     * Defines a byte[] arg field encoded using the BigDecimal key format.
-     */
-    @Override
-    Variable filterPrepare(boolean in, Variable argVar, int argNum) {
-        Variable bytesVar = filterPrepareBytes(in, argVar, argNum, false);
-        defineArgField(bytesVar, argFieldName(argNum)).set(bytesVar);
-        return argVar;
-    }
-
-    @Override
-    protected Variable filterEncodeBytes(Variable argVar) {
-        String methodName = "encodeBigDecimalKey";
-        if (mInfo.isDescending()) {
-            methodName += "Desc";
-        }
-        var bytesVar = mMaker.var(byte[].class);
-        bytesVar.set(mMaker.var(BigDecimalUtils.class).invoke(methodName, argVar));
-        return bytesVar;
-    }
-
     @Override
     Object filterDecode(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
                         int op)
     {
-        decodeSkip(srcVar, offsetVar, endVar);
-        // Return a stable copy to the end offset.
-        return offsetVar.get();
+        var decodedVar = mMaker.var(BigDecimal.class);
+        decode(decodedVar, srcVar, offsetVar, endVar);
+        return decodedVar;
     }
 
     /**
@@ -137,7 +116,8 @@ class KeyBigDecimalColumnCodec extends ColumnCodec {
                        int op, Object decoded, Variable argObjVar, int argNum,
                        Label pass, Label fail)
     {
-        compareEncodedBytes(dstInfo, srcVar, offsetVar, (Variable) decoded,
-                            op, argObjVar, argNum, pass, fail);
+        var decodedVar = (Variable) decoded;
+        var argVar = argObjVar.field(argFieldName(argNum)).get();
+        CompareUtils.compare(mMaker, dstInfo, decodedVar, dstInfo, argVar, op, pass, fail);
     }
 }

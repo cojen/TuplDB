@@ -181,18 +181,6 @@ class BigDecimalColumnCodec extends ColumnCodec {
         }
     }
 
-    /**
-     * Defines a BigDecimal field and stores the argument there.
-     */
-    /*
-    @Override
-    void filterPrepare(int op, Variable argVar, int argNum) {
-        // Note: If op is "==" or "!=", it's tempting to pre-encode a byte array and simply
-        // compare that. The problem is that 0 and 0.0 won't be considered equal. Also see how
-        // CompareUtils handles this case. It calls BigDecimal.compareTo instead of equals.
-    }
-    */
-
     @Override
     Object filterDecode(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar, Variable endVar,
                         int op)
