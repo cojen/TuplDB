@@ -31,8 +31,8 @@ import org.cojen.tupl.rows.ConvertUtils;
  */
 public class Parser {
     /*
-      RowFilter    = AndFilter { "|" AndFilter }
-      AndFilter    = EntityFilter { "&" EntityFilter }
+      RowFilter    = AndFilter { "||" AndFilter }
+      AndFilter    = EntityFilter { "&&" EntityFilter }
       EntityFilter = ColumnFilter | ParenFilter
       ParenFilter  = [ "!" ] "(" Filter ")"
       ColumnFilter = ColumnName RelOp ( ArgRef | ColumnName )
@@ -45,10 +45,10 @@ public class Parser {
     /* FIXME: Support projection with a set of names, before the filter portion:
        
        // Only fully decode the "name" and "size" columns.
-       {name, size}: date < ? & ...
+       {name, size}: date < ? && ...
 
        // Fully decode all columns except "blob".
-       !{blob}: data < ? & ...
+       !{blob}: data < ? && ...
 
        By default, the projection is !{}. Empty set notation is legal, but not practical.
 
@@ -94,6 +94,11 @@ public class Parser {
                 mPos--;
                 break;
             }
+            c = nextChar();
+            if (c != '|') {
+                mPos -= 2;
+                throw error("Or operator must be specified as '||'");
+            }
             operatorCheck();
             if (list == null) {
                 list = new ArrayList<>();
@@ -126,6 +131,11 @@ public class Parser {
             if (c != '&') {
                 mPos--;
                 break;
+            }
+            c = nextChar();
+            if (c != '&') {
+                mPos -= 2;
+                throw error("And operator must be specified as '&&'");
             }
             operatorCheck();
             if (list == null) {
@@ -186,7 +196,7 @@ public class Parser {
             if (c == '=') {
                 op = ColumnFilter.OP_EQ;
             } else {
-                mPos--;
+                mPos -= 2;
                 throw error("Equality operator must be specified as '=='");
             }
             operatorCheck();
@@ -196,7 +206,7 @@ public class Parser {
             if (c == '=') {
                 op = ColumnFilter.OP_NE;
             } else {
-                mPos--;
+                mPos -= 2;
                 throw error("Inequality operator must be specified as '!='");
             }
             operatorCheck();
@@ -226,7 +236,7 @@ public class Parser {
             if (c == 'n') {
                 op = ColumnFilter.OP_IN;
             } else {
-                mPos--;
+                mPos -= 2;
                 throw error("Unknown operator");
             }
             operatorCheck(true);

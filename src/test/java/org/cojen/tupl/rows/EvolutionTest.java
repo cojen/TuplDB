@@ -543,7 +543,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = view.newScanner(null, "e > ? | e == ?", "123.456", "");
+        scanner = view.newScanner(null, "e > ? || e == ?", "123.456", "");
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -1025,7 +1025,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = view.newScanner(null, "d <= ? & d > ?", 0, -100);
+        scanner = view.newScanner(null, "d <= ? && d > ?", 0, -100);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(2, getKey.invoke(row));
@@ -1039,7 +1039,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = view.newScanner(null, "e == ? | e == ?", 0, "999999999999999.1");
+        scanner = view.newScanner(null, "e == ? || e == ?", 0, "999999999999999.1");
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -1495,7 +1495,7 @@ public class EvolutionTest {
 
         assertEquals(2, count);
 
-        scanner = view.newScanner(null, "d == ? | d == ?", null, 300);
+        scanner = view.newScanner(null, "d == ? || d == ?", null, 300);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -1833,7 +1833,7 @@ public class EvolutionTest {
                 view.store(null, row);
             }
 
-            RowScanner scanner = view.newScanner(null, "a == ? & b == ? & c == ?",
+            RowScanner scanner = view.newScanner(null, "a == ? && b == ? && c == ?",
                                                  0.0, "", BigInteger.ZERO);
             int count = 0;
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
@@ -1885,7 +1885,7 @@ public class EvolutionTest {
             view.store(null, row);
         }
 
-        RowScanner scanner = view.newScanner(null, "d == ? & e == ?", BigDecimal.ZERO, null);
+        RowScanner scanner = view.newScanner(null, "d == ? && e == ?", BigDecimal.ZERO, null);
         int count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {

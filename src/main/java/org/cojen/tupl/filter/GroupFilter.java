@@ -53,7 +53,7 @@ public abstract class GroupFilter extends RowFilter {
         char opChar = opChar();
         for (int i=0; i<mSubFilters.length; i++) {
             if (i != 0) {
-                b.append(' ').append(opChar).append(' ');
+                b.append(' ').append(opChar).append(opChar).append(' ');
             }
             RowFilter sub = mSubFilters[i];
             if (sub instanceof GroupFilter) {

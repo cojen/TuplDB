@@ -268,7 +268,7 @@ public class FuzzTest {
         var bob = new StringBuilder();
         for (int i=0; i<columns.length; i++) {
             if (!bob.isEmpty()) {
-                bob.append(" & ");
+                bob.append(" && ");
             }
             Column c = columns[i];
             bob.append(c.name).append(" == ?");
@@ -287,13 +287,13 @@ public class FuzzTest {
         var bob = new StringBuilder();
         for (int i=0; i<columns.length; i++) {
             if (!bob.isEmpty()) {
-                bob.append(" & ");
+                bob.append(" && ");
             }
             Column c = columns[i];
             if (c.type.clazz == boolean.class || c.type.clazz == Boolean.class) {
                 bob.append(c.name).append(" == ?").append(i);
             } else {
-                bob.append(c.name).append(" >= ?").append(i).append(" & ");
+                bob.append(c.name).append(" >= ?").append(i).append(" && ");
                 bob.append(c.name).append(" <= ?").append(i);
             }
         }

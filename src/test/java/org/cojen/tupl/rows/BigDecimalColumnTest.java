@@ -85,7 +85,7 @@ public class BigDecimalColumnTest {
         low -= Math.ulp(low);
         float high = 0.0000001f;
         high += Math.ulp(high);
-        expect(Set.of(row3), view.newScanner(null, "value1 >= ? & value1 <= ?", low, high));
+        expect(Set.of(row3), view.newScanner(null, "value1 >= ? && value1 <= ?", low, high));
     }
 
     private static void expect(Set<Rec> set, RowScanner<Rec> scanner) throws Exception {
