@@ -56,7 +56,7 @@ public class Converter {
 
     /**
      * Generates code which converts a source variable into something that the destination
-     * variable can accept. The given variable types must not already match.
+     * variable can accept. No conversion is applied if unnecessary.
      *
      * The conversion never results in an exception, but data loss is possible. Numerical
      * conversions are clamped to fit within a target range, for example. If a conversion is
@@ -66,6 +66,11 @@ public class Converter {
                              final ColumnInfo srcInfo, final Variable srcVar,
                              final ColumnInfo dstInfo, final Variable dstVar)
     {
+        if (srcInfo.typeCode == dstInfo.typeCode) {
+            dstVar.set(srcVar);
+            return;
+        }
+
         if (dstInfo.isArray() || srcInfo.isArray()) {
             // TODO: Need this when arrays are supported.
             throw new UnsupportedOperationException();

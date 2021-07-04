@@ -99,7 +99,7 @@ class CompareUtils {
         // At this point, both variables are non-null objects.
 
         if (colInfo.isArray() || argInfo.isArray()) {
-            // FIXME
+            // FIXME: array compare
             throw null;
         }
 

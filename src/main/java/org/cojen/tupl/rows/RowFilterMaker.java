@@ -451,8 +451,48 @@ public class RowFilterMaker<R> {
 
         @Override
         public void visit(ColumnToColumnFilter filter) {
-            // FIXME: visit(ColumnToColumnFilter)
-            throw null;
+            ColumnInfo aColInfo = filter.column();
+            int op = filter.operator();
+            ColumnInfo bColInfo = filter.matchColumn();
+
+            Integer aColNum = columnNumberFor(aColInfo.name);
+            Integer bColNum = columnNumberFor(bColInfo.name);
+
+            if (aColNum == null && bColNum == null) {
+                // Comparing two columns that don't exist. If this filter is part of a chain,
+                // the rest will be dead code.
+                mMaker.goto_(CompareUtils.selectNullColumnToNullArg(op, mPass, mFail));
+                return;
+            }
+
+            Variable aVar = decodeColumnOrDefault(aColNum, aColInfo);
+            Variable bVar = decodeColumnOrDefault(bColNum, bColInfo);
+
+            if (aVar.classType() != bVar.classType()) {
+                ColumnInfo cColInfo = filter.common();
+
+                var aConvertedVar = mMaker.var(cColInfo.type);
+                Converter.convertLossy(mMaker, aColInfo, aVar, cColInfo, aConvertedVar);
+                aColInfo = cColInfo;
+                aVar = aConvertedVar;
+
+                var bConvertedVar = mMaker.var(cColInfo.type);
+                Converter.convertLossy(mMaker, bColInfo, bVar, cColInfo, bConvertedVar);
+                bColInfo = cColInfo;
+                bVar = bConvertedVar;
+            }
+
+            CompareUtils.compare(mMaker, aColInfo, aVar, bColInfo, bVar, op, mPass, mFail);
+        }
+
+        private Variable decodeColumnOrDefault(Integer colNum, ColumnInfo colInfo) {
+            if (colNum != null) {
+                return decodeColumn(colNum, colInfo, false).mDecodedVar;
+            } else {
+                var colVar = mMaker.var(colInfo.type);
+                Converter.setDefault(colInfo, colVar);
+                return colVar;
+            }
         }
 
         private Integer columnNumberFor(String colName) {

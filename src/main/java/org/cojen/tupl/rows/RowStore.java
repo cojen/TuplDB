@@ -204,7 +204,7 @@ public class RowStore {
 
                 // Create a new version.
 
-                /* FIXME
+                /* FIXME: index set evolution
 
                    Even when creating a new version, the alt keys and indexes might not
                    match. Something needs to be in RowInfo to track this in all cases.  The
