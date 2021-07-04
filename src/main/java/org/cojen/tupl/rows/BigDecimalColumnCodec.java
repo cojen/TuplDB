@@ -180,41 +180,4 @@ class BigDecimalColumnCodec extends ColumnCodec {
             offsetVar.set(mMaker.var(RowUtils.class).invoke(method, srcVar, offsetVar));
         }
     }
-
-    @Override
-    boolean canFilterQuick(ColumnInfo dstInfo) {
-        return dstInfo.plainTypeCode() == mInfo.plainTypeCode();
-    }
-
-    @Override
-    Object filterQuickDecode(ColumnInfo dstInfo,
-                             Variable srcVar, Variable offsetVar, Variable endVar)
-    {
-        var decodedVar = mMaker.var(BigDecimal.class);
-        decode(decodedVar, srcVar, offsetVar, endVar);
-
-        if (!dstInfo.isNullable() && mInfo.isNullable()) {
-            Label cont = mMaker.label();
-            decodedVar.ifNe(null, cont);
-            Converter.setDefault(dstInfo, decodedVar);
-            cont.here();
-        }
-
-        return decodedVar;
-    }
-
-    /**
-     * @param decoded the string end offset, unless a String compare should be performed
-     */
-    @Override
-    void filterQuickCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar,
-                            int op, Object decoded, Variable argObjVar, int argNum,
-                            Label pass, Label fail)
-    {
-        // Type is BigDecimal.
-        var decodedVar = (Variable) decoded;
-
-        var argVar = argObjVar.field(argFieldName(argNum)).get();
-        CompareUtils.compare(mMaker, dstInfo, decodedVar, dstInfo, argVar, op, pass, fail);
-    }
 }

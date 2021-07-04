@@ -293,6 +293,9 @@ abstract class ColumnCodec {
 
     /**
      * Returns true if the filterQuick methods can be used instead of performing a full decode.
+     * If the quick form is the same as the full decode, despite still being "quick", false
+     * should be returned. The quick form is only usable for column-to-argument filters, but
+     * the full decode form can be used for column-to-column filters too.
      *
      * This method is only called when the codec has been bound to a decode method, and it's
      * called on the source codec (it might be different than the current row version).

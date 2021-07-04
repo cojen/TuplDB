@@ -330,19 +330,16 @@ class PrimitiveColumnCodec extends ColumnCodec {
 
     @Override
     boolean canFilterQuick(ColumnInfo dstInfo) {
-        return dstInfo.typeCode == mInfo.typeCode;
+        // The quick variant skips conversions and boxing. If no boxing is necessary, or boxing
+        // is cheap (Boolean), then use the regular full decode.
+        return dstInfo.typeCode == mInfo.typeCode
+            && !dstInfo.type.isPrimitive() && dstInfo.plainTypeCode() != TYPE_BOOLEAN;
     }
 
     @Override
     Object filterQuickDecode(ColumnInfo dstInfo,
                              Variable srcVar, Variable offsetVar, Variable endVar)
     {
-        if (dstInfo.plainTypeCode() == TYPE_BOOLEAN) {
-            var columnVar = mMaker.var(dstInfo.type);
-            decode(columnVar, srcVar, offsetVar, false);
-            return columnVar;
-        }
-
         var columnVar = mMaker.var(dstInfo.unboxedType());
 
         if (!dstInfo.isNullable()) {
@@ -357,6 +354,7 @@ class PrimitiveColumnCodec extends ColumnCodec {
         isNullVar.ifTrue(isNull);
         decode(columnVar, srcVar, offsetVar, false, false);
         isNull.here();
+
         return new Variable[] {columnVar, isNullVar};
     }
 
