@@ -1,6 +1,11 @@
 Changelog
 =========
 
+v1.5.1
+------
+* Add more utilities for decoding short integers and unsigned integers.
+* Ignore interrupts during critical operations, prevening database panics.
+
 v1.5.0.1 (2021-06-08)
 --------
 * Support fully mapped databases when the page size doesn't match the OS page size.
