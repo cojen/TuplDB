@@ -48,11 +48,11 @@ public interface Index extends View, Closeable {
     public String nameString();
 
     /**
-     * Returns a {@code RowView} instance which stores rows in this index. Storing directly into
-     * this index should be avoided, since it interferes with row encoding. Mixing encoding
-     * strategies can cause data corruption.
+     * Returns a {@code RowView} instance which stores rows in this index. Bypassing the {@code
+     * RowView} and storing directly into this index should be avoided, since it interferes
+     * with row encoding. Mixing encoding strategies can cause data corruption.
      *
-     * @return shared RowView instance
+     * @return shared {@code RowView} instance
      */
     public <R> RowView<R> asRowView(Class<R> type) throws IOException;
 

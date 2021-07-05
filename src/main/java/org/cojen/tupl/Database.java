@@ -152,7 +152,7 @@ public interface Database extends CauseCloseable, Flushable {
      * Convenience method which returns a {@code RowView} that uses the index named by the row
      * type itself.
      *
-     * @return shared RowView instance; null if not found
+     * @return shared {@code RowView} instance; null if not found
      * @see Index#asRowView
      */
     public default <R> RowView<R> findRowView(Class<R> type) throws IOException {
@@ -164,7 +164,7 @@ public interface Database extends CauseCloseable, Flushable {
      * Convenience method which returns a {@code RowView} that uses the index named by the row
      * type itself.
      *
-     * @return shared RowView instance
+     * @return shared {@code RowView} instance
      * @see Index#asRowView
      */
     public default <R> RowView<R> openRowView(Class<R> type) throws IOException {
