@@ -201,7 +201,7 @@ public class ConvertCallSite extends MutableCallSite {
     }
 
     /**
-     * @fail branch here if not instanceOf
+     * @param fail branch here if not instanceOf
      */
     private static void instanceOf(Variable fromVar, Class<?> fromType, Label fail) {
         if (Modifier.isPublic(fromType.getModifiers())) {
