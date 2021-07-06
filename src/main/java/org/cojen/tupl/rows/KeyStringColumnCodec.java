@@ -84,7 +84,7 @@ class KeyStringColumnCodec extends StringColumnCodec {
     }
 
     @Override
-    protected Variable filterEncodeBytes(Variable strVar) {
+    protected Variable filterPrepareBytes(Variable strVar) {
         var rowUtils = mMaker.var(RowUtils.class);
         var lengthVar = rowUtils.invoke("lengthStringKey", strVar);
         var bytesVar = mMaker.new_(byte[].class, lengthVar);
@@ -118,13 +118,14 @@ class KeyStringColumnCodec extends StringColumnCodec {
                             int op, Object decoded, Variable argObjVar, int argNum,
                             Label pass, Label fail)
     {
-        compareEncodedBytes(dstInfo, srcVar, offsetVar, (Variable) decoded,
-                            op, argObjVar, argNum, pass, fail);
+        filterQuickCompareKey(dstInfo, srcVar, offsetVar, (Variable) decoded,
+                              op, argObjVar, argNum, pass, fail);
     }
 
     @Override
     protected void decodeHeader(Variable srcVar, Variable offsetVar, Variable endVar,
-                                Variable lengthVar, Variable isNullVar){
+                                Variable lengthVar, Variable isNullVar)
+    {
         throw new UnsupportedOperationException();
     }
 }

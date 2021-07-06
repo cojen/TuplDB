@@ -26,7 +26,7 @@ import org.cojen.maker.Variable;
  *
  * @author Brian S O'Neill
  */
-abstract class BigIntegerColumnCodec extends ColumnCodec {
+abstract class BigIntegerColumnCodec extends BytesColumnCodec {
     /**
      * @param info non-null
      * @param mm is null for stateless instance
@@ -36,65 +36,7 @@ abstract class BigIntegerColumnCodec extends ColumnCodec {
     }
 
     @Override
-    int minSize() {
-        return 0;
-    }
-
-    /**
-     * Defines a byte[] arg field set to null or an encoded BigInteger, and also defines a
-     * BigInteger field with the original argument.
-     */
-    @Override
-    Variable filterPrepare(boolean in, Variable argVar, int argNum) {
-        argVar = super.filterPrepare(in, argVar, argNum);
-        Variable bytesVar = filterPrepareBytes(in, argVar, argNum);
-        defineArgField(bytesVar, argFieldName(argNum, "bytes")).set(bytesVar);
-        return argVar;
-    }
-
-    @Override
-    protected Variable filterEncodeBytes(Variable biVar) {
+    protected Variable filterPrepareBytes(Variable biVar) {
         return mMaker.var(RowUtils.class).invoke("encodeBigInteger", biVar);
     }
-
-    @Override
-    boolean canFilterQuick(ColumnInfo dstInfo) {
-        return dstInfo.plainTypeCode() == mInfo.plainTypeCode();
-    }
-
-    @Override
-    Object filterQuickDecode(ColumnInfo dstInfo,
-                             Variable srcVar, Variable offsetVar, Variable endVar)
-    {
-        Variable lengthVar = mMaker.var(int.class);
-        Variable isNullVar = mInfo.isNullable() ? mMaker.var(boolean.class) : null;
-
-        decodeHeader(srcVar, offsetVar, endVar, lengthVar, isNullVar);
-
-        Variable dataOffsetVar = offsetVar.get(); // need a stable copy
-        offsetVar.inc(lengthVar);
-
-        return new Variable[] {dataOffsetVar, lengthVar, isNullVar};
-    }
-
-    @Override
-    void filterQuickCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar,
-                            int op, Object decoded, Variable argObjVar, int argNum,
-                            Label pass, Label fail)
-    {
-        compareEncoded(dstInfo, srcVar, op, (Variable[]) decoded, argObjVar, argNum, pass, fail);
-    }
-
-    /**
-     * Decode the BigInteger header and advance the offset to the start of the BigInteger data.
-     *
-     * @param srcVar source byte array
-     * @param offsetVar int type; is incremented as a side-effect
-     * @param endVar end offset, which when null implies the end of the array
-     * @param lengthVar set to the decoded length; must be definitely assigned
-     * @param isNullVar set to true/false if applicable; must be definitely assigned for
-     * nullable BigIntegers
-     */
-    protected abstract void decodeHeader(Variable srcVar, Variable offsetVar, Variable endVar,
-                                         Variable lengthVar, Variable isNullVar);
 }
