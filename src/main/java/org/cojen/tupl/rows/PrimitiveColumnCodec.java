@@ -189,19 +189,10 @@ class PrimitiveColumnCodec extends ColumnCodec {
 
     @Override
     void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
-        decode(dstVar, srcVar, offsetVar, false);
+        decode(dstVar, srcVar, offsetVar, mInfo.isNullable());
     }
 
-    /**
-     * @param raw true to leave floating point values in their raw integer form
-     */
-    private void decode(Variable dstVar, Variable srcVar, Variable offsetVar, boolean raw) {
-        decode(dstVar, srcVar, offsetVar, raw, mInfo.isNullable());
-    }
-
-    private void decode(Variable dstVar, Variable srcVar, Variable offsetVar,
-                        boolean raw, boolean isNullable)
-    {
+    private void decode(Variable dstVar, Variable srcVar, Variable offsetVar, boolean isNullable) {
         Label end = null;
 
         int plain = mInfo.plainTypeCode();
@@ -292,14 +283,10 @@ class PrimitiveColumnCodec extends ColumnCodec {
                 valueVar = valueVar.cast(char.class);
                 break;
             case TYPE_FLOAT:
-                if (!raw) {
-                    valueVar = mMaker.var(Float.class).invoke("intBitsToFloat", valueVar);
-                }
+                valueVar = mMaker.var(Float.class).invoke("intBitsToFloat", valueVar);
                 break;
             case TYPE_DOUBLE:
-                if (!raw) {
-                    valueVar = mMaker.var(Double.class).invoke("longBitsToDouble", valueVar);
-                }
+                valueVar = mMaker.var(Double.class).invoke("longBitsToDouble", valueVar);
                 break;
             }
         }
@@ -342,7 +329,7 @@ class PrimitiveColumnCodec extends ColumnCodec {
         var columnVar = mMaker.var(dstInfo.unboxedType());
 
         if (!dstInfo.isNullable()) {
-            decode(columnVar, srcVar, offsetVar, false, false);
+            decode(columnVar, srcVar, offsetVar, false);
             return columnVar;
         }
 
@@ -351,7 +338,7 @@ class PrimitiveColumnCodec extends ColumnCodec {
         decodeNullHeader(null, isNullVar, srcVar, offsetVar);
         Label isNull = mMaker.label();
         isNullVar.ifTrue(isNull);
-        decode(columnVar, srcVar, offsetVar, false, false);
+        decode(columnVar, srcVar, offsetVar, false);
         isNull.here();
 
         return new Variable[] {columnVar, isNullVar};
