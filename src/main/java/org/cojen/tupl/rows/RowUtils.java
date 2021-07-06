@@ -616,6 +616,76 @@ public class RowUtils extends Utils {
         return srcOffset;
     }
 
+    public static int encodeFloatSign(int bits) {
+        bits ^= (bits < 0 ? 0xffffffff : 0x80000000);
+        return bits;
+    }
+
+    public static long encodeFloatSign(long bits) {
+        bits ^= bits < 0 ? 0xffffffffffffffffL : 0x8000000000000000L;
+        return bits;
+    }
+
+    public static int encodeFloatSignDesc(int bits) {
+        if (bits >= 0) {
+            bits ^= 0x7fffffff;
+        }
+        return bits;
+    }
+
+    public static long encodeFloatSignDesc(long bits) {
+        if (bits >= 0) {
+            bits ^= 0x7fffffffffffffffL;
+        }
+        return bits;
+    }
+
+    public static int decodeFloatSign(int bits) {
+        bits ^= bits < 0 ? 0x80000000 : 0xffffffff;
+        return bits;
+    }
+
+    public static long decodeFloatSign(long bits) {
+        bits ^= bits < 0 ? 0x8000000000000000L : 0xffffffffffffffffL;
+        return bits;
+    }
+
+    public static int decodeFloatSignDesc(int bits) {
+        if (bits >= 0) {
+            bits ^= 0x7fffffff;
+        }
+        return bits;
+    }
+
+    public static long decodeFloatSignDesc(long bits) {
+        if (bits >= 0) {
+            bits ^= 0x7fffffffffffffffL;
+        }
+        return bits;
+    }
+
+    /**
+     * Returns the bits in a form that can be compared as an int.
+     */
+    public static int floatToBitsCompare(float v) {
+        int bits = Float.floatToIntBits(v);
+        if (bits < 0) {
+            bits ^= 0x7fffffff;
+        }
+        return bits;
+    }
+
+    /**
+     * Returns the bits in a form that can be compared as a long.
+     */
+    public static long floatToBitsCompare(double v) {
+        long bits = Double.doubleToLongBits(v);
+        if (bits < 0) {
+            bits ^= 0x7fffffffffffffffL;
+        }
+        return bits;
+    }
+
     public static IllegalArgumentException nullColumnException(String name) {
         return new IllegalArgumentException("Cannot be null: " + name);
     }

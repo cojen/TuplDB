@@ -172,6 +172,13 @@ public class ColumnInfo implements Cloneable {
     }
 
     /**
+     * @param typeCode must be plain
+     */
+    static boolean isFloat(int typeCode) {
+        return 0b000_10000 <= typeCode && typeCode <= 0b000_10011;
+    }
+
+    /**
      * Assigns the type by examining the typeCode.
      */
     void assignType() {

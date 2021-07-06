@@ -167,18 +167,26 @@ class PrimitiveColumnCodec extends ColumnCodec {
                 throw new AssertionError();
             }
 
+            var rowUtils = mMaker.var(RowUtils.class);
+
             String format;
             if (!mForKey) {
                 format = "LE";
             } else {
                 format = "BE";
-                if (!mInfo.isUnsigned()) {
+                if (ColumnInfo.isFloat(plain)) {
+                    String method = "encodeFloatSign";
+                    if (mInfo.isDescending()) {
+                        method += "Desc";
+                    }
+                    srcVar = rowUtils.invoke(method, srcVar);
+                } else if (!mInfo.isUnsigned()) {
                     srcVar = srcVar.unbox().xor(signMask());
                 }
             }
 
             String methodName = "encode" + methodType + format;
-            mMaker.var(RowUtils.class).invoke(methodName, dstVar, offsetVar, srcVar);
+            rowUtils.invoke(methodName, dstVar, offsetVar, srcVar);
             offsetVar.inc(mSize);
         }
 
@@ -267,12 +275,22 @@ class PrimitiveColumnCodec extends ColumnCodec {
                 throw new AssertionError();
             }
 
+            var rowUtils = mMaker.var(RowUtils.class);
+
             String methodName = "decode" + methodType + (mForKey ? "BE" : "LE");
-            valueVar = mMaker.var(RowUtils.class).invoke(methodName, srcVar, offsetVar);
+            valueVar = rowUtils.invoke(methodName, srcVar, offsetVar);
             offsetVar.inc(mSize);
 
-            if (mForKey && !mInfo.isUnsigned()) {
-                valueVar = valueVar.xor(signMask());
+            if (mForKey) {
+                if (isFloat(plain)) {
+                    String method = "decodeFloatSign";
+                    if (mInfo.isDescending()) {
+                        method += "Desc";
+                    }
+                    valueVar = rowUtils.invoke(method, valueVar);
+                } else if (!mInfo.isUnsigned()) {
+                    valueVar = valueVar.xor(signMask());
+                }
             }
 
             switch (plain) {

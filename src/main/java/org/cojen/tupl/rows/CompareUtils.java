@@ -181,8 +181,29 @@ class CompareUtils {
                     break special;
                 }
             } else if (!argInfo.isUnsignedInteger()) {
-                // Both are signed.
-                break special;
+                // Both are signed. If floating point, must perform bits comparison for finding
+                // NaN in a way which is consistent with the Float.compare method.
+
+                if (colType == float.class) {
+                    if (argType != float.class) {
+                        if (argType != double.class) {
+                            break special;
+                        }
+                        colVar = colVar.cast(double.class);
+                    }
+                } else if (colType == double.class) {
+                    if (argType == float.class) {
+                        argVar = argVar.cast(double.class);
+                    } else if (argType != double.class) {
+                        break special;
+                    }
+                } else {
+                    break special;
+                }
+
+                var rowUtils = mm.var(RowUtils.class);
+                colVar = rowUtils.invoke("floatToBitsCompare", colVar);
+                argVar = rowUtils.invoke("floatToBitsCompare", argVar);
             }
 
             // Mixed signed/unsigned comparison.
