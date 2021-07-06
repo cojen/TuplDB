@@ -46,7 +46,6 @@ import org.cojen.tupl.filter.RowFilter;
  * @author Brian S O'Neill
  */
 public class RowViewMaker {
-    private final RowStore mStore;
     private final WeakReference<RowStore> mStoreRef;
     private final Class<?> mRowType;
     private final RowGen mRowGen;
@@ -59,8 +58,7 @@ public class RowViewMaker {
      * @param store generated class is pinned to this specific instance
      */
     RowViewMaker(RowStore store, Class<?> type, RowGen gen, long indexId) {
-        mStore = store;
-        mStoreRef = new WeakReference<RowStore>(mStore);
+        mStoreRef = new WeakReference<>(store);
         mRowType = type;
         mRowGen = gen;
         mRowInfo = gen.info;
@@ -820,7 +818,6 @@ public class RowViewMaker {
 
         var indy = mm.var(RowViewMaker.class).indy("indyDoUpdate", mStoreRef, mRowType, mIndexId);
         indy.invoke(null, "doUpdate", null, mm.this_(), rowVar, mergeVar, cursorVar);
-        Label tryEnd = mm.label().here();
         mm.return_(true);
 
         mm.finally_(tryStart, () -> cursorVar.invoke("reset"));
@@ -892,7 +889,7 @@ public class RowViewMaker {
 
             Label cont = mm.label();
 
-            int sfMask = rowGen.stateFieldMask(num);
+            int sfMask = RowGen.stateFieldMask(num);
             Label isDirty = mm.label();
             stateField.and(sfMask).ifEq(sfMask, isDirty);
 
@@ -936,7 +933,7 @@ public class RowViewMaker {
                 columnLenVar = endVar.sub(columnVars[i]);
             }
 
-            int sfMask = rowGen.stateFieldMask(num);
+            int sfMask = RowGen.stateFieldMask(num);
             Label isDirty = mm.label();
             stateField.and(sfMask).ifEq(sfMask, isDirty);
 
@@ -991,7 +988,7 @@ public class RowViewMaker {
             ColumnInfo info = codec.mInfo;
             int num = columnNumbers.get(info.name);
 
-            int sfMask = rowGen.stateFieldMask(num);
+            int sfMask = RowGen.stateFieldMask(num);
             Label cont = mm.label();
             stateField.and(sfMask).ifEq(sfMask, cont);
 

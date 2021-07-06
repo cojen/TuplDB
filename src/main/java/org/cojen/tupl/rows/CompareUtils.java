@@ -332,7 +332,7 @@ class CompareUtils {
 
     /**
      * Short-circuit branches to pass or fail only if the value ranges don't overlap. One of
-     * the variables must be signed and the othe rmust be unsigned.
+     * the variables must be signed and the other must be unsigned.
      */
     private static void signMismatch(Variable a, Variable b, int op, Label pass, Label fail) {
         switch (op) {

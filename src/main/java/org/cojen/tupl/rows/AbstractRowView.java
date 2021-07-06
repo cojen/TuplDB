@@ -25,7 +25,6 @@ import java.util.Objects;
 
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DurabilityMode;
-import org.cojen.tupl.Index;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.RowScanner;
 import org.cojen.tupl.RowUpdater;
@@ -69,7 +68,7 @@ public abstract class AbstractRowView<R> implements RowView<R> {
     private RowScanner<R> newScanner(Transaction txn, RowDecoderEncoder<R> decoder)
         throws IOException
     {
-        var scanner = new BasicRowScanner<R>(mSource.newCursor(txn), decoder);
+        var scanner = new BasicRowScanner<>(mSource.newCursor(txn), decoder);
         scanner.init();
         return scanner;
     }
@@ -94,7 +93,7 @@ public abstract class AbstractRowView<R> implements RowView<R> {
             txn = mSource.newTransaction(null);
             Cursor c = mSource.newCursor(txn);
             try {
-                updater = new AutoCommitRowUpdater<R>(mSource, c, encoder);
+                updater = new AutoCommitRowUpdater<>(mSource, c, encoder);
             } catch (Throwable e) {
                 try {
                     txn.exit();
@@ -107,16 +106,16 @@ public abstract class AbstractRowView<R> implements RowView<R> {
             Cursor c = mSource.newCursor(txn);
             switch (txn.lockMode()) {
             default:
-                updater = new BasicRowUpdater<R>(mSource, c, encoder);
+                updater = new BasicRowUpdater<>(mSource, c, encoder);
                 break;
             case REPEATABLE_READ:
-                updater = new UpgradableRowUpdater<R>(mSource, c, encoder);
+                updater = new UpgradableRowUpdater<>(mSource, c, encoder);
                 break;
             case READ_COMMITTED:
             case READ_UNCOMMITTED:
                 txn.enter();
                 txn.lockMode(LockMode.UPGRADABLE_READ);
-                updater = new NonRepeatableRowUpdater<R>(mSource, c, encoder);
+                updater = new NonRepeatableRowUpdater<>(mSource, c, encoder);
                 break;
             }
         }

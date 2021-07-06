@@ -54,6 +54,8 @@ public interface Index extends View, Closeable {
      *
      * @return shared {@code RowView} instance
      */
+    // Note: This method is defined on Index and not View because schema metadata is stored
+    // against an index id. A View doesn't have an id.
     public <R> RowView<R> asRowView(Class<R> type) throws IOException;
 
     /**

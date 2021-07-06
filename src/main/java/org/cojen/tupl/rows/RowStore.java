@@ -19,8 +19,6 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
-import java.nio.charset.StandardCharsets;
-
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -160,7 +158,7 @@ public class RowStore {
         try (Cursor current = mSchemata.newCursor(txn)) {
             current.find(key(indexId));
 
-            matches: if (current.value() != null) {
+            if (current.value() != null) {
                 // Check if the currently defined schema matches.
 
                 schemaVersion = decodeIntLE(current.value(), 0);
@@ -292,7 +290,7 @@ public class RowStore {
             c.autoload(true);
             c.findNearby(key(indexId, schemaVersion));
 
-            RowInfo info = decodeExisting(txn, rowType.getName(), null, c.value());
+            RowInfo info = decodeExisting(rowType.getName(), null, c.value());
 
             if (current != null && current.allColumns.equals(info.allColumns)) {
                 // Current one matches, so use the canonical RowInfo instance.
@@ -317,7 +315,7 @@ public class RowStore {
         throws IOException
     {
         byte[] primaryData = mSchemata.load(txn, key(indexId, schemaVersion));
-        return decodeExisting(txn, typeName, currentData, primaryData);
+        return decodeExisting(typeName, currentData, primaryData);
     }
 
     /**
@@ -327,8 +325,7 @@ public class RowStore {
      * @param primaryData if null, then null is returned
      * @return null only if primaryData is null
      */
-    private RowInfo decodeExisting(Transaction txn, String typeName,
-                                   byte[] currentData, byte[] primaryData)
+    private RowInfo decodeExisting(String typeName, byte[] currentData, byte[] primaryData)
         throws CorruptDatabaseException
     {
         if (primaryData == null) {

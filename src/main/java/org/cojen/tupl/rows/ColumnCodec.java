@@ -276,7 +276,6 @@ abstract class ColumnCodec {
      * @param in true if argument is a collection for "in" filtering
      * @param argVar argument value to compare against; variable type is Object
      * @param argNum zero-based filter argument number
-     * @param op defined in ColumnFilter
      * @return the converted argVar
      */
     Variable filterPrepare(boolean in, Variable argVar, int argNum) {
@@ -416,7 +415,7 @@ abstract class ColumnCodec {
      * Decode a null header byte and jumps to the end if the decoded column value is null.
      *
      * @param end required except when dst is boolean
-     * @param dst optional; if boolean, assigns true/false as null/not-null
+     * @param dstVar optional; if boolean, assigns true/false as null/not-null
      * @param offsetVar int type; is incremented as a side-effect
      */
     protected void decodeNullHeader(Label end, Variable dstVar,
@@ -583,7 +582,6 @@ abstract class ColumnCodec {
      * @param in true if argument is a collection for "in" filtering
      * @param argVar argument value to compare against; variable type is Object
      * @param argNum zero-based filter argument number
-     * @param op defined in ColumnFilter
      * @return byte[] or byte[][] variable
      */
     protected Variable filterPrepareBytes(boolean in, Variable argVar, int argNum) {

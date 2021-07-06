@@ -170,8 +170,8 @@ public class RowMaker {
 
         // Hash in column states.
         String[] stateFields = rowInfo.rowGen().stateFields();
-        for (int i=0; i<stateFields.length; i++) {
-            hash.set(hash.mul(31).add(rowObject.field(stateFields[i])));
+        for (String stateField : stateFields) {
+            hash.set(hash.mul(31).add(rowObject.field(stateField)));
         }
 
         // Hash in column fields.
@@ -226,8 +226,7 @@ public class RowMaker {
 
         // Compare column state fields.
         String[] stateFields = rowGen.stateFields();
-        for (int i=0; i<stateFields.length; i++) {
-            String name = stateFields[i];
+        for (String name : stateFields) {
             rowObject.field(name).ifNe(other.field(name), notEqual);
         }
 

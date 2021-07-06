@@ -17,7 +17,6 @@
 
 package org.cojen.tupl.rows;
 
-import org.cojen.maker.Field;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;

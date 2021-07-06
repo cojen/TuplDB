@@ -19,8 +19,6 @@ package org.cojen.tupl.rows;
 
 import java.math.BigInteger;
 
-import java.util.Arrays;
-
 import java.nio.charset.StandardCharsets;
 
 import org.cojen.tupl.core.Utils;
@@ -555,8 +553,8 @@ public class RowUtils extends Utils {
             dstOffset += 4;
         }
 
-        for (int i=0; i<len; i++) {
-            dst[dstOffset++] = (byte) ~key[i];
+        for (byte b : key) {
+            dst[dstOffset++] = (byte) ~b;
         }
 
         return dstOffset;

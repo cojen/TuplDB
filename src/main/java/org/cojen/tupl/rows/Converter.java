@@ -1115,10 +1115,7 @@ public class Converter {
         case 1: case '1': case 't': case 'T':
             return true;
         }
-        if (c <= 9 || ('1' < c && c <= '9')) {
-            return true;
-        }
-        return false;
+        return c <= 9 || ('1' < c && c <= '9');
     }
 
     // Called by generated code.

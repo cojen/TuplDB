@@ -19,7 +19,6 @@ package org.cojen.tupl.rows;
 
 import java.math.BigDecimal;
 
-import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 

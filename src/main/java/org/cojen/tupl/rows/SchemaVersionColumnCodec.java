@@ -17,7 +17,6 @@
 
 package org.cojen.tupl.rows;
 
-import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
@@ -30,10 +29,6 @@ import org.cojen.maker.Variable;
 class SchemaVersionColumnCodec extends ColumnCodec {
     // Version is pre-encoded using the prefix format.
     private final int mVersion;
-
-    SchemaVersionColumnCodec(int version) {
-        this(version, null);
-    }
 
     /**
      * Construct a bound instance.

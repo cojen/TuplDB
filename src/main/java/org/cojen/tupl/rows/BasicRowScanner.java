@@ -26,8 +26,6 @@ import org.cojen.tupl.LockResult;
 import org.cojen.tupl.RowScanner;
 import org.cojen.tupl.UnpositionedCursorException;
 
-import org.cojen.tupl.io.Utils;
-
 /**
  * 
  *

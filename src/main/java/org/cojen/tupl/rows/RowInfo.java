@@ -176,10 +176,7 @@ class RowInfo extends ColumnSet {
                 return false;
             }
         }
-        if (ib.hasNext()) {
-            return false;
-        }
-        return true;
+        return !ib.hasNext();
     }
 
     @Override
@@ -294,14 +291,13 @@ class RowInfo extends ColumnSet {
             name = name.intern();
             info = new ColumnInfo();
             info.name = name;
-            if (type != null) {
-                info.type = type;
-                info.typeCode = typeCode;
-            }
+            info.type = type;
+            info.typeCode = typeCode;
             allColumns.put(name, info);
-        } else if (info.type != type && type != null) {
+        } else if (info.type != type) {
             messages.add("Mismatched column type for column: " + name + "; " +
                          info.type + " != " + type);
+            info = null;
         }
 
         return info;
@@ -578,9 +574,7 @@ class RowInfo extends ColumnSet {
         // favored and will be effectively discarded if they're redundant.
 
         var nextSet = new TreeSet<ColumnSet>(new ColumnSetComparator(true));
-        for (ColumnSet set : initialSet.descendingSet()) {
-            nextSet.add(set);
-        }
+        nextSet.addAll(initialSet.descendingSet());
 
         // Add the results into a final set, with specified orderings.
 

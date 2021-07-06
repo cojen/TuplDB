@@ -25,7 +25,6 @@ import java.lang.invoke.VarHandle;
 
 import java.lang.ref.WeakReference;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.TreeMap;
@@ -33,20 +32,17 @@ import java.util.TreeMap;
 import java.util.function.IntFunction;
 
 import org.cojen.maker.ClassMaker;
-import org.cojen.maker.Field;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 import org.cojen.tupl.CorruptDatabaseException;
-import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DatabaseException;
 
 import org.cojen.tupl.filter.AndFilter;
 import org.cojen.tupl.filter.ColumnToArgFilter;
 import org.cojen.tupl.filter.ColumnToColumnFilter;
 import org.cojen.tupl.filter.OrFilter;
-import org.cojen.tupl.filter.Parser;
 import org.cojen.tupl.filter.RowFilter;
 import org.cojen.tupl.filter.Visitor;
 
@@ -120,7 +116,7 @@ public class RowFilterMaker<R> {
 
         // Define the fields to hold the filter arguments.
         mFilter.accept(new Visitor() {
-            private HashSet<Integer> mAdded = new HashSet<>();
+            private final HashSet<Integer> mAdded = new HashSet<>();
 
             @Override
             public void visit(ColumnToArgFilter filter) {
@@ -313,7 +309,7 @@ public class RowFilterMaker<R> {
          * @param mm signature: R decodeRow(Decoder/filter, byte[] key, byte[] value, R row)
          * @param viewClass current row view implementation class
          * @param rowClass current row implementation
-         * @param rowGen actual row defintion to be decoded
+         * @param rowGen actual row definition to be decoded
          * @param decoder performs full decoding of the value columns
          */
         DecodeVisitor(MethodMaker mm, int schemaVersion,
