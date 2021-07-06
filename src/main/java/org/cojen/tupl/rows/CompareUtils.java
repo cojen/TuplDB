@@ -196,7 +196,7 @@ class CompareUtils {
                 signMismatch(colVar, argVar, op, pass, fail);
             }
         } else {
-            // If floating point, must perform raw comparison for finding NaN. Note that the
+            // If floating point, must perform bits comparison for finding NaN. Note that the
             // "raw" bits form isn't used, and thus all NaN forms can be found. This is
             // consistent with the Float.equals method.
             // FIXME: When searching against a floating point key, must use a range for
