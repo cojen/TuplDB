@@ -588,7 +588,8 @@ public class RowUtils extends Utils {
      * Flips all the bits.
      */
     public static void flip(byte[] b, int off, int len) {
-        for (int i=0; i<b.length; i++) {
+        int end = off + len;
+        for (int i=off; i<end; i++) {
             b[i] = (byte) ~b[i];
         }
     }
