@@ -53,9 +53,6 @@ class NullableStringColumnCodec extends NonNullStringColumnCodec {
 
         var rowUtils = mMaker.var(RowUtils.class);
 
-        // Length prefix will be needed by the encode method.
-        mLengthVar = mMaker.var(int.class);
-
         Variable strLengthVar = mMaker.var(int.class);
         Label notNull = mMaker.label();
         srcVar.ifNe(null, notNull);
@@ -85,16 +82,7 @@ class NullableStringColumnCodec extends NonNullStringColumnCodec {
                                 Variable lengthVar, Variable isNullVar)
     {
         super.decodeHeader(srcVar, offsetVar, endVar, lengthVar, null);
-        // Actual length is encoded plus one, and zero means null.
-        Label notNull = mMaker.label();
-        lengthVar.ifNe(0, notNull);
-        isNullVar.set(true);
-        Label cont = mMaker.label();
-        mMaker.goto_(cont);
-        notNull.here();
-        isNullVar.set(false);
-        lengthVar.inc(-1);
-        cont.here();
+        decodeNullableLength(lengthVar, isNullVar);
     }
 
     @Override

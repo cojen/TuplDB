@@ -182,8 +182,11 @@ public class ColumnInfo implements Cloneable {
      * Assigns the type by examining the typeCode.
      */
     void assignType() {
-        final Class<?> plainType = isNullable() ? boxedType() : unboxedType();
-        this.type = isArray() ? plainType.arrayType() : plainType;
+        if (!isArray()) {
+            this.type = isNullable() ? boxedType() : unboxedType();
+        } else {
+            this.type = unboxedType().arrayType();
+        }
     }
 
     /**

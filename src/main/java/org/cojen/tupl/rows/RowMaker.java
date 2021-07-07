@@ -291,14 +291,22 @@ public class RowMaker {
         bob.invoke("append", info.name).invoke("append", '=');
         Variable value = rowObject.field(info.name);
 
-        unsigned: {
-            switch (info.typeCode) {
-            default: break unsigned;
-            case TYPE_UBYTE: value = value.cast(int.class).and(0xff); break;
-            case TYPE_USHORT: value = value.cast(int.class).and(0xffff); break;
-            case TYPE_UINT: case TYPE_ULONG: break;
+        if (info.isArray()) {
+            if (!info.isUnsignedInteger()) {
+                value = mm.var(Arrays.class).invoke("toString", value);
+            } else {
+                value = mm.var(PrimitiveArrayUtils.class).invoke("toUnsignedString", value);
             }
-            value = value.invoke("toUnsignedString", value);
+        } else {
+            unsigned: {
+                switch (info.typeCode) {
+                default: break unsigned;
+                case TYPE_UBYTE: value = value.cast(int.class).and(0xff); break;
+                case TYPE_USHORT: value = value.cast(int.class).and(0xffff); break;
+                case TYPE_UINT: case TYPE_ULONG: break;
+                }
+                value = value.invoke("toUnsignedString", value);
+            }
         }
 
         bob.invoke("append", value);

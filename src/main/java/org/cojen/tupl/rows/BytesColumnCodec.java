@@ -110,6 +110,25 @@ abstract class BytesColumnCodec extends ColumnCodec {
     protected abstract void decodeHeader(Variable srcVar, Variable offsetVar, Variable endVar,
                                          Variable lengthVar, Variable isNullVar);
 
+    /**
+     * Called by implementations of decodeHeader which add one to the length for encoding null.
+     *
+     * @param lengthVar already decoded but not yet adjusted
+     * @param isNullVar is definitely assigned
+     */
+    protected void decodeNullableLength(Variable lengthVar, Variable isNullVar) {
+        // Actual length is encoded plus one, and zero means null.
+        Label notNull = mMaker.label();
+        lengthVar.ifNe(0, notNull);
+        isNullVar.set(true);
+        Label cont = mMaker.label();
+        mMaker.goto_(cont);
+        notNull.here();
+        isNullVar.set(false);
+        lengthVar.inc(-1);
+        cont.here();
+    }
+
     @Override
     void filterQuickCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar,
                             int op, Object decoded, Variable argObjVar, int argNum,

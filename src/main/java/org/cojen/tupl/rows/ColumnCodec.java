@@ -83,11 +83,30 @@ abstract class ColumnCodec {
         int typeCode = info.typeCode;
 
         if (isArray(typeCode)) {
-            // FIXME: Remember to consider last slot. Remember to optimize byte[]. If key is
-            // just one byte array, return a clone. Note that the optimization isn't possible
-            // for nullable primitive arrays. For signed arrays, the highest bit needs to be
-            // flipped.
-            throw null;
+            if (!ColumnInfo.isPrimitive(plainTypeCode(typeCode))) {
+                // FIXME: Check this sooner and throw a better exception.
+                throw null;
+            }
+        
+            // FIXME: If full key is just a non-null, non-descending, unsigned byte[], it might
+            // be optimizable.
+
+            if (isLast && !info.isDescending()) {
+                // Note that with descending order, key format is still required. Otherwise,
+                // two arrays which share a common prefix would be ordered wrong, even when all
+                // the bits are flipped.
+                if (info.isNullable()) {
+                    return new NullableLastPrimtiveArrayColumnCodec(info, null, forKey);
+                } else {
+                    return new NonNullLastPrimitiveArrayColumnCodec(info, null, forKey);
+                }
+            } else if (forKey) {
+                return new KeyPrimitiveArrayColumnCodec(info, null);
+            } else if (info.isNullable()) {
+                return new NullablePrimitiveArrayColumnCodec(info, null);
+            } else {
+                return new NonNullPrimitiveArrayColumnCodec(info, null);
+            }
         }
 
         typeCode = plainTypeCode(typeCode);

@@ -17,7 +17,6 @@
 
 package org.cojen.tupl.rows;
 
-import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
@@ -36,7 +35,7 @@ abstract class StringColumnCodec extends BytesColumnCodec {
     }
 
     @Override
-    protected Variable filterPrepareBytes(Variable strVar) {
-        return mMaker.var(RowUtils.class).invoke("encodeStringUTF", strVar);
+    protected Variable filterPrepareBytes(Variable argVar) {
+        return mMaker.var(RowUtils.class).invoke("encodeStringUTF", argVar);
     }
 }
