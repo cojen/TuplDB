@@ -78,8 +78,9 @@ class GhostFrame extends CursorFrame {
 
             if (node == null) {
                 // Will need to delete the slow way.
-            } else if (!db.isMutable(node)) {
-                // Node cannot be dirtied without a full cursor, so delete the slow way.
+            } else if (!db.isMutable(node) || !node.canQuickDeleteGhost()) {
+                // Node cannot be dirtied, or quick delete shouldn't be performed. In either
+                // case, a full cursor is required, so delete the slow way.
                 CursorFrame.popAll(this);
                 node.releaseExclusive();
             } else {

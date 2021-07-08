@@ -5,6 +5,8 @@ v1.5.1
 ------
 * Add more utilities for decoding short integers and unsigned integers.
 * Ignore interrupts during critical operations, prevening database panics.
+* Prune empty nodes when deleting ghost entries. If this isn't done, then an index whose
+  entries have been fully deleted can claim to be non-empty.
 
 v1.5.0.1 (2021-06-08)
 --------

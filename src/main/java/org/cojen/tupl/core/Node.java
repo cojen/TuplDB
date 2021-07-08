@@ -1275,6 +1275,18 @@ final class Node extends Clutch implements DatabaseAccess {
     }
 
     /**
+     * Determines if deleting an entry would cause this non-root leaf node to become empty. If
+     * so, then caller should delete the ghost using a cursor, which can then delete this node.
+     */
+    boolean canQuickDeleteGhost() {
+        // If both extremity bits are set, then this is a root node and it can become empty.
+        // Otherwise, check if the node has more than one entry in it. After the delete, the
+        // node will have one entry remaining.
+        return type() == (TYPE_TN_LEAF | LOW_EXTREMITY | HIGH_EXTREMITY) ||
+            searchVecEnd() > searchVecStart();
+    }
+
+    /**
      * @return 2-based insertion pos, which is negative if key not found
      */
     int binarySearch(byte[] key) throws IOException {
