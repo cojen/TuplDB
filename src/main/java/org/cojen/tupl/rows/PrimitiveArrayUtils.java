@@ -259,13 +259,11 @@ public class PrimitiveArrayUtils extends RowUtils {
     }
 
     /**
-     * Encode an array into the destination byte array, in big-endian format, with bit flips.
+     * Encode an array into the destination byte array, in big-endian format. No bit flips are
+     * performed because char type is unsigned.
      */
     public static void encodeArrayKey(byte[] dst, int offset, char[] a) {
-        for (char v : a) {
-            cShortArrayBEHandle.set(dst, offset, (short) (v ^ (1 << 15)));
-            offset += 2;
-        }
+        encodeArrayBE(dst, offset, a);
     }
 
     /**
@@ -475,15 +473,11 @@ public class PrimitiveArrayUtils extends RowUtils {
     }
 
     /**
-     * Decode a char array from the source byte array, in big-endian format, with bit flips.
+     * Decode a char array from the source byte array, in big-endian format. No bit flips are
+     * performed because char type is unsigned.
      */
     public static char[] decodeCharArrayKey(byte[] src, int offset, int length) {
-        var a = new char[length >> 1];
-        int end = offset + length;
-        for (int i=0; offset < end; offset += 2) {
-            a[i++] = (char) (((short) (cShortArrayBEHandle.get(src, offset))) ^ (1 << 15));
-        }
-        return a;
+        return decodeCharArrayBE(src, offset, length);
     }
 
     /**
@@ -493,46 +487,6 @@ public class PrimitiveArrayUtils extends RowUtils {
         int end = off + len;
         for (int i=off; i<end; i++) {
             a[i] = (byte) (a[i] ^ (1 << 7));
-        }
-    }
-
-    /**
-     * Flip the high bit for all elements of an array slice.
-     */
-    public static void signFlip(short[] a, int off, int len) {
-        int end = off + len;
-        for (int i=off; i<end; i++) {
-            a[i] = (short) (a[i] ^ (1 << 15));
-        }
-    }
-
-    /**
-     * Flip the high bit for all elements of an array slice.
-     */
-    public static void signFlip(int[] a, int off, int len) {
-        int end = off + len;
-        for (int i=off; i<end; i++) {
-            a[i] = a[i] ^ (1 << 31);
-        }
-    }
-
-    /**
-     * Flip the high bit for all elements of an array slice.
-     */
-    public static void signFlip(long[] a, int off, int len) {
-        int end = off + len;
-        for (int i=off; i<end; i++) {
-            a[i] = a[i] ^ (1L << 63);
-        }
-    }
-
-    /**
-     * Flip the high bit for all elements of an array slice.
-     */
-    public static void signFlip(char[] a, int off, int len) {
-        int end = off + len;
-        for (int i=off; i<end; i++) {
-            a[i] = (char) (a[i] ^ (1 << 15));
         }
     }
 

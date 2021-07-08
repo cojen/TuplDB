@@ -290,7 +290,9 @@ public class FuzzTest {
                 bob.append(" && ");
             }
             Column c = columns[i];
-            if (c.type.clazz == boolean.class || c.type.clazz == Boolean.class) {
+            if (c.type.clazz == boolean.class || c.type.clazz == Boolean.class ||
+                c.type.clazz == boolean[].class)
+            {
                 bob.append(c.name).append(" == ?").append(i);
             } else {
                 bob.append(c.name).append(" >= ?").append(i).append(" && ");
@@ -402,6 +404,8 @@ public class FuzzTest {
                     throw RowUtils.rethrow(e);
                 }
 
+                Class<?> aClass;
+
                 int result;
                 if (a == null) {
                     if (b == null) {
@@ -411,6 +415,24 @@ public class FuzzTest {
                     }
                 } else if (b == null) {
                     result = -1;
+                } else if ((aClass = a.getClass()).isArray()) {
+                    if (aClass == byte[].class) {
+                        result = Arrays.compare((byte[]) a, (byte[]) b);
+                    } else if (aClass == short[].class) {
+                        result = Arrays.compare((short[]) a, (short[]) b);
+                    } else if (aClass == char[].class) {
+                        result = Arrays.compare((char[]) a, (char[]) b);
+                    } else if (aClass == int[].class) {
+                        result = Arrays.compare((int[]) a, (int[]) b);
+                    } else if (aClass == long[].class) {
+                        result = Arrays.compare((long[]) a, (long[]) b);
+                    } else if (aClass == float[].class) {
+                        result = Arrays.compare((float[]) a, (float[]) b);
+                    } else if (aClass == double[].class) {
+                        result = Arrays.compare((double[]) a, (double[]) b);
+                    } else {
+                        result = Arrays.compare((boolean[]) a, (boolean[]) b);
+                    }
                 } else {
                     result = ((Comparable) a).compareTo((Comparable) b);
                     if (result == 0 && a instanceof BigDecimal && !a.equals(b)) {
@@ -449,7 +471,7 @@ public class FuzzTest {
     }
 
     static Type randomType(Random rnd) {
-        int code = rnd.nextInt(19);
+        int code = rnd.nextInt(27);
 
         final Class clazz;
 
@@ -474,6 +496,14 @@ public class FuzzTest {
         case 16: clazz = String.class; break;
         case 17: clazz = BigInteger.class; break;
         case 18: clazz = BigDecimal.class; break;
+        case 19: clazz = byte[].class; break;
+        case 20: clazz = short[].class; break;
+        case 21: clazz = char[].class; break;
+        case 22: clazz = int[].class; break;
+        case 23: clazz = long[].class; break;
+        case 24: clazz = float[].class; break;
+        case 25: clazz = double[].class; break;
+        case 26: clazz = boolean[].class; break;
         }
 
         boolean nullable;
@@ -523,6 +553,69 @@ public class FuzzTest {
 
             case 17: return RowTestUtils.randomBigInteger(rnd);
             case 18: return RowTestUtils.randomBigDecimal(rnd);
+
+            case 19: {
+                var bytes = new byte[rnd.nextInt(20)];
+                rnd.nextBytes(bytes);
+                return bytes;
+            }
+
+            case 20: {
+                var a = new short[rnd.nextInt(20)];
+                for (int i=0; i<a.length; i++) {
+                    a[i] = (short) rnd.nextInt();
+                }
+                return a;
+            }
+
+            case 21: {
+                var a = new char[rnd.nextInt(20)];
+                for (int i=0; i<a.length; i++) {
+                    a[i] = (char) rnd.nextInt();
+                }
+                return a;
+            }
+
+            case 22: {
+                var a = new int[rnd.nextInt(20)];
+                for (int i=0; i<a.length; i++) {
+                    a[i] = rnd.nextInt();
+                }
+                return a;
+            }
+
+            case 23: {
+                var a = new long[rnd.nextInt(20)];
+                for (int i=0; i<a.length; i++) {
+                    a[i] = rnd.nextLong();
+                }
+                return a;
+            }
+
+            case 24: {
+                var a = new float[rnd.nextInt(20)];
+                for (int i=0; i<a.length; i++) {
+                    a[i] = rnd.nextFloat();
+                }
+                return a;
+            }
+
+            case 25: {
+                var a = new double[rnd.nextInt(20)];
+                for (int i=0; i<a.length; i++) {
+                    a[i] = rnd.nextDouble();
+                }
+                return a;
+            }
+
+            case 26: {
+                var a = new boolean[rnd.nextInt(20)];
+                for (int i=0; i<a.length; i++) {
+                    a[i] = rnd.nextBoolean();
+                }
+                return a;
+            }
+
             }
         }
 

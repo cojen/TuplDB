@@ -72,7 +72,7 @@ public class Converter {
         }
 
         if (dstInfo.isArray() || srcInfo.isArray()) {
-            // TODO: Need this when arrays are supported.
+            // FIXME: Support array conversion.
             throw new UnsupportedOperationException();
         }
 
