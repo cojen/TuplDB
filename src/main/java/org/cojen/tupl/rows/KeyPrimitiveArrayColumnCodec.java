@@ -111,7 +111,6 @@ class KeyPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
         var arrayVar = rowUtils.invoke(methodName, srcVar, offsetVar, lengthVar);
         offsetVar.inc(lengthVar);
 
-
         int plain = mInfo.plainTypeCode();
         if (plain == ColumnInfo.TYPE_BYTE) {
             // No need to make an extra copy since the new instance isn't shared by anything.
@@ -145,7 +144,8 @@ class KeyPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
 
     @Override
     void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
-        offsetVar.inc(mMaker.var(RowUtils.class).invoke("lengthBytes32K", srcVar, offsetVar));
+        var utilsVar = mMaker.var(PrimitiveArrayUtils.class);
+        offsetVar.inc(utilsVar.invoke("lengthBytes32K", srcVar, offsetVar));
     }
 
     @Override

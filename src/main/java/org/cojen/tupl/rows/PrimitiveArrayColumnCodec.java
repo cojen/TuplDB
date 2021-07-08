@@ -120,7 +120,7 @@ abstract class PrimitiveArrayColumnCodec extends BytesColumnCodec {
             valueVar = mMaker.new_(byte[].class, length);
             mMaker.var(System.class).invoke("arraycopy", srcVar, offset, valueVar, 0, length);
             if (mForKey && !mInfo.isUnsigned()) {
-                utilsVar.invoke("signFlip", dstVar, 0, dstVar.alength());
+                utilsVar.invoke("signFlip", valueVar, 0, length);
             }
         } else {
             String method;
