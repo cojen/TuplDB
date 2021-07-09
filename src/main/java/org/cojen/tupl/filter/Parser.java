@@ -268,11 +268,8 @@ public class Parser {
                 throw error("Argument number or '?' expected");
             }
 
-            checkColumnOperator(startPos, column, op);
-
             int startPos2 = mPos;
             ColumnInfo match = parseColumn();
-            checkColumnOperator(startPos2, match, op);
 
             ColumnInfo common = ConvertUtils.commonType(column, match, op);
 
@@ -288,7 +285,6 @@ public class Parser {
         Boolean in;
 
         if (op < ColumnFilter.OP_IN) {
-            checkColumnOperator(startPos, column, op);
             filter = new ColumnToArgFilter(column, op, arg);
             in = Boolean.FALSE;
         } else {
@@ -360,12 +356,6 @@ public class Parser {
         }
 
         return column;
-    }
-
-    private void checkColumnOperator(int pos, ColumnInfo column, int op) {
-        if (!ColumnFilter.isExact(op) && column.plainTypeCode() == ColumnInfo.TYPE_BOOLEAN) {
-            throw error("Cannot perform relational comparison against a boolean column", pos);
-        }
     }
 
     /**

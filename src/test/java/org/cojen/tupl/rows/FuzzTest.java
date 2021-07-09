@@ -290,14 +290,8 @@ public class FuzzTest {
                 bob.append(" && ");
             }
             Column c = columns[i];
-            if (c.type.clazz == boolean.class || c.type.clazz == Boolean.class ||
-                c.type.clazz == boolean[].class)
-            {
-                bob.append(c.name).append(" == ?").append(i);
-            } else {
-                bob.append(c.name).append(" >= ?").append(i).append(" && ");
-                bob.append(c.name).append(" <= ?").append(i);
-            }
+            bob.append(c.name).append(" >= ?").append(i).append(" && ");
+            bob.append(c.name).append(" <= ?").append(i);
         }
         return bob.toString();
     }
