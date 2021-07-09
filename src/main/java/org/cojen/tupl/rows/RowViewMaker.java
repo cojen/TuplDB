@@ -562,7 +562,7 @@ public class RowViewMaker {
                 if (schemaVersion == 0) {
                     // No columns to decode, so assign defaults.
                     for (Map.Entry<String, ColumnInfo> e : dstRowInfo.valueColumns.entrySet()) {
-                        Converter.setDefault(e.getValue(), mm.param(0).field(e.getKey()));
+                        Converter.setDefault(mm, e.getValue(), mm.param(0).field(e.getKey()));
                     }
                 } else {
                     RowInfo srcRowInfo;
@@ -587,7 +587,8 @@ public class RowViewMaker {
                         for (Map.Entry<String, ColumnInfo> e : dstRowInfo.valueColumns.entrySet()) {
                             String fieldName = e.getKey();
                             if (!srcRowInfo.valueColumns.containsKey(fieldName)) {
-                                Converter.setDefault(e.getValue(), mm.param(0).field(fieldName));
+                                Converter.setDefault
+                                    (mm, e.getValue(), mm.param(0).field(fieldName));
                             }
                         }
                     }

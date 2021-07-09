@@ -439,7 +439,7 @@ public class RowFilterMaker<R> {
                 // original argument, possibly converted to the correct type.
                 var argField = argObjVar.field(ColumnCodec.argFieldName(colInfo, argNum));
                 var columnVar = mMaker.var(colInfo.type);
-                Converter.setDefault(colInfo, columnVar);
+                Converter.setDefault(mMaker, colInfo, columnVar);
                 CompareUtils.compare(mMaker, colInfo, columnVar,
                                      colInfo, argField, op, mPass, mFail);
             }
@@ -486,7 +486,7 @@ public class RowFilterMaker<R> {
                 return decodeColumn(colNum, colInfo, false).mDecodedVar;
             } else {
                 var colVar = mMaker.var(colInfo.type);
-                Converter.setDefault(colInfo, colVar);
+                Converter.setDefault(mMaker, colInfo, colVar);
                 return colVar;
             }
         }

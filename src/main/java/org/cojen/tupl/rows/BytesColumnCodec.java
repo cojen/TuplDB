@@ -141,7 +141,7 @@ abstract class BytesColumnCodec extends ColumnCodec {
             Variable isNullVar = decodedVars[2];
             isNullVar.ifFalse(cont);
             var columnVar = mMaker.var(dstInfo.type);
-            Converter.setDefault(dstInfo, columnVar);
+            Converter.setDefault(mMaker, dstInfo, columnVar);
             var argField = argObjVar.field(argFieldName(argNum));
             CompareUtils.compare(mMaker, dstInfo, columnVar, dstInfo, argField, op, pass, fail);
             cont.here();

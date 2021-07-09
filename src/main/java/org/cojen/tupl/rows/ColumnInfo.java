@@ -292,6 +292,22 @@ public class ColumnInfo implements Cloneable {
         }
     }
 
+    ColumnInfo nonArray() {
+        var info = new ColumnInfo();
+        info.name = name;
+
+        // Array elements aren't nullable.
+        info.typeCode = typeCode & ~(TYPE_ARRAY | TYPE_NULLABLE);
+
+        if (type == null) {
+            info.assignType();
+        } else {
+            info.type = type.componentType();
+        }
+
+        return info;
+    }
+
     @Override
     public int hashCode() {
         return name.hashCode() * 31 + typeCode;

@@ -71,11 +71,6 @@ public class Converter {
             return;
         }
 
-        if (dstInfo.isArray() || srcInfo.isArray()) {
-            // FIXME: Support array conversion.
-            throw new UnsupportedOperationException();
-        }
-
         Label end = mm.label();
 
         if (srcInfo.isNullable()) {
@@ -84,13 +79,74 @@ public class Converter {
             if (dstInfo.isNullable()) {
                 dstVar.set(null);
             } else {
-                setDefault(dstInfo, dstVar);
+                setDefault(mm, dstInfo, dstVar);
             }
             mm.goto_(end);
             notNull.here();
         }
 
         // Note: At this point, srcVar isn't null.
+
+        if (dstInfo.isArray()) {
+            ColumnInfo dstElementInfo = dstInfo.nonArray();
+
+            if (srcInfo.isArray()) {
+                // Array to array conversion.
+
+                ColumnInfo srcElementInfo = srcInfo.nonArray();
+
+                dstVar.set(ConvertUtils.convertArray
+                           (mm, dstVar.classType(), srcVar.alength(), ixVar -> {
+                               Variable dstElementVar = mm.var(dstElementInfo.type);
+                               convertLossy(mm, srcElementInfo, srcVar.aget(ixVar),
+                                            dstElementInfo, dstElementVar);
+                               return dstElementVar;
+                           }));
+
+            } else {
+                // Non-array to array conversion.
+
+                if (srcInfo.plainTypeCode() == TYPE_UTF8 &&
+                    dstElementInfo.plainTypeCode() == TYPE_CHAR)
+                {
+                    // Special case for String to char[]. Extract all the characters.
+                    var lengthVar = srcVar.invoke("length");
+                    dstVar.set(mm.new_(dstVar, lengthVar));
+                    srcVar.invoke("getChars", 0, lengthVar, dstVar, 0);
+                } else {
+                    var dstElementVar = mm.var(dstElementInfo.type);
+                    convertLossy(mm, srcInfo, srcVar, dstElementInfo, dstElementVar);
+                    dstVar.set(mm.new_(dstVar, 1));
+                    dstVar.aset(0, dstElementVar);
+                }
+            }
+
+            end.here();
+            return;
+        }
+
+        if (srcInfo.isArray()) {
+            // Array to non-array conversion.
+
+            ColumnInfo srcElementInfo = srcInfo.nonArray();
+
+            if (srcElementInfo.plainTypeCode() == TYPE_CHAR &&
+                dstInfo.plainTypeCode() == TYPE_UTF8)
+            {
+                // Special case for char[] to String. Copy all the characters.
+                dstVar.set(mm.var(String.class).invoke("valueOf", srcVar));
+            } else {
+                Label notEmpty = mm.label();
+                srcVar.alength().ifNe(0, notEmpty);
+                setDefault(mm, dstInfo, dstVar);
+                mm.goto_(end);
+                notEmpty.here();
+                convertLossy(mm, srcElementInfo, srcVar.aget(0), dstInfo, dstVar);
+            }
+
+            end.here();
+            return;
+        }
 
         int srcPlainTypeCode = srcInfo.plainTypeCode();
 
@@ -581,7 +637,7 @@ public class Converter {
             case TYPE_UTF8: {
                 Label L1 = mm.label();
                 srcVar.invoke("isEmpty").ifFalse(L1);
-                setDefault(dstInfo, dstVar);
+                setDefault(mm, dstInfo, dstVar);
                 Label cont = mm.label();
                 mm.goto_(cont);
                 L1.here();
@@ -647,7 +703,7 @@ public class Converter {
                 dstVar.set(mm.var(BigDecimal.class).invoke("valueOf", srcVar)
                            .invoke("toBigInteger"));
                 mm.catch_(tryStart, NumberFormatException.class, exVar -> {
-                    setDefault(dstInfo, dstVar);
+                    setDefault(mm, dstInfo, dstVar);
                     mm.goto_(end);
                 });
                 break;
@@ -676,7 +732,7 @@ public class Converter {
                 Label tryStart = mm.label().here();
                 dstVar.set(bd.invoke("valueOf", srcVar));
                 mm.catch_(tryStart, NumberFormatException.class, exVar -> {
-                    setDefault(dstInfo, dstVar);
+                    setDefault(mm, dstInfo, dstVar);
                     mm.goto_(end);
                 });
                 break;
@@ -708,7 +764,7 @@ public class Converter {
         }
 
         if (!handled) {
-            setDefault(dstInfo, dstVar);
+            setDefault(mm, dstInfo, dstVar);
         }
 
         end.here();
@@ -717,9 +773,11 @@ public class Converter {
     /**
      * Assigns a default value to the variable: null, 0, false, etc.
      */
-    static void setDefault(ColumnInfo dstInfo, Variable dstVar) {
+    static void setDefault(MethodMaker mm, ColumnInfo dstInfo, Variable dstVar) {
         if (dstInfo.isNullable()) {
             dstVar.set(null);
+        } else if (dstInfo.isArray()) {
+            dstVar.set(mm.new_(dstVar.classType(), 0));
         } else {
             switch (dstInfo.plainTypeCode()) {
             case TYPE_BOOLEAN:
@@ -757,7 +815,7 @@ public class Converter {
     {
         Label tryStart = mm.label().here();
         dstVar.set(dstVar.invoke(method, srcVar));
-        mm.catch_(tryStart, NumberFormatException.class, ex -> setDefault(dstInfo, dstVar));
+        mm.catch_(tryStart, NumberFormatException.class, ex -> setDefault(mm, dstInfo, dstVar));
     }
 
     /**
@@ -1096,7 +1154,7 @@ public class Converter {
             bd = null;
         }
         mm.catch_(tryStart, NumberFormatException.class, exVar -> {
-            setDefault(dstInfo, dstVar);
+            setDefault(mm, dstInfo, dstVar);
             mm.goto_(end);
         });
         return bd;

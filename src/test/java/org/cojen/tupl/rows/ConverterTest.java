@@ -477,4 +477,82 @@ public class ConverterTest {
         assertEquals(-1L, Converter.doubleToUnsignedLong(10.0 / 0.0));
         assertEquals(0L, Converter.doubleToUnsignedLong(0.0 / 0.0));
     }
+
+    @Test
+    public void arrays() throws Throwable {
+        // Array to array.
+        {
+            ColumnInfo srcInfo = arrayType(TYPE_LONG, true); // nullable
+            ColumnInfo dstInfo = arrayType(TYPE_INT, false); // not nullable
+
+            MethodHandle mh = make(srcInfo, dstInfo);
+
+            var result = (int[]) mh.invokeExact(new long[] {100, -1, 10_000_000_000L});
+            assertArrayEquals(new int[] {100, -1, Integer.MAX_VALUE}, result);
+
+            result = (int[]) mh.invokeExact((long[]) null);
+            assertEquals(0, result.length);
+        }
+
+        // Non-array to array.
+        {
+            ColumnInfo srcInfo = basicType(TYPE_INT, false);
+            ColumnInfo dstInfo = arrayType(TYPE_UTF8, false);
+
+            MethodHandle mh = make(srcInfo, dstInfo);
+
+            var result = (String[]) mh.invokeExact(100);
+            assertArrayEquals(new String[] {"100"}, result);
+        }
+
+        // String to char[].
+        {
+            ColumnInfo srcInfo = basicType(TYPE_UTF8, false);
+            ColumnInfo dstInfo = arrayType(TYPE_CHAR, false);
+
+            MethodHandle mh = make(srcInfo, dstInfo);
+
+            var result = (char[]) mh.invokeExact("hello");
+            assertArrayEquals(new char[] {'h', 'e', 'l', 'l', 'o'}, result);
+        }
+
+        // Array to non-array.
+        {
+            ColumnInfo srcInfo = arrayType(TYPE_DOUBLE, false);
+            ColumnInfo dstInfo = basicType(TYPE_INT, false);
+
+            MethodHandle mh = make(srcInfo, dstInfo);
+
+            var result = (int) mh.invokeExact(new double[] {10.1, 2.2});
+            assertEquals(10, result);
+
+            result = (int) mh.invokeExact(new double[] {});
+            assertEquals(0, result);
+        }
+
+        // char[] to String.
+        {
+            ColumnInfo srcInfo = arrayType(TYPE_CHAR, false);
+            ColumnInfo dstInfo = basicType(TYPE_UTF8, false);
+
+            MethodHandle mh = make(srcInfo, dstInfo);
+
+            var result = (String) mh.invokeExact(new char[] {'h', 'e', 'l', 'l', 'o'});
+            assertEquals("hello", result);
+        }
+    }
+
+    private static ColumnInfo basicType(int typeCode, boolean nullable) {
+        var info = new ColumnInfo();
+        if (nullable) {
+            typeCode |= TYPE_NULLABLE;
+        }
+        info.typeCode = typeCode;
+        info.assignType();
+        return info;
+    }
+
+    private static ColumnInfo arrayType(int typeCode, boolean nullable) {
+        return basicType(typeCode | TYPE_ARRAY, nullable);
+    }
 }
