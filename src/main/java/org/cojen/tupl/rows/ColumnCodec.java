@@ -88,9 +88,6 @@ abstract class ColumnCodec {
                 throw null;
             }
         
-            // FIXME: If full key is just a non-null, non-descending, unsigned byte[], it might
-            // be optimizable.
-
             if (isLast && !info.isDescending()) {
                 // Note that with descending order, key format is still required. Otherwise,
                 // two arrays which share a common prefix would be ordered wrong, even when all
