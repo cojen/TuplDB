@@ -73,19 +73,20 @@ class RowInfo extends ColumnSet {
      * @throws IllegalArgumentException if row type is malformed
      */
     private static RowInfo examine(Class<?> rowType) {
+        var messages = new LinkedHashSet<String>(1);
+
         if (!rowType.isInterface()) {
-            throw new IllegalArgumentException("Row type must be an interface");
+            messages.add("Must be an interface");
+            errorCheck(rowType, messages);
         }
 
         var info = new RowInfo(rowType.getName());
 
-        var messages = new LinkedHashSet<String>(1);
-
         info.examineAllColumns(rowType, messages);
-        errorCheck(messages);
+        errorCheck(rowType, messages);
 
         info.examinePrimaryKey(rowType, messages);
-        errorCheck(messages);
+        errorCheck(rowType, messages);
 
         AlternateKey altKey = rowType.getAnnotation(AlternateKey.class);
         AlternateKey.Set altKeySet = rowType.getAnnotation(AlternateKey.Set.class);
@@ -121,7 +122,7 @@ class RowInfo extends ColumnSet {
             }
         }
 
-        errorCheck(messages);
+        errorCheck(rowType, messages);
 
         info.alternateKeys = info.finishIndexSet(info.alternateKeys);
         info.secondaryIndexes = info.finishIndexSet(info.secondaryIndexes);
@@ -185,10 +186,18 @@ class RowInfo extends ColumnSet {
             ", alternateKeys: " + alternateKeys + ", secondaryIndexes: " + secondaryIndexes;
     }
 
-    private static void errorCheck(Set<String> messages) {
+    private static void errorCheck(Class<?> rowType, Set<String> messages) {
         if (!messages.isEmpty()) {
-            // FIXME: better formatting, etc
-            throw new IllegalArgumentException(messages.toString());
+            var bob = new StringBuilder();
+            bob.append("Row type \"").append(rowType.getSimpleName()).append("\" is malformed: ");
+            final int length = bob.length();
+            for (String message : messages) {
+                if (bob.length() > length) {
+                    bob.append("; ");
+                }
+                bob.append(message);
+            }
+            throw new IllegalArgumentException(bob.toString());
         }
     }
 
@@ -329,7 +338,7 @@ class RowInfo extends ColumnSet {
             Class<?> subType = type.getComponentType();
             if (!subType.isArray()) {
                 int typeCode = selectTypeCode(null, name, subType);
-                if (typeCode != -1) {
+                if (typeCode != -1 && isPrimitive(typeCode)) {
                     return typeCode | TYPE_ARRAY;
                 }
             }
@@ -358,7 +367,7 @@ class RowInfo extends ColumnSet {
         }
 
         if (messages != null) {
-            messages.add("Unsupported column type for column: " + name + "; type: " + type);
+            messages.add("Unsupported type for column \"" + name + "\": " + type.getSimpleName());
         }
 
         return -1;

@@ -84,8 +84,8 @@ abstract class ColumnCodec {
 
         if (isArray(typeCode)) {
             if (!ColumnInfo.isPrimitive(plainTypeCode(typeCode))) {
-                // FIXME: Check this sooner and throw a better exception.
-                throw null;
+                // Should have already been checked in RowInfo.examine.
+                throw new AssertionError();
             }
         
             if (isLast && !info.isDescending()) {
@@ -299,6 +299,7 @@ abstract class ColumnCodec {
         if (in) {
             // FIXME: Sort and use binary search if large enough. Be sure to clone array if it
             // wasn't converted.
+            // FIXME: Support other types of 'in' arguments: Predicate, IntPredicate, etc.
             argType = argType.arrayType();
         }
         argVar = ConvertCallSite.make(mMaker, argType, argVar);
