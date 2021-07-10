@@ -267,7 +267,7 @@ public class FuzzTest {
         Collections.shuffle(Arrays.asList(columns), rnd);
         var bob = new StringBuilder();
         for (int i=0; i<columns.length; i++) {
-            if (!bob.isEmpty()) {
+            if (bob.length() != 0) {
                 bob.append(" && ");
             }
             Column c = columns[i];
@@ -286,7 +286,7 @@ public class FuzzTest {
         Collections.shuffle(Arrays.asList(columns), rnd);
         var bob = new StringBuilder();
         for (int i=0; i<columns.length; i++) {
-            if (!bob.isEmpty()) {
+            if (bob.length() != 0) {
                 bob.append(" && ");
             }
             Column c = columns[i];
