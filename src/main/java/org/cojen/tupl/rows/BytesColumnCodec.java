@@ -75,6 +75,11 @@ abstract class BytesColumnCodec extends ColumnCodec {
      */
     protected abstract Variable filterPrepareBytes(Variable argVar);
 
+    /**
+     * Returns true if the prepared byte array is suitable for unsigned comparison.
+     */
+    protected abstract boolean compareBytesUnsigned();
+
     @Override
     boolean canFilterQuick(ColumnInfo dstInfo) {
         return dstInfo.plainTypeCode() == mInfo.plainTypeCode();
@@ -188,7 +193,7 @@ abstract class BytesColumnCodec extends ColumnCodec {
             isNullVar.ifTrue(CompareUtils.selectNullColumnToArg(op, pass, fail));
         }
 
-        CompareUtils.compareArrays(mMaker,
+        CompareUtils.compareArrays(mMaker, compareBytesUnsigned(),
                                    srcVar, dataOffsetVar, dataOffsetVar.add(lengthVar),
                                    argVar, 0, argVar.alength(),
                                    op, pass, fail);
@@ -221,13 +226,13 @@ abstract class BytesColumnCodec extends ColumnCodec {
 
         if (ColumnFilter.isIn(op)) {
             CompareUtils.compareIn(mMaker, argVar, op, pass, fail, (a, p, f) -> {
-                CompareUtils.compareArrays(mMaker,
+                    CompareUtils.compareArrays(mMaker, true,
                                            srcVar, offsetVar, endVar,
                                            a, 0, a.alength(),
                                            ColumnFilter.OP_EQ, p, f);
             });
         } else {
-            CompareUtils.compareArrays(mMaker,
+            CompareUtils.compareArrays(mMaker, true,
                                        srcVar, offsetVar, endVar,
                                        argVar, 0, argVar.alength(),
                                        op, pass, fail);

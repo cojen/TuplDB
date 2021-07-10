@@ -157,6 +157,11 @@ class KeyPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
     }
 
     @Override
+    protected boolean compareBytesUnsigned() {
+        return true;
+    }
+
+    @Override
     boolean canFilterQuick(ColumnInfo dstInfo) {
         return dstInfo.typeCode == mInfo.typeCode;
     }

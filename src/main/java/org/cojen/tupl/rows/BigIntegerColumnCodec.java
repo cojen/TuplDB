@@ -38,4 +38,9 @@ abstract class BigIntegerColumnCodec extends BytesColumnCodec {
     protected Variable filterPrepareBytes(Variable argVar) {
         return mMaker.var(RowUtils.class).invoke("encodeBigInteger", argVar);
     }
+
+    @Override
+    protected boolean compareBytesUnsigned() {
+        return false;
+    }
 }

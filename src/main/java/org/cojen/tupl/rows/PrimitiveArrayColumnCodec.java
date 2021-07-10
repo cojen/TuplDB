@@ -76,6 +76,11 @@ abstract class PrimitiveArrayColumnCodec extends BytesColumnCodec {
         return bytesVar;
     }
 
+    @Override
+    protected boolean compareBytesUnsigned() {
+        return mForKey && mInfo.isUnsigned();
+    }
+
     /**
      * Returns the number of bytes needed to encode the array.
      */

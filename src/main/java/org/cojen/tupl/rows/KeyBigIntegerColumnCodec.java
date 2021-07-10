@@ -143,6 +143,11 @@ class KeyBigIntegerColumnCodec extends BigIntegerColumnCodec {
     }
 
     @Override
+    protected boolean compareBytesUnsigned() {
+        return true;
+    }
+
+    @Override
     boolean canFilterQuick(ColumnInfo dstInfo) {
         return dstInfo.typeCode == mInfo.typeCode;
     }

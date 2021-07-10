@@ -38,4 +38,9 @@ abstract class StringColumnCodec extends BytesColumnCodec {
     protected Variable filterPrepareBytes(Variable argVar) {
         return mMaker.var(RowUtils.class).invoke("encodeStringUTF", argVar);
     }
+
+    @Override
+    protected boolean compareBytesUnsigned() {
+        return true;
+    }
 }

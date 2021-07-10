@@ -448,7 +448,7 @@ class CompareUtils {
      * @param pass branch here when comparison passes
      * @param fail branch here when comparison fails
      */
-    static void compareArrays(MethodMaker mm,
+    static void compareArrays(MethodMaker mm, boolean unsigned,
                               Object a, Object aFrom, Object aTo,
                               Object b, Object bFrom, Object bTo,
                               int op, Label pass, Label fail)
@@ -466,7 +466,11 @@ class CompareUtils {
             break;
         }
         default:
-            var resultVar = arraysVar.invoke("compare", a, aFrom, aTo, b, bFrom, bTo);
+            String method = "compare";
+            if (unsigned) {
+                method += "Unsigned";
+            }
+            var resultVar = arraysVar.invoke(method, a, aFrom, aTo, b, bFrom, bTo);
             switch (op) {
             case ColumnFilter.OP_LT: resultVar.ifLt(0, pass); break;
             case ColumnFilter.OP_GE: resultVar.ifGe(0, pass); break;
