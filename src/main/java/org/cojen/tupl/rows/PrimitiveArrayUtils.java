@@ -28,37 +28,22 @@ import java.nio.ByteOrder;
  * @author Brian S O'Neill
  */
 public class PrimitiveArrayUtils extends RowUtils {
-    private static final VarHandle cShortArrayLEHandle;
     private static final VarHandle cShortArrayBEHandle;
-    private static final VarHandle cIntArrayLEHandle;
     private static final VarHandle cIntArrayBEHandle;
-    private static final VarHandle cLongArrayLEHandle;
     private static final VarHandle cLongArrayBEHandle;
-    private static final VarHandle cFloatArrayLEHandle;
     private static final VarHandle cFloatArrayBEHandle;
-    private static final VarHandle cDoubleArrayLEHandle;
     private static final VarHandle cDoubleArrayBEHandle;
 
     static {
         try {
-            cShortArrayLEHandle = MethodHandles.byteArrayViewVarHandle
-                (short[].class, ByteOrder.LITTLE_ENDIAN);
             cShortArrayBEHandle = MethodHandles.byteArrayViewVarHandle
                 (short[].class, ByteOrder.BIG_ENDIAN);
-            cIntArrayLEHandle = MethodHandles.byteArrayViewVarHandle
-                (int[].class, ByteOrder.LITTLE_ENDIAN);
             cIntArrayBEHandle = MethodHandles.byteArrayViewVarHandle
                 (int[].class, ByteOrder.BIG_ENDIAN);
-            cLongArrayLEHandle = MethodHandles.byteArrayViewVarHandle
-                (long[].class, ByteOrder.LITTLE_ENDIAN);
             cLongArrayBEHandle = MethodHandles.byteArrayViewVarHandle
                 (long[].class, ByteOrder.BIG_ENDIAN);
-            cFloatArrayLEHandle = MethodHandles.byteArrayViewVarHandle
-                (float[].class, ByteOrder.LITTLE_ENDIAN);
             cFloatArrayBEHandle = MethodHandles.byteArrayViewVarHandle
                 (float[].class, ByteOrder.BIG_ENDIAN);
-            cDoubleArrayLEHandle = MethodHandles.byteArrayViewVarHandle
-                (double[].class, ByteOrder.LITTLE_ENDIAN);
             cDoubleArrayBEHandle = MethodHandles.byteArrayViewVarHandle
                 (double[].class, ByteOrder.BIG_ENDIAN);
         } catch (Throwable e) {
@@ -87,17 +72,6 @@ public class PrimitiveArrayUtils extends RowUtils {
         return a;
     }
 
-
-    /**
-     * Encode an array into the destination byte array, in little-endian format.
-     */
-    public static void encodeArrayLE(byte[] dst, int offset, short[] a) {
-        for (short v : a) {
-            cShortArrayLEHandle.set(dst, offset, v);
-            offset += 2;
-        }
-    }
-
     /**
      * Encode an array into the destination byte array, in big-endian format.
      */
@@ -115,16 +89,6 @@ public class PrimitiveArrayUtils extends RowUtils {
         for (short v : a) {
             cShortArrayBEHandle.set(dst, offset, (short) (v ^ (1 << 15)));
             offset += 2;
-        }
-    }
-
-    /**
-     * Encode an array into the destination byte array, in little-endian format.
-     */
-    public static void encodeArrayLE(byte[] dst, int offset, int[] a) {
-        for (int v : a) {
-            cIntArrayLEHandle.set(dst, offset, v);
-            offset += 4;
         }
     }
 
@@ -149,16 +113,6 @@ public class PrimitiveArrayUtils extends RowUtils {
     }
 
     /**
-     * Encode an array into the destination byte array, in little-endian format.
-     */
-    public static void encodeArrayLE(byte[] dst, int offset, long[] a) {
-        for (long v : a) {
-            cLongArrayLEHandle.set(dst, offset, v);
-            offset += 8;
-        }
-    }
-
-    /**
      * Encode an array into the destination byte array, in big-endian format.
      */
     public static void encodeArrayBE(byte[] dst, int offset, long[] a) {
@@ -175,16 +129,6 @@ public class PrimitiveArrayUtils extends RowUtils {
         for (long v : a) {
             cLongArrayBEHandle.set(dst, offset, v ^ (1L << 63));
             offset += 8;
-        }
-    }
-
-    /**
-     * Encode an array into the destination byte array, in little-endian format.
-     */
-    public static void encodeArrayLE(byte[] dst, int offset, float[] a) {
-        for (float v : a) {
-            cFloatArrayLEHandle.set(dst, offset, v);
-            offset += 4;
         }
     }
 
@@ -209,16 +153,6 @@ public class PrimitiveArrayUtils extends RowUtils {
     }
 
     /**
-     * Encode an array into the destination byte array, in little-endian format.
-     */
-    public static void encodeArrayLE(byte[] dst, int offset, double[] a) {
-        for (double v : a) {
-            cDoubleArrayLEHandle.set(dst, offset, v);
-            offset += 8;
-        }
-    }
-
-    /**
      * Encode an array into the destination byte array, in big-endian format.
      */
     public static void encodeArrayBE(byte[] dst, int offset, double[] a) {
@@ -235,16 +169,6 @@ public class PrimitiveArrayUtils extends RowUtils {
         for (double v : a) {
             cLongArrayBEHandle.set(dst, offset, encodeFloatSign(Double.doubleToRawLongBits(v)));
             offset += 8;
-        }
-    }
-
-    /**
-     * Encode an array into the destination byte array, in little-endian format.
-     */
-    public static void encodeArrayLE(byte[] dst, int offset, char[] a) {
-        for (char v : a) {
-            cShortArrayLEHandle.set(dst, offset, (short) v);
-            offset += 2;
         }
     }
 
@@ -267,18 +191,6 @@ public class PrimitiveArrayUtils extends RowUtils {
     }
 
     /**
-     * Decode a short array from the source byte array, in little-endian format.
-     */
-    public static short[] decodeShortArrayLE(byte[] src, int offset, int length) {
-        var a = new short[length >> 1];
-        int end = offset + length;
-        for (int i=0; offset < end; offset += 2) {
-            a[i++] = (short) cShortArrayLEHandle.get(src, offset);
-        }
-        return a;
-    }
-
-    /**
      * Decode a short array from the source byte array, in big-endian format.
      */
     public static short[] decodeShortArrayBE(byte[] src, int offset, int length) {
@@ -298,18 +210,6 @@ public class PrimitiveArrayUtils extends RowUtils {
         int end = offset + length;
         for (int i=0; offset < end; offset += 2) {
             a[i++] = (short) (((short) (cShortArrayBEHandle.get(src, offset))) ^ (1 << 15));
-        }
-        return a;
-    }
-
-    /**
-     * Decode an int array from the source byte array, in little-endian format.
-     */
-    public static int[] decodeIntArrayLE(byte[] src, int offset, int length) {
-        var a = new int[length >> 2];
-        int end = offset + length;
-        for (int i=0; offset < end; offset += 4) {
-            a[i++] = (int) cIntArrayLEHandle.get(src, offset);
         }
         return a;
     }
@@ -339,18 +239,6 @@ public class PrimitiveArrayUtils extends RowUtils {
     }
 
     /**
-     * Decode a long array from the source byte array, in little-endian format.
-     */
-    public static long[] decodeLongArrayLE(byte[] src, int offset, int length) {
-        var a = new long[length >> 3];
-        int end = offset + length;
-        for (int i=0; offset < end; offset += 8) {
-            a[i++] = (long) cLongArrayLEHandle.get(src, offset);
-        }
-        return a;
-    }
-
-    /**
      * Decode a long array from the source byte array, in big-endian format.
      */
     public static long[] decodeLongArrayBE(byte[] src, int offset, int length) {
@@ -370,18 +258,6 @@ public class PrimitiveArrayUtils extends RowUtils {
         int end = offset + length;
         for (int i=0; offset < end; offset += 8) {
             a[i++] = ((long) cLongArrayBEHandle.get(src, offset)) ^ (1L << 63);
-        }
-        return a;
-    }
-
-    /**
-     * Decode a float array from the source byte array, in little-endian format.
-     */
-    public static float[] decodeFloatArrayLE(byte[] src, int offset, int length) {
-        var a = new float[length >> 2];
-        int end = offset + length;
-        for (int i=0; offset < end; offset += 4) {
-            a[i++] = (float) cFloatArrayLEHandle.get(src, offset);
         }
         return a;
     }
@@ -412,18 +288,6 @@ public class PrimitiveArrayUtils extends RowUtils {
     }
 
     /**
-     * Decode a double array from the source byte array, in little-endian format.
-     */
-    public static double[] decodeDoubleArrayLE(byte[] src, int offset, int length) {
-        var a = new double[length >> 3];
-        int end = offset + length;
-        for (int i=0; offset < end; offset += 8) {
-            a[i++] = (double) cDoubleArrayLEHandle.get(src, offset);
-        }
-        return a;
-    }
-
-    /**
      * Decode a double array from the source byte array, in big-endian format.
      */
     public static double[] decodeDoubleArrayBE(byte[] src, int offset, int length) {
@@ -444,18 +308,6 @@ public class PrimitiveArrayUtils extends RowUtils {
         for (int i=0; offset < end; offset += 8) {
             a[i++] = Double.longBitsToDouble
                 (decodeFloatSign((long) cLongArrayBEHandle.get(src, offset)));
-        }
-        return a;
-    }
-
-    /**
-     * Decode a char array from the source byte array, in little-endian format.
-     */
-    public static char[] decodeCharArrayLE(byte[] src, int offset, int length) {
-        var a = new char[length >> 1];
-        int end = offset + length;
-        for (int i=0; offset < end; offset += 2) {
-            a[i++] = (char) (short) cShortArrayLEHandle.get(src, offset);
         }
         return a;
     }
