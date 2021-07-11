@@ -233,7 +233,7 @@ class RowInfo extends ColumnSet {
                             continue;
                         }
                         if (info.accessor != null) {
-                            messages.add("duplicate accessor methods: " + method);
+                            messages.add("duplicate accessor method \"" + name + '"');
                             continue;
                         }
                         info.accessor = method;
@@ -247,7 +247,7 @@ class RowInfo extends ColumnSet {
                             continue;
                         }
                         if (info.mutator != null) {
-                            messages.add("duplicate mutator methods: " + method);
+                            messages.add("duplicate mutator method \"" + name + '"');
                             continue;
                         }
                         info.mutator = method;
@@ -255,7 +255,7 @@ class RowInfo extends ColumnSet {
                     }
                 }
 
-                messages.add("unsupported method: " + name);
+                messages.add("unsupported method \"" + name + '"');
                 continue;
             }
 
@@ -281,9 +281,9 @@ class RowInfo extends ColumnSet {
 
         for (ColumnInfo info : allColumns.values()) {
             if (info.accessor == null) {
-                messages.add("no accessor method for column: " + info.name);
+                messages.add("no accessor method for column \"" + info.name + '"');
             } else if (info.mutator == null) {
-                messages.add("no mutator method for column: " + info.name);
+                messages.add("no mutator method for column \"" + info.name + '"');
             }
         }
     }
@@ -305,7 +305,7 @@ class RowInfo extends ColumnSet {
             allColumns.put(name, info);
         } else if (info.type != type) {
             messages.add("column \"" + info.type.getSimpleName() + ' ' + info.name +
-                         "\" doersn't match type \"" + type.getSimpleName() + "'");
+                         "\" doesn't match type \"" + type.getSimpleName() + '"');
             info = null;
         }
 
@@ -367,7 +367,8 @@ class RowInfo extends ColumnSet {
         }
 
         if (messages != null) {
-            messages.add("unsupported type for column \"" + name + "\": " + type.getSimpleName());
+            messages.add("column \"" + type.getSimpleName() + ' ' + name +
+                         "\" has an unsupported type");
         }
 
         return -1;
@@ -405,7 +406,7 @@ class RowInfo extends ColumnSet {
             ColumnInfo info = allColumns.get(name);
 
             if (info == null) {
-                messages.add(notExist("Primary key", name));
+                messages.add(notExist("primary key", name));
                 return;
             }
 
@@ -419,7 +420,7 @@ class RowInfo extends ColumnSet {
             if (keyColumns == null) {
                 keyColumns = Map.of(name, info);
             } else if (keyColumns.put(name, info) != null) {
-                messages.add(duplicate("Primary key", name));
+                messages.add(duplicate("primary key", name));
                 return;
             }
         }
@@ -467,7 +468,7 @@ class RowInfo extends ColumnSet {
             ColumnInfo info = allColumns.get(name);
 
             if (info == null) {
-                messages.add(notExist(forAltKey ? "Alternate key" : "Secondary index", name));
+                messages.add(notExist(forAltKey ? "alternate key" : "secondary index", name));
                 return;
             }
 
@@ -493,7 +494,7 @@ class RowInfo extends ColumnSet {
                 set.keyColumns = new HashMap<>(1); // might be modified during index set reduction
                 set.keyColumns.put(name, info);
             } else if (set.keyColumns.put(name, info) != null) {
-                messages.add(duplicate(forAltKey ? "Alternate key" : "Secondary index", name));
+                messages.add(duplicate(forAltKey ? "alternate key" : "secondary index", name));
                 return;
             }
         }
