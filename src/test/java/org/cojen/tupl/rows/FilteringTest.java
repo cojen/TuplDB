@@ -114,6 +114,83 @@ public class FilteringTest {
     }
 
     @Test
+    public void arrayColumnOrderingAB() throws Exception {
+        // Verify basic filter ordering.
+
+        Database db = Database.open(new DatabaseConfig());
+        RowView<AB> view = db.openRowView(AB.class);
+
+        byte[] nums = {-100, 0, 100};
+
+        for (byte num : nums) {
+            var a = new byte[] {num};
+            
+            AB row = view.newRow();
+            row.id1(a);
+            row.id2(a);
+            row.value1(a);
+            row.value2(a);
+            row.value3(a);
+            row.value4(a);
+            row.x("");
+            assertTrue(view.insert(null, row));
+        }
+
+        findArrayRows(view, nums, "id1", false);
+        findArrayRows(view, nums, "id2", false);
+        findArrayRows(view, nums, "value1", false);
+        findArrayRows(view, nums, "value2", false);
+        findArrayRows(view, nums, "value3", true);
+        findArrayRows(view, nums, "value4", true);
+    }
+
+    @Test
+    public void arrayColumnOrderingBB() throws Exception {
+        // Verify basic filter ordering.
+
+        Database db = Database.open(new DatabaseConfig());
+        RowView<BB> view = db.openRowView(BB.class);
+
+        byte[] nums = {-100, 0, 100};
+
+        for (byte num : nums) {
+            var a = new byte[] {num};
+            
+            BB row = view.newRow();
+            row.id1(a);
+            row.id2(a);
+            row.x("");
+            assertTrue(view.insert(null, row));
+        }
+
+        findArrayRows(view, nums, "id1", true);
+        findArrayRows(view, nums, "id2", true);
+    }
+
+    @Test
+    public void arrayColumnOrderingCB() throws Exception {
+        // Verify basic filter ordering.
+
+        Database db = Database.open(new DatabaseConfig());
+        RowView<CB> view = db.openRowView(CB.class);
+
+        byte[] nums = {-100, 0, 100};
+
+        for (byte num : nums) {
+            var a = new byte[] {num};
+            
+            CB row = view.newRow();
+            row.id1(a);
+            row.id2(a);
+            row.x("");
+            assertTrue(view.insert(null, row));
+        }
+
+        findArrayRows(view, nums, "id1", true);
+        findArrayRows(view, nums, "id2", true);
+    }
+
+    @Test
     public void arrayColumnOrderingF() throws Exception {
         // Verify basic filter ordering.
 
@@ -217,6 +294,69 @@ public class FilteringTest {
                 }
                 int match = ((int[]) method.invoke(row))[0];
                 long longMatch = unsigned ? (match & 0xffff_ffffL) : match;
+                assertTrue(expect.contains(longMatch));
+                expect.remove(longMatch);
+            }
+
+            assertTrue(expect.isEmpty());
+        }
+    }
+
+   private void findArrayRows(RowView view, byte[] nums, String column, boolean unsigned)
+        throws Exception
+    {
+        findArrayRows(view, nums, column, unsigned, "<");
+        findArrayRows(view, nums, column, unsigned, ">=");
+        findArrayRows(view, nums, column, unsigned, ">");
+        findArrayRows(view, nums, column, unsigned, "<=");
+    }
+
+    @SuppressWarnings("unchecked")
+    private void findArrayRows(RowView view, byte[] nums,
+                               String column, boolean unsigned, String op)
+        throws Exception
+    {
+        String filter = column + ' ' + op + " ?";
+        Method method = null;
+
+        for (int arg : nums) {
+            long longArg = unsigned ? (arg & 0xffL) : arg;
+
+            var expect = new HashSet<Long>();
+            for (int num : nums) {
+                long longValue = unsigned ? (num & 0xffL) : num;
+                switch (op) {
+                case "<":
+                    if (longValue < longArg) {
+                        expect.add(longValue);
+                    }
+                    break;
+                case ">=":
+                    if (longValue >= longArg) {
+                        expect.add(longValue);
+                    }
+                    break;
+                case ">":
+                    if (longValue > longArg) {
+                        expect.add(longValue);
+                    }
+                    break;
+                case "<=":
+                    if (longValue <= longArg) {
+                        expect.add(longValue);
+                    }
+                    break;
+                default: fail();
+                }
+            }
+
+            RowScanner scanner = view.newScanner(null, filter, new int[] {arg});
+            for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+                if (method == null) {
+                    method = row.getClass().getMethod(column);
+                }
+                byte match = ((byte[]) method.invoke(row))[0];
+                long longMatch = unsigned ? (match & 0xffL) : match;
                 assertTrue(expect.contains(longMatch));
                 expect.remove(longMatch);
             }
@@ -333,6 +473,64 @@ public class FilteringTest {
         @Nullable @Unsigned
         int[] id2();
         void id2(int[] a);
+
+        // Last one is just a dummy.
+        String x();
+        void x(String x);
+    }
+
+    @PrimaryKey({"id1", "id2"})
+    public interface AB {
+        byte[] id1();
+        void id1(byte[] a);
+
+        byte[] id2();
+        void id2(byte[] a);
+
+        byte[] value1();
+        void value1(byte[] a);
+
+        @Nullable
+        byte[] value2();
+        void value2(byte[] a);
+
+        @Unsigned
+        byte[] value3();
+        void value3(byte[] a);
+
+        @Nullable @Unsigned
+        byte[] value4();
+        void value4(byte[] a);
+
+        // Last one is just a dummy.
+        String x();
+        void x(String x);
+    }
+
+    @PrimaryKey({"id1", "id2"})
+    public interface BB {
+        @Unsigned
+        byte[] id1();
+        void id1(byte[] a);
+
+        @Unsigned
+        byte[] id2();
+        void id2(byte[] a);
+
+        // Last one is just a dummy.
+        String x();
+        void x(String x);
+    }
+
+    @PrimaryKey({"id1", "id2"})
+    public interface CB {
+        @Nullable @Unsigned
+        byte[] id1();
+        void id1(byte[] a);
+
+        @Nullable @Unsigned
+        byte[] id2();
+        void id2(byte[] a);
 
         // Last one is just a dummy.
         String x();
