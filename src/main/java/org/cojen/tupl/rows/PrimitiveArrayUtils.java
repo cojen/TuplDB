@@ -133,13 +133,10 @@ public class PrimitiveArrayUtils extends RowUtils {
     }
 
     /**
-     * Encode an array into the destination byte array, in big-endian format.
+     * Encode an array into the destination byte array, in big-endian format, with bit flips.
      */
     public static void encodeArrayBE(byte[] dst, int offset, float[] a) {
-        for (float v : a) {
-            cFloatArrayBEHandle.set(dst, offset, v);
-            offset += 4;
-        }
+        encodeArrayKey(dst, offset, a);
     }
 
     /**
@@ -153,13 +150,10 @@ public class PrimitiveArrayUtils extends RowUtils {
     }
 
     /**
-     * Encode an array into the destination byte array, in big-endian format.
+     * Encode an array into the destination byte array, in big-endian format, with bit flips.
      */
     public static void encodeArrayBE(byte[] dst, int offset, double[] a) {
-        for (double v : a) {
-            cDoubleArrayBEHandle.set(dst, offset, v);
-            offset += 8;
-        }
+        encodeArrayKey(dst, offset, a);
     }
 
     /**
@@ -263,15 +257,10 @@ public class PrimitiveArrayUtils extends RowUtils {
     }
 
     /**
-     * Decode a float array from the source byte array, in big-endian format.
+     * Decode a float array from the source byte array, in big-endian format, with bit flips.
      */
     public static float[] decodeFloatArrayBE(byte[] src, int offset, int length) {
-        var a = new float[length >> 2];
-        int end = offset + length;
-        for (int i=0; offset < end; offset += 4) {
-            a[i++] = (float) cFloatArrayBEHandle.get(src, offset);
-        }
-        return a;
+        return decodeFloatArrayKey(src, offset, length);
     }
 
     /**
@@ -288,15 +277,10 @@ public class PrimitiveArrayUtils extends RowUtils {
     }
 
     /**
-     * Decode a double array from the source byte array, in big-endian format.
+     * Decode a double array from the source byte array, in big-endian format, with bit flips.
      */
     public static double[] decodeDoubleArrayBE(byte[] src, int offset, int length) {
-        var a = new double[length >> 3];
-        int end = offset + length;
-        for (int i=0; offset < end; offset += 8) {
-            a[i++] = (double) cDoubleArrayBEHandle.get(src, offset);
-        }
-        return a;
+        return decodeDoubleArrayKey(src, offset, length);
     }
 
     /**

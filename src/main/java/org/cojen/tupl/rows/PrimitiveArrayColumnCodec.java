@@ -78,7 +78,7 @@ abstract class PrimitiveArrayColumnCodec extends BytesColumnCodec {
 
     @Override
     protected boolean compareBytesUnsigned() {
-        return mInfo.isUnsigned();
+        return mForKey || mInfo.isUnsigned() || ColumnInfo.isFloat(mInfo.plainTypeCode());
     }
 
     /**
