@@ -337,6 +337,9 @@ public class FuzzTest {
             if (t.nullable) {
                 mm.addAnnotation(Nullable.class, true);
             }
+            if (t.unsigned) {
+                mm.addAnnotation(Unsigned.class, true);
+            }
             cm.addMethod(void.class, c.name, t.clazz).public_().abstract_();
         }
 
@@ -410,22 +413,44 @@ public class FuzzTest {
                 } else if (b == null) {
                     result = -1;
                 } else if ((aClass = a.getClass()).isArray()) {
-                    if (aClass == byte[].class) {
-                        result = Arrays.compare((byte[]) a, (byte[]) b);
-                    } else if (aClass == short[].class) {
-                        result = Arrays.compare((short[]) a, (short[]) b);
-                    } else if (aClass == char[].class) {
-                        result = Arrays.compare((char[]) a, (char[]) b);
-                    } else if (aClass == int[].class) {
-                        result = Arrays.compare((int[]) a, (int[]) b);
-                    } else if (aClass == long[].class) {
-                        result = Arrays.compare((long[]) a, (long[]) b);
-                    } else if (aClass == float[].class) {
-                        result = Arrays.compare((float[]) a, (float[]) b);
-                    } else if (aClass == double[].class) {
-                        result = Arrays.compare((double[]) a, (double[]) b);
+                    if (c.type.unsigned) {
+                        if (aClass == byte[].class) {
+                            result = Arrays.compareUnsigned((byte[]) a, (byte[]) b);
+                        } else if (aClass == short[].class) {
+                            result = Arrays.compareUnsigned((short[]) a, (short[]) b);
+                        } else if (aClass == int[].class) {
+                            result = Arrays.compareUnsigned((int[]) a, (int[]) b);
+                        } else {
+                            result = Arrays.compareUnsigned((long[]) a, (long[]) b);
+                        }
                     } else {
-                        result = Arrays.compare((boolean[]) a, (boolean[]) b);
+                        if (aClass == byte[].class) {
+                            result = Arrays.compare((byte[]) a, (byte[]) b);
+                        } else if (aClass == short[].class) {
+                            result = Arrays.compare((short[]) a, (short[]) b);
+                        } else if (aClass == char[].class) {
+                            result = Arrays.compare((char[]) a, (char[]) b);
+                        } else if (aClass == int[].class) {
+                            result = Arrays.compare((int[]) a, (int[]) b);
+                        } else if (aClass == long[].class) {
+                            result = Arrays.compare((long[]) a, (long[]) b);
+                        } else if (aClass == float[].class) {
+                            result = Arrays.compare((float[]) a, (float[]) b);
+                        } else if (aClass == double[].class) {
+                            result = Arrays.compare((double[]) a, (double[]) b);
+                        } else {
+                            result = Arrays.compare((boolean[]) a, (boolean[]) b);
+                        }
+                    }
+                } else if (c.type.unsigned) {
+                    if (a instanceof Byte) {
+                        result = Byte.compareUnsigned((Byte) a, (Byte) b);
+                    } else if (a instanceof Short) {
+                        result = Short.compareUnsigned((Short) a, (Short) b);
+                    } else if (a instanceof Integer) {
+                        result = Integer.compareUnsigned((Integer) a, (Integer) b);
+                    } else {
+                        result = Long.compareUnsigned((Long) a, (Long) b);
                     }
                 } else {
                     result = ((Comparable) a).compareTo((Comparable) b);
@@ -471,54 +496,65 @@ public class FuzzTest {
 
         switch (code) {
         default: throw new AssertionError();
-        case 0: clazz = boolean.class; break;
-        case 1: clazz = byte.class; break;
-        case 2: clazz = short.class; break;
-        case 3: clazz = int.class; break;
-        case 4: clazz = long.class; break;
-        case 5: clazz = float.class; break;
-        case 6: clazz = double.class; break;
-        case 7: clazz = char.class; break;
-        case 8: clazz = Boolean.class; break;
-        case 9: clazz = Byte.class; break;
-        case 10: clazz = Short.class; break;
-        case 11: clazz = Integer.class; break;
-        case 12: clazz = Long.class; break;
-        case 13: clazz = Float.class; break;
-        case 14: clazz = Double.class; break;
-        case 15: clazz = Character.class; break;
-        case 16: clazz = String.class; break;
-        case 17: clazz = BigInteger.class; break;
-        case 18: clazz = BigDecimal.class; break;
-        case 19: clazz = byte[].class; break;
-        case 20: clazz = short[].class; break;
-        case 21: clazz = char[].class; break;
-        case 22: clazz = int[].class; break;
-        case 23: clazz = long[].class; break;
-        case 24: clazz = float[].class; break;
-        case 25: clazz = double[].class; break;
-        case 26: clazz = boolean[].class; break;
+        case 0: clazz = byte.class; break;
+        case 1: clazz = short.class; break;
+        case 2: clazz = int.class; break;
+        case 3: clazz = long.class; break;
+
+        case 4: clazz = Byte.class; break;
+        case 5: clazz = Short.class; break;
+        case 6: clazz = Integer.class; break;
+        case 7: clazz = Long.class; break;
+
+        case 8: clazz = byte[].class; break;
+        case 9: clazz = short[].class; break;
+        case 10: clazz = int[].class; break;
+        case 11: clazz = long[].class; break;
+
+        case 12: clazz = boolean.class; break;
+        case 13: clazz = float.class; break;
+        case 14: clazz = double.class; break;
+        case 15: clazz = char.class; break;
+
+        case 16: clazz = Boolean.class; break;
+        case 17: clazz = Float.class; break;
+        case 18: clazz = Double.class; break;
+        case 19: clazz = Character.class; break;
+
+        case 20: clazz = boolean[].class; break;
+        case 21: clazz = float[].class; break;
+        case 22: clazz = double[].class; break;
+        case 23: clazz = char[].class; break;
+
+        case 24: clazz = String.class; break;
+        case 25: clazz = BigInteger.class; break;
+        case 26: clazz = BigDecimal.class; break;
         }
 
-        boolean nullable;
-        if (clazz.isPrimitive()) {
-            nullable = false;
-        } else {
+        boolean nullable = false;
+        if (!clazz.isPrimitive()) {
             nullable = rnd.nextBoolean();
         }
 
-        return new Type(code, clazz, nullable);
+        boolean unsigned = false;
+        if (code < 12) {
+            unsigned = rnd.nextBoolean();
+        }
+
+        return new Type(code, clazz, nullable, unsigned);
     }
 
     static class Type {
         final int code;
         final Class clazz;
         final boolean nullable;
+        final boolean unsigned;
 
-        Type(int code, Class clazz, boolean nullable) {
+        Type(int code, Class clazz, boolean nullable, boolean unsigned) {
             this.code = code;
             this.clazz = clazz;
             this.nullable = nullable;
+            this.unsigned = unsigned;
         }
 
         Object randomValue(Random rnd) {
@@ -528,33 +564,22 @@ public class FuzzTest {
 
             switch (code) {
             default: throw new AssertionError();
-            case 0: case 8: return rnd.nextBoolean();
-            case 1: case 9: return (byte) rnd.nextInt();
-            case 2: case 10: return (short) rnd.nextInt();
-            case 3: case 11: return rnd.nextInt();
-            case 4: case 12: return rnd.nextLong();
-            case 5: case 13: return rnd.nextFloat();
-            case 6: case 14: return rnd.nextDouble();
-            case 7: case 15: return randomChar(rnd);
+            case 0: case 4: return (byte) rnd.nextInt();
+            case 1: case 5: return (short) rnd.nextInt();
+            case 2: case 6: return rnd.nextInt();
+            case 3: case 7: return rnd.nextLong();
+            case 12: case 16: return rnd.nextBoolean();
+            case 13: case 17: return rnd.nextFloat();
+            case 14: case 18: return rnd.nextDouble();
+            case 15: case 19: return randomChar(rnd);
 
-            case 16: {
-                var chars = new char[rnd.nextInt(20)];
-                for (int i=0; i<chars.length; i++) {
-                    chars[i] = randomChar(rnd);
-                }
-                return new String(chars);
-            }
-
-            case 17: return RowTestUtils.randomBigInteger(rnd);
-            case 18: return RowTestUtils.randomBigDecimal(rnd);
-
-            case 19: {
+            case 8: {
                 var bytes = new byte[rnd.nextInt(20)];
                 rnd.nextBytes(bytes);
                 return bytes;
             }
 
-            case 20: {
+            case 9: {
                 var a = new short[rnd.nextInt(20)];
                 for (int i=0; i<a.length; i++) {
                     a[i] = (short) rnd.nextInt();
@@ -562,15 +587,7 @@ public class FuzzTest {
                 return a;
             }
 
-            case 21: {
-                var a = new char[rnd.nextInt(20)];
-                for (int i=0; i<a.length; i++) {
-                    a[i] = (char) rnd.nextInt();
-                }
-                return a;
-            }
-
-            case 22: {
+            case 10: {
                 var a = new int[rnd.nextInt(20)];
                 for (int i=0; i<a.length; i++) {
                     a[i] = rnd.nextInt();
@@ -578,7 +595,7 @@ public class FuzzTest {
                 return a;
             }
 
-            case 23: {
+            case 11: {
                 var a = new long[rnd.nextInt(20)];
                 for (int i=0; i<a.length; i++) {
                     a[i] = rnd.nextLong();
@@ -586,7 +603,15 @@ public class FuzzTest {
                 return a;
             }
 
-            case 24: {
+            case 20: {
+                var a = new boolean[rnd.nextInt(20)];
+                for (int i=0; i<a.length; i++) {
+                    a[i] = rnd.nextBoolean();
+                }
+                return a;
+            }
+
+            case 21: {
                 var a = new float[rnd.nextInt(20)];
                 for (int i=0; i<a.length; i++) {
                     a[i] = rnd.nextFloat();
@@ -594,7 +619,7 @@ public class FuzzTest {
                 return a;
             }
 
-            case 25: {
+            case 22: {
                 var a = new double[rnd.nextInt(20)];
                 for (int i=0; i<a.length; i++) {
                     a[i] = rnd.nextDouble();
@@ -602,13 +627,24 @@ public class FuzzTest {
                 return a;
             }
 
-            case 26: {
-                var a = new boolean[rnd.nextInt(20)];
+            case 23: {
+                var a = new char[rnd.nextInt(20)];
                 for (int i=0; i<a.length; i++) {
-                    a[i] = rnd.nextBoolean();
+                    a[i] = (char) rnd.nextInt();
                 }
                 return a;
             }
+
+            case 24: {
+                var chars = new char[rnd.nextInt(20)];
+                for (int i=0; i<chars.length; i++) {
+                    chars[i] = randomChar(rnd);
+                }
+                return new String(chars);
+            }
+
+            case 25: return RowTestUtils.randomBigInteger(rnd);
+            case 26: return RowTestUtils.randomBigDecimal(rnd);
 
             }
         }

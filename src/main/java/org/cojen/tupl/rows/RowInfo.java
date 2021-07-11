@@ -76,7 +76,7 @@ class RowInfo extends ColumnSet {
         var messages = new LinkedHashSet<String>(1);
 
         if (!rowType.isInterface()) {
-            messages.add("Must be an interface");
+            messages.add("must be an interface");
             errorCheck(rowType, messages);
         }
 
@@ -233,7 +233,7 @@ class RowInfo extends ColumnSet {
                             continue;
                         }
                         if (info.accessor != null) {
-                            messages.add("Duplicate accessor methods: " + method);
+                            messages.add("duplicate accessor methods: " + method);
                             continue;
                         }
                         info.accessor = method;
@@ -247,7 +247,7 @@ class RowInfo extends ColumnSet {
                             continue;
                         }
                         if (info.mutator != null) {
-                            messages.add("Duplicate mutator methods: " + method);
+                            messages.add("duplicate mutator methods: " + method);
                             continue;
                         }
                         info.mutator = method;
@@ -255,14 +255,14 @@ class RowInfo extends ColumnSet {
                     }
                 }
 
-                messages.add("Unsupported method: " + name);
+                messages.add("unsupported method: " + name);
                 continue;
             }
 
             if (method.isAnnotationPresent(Nullable.class)) {
                 if (info.type.isPrimitive()) {
-                    messages.add("Primitive type cannot be nullable: " + info.name +
-                                 "; type: " + info.type);
+                    messages.add("column \"" + info.type.getSimpleName() + ' ' + info.name +
+                                 "\" cannot be nullable");
                 } else {
                     info.typeCode |= TYPE_NULLABLE;
                 }
@@ -271,8 +271,8 @@ class RowInfo extends ColumnSet {
             if (method.isAnnotationPresent(Unsigned.class)) {
                 int typeCode = info.plainTypeCode();
                 if (typeCode >= 0b000_10000 || typeCode == TYPE_BOOLEAN) {
-                    messages.add("Type cannot be unsigned: " + info.name +
-                                 "; type: " + info.type);
+                    messages.add("column \"" + info.type.getSimpleName() + ' ' + info.name +
+                                 "\" cannot be unsigned");
                 } else {
                     info.typeCode &= ~0b000_01000;
                 }
@@ -281,9 +281,9 @@ class RowInfo extends ColumnSet {
 
         for (ColumnInfo info : allColumns.values()) {
             if (info.accessor == null) {
-                messages.add("No accessor method for column: " + info.name);
+                messages.add("no accessor method for column: " + info.name);
             } else if (info.mutator == null) {
-                messages.add("No mutator method for column: " + info.name);
+                messages.add("no mutator method for column: " + info.name);
             }
         }
     }
@@ -304,8 +304,8 @@ class RowInfo extends ColumnSet {
             info.typeCode = typeCode;
             allColumns.put(name, info);
         } else if (info.type != type) {
-            messages.add("Mismatched column type for column: " + name + "; " +
-                         info.type + " != " + type);
+            messages.add("column \"" + info.type.getSimpleName() + ' ' + info.name +
+                         "\" doersn't match type \"" + type.getSimpleName() + "'");
             info = null;
         }
 
@@ -367,7 +367,7 @@ class RowInfo extends ColumnSet {
         }
 
         if (messages != null) {
-            messages.add("Unsupported type for column \"" + name + "\": " + type.getSimpleName());
+            messages.add("unsupported type for column \"" + name + "\": " + type.getSimpleName());
         }
 
         return -1;
@@ -377,14 +377,14 @@ class RowInfo extends ColumnSet {
         PrimaryKey pk = rowType.getAnnotation(PrimaryKey.class);
 
         if (pk == null) {
-            messages.add("No PrimaryKey annotation is present");
+            messages.add("no PrimaryKey annotation is present");
             return;
         }
 
         String[] columnNames = pk.value();
 
         if (columnNames.length == 0) {
-            messages.add("Primary key doesn't specify any columns");
+            messages.add("primary key doesn't specify any columns");
             return;
         }
 
@@ -443,7 +443,7 @@ class RowInfo extends ColumnSet {
                               String[] columnNames, boolean forAltKey)
     {
         if (columnNames.length == 0 && forAltKey) {
-            messages.add("Alternate key doesn't specify any columns");
+            messages.add("alternate key doesn't specify any columns");
             return;
         }
 
@@ -503,7 +503,7 @@ class RowInfo extends ColumnSet {
         if (forAltKey) {
             if (hasFullPrimaryKey) {
                 // Alternate key is effectively a secondary index and doesn't affect uniqueness.
-                messages.add("Alternate key contains all columns of the primary key");
+                messages.add("alternate key contains all columns of the primary key");
                 return;
             }
 

@@ -297,16 +297,21 @@ public class RowMaker {
             } else {
                 value = mm.var(PrimitiveArrayUtils.class).invoke("toUnsignedString", value);
             }
-        } else {
-            unsigned: {
-                switch (info.typeCode) {
-                default: break unsigned;
-                case TYPE_UBYTE: value = value.cast(int.class).and(0xff); break;
-                case TYPE_USHORT: value = value.cast(int.class).and(0xffff); break;
-                case TYPE_UINT: case TYPE_ULONG: break;
-                }
-                value = value.invoke("toUnsignedString", value);
+        } else if (info.isUnsignedInteger()) {
+            if (info.isNullable()) {
+                Label notNull = mm.label();
+                value.ifNe(null, notNull);
+                bob.invoke("append", "null");
+                mm.goto_(unset);
+                notNull.here();
             }
+            switch (info.plainTypeCode()) {
+            default: throw new AssertionError();
+            case TYPE_UBYTE: value = value.cast(int.class).and(0xff); break;
+            case TYPE_USHORT: value = value.cast(int.class).and(0xffff); break;
+            case TYPE_UINT: case TYPE_ULONG: break;
+            }
+            value = value.invoke("toUnsignedString", value);
         }
 
         bob.invoke("append", value);

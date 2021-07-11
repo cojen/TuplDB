@@ -136,9 +136,13 @@ class PrimitiveColumnCodec extends ColumnCodec {
                     srcVar = byteVar;
 
                     cont.here();
-                } else if (plain == TYPE_BYTE && mForKey) {
-                    byte mask = (byte) (mInfo.isDescending() ? 0x7f : 0x80);
-                    srcVar = srcVar.unbox().xor(mask);
+                } else if (mForKey) {
+                    if (plain == TYPE_BYTE) {
+                        byte mask = (byte) (mInfo.isDescending() ? 0x7f : 0x80);
+                        srcVar = srcVar.unbox().xor(mask);
+                    } else if (mInfo.isDescending()) {
+                        srcVar = srcVar.unbox().xor(-1);
+                    }
                 }
 
                 dstVar.aset(offsetVar, srcVar);
@@ -182,6 +186,8 @@ class PrimitiveColumnCodec extends ColumnCodec {
                     srcVar = rowUtils.invoke(method, srcVar);
                 } else if (!mInfo.isUnsigned()) {
                     srcVar = srcVar.unbox().xor(signMask());
+                } else if (mInfo.isDescending()) {
+                    srcVar = srcVar.unbox().xor(-1);
                 }
             }
 
@@ -249,9 +255,13 @@ class PrimitiveColumnCodec extends ColumnCodec {
                         cont.here();
                     }
                 } else {
-                    if (plain == TYPE_BYTE && mForKey) {
-                        byte mask = (byte) (mInfo.isDescending() ? 0x7f : 0x80);
-                        byteVar = byteVar.xor(mask);
+                    if (mForKey) {
+                        if (plain == TYPE_BYTE) {
+                            byte mask = (byte) (mInfo.isDescending() ? 0x7f : 0x80);
+                            byteVar = byteVar.xor(mask);
+                        } else if (mInfo.isDescending()) {
+                            byteVar = byteVar.xor((byte) 0xff);
+                        }
                     }
                     valueVar = byteVar;
                 }
@@ -290,6 +300,8 @@ class PrimitiveColumnCodec extends ColumnCodec {
                     valueVar = rowUtils.invoke(method, valueVar);
                 } else if (!mInfo.isUnsigned()) {
                     valueVar = valueVar.xor(signMask());
+                } else if (mInfo.isDescending()) {
+                    valueVar = valueVar.xor(-1);
                 }
             }
 
