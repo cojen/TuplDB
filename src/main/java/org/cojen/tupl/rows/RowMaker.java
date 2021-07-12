@@ -19,6 +19,7 @@ package org.cojen.tupl.rows;
 
 import java.lang.invoke.CallSite;
 import java.lang.invoke.ConstantCallSite;
+import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
@@ -292,29 +293,28 @@ public class RowMaker {
         Variable value = rowObject.field(info.name);
 
         if (info.isArray()) {
-            if (!info.isUnsignedInteger()) {
-                value = mm.var(Arrays.class).invoke("toString", value);
-            } else {
-                value = mm.var(PrimitiveArrayUtils.class).invoke("toUnsignedString", value);
+            MethodHandle mh = ArrayStringMaker.make(info.type, info.isUnsignedInteger());
+            bob.set(mm.invoke(mh, bob, value, 16)); // limit=16
+        } else {
+            if (info.isUnsignedInteger()) {
+                if (info.isNullable()) {
+                    Label notNull = mm.label();
+                    value.ifNe(null, notNull);
+                    bob.invoke("append", "null");
+                    mm.goto_(unset);
+                    notNull.here();
+                }
+                switch (info.plainTypeCode()) {
+                default: throw new AssertionError();
+                case TYPE_UBYTE: value = value.cast(int.class).and(0xff); break;
+                case TYPE_USHORT: value = value.cast(int.class).and(0xffff); break;
+                case TYPE_UINT: case TYPE_ULONG: break;
+                }
+                value = value.invoke("toUnsignedString", value);
             }
-        } else if (info.isUnsignedInteger()) {
-            if (info.isNullable()) {
-                Label notNull = mm.label();
-                value.ifNe(null, notNull);
-                bob.invoke("append", "null");
-                mm.goto_(unset);
-                notNull.here();
-            }
-            switch (info.plainTypeCode()) {
-            default: throw new AssertionError();
-            case TYPE_UBYTE: value = value.cast(int.class).and(0xff); break;
-            case TYPE_USHORT: value = value.cast(int.class).and(0xffff); break;
-            case TYPE_UINT: case TYPE_ULONG: break;
-            }
-            value = value.invoke("toUnsignedString", value);
-        }
 
-        bob.invoke("append", value);
+            bob.invoke("append", value);
+        }
 
         unset.here();
     }
