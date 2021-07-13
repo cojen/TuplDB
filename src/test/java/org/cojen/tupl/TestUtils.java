@@ -27,6 +27,8 @@ import org.cojen.tupl.core.Utils;
 import org.cojen.tupl.io.MappedPageArray;
 import org.cojen.tupl.io.OpenOption;
 
+import org.cojen.tupl.util.Runner;
+
 /**
  * 
  *
@@ -255,6 +257,49 @@ public class TestUtils {
                 return t;
             }
             Thread.yield();
+        }
+    }
+
+    /**
+     * Returns a task which when joined, re-throws any exception from the task.
+     */
+    public static <T extends Runnable> TestTask<T> startTestTask(T task) {
+        var tt = new TestTask<>(task);
+        Runner.start(tt);
+        return tt;
+    }
+
+    public static class TestTask<T extends Runnable> implements Runnable {
+        private final T mTask;
+        private boolean mFinished;
+        private Throwable mException;
+
+        TestTask(T task) {
+            mTask = task;
+        }
+
+        public synchronized void join() throws InterruptedException {
+            while (!mFinished) {
+                wait();
+            }
+            if (mException != null) {
+                throw Utils.rethrow(mException);
+            }
+        }
+
+        @Override
+        public synchronized void run() {
+            if (mFinished) {
+                throw new IllegalStateException();
+            }
+            try {
+                mTask.run();
+            } catch (Throwable e) {
+                mException = e;
+                notifyAll();
+            } finally {
+                mFinished = true;
+            }
         }
     }
 

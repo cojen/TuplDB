@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.rows;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Method;
 
 import java.math.*;
@@ -45,7 +46,17 @@ public class FuzzTest {
 
     @Test
     public void fuzz() throws Exception {
-        for (int i=0; i<30; i++) {
+        var tasks = new TestUtils.TestTask[4];
+        for (int i=0; i<tasks.length; i++) {
+            tasks[i] = TestUtils.startTestTask(() -> fuzz(8));
+        }
+        for (var task : tasks) {
+            task.join();
+        }
+    }
+
+    private static void fuzz(int n) {
+        for (int i=0; i<n; i++) {
             long seed = ThreadLocalRandom.current().nextLong();
             try {
                 fuzz(seed);
@@ -56,7 +67,7 @@ public class FuzzTest {
     }
 
     @SuppressWarnings("unchecked")
-    private void fuzz(long seed) throws Exception {
+    private static void fuzz(long seed) throws Exception {
         var rnd = new Random(seed);
 
         Database db = Database.open(new DatabaseConfig());
@@ -108,13 +119,19 @@ public class FuzzTest {
             String filter = filterAll(rnd, columns);
             scanner = rowView.newScanner(null);
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
-                filterAllMatch(rowView, filter, columns, row);
+                filterAllMatch(rowView, filter, filterAllArgs(columns, row), row);
             }
 
             filter = filterAll2(rnd, columns);
             scanner = rowView.newScanner(null);
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
-                filterAllMatch(rowView, filter, columns, row);
+                filterAllMatch(rowView, filter, filterAllArgs(columns, row), row);
+            }
+
+            filter = filterAll3(rnd, columns);
+            scanner = rowView.newScanner(null);
+            for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
+                filterAllMatch(rowView, filter, filterAllArgsIn(columns, row), row);
             }
 
             truncateAndClose(ix, rowView);
@@ -297,6 +314,25 @@ public class FuzzTest {
     }
 
     /**
+     * Returns a filter over all the columns, combined with the 'and' operator. The order of
+     * the column array is shuffled as a side-effect.
+     *
+     * This variant uses the 'in' operator.
+     */
+    private static String filterAll3(Random rnd, Column[] columns) {
+        Collections.shuffle(Arrays.asList(columns), rnd);
+        var bob = new StringBuilder();
+        for (int i=0; i<columns.length; i++) {
+            if (bob.length() != 0) {
+                bob.append(" && ");
+            }
+            Column c = columns[i];
+            bob.append(c.name).append(" in ?");
+        }
+        return bob.toString();
+    }
+
+    /**
      * Fills in the arguments corresponding to the last invocation of filterAll.
      */
     private static Object[] filterAllArgs(Column[] columns, Object row) throws Exception {
@@ -309,13 +345,34 @@ public class FuzzTest {
     }
 
     /**
+     * Fills in the arguments corresponding to the last invocation of filterAll.
+     */
+    private static Object[] filterAllArgsIn(Column[] columns, Object row) throws Exception {
+        var args = new Object[columns.length];
+        Class<?> rowClass = row.getClass();
+        for (int i=0; i<args.length; i++) {
+            Object arg = rowClass.getMethod(columns[i].name).invoke(row);
+
+            if (arg == null) {
+                arg = new Object[1];
+            } else {
+                Object array = Array.newInstance(arg.getClass(), 1);
+                Array.set(array, 0, arg);
+                arg = array;
+            }
+
+            args[i] = arg;
+        }
+        return args;
+    }
+
+    /**
      * Verifies that the given filter matches only the given row, corresponding to the last
      * invocation of filterAll.
      */
-    private static void filterAllMatch(RowView rv, String filter, Column[] columns, Object row)
+    private static void filterAllMatch(RowView rv, String filter, Object[] args, Object row)
         throws Exception
     {
-        Object[] args = filterAllArgs(columns, row);
         RowScanner scanner = rv.newScanner(null, filter, args);
         Object matchRow = scanner.row();
         assertNotNull(matchRow);
