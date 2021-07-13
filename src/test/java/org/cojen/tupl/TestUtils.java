@@ -296,9 +296,9 @@ public class TestUtils {
                 mTask.run();
             } catch (Throwable e) {
                 mException = e;
-                notifyAll();
             } finally {
                 mFinished = true;
+                notifyAll();
             }
         }
     }
