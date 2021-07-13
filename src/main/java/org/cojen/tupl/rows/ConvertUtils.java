@@ -69,15 +69,24 @@ public class ConvertUtils {
             return aInfo;
         }
 
-        if (isNullable(aTypeCode) != isNullable(bTypeCode)) {
+        if (isNullable(aTypeCode) || isNullable(bTypeCode)) {
             // Common type shall be nullable.
             aTypeCode |= TYPE_NULLABLE;
             bTypeCode |= TYPE_NULLABLE;
         }
 
         if (isArray(aTypeCode) || isArray(bTypeCode)) {
-            // FIXME: If both are arrays, then compare the element type.
-            return null;
+            if (isArray(aTypeCode)) {
+                aInfo = aInfo.nonArray();
+            }
+            if (isArray(bTypeCode)) {
+                bInfo = bInfo.nonArray();
+            }
+            ColumnInfo cInfo = commonType(aInfo, bInfo, op);
+            if (cInfo != null) {
+                cInfo = cInfo.asArray(ColumnInfo.isNullable(aTypeCode));
+            }
+            return cInfo;
         }
 
         // Order aTypeCode to be less than bTypeCode to reduce the number of permutations.

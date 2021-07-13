@@ -98,9 +98,11 @@ class CompareUtils {
 
         // At this point, both variables are non-null objects.
 
-        if (colInfo.isArray() || argInfo.isArray()) {
-            // FIXME: array compare
-            throw null;
+        if (colInfo.isArray() && argInfo.isArray()) {
+            compareArrays(mm, colInfo.isUnsigned() && argInfo.isUnsigned(),
+                          colVar, 0, colVar.alength(), argVar, 0, argVar.alength(),
+                          op, pass, fail);
+            return;
         }
 
         if (ColumnFilter.isExact(op)) {

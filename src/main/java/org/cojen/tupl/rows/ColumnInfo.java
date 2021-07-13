@@ -308,6 +308,27 @@ public class ColumnInfo implements Cloneable {
         return info;
     }
 
+    ColumnInfo asArray(boolean nullable) {
+        var info = new ColumnInfo();
+        info.name = name;
+
+        info.typeCode = typeCode | TYPE_ARRAY;
+
+        if (nullable) {
+            info.typeCode |= TYPE_NULLABLE;
+        } else {
+            info.typeCode &= ~TYPE_NULLABLE;
+        }
+
+        if (type == null) {
+            info.assignType();
+        } else {
+            info.type = type.arrayType();
+        }
+
+        return info;
+    }
+
     @Override
     public int hashCode() {
         return name.hashCode() * 31 + typeCode;
