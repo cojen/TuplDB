@@ -461,7 +461,7 @@ public class RowStore {
         // Hash code over the primary data.
         final int primaryHash;
 
-        // Index id, current schemaVersion (initially zero), alternateKeys, and secondaryIndexes.
+        // Current schemaVersion (initially zero), alternateKeys, and secondaryIndexes.
         final byte[] currentData;
 
         /**

@@ -67,6 +67,7 @@ public class RowCrudTest {
     public void basic() throws Exception {
         assertEquals(TestRow.class, mView.rowType());
         assertTrue(mView.isEmpty());
+        assertTrue(mView == mDb.openRowView(TestRow.class));
 
         TestRow row = mView.newRow();
         assertTrue(row.toString().endsWith("TestRow{}"));
