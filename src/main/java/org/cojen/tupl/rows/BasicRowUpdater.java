@@ -112,6 +112,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
             // Key didn't change.
             c.store(value);
         } else {
+            /* FIXME: Need a snapshot to prevent repeat observations of the updated row.
             Transaction txn = c.link();
             txn.enter();
             try {
@@ -120,6 +121,8 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
             } finally {
                 txn.exit();
             }
+            */
+            throw new IllegalStateException("Cannot alter key");
         }
     }
 
