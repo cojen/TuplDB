@@ -1,6 +1,12 @@
 Changelog
 =========
 
+v1.5.1.1
+--------
+
+* The default View store/exchange/replace/update methods should always use the UPGRADABLE_READ
+  lock mode, overriding the mode of the given transaction.
+
 v1.5.1 (2021-07-10)
 ------
 * Add more utilities for decoding short integers and unsigned integers.
