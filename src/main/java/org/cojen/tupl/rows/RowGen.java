@@ -96,6 +96,7 @@ class RowGen {
         thisModule.addExports("org.cojen.tupl.core", thatModule);
         thisModule.addExports("org.cojen.tupl.filter", thatModule);
         thisModule.addExports("org.cojen.tupl.rows", thatModule);
+        thisModule.addExports("org.cojen.tupl.views", thatModule);
 
         return cm;
     }

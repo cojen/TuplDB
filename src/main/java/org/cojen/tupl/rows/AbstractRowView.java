@@ -139,19 +139,6 @@ public abstract class AbstractRowView<R> implements RowView<R> {
         return mSource.isEmpty();
     }
 
-    /**
-     * Returns a new transaction or enters a scope with the UPGRADABLE_READ lock mode.
-     */
-    protected final Transaction enterTransaction(Transaction txn) throws IOException {
-        if (txn == null) {
-            txn = newTransaction(null);
-        } else {
-            txn.enter();
-            txn.lockMode(LockMode.UPGRADABLE_READ);
-        }
-        return txn;
-    }
-
     private RowDecoderEncoder<R> filtered(String filter, Object... args) throws IOException {
         try {
             MethodHandle factory = mFilterFactoryCache.get(filter);

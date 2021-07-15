@@ -40,6 +40,8 @@ import org.cojen.tupl.View;
 
 import org.cojen.tupl.filter.RowFilter;
 
+import org.cojen.tupl.views.ViewUtils;
+
 /**
  * Makes RowView classes that extend AbstractRowView.
  *
@@ -1009,7 +1011,8 @@ public class RowViewMaker {
             (boolean.class, variant, Transaction.class, Object.class).public_();
         Variable txnVar = mm.param(0);
         Variable rowVar = mm.param(1).cast(mRowClass);
-        txnVar.set(mm.invoke("enterTransaction", txnVar));
+        Variable source = mm.field("mSource");
+        txnVar.set(mm.var(ViewUtils.class).invoke("enterUpgradableScope", source, txnVar));
         Label tryStart = mm.label().here();
         mm.return_(mm.invoke("doUpdate", txnVar, rowVar, merge));
         mm.finally_(tryStart, () -> txnVar.invoke("exit"));
