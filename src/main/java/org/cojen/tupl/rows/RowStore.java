@@ -47,8 +47,6 @@ import static org.cojen.tupl.rows.RowUtils.*;
  * @author Brian S O'Neill
  */
 public class RowStore {
-    final Database mDatabase;
-
     /* Schema metadata for all types.
      
        (indexId) ->
@@ -68,8 +66,7 @@ public class RowStore {
 
     private final WeakCache<Pair, AbstractRowView<?>> mRowViewCache;
 
-    public RowStore(Database db, Index schemata) throws IOException {
-        mDatabase = db;
+    public RowStore(Index schemata) throws IOException {
         mSchemata = schemata;
         mRowViewCache = new WeakCache<>();
     }
@@ -97,7 +94,7 @@ public class RowStore {
         // Throws an exception if type is malformed.
         RowGen gen = RowInfo.find(type).rowGen();
 
-        Transaction txn = mSchemata.newTransaction(DurabilityMode.SYNC);
+        Transaction txn = mSchemata.newTransaction(DurabilityMode.NO_FLUSH); // no writes
         try {
             // With a txn lock held, check if the primary key definition has changed.
             byte[] value = mSchemata.load(txn, key(ix.id()));
@@ -271,7 +268,7 @@ public class RowStore {
      * @return null if not found
      */
     RowInfo rowInfo(Class<?> rowType, long indexId, int schemaVersion) throws IOException {
-        Transaction txn = mSchemata.newTransaction(DurabilityMode.NO_FLUSH);
+        Transaction txn = mSchemata.newTransaction(DurabilityMode.NO_FLUSH); // no writes
         txn.lockMode(LockMode.REPEATABLE_READ);
         try (Cursor c = mSchemata.newCursor(txn)) {
             // Check if the indexId matches and the schemaVersion is the current one.
