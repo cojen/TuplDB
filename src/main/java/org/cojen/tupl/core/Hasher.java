@@ -34,12 +34,10 @@ abstract class Hasher {
 
     static {
         try {
-            cShortArrayHandle = MethodHandles.byteArrayViewVarHandle
-                (short[].class, ByteOrder.LITTLE_ENDIAN);
-            cIntArrayHandle = MethodHandles.byteArrayViewVarHandle
-                (int[].class, ByteOrder.LITTLE_ENDIAN);
-            cLongArrayHandle = MethodHandles.byteArrayViewVarHandle
-                (long[].class, ByteOrder.LITTLE_ENDIAN);
+            var order = ByteOrder.nativeOrder();
+            cShortArrayHandle = MethodHandles.byteArrayViewVarHandle(short[].class, order);
+            cIntArrayHandle = MethodHandles.byteArrayViewVarHandle(int[].class, order);
+            cLongArrayHandle = MethodHandles.byteArrayViewVarHandle(long[].class, order);
         } catch (Throwable e) {
             throw new ExceptionInInitializerError();
         }
@@ -71,6 +69,9 @@ abstract class Hasher {
         if (off <= end) {
             hash = ((hash << 5) - hash) ^ b[off];
         }
+        // Hash is used by the LockManager, which depends on the upper and lower bits being
+        // scrambled, so use a strong scramble method. The fibHash method is faster, but it
+        // doesn't scramble the upper bits as well.
         hash = Utils.scramble(hash);
         return hash;
     }
