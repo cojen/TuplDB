@@ -2156,7 +2156,7 @@ final class LocalDatabase extends CoreDatabase {
                                                       LHashTable.Obj<H> handlersById)
         throws IOException
     {
-        long scrambledId = scramble(handlerId);
+        long scrambledId = fibHash(handlerId);
 
         if (handlersById != null) {
             H handler;

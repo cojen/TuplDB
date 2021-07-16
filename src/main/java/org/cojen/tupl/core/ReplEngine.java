@@ -65,10 +65,6 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     static final long INFINITE_TIMEOUT = -1L;
     static final String ATTACHMENT = "replication";
 
-    // Hash spreader. Based on rounded value of 2 ** 63 * (sqrt(5) - 1) equivalent 
-    // to unsigned 11400714819323198485.
-    private static final long HASH_SPREAD = -7046029254386353131L;
-
     private static final VarHandle cDecodeExceptionHandle;
 
     static {
@@ -153,7 +149,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
             txnTable = new TxnTable(txns.size());
 
             txns.traverse(te -> {
-                long scrambledTxnId = mix(te.key);
+                long scrambledTxnId = fibHash(te.key);
                 LocalTransaction txn = te.value;
                 if (!txn.recoveryCleanup(false)) {
                     txnTable.insert(scrambledTxnId).mTxn = txn;
@@ -174,7 +170,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
             cursorTable = new CursorTable(cursors.size());
 
             cursors.traverse(ce -> {
-                long scrambledCursorId = mix(ce.key);
+                long scrambledCursorId = fibHash(ce.key);
                 cursorTable.insert(scrambledCursorId).recovered(ce.value);
                 // Delete entry.
                 return true;
@@ -450,7 +446,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
 
     @Override
     public boolean txnEnter(long txnId) throws IOException {
-        long scrambledTxnId = mix(txnId);
+        long scrambledTxnId = fibHash(txnId);
         TxnEntry te = mTransactions.get(scrambledTxnId);
 
         if (te == null) {
@@ -543,7 +539,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     public boolean txnEnterStore(long txnId, long indexId, byte[] key, byte[] value)
         throws IOException
     {
-        long scrambledTxnId = mix(txnId);
+        long scrambledTxnId = fibHash(txnId);
         TxnEntry te = mTransactions.get(scrambledTxnId);
 
         LocalTransaction txn;
@@ -679,7 +675,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
 
     @Override
     public boolean cursorRegister(long cursorId, long indexId) throws IOException {
-        long scrambledCursorId = mix(cursorId);
+        long scrambledCursorId = fibHash(cursorId);
         Index ix = getIndex(indexId);
         if (ix != null) {
             var tc = (BTreeCursor) ix.newCursor(Transaction.BOGUS);
@@ -695,7 +691,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
 
     @Override
     public boolean cursorUnregister(long cursorId) {
-        long scrambledCursorId = mix(cursorId);
+        long scrambledCursorId = fibHash(cursorId);
         CursorEntry ce;
         synchronized (mCursors) {
             ce = mCursors.remove(scrambledCursorId);
@@ -1178,7 +1174,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
      * @param txn prepared transaction
      */
     void stashForRecovery(LocalTransaction txn) {
-        long scrambledTxnId = mix(txn.id());
+        long scrambledTxnId = fibHash(txn.id());
 
         mDecodeLatch.acquireExclusive();
         try {
@@ -1232,7 +1228,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
                     long txnId = decodeLongBE(key, 0);
 
                     TxnEntry te;
-                    long scrambledTxnId = mix(txnId);
+                    long scrambledTxnId = fibHash(txnId);
 
                     mDecodeLatch.acquireExclusive();
                     try {
@@ -1294,7 +1290,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
      * @return TxnEntry via scrambled transaction id
      */
     private TxnEntry getTxnEntry(long txnId) {
-        long scrambledTxnId = mix(txnId);
+        long scrambledTxnId = fibHash(txnId);
         TxnEntry te = mTransactions.get(scrambledTxnId);
 
         if (te == null) {
@@ -1352,7 +1348,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
      * @return TxnEntry via scrambled transaction id; null if not found
      */
     private TxnEntry removeTxnEntry(long txnId) {
-        long scrambledTxnId = mix(txnId);
+        long scrambledTxnId = fibHash(txnId);
         return mTransactions.remove(scrambledTxnId);
     }
 
@@ -1455,7 +1451,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
      * @return CursorEntry via scrambled cursor id
      */
     private CursorEntry getCursorEntry(long cursorId) {
-        long scrambledCursorId = mix(cursorId);
+        long scrambledCursorId = fibHash(cursorId);
         CursorEntry ce = mCursors.get(scrambledCursorId);
         if (ce == null) {
             synchronized (mCursors) {
@@ -1613,10 +1609,6 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
 
         // Panic.
         closeQuietly(mDatabase, e);
-    }
-
-    private static long mix(long txnId) {
-        return HASH_SPREAD * txnId;
     }
 
     static final class TxnEntry extends LHashTable.Entry<TxnEntry> {
