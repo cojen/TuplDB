@@ -34,8 +34,8 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseConfig;
-import org.cojen.tupl.RowView;
 import org.cojen.tupl.RowScanner;
+import org.cojen.tupl.Table;
 
 /**
  * Schema evolution tests.
@@ -57,7 +57,7 @@ public class EvolutionTest {
         // First insert a row with no value columns.
         {
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", int.class, "+key");
-            RowView view = db.openRowView(rowType);
+            Table view = db.openTable(rowType);
             Method setter = rowType.getMethod("key", int.class);
             var row = view.newRow();
             setter.invoke(row, 0);
@@ -73,7 +73,7 @@ public class EvolutionTest {
         System.arraycopy(toAdd, 0, spec, 2, toAdd.length);
 
         Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", spec);
-        RowView view = db.openRowView(rowType);
+        Table view = db.openTable(rowType);
         Method setter = rowType.getMethod("key", int.class);
         var row = view.newRow();
         setter.invoke(row, 0);
@@ -154,7 +154,7 @@ public class EvolutionTest {
         Object[] toAdd = specToAdd();
 
         var specs = new ArrayList<Object[]>();
-        var views = new ArrayList<RowView<?>>();
+        var views = new ArrayList<Table<?>>();
 
         for (int i = 0; i <= toAdd.length; i += 2) {
             var spec = new Object[2 + i];
@@ -168,7 +168,7 @@ public class EvolutionTest {
             specs.add(spec);
 
             Class<?> type = RowTestUtils.newRowType("test.evolve.MyStuff", spec);
-            RowView<?> view = db.openRowView(type);
+            Table<?> view = db.openTable(type);
             views.add(view);
 
             insertRandom(RowUtils.scramble(8675309 + i), spec, view, 10);
@@ -178,7 +178,7 @@ public class EvolutionTest {
 
         for (int i=0; i<specs.size(); i++) {
             Object[] spec = specs.get(i);
-            RowView<?> view = views.get(i);
+            Table<?> view = views.get(i);
 
             Method[] getters = RowTestUtils.access(spec, view.rowType())[0];
 
@@ -232,7 +232,7 @@ public class EvolutionTest {
         return map;
     }
 
-    private static void insertRandom(long seed, Object[] spec, RowView view, int amt)
+    private static void insertRandom(long seed, Object[] spec, Table view, int amt)
         throws Exception
     {
         Method[][] access = RowTestUtils.access(spec, view.rowType());
@@ -287,7 +287,7 @@ public class EvolutionTest {
 
         {
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
-            RowView view = db.openRowView(rowType);
+            Table view = db.openTable(rowType);
             var row = view.newRow();
 
             rowType.getMethod("key", int.class).invoke(row, 0);
@@ -311,7 +311,7 @@ public class EvolutionTest {
         };
 
         Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
-        RowView view = db.openRowView(rowType);
+        Table view = db.openTable(rowType);
         var row = view.newRow();
         rowType.getMethod("key", int.class).invoke(row, 0);
         view.load(null, row);
@@ -349,7 +349,7 @@ public class EvolutionTest {
 
         {
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
-            RowView view = db.openRowView(rowType);
+            Table view = db.openTable(rowType);
 
             var setKey = rowType.getMethod("key", int.class);
             var setA = rowType.getMethod("a", double.class);
@@ -413,7 +413,7 @@ public class EvolutionTest {
         };
 
         Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
-        RowView view = db.openRowView(rowType);
+        Table view = db.openTable(rowType);
 
         var setKey = rowType.getMethod("key", int.class);
         var getKey = rowType.getMethod("key");
@@ -586,7 +586,7 @@ public class EvolutionTest {
 
         {
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
-            RowView view = db.openRowView(rowType);
+            Table view = db.openTable(rowType);
 
             var setKey = rowType.getMethod("key", int.class);
             var setA = rowType.getMethod("a", double.class);
@@ -650,7 +650,7 @@ public class EvolutionTest {
         };
 
         Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
-        RowView view = db.openRowView(rowType);
+        Table view = db.openTable(rowType);
 
         var setKey = rowType.getMethod("key", int.class);
         var getKey = rowType.getMethod("key");
@@ -834,7 +834,7 @@ public class EvolutionTest {
 
         {
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
-            RowView view = db.openRowView(rowType);
+            Table view = db.openTable(rowType);
 
             var setKey = rowType.getMethod("key", int.class);
             var setA = rowType.getMethod("a", double.class);
@@ -898,7 +898,7 @@ public class EvolutionTest {
         };
 
         Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
-        RowView view = db.openRowView(rowType);
+        Table view = db.openTable(rowType);
 
         var setKey = rowType.getMethod("key", int.class);
         var getKey = rowType.getMethod("key");
@@ -1089,7 +1089,7 @@ public class EvolutionTest {
 
         {
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
-            RowView view = db.openRowView(rowType);
+            Table view = db.openTable(rowType);
 
             var setKey = rowType.getMethod("key", int.class);
             var setA = rowType.getMethod("a", Double.class);
@@ -1153,7 +1153,7 @@ public class EvolutionTest {
         };
 
         Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
-        RowView view = db.openRowView(rowType);
+        Table view = db.openTable(rowType);
 
         var setKey = rowType.getMethod("key", int.class);
         var getKey = rowType.getMethod("key");
@@ -1308,7 +1308,7 @@ public class EvolutionTest {
 
         {
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
-            RowView view = db.openRowView(rowType);
+            Table view = db.openTable(rowType);
 
             var setKey = rowType.getMethod("key", int.class);
             var setA = rowType.getMethod("a", Double.class);
@@ -1372,7 +1372,7 @@ public class EvolutionTest {
         };
 
         Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
-        RowView view = db.openRowView(rowType);
+        Table view = db.openTable(rowType);
 
         var setKey = rowType.getMethod("key", int.class);
         var getKey = rowType.getMethod("key");
@@ -1552,7 +1552,7 @@ public class EvolutionTest {
 
         {
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
-            RowView view = db.openRowView(rowType);
+            Table view = db.openTable(rowType);
 
             var setKey = rowType.getMethod("key", int.class);
             var setA = rowType.getMethod("a", Boolean.class);
@@ -1616,7 +1616,7 @@ public class EvolutionTest {
         };
 
         Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
-        RowView view = db.openRowView(rowType);
+        Table view = db.openTable(rowType);
 
         var setKey = rowType.getMethod("key", int.class);
         var getKey = rowType.getMethod("key");
@@ -1795,7 +1795,7 @@ public class EvolutionTest {
 
         {
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", initSpec);
-            RowView view = db.openRowView(rowType);
+            Table view = db.openTable(rowType);
 
             var setKey = rowType.getMethod("key", int.class);
 
@@ -1813,7 +1813,7 @@ public class EvolutionTest {
             };
 
             Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
-            RowView view = db.openRowView(rowType);
+            Table view = db.openTable(rowType);
 
             var setKey = rowType.getMethod("key", int.class);
             var getKey = rowType.getMethod("key");
@@ -1859,7 +1859,7 @@ public class EvolutionTest {
         };
 
         Class rowType = RowTestUtils.newRowType("test.evolve.MyStuff", newSpec);
-        RowView view = db.openRowView(rowType);
+        Table view = db.openTable(rowType);
 
         var setKey = rowType.getMethod("key", int.class);
         var getKey = rowType.getMethod("key");

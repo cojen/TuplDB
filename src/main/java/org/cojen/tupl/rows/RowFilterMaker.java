@@ -140,7 +140,7 @@ public class RowFilterMaker<R> {
                 ("indyDecodeRow", mStoreRef, mViewClass, mRowType, mIndexId, mFilterStr, mFilter);
 
             var valueVar = mm.param(1);
-            var schemaVersion = RowViewMaker.decodeSchemaVersion(mm, valueVar);
+            var schemaVersion = TableMaker.decodeSchemaVersion(mm, valueVar);
 
             mm.return_(indy.invoke(Object.class, "decodeRow", null,
                                    schemaVersion, mm.this_(), mm.param(0), valueVar, mm.param(2)));
@@ -153,7 +153,7 @@ public class RowFilterMaker<R> {
             mm.super_().invoke("markAllClean", mm.param(0));
         }
 
-        // Factory instances are weakly cached by AbstractRowView, and so this can cause the
+        // Factory instances are weakly cached by AbstractTable, and so this can cause the
         // generated classes to get lost. They will eventually be GC'd, but this takes longer.
         // To prevent a pile up of duplicate classes, maintain a strong reference to the
         // factory. As long as the filter class exists, the factory exists, and so the cache
@@ -234,7 +234,7 @@ public class RowFilterMaker<R> {
 
             RowFilter filter = mFilterRef.get();
             if (filter == null) {
-                filter = AbstractRowView.parse(mRowType, mFilterStr);
+                filter = AbstractTable.parse(mRowType, mFilterStr);
                 mFilterRef = new WeakReference<>(filter);
             }
 

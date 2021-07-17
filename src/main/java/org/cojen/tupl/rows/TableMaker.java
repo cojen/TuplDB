@@ -43,11 +43,11 @@ import org.cojen.tupl.filter.RowFilter;
 import org.cojen.tupl.views.ViewUtils;
 
 /**
- * Makes RowView classes that extend AbstractRowView.
+ * Makes Table classes that extend AbstractTable.
  *
  * @author Brian S O'Neill
  */
-public class RowViewMaker {
+public class TableMaker {
     private final WeakReference<RowStore> mStoreRef;
     private final Class<?> mRowType;
     private final RowGen mRowGen;
@@ -59,7 +59,7 @@ public class RowViewMaker {
     /**
      * @param store generated class is pinned to this specific instance
      */
-    RowViewMaker(RowStore store, Class<?> type, RowGen gen, long indexId) {
+    TableMaker(RowStore store, Class<?> type, RowGen gen, long indexId) {
         mStoreRef = new WeakReference<>(store);
         mRowType = type;
         mRowGen = gen;
@@ -67,11 +67,11 @@ public class RowViewMaker {
         mRowClass = RowMaker.find(type);
         mIndexId = indexId;
         mClassMaker = gen.beginClassMaker(getClass(), type, "View")
-            .extend(AbstractRowView.class).final_().public_();
+            .extend(AbstractTable.class).final_().public_();
     }
 
     /**
-     * @return a constructor which accepts a View and returns a AbstractRowView implementation
+     * @return a constructor which accepts a View and returns a AbstractTable implementation
      */
     MethodHandle finish() {
         {
@@ -419,7 +419,7 @@ public class RowViewMaker {
      */
     private void addDynamicEncodeValueColumns() {
         MethodMaker mm = mClassMaker.addMethod(byte[].class, "encodeValue", mRowClass).static_();
-        var indy = mm.var(RowViewMaker.class).indy
+        var indy = mm.var(TableMaker.class).indy
             ("indyEncodeValueColumns", mStoreRef, mRowType, mIndexId);
         mm.return_(indy.invoke(byte[].class, "encodeValue", null, mm.param(0)));
     }
@@ -512,7 +512,7 @@ public class RowViewMaker {
         {
             MethodMaker mm = mClassMaker.addMethod
                 (SwitchCallSite.class, "decodeValueSwitchCallSite").static_();
-            var condy = mm.var(RowViewMaker.class).condy
+            var condy = mm.var(TableMaker.class).condy
                 ("condyDecodeValueColumns",  mStoreRef, mRowType, mRowClass, mIndexId);
             mm.return_(condy.invoke(SwitchCallSite.class, "_"));
         }
@@ -534,7 +534,7 @@ public class RowViewMaker {
         var data = mm.param(1);
         var schemaVersion = decodeSchemaVersion(mm, data);
 
-        var indy = mm.var(RowViewMaker.class).indy("indyDecodeValueColumns");
+        var indy = mm.var(TableMaker.class).indy("indyDecodeValueColumns");
         indy.invoke(null, "decodeValue", null, schemaVersion, mm.param(0), data);
     }
 
@@ -819,7 +819,7 @@ public class RowViewMaker {
         // The bulk of the method isn't implemented until needed, delaying acquisition/creation
         // of the current schema version.
 
-        var indy = mm.var(RowViewMaker.class).indy("indyDoUpdate", mStoreRef, mRowType, mIndexId);
+        var indy = mm.var(TableMaker.class).indy("indyDoUpdate", mStoreRef, mRowType, mIndexId);
         indy.invoke(null, "doUpdate", null, mm.this_(), rowVar, mergeVar, cursorVar);
         mm.return_(true);
 
@@ -831,7 +831,7 @@ public class RowViewMaker {
                                         Class<?> rowType, long indexId)
     {
         return doIndyEncode(lookup, name, mt, storeRef, rowType, indexId,
-                            RowViewMaker::finishIndyDoUpdate);
+                            TableMaker::finishIndyDoUpdate);
     }
 
     private static void finishIndyDoUpdate(MethodMaker mm, RowInfo rowInfo, int schemaVersion) {
@@ -1107,7 +1107,7 @@ public class RowViewMaker {
      */
     private void addUnfilteredMethod() {
         MethodMaker mm = mClassMaker.addMethod(RowDecoderEncoder.class, "unfiltered").protected_();
-        var condy = mm.var(RowViewMaker.class).condy("condyDefineUnfiltered", mRowType, mRowClass);
+        var condy = mm.var(TableMaker.class).condy("condyDefineUnfiltered", mRowType, mRowClass);
         mm.return_(condy.invoke(RowDecoderEncoder.class, "unfiltered"));
     }
 
@@ -1118,7 +1118,7 @@ public class RowViewMaker {
         RowInfo rowInfo = RowInfo.find(rowType);
 
         ClassMaker cm = RowGen.beginClassMaker
-            (RowViewMaker.class, rowType, rowInfo, null, "Unfiltered")
+            (TableMaker.class, rowType, rowInfo, null, "Unfiltered")
             .implement(RowDecoderEncoder.class).public_();
 
         // Subclassed by filter implementations.
@@ -1163,7 +1163,7 @@ public class RowViewMaker {
         {
             // Used by filter subclasses.
             MethodMaker mm = cm.addMethod(null, "markAllClean", rowClass).protected_().static_();
-            RowViewMaker.markAllClean(mm.param(0), rowInfo);
+            TableMaker.markAllClean(mm.param(0), rowInfo);
         }
 
         {

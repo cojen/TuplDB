@@ -28,7 +28,7 @@ import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseConfig;
 import org.cojen.tupl.PrimaryKey;
 import org.cojen.tupl.RowScanner;
-import org.cojen.tupl.RowView;
+import org.cojen.tupl.Table;
 
 /**
  * 
@@ -47,7 +47,7 @@ public class BigDecimalColumnTest {
         // CompareUtils handles this case. It calls BigDecimal.compareTo instead of equals.
 
         Database db = Database.open(new DatabaseConfig());
-        RowView<Rec> view = db.openRowView(Rec.class);
+        Table<Rec> view = db.openTable(Rec.class);
 
         Rec row1 = view.newRow();
         row1.id(new BigDecimal("1.00"));

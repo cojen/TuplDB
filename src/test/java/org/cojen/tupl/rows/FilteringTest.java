@@ -41,7 +41,7 @@ public class FilteringTest {
         // Verify basic filter ordering.
 
         Database db = Database.open(new DatabaseConfig());
-        RowView<A> view = db.openRowView(A.class);
+        Table<A> view = db.openTable(A.class);
 
         int[] nums = {-1_000_000_000, -100, 0, 100, 1_000_000_000};
 
@@ -72,7 +72,7 @@ public class FilteringTest {
         // Verify basic filter ordering.
 
         Database db = Database.open(new DatabaseConfig());
-        RowView<B> view = db.openRowView(B.class);
+        Table<B> view = db.openTable(B.class);
 
         int[] nums = {-1_000_000_000, -100, 0, 100, 1_000_000_000};
 
@@ -95,7 +95,7 @@ public class FilteringTest {
         // Verify basic filter ordering.
 
         Database db = Database.open(new DatabaseConfig());
-        RowView<C> view = db.openRowView(C.class);
+        Table<C> view = db.openTable(C.class);
 
         int[] nums = {-1_000_000_000, -100, 0, 100, 1_000_000_000};
 
@@ -118,7 +118,7 @@ public class FilteringTest {
         // Verify basic filter ordering.
 
         Database db = Database.open(new DatabaseConfig());
-        RowView<AB> view = db.openRowView(AB.class);
+        Table<AB> view = db.openTable(AB.class);
 
         byte[] nums = {-100, 0, 100};
 
@@ -149,7 +149,7 @@ public class FilteringTest {
         // Verify basic filter ordering.
 
         Database db = Database.open(new DatabaseConfig());
-        RowView<BB> view = db.openRowView(BB.class);
+        Table<BB> view = db.openTable(BB.class);
 
         byte[] nums = {-100, 0, 100};
 
@@ -172,7 +172,7 @@ public class FilteringTest {
         // Verify basic filter ordering.
 
         Database db = Database.open(new DatabaseConfig());
-        RowView<CB> view = db.openRowView(CB.class);
+        Table<CB> view = db.openTable(CB.class);
 
         byte[] nums = {-100, 0, 100};
 
@@ -195,7 +195,7 @@ public class FilteringTest {
         // Verify basic filter ordering.
 
         Database db = Database.open(new DatabaseConfig());
-        RowView<F> view = db.openRowView(F.class);
+        Table<F> view = db.openTable(F.class);
 
         float[] nums = {-1_000_000_000, -100, 0, 100, 1_000_000_000};
 
@@ -222,7 +222,7 @@ public class FilteringTest {
         // Verify basic filter ordering.
 
         Database db = Database.open(new DatabaseConfig());
-        RowView<G> view = db.openRowView(G.class);
+        Table<G> view = db.openTable(G.class);
 
         float[] nums = {-1_000_000_000, -100, 0, 100, 1_000_000_000};
 
@@ -240,7 +240,7 @@ public class FilteringTest {
         findArrayRows(view, nums, "id2");
     }
 
-    private void findArrayRows(RowView view, int[] nums, String column, boolean unsigned)
+    private void findArrayRows(Table view, int[] nums, String column, boolean unsigned)
         throws Exception
     {
         findArrayRows(view, nums, column, unsigned, "<");
@@ -250,7 +250,7 @@ public class FilteringTest {
     }
 
     @SuppressWarnings("unchecked")
-    private void findArrayRows(RowView view, int[] nums, String column, boolean unsigned, String op)
+    private void findArrayRows(Table view, int[] nums, String column, boolean unsigned, String op)
         throws Exception
     {
         String filter = column + ' ' + op + " ?";
@@ -302,7 +302,7 @@ public class FilteringTest {
         }
     }
 
-   private void findArrayRows(RowView view, byte[] nums, String column, boolean unsigned)
+   private void findArrayRows(Table view, byte[] nums, String column, boolean unsigned)
         throws Exception
     {
         findArrayRows(view, nums, column, unsigned, "<");
@@ -312,7 +312,7 @@ public class FilteringTest {
     }
 
     @SuppressWarnings("unchecked")
-    private void findArrayRows(RowView view, byte[] nums,
+    private void findArrayRows(Table view, byte[] nums,
                                String column, boolean unsigned, String op)
         throws Exception
     {
@@ -365,7 +365,7 @@ public class FilteringTest {
         }
     }
 
-    private void findArrayRows(RowView view, float[] nums, String column) throws Exception {
+    private void findArrayRows(Table view, float[] nums, String column) throws Exception {
         findArrayRows(view, nums, column, "<");
         findArrayRows(view, nums, column, ">=");
         findArrayRows(view, nums, column, ">");
@@ -373,7 +373,7 @@ public class FilteringTest {
     }
 
     @SuppressWarnings("unchecked")
-    private void findArrayRows(RowView view, float[] nums, String column, String op)
+    private void findArrayRows(Table view, float[] nums, String column, String op)
         throws Exception
     {
         String filter = column + ' ' + op + " ?";

@@ -76,7 +76,7 @@ public class FuzzTest {
             Column[] columns = randomColumns(rnd);
             Class<?> rowType = randomRowType(rnd, columns);
             Index ix = db.openIndex(rowType.getName());
-            RowView rowView = ix.asRowView(rowType);
+            Table rowView = ix.asTable(rowType);
 
             basicTests(rowType, rowView);
 
@@ -141,7 +141,7 @@ public class FuzzTest {
     }
 
     @SuppressWarnings("unchecked")
-    private static void basicTests(Class<?> rowType, RowView rowView) throws Exception {
+    private static void basicTests(Class<?> rowType, Table rowView) throws Exception {
         // Tests on an empty row instance and index.
 
         assertTrue(rowView.isEmpty());
@@ -260,7 +260,7 @@ public class FuzzTest {
         updater.close();
     }
 
-    private static void truncateAndClose(Index ix, RowView rv) throws Exception {
+    private static void truncateAndClose(Index ix, Table rv) throws Exception {
         var updater = rv.newRowUpdater(null);
         while (updater.row() != null) {
             updater.delete();
@@ -370,7 +370,7 @@ public class FuzzTest {
      * Verifies that the given filter matches only the given row, corresponding to the last
      * invocation of filterAll.
      */
-    private static void filterAllMatch(RowView rv, String filter, Object[] args, Object row)
+    private static void filterAllMatch(Table rv, String filter, Object[] args, Object row)
         throws Exception
     {
         RowScanner scanner = rv.newRowScanner(null, filter, args);

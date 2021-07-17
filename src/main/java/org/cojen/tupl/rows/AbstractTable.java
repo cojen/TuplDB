@@ -28,7 +28,7 @@ import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.RowScanner;
 import org.cojen.tupl.RowUpdater;
-import org.cojen.tupl.RowView;
+import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
 
@@ -42,13 +42,13 @@ import org.cojen.tupl.io.Utils;
  *
  * @author Brian S O'Neill
  */
-public abstract class AbstractRowView<R> implements RowView<R> {
+public abstract class AbstractTable<R> implements Table<R> {
     protected final View mSource;
 
     // MethodHandle signature: RowDecoderEncoder filtered(Object... args)
     private final WeakCache<String, MethodHandle> mFilterFactoryCache;
 
-    protected AbstractRowView(View source) {
+    protected AbstractTable(View source) {
         mSource = Objects.requireNonNull(source);
         mFilterFactoryCache = new WeakCache<>();
     }

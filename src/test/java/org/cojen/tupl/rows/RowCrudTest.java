@@ -35,7 +35,7 @@ public class RowCrudTest {
     @Before
     public void setup() throws Exception {
         mDb = Database.open(new DatabaseConfig());
-        mView = mDb.openRowView(TestRow.class);
+        mView = mDb.openTable(TestRow.class);
     }
 
     @After
@@ -45,7 +45,7 @@ public class RowCrudTest {
     }
 
     private Database mDb;
-    private RowView<TestRow> mView;
+    private Table<TestRow> mView;
 
     @PrimaryKey("id")
     public interface TestRow {
@@ -67,7 +67,7 @@ public class RowCrudTest {
     public void basic() throws Exception {
         assertEquals(TestRow.class, mView.rowType());
         assertTrue(mView.isEmpty());
-        assertTrue(mView == mDb.openRowView(TestRow.class));
+        assertTrue(mView == mDb.openTable(TestRow.class));
 
         TestRow row = mView.newRow();
         assertTrue(row.toString().endsWith("TestRow{}"));

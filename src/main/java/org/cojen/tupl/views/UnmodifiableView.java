@@ -28,8 +28,8 @@ import org.cojen.tupl.Index;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Ordering;
-import org.cojen.tupl.RowView;
 import org.cojen.tupl.Scanner;
+import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.Transformer;
 import org.cojen.tupl.UnmodifiableViewException;
@@ -96,7 +96,7 @@ public final class UnmodifiableView implements Index {
     }
 
     @Override
-    public <R> RowView<R> asRowView(Class<R> type) throws IOException {
+    public <R> Table<R> asTable(Class<R> type) throws IOException {
         throw new UnsupportedOperationException();
     }
 

@@ -35,7 +35,7 @@ import org.cojen.tupl.Database;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockMode;
-import org.cojen.tupl.RowView;
+import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
 
@@ -64,11 +64,11 @@ public class RowStore {
      */
     private final Index mSchemata;
 
-    private final WeakCache<Pair, AbstractRowView<?>> mRowViewCache;
+    private final WeakCache<Pair, AbstractTable<?>> mTableCache;
 
     public RowStore(Index schemata) throws IOException {
         mSchemata = schemata;
-        mRowViewCache = new WeakCache<>();
+        mTableCache = new WeakCache<>();
     }
 
     public Index schemata() {
@@ -76,16 +76,16 @@ public class RowStore {
     }
 
     @SuppressWarnings("unchecked")
-    public <R> RowView<R> asRowView(Index ix, Class<R> type) throws IOException {
+    public <R> Table<R> asTable(Index ix, Class<R> type) throws IOException {
         final var key = new Pair(ix, type);
 
-        AbstractRowView rv = mRowViewCache.get(key);
+        AbstractTable rv = mTableCache.get(key);
         if (rv != null) {
             return rv;
         }
 
-        synchronized (mRowViewCache) {
-            rv = mRowViewCache.get(key);
+        synchronized (mTableCache) {
+            rv = mTableCache.get(key);
             if (rv != null) {
                 return rv;
             }
@@ -108,20 +108,20 @@ public class RowStore {
                 }
             }
 
-            synchronized (mRowViewCache) {
-                rv = mRowViewCache.get(key);
+            synchronized (mTableCache) {
+                rv = mTableCache.get(key);
                 if (rv != null) {
                     return rv;
                 }
 
                 try {
-                    var mh = new RowViewMaker(this, type, gen, ix.id()).finish();
-                    rv = (AbstractRowView) mh.invoke(ix);
+                    var mh = new TableMaker(this, type, gen, ix.id()).finish();
+                    rv = (AbstractTable) mh.invoke(ix);
                 } catch (Throwable e) {
                     throw rethrow(e);
                 }
 
-                mRowViewCache.put(key, rv);
+                mTableCache.put(key, rv);
             }
         } finally {
             txn.reset();

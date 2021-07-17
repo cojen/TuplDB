@@ -37,7 +37,7 @@ import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Ordering;
-import org.cojen.tupl.RowView;
+import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.VerificationObserver;
 import org.cojen.tupl.View;
@@ -137,8 +137,8 @@ class BTree extends Tree implements View, Index {
     }
 
     @Override
-    public <R> RowView<R> asRowView(Class<R> type) throws IOException {
-        return mDatabase.rowStore().asRowView(this, type);
+    public <R> Table<R> asTable(Class<R> type) throws IOException {
+        return mDatabase.rowStore().asTable(this, type);
     }
 
     @Override

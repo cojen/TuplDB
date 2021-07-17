@@ -24,7 +24,7 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-public interface RowView<R> {
+public interface Table<R> {
     public Class<R> rowType();
 
     /**
@@ -183,15 +183,15 @@ public interface RowView<R> {
     // index hints, etc. However, it's the parameterized nature of the filter that makes it
     // special. How about thinking in terms of composability. It makes little sense to add
     // more view layers after performing projection, for example.
-    //public RowView<R> viewFiltered(String filter, Object... args);
+    //public Table<R> viewFiltered(String filter, Object... args);
 
     // FIXME: viewOf? viewSelection? viewProjection? viewOnly? viewWith? viewWithout?
     // Projection.
-    //public RowView<R> viewSelect(String... columns);
+    //public Table<R> viewSelect(String... columns);
 
-    //public RowView<R> viewReverse();
+    //public Table<R> viewReverse();
 
-    //public RowView<R> viewUnmodifiable();
+    //public Table<R> viewUnmodifiable();
 
     //public boolean isUnmodifiable();
 }
