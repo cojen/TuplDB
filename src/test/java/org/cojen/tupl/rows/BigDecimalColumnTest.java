@@ -67,25 +67,25 @@ public class BigDecimalColumnTest {
         row3.value2(new BigDecimal("-1.0000000000000001"));
         view.store(null, row3);
 
-        expect(Set.of(row1, row2), view.newScanner(null, "id == ?", 1));
-        expect(Set.of(row1, row2), view.newScanner(null, "value1 == ?", 0.0));
-        expect(Set.of(row1, row2), view.newScanner(null, "value2 == ?", -1));
+        expect(Set.of(row1, row2), view.newRowScanner(null, "id == ?", 1));
+        expect(Set.of(row1, row2), view.newRowScanner(null, "value1 == ?", 0.0));
+        expect(Set.of(row1, row2), view.newRowScanner(null, "value2 == ?", -1));
 
-        expect(Set.of(row3), view.newScanner(null, "id == ?", 1.125));
-        expect(Set.of(row3), view.newScanner(null, "value1 > ?", new BigDecimal("0.0")));
-        expect(Set.of(row1, row2, row3), view.newScanner(null, "value2 <= ?", -1));
+        expect(Set.of(row3), view.newRowScanner(null, "id == ?", 1.125));
+        expect(Set.of(row3), view.newRowScanner(null, "value1 > ?", new BigDecimal("0.0")));
+        expect(Set.of(row1, row2, row3), view.newRowScanner(null, "value2 <= ?", -1));
 
-        expect(Set.of(row3), view.newScanner(null, "value1 == ?", 0.0000001));
+        expect(Set.of(row3), view.newRowScanner(null, "value1 == ?", 0.0000001));
 
         // Won't find it due to float32 rounding error.
-        expect(Set.of(), view.newScanner(null, "value1 == ?", 0.0000001f));
+        expect(Set.of(), view.newRowScanner(null, "value1 == ?", 0.0000001f));
 
         // Need a range search.
         float low = 0.0000001f;
         low -= Math.ulp(low);
         float high = 0.0000001f;
         high += Math.ulp(high);
-        expect(Set.of(row3), view.newScanner(null, "value1 >= ? && value1 <= ?", low, high));
+        expect(Set.of(row3), view.newRowScanner(null, "value1 >= ? && value1 <= ?", low, high));
     }
 
     private static void expect(Set<Rec> set, RowScanner<Rec> scanner) throws Exception {

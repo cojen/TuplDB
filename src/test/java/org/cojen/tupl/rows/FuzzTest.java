@@ -106,7 +106,7 @@ public class FuzzTest {
 
             int count = 0;
             Iterator<Object> it = set.iterator();
-            RowScanner scanner = rowView.newScanner(null);
+            RowScanner scanner = rowView.newRowScanner(null);
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
                 count++;
                 assertEquals(it.next(), row);
@@ -117,19 +117,19 @@ public class FuzzTest {
             // Verify filtering which matches the exact row.
 
             String filter = filterAll(rnd, columns);
-            scanner = rowView.newScanner(null);
+            scanner = rowView.newRowScanner(null);
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
                 filterAllMatch(rowView, filter, filterAllArgs(columns, row), row);
             }
 
             filter = filterAll2(rnd, columns);
-            scanner = rowView.newScanner(null);
+            scanner = rowView.newRowScanner(null);
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
                 filterAllMatch(rowView, filter, filterAllArgs(columns, row), row);
             }
 
             filter = filterAll3(rnd, columns);
-            scanner = rowView.newScanner(null);
+            scanner = rowView.newRowScanner(null);
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
                 filterAllMatch(rowView, filter, filterAllArgsIn(columns, row), row);
             }
@@ -220,7 +220,7 @@ public class FuzzTest {
             assertTrue(e.getMessage().indexOf("isn't fully specified") >= 0);
         }
 
-        RowScanner scanner = rowView.newScanner(null);
+        RowScanner scanner = rowView.newRowScanner(null);
         assertNull(scanner.row());
         assertNull(scanner.step());
         assertNull(scanner.step(row));
@@ -231,7 +231,7 @@ public class FuzzTest {
         }
         scanner.close();
 
-        RowUpdater updater = rowView.newUpdater(null);
+        RowUpdater updater = rowView.newRowUpdater(null);
         assertNull(updater.row());
         assertNull(updater.step());
         assertNull(updater.step(row));
@@ -261,7 +261,7 @@ public class FuzzTest {
     }
 
     private static void truncateAndClose(Index ix, RowView rv) throws Exception {
-        var updater = rv.newUpdater(null);
+        var updater = rv.newRowUpdater(null);
         while (updater.row() != null) {
             updater.delete();
         }
@@ -373,7 +373,7 @@ public class FuzzTest {
     private static void filterAllMatch(RowView rv, String filter, Object[] args, Object row)
         throws Exception
     {
-        RowScanner scanner = rv.newScanner(null, filter, args);
+        RowScanner scanner = rv.newRowScanner(null, filter, args);
         Object matchRow = scanner.row();
         assertNotNull(matchRow);
         assertEquals(row, matchRow);

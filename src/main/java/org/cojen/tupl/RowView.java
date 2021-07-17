@@ -37,14 +37,14 @@ public interface RowView<R> {
      */
     public void reset(R row);
 
-    public RowScanner<R> newScanner(Transaction txn) throws IOException;
+    public RowScanner<R> newRowScanner(Transaction txn) throws IOException;
 
-    public RowScanner<R> newScanner(Transaction txn, String filter, Object... args)
+    public RowScanner<R> newRowScanner(Transaction txn, String filter, Object... args)
         throws IOException;
 
-    public RowUpdater<R> newUpdater(Transaction txn) throws IOException;
+    public RowUpdater<R> newRowUpdater(Transaction txn) throws IOException;
 
-    public RowUpdater<R> newUpdater(Transaction txn, String filter, Object... args)
+    public RowUpdater<R> newRowUpdater(Transaction txn, String filter, Object... args)
         throws IOException;
 
     public Transaction newTransaction(DurabilityMode durabilityMode);

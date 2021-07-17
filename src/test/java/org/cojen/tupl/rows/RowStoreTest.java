@@ -52,7 +52,7 @@ public class RowStoreTest {
         final var rnd = new Random(seed);
 
         final Database db = Database.open(new DatabaseConfig());
-        final RowStore rs = new RowStore(db, db.openIndex("Schemata"));
+        final RowStore rs = new RowStore(db.openIndex("Schemata"));
 
         final Map<String, ColumnInfo> keyColumns = randomKeyColumns(0, rnd);
         final boolean withAltKey = rnd.nextBoolean();

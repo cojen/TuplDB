@@ -287,7 +287,7 @@ public class FilteringTest {
                 }
             }
 
-            RowScanner scanner = view.newScanner(null, filter, new int[] {arg});
+            RowScanner scanner = view.newRowScanner(null, filter, new int[] {arg});
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
                 if (method == null) {
                     method = row.getClass().getMethod(column);
@@ -350,7 +350,7 @@ public class FilteringTest {
                 }
             }
 
-            RowScanner scanner = view.newScanner(null, filter, new int[] {arg});
+            RowScanner scanner = view.newRowScanner(null, filter, new int[] {arg});
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
                 if (method == null) {
                     method = row.getClass().getMethod(column);
@@ -407,7 +407,7 @@ public class FilteringTest {
                 }
             }
 
-            RowScanner scanner = view.newScanner(null, filter, new float[] {arg});
+            RowScanner scanner = view.newRowScanner(null, filter, new float[] {arg});
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
                 if (method == null) {
                     method = row.getClass().getMethod(column);

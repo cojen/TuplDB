@@ -256,7 +256,7 @@ public class RowCrudTest {
             mView.store(null, row);
         }
 
-        RowUpdater<TestRow> updater = mView.newUpdater
+        RowUpdater<TestRow> updater = mView.newRowUpdater
             (txn, "num1 > ? && num1 < ? || str2 == ?", 1002, 1006, "s2-9");
 
         for (TestRow row = updater.row(); row != null; ) {
@@ -315,7 +315,7 @@ public class RowCrudTest {
             txn.commit();
         }
 
-        RowScanner<TestRow> scanner = mView.newScanner
+        RowScanner<TestRow> scanner = mView.newRowScanner
             (null, "num1 > ? && num1 < ? || str2 == ?", 1002, 1006, "str2 9");
 
         int count = 0;
@@ -368,7 +368,7 @@ public class RowCrudTest {
             mView.store(null, row);
         }
 
-        RowUpdater<TestRow> updater = mView.newUpdater
+        RowUpdater<TestRow> updater = mView.newRowUpdater
             (txn, "num1 > ? && num1 < ? || str2 == ?", 1002, 1006, "s2-9");
 
         for (TestRow row = updater.row(); row != null; ) {
@@ -436,7 +436,7 @@ public class RowCrudTest {
             txn.commit();
         }
 
-        RowScanner<TestRow> scanner = mView.newScanner
+        RowScanner<TestRow> scanner = mView.newRowScanner
             (null, "num1 > ? && num1 < ? || str2 == ?", 1002, 1006, "s2-9x");
 
         int count = 0;

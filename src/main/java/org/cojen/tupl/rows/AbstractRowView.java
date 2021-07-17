@@ -54,18 +54,18 @@ public abstract class AbstractRowView<R> implements RowView<R> {
     }
 
     @Override
-    public RowScanner<R> newScanner(Transaction txn) throws IOException {
-        return newScanner(txn, unfiltered());
+    public RowScanner<R> newRowScanner(Transaction txn) throws IOException {
+        return newRowScanner(txn, unfiltered());
     }
 
     @Override
-    public RowScanner<R> newScanner(Transaction txn, String filter, Object... args)
+    public RowScanner<R> newRowScanner(Transaction txn, String filter, Object... args)
         throws IOException
     {
-        return newScanner(txn, filtered(filter, args));
+        return newRowScanner(txn, filtered(filter, args));
     }
 
-    private RowScanner<R> newScanner(Transaction txn, RowDecoderEncoder<R> decoder)
+    private RowScanner<R> newRowScanner(Transaction txn, RowDecoderEncoder<R> decoder)
         throws IOException
     {
         var scanner = new BasicRowScanner<>(mSource.newCursor(txn), decoder);
@@ -74,18 +74,18 @@ public abstract class AbstractRowView<R> implements RowView<R> {
     }
 
     @Override
-    public RowUpdater<R> newUpdater(Transaction txn) throws IOException {
-        return newUpdater(txn, unfiltered());
+    public RowUpdater<R> newRowUpdater(Transaction txn) throws IOException {
+        return newRowUpdater(txn, unfiltered());
     }
 
     @Override
-    public RowUpdater<R> newUpdater(Transaction txn, String filter, Object... args)
+    public RowUpdater<R> newRowUpdater(Transaction txn, String filter, Object... args)
         throws IOException
     {
-        return newUpdater(txn, filtered(filter, args));
+        return newRowUpdater(txn, filtered(filter, args));
     }
 
-    private RowUpdater<R> newUpdater(Transaction txn, RowDecoderEncoder<R> encoder)
+    private RowUpdater<R> newRowUpdater(Transaction txn, RowDecoderEncoder<R> encoder)
         throws IOException
     {
         BasicRowUpdater<R> updater;
