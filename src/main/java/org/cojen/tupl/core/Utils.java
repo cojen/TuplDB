@@ -103,9 +103,10 @@ public class Utils extends org.cojen.tupl.io.Utils {
 
     /**
      * Compute the Fibonacci hash of the given value, which doesn't affect uniqueness. The
-     * upper bits aren't scrambled as well as the lower bits, and so this method is less
-     * suitable for use by hashtables that inspect the upper bits. Use the scramble method
-     * instead in that case.
+     * achieved level of bit scrambling is fairly weak, and so this hash shouldn't be used by
+     * partitioned hashtables which attempt to distribute entries by inspecting different
+     * regions of the hash. In particular, the LockManager does this, which is why it uses the
+     * much stronger `scramble` method instead.
      */
     public static long fibHash(long v) {
         // 2 ** 63 * (sqrt(5) - 1) equivalent to unsigned 11400714819323198485.
