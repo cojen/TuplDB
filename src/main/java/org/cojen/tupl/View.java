@@ -116,7 +116,6 @@ public interface View {
             case READ_COMMITTED:
             case READ_UNCOMMITTED:
                 txn.enter();
-                txn.lockMode(LockMode.UPGRADABLE_READ);
                 return new CursorNonRepeatableUpdater(c);
             }
         }
@@ -255,7 +254,7 @@ public interface View {
      * @throws ViewConstraintException if entry is not permitted
      */
     public default void store(Transaction txn, byte[] key, byte[] value) throws IOException {
-        txn = ViewUtils.enterUpgradableScope(this, txn);
+        txn = ViewUtils.enterScope(this, txn);
         Cursor c = newCursor(txn);
         try {
             c.autoload(false);
@@ -288,7 +287,7 @@ public interface View {
      * @throws ViewConstraintException if entry is not permitted
      */
     public default byte[] exchange(Transaction txn, byte[] key, byte[] value) throws IOException {
-        txn = ViewUtils.enterUpgradableScope(this, txn);
+        txn = ViewUtils.enterScope(this, txn);
         Cursor c = newCursor(txn);
         try {
             c.find(key);
@@ -343,7 +342,7 @@ public interface View {
      * @throws ViewConstraintException if entry is not permitted
      */
     public default boolean replace(Transaction txn, byte[] key, byte[] value) throws IOException {
-        txn = ViewUtils.enterUpgradableScope(this, txn);
+        txn = ViewUtils.enterScope(this, txn);
         Cursor c = newCursor(txn);
         try {
             c.autoload(false);
@@ -379,7 +378,7 @@ public interface View {
      * @throws ViewConstraintException if entry is not permitted
      */
     public default boolean update(Transaction txn, byte[] key, byte[] value) throws IOException {
-        txn = ViewUtils.enterUpgradableScope(this, txn);
+        txn = ViewUtils.enterScope(this, txn);
         Cursor c = newCursor(txn);
         try {
             c.find(key);
@@ -417,7 +416,7 @@ public interface View {
     public default boolean update(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException
     {
-        txn = ViewUtils.enterUpgradableScope(this, txn);
+        txn = ViewUtils.enterScope(this, txn);
         Cursor c = newCursor(txn);
         try {
             c.autoload(oldValue != null);
