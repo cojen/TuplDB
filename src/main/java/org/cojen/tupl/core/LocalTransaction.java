@@ -130,7 +130,7 @@ public final class LocalTransaction extends Locker implements Transaction {
     // Used by recovery.
     final void recoveredScope(long savepoint, int hasState) {
         ParentScope parentScope = super.scopeEnter();
-        parentScope.mLockMode = mLockMode;
+        parentScope.mLockMode = LockMode.UPGRADABLE_READ;
         parentScope.mLockTimeoutNanos = mLockTimeoutNanos;
         parentScope.mHasState = mHasState;
         parentScope.mSavepoint = mSavepoint;

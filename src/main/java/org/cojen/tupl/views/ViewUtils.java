@@ -27,7 +27,6 @@ import org.cojen.tupl.IllegalUpgradeException;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockInterruptedException;
-import org.cojen.tupl.LockMode;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
@@ -326,14 +325,13 @@ public class ViewUtils {
     }
 
     /**
-     * Returns a new transaction or enters a scope with the UPGRADABLE_READ lock mode.
+     * Returns a new transaction or enters a scope.
      */
-    public static Transaction enterUpgradableScope(View view, Transaction txn) throws IOException {
+    public static Transaction enterScope(View view, Transaction txn) throws IOException {
         if (txn == null) {
             txn = view.newTransaction(null);
         } else if (txn != Transaction.BOGUS) {
             txn.enter();
-            txn.lockMode(LockMode.UPGRADABLE_READ);
         }
         return txn;
     }

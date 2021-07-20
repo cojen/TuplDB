@@ -1012,7 +1012,7 @@ public class TableMaker {
         Variable txnVar = mm.param(0);
         Variable rowVar = mm.param(1).cast(mRowClass);
         Variable source = mm.field("mSource");
-        txnVar.set(mm.var(ViewUtils.class).invoke("enterUpgradableScope", source, txnVar));
+        txnVar.set(mm.var(ViewUtils.class).invoke("enterScope", source, txnVar));
         Label tryStart = mm.label().here();
         mm.return_(mm.invoke("doUpdate", txnVar, rowVar, merge));
         mm.finally_(tryStart, () -> txnVar.invoke("exit"));

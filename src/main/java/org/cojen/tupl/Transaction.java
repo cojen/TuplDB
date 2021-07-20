@@ -71,9 +71,8 @@ public interface Transaction extends Flushable {
 
     /**
      * Sets the lock mode for the current scope. Transactions begin in {@link
-     * LockMode#UPGRADABLE_READ UPGRADABLE_READ} mode, and newly entered scopes
-     * begin at the outer scope's current mode. Exiting a scope reverts the
-     * lock mode.
+     * LockMode#UPGRADABLE_READ UPGRADABLE_READ} mode, as do newly entered scopes. Exiting a
+     * scope reverts the lock mode.
      *
      * @param mode new lock mode
      * @throws IllegalArgumentException if mode is null

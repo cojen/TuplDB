@@ -1,11 +1,11 @@
 Changelog
 =========
 
-v1.5.1.1
---------
+v1.5.2
+------
 
-* The default View store/exchange/replace/update methods should always use the UPGRADABLE_READ
-  lock mode, overriding the mode of the given transaction.
+* Newly entered transaction scopes always select the UPGRADABLE_READ lock mode instead of
+  inheriting the mode from the parent scope.
 
 v1.5.1 (2021-07-10)
 ------

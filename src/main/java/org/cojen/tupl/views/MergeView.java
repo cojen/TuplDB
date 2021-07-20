@@ -100,13 +100,13 @@ abstract class MergeView implements View {
         if (mCombiner.combineLocks()) combine: {
             if (txn == null) {
                 txn = newTransaction(null);
-                txn.lockMode(LockMode.REPEATABLE_READ);
             } else if (txn.lockMode() == LockMode.READ_COMMITTED) {
                 txn.enter();
             } else {
                 break combine;
             }
             try {
+                txn.lockMode(LockMode.REPEATABLE_READ);
                 return doLoad(txn, key);
             } finally {
                 txn.exit();

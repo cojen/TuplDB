@@ -114,7 +114,6 @@ public abstract class AbstractTable<R> implements Table<R> {
             case READ_COMMITTED:
             case READ_UNCOMMITTED:
                 txn.enter();
-                txn.lockMode(LockMode.UPGRADABLE_READ);
                 updater = new NonRepeatableRowUpdater<>(mSource, c, encoder);
                 break;
             }

@@ -518,7 +518,6 @@ abstract class MergeCursor extends CoreValueAccessor implements ScannerCursor {
         } else if (txn.lockMode() != LockMode.UNSAFE) {
             txn.enter();
             try {
-                txn.lockMode(LockMode.UPGRADABLE_READ);
                 store(txn, key, value);
                 txn.commit();
             } finally {
