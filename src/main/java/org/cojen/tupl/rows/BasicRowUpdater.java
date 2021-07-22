@@ -19,12 +19,15 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
+import java.util.Arrays;
 import java.util.Objects;
+import java.util.TreeSet;
 
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.RowUpdater;
 import org.cojen.tupl.Transaction;
+import org.cojen.tupl.UniqueConstraintException;
 import org.cojen.tupl.UnpositionedCursorException;
 import org.cojen.tupl.View;
 
@@ -35,6 +38,8 @@ import org.cojen.tupl.View;
  */
 class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
     final View mView;
+
+    private TreeSet<byte[]> mKeysToSkip;
 
     /**
      * @param cursor linked transaction must not be null
@@ -65,6 +70,8 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
         } catch (UnpositionedCursorException e) {
             finished();
             throw new IllegalStateException("No current row");
+        } catch (UniqueConstraintException e) {
+            throw e;
         } catch (Throwable e) {
             throw RowUtils.fail(this, e);
         }
@@ -103,34 +110,67 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
         return result;
     }
 
-    protected void doUpdate(R row) throws IOException {
+    protected final void doUpdate(R row) throws IOException {
         RowDecoderEncoder<R> encoder = mDecoder;
         byte[] key = encoder.encodeKey(row);
         byte[] value = encoder.encodeValue(row);
         Cursor c = mCursor;
-        if (key == null) {
+        int cmp;
+        if (key == null || (cmp = c.compareKeyTo(key)) == 0) {
             // Key didn't change.
-            c.store(value);
+            storeValue(c, value);
         } else {
-            /* FIXME: If key is less than the current key (based on sort order), proceed. If
-                      key is higher, somehow track it to be skipped over. Note that updating a
-                      key is destructive. Call insert instead of store, and throw an exception
-                      if insert returns false. Make a UniqueConstraintException.
-
+            if (cmp < 0) {
+                if (mKeysToSkip == null) {
+                    mKeysToSkip = new TreeSet<>(Arrays::compareUnsigned);
+                }
+                // FIXME: For AutoCommitRowUpdater, consider limiting the size of the set and
+                // use a temporary index. All other updaters maintain locks, and so the key
+                // objects cannot be immediately freed anyhow.
+                if (!mKeysToSkip.add(key)) {
+                    // Won't be removed from the set in case of UniqueConstraintException.
+                    cmp = 0;
+                }
+            }
             Transaction txn = c.link();
             txn.enter();
             try {
-                mView.store(txn, key, value);
+                if (!mView.insert(txn, key, value)) {
+                    if (cmp < 0) {
+                        mKeysToSkip.remove(key);
+                    }
+                    throw new UniqueConstraintException();
+                }
                 c.commit(null);
             } finally {
                 txn.exit();
             }
-            */
-            throw new IllegalStateException("Cannot alter key");
+            postStoreKeyValue(txn);
         }
+    }
+
+    /**
+     * Called when the key didn't change.
+     */
+    protected void storeValue(Cursor c, byte[] value) throws IOException {
+        c.store(value);
+    }
+
+    /**
+     * Called after the key and value changed and have been updated.
+     */
+    protected void postStoreKeyValue(Transaction txn) throws IOException {
     }
 
     protected void doDelete() throws IOException {
         mCursor.delete();
+    }
+
+    @Override
+    protected R decodeRow(byte[] key, Cursor c, R row) throws IOException {
+        if (mKeysToSkip != null && mKeysToSkip.remove(key)) {
+            return null;
+        }
+        return super.decodeRow(key, c, row);
     }
 }

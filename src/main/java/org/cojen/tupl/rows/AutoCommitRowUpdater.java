@@ -38,25 +38,14 @@ class AutoCommitRowUpdater<R> extends NonRepeatableRowUpdater<R> {
     }
 
     @Override
-    protected void doUpdate(R row) throws IOException {
-        RowDecoderEncoder<R> encoder = mDecoder;
-        byte[] key = encoder.encodeKey(row);
-        byte[] value = encoder.encodeValue(row);
-        Cursor c = mCursor;
-        if (key == null) {
-            // Key didn't change.
-            c.commit(value);
-        } else {
-            Transaction txn = c.link();
-            txn.enter();
-            try {
-                mView.store(txn, key, value);
-                c.commit(null);
-            } finally {
-                txn.exit();
-            }
-            txn.commit();
-        }
+    protected void storeValue(Cursor c, byte[] value) throws IOException {
+        c.commit(value);
+        mLockResult = null;
+    }
+
+    @Override
+    protected void postStoreKeyValue(Transaction txn) throws IOException {
+        txn.commit();
         mLockResult = null;
     }
 

@@ -95,7 +95,7 @@ class BasicRowScanner<R> implements RowScanner<R> {
                 if (key == null) {
                     break;
                 }
-                R decoded = mDecoder.decodeRow(key, c, row);
+                R decoded = decodeRow(key, c, row);
                 if (decoded != null) {
                     mRow = decoded;
                     return decoded;
@@ -111,6 +111,10 @@ class BasicRowScanner<R> implements RowScanner<R> {
         }
         finished();
         return null;
+    }
+
+    protected R decodeRow(byte[] key, Cursor c, R row) throws IOException {
+        return mDecoder.decodeRow(key, c, row);
     }
 
     @Override

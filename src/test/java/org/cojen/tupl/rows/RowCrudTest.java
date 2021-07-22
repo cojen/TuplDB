@@ -325,6 +325,7 @@ public class RowCrudTest {
         }
         assertEquals(1, count);
     }
+
     @Test
     public void basicUpdaterUpdateAutoCommit() throws Exception {
         basicUpdaterUpdate(null);
@@ -376,12 +377,21 @@ public class RowCrudTest {
                 row = updater.step();
             } else {
                 row.str2(row.str2() + "x");
-                if (false && row.id() == 3) { // FIXME: Support snapshot.
+                if (row.id() == 3) {
                     // Changing the primary key is allowed, but it can cause the row to be
                     // observed again, depending on the scan order.
                     row.id(1003);
                     row = updater.update();
                 } else {
+                    if (row.id() == 5) {
+                        try {
+                            row.id(6);
+                            row = updater.update();
+                            fail();
+                        } catch (UniqueConstraintException e) {
+                            row.id(5);
+                        }
+                    }
                     row = updater.update(row);
                 }
             }
@@ -396,7 +406,7 @@ public class RowCrudTest {
             assertTrue(mView.exists(null, row));
         }
 
-        final long checkId = 3; // FIXME: 1003
+        final long checkId = 1003;
 
         if (txn == null) {
             // Auto-commit transaction releases the exlusive lock.
@@ -449,8 +459,7 @@ public class RowCrudTest {
             default: fail(); break;
 
             case 1003:
-                //assertTrue(rowStr.endsWith("TestRow{id=1003, num1=1003, str1=s1-3, str2=s2-3x}"));
-                assertTrue(rowStr.endsWith("TestRow{id=3, num1=1003, str1=s1-3, str2=s2-3x}"));
+                assertTrue(rowStr.endsWith("TestRow{id=1003, num1=1003, str1=s1-3, str2=s2-3x}"));
                 break;
 
             case 1004:
