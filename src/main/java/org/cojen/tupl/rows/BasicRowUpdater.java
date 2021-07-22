@@ -112,7 +112,11 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
             // Key didn't change.
             c.store(value);
         } else {
-            /* FIXME: Need a snapshot to prevent repeat observations of the updated row.
+            /* FIXME: If key is less than the current key (based on sort order), proceed. If
+                      key is higher, somehow track it to be skipped over. Note that updating a
+                      key is destructive. Call insert instead of store, and throw an exception
+                      if insert returns false. Make a UniqueConstraintException.
+
             Transaction txn = c.link();
             txn.enter();
             try {
