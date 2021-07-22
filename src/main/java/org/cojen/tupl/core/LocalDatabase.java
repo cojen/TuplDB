@@ -3034,16 +3034,23 @@ final class LocalDatabase extends CoreDatabase {
      */
     void checkClosed(Throwable caught) throws DatabaseException {
         if (isClosed()) {
-            if (caught != null && caught == mClosedCause) {
-                throw rethrow(caught);
-            }
-            String message = "Closed";
-            Throwable cause = mClosedCause;
-            if (cause != null) {
-                message += "; " + rootCause(cause);
-            }
-            throw new DatabaseException(message, cause);
+            throwClosed(caught);
         }
+    }
+
+    /**
+     * Always throws an exception.
+     */
+    private void throwClosed(Throwable caught) throws DatabaseException {
+        if (caught != null && caught == mClosedCause) {
+            throw rethrow(caught);
+        }
+        String message = "Closed";
+        Throwable cause = mClosedCause;
+        if (cause != null) {
+            message += "; " + rootCause(cause);
+        }
+        throw new DatabaseException(message, cause);
     }
 
     /**
