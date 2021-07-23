@@ -3181,7 +3181,7 @@ final class LocalDatabase extends CoreDatabase {
     {
         final byte[] trashIdKey = newKey(RK_TRASH_ID, treeIdBytes);
 
-        if (mRegistryKeyMap.load(txn, trashIdKey) != null) {
+        if (mRegistryKeyMap.exists(txn, trashIdKey)) {
             // Already in the trash.
             return false;
         }
@@ -3210,6 +3210,11 @@ final class LocalDatabase extends CoreDatabase {
         return true;
     }
 
+    @Override
+    public boolean isInTrash(Transaction txn, long treeId) throws IOException {
+        return mRegistryKeyMap.exists(txn, newKey(RK_TRASH_ID, treeId));
+    }
+
     /**
      * Must be called after all entries in the tree have been deleted and tree is closed.
      */
@@ -3227,8 +3232,14 @@ final class LocalDatabase extends CoreDatabase {
                 }
                 deleteNode(root);
             }
+
             mRegistryKeyMap.delete(Transaction.BOGUS, trashIdKey);
             mRegistry.delete(Transaction.BOGUS, tree.mIdBytes);
+
+            RowStore rs = openRowStore(IX_FIND);
+            if (rs != null) {
+                rs.deleteSchemata(Transaction.BOGUS, tree.mIdBytes);
+            }
         } catch (Throwable e) {
             throw closeOnFailure(this, e);
         } finally {
@@ -3372,7 +3383,7 @@ final class LocalDatabase extends CoreDatabase {
             if ((rs = mRowStore) == null) {
                 Index schemata = openInternalTree(Tree.SCHEMATA_ID, ixOption);
                 if (schemata != null) {
-                    rs = new RowStore(schemata);
+                    rs = new RowStore(this, schemata);
                     VarHandle.storeStoreFence();
                     mRowStore = rs;
                 }
@@ -3932,6 +3943,13 @@ final class LocalDatabase extends CoreDatabase {
         var key = new byte[1 + 4];
         key[0] = type;
         encodeIntBE(key, 1, payload);
+        return key;
+    }
+
+    private static byte[] newKey(byte type, long payload) {
+        var key = new byte[1 + 8];
+        key[0] = type;
+        encodeLongBE(key, 1, payload);
         return key;
     }
 

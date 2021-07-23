@@ -26,6 +26,7 @@ import java.util.zip.Checksum;
 import org.cojen.tupl.Crypto;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.EventListener;
+import org.cojen.tupl.Transaction;
 
 /**
  * Provides access to features of LocalDatabase implementation class, to reduce the number of
@@ -35,7 +36,9 @@ import org.cojen.tupl.EventListener;
  *
  * @author Brian S O'Neill
  */
-abstract class CoreDatabase implements Database {
+public abstract class CoreDatabase implements Database {
+    public abstract boolean isInTrash(Transaction txn, long treeId) throws IOException;
+
     abstract boolean isDirectPageAccess();
 
     abstract boolean isCacheOnly();

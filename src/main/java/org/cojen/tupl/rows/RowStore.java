@@ -39,6 +39,8 @@ import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
 
+import org.cojen.tupl.core.CoreDatabase;
+
 import static org.cojen.tupl.rows.RowUtils.*;
 
 /**
@@ -47,6 +49,8 @@ import static org.cojen.tupl.rows.RowUtils.*;
  * @author Brian S O'Neill
  */
 public class RowStore {
+    private final CoreDatabase mDatabase;
+
     /* Schema metadata for all types.
      
        (indexId) ->
@@ -66,7 +70,8 @@ public class RowStore {
 
     private final WeakCache<Pair, AbstractTable<?>> mTableCache;
 
-    public RowStore(Index schemata) throws IOException {
+    public RowStore(CoreDatabase db, Index schemata) throws IOException {
+        mDatabase = db;
         mSchemata = schemata;
         mTableCache = new WeakCache<>();
     }
@@ -154,6 +159,12 @@ public class RowStore {
 
         Transaction txn = mSchemata.newTransaction(DurabilityMode.SYNC);
         try (Cursor current = mSchemata.newCursor(txn)) {
+            if (mDatabase.isInTrash(txn, indexId)) {
+                // Temporary trees are always in the trash, and they don't replicate. For this
+                // reason, don't attempt to replicate schema metadata either.
+                txn.durabilityMode(DurabilityMode.NO_REDO);
+            }
+
             current.find(key(indexId));
 
             if (current.value() != null) {
