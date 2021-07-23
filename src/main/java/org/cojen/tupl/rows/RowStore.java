@@ -419,10 +419,10 @@ public class RowStore {
         int num = decodePrefixPF(data, pos);
         pos += lengthPrefixPF(num);
         for (int i=0; i<num; i++) {
-            int nameIndex = decodePrefixPF(data, pos);
-            pos += lengthPrefixPF(nameIndex);
+            int columnNumber = decodePrefixPF(data, pos);
+            pos += lengthPrefixPF(columnNumber);
             var ci = new ColumnInfo();
-            ci.name = names[nameIndex];
+            ci.name = names[columnNumber];
             ci.typeCode = decodeIntLE(data, pos); pos += 4;
             ci.assignType();
             columns.put(ci.name, ci);
@@ -485,31 +485,31 @@ public class RowStore {
          */
         EncodedRowInfo(RowInfo info) {
             names = new String[info.allColumns.size()];
-            var nameToIndex = new HashMap<String, Integer>();
+            var columnNameMap = new HashMap<String, Integer>();
             var encoder = new Encoder(names.length * 16); // with initial capacity guess
             encoder.writeByte(1); // encoding version
 
             encoder.writePrefixPF(names.length);
 
-            int nameIndex = 0;
+            int columnNumber = 0;
             for (ColumnInfo column : info.allColumns.values()) {
                 String name = column.name;
-                nameToIndex.put(name, nameIndex);
-                names[nameIndex++] = name;
+                columnNameMap.put(name, columnNumber);
+                names[columnNumber++] = name;
                 encoder.writeStringUTF(name);
                 encoder.writeIntLE(column.typeCode);
             }
 
-            encodeColumns(encoder, info.keyColumns.values(), nameToIndex);
-            encodeColumns(encoder, info.valueColumns.values(), nameToIndex);
+            encodeColumns(encoder, info.keyColumns.values(), columnNameMap);
+            encodeColumns(encoder, info.valueColumns.values(), columnNameMap);
 
             primaryData = encoder.toByteArray();
             primaryHash = Arrays.hashCode(primaryData);
 
             encoder.reset(0);
             encoder.writeIntLE(0); // slot for current schemaVersion
-            encodeColumnSets(encoder, info.alternateKeys, nameToIndex);
-            encodeColumnSets(encoder, info.secondaryIndexes, nameToIndex);
+            encodeColumnSets(encoder, info.alternateKeys, columnNameMap);
+            encodeColumnSets(encoder, info.secondaryIndexes, columnNameMap);
 
             currentData = encoder.toByteArray();
         }
@@ -519,11 +519,11 @@ public class RowStore {
          */
         private static void encodeColumns(Encoder encoder,
                                           Collection<ColumnInfo> columns,
-                                          Map<String, Integer> nameToIndex)
+                                          Map<String, Integer> columnNameMap)
         {
             encoder.writePrefixPF(columns.size());
             for (ColumnInfo column : columns) {
-                encoder.writePrefixPF(nameToIndex.get(column.name));
+                encoder.writePrefixPF(columnNameMap.get(column.name));
                 encoder.writeIntLE(column.typeCode);
             }
         }
@@ -533,13 +533,13 @@ public class RowStore {
          */
         private static void encodeColumnSets(Encoder encoder,
                                              Collection<ColumnSet> columnSets,
-                                             Map<String, Integer> nameToIndex)
+                                             Map<String, Integer> columnNameMap)
         {
             encoder.writePrefixPF(columnSets.size());
             for (ColumnSet set : columnSets) {
-                encodeColumns(encoder, set.allColumns.values(), nameToIndex);
-                encodeColumns(encoder, set.keyColumns.values(), nameToIndex);
-                encodeColumns(encoder, set.valueColumns.values(), nameToIndex);
+                encodeColumns(encoder, set.allColumns.values(), columnNameMap);
+                encodeColumns(encoder, set.keyColumns.values(), columnNameMap);
+                encodeColumns(encoder, set.valueColumns.values(), columnNameMap);
             }
         }
     }
