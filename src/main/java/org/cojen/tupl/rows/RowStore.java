@@ -94,7 +94,8 @@ public class RowStore {
         // Throws an exception if type is malformed.
         RowGen gen = RowInfo.find(type).rowGen();
 
-        Transaction txn = mSchemata.newTransaction(DurabilityMode.NO_FLUSH); // no writes
+        // Can use NO_FLUSH because transaction will be only used for reading data.
+        Transaction txn = mSchemata.newTransaction(DurabilityMode.NO_FLUSH);
         try {
             // With a txn lock held, check if the primary key definition has changed.
             byte[] value = mSchemata.load(txn, key(ix.id()));
@@ -203,22 +204,28 @@ public class RowStore {
 
                    Even when creating a new version, the alt keys and indexes might not
                    match. Something needs to be in RowInfo to track this in all cases.  The
-                   default set is whatever is stored currently. Any changes to the
-                   definition are tracked as "the new sets". This prevents any immediate
-                   issues except when columns are dropped that indexes depend on. Should
-                   any changes to alternate keys always be rejected? Removing some alt keys
-                   is safe, but adding new ones can fail, due to constraints.
+                   default set is whatever is stored currently. Any changes to the definition
+                   are tracked as "the new sets". This prevents any immediate issues except
+                   when columns are dropped that indexes depend on. Should any changes to
+                   alternate keys always be rejected? Removing alt keys is safe, but adding new
+                   ones can fail, due to constraints.
 
-                   Names for alternateKeys and secondaryIndexes use '+' and '-' characters,
-                   and so they don't conflict with type names. Lookups against these names
-                   can be used to determine how far along any workflow proceeded. Final
-                   updates to RowInfoStore are made after all new indexes are added and old
-                   ones dropped. Actually, adding might require a different order.
+                   Names for alternate keys and secondary indexes use '+' and '-' characters,
+                   and so they don't conflict with type names. Lookups against these names can
+                   be used to determine how far along any workflow proceeded. Final updates to
+                   RowInfoStore are made after all new indexes are added and old ones
+                   dropped. Actually, adding might require a different order.
 
-                   The difference between an alternate key and a secondary index is that a
-                   secondary index has all primary key columns in it's own key. For this
-                   reason, there's no reason to define separate ColumnSet arrays. The
-                   distinction can be deduced when decoding.
+                   The '~' character can be used to prefix all the data columns, and once a '~'
+                   is used, the '+' and '-' characters won't follow. Given only a name,
+                   determining if it refers to an alternate key or secondary index can be
+                   deduced by inspection of the key columns. An alternate key always has data
+                   columns, but this is optional with a secondary index. A covering index has
+                   data columns too. The qualifying distinction is that a secondary index
+                   refers to all primary key columns in its own key. An alternate key never
+                   refers to all primary key columns in this fashion. At least one primary key
+                   column will be in the alternate key data column set. In fact, all of the
+                   alternate key data columns must refer to primary key columns.
                 */
 
 
@@ -268,7 +275,8 @@ public class RowStore {
      * @return null if not found
      */
     RowInfo rowInfo(Class<?> rowType, long indexId, int schemaVersion) throws IOException {
-        Transaction txn = mSchemata.newTransaction(DurabilityMode.NO_FLUSH); // no writes
+        // Can use NO_FLUSH because transaction will be only used for reading data.
+        Transaction txn = mSchemata.newTransaction(DurabilityMode.NO_FLUSH);
         txn.lockMode(LockMode.REPEATABLE_READ);
         try (Cursor c = mSchemata.newCursor(txn)) {
             // Check if the indexId matches and the schemaVersion is the current one.

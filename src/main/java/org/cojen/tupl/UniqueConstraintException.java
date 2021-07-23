@@ -18,9 +18,10 @@
 package org.cojen.tupl;
 
 /**
- * Thrown when a row update would create a duplicate key.
+ * Thrown when a row update would create a conflicting primary or alternate key.
  *
  * @author Brian S O'Neill
+ * @see RowUpdater
  */
 public class UniqueConstraintException extends ViewConstraintException {
     private static final long serialVersionUID = 1L;

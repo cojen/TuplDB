@@ -153,8 +153,8 @@ class RowGen {
 
         // Keys first, to cluster their column states together.
         int num = 0;
-        for (ColumnInfo info : info.keyColumns.values()) {
-            map.put(info.name, num++);
+        for (ColumnInfo ci : info.keyColumns.values()) {
+            map.put(ci.name, num++);
         }
         for (ColumnCodec codec : valueCodecs()) { // use encoding order
             if (!(codec instanceof SchemaVersionColumnCodec)) {

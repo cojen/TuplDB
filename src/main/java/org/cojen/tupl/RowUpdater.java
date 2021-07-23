@@ -31,6 +31,7 @@ public interface RowUpdater<R> extends RowScanner<R>, Flushable {
      *
      * @return the next row or null if no more rows remain and scanner has been closed
      * @throws IllegalStateException if no current row
+     * @throws UniqueConstraintException if update creates a conflicting primary or alternate key
      */
     R update() throws IOException;
 
@@ -41,6 +42,7 @@ public interface RowUpdater<R> extends RowScanner<R>, Flushable {
      * @return the next row or null if no more rows remain and scanner has been closed
      * @throws NullPointerException if the given row object is null
      * @throws IllegalStateException if no current row
+     * @throws UniqueConstraintException if update creates a conflicting primary or alternate key
      */
     R update(R row) throws IOException;
 
