@@ -1,11 +1,12 @@
 Changelog
 =========
 
-v1.5.2
+v1.5.2 (2021-07-24)
 ------
 
 * Newly entered transaction scopes always select the UPGRADABLE_READ lock mode instead of
   inheriting the mode from the parent scope.
+* Use stronger random number for database id.
 
 v1.5.1 (2021-07-10)
 ------
