@@ -20,6 +20,7 @@ package org.cojen.tupl.core;
 import java.io.IOException;
 
 import java.util.Arrays;
+import java.util.Random;
 
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAdder;
@@ -54,7 +55,7 @@ final class NonPageDb extends PageDb {
         mAllocId = new AtomicLong(1);
         mFreePageCount = new LongAdder();
 
-        mDatabaseId = generateDatabaseId();
+        mDatabaseId = generateDatabaseId(new Random());
     }
 
     @Override

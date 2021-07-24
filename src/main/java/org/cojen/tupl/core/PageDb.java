@@ -47,8 +47,7 @@ abstract class PageDb implements CauseCloseable {
 
     abstract long databaseId();
 
-    static long generateDatabaseId() {
-        var rnd = new Random();
+    static long generateDatabaseId(Random rnd) {
         long id;
         do {
             id = rnd.nextLong();

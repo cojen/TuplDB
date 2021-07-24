@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 import java.security.GeneralSecurityException;
+import java.security.SecureRandom;
 
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -232,7 +233,7 @@ final class StoredPageDb extends PageDb {
                 // Newly created file.
                 mPageManager = new PageManager(mPageArray);
                 mCommitNumber = -1;
-                mDatabaseId = generateDatabaseId();
+                mDatabaseId = generateDatabaseId(new SecureRandom());
 
                 // Commit twice to ensure both headers have valid data.
                 var header = p_callocPage(mPageArray.directPageSize());
