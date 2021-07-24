@@ -683,7 +683,7 @@ final class LocalDatabase extends CoreDatabase {
             if (launcher.mBasicMode) {
                 mRegistryKeyMap = null;
             } else {
-                mRegistryKeyMap = openInternalTree(Tree.REGISTRY_KEY_MAP_ID, IX_CREATE, launcher);
+                mRegistryKeyMap = openInternalTree(Tree.REGISTRY_KEY_MAP_ID, true, launcher);
                 if (debugListener != null) {
                     Cursor c = indexRegistryById().newCursor(Transaction.BOGUS);
                     try {
@@ -701,7 +701,7 @@ final class LocalDatabase extends CoreDatabase {
 
             BTree cursorRegistry = null;
             if (!launcher.mBasicMode) {
-                cursorRegistry = openInternalTree(Tree.CURSOR_REGISTRY_ID, IX_FIND, launcher);
+                cursorRegistry = openInternalTree(Tree.CURSOR_REGISTRY_ID, false, launcher);
             }
 
             // Limit maximum non-fragmented entry size to 0.75 of usable node size.
@@ -1197,12 +1197,12 @@ final class LocalDatabase extends CoreDatabase {
 
     @Override
     public Index findIndex(byte[] name) throws IOException {
-        return openTree(name, IX_FIND);
+        return openTree(name, false);
     }
 
     @Override
     public Index openIndex(byte[] name) throws IOException {
-        return openTree(name, IX_CREATE);
+        return openTree(name, true);
     }
 
     @Override
@@ -1221,9 +1221,7 @@ final class LocalDatabase extends CoreDatabase {
             return index;
         }
 
-        var idKey = new byte[9];
-        idKey[0] = RK_INDEX_ID;
-        encodeLongBE(idKey, 1, id);
+        byte[] idKey = newKey(RK_INDEX_ID, id);
 
         CommitLock.Shared shared = mCommitLock.acquireShared();
         try {
@@ -1260,7 +1258,7 @@ final class LocalDatabase extends CoreDatabase {
             var treeIdBytes = new byte[8];
             encodeLongBE(treeIdBytes, 0, id);            
 
-            index = openTree(txn, treeIdBytes, name, IX_FIND);
+            index = openTree(txn, treeIdBytes, name, false);
         } catch (Throwable e) {
             rethrowIfRecoverable(e);
             throw closeOnFailure(this, e);
@@ -2386,7 +2384,7 @@ final class LocalDatabase extends CoreDatabase {
                 }
                 var name = new byte[len];
                 din.readFully(name);
-                Tree tree = openTree(name, IX_FIND);
+                Tree tree = openTree(name, false);
                 if (tree != null) {
                     tree.applyCachePrimer(din);
                 } else {
@@ -2759,14 +2757,14 @@ final class LocalDatabase extends CoreDatabase {
      */
     private boolean scanAllIndexes(ScanVisitor visitor) throws IOException {
         if (!scan(visitor, mRegistry) || !scan(visitor, mRegistryKeyMap)
-            || !scan(visitor, openFragmentedTrash(IX_FIND))
-            || !scan(visitor, openCursorRegistry(IX_FIND))
-            || !scan(visitor, openPreparedTxns(IX_FIND)))
+            || !scan(visitor, openFragmentedTrash(false))
+            || !scan(visitor, openCursorRegistry(false))
+            || !scan(visitor, openPreparedTxns(false)))
         {
             return false;
         }
 
-        RowStore rs = openRowStore(IX_FIND);
+        RowStore rs = openRowStore(false);
         if (rs != null) {
             visitor.apply((Tree) rs.schemata());
         }
@@ -3202,7 +3200,7 @@ final class LocalDatabase extends CoreDatabase {
             mRegistryKeyMap.store(txn, trashIdKey, nameKey);
         }
 
-        RowStore rs = openRowStore(IX_FIND);
+        RowStore rs = openRowStore(false);
         if (rs != null) {
             rs.deleteSchemata(txn, treeIdBytes);
         }
@@ -3236,7 +3234,7 @@ final class LocalDatabase extends CoreDatabase {
             mRegistryKeyMap.delete(Transaction.BOGUS, trashIdKey);
             mRegistry.delete(Transaction.BOGUS, tree.mIdBytes);
 
-            RowStore rs = openRowStore(IX_FIND);
+            RowStore rs = openRowStore(false);
             if (rs != null) {
                 rs.deleteSchemata(Transaction.BOGUS, tree.mIdBytes);
             }
@@ -3275,19 +3273,16 @@ final class LocalDatabase extends CoreDatabase {
      */
     BTree cursorRegistry() throws IOException {
         BTree cursorRegistry = mCursorRegistry;
-        return cursorRegistry != null ? cursorRegistry : openCursorRegistry(IX_CREATE);
+        return cursorRegistry != null ? cursorRegistry : openCursorRegistry(true);
     }
 
-    /**
-     * @param ixOption IX_FIND or IX_CREATE
-     */
-    private BTree openCursorRegistry(long ixOption) throws IOException {
+    private BTree openCursorRegistry(boolean create) throws IOException {
         BTree cursorRegistry;
 
         mOpenTreesLatch.acquireExclusive();
         try {
             if ((cursorRegistry = mCursorRegistry) == null) {
-                cursorRegistry = openInternalTree(Tree.CURSOR_REGISTRY_ID, ixOption);
+                cursorRegistry = openInternalTree(Tree.CURSOR_REGISTRY_ID, create);
                 VarHandle.storeStoreFence();
                 mCursorRegistry = cursorRegistry;
             }
@@ -3336,7 +3331,7 @@ final class LocalDatabase extends CoreDatabase {
 
     BTree preparedTxns() throws IOException {
         BTree preparedTxns = mPreparedTxns;
-        return preparedTxns != null ? preparedTxns : openPreparedTxns(IX_CREATE);
+        return preparedTxns != null ? preparedTxns : openPreparedTxns(true);
     }
 
     /**
@@ -3344,19 +3339,16 @@ final class LocalDatabase extends CoreDatabase {
      */
     BTree tryPreparedTxns() throws IOException {
         BTree preparedTxns = mPreparedTxns;
-        return preparedTxns != null ? preparedTxns : openPreparedTxns(IX_FIND);
+        return preparedTxns != null ? preparedTxns : openPreparedTxns(false);
     }
 
-    /**
-     * @param ixOption IX_FIND or IX_CREATE
-     */
-    private BTree openPreparedTxns(long ixOption) throws IOException {
+    private BTree openPreparedTxns(boolean create) throws IOException {
         BTree preparedTxns;
 
         mOpenTreesLatch.acquireExclusive();
         try {
             if ((preparedTxns = mPreparedTxns) == null) {
-                preparedTxns = openInternalTree(Tree.PREPARED_TXNS_ID, ixOption);
+                preparedTxns = openInternalTree(Tree.PREPARED_TXNS_ID, create);
                 VarHandle.storeStoreFence();
                 mPreparedTxns = preparedTxns;
             }
@@ -3369,19 +3361,16 @@ final class LocalDatabase extends CoreDatabase {
 
     RowStore rowStore() throws IOException {
         RowStore rs = mRowStore;
-        return rs != null ? rs : openRowStore(IX_CREATE);
+        return rs != null ? rs : openRowStore(true);
     }
 
-    /**
-     * @param ixOption IX_FIND or IX_CREATE
-     */
-    private RowStore openRowStore(long ixOption) throws IOException {
+    private RowStore openRowStore(boolean create) throws IOException {
         RowStore rs;
 
         mOpenTreesLatch.acquireExclusive();
         try {
             if ((rs = mRowStore) == null) {
-                Index schemata = openInternalTree(Tree.SCHEMATA_ID, ixOption);
+                Index schemata = openInternalTree(Tree.SCHEMATA_ID, create);
                 if (schemata != null) {
                     rs = new RowStore(this, schemata);
                     VarHandle.storeStoreFence();
@@ -3520,13 +3509,11 @@ final class LocalDatabase extends CoreDatabase {
         return loadTreeRoot(rootId);
     }
 
-    private static final byte IX_FIND = 0, IX_CREATE = 1;
-
-    private BTree openInternalTree(long treeId, long ixOption) throws IOException {
-        return openInternalTree(treeId, ixOption, null);
+    private BTree openInternalTree(long treeId, boolean create) throws IOException {
+        return openInternalTree(treeId, create, null);
     }
 
-    private BTree openInternalTree(long treeId, long ixOption, Launcher launcher)
+    private BTree openInternalTree(long treeId, boolean create, Launcher launcher)
         throws IOException
     {
         CommitLock.Shared shared = mCommitLock.acquireShared();
@@ -3540,7 +3527,7 @@ final class LocalDatabase extends CoreDatabase {
             if (rootIdBytes != null) {
                 rootId = decodeLongLE(rootIdBytes, 0);
             } else {
-                if (ixOption == IX_FIND) {
+                if (!create) {
                     return null;
                 }
                 rootId = 0;
@@ -3562,8 +3549,8 @@ final class LocalDatabase extends CoreDatabase {
     /**
      * @param name required (cannot be null)
      */
-    private Tree openTree(byte[] name, long ixOption) throws IOException {
-        return openTree(null, null, name, ixOption);
+    private Tree openTree(byte[] name, boolean create) throws IOException {
+        return openTree(null, null, name, create);
     }
 
     /**
@@ -3571,7 +3558,7 @@ final class LocalDatabase extends CoreDatabase {
      * @param treeIdBytes optional
      * @param name required (cannot be null)
      */
-    private Tree openTree(Transaction findTxn, byte[] treeIdBytes, byte[] name, long ixOption)
+    private Tree openTree(Transaction findTxn, byte[] treeIdBytes, byte[] name, boolean create)
         throws IOException
     {
         find: {
@@ -3599,7 +3586,7 @@ final class LocalDatabase extends CoreDatabase {
 
         CommitLock.Shared shared = mCommitLock.acquireShared();
         try {
-            return doOpenTree(findTxn, treeIdBytes, name, ixOption);
+            return doOpenTree(findTxn, treeIdBytes, name, create);
         } finally {
             shared.release();
         }
@@ -3610,9 +3597,9 @@ final class LocalDatabase extends CoreDatabase {
      *
      * @param findTxn optional
      * @param treeIdBytes optional
-     * @param name required (cannot be null)
+     * @param name required if treeIdBytes is null
      */
-    private Tree doOpenTree(Transaction findTxn, byte[] treeIdBytes, byte[] name, long ixOption)
+    private Tree doOpenTree(Transaction findTxn, byte[] treeIdBytes, byte[] name, boolean create)
         throws IOException
     {
         checkClosed();
@@ -3620,10 +3607,11 @@ final class LocalDatabase extends CoreDatabase {
         // Cleanup before opening more trees.
         cleanupUnreferencedTrees();
 
-        name = name.clone();
-        byte[] nameKey = newKey(RK_INDEX_NAME, name);
+        name = cloneArray(name);
+        byte[] nameKey = null; // only needed when tree needs to be created
 
         if (treeIdBytes == null) {
+            nameKey = newKey(RK_INDEX_NAME, name);
             treeIdBytes = mRegistryKeyMap.load(findTxn, nameKey);
         }
 
@@ -3635,7 +3623,7 @@ final class LocalDatabase extends CoreDatabase {
             // Tree already exists.
             idKey = null;
             treeId = decodeLongBE(treeIdBytes, 0);
-        } else if (ixOption == IX_FIND) {
+        } else if (!create) {
             return null;
         } else create: {
             // Transactional find supported only for opens that do not create.
@@ -5760,7 +5748,7 @@ final class LocalDatabase extends CoreDatabase {
      */
     BTree fragmentedTrash() throws IOException {
         BTree trash = mFragmentedTrash;
-        return trash != null ? trash : openFragmentedTrash(IX_CREATE);
+        return trash != null ? trash : openFragmentedTrash(true);
     }
 
     /**
@@ -5769,19 +5757,16 @@ final class LocalDatabase extends CoreDatabase {
      */
     BTree tryFragmentedTrash() throws IOException {
         BTree trash = mFragmentedTrash;
-        return trash != null ? trash : openFragmentedTrash(IX_FIND);
+        return trash != null ? trash : openFragmentedTrash(false);
     }
 
-    /**
-     * @param ixOption IX_FIND or IX_CREATE
-     */
-    private BTree openFragmentedTrash(long ixOption) throws IOException {
+    private BTree openFragmentedTrash(boolean create) throws IOException {
         BTree trash;
 
         mOpenTreesLatch.acquireExclusive();
         try {
             if ((trash = mFragmentedTrash) == null) {
-                trash = openInternalTree(Tree.FRAGMENTED_TRASH_ID, ixOption);
+                trash = openInternalTree(Tree.FRAGMENTED_TRASH_ID, create);
                 VarHandle.storeStoreFence();
                 mFragmentedTrash = trash;
             }
@@ -5809,7 +5794,7 @@ final class LocalDatabase extends CoreDatabase {
         }
 
         try {
-            trash = openInternalTree(Tree.FRAGMENTED_TRASH_ID, IX_FIND);
+            trash = openInternalTree(Tree.FRAGMENTED_TRASH_ID, false);
             if (trash == null) {
                 mOpenTreesLatch.releaseExclusive();
                 return;
