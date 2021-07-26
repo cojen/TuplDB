@@ -15,7 +15,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.core;
+package org.cojen.tupl.io;
 
 import static org.junit.Assume.*;
 import static org.junit.Assert.*;
@@ -27,9 +27,6 @@ import java.nio.file.FileStore;
 import java.nio.file.Files;
 import java.util.EnumSet;
 
-import org.cojen.tupl.io.FileIO;
-import org.cojen.tupl.io.LengthOption;
-import org.cojen.tupl.io.OpenOption;
 import org.junit.*;
 
 import com.sun.jna.Platform;

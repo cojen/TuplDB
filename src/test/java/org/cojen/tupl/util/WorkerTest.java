@@ -15,7 +15,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.core;
+package org.cojen.tupl.util;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -30,9 +30,6 @@ import org.junit.*;
 import static org.junit.Assert.*;
 
 import org.cojen.tupl.TestUtils;
-
-import org.cojen.tupl.util.Worker;
-import org.cojen.tupl.util.WorkerGroup;
 
 /**
  * 

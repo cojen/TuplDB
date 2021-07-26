@@ -15,7 +15,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.core;
+package org.cojen.tupl.util;
 
 import java.util.ArrayList;
 
@@ -23,9 +23,6 @@ import org.junit.*;
 import static org.junit.Assert.*;
 
 import org.cojen.tupl.TestUtils;
-
-import org.cojen.tupl.util.Latch;
-import org.cojen.tupl.util.LatchCondition;
 
 /**
  * 
