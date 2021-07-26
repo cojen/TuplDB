@@ -1852,6 +1852,7 @@ final class LocalDatabase extends CoreDatabase {
                 mRegistry.delete(Transaction.BOGUS, treeIdBytes);
             } catch (Throwable e2) {
                 // Panic.
+                Utils.suppress(e, e2);
                 throw closeOnFailure(this, e);
             }
             if (rootId != 0) {
@@ -3597,7 +3598,7 @@ final class LocalDatabase extends CoreDatabase {
      *
      * @param findTxn optional
      * @param treeIdBytes optional
-     * @param name required if treeIdBytes is null
+     * @param name required (cannot be null)
      */
     private Tree doOpenTree(Transaction findTxn, byte[] treeIdBytes, byte[] name, boolean create)
         throws IOException
@@ -3607,7 +3608,7 @@ final class LocalDatabase extends CoreDatabase {
         // Cleanup before opening more trees.
         cleanupUnreferencedTrees();
 
-        name = cloneArray(name);
+        name = name.clone();
         byte[] nameKey = null; // only needed when tree needs to be created
 
         if (treeIdBytes == null) {
@@ -3788,7 +3789,7 @@ final class LocalDatabase extends CoreDatabase {
                     mRegistryKeyMap.delete(null, nameKey);
                     mRegistry.delete(Transaction.BOGUS, treeIdBytes);
                 } catch (Throwable e2) {
-                    // Ignore.
+                    Utils.suppress(e, e2);
                 }
             }
             throw e;
