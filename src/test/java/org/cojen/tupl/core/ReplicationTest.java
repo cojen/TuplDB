@@ -1432,6 +1432,22 @@ public class ReplicationTest {
         }
     }
 
+    @Test
+    public void anonymousIndex() throws Exception {
+        // Tests that an anonymous index is created and replicated as expected.
+
+        long[] ids = new long[1];
+        ((CoreDatabase) mLeader).createAnonymousIndexes(null, ids, () -> {});
+        fence();
+
+        Index leaderIx = mLeader.indexById(ids[0]);
+        Index replicaIx = mReplica.indexById(ids[0]);
+
+        leaderIx.store(null, "hello".getBytes(), "world".getBytes());
+        fence();
+        fastAssertArrayEquals("world".getBytes(), replicaIx.load(null, "hello".getBytes()));
+    }
+
     /**
      * Writes a fence to the leader and waits for the replica to catch up.
      */

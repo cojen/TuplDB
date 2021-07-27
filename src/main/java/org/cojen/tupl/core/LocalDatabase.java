@@ -1255,6 +1255,10 @@ final class LocalDatabase extends CoreDatabase {
                 return null;
             }
 
+            if (isAnonymousIndex(txn, name)) {
+                name = null;
+            }
+
             var treeIdBytes = new byte[8];
             encodeLongBE(treeIdBytes, 0, id);            
 
@@ -1366,7 +1370,14 @@ final class LocalDatabase extends CoreDatabase {
             oldName = tree.mName;
 
             if (oldName == null) {
-                throw new IllegalStateException("Cannot rename a temporary index");
+                String message;
+                // Anonymous indexes have an empty name in the registry.
+                if (mRegistryKeyMap.exists(null, newKey(RK_INDEX_ID, tree.mId))) {
+                    message = "Cannot rename an anonymous index";
+                } else {
+                    message = "Cannot rename a temporary index";
+                }
+                throw new IllegalStateException(message);
             }
 
             if (Arrays.equals(oldName, newName)) {
@@ -1877,7 +1888,10 @@ final class LocalDatabase extends CoreDatabase {
 
     @Override
     public View indexRegistryById() throws IOException {
-        return mRegistryKeyMap.viewPrefix(new byte[] {RK_INDEX_ID}, 1).viewUnmodifiable();
+        return mRegistryKeyMap.viewPrefix(new byte[] {RK_INDEX_ID}, 1)
+            .viewUnmodifiable()
+            // Filter out anonymous indexes.
+            .viewFiltered((id, name) -> !isAnonymousIndex(Transaction.BOGUS, name));
     }
 
     @Override
@@ -3189,21 +3203,26 @@ final class LocalDatabase extends CoreDatabase {
             return false;
         }
 
-        final byte[] idKey = newKey(RK_INDEX_ID, treeIdBytes);
+        byte[] treeName = mRegistryKeyMap.exchange(txn, newKey(RK_INDEX_ID, treeIdBytes), null);
 
-        byte[] treeName = mRegistryKeyMap.exchange(txn, idKey, null);
+        byte[] trashEntry;
+        makeTrashEntry: {
+            if (treeName != null) {
+                byte[] nameKey = newKey(RK_INDEX_NAME, treeName);
+                if (mRegistryKeyMap.remove(txn, nameKey, treeIdBytes) || treeName.length > 0) {
+                    // Tag the trash entry to indicate that name is non-null.
+                    trashEntry = nameKey.clone();
+                    trashEntry[0] = 1;
+                    break makeTrashEntry;
+                }
+                // Anonymous index has an empty name, and it has no name to id mapping.
+            }
 
-        if (treeName == null) {
             // A trash entry with just a zero indicates that the name is null.
-            mRegistryKeyMap.store(txn, trashIdKey, new byte[1]);
-        } else {
-            byte[] nameKey = newKey(RK_INDEX_NAME, treeName);
-            mRegistryKeyMap.remove(txn, nameKey, treeIdBytes);
-            // Tag the trash entry to indicate that name is non-null. Note that nameKey
-            // instance is modified directly.
-            nameKey[0] = 1;
-            mRegistryKeyMap.store(txn, trashIdKey, nameKey);
+            trashEntry = new byte[1];
         }
+
+        mRegistryKeyMap.store(txn, trashIdKey, trashEntry);
 
         RowStore rs = openRowStore(false);
         if (rs != null) {
@@ -3561,12 +3580,12 @@ final class LocalDatabase extends CoreDatabase {
     /**
      * @param findTxn optional
      * @param treeIdBytes optional
-     * @param name required (cannot be null)
+     * @param name required, unless anonymous and treeIdBytes is provided
      */
     private Tree openTree(Transaction findTxn, byte[] treeIdBytes, byte[] name, boolean create)
         throws IOException
     {
-        find: {
+        find: if (name != null) {
             TreeRef treeRef;
             mOpenTreesLatch.acquireShared();
             try {
@@ -3602,7 +3621,7 @@ final class LocalDatabase extends CoreDatabase {
      *
      * @param findTxn optional
      * @param treeIdBytes optional
-     * @param name required (cannot be null)
+     * @param name required, unless anonymous and treeIdBytes is provided
      */
     private Tree doOpenTree(Transaction findTxn, byte[] treeIdBytes, byte[] name, boolean create)
         throws IOException
@@ -3612,7 +3631,7 @@ final class LocalDatabase extends CoreDatabase {
         // Cleanup before opening more trees.
         cleanupUnreferencedTrees();
 
-        name = name.clone();
+        name = cloneArray(name);
         byte[] nameKey = null; // only needed when tree needs to be created
 
         if (treeIdBytes == null) {
@@ -3769,11 +3788,15 @@ final class LocalDatabase extends CoreDatabase {
 
                 mOpenTreesLatch.acquireExclusive();
                 try {
-                    mOpenTrees.put(name, treeRef);
+                    if (name != null) {
+                        mOpenTrees.put(name, treeRef);
+                    }
                     try {
                         mOpenTreesById.insert(treeId).value = treeRef;
                     } catch (Throwable e) {
-                        mOpenTrees.remove(name);
+                        if (name != null) {
+                            mOpenTrees.remove(name);
+                        }
                         throw e;
                     }
                 } finally {
@@ -3923,6 +3946,75 @@ final class LocalDatabase extends CoreDatabase {
         } finally {
             root.releaseShared();
         }
+    }
+
+    @Override
+    public void createAnonymousIndexes(Transaction txn, long[] ids, Runnable callback)
+        throws IOException
+    {
+        if (txn == null) {
+            txn = newAlwaysRedoTransaction();
+        }
+
+        if (mRedoWriter instanceof ReplController) {
+            // Confirmation is required when replicated.
+            txn.durabilityMode(DurabilityMode.SYNC);
+        }
+
+        CommitLock.Shared shared = mCommitLock.acquireShared();
+        try {
+            checkClosed();
+
+            var treeIdBytes = new byte[8];
+            int pos = 0;
+
+            try {
+                while (pos < ids.length) {
+                    long treeId;
+                    do {
+                        treeId = nextTreeId(RK_NEXT_TREE_ID);
+                        encodeLongBE(treeIdBytes, 0, treeId);
+                    } while (!mRegistry.insert(Transaction.BOGUS, treeIdBytes, EMPTY_BYTES));
+
+                    ids[pos++] = treeId;
+                }
+
+                for (long id : ids) {
+                    // Insert empty bytes for the name, and don't insert a name to id mapping.
+                    if (!mRegistryKeyMap.insert(txn, newKey(RK_INDEX_ID, id), EMPTY_BYTES)) {
+                        throw new DatabaseException("Unable to insert index id");
+                    }
+                }
+
+                callback.run();
+
+                txn.commit();
+            } catch (Throwable e) {
+                try {
+                    txn.reset();
+                    for (int i=0; i<pos; i++) {
+                        encodeLongBE(treeIdBytes, 0, ids[i]);
+                        mRegistry.delete(Transaction.BOGUS, treeIdBytes);
+                    }
+                } catch (Throwable e2) {
+                    // Panic.
+                    Utils.suppress(e, e2);
+                    throw closeOnFailure(this, e);
+                }
+                rethrowIfRecoverable(e);
+                throw closeOnFailure(this, e);
+            }
+        } finally {
+            shared.release();
+        }
+    }
+
+    /**
+     * @param name not null
+     */
+    private boolean isAnonymousIndex(Transaction txn, byte[] name) throws IOException {
+        // Anonymous index has an empty name, and it has no name to id mapping.
+        return name.length == 0 && !mRegistryKeyMap.exists(txn, newKey(RK_INDEX_NAME, name));
     }
 
     private static byte[] newKey(byte type, byte[] payload) {

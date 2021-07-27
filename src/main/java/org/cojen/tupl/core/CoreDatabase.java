@@ -37,6 +37,17 @@ import org.cojen.tupl.Transaction;
  * @author Brian S O'Neill
  */
 public abstract class CoreDatabase implements Database {
+    /**
+     * Defines anonymous indexes and invokes a callback which should transactionally store
+     * references to the index identifiers.
+     *
+     * @param txn is committed as a side effect; will be switched to SYNC mode if replicated
+     * @param ids each array slot is filled in with a new identifier
+     * @param callback invoked after the ids are filled in, with the commit lock held
+     */
+    public abstract void createAnonymousIndexes(Transaction txn, long[] ids, Runnable callback)
+        throws IOException;
+
     public abstract boolean isInTrash(Transaction txn, long treeId) throws IOException;
 
     abstract boolean isDirectPageAccess();
