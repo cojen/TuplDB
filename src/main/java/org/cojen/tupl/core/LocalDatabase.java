@@ -1791,64 +1791,68 @@ final class LocalDatabase extends CoreDatabase {
                 encodeLongBE(treeIdBytes, 0, treeId);
             } while (!mRegistry.insert(Transaction.BOGUS, treeIdBytes, rootIdBytes));
 
-            // Register temporary index as trash, unreplicated.
-            Transaction createTxn = newNoRedoTransaction();
             try {
-                createTxn.lockTimeout(-1, null);
-                byte[] trashIdKey = newKey(RK_TRASH_ID, treeIdBytes);
-                if (!mRegistryKeyMap.insert(createTxn, trashIdKey, new byte[1])) {
-                    throw new DatabaseException("Unable to register temporary index");
-                }
-                createTxn.commit();
-            } finally {
-                createTxn.reset();
-            }
-
-            Node root;
-            if (rootId != 0) {
-                root = allocLatchedNode(NodeGroup.MODE_UNEVICTABLE);
-                root.id(rootId);
+                // Register temporary index as trash, unreplicated.
+                Transaction createTxn = newNoRedoTransaction();
                 try {
-                    /*P*/ // [|
-                    /*P*/ // if (mFullyMapped) {
-                    /*P*/ //     root.mPage = mPageDb.dirtyPage(rootId);
-                    /*P*/ // }
-                    /*P*/ // ]
-                    root.mGroup.addDirty(root, mCommitState);
+                    createTxn.lockTimeout(-1, null);
+                    byte[] trashIdKey = newKey(RK_TRASH_ID, treeIdBytes);
+                    if (!mRegistryKeyMap.insert(createTxn, trashIdKey, new byte[1])) {
+                        throw new DatabaseException("Unable to register temporary index");
+                    }
+                    createTxn.commit();
+                } finally {
+                    createTxn.reset();
+                }
+
+                Node root;
+                if (rootId != 0) {
+                    root = allocLatchedNode(NodeGroup.MODE_UNEVICTABLE);
+                    root.id(rootId);
+                    try {
+                        /*P*/ // [|
+                        /*P*/ // if (mFullyMapped) {
+                        /*P*/ //     root.mPage = mPageDb.dirtyPage(rootId);
+                        /*P*/ // }
+                        /*P*/ // ]
+                        root.mGroup.addDirty(root, mCommitState);
+                    } catch (Throwable e) {
+                        root.releaseExclusive();
+                        throw e;
+                    }
+                } else {
+                    root = loadTreeRoot(0);
+                }
+
+                try {
+                    var tree = new BTree.Temp(this, treeId, treeIdBytes, root);
+                    var treeRef = new TreeRef(tree, tree, mOpenTreesRefQueue);
+
+                    mOpenTreesLatch.acquireExclusive();
+                    try {
+                        mOpenTreesById.insert(treeId).value = treeRef;
+                    } finally {
+                        mOpenTreesLatch.releaseExclusive();
+                    }
+
+                    return tree;
                 } catch (Throwable e) {
-                    root.releaseExclusive();
+                    if (rootId != 0) {
+                        root.releaseExclusive();
+                    }
                     throw e;
                 }
-            } else {
-                root = loadTreeRoot(0);
-            }
-
-            try {
-                var tree = new BTree.Temp(this, treeId, treeIdBytes, root);
-                var treeRef = new TreeRef(tree, tree, mOpenTreesRefQueue);
-
-                mOpenTreesLatch.acquireExclusive();
-                try {
-                    mOpenTreesById.insert(treeId).value = treeRef;
-                } finally {
-                    mOpenTreesLatch.releaseExclusive();
-                }
-
-                return tree;
             } catch (Throwable e) {
-                if (rootId != 0) {
-                    root.releaseExclusive();
+                try {
+                    mRegistry.delete(Transaction.BOGUS, treeIdBytes);
+                } catch (Throwable e2) {
+                    // Panic.
+                    Utils.suppress(e, e2);
+                    throw closeOnFailure(this, e);
                 }
                 throw e;
             }
         } catch (Throwable e) {
-            try {
-                mRegistry.delete(Transaction.BOGUS, treeIdBytes);
-            } catch (Throwable e2) {
-                // Panic.
-                Utils.suppress(e, e2);
-                throw closeOnFailure(this, e);
-            }
             if (rootId != 0) {
                 try {
                     mPageDb.recyclePage(rootId);
