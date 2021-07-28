@@ -62,18 +62,33 @@ public class RowStore {
 
        (indexId, hash(primary ColumnSet)) -> schemaVersion[]    // hash collision chain
      
+       (indexId, 0, K_INDEX_IDS) -> long[] index ids for alternateKeys and secondaryIndexes
+
+       (0L, indexId, taskType) -> ...  workflow task against an index
+
        The schemaVersion is limited to 2^31, and the hash is encoded with bit 31 set,
-       preventing collisions. Also, schemaVersion cannot be zero, allowing this form to be
-       reserved for future key types.
+       preventing collisions. In addition, schemaVersion cannot be 0, and so the extended keys
+       won't collide, although the longer overall key length prevents collisions as well.
+
+       Because indexId 0 is reserved (for the registry), it won't be used for row storage, and
+       so it can be used for tracking workflow tasks.
      */
     private final Index mSchemata;
 
     private final WeakCache<Pair, AbstractTable<?>> mTableCache;
 
+    // Extended key for referencing the index ids of alternateKeys and secondaryIndexes.
+    //private static final int K_INDEX_IDS = 1;
+
+    private static final int TASK_DELETE_SCHEMATA = 1;
+
     public RowStore(CoreDatabase db, Index schemata) throws IOException {
         mDatabase = db;
         mSchemata = schemata;
         mTableCache = new WeakCache<>();
+
+        // Finish any tasks left over from when the RowStore was last used.
+        finishAllWorkflowTasks();
     }
 
     public Index schemata() {
@@ -140,12 +155,100 @@ public class RowStore {
      * Should be called when the index is being dropped. Does nothing if index wasn't used for
      * storing rows.
      *
+     * This method should be called with the shared commit lock held, and it
+     * non-transactionally stores task metadata which indicates that the schemata should be
+     * deleted. The caller should run the returned object without holding the commit lock.
+     *
+     * If no checkpoint occurs, then the expecation is that the deleteSchemata method is called
+     * again, which allows the deletion to run again. This means that deleteSchemata should
+     * only really be called from removeFromTrash, which automatically runs again if no
+     * checkpoint occurs.
+     *
      * @param indexKey long index id, big-endian encoded
+     * @return an optional task to run without commit lock held
      */
-    public void deleteSchemata(Transaction txn, byte[] indexKey) throws IOException {
-        try (Cursor c = mSchemata.viewPrefix(indexKey, 0).newCursor(txn)) {
+    public Runnable deleteSchemata(byte[] indexKey) throws IOException {
+        var taskKey = new byte[8 + 8 + 4];
+        System.arraycopy(indexKey, 0, taskKey, 8, 8);
+        encodeIntBE(taskKey, 8 + 8, TASK_DELETE_SCHEMATA);
+
+        // Use a transaction to lock the task, and so finishAllWorkflowTasks will skip it.
+        Transaction txn = mDatabase.newTransaction(DurabilityMode.NO_REDO);
+        mSchemata.store(txn, taskKey, EMPTY_BYTES);
+
+        return () -> {
+            try {
+                try {
+                    doDeleteSchemata(indexKey);
+                    mSchemata.delete(txn, taskKey);
+                    txn.commit();
+                } finally {
+                    txn.reset();
+                }
+            } catch (IOException e) {
+                throw rethrow(e);
+            }
+        };
+    }
+
+    private void finishAllWorkflowTasks() throws IOException {
+        // Use transaction locks to identity tasks which should be skipped.
+        Transaction txn = mDatabase.newTransaction(DurabilityMode.NO_REDO);
+        try {
+            txn.lockMode(LockMode.UNSAFE); // don't auto acquire locks
+
+            var prefix = new byte[8]; // 0L is the prefix for all workflow tasks
+
+            try (Cursor c = mSchemata.viewPrefix(prefix, 0).newCursor(txn)) {
+                c.autoload(false);
+
+                for (c.first(); c.key() != null; c.next()) {
+                    if (!txn.tryLockExclusive(mSchemata.id(), c.key(), 0).isHeld()) {
+                        // Skip it.
+                        continue;
+                    }
+
+                    try {
+                        // Load and check the value again, in case another thread deleted it
+                        // before the lock was acquired.
+                        c.load();
+                        byte[] taskValue = c.value();
+                        if (taskValue != null) {
+                            doWorkflowTask(c.key(), taskValue);
+                            c.delete();
+                        }
+                    } finally {
+                        txn.unlock();
+                    }
+                }
+            }
+        } finally {
+            txn.reset();
+        }
+    }
+
+    /**
+     * @param taskKey (0L, indexId, taskType)
+     */
+    private void doWorkflowTask(byte[] taskKey, byte[] taskValue) throws IOException {
+        var indexKey = new byte[8];
+        System.arraycopy(taskKey, 8, indexKey, 0, 8);
+        int taskType = decodeIntBE(taskKey, 8 + 8);
+
+        switch (taskType) {
+        default:
+            throw new CorruptDatabaseException("Unknown task: " + taskType);
+        case TASK_DELETE_SCHEMATA:
+            doDeleteSchemata(indexKey);
+            break;
+        }
+    }
+
+    private void doDeleteSchemata(byte[] indexKey) throws IOException {
+        try (Cursor c = mSchemata.viewPrefix(indexKey, 0).newCursor(Transaction.BOGUS)) {
             c.autoload(false);
             for (c.first(); c.key() != null; c.next()) {
+                // FIXME: If K_INDEX_IDS, delete the indexes.
                 c.delete();
             }
         }
@@ -159,6 +262,7 @@ public class RowStore {
 
         Transaction txn = mSchemata.newTransaction(DurabilityMode.SYNC);
         try (Cursor current = mSchemata.newCursor(txn)) {
+            // FIXME: K_INDEX_IDS must also also be temporary.
             if (mDatabase.isInTrash(txn, indexId)) {
                 // Temporary trees are always in the trash, and they don't replicate. For this
                 // reason, don't attempt to replicate schema metadata either.
@@ -181,7 +285,10 @@ public class RowStore {
                         // Completely matches.
                         return schemaVersion;
                     }
-                    // FIXME: This requires some workflow magic.
+                    // FIXME: This requires some workflow magic. Note that alt keys cannot
+                    // change, and neither can secondary index keys. Only the data columns of a
+                    // secondary index can change. Of course, dropping/adding of alt keys and
+                    // secondary indexes is allowed.
                     throw new IllegalStateException("alt keys and indexes don't match");
                 }
 

@@ -3226,8 +3226,10 @@ final class LocalDatabase extends CoreDatabase {
     /**
      * Must be called after all entries in the tree have been deleted and tree is closed.
      */
-    void removeFromTrash(BTree tree, Node root) throws IOException {
+    private void removeFromTrash(BTree tree, Node root) throws IOException {
         byte[] trashIdKey = newKey(RK_TRASH_ID, tree.mIdBytes);
+
+        Runnable task = null;
 
         CommitLock.Shared shared = mCommitLock.acquireShared();
         try {
@@ -3246,12 +3248,20 @@ final class LocalDatabase extends CoreDatabase {
 
             RowStore rs = openRowStore(false);
             if (rs != null) {
-                rs.deleteSchemata(Transaction.BOGUS, tree.mIdBytes);
+                task = rs.deleteSchemata(tree.mIdBytes);
             }
         } catch (Throwable e) {
             throw closeOnFailure(this, e);
         } finally {
             shared.release();
+        }
+
+        if (task != null) {
+            try {
+                task.run();
+            } catch (Throwable e) {
+                throw closeOnFailure(this, e);
+            }
         }
     }
 
