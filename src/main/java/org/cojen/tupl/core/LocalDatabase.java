@@ -3215,11 +3215,6 @@ final class LocalDatabase extends CoreDatabase {
 
         mRegistryKeyMap.store(txn, trashIdKey, trashEntry);
 
-        RowStore rs = openRowStore(false);
-        if (rs != null) {
-            rs.deleteSchemata(txn, treeIdBytes);
-        }
-        
         return true;
     }
 
