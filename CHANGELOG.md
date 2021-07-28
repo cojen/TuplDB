@@ -7,6 +7,7 @@ v1.5.2 (2021-07-24)
 * Newly entered transaction scopes always select the UPGRADABLE_READ lock mode instead of
   inheriting the mode from the parent scope.
 * Use stronger random number for database id.
+* Avoid holding global commit lock when deleting an index.
 
 v1.5.1 (2021-07-10)
 ------

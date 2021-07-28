@@ -1534,14 +1534,55 @@ final class LocalDatabase extends CoreDatabase {
      * @param shared commit lock held shared; always released by this method
      */
     Runnable deleteTree(BTree tree, CommitLock.Shared shared) throws IOException {
-        try {
-            if (!(tree instanceof BTree.Temp) && !moveToTrash(tree.mId, tree.mIdBytes)) {
-                // Handle concurrent delete attempt.
-                throw new ClosedIndexException();
+        moveToTrash: try {
+            if (tree instanceof BTree.Temp) {
+                // Already in the trash.
+                break moveToTrash;
+            }
+
+            final LocalTransaction txn = newNoRedoTransaction();
+
+            try {
+                txn.lockTimeout(-1, null);
+
+                if (!doMoveToTrash(txn, tree.mIdBytes)) {
+                    // Handle concurrent delete attempt.
+                    throw new ClosedIndexException();
+                }
+
+                if (txn.mRedo != null) {
+                    // Note: No additional operations can appear after OP_DELETE_INDEX. When a
+                    // replica reads this operation it immediately commits the transaction in
+                    // order for the deletion task to be started immediately. The redo log
+                    // still contains a commit operation, which is redundant and harmless.
+
+                    txn.durabilityMode(alwaysRedo(mDurabilityMode));
+
+                    txn.check();
+                    long commitPos = txn.mContext.redoDeleteIndexCommitFinal
+                        (txn.mRedo, txn.txnId(), tree.mId, txn.durabilityMode());
+                    shared.release();
+                    shared = null;
+
+                    if (commitPos != 0) {
+                        // Must wait for durability confirmation before performing actions
+                        // below which cannot be easily rolled back. No global latches or locks
+                        // are held while waiting.
+                        txn.mRedo.txnCommitSync(commitPos);
+                    }
+                }
+
+                txn.commit();
+            } catch (Throwable e) {
+                rethrowIfRecoverable(e);
+                throw closeOnFailure(this, e);
+            } finally {
+                txn.reset();
             }
         } finally {
-            // Always release before calling close, which might require an exclusive lock.
-            shared.release();
+            if (shared != null) {
+                shared.release();
+            }
         }
 
         Node root = tree.close(true, true);
@@ -3128,56 +3169,6 @@ final class LocalDatabase extends CoreDatabase {
         } finally {
             mOpenTreesLatch.releaseExclusive();
         }
-    }
-
-    /**
-     * @return false if already in the trash
-     */
-    private boolean moveToTrash(long treeId, byte[] treeIdBytes) throws IOException {
-        final LocalTransaction txn = newNoRedoTransaction();
-
-        try {
-            txn.lockTimeout(-1, null);
-
-            if (!doMoveToTrash(txn, treeIdBytes)) {
-                return false;
-            }
-
-            if (txn.mRedo != null) {
-                // Note: No additional operations can appear after OP_DELETE_INDEX. When a
-                // replica reads this operation it immediately commits the transaction in order
-                // for the deletion task to be started immediately. The redo log still contains
-                // a commit operation, which is redundant and harmless.
-
-                txn.durabilityMode(alwaysRedo(mDurabilityMode));
-
-                long commitPos;
-                CommitLock.Shared shared = mCommitLock.acquireShared();
-                try {
-                    txn.check();
-                    commitPos = txn.mContext.redoDeleteIndexCommitFinal
-                        (txn.mRedo, txn.txnId(), treeId, txn.durabilityMode());
-                } finally {
-                    shared.release();
-                }
-
-                if (commitPos != 0) {
-                    // Must wait for durability confirmation before performing actions below
-                    // which cannot be easily rolled back. No global latches or locks are held
-                    // while waiting.
-                    txn.mRedo.txnCommitSync(commitPos);
-                }
-            }
-
-            txn.commit();
-        } catch (Throwable e) {
-            rethrowIfRecoverable(e);
-            throw closeOnFailure(this, e);
-        } finally {
-            txn.reset();
-        }
-
-        return true;
     }
 
     /**
