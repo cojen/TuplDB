@@ -389,28 +389,6 @@ public class Utils {
             return false;
         }
 
-        if (deleteSupport == 0) {
-            Object logger = UnsafeAccess.disableIllegalAccessLogger();
-            try {
-                Method m = bb.getClass().getMethod("cleaner");
-                m.setAccessible(true);
-                Object cleaner = m.invoke(bb);
-                if (cleaner == null) {
-                    // No cleaner, so nothing to do.
-                    return false;
-                }
-                m = cleaner.getClass().getMethod("clean");
-                m.setAccessible(true);
-                m.invoke(cleaner);
-                return true;
-            } catch (Throwable e) {
-                // Try another way.
-                cDeleteSupport = 1;
-            } finally {
-                UnsafeAccess.enableIllegalAccessLogger(logger);
-            }
-        }
-
         try {
             var u = UnsafeAccess.obtain();
             Method m = u.getClass().getMethod("invokeCleaner", ByteBuffer.class);
