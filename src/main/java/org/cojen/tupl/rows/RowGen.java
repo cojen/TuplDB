@@ -29,6 +29,8 @@ import org.cojen.maker.ClassMaker;
  * @author Brian S O'Neill
  */
 class RowGen {
+    private static final Object MAKER_KEY = new Object(); // must be a private hidden instance
+
     final RowInfo info;
 
     private volatile String[] mStateFields;
@@ -81,7 +83,7 @@ class RowGen {
             }
         }
 
-        ClassMaker cm = ClassMaker.begin(name, rowType.getClassLoader(), RowGen.class);
+        ClassMaker cm = ClassMaker.begin(name, rowType.getClassLoader(), MAKER_KEY);
 
         if (who != null) {
             cm.sourceFile(who.getSimpleName());
