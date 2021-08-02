@@ -800,6 +800,7 @@ public class TableMaker {
             mm.return_(false);
             replace.here();
             cursorVar.invoke("commit", mm.invoke("encodeValue", rowVar));
+            markAllClean(rowVar);
             mm.return_(true);
 
             if (cont == null) {
