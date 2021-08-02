@@ -66,7 +66,7 @@ public class TableMaker {
         mRowInfo = gen.info;
         mRowClass = RowMaker.find(type);
         mIndexId = indexId;
-        mClassMaker = gen.beginClassMaker(getClass(), type, "View")
+        mClassMaker = gen.beginClassMaker(getClass(), type, "Table")
             .extend(AbstractTable.class).final_().public_();
     }
 
@@ -139,7 +139,7 @@ public class TableMaker {
         addUpdateMethod("update", false);
         addUpdateMethod("merge", true);
 
-        // FIXME: define update, merge, and remove methods that accept a match row
+        // TODO: define update, merge, and remove methods that accept a match row
 
         addUnfilteredMethod();
 

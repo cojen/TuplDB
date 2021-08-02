@@ -3945,9 +3945,7 @@ final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
-    public void createAnonymousIndexes(Transaction txn, long[] ids, Runnable callback)
-        throws IOException
-    {
+    public long createAnonymousIndex(Transaction txn, LongConsumer callback) throws IOException {
         if (txn == null) {
             txn = newAlwaysRedoTransaction();
         }
@@ -3961,35 +3959,29 @@ final class LocalDatabase extends CoreDatabase {
         try {
             checkClosed();
 
+            long treeId = 0;
             var treeIdBytes = new byte[8];
-            int pos = 0;
 
             try {
-                while (pos < ids.length) {
-                    long treeId;
-                    do {
-                        treeId = nextTreeId(RK_NEXT_TREE_ID);
-                        encodeLongBE(treeIdBytes, 0, treeId);
-                    } while (!mRegistry.insert(Transaction.BOGUS, treeIdBytes, EMPTY_BYTES));
+                do {
+                    treeId = nextTreeId(RK_NEXT_TREE_ID);
+                    encodeLongBE(treeIdBytes, 0, treeId);
+                } while (!mRegistry.insert(Transaction.BOGUS, treeIdBytes, EMPTY_BYTES));
 
-                    ids[pos++] = treeId;
+                // Insert empty bytes for the name, and don't insert a name to id mapping.
+                if (!mRegistryKeyMap.insert(txn, newKey(RK_INDEX_ID, treeId), EMPTY_BYTES)) {
+                    throw new DatabaseException("Unable to insert index id");
                 }
 
-                for (long id : ids) {
-                    // Insert empty bytes for the name, and don't insert a name to id mapping.
-                    if (!mRegistryKeyMap.insert(txn, newKey(RK_INDEX_ID, id), EMPTY_BYTES)) {
-                        throw new DatabaseException("Unable to insert index id");
-                    }
-                }
-
-                callback.run();
+                callback.accept(treeId);
 
                 txn.commit();
+
+                return treeId;
             } catch (Throwable e) {
                 try {
                     txn.reset();
-                    for (int i=0; i<pos; i++) {
-                        encodeLongBE(treeIdBytes, 0, ids[i]);
+                    if (treeId != 0) {
                         mRegistry.delete(Transaction.BOGUS, treeIdBytes);
                     }
                 } catch (Throwable e2) {

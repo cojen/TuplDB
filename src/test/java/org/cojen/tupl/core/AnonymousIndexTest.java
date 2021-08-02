@@ -55,21 +55,21 @@ public class AnonymousIndexTest {
 
     @Test
     public void openClose() throws Exception {
-        long[] ids = new long[2];
-        mDb.createAnonymousIndexes(null, ids, () -> {});
-        assertNotEquals(0, ids[0]);
-        assertNotEquals(0, ids[1]);
-        assertNotEquals(ids[0], ids[1]);
+        long id0 = mDb.createAnonymousIndex(null, id_ -> {});
+        long id1 = mDb.createAnonymousIndex(null, id_ -> {});
+        assertNotEquals(0, id0);
+        assertNotEquals(0, id1);
+        assertNotEquals(id0, id1);
 
-        Index ix1 = mDb.indexById(ids[0]);
-        Index ix2 = mDb.indexById(ids[1]);
+        Index ix1 = mDb.indexById(id0);
+        Index ix2 = mDb.indexById(id1);
 
         assertEquals(null, ix1.name());
         assertEquals(null, ix1.nameString());
         assertEquals(null, ix2.name());
         assertEquals(null, ix2.nameString());
-        assertEquals(ids[0], ix1.id());
-        assertEquals(ids[1], ix2.id());
+        assertEquals(id0, ix1.id());
+        assertEquals(id1, ix2.id());
 
         ix1.store(null, "k1".getBytes(), "v1".getBytes());
         ix2.store(null, "k2".getBytes(), "v2".getBytes());
@@ -77,8 +77,8 @@ public class AnonymousIndexTest {
         ix1.close();
         ix2.close();
 
-        ix1 = mDb.indexById(ids[0]);
-        ix2 = mDb.indexById(ids[1]);
+        ix1 = mDb.indexById(id0);
+        ix2 = mDb.indexById(id1);
 
         fastAssertArrayEquals("v1".getBytes(), ix1.load(null, "k1".getBytes()));
         fastAssertArrayEquals("v2".getBytes(), ix2.load(null, "k2".getBytes()));
@@ -98,17 +98,16 @@ public class AnonymousIndexTest {
 
         Transaction txn = mDb.newTransaction();
 
-        long[] ids = new long[1];
-        mDb.createAnonymousIndexes(txn, ids, () -> {
+        long id = mDb.createAnonymousIndex(txn, id_ -> {
             try {
-                Utils.encodeLongBE(idKey, 0, ids[0]);
+                Utils.encodeLongBE(idKey, 0, id_);
                 dir.store(txn, idKey, Utils.EMPTY_BYTES);
             } catch (Exception e) {
                 Utils.rethrow(e);
             }
         });
 
-        Index anon = mDb.indexById(ids[0]);
+        Index anon = mDb.indexById(id);
         anon.store(null, "hello".getBytes(), "world".getBytes());
 
         mDb = (CoreDatabase) reopenTempDatabase(getClass(), mDb, mConfig);
@@ -120,11 +119,11 @@ public class AnonymousIndexTest {
             fastAssertArrayEquals(idKey, c.key());
         }
 
-        anon = mDb.indexById(ids[0]);
+        anon = mDb.indexById(id);
         fastAssertArrayEquals("world".getBytes(), anon.load(null, "hello".getBytes()));
 
-        mDb.createAnonymousIndexes(null, ids, () -> {});
-        assertNotEquals(anon.id(), ids[0]);
+        id = mDb.createAnonymousIndex(null, id_ -> {});
+        assertNotEquals(anon.id(), id);
 
         mDb.deleteIndex(anon).run();
 
@@ -133,11 +132,10 @@ public class AnonymousIndexTest {
 
     @Test
     public void hidden() throws Exception {
-        // Anonymous index isn't in the visible from the public registry.
+        // Anonymous index isn't visible from the public registry.
 
-        long[] ids = new long[1];
-        mDb.createAnonymousIndexes(null, ids, () -> {});
-        Index ix = mDb.indexById(ids[0]);
+        long id = mDb.createAnonymousIndex(null, id_ -> {});
+        Index ix = mDb.indexById(id);
 
         assertTrue(mDb.indexRegistryByName().isEmpty());
         assertTrue(mDb.indexRegistryById().isEmpty());

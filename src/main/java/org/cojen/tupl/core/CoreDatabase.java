@@ -19,6 +19,7 @@ package org.cojen.tupl.core;
 
 import java.io.IOException;
 
+import java.util.function.LongConsumer;
 import java.util.function.Supplier;
 
 import java.util.zip.Checksum;
@@ -38,14 +39,14 @@ import org.cojen.tupl.Transaction;
  */
 public abstract class CoreDatabase implements Database {
     /**
-     * Defines anonymous indexes and invokes a callback which should transactionally store
-     * references to the index identifiers.
+     * Defines an anonymous index and invokes a callback which should transactionally store
+     * a reference to the index identifier.
      *
      * @param txn is committed as a side effect; will be switched to SYNC mode if replicated
-     * @param ids each array slot is filled in with a new identifier
-     * @param callback invoked after the ids are filled in, with the commit lock held
+     * @param callback invoked with the commit lock held
+     * @return the same identifier which was passed to the callback
      */
-    public abstract void createAnonymousIndexes(Transaction txn, long[] ids, Runnable callback)
+    public abstract long createAnonymousIndex(Transaction txn, LongConsumer callback)
         throws IOException;
 
     public abstract boolean isInTrash(Transaction txn, long treeId) throws IOException;
