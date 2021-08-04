@@ -20,6 +20,8 @@ package org.cojen.tupl.rows;
 import java.io.IOException;
 
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 
 import java.util.Objects;
 
@@ -48,9 +50,28 @@ public abstract class AbstractTable<R> implements Table<R> {
     // MethodHandle signature: RowDecoderEncoder filtered(Object... args)
     private final WeakCache<String, MethodHandle> mFilterFactoryCache;
 
-    protected AbstractTable(View source) {
+    private Trigger<R> mTrigger;
+    private static final VarHandle cTriggerHandle;
+
+    static {
+        try {
+            cTriggerHandle = MethodHandles.lookup().findVarHandle
+                (AbstractTable.class, "mTrigger", Trigger.class);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
+    }
+
+    /**
+     * @param triggers pass true to support triggers
+     */
+    protected AbstractTable(View source, boolean triggers) {
         mSource = Objects.requireNonNull(source);
         mFilterFactoryCache = new WeakCache<>();
+        if (triggers) {
+            mTrigger = new Trigger<>();
+            mTrigger.mMode = Trigger.SKIP;
+        }
     }
 
     @Override
@@ -182,6 +203,49 @@ public abstract class AbstractTable<R> implements Table<R> {
      * MethodHandle signature: RowDecoderEncoder filtered(Object... args)
      */
     protected abstract MethodHandle filteredFactory(String str, RowFilter filter);
+
+    /**
+     * Set the table trigger and then wait for the old trigger to no longer be used.
+     *
+     * @param trigger can pass null to remove the trigger
+     * @throws IllegalStateException if triggers aren't supported by this table
+     */
+    void setTrigger(Trigger<R> trigger) {
+        if (trigger == null) {
+            trigger = new Trigger<>();
+            trigger.mMode = Trigger.SKIP;
+        }
+
+        var old = (Trigger<R>) cTriggerHandle.getAndSet(this, trigger);
+
+        if (old == null) {
+            // Athough eagerly setting the trigger does create an odd race condition,
+            // attempting to set the trigger when not supported is a bug anyhow.
+            cTriggerHandle.setVolatile(this, null);
+            throw new IllegalStateException();
+        }
+
+        // Note that mode field can be assigned using "plain" mode because lock acquisition
+        // applies a volatile fence.
+        old.mMode = Trigger.DISABLED;
+
+        // Wait for in-flight operations against the old trigger to finish.
+        old.acquireExclusive();
+        old.releaseExclusive();
+
+        // At this point, any threads which acquire the shared lock on the trigger will observe
+        // that it's disabled by virtue of having applied a volatile fence to obtain the lock
+        // in the first place.
+    }
+
+    /**
+     * Returns the current trigger, which must be held shared during the operation. As soon as
+     * acquired, check if the trigger is disabled. This method must be public because it's
+     * sometimes accessed from generated code which isn't the subclass of AbstractTable.
+     */
+    public Trigger<R> trigger() {
+        return (Trigger<R>) cTriggerHandle.getOpaque(this);
+    }
 
     static RowFilter parse(Class<?> rowType, String filter) {
         return new Parser(RowInfo.find(rowType).allColumns, filter).parse();

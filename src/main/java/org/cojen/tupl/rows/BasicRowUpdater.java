@@ -91,6 +91,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
     }
 
     private R doDeleteAndStep(R row) throws IOException {
+        // FIXME: TRIGGER
         try {
             doDelete();
         } catch (UnpositionedCursorException e) {
@@ -111,6 +112,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
     }
 
     protected final void doUpdate(R row) throws IOException {
+        // FIXME: TRIGGER
         RowDecoderEncoder<R> encoder = mDecoder;
         byte[] key = encoder.encodeKey(row);
         byte[] value = encoder.encodeValue(row);

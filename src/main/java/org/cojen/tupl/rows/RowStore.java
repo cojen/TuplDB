@@ -136,7 +136,9 @@ public class RowStore {
                 }
 
                 try {
-                    var mh = new TableMaker(this, type, gen, ix.id()).finish();
+                    // FIXME: Make sure that secondary indexes don't support triggers (it just
+                    // adds unnecessary overhead).
+                    var mh = new TableMaker(this, type, gen, ix.id(), true).finish();
                     rv = (AbstractTable) mh.invoke(ix);
                 } catch (Throwable e) {
                     throw rethrow(e);
@@ -318,7 +320,7 @@ public class RowStore {
 
                 // Create a new version.
 
-                /* FIXME: index set evolution
+                /* FIXME: index set evolution ideas
 
                    Even when creating a new version, the alt keys and indexes might not
                    match. Something needs to be in RowInfo to track this in all cases.  The

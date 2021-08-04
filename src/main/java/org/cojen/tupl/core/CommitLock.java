@@ -37,7 +37,7 @@ import org.cojen.tupl.util.Parker;
  *
  * @author Brian S O'Neill
  */
-final class CommitLock implements Lock {
+public class CommitLock implements Lock {
     // See: "Using LongAdder to make a Reader-Writer Lock" by Concurrency Freaks, and also
     // "NUMA-Aware Reader Writer Locks".
 
@@ -51,14 +51,14 @@ final class CommitLock implements Lock {
     /**
      * Shared acquire counter, for supporting reentrancy.
      */
-    static final class Shared extends WeakReference<CommitLock> {
+    public static final class Shared extends WeakReference<CommitLock> {
         int count;
 
         Shared(CommitLock lock) {
             super(lock);
         }
 
-        void release() {
+        public void release() {
             CommitLock lock = get();
             if (lock != null) {
                 lock.releaseShared();
@@ -66,7 +66,7 @@ final class CommitLock implements Lock {
             count--;
         }
 
-        void addCountTo(LongAdder adder) {
+        private void addCountTo(LongAdder adder) {
             if (count > 0) {
                 adder.add(count);
             }
@@ -79,7 +79,7 @@ final class CommitLock implements Lock {
      * Acquire shared lock.
      */
     @Override
-    public boolean tryLock() {
+    public final boolean tryLock() {
         return tryAcquireShared() != null;
     }
 
@@ -88,7 +88,7 @@ final class CommitLock implements Lock {
      *
      * @return shared object to unlock; is null if acquire failed
      */
-    Shared tryAcquireShared() {
+    public final Shared tryAcquireShared() {
         mSharedAcquire.increment();
         Shared shared = mShared.get();
         if (mExclusiveThread != null && shared.count == 0) {
@@ -104,7 +104,7 @@ final class CommitLock implements Lock {
      * Acquire shared lock.
      */
     @Override
-    public void lock() {
+    public final void lock() {
         acquireShared();
     }
 
@@ -113,13 +113,13 @@ final class CommitLock implements Lock {
      *
      * @return shared object to unlock
      */
-    Shared acquireShared() {
+    public final Shared acquireShared() {
         Shared shared = mShared.get();
         acquireShared(shared);
         return shared;
     }
 
-    void acquireShared(Shared shared) {
+    public final void acquireShared(Shared shared) {
         mSharedAcquire.increment();
         if (mExclusiveThread != null && shared.count == 0) {
             releaseShared();
@@ -139,7 +139,7 @@ final class CommitLock implements Lock {
      *
      * @return shared object to unlock
      */
-    Shared acquireSharedUnchecked() {
+    public final Shared acquireSharedUnchecked() {
         mSharedAcquire.increment();
         Shared shared = mShared.get();
         shared.count++;
@@ -150,7 +150,7 @@ final class CommitLock implements Lock {
      * Acquire shared lock.
      */
     @Override
-    public void lockInterruptibly() throws InterruptedException {
+    public final void lockInterruptibly() throws InterruptedException {
         acquireSharedInterruptibly();
     }
 
@@ -159,7 +159,7 @@ final class CommitLock implements Lock {
      *
      * @return shared object to unlock
      */
-    Shared acquireSharedInterruptibly() throws InterruptedException {
+    public final Shared acquireSharedInterruptibly() throws InterruptedException {
         mSharedAcquire.increment();
         Shared shared = mShared.get();
         if (mExclusiveThread != null && shared.count == 0) {
@@ -179,7 +179,7 @@ final class CommitLock implements Lock {
      * Acquire shared lock.
      */
     @Override
-    public boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
+    public final boolean tryLock(long time, TimeUnit unit) throws InterruptedException {
         return tryAcquireShared(time, unit) != null;
     }
 
@@ -188,7 +188,7 @@ final class CommitLock implements Lock {
      *
      * @return shared object to unlock; is null if acquire failed
      */
-    Shared tryAcquireShared(long time, TimeUnit unit) throws InterruptedException {
+    public final Shared tryAcquireShared(long time, TimeUnit unit) throws InterruptedException {
         mSharedAcquire.increment();
         Shared shared = mShared.get();
         if (mExclusiveThread != null && shared.count == 0) {
@@ -212,12 +212,12 @@ final class CommitLock implements Lock {
      * Release shared lock.
      */
     @Override
-    public void unlock() {
+    public final void unlock() {
         releaseShared();
         mShared.get().count--;
     }
 
-    void releaseShared() {
+    public final void releaseShared() {
         mSharedRelease.increment();
         Thread t = mExclusiveThread;
         if (t != null && !hasSharedLockers()) {
@@ -226,11 +226,11 @@ final class CommitLock implements Lock {
     }
 
     @Override
-    public Condition newCondition() {
+    public final Condition newCondition() {
         throw new UnsupportedOperationException();
     }
 
-    void acquireExclusive() {
+    public final void acquireExclusive() {
         // If full exclusive lock cannot be immediately obtained, it's due to a shared lock
         // being held for a long time. While waiting for the exclusive lock, all other shared
         // requests are queued. By waiting a timed amount and giving up, the exclusive lock
@@ -300,13 +300,13 @@ final class CommitLock implements Lock {
         }
     }
 
-    void releaseExclusive() {
+    public final void releaseExclusive() {
         mExclusiveThread = null;
         mFullLatch.releaseExclusive();
         mShared.get().count--;
     }
 
-    boolean hasQueuedThreads() {
+    public final boolean hasQueuedThreads() {
         return mFullLatch.hasQueuedThreads();
     }
 

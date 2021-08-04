@@ -40,6 +40,8 @@ import org.cojen.tupl.View;
 
 import org.cojen.tupl.filter.RowFilter;
 
+import org.cojen.tupl.core.CommitLock;
+
 import org.cojen.tupl.views.ViewUtils;
 
 /**
@@ -54,29 +56,32 @@ public class TableMaker {
     private final RowInfo mRowInfo;
     private final Class<?> mRowClass;
     private final long mIndexId;
+    private final boolean mTriggers;
     private final ClassMaker mClassMaker;
 
     /**
      * @param store generated class is pinned to this specific instance
+     * @param triggers pass true to support triggers
      */
-    TableMaker(RowStore store, Class<?> type, RowGen gen, long indexId) {
+    TableMaker(RowStore store, Class<?> type, RowGen gen, long indexId, boolean triggers) {
         mStoreRef = new WeakReference<>(store);
         mRowType = type;
         mRowGen = gen;
         mRowInfo = gen.info;
         mRowClass = RowMaker.find(type);
         mIndexId = indexId;
+        mTriggers = triggers;
         mClassMaker = gen.beginClassMaker(getClass(), type, "Table")
             .extend(AbstractTable.class).final_().public_();
     }
 
     /**
-     * @return a constructor which accepts a View and returns a AbstractTable implementation
+     * @return a constructor which accepts a View and returns an AbstractTable implementation
      */
     MethodHandle finish() {
         {
             MethodMaker mm = mClassMaker.addConstructor(View.class);
-            mm.invokeSuperConstructor(mm.param(0));
+            mm.invokeSuperConstructor(mm.param(0), mTriggers);
         }
 
         // Add the simple rowType method.
@@ -430,9 +435,9 @@ public class TableMaker {
     {
         return doIndyEncode
             (lookup, name, mt, storeRef, rowType, indexId, (mm, info, schemaVersion) -> {
-            ColumnCodec[] codecs = info.rowGen().valueCodecs();
-            addEncodeColumns(mm, ColumnCodec.bind(schemaVersion, codecs, mm));
-        });
+                ColumnCodec[] codecs = info.rowGen().valueCodecs();
+                addEncodeColumns(mm, ColumnCodec.bind(schemaVersion, codecs, mm));
+            });
     }
 
     @FunctionalInterface
@@ -519,7 +524,7 @@ public class TableMaker {
 
         // Also define a method to obtain a MethodHandle which decodes for a given schema
         // version. This must be defined here to ensure that the correct lookup is used. It
-        // must always refer to this view class.
+        // must always refer to this table class.
         {
             MethodMaker mm = mClassMaker.addMethod
                 (MethodHandle.class, "decodeValueHandle", int.class).static_();
@@ -658,7 +663,37 @@ public class TableMaker {
         ready.here();
 
         var keyVar = mm.invoke("encodePrimaryKey", rowVar);
-        var valueVar = mm.field("mSource").invoke(variant, txnVar, keyVar);
+
+        final var source = mm.field("mSource");
+
+        final Variable valueVar;
+
+        if (variant != "delete" || !mTriggers) {
+            valueVar = source.invoke(variant, txnVar, keyVar);
+        } else {
+            var triggerVar = mm.var(Trigger.class);
+            Label skipLabel = mm.label();
+            var triggerLockVar = prepareForTrigger(mm, mm.this_(), triggerVar, skipLabel);
+            Label triggerStart = mm.label().here();
+
+            // Trigger requires a non-null transaction.
+            txnVar.set(mm.var(ViewUtils.class).invoke("enterScope", source, txnVar));
+            Label txnStart = mm.label().here();
+
+            var oldValueVar = source.invoke("exchange", txnVar, keyVar, null);
+            triggerVar.invoke("store", txnVar, rowVar, keyVar, oldValueVar, null);
+            txnVar.invoke("commit");
+            mm.return_(oldValueVar.ne(null));
+
+            mm.finally_(txnStart, () -> txnVar.invoke("exit"));
+
+            skipLabel.here();
+
+            assert variant == "delete";
+            valueVar = source.invoke(variant, txnVar, keyVar);
+
+            mm.finally_(triggerStart, () -> triggerLockVar.invoke("release"));
+        }
 
         if (variant != "load") {
             mm.return_(valueVar);
@@ -691,7 +726,78 @@ public class TableMaker {
         var keyVar = mm.invoke("encodePrimaryKey", rowVar);
         var valueVar = mm.invoke("encodeValue", rowVar);
 
-        Variable resultVar = mm.field("mSource").invoke(variant, txnVar, keyVar, valueVar);
+        final var source = mm.field("mSource");
+
+        Variable resultVar = null;
+
+        if (!mTriggers) {
+            resultVar = source.invoke(variant, txnVar, keyVar, valueVar);
+        } else {
+            Label cont = mm.label();
+
+            var triggerVar = mm.var(Trigger.class);
+            Label skipLabel = mm.label();
+            var triggerLockVar = prepareForTrigger(mm, mm.this_(), triggerVar, skipLabel);
+            Label triggerStart = mm.label().here();
+
+            // Trigger requires a non-null transaction.
+            txnVar.set(mm.var(ViewUtils.class).invoke("enterScope", source, txnVar));
+            Label txnStart = mm.label().here();
+
+            if (variant == "insert") {
+                var insertResultVar = source.invoke(variant, txnVar, keyVar, valueVar);
+                Label passed = mm.label();
+                insertResultVar.ifTrue(passed);
+                mm.return_(false);
+                passed.here();
+                triggerVar.invoke("store", txnVar, rowVar, keyVar, null, valueVar);
+                txnVar.invoke("commit");
+                markAllClean(rowVar);
+                mm.return_(true);
+            } else if (variant == "replace") {
+                var cursorVar = source.invoke("newCursor", txnVar);
+                Label cursorStart = mm.label().here();
+                cursorVar.invoke("find", keyVar);
+                var oldValueVar = cursorVar.invoke("value");
+                Label passed = mm.label();
+                oldValueVar.ifNe(null, passed);
+                mm.return_(false);
+                passed.here();
+                cursorVar.invoke("store", valueVar);
+                mm.finally_(cursorStart, () -> cursorVar.invoke("reset"));
+                triggerVar.invoke("store", txnVar, rowVar, keyVar, oldValueVar, valueVar);
+                txnVar.invoke("commit");
+                markAllClean(rowVar);
+                mm.return_(true);
+            } else {
+                var oldValueVar = source.invoke("exchange", txnVar, keyVar, valueVar);
+                triggerVar.invoke("store", txnVar, rowVar, keyVar, oldValueVar, valueVar);
+                txnVar.invoke("commit");
+                if (variant == "store") {
+                    markAllClean(rowVar);
+                    mm.return_();
+                } else {
+                    resultVar = oldValueVar;
+                    mm.goto_(cont);
+                }
+            }
+
+            mm.finally_(txnStart, () -> txnVar.invoke("exit"));
+
+            skipLabel.here();
+
+            var invokeResultVar = source.invoke(variant, txnVar, keyVar, valueVar);
+            
+            if (resultVar == null) {
+                resultVar = invokeResultVar;
+            } else {
+                resultVar.set(invokeResultVar);
+            }
+
+            mm.finally_(triggerStart, () -> triggerLockVar.invoke("release"));
+
+            cont.here();
+        }
 
         if (returnType == null) {
             // This case is expected only for the "store" variant.
@@ -722,7 +828,7 @@ public class TableMaker {
         mm.invoke("decodeValue", copyVar, resultVar);
         mm.return_(copyVar);
 
-        // Now implement the bridge method.
+        // Now implement the exchange bridge method.
         mm = mClassMaker.addMethod
             (Object.class, variant, Transaction.class, Object.class).public_().bridge();
         mm.return_(mm.this_().invoke(returnType, variant, null, mm.param(0), mm.param(1)));
@@ -778,9 +884,11 @@ public class TableMaker {
 
         ready.here();
 
-        var keyVar = mm.invoke("encodePrimaryKey", rowVar);
-        var cursorVar = mm.field("mSource").invoke("newCursor", txnVar);
-        Label tryStart = mm.label().here();
+        final var keyVar = mm.invoke("encodePrimaryKey", rowVar);
+        final var source = mm.field("mSource");
+        final var cursorVar = source.invoke("newCursor", txnVar);
+
+        Label cursorStart = mm.label().here();
 
         // If all value columns are dirty, replace the whole row and commit.
         {
@@ -793,6 +901,34 @@ public class TableMaker {
                 mm.invoke("checkValueAllDirty", rowVar).ifFalse(cont);
             }
 
+            final Variable triggerLockVar;
+            final Label triggerStart;
+
+            if (!mTriggers) {
+                triggerLockVar = null;
+                triggerStart = null;
+            } else {
+                var triggerVar = mm.var(Trigger.class);
+                Label skipLabel = mm.label();
+                triggerLockVar = prepareForTrigger(mm, mm.this_(), triggerVar, skipLabel);
+                triggerStart = mm.label().here();
+
+                cursorVar.invoke("find", keyVar);
+                var oldValueVar = cursorVar.invoke("value");
+                Label replace = mm.label();
+                oldValueVar.ifNe(null, replace);
+                mm.return_(false);
+                replace.here();
+                var valueVar = mm.invoke("encodeValue", rowVar);
+                cursorVar.invoke("store", valueVar);
+                triggerVar.invoke("store", txnVar, rowVar, keyVar, oldValueVar, valueVar);
+                txnVar.invoke("commit");
+                markAllClean(rowVar);
+                mm.return_(true);
+
+                skipLabel.here();
+            }
+
             cursorVar.invoke("autoload", false);
             cursorVar.invoke("find", keyVar);
             Label replace = mm.label();
@@ -800,6 +936,11 @@ public class TableMaker {
             mm.return_(false);
             replace.here();
             cursorVar.invoke("commit", mm.invoke("encodeValue", rowVar));
+
+            if (triggerStart != null) {
+                mm.finally_(triggerStart, () -> triggerLockVar.invoke("release"));
+            }
+
             markAllClean(rowVar);
             mm.return_(true);
 
@@ -820,24 +961,29 @@ public class TableMaker {
         // The bulk of the method isn't implemented until needed, delaying acquisition/creation
         // of the current schema version.
 
-        var indy = mm.var(TableMaker.class).indy("indyDoUpdate", mStoreRef, mRowType, mIndexId);
+        var indy = mm.var(TableMaker.class).indy
+            ("indyDoUpdate", mStoreRef, mRowType, mIndexId, mTriggers);
         indy.invoke(null, "doUpdate", null, mm.this_(), rowVar, mergeVar, cursorVar);
         mm.return_(true);
 
-        mm.finally_(tryStart, () -> cursorVar.invoke("reset"));
+        mm.finally_(cursorStart, () -> cursorVar.invoke("reset"));
     }
 
     public static CallSite indyDoUpdate(MethodHandles.Lookup lookup, String name, MethodType mt,
                                         WeakReference<RowStore> storeRef,
-                                        Class<?> rowType, long indexId)
+                                        Class<?> rowType, long indexId, boolean triggers)
     {
-        return doIndyEncode(lookup, name, mt, storeRef, rowType, indexId,
-                            TableMaker::finishIndyDoUpdate);
+        return doIndyEncode
+            (lookup, name, mt, storeRef, rowType, indexId, (mm, info, schemaVersion) -> {
+                finishIndyDoUpdate(mm, info, schemaVersion, triggers);
+            });
     }
 
-    private static void finishIndyDoUpdate(MethodMaker mm, RowInfo rowInfo, int schemaVersion) {
+    private static void finishIndyDoUpdate(MethodMaker mm, RowInfo rowInfo, int schemaVersion,
+                                           boolean triggers)
+    {
         // All these variables were provided by the indy call in addDoUpdateMethod.
-        Variable viewVar = mm.param(0);
+        Variable tableVar = mm.param(0);
         Variable rowVar = mm.param(1);
         Variable mergeVar = mm.param(2);
         Variable cursorVar = mm.param(3);
@@ -853,8 +999,8 @@ public class TableMaker {
         // row object, decode the value into it, and then create a new value from it.
         {
             var tempRowVar = mm.new_(rowVar);
-            viewVar.invoke("decodeValue", tempRowVar, valueVar);
-            valueVar.set(viewVar.invoke("encodeValue", tempRowVar));
+            tableVar.invoke("decodeValue", tempRowVar, valueVar);
+            valueVar.set(tableVar.invoke("encodeValue", tempRowVar));
         }
 
         sameVersion.here();
@@ -976,10 +1122,36 @@ public class TableMaker {
             noSpan.here();
         }
 
-        cursorVar.invoke("commit", newValueVar);
+        if (!triggers) {
+            cursorVar.invoke("commit", newValueVar);
+        }
 
         Label doMerge = mm.label();
         mergeVar.ifTrue(doMerge);
+
+        if (triggers) {
+            var triggerVar = mm.var(Trigger.class);
+            Label skipLabel = mm.label();
+            var triggerLockVar = prepareForTrigger(mm, tableVar, triggerVar, skipLabel);
+            Label triggerStart = mm.label().here();
+
+            cursorVar.invoke("store", newValueVar);
+            var txnVar = cursorVar.invoke("link");
+            var keyVar = cursorVar.invoke("key");
+            triggerVar.invoke("update", txnVar, rowVar, keyVar, valueVar, newValueVar);
+            txnVar.invoke("commit");
+            Label cont = mm.label();
+            mm.goto_(cont);
+
+            skipLabel.here();
+
+            cursorVar.invoke("commit", newValueVar);
+
+            mm.finally_(triggerStart, () -> triggerLockVar.invoke("release"));
+
+            cont.here();
+        }
+
         markAllUndirty(rowVar, rowInfo);
         mm.return_();
 
@@ -997,6 +1169,29 @@ public class TableMaker {
             stateField.and(sfMask).ifEq(sfMask, cont);
 
             codec.decode(rowVar.field(info.name), valueVar, columnVars[i], null);
+
+            cont.here();
+        }
+
+        if (triggers) {
+            var triggerVar = mm.var(Trigger.class);
+            Label skipLabel = mm.label();
+            var triggerLockVar = prepareForTrigger(mm, tableVar, triggerVar, skipLabel);
+            Label triggerStart = mm.label().here();
+
+            cursorVar.invoke("store", newValueVar);
+            var txnVar = cursorVar.invoke("link");
+            var keyVar = cursorVar.invoke("key");
+            triggerVar.invoke("store", txnVar, rowVar, keyVar, valueVar, newValueVar);
+            txnVar.invoke("commit");
+            Label cont = mm.label();
+            mm.goto_(cont);
+
+            skipLabel.here();
+
+            cursorVar.invoke("commit", newValueVar);
+
+            mm.finally_(triggerStart, () -> triggerLockVar.invoke("release"));
 
             cont.here();
         }
@@ -1065,6 +1260,31 @@ public class TableMaker {
         }
     }
 
+    /**
+     * Makes code which obtains the current trigger and acquires the lock which must be held
+     * for the duration of the operation. The lock must be held even if no trigger must be run.
+     *
+     * @param triggerVar type is Trigger
+     * @param skipLabel label to branch when trigger shouldn't run
+     * @return triggerLockVar of type CommitLock.Shared
+     */
+    private static Variable prepareForTrigger(MethodMaker mm, Variable tableVar,
+                                              Variable triggerVar, Label skipLabel)
+    {
+        var triggerLockVar = mm.var(CommitLock.Shared.class);
+        Label acquireTriggerLabel = mm.label().here();
+        triggerVar.set(tableVar.invoke("trigger"));
+        triggerLockVar.set(triggerVar.invoke("acquireShared"));
+        var modeVar = triggerVar.invoke("mode");
+        modeVar.ifEq(Trigger.SKIP, skipLabel);
+        Label activeLabel = mm.label();
+        modeVar.ifNe(Trigger.DISABLED, activeLabel);
+        triggerLockVar.invoke("release");
+        mm.goto_(acquireTriggerLabel);
+        activeLabel.here();
+        return triggerLockVar;
+    }
+
     private void markAllClean(Variable rowVar) {
         markAllClean(rowVar, mRowInfo);
     }
@@ -1129,14 +1349,14 @@ public class TableMaker {
             // Defined by RowDecoderEncoder.
             MethodMaker mm = cm.addMethod
                 (Object.class, "decodeRow", byte[].class, byte[].class, Object.class).public_();
-            var viewVar = mm.var(lookup.lookupClass());
+            var tableVar = mm.var(lookup.lookupClass());
             var rowVar = mm.param(2).cast(rowClass);
             Label hasRow = mm.label();
             rowVar.ifNe(null, hasRow);
             rowVar.set(mm.new_(rowClass));
             hasRow.here();
-            viewVar.invoke("decodePrimaryKey", rowVar, mm.param(0));
-            viewVar.invoke("decodeValue", rowVar, mm.param(1));
+            tableVar.invoke("decodePrimaryKey", rowVar, mm.param(0));
+            tableVar.invoke("decodeValue", rowVar, mm.param(1));
             markAllClean(rowVar, rowInfo);
             mm.return_(rowVar);
         }
@@ -1145,10 +1365,10 @@ public class TableMaker {
             // Defined by RowDecoderEncoder.
             MethodMaker mm = cm.addMethod(byte[].class, "encodeKey", Object.class).public_();
             var rowVar = mm.param(0).cast(rowClass);
-            var viewVar = mm.var(lookup.lookupClass());
+            var tableVar = mm.var(lookup.lookupClass());
             Label unchanged = mm.label();
-            viewVar.invoke("checkPrimaryKeyAnyDirty", rowVar).ifFalse(unchanged);
-            mm.return_(viewVar.invoke("encodePrimaryKey", rowVar));
+            tableVar.invoke("checkPrimaryKeyAnyDirty", rowVar).ifFalse(unchanged);
+            mm.return_(tableVar.invoke("encodePrimaryKey", rowVar));
             unchanged.here();
             mm.return_(null);
         }
@@ -1157,8 +1377,8 @@ public class TableMaker {
             // Defined by RowDecoderEncoder.
             MethodMaker mm = cm.addMethod(byte[].class, "encodeValue", Object.class).public_();
             var rowVar = mm.param(0).cast(rowClass);
-            var viewVar = mm.var(lookup.lookupClass());
-            mm.return_(viewVar.invoke("encodeValue", rowVar));
+            var tableVar = mm.var(lookup.lookupClass());
+            mm.return_(tableVar.invoke("encodeValue", rowVar));
         }
 
         {
@@ -1171,8 +1391,8 @@ public class TableMaker {
             // Used by filter subclasses. The int param is the schema version.
             MethodMaker mm = cm.addMethod
                 (MethodHandle.class, "decodeValueHandle", int.class).protected_().static_();
-            var viewVar = mm.var(lookup.lookupClass());
-            mm.return_(viewVar.invoke("decodeValueHandle", mm.param(0)));
+            var tableVar = mm.var(lookup.lookupClass());
+            mm.return_(tableVar.invoke("decodeValueHandle", mm.param(0)));
         }
 
         var clazz = cm.finish();
