@@ -1,6 +1,10 @@
 Changelog
 =========
 
+v1.5.3
+------
+* Add a method to check if transaction is bogus.
+
 v1.5.2 (2021-07-24)
 ------
 

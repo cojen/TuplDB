@@ -123,6 +123,8 @@ public interface Transaction extends Flushable {
      */
     void check() throws DatabaseException;
 
+    boolean isBogus();
+
     /**
      * Commits all modifications made within the current transaction scope. The
      * current scope is still valid after this method is called, unless an

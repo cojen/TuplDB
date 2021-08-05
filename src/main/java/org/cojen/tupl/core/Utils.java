@@ -988,7 +988,7 @@ public class Utils extends org.cojen.tupl.io.Utils {
      * Always throws an exception.
      */
     static void invalidTransaction(Transaction txn) {
-        if (txn == null || txn == Transaction.BOGUS) {
+        if (txn == null || txn.isBogus()) {
             throw new IllegalArgumentException("Invalid transaction: " + txn);
         }
 

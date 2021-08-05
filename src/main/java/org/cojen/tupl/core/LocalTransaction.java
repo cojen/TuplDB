@@ -208,6 +208,11 @@ public final class LocalTransaction extends Locker implements Transaction {
         }
     }
 
+    @Override
+    public final boolean isBogus() {
+        return mBorked == BOGUS;
+    }
+
     private void check(Object borked) throws DatabaseException {
         if (borked == BOGUS) {
             throw new IllegalStateException("Transaction is bogus");

@@ -330,7 +330,7 @@ public class ViewUtils {
     public static Transaction enterScope(View view, Transaction txn) throws IOException {
         if (txn == null) {
             txn = view.newTransaction(null);
-        } else if (txn != Transaction.BOGUS) {
+        } else if (!txn.isBogus()) {
             txn.enter();
         }
         return txn;
@@ -348,7 +348,7 @@ public class ViewUtils {
         }
 
         Transaction txn = c.link();
-        if (txn != null && txn != Transaction.BOGUS) {
+        if (txn != null && !txn.isBogus()) {
             txn.commit();
         }
     }
