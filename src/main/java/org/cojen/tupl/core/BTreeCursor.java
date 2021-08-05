@@ -464,7 +464,7 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
     public final LockResult skip(long amount) throws IOException {
         if (amount == 0) {
             LocalTransaction txn = mTxn;
-            if (txn != null && txn != Transaction.BOGUS) {
+            if (txn != null && !txn.isBogus()) {
                 byte[] key = mKey;
                 if (key != null) {
                     return txn.mManager.check(txn, mTree.mId, key, keyHash());
