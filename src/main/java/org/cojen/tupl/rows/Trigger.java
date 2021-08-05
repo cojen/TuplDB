@@ -35,7 +35,8 @@ public class Trigger<R> extends CommitLock {
     int mMode;
 
     /**
-     * Called after a row has been stored, but before the row has been marked clean.
+     * Called after a row has been stored, but before the row has been marked clean. By
+     * default, this method always throws an exception.
      *
      * @param txn never null, although can be BOGUS
      * @param row never null
@@ -46,7 +47,7 @@ public class Trigger<R> extends CommitLock {
     public void store(Transaction txn, R row, byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException
     {
-        // Default does nothing, although it's never expected to be called.
+        throw new UnsupportedOperationException();
     }
 
     /**

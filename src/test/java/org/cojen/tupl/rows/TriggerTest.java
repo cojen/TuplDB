@@ -42,6 +42,11 @@ public class TriggerTest {
 
     @After
     public void teardown() throws Exception {
+        var stats = mDb.stats();
+        assertEquals(0, stats.lockCount);
+        assertEquals(0, stats.cursorCount);
+        assertEquals(0, stats.transactionCount);
+
         mDb.close();
         mDb = null;
         mTable = null;
@@ -374,6 +379,176 @@ public class TriggerTest {
         mTable.load(null, row);
         assertEquals("v2", row.value());
         assertEquals("nothing", row.extra());
+    }
+
+    @Test
+    public void updaterDelete() throws Exception {
+        var trigger = new TestTrigger();
+
+        for (int i=1; i<=5; i++) {
+            TestRow row = mTable.newRow();
+            row.extra("nothing");
+            row.id(i);
+            row.value("v" + i);
+            mTable.store(null, row);
+        }
+
+        mTable.setTrigger(trigger);
+
+        RowUpdater<TestRow> updater = mTable.newRowUpdater(null, "value == ?", "v3");
+        while (updater.row() != null) {
+            updater.delete();
+        }
+
+        Index ix = mDb.openIndex(TestRow.class.getName());
+        assertEquals(4, ix.count(null, null));
+
+        assertFalse(trigger.update);
+        assertNotNull(trigger.oldValue);
+        assertNull(trigger.newValue);
+        assertEquals(3, trigger.row.id());
+        assertEquals("v3", trigger.row.value());
+        assertEquals("nothing", trigger.row.extra());
+
+        TestRow row = mTable.newRow();
+        row.id(3);
+        assertFalse(mTable.load(null, row));
+
+        Transaction txn = mDb.newTransaction();
+        updater = mTable.newRowUpdater(txn, "value == ?", "v2");
+        while (updater.row() != null) {
+            updater.delete();
+        }
+        txn.commit();
+
+        assertEquals(3, ix.count(null, null));
+
+        assertFalse(trigger.update);
+        assertNotNull(trigger.oldValue);
+        assertNull(trigger.newValue);
+        assertEquals(2, trigger.row.id());
+        assertEquals("v2", trigger.row.value());
+        assertEquals("nothing", trigger.row.extra());
+
+        row = mTable.newRow();
+        row.id(2);
+        assertFalse(mTable.load(null, row));
+    }
+
+    @Test
+    public void updaterUpdateInPlace() throws Exception {
+        // The key portion of the row doesn't change.
+
+        var trigger = new TestTrigger();
+
+        for (int i=1; i<=5; i++) {
+            TestRow row = mTable.newRow();
+            row.extra("nothing");
+            row.id(i);
+            row.value("v" + i);
+            mTable.store(null, row);
+        }
+
+        mTable.setTrigger(trigger);
+
+        RowUpdater<TestRow> updater = mTable.newRowUpdater(null, "value == ?", "v3");
+        while (updater.row() != null) {
+            updater.row().extra("extra!");
+            updater.update();
+        }
+
+        assertFalse(trigger.update);
+        assertNotNull(trigger.oldValue);
+        assertNotNull(trigger.newValue);
+        assertFalse(Arrays.equals(trigger.oldValue, trigger.newValue));
+        assertEquals(3, trigger.row.id());
+        assertEquals("v3", trigger.row.value());
+        assertEquals("extra!", trigger.row.extra());
+
+        TestRow row = mTable.newRow();
+        row.id(3);
+        assertTrue(mTable.load(null, row));
+        assertEquals("v3", row.value());
+        assertEquals("extra!", row.extra());
+
+        Transaction txn = mDb.newTransaction();
+        updater = mTable.newRowUpdater(txn, "value == ?", "v2");
+        while (updater.row() != null) {
+            updater.row().extra("extra!!!");
+            updater.update();
+        }
+        txn.commit();
+
+        assertFalse(trigger.update);
+        assertNotNull(trigger.oldValue);
+        assertNotNull(trigger.newValue);
+        assertFalse(Arrays.equals(trigger.oldValue, trigger.newValue));
+        assertEquals(2, trigger.row.id());
+        assertEquals("v2", trigger.row.value());
+        assertEquals("extra!!!", trigger.row.extra());
+
+        row = mTable.newRow();
+        row.id(2);
+        assertTrue(mTable.load(null, row));
+        assertEquals("v2", row.value());
+        assertEquals("extra!!!", row.extra());
+    }
+
+    @Test
+    public void updaterUpdateOutOfSequence() throws Exception {
+        // The key portion of the row changes.
+
+        var trigger = new TestTrigger();
+
+        for (int i=1; i<=5; i++) {
+            TestRow row = mTable.newRow();
+            row.extra("nothing");
+            row.id(i);
+            row.value("v" + i);
+            mTable.store(null, row);
+        }
+
+        mTable.setTrigger(trigger);
+
+        RowUpdater<TestRow> updater = mTable.newRowUpdater(null, "value == ?", "v3");
+        while (updater.row() != null) {
+            updater.row().id(103);
+            updater.update();
+        }
+
+        assertFalse(trigger.update);
+        assertNull(trigger.oldValue);
+        assertNotNull(trigger.newValue);
+        assertEquals(103, trigger.row.id());
+        assertEquals("v3", trigger.row.value());
+
+        TestRow row = mTable.newRow();
+        row.id(3);
+        assertFalse(mTable.load(null, row));
+        row.id(103);
+        assertTrue(mTable.load(null, row));
+        assertEquals("v3", row.value());
+
+        Transaction txn = mDb.newTransaction();
+        updater = mTable.newRowUpdater(txn, "value == ?", "v2");
+        while (updater.row() != null) {
+            updater.row().id(102);
+            updater.update();
+        }
+        txn.commit();
+
+        assertFalse(trigger.update);
+        assertNull(trigger.oldValue);
+        assertNotNull(trigger.newValue);
+        assertEquals(102, trigger.row.id());
+        assertEquals("v2", trigger.row.value());
+
+        row = mTable.newRow();
+        row.id(2);
+        assertFalse(mTable.load(null, row));
+        row.id(102);
+        assertTrue(mTable.load(null, row));
+        assertEquals("v2", row.value());
     }
 
     @PrimaryKey("id")

@@ -35,9 +35,12 @@ class UpgradableRowUpdater<R> extends BasicRowUpdater<R> {
 
     /**
      * @param cursor linked transaction must not be null
+     * @param table only should be provided if table supports triggers
      */
-    UpgradableRowUpdater(View view, Cursor cursor, RowDecoderEncoder<R> decoder) {
-        super(view, cursor, decoder);
+    UpgradableRowUpdater(View view, Cursor cursor, RowDecoderEncoder<R> decoder,
+                         AbstractTable<R> table)
+    {
+        super(view, cursor, decoder, table);
     }
 
     @Override

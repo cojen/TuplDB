@@ -31,6 +31,10 @@ import org.cojen.tupl.UniqueConstraintException;
 import org.cojen.tupl.UnpositionedCursorException;
 import org.cojen.tupl.View;
 
+import org.cojen.tupl.views.ViewUtils;
+
+import org.cojen.tupl.core.CommitLock;
+
 /**
  * 
  *
@@ -38,15 +42,20 @@ import org.cojen.tupl.View;
  */
 class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
     final View mView;
+    final AbstractTable<R> mTriggerTable;
 
     private TreeSet<byte[]> mKeysToSkip;
 
     /**
      * @param cursor linked transaction must not be null
+     * @param table only should be provided if table supports triggers
      */
-    BasicRowUpdater(View view, Cursor cursor, RowDecoderEncoder<R> decoder) {
+    BasicRowUpdater(View view, Cursor cursor, RowDecoderEncoder<R> decoder,
+                    AbstractTable<R> table)
+    {
         super(cursor, decoder);
         mView = view;
+        mTriggerTable = table;
     }
 
     @Override
@@ -91,16 +100,35 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
     }
 
     private R doDeleteAndStep(R row) throws IOException {
-        // FIXME: TRIGGER
-        try {
-            doDelete();
+        doDelete: try {
+            if (mTriggerTable == null) {
+                doDelete();
+            } else while (true) {
+                Trigger<R> trigger = mTriggerTable.trigger();
+                CommitLock.Shared shared = trigger.acquireShared();
+                try {
+                    int mode = trigger.mode();
+                    if (mode == Trigger.SKIP) {
+                        doDelete();
+                        break doDelete;
+                    }
+                    if (mode != Trigger.DISABLED) {
+                        doDelete(trigger, mRow);
+                        break doDelete;
+                    }
+                } finally {
+                    shared.release();
+                }
+            }
         } catch (UnpositionedCursorException e) {
             finished();
             throw new IllegalStateException("No current row");
         } catch (Throwable e) {
             throw RowUtils.fail(this, e);
         }
+
         unlocked(); // prevent subclass from attempting to release the lock
+
         return doStep(row);
     }
 
@@ -112,43 +140,95 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
     }
 
     protected final void doUpdate(R row) throws IOException {
-        // FIXME: TRIGGER
-        RowDecoderEncoder<R> encoder = mDecoder;
-        byte[] key = encoder.encodeKey(row);
-        byte[] value = encoder.encodeValue(row);
+        byte[] key, value;
+        {
+            RowDecoderEncoder<R> encoder = mDecoder;
+            key = encoder.encodeKey(row);
+            value = encoder.encodeValue(row);
+        }
+
         Cursor c = mCursor;
+
         int cmp;
         if (key == null || (cmp = c.compareKeyTo(key)) == 0) {
             // Key didn't change.
-            storeValue(c, value);
-        } else {
-            if (cmp < 0) {
-                if (mKeysToSkip == null) {
-                    mKeysToSkip = new TreeSet<>(Arrays::compareUnsigned);
-                }
-                // FIXME: For AutoCommitRowUpdater, consider limiting the size of the set and
-                // use a temporary index. All other updaters maintain locks, and so the key
-                // objects cannot be immediately freed anyhow.
-                if (!mKeysToSkip.add(key)) {
-                    // Won't be removed from the set in case of UniqueConstraintException.
-                    cmp = 0;
-                }
+
+            if (mTriggerTable == null) {
+                storeValue(c, value);
+                return;
             }
-            Transaction txn = c.link();
-            txn.enter();
-            try {
-                if (!mView.insert(txn, key, value)) {
-                    if (cmp < 0) {
-                        mKeysToSkip.remove(key);
+
+            while (true) {
+                Trigger<R> trigger = mTriggerTable.trigger();
+                CommitLock.Shared shared = trigger.acquireShared();
+                try {
+                    int mode = trigger.mode();
+                    if (mode == Trigger.SKIP) {
+                        storeValue(c, value);
+                        return;
                     }
-                    throw new UniqueConstraintException();
+                    if (mode != Trigger.DISABLED) {
+                        storeValue(trigger, mRow, c, value);
+                        return;
+                    }
+                } finally {
+                    shared.release();
                 }
-                c.commit(null);
-            } finally {
-                txn.exit();
             }
-            postStoreKeyValue(txn);
         }
+
+        // This point is reached when the key changed, and so the update is out of sequence. A
+        // new value is inserted (if permitted), and the current one is deleted. If the new key
+        // is higher, it's added to a remembered set and not observed again by this updater.
+
+        if (cmp < 0) {
+            if (mKeysToSkip == null) {
+                mKeysToSkip = new TreeSet<>(Arrays::compareUnsigned);
+            }
+            // FIXME: For AutoCommitRowUpdater, consider limiting the size of the set and
+            // use a temporary index. All other updaters maintain locks, and so the key
+            // objects cannot be immediately freed anyhow.
+            if (!mKeysToSkip.add(key)) {
+                // Won't be removed from the set in case of UniqueConstraintException.
+                cmp = 0;
+            }
+        }
+
+        Transaction txn = ViewUtils.enterScope(mView, c.link());
+        doUpdate: try {
+            if (!mView.insert(txn, key, value)) {
+                if (cmp < 0) {
+                    mKeysToSkip.remove(key);
+                }
+                throw new UniqueConstraintException();
+            }
+
+            if (mTriggerTable == null) {
+                c.commit(null);
+            } else while (true) {
+                Trigger<R> trigger = mTriggerTable.trigger();
+                CommitLock.Shared shared = trigger.acquireShared();
+                try {
+                    int mode = trigger.mode();
+                    if (mode == Trigger.SKIP) {
+                        c.commit(null);
+                        break doUpdate;
+                    }
+                    if (mode != Trigger.DISABLED) {
+                        c.delete();
+                        trigger.store(txn, mRow, c.key(), null, value);
+                        txn.commit();
+                        break doUpdate;
+                    }
+                } finally {
+                    shared.release();
+                }
+            }
+        } finally {
+            txn.exit();
+        }
+
+        postStoreKeyValue(txn);
     }
 
     /**
@@ -159,6 +239,23 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
     }
 
     /**
+     * Called when the key didn't change.
+     */
+    protected void storeValue(Trigger<R> trigger, R row, Cursor c, byte[] value)
+        throws IOException
+    {
+        Transaction txn = ViewUtils.enterScope(mView, c.link());
+        try {
+            byte[] oldValue = c.value();
+            c.store(value);
+            trigger.store(txn, row, c.key(), oldValue, value);
+            txn.commit();
+        } finally {
+            txn.exit();
+        }
+    }
+
+    /**
      * Called after the key and value changed and have been updated.
      */
     protected void postStoreKeyValue(Transaction txn) throws IOException {
@@ -166,6 +263,19 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
 
     protected void doDelete() throws IOException {
         mCursor.delete();
+    }
+
+    protected void doDelete(Trigger<R> trigger, R row) throws IOException {
+        Cursor c = mCursor;
+        Transaction txn = ViewUtils.enterScope(mView, c.link());
+        try {
+            byte[] oldValue = c.value();
+            c.delete();
+            trigger.store(txn, row, c.key(), oldValue, null);
+            txn.commit();
+        } finally {
+            txn.exit();
+        }
     }
 
     @Override

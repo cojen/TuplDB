@@ -109,12 +109,14 @@ public abstract class AbstractTable<R> implements Table<R> {
     private RowUpdater<R> newRowUpdater(Transaction txn, RowDecoderEncoder<R> encoder)
         throws IOException
     {
+        AbstractTable<R> table = supportsTriggers() ? this : null;
+
         BasicRowUpdater<R> updater;
         if (txn == null) {
             txn = mSource.newTransaction(null);
             Cursor c = mSource.newCursor(txn);
             try {
-                updater = new AutoCommitRowUpdater<>(mSource, c, encoder);
+                updater = new AutoCommitRowUpdater<>(mSource, c, encoder, table);
             } catch (Throwable e) {
                 try {
                     txn.exit();
@@ -127,15 +129,15 @@ public abstract class AbstractTable<R> implements Table<R> {
             Cursor c = mSource.newCursor(txn);
             switch (txn.lockMode()) {
             default:
-                updater = new BasicRowUpdater<>(mSource, c, encoder);
+                updater = new BasicRowUpdater<>(mSource, c, encoder, table);
                 break;
             case REPEATABLE_READ:
-                updater = new UpgradableRowUpdater<>(mSource, c, encoder);
+                updater = new UpgradableRowUpdater<>(mSource, c, encoder, table);
                 break;
             case READ_COMMITTED:
             case READ_UNCOMMITTED:
                 txn.enter();
-                updater = new NonRepeatableRowUpdater<>(mSource, c, encoder);
+                updater = new NonRepeatableRowUpdater<>(mSource, c, encoder, table);
                 break;
             }
         }
@@ -208,22 +210,19 @@ public abstract class AbstractTable<R> implements Table<R> {
      * Set the table trigger and then wait for the old trigger to no longer be used.
      *
      * @param trigger can pass null to remove the trigger
-     * @throws IllegalStateException if triggers aren't supported by this table
+     * @throws UnsupportedOperationException if triggers aren't supported by this table
      */
     void setTrigger(Trigger<R> trigger) {
+        if (!supportsTriggers()) {
+            throw new UnsupportedOperationException();
+        }
+
         if (trigger == null) {
             trigger = new Trigger<>();
             trigger.mMode = Trigger.SKIP;
         }
 
         var old = (Trigger<R>) cTriggerHandle.getAndSet(this, trigger);
-
-        if (old == null) {
-            // Athough eagerly setting the trigger does create an odd race condition,
-            // attempting to set the trigger when not supported is a bug anyhow.
-            cTriggerHandle.setVolatile(this, null);
-            throw new IllegalStateException();
-        }
 
         // Note that mode field can be assigned using "plain" mode because lock acquisition
         // applies a volatile fence.
@@ -245,6 +244,10 @@ public abstract class AbstractTable<R> implements Table<R> {
      */
     public Trigger<R> trigger() {
         return (Trigger<R>) cTriggerHandle.getOpaque(this);
+    }
+
+    protected boolean supportsTriggers() {
+        return false;
     }
 
     static RowFilter parse(Class<?> rowType, String filter) {

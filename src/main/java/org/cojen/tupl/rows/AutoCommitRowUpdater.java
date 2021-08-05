@@ -32,14 +32,29 @@ import org.cojen.tupl.View;
 class AutoCommitRowUpdater<R> extends NonRepeatableRowUpdater<R> {
     /**
      * @param cursor linked transaction must not be null
+     * @param table only should be provided if table supports triggers
      */
-    AutoCommitRowUpdater(View view, Cursor cursor, RowDecoderEncoder<R> decoder) {
-        super(view, cursor, decoder);
+    AutoCommitRowUpdater(View view, Cursor cursor, RowDecoderEncoder<R> decoder,
+                         AbstractTable<R> table)
+    {
+        super(view, cursor, decoder, table);
     }
 
     @Override
     protected void storeValue(Cursor c, byte[] value) throws IOException {
         c.commit(value);
+        mLockResult = null;
+    }
+
+    @Override
+    protected void storeValue(Trigger<R> trigger, R row, Cursor c, byte[] value)
+        throws IOException
+    {
+        Transaction txn = c.link();
+        byte[] oldValue = c.value();
+        c.store(value);
+        trigger.store(txn, row, c.key(), oldValue, value);
+        txn.commit();
         mLockResult = null;
     }
 
@@ -52,6 +67,16 @@ class AutoCommitRowUpdater<R> extends NonRepeatableRowUpdater<R> {
     @Override
     protected void doDelete() throws IOException {
         mCursor.commit(null);
+    }
+
+    @Override
+    protected void doDelete(Trigger<R> trigger, R row) throws IOException {
+        Cursor c = mCursor;
+        Transaction txn = c.link();
+        byte[] oldValue = c.value();
+        mCursor.delete();
+        trigger.store(txn, row, c.key(), oldValue, null);
+        txn.commit();
     }
 
     @Override

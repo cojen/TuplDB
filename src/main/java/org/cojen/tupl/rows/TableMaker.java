@@ -150,6 +150,10 @@ public class TableMaker {
 
         addFilteredFactoryMethod();
 
+        if (mTriggers) {
+            mClassMaker.addMethod(boolean.class, "supportsTriggers").protected_().return_(true);
+        }
+
         try {
             var lookup = mClassMaker.finishLookup();
             return lookup.findConstructor(lookup.lookupClass(),
@@ -1264,7 +1268,7 @@ public class TableMaker {
      * Makes code which obtains the current trigger and acquires the lock which must be held
      * for the duration of the operation. The lock must be held even if no trigger must be run.
      *
-     * @param triggerVar type is Trigger
+     * @param triggerVar type is Trigger and is assigned by the generated code
      * @param skipLabel label to branch when trigger shouldn't run
      * @return triggerLockVar of type CommitLock.Shared
      */
