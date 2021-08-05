@@ -68,7 +68,7 @@ public class RowFilterMaker<R> {
     }
 
     private final WeakReference<RowStore> mStoreRef;
-    private final Class<?> mViewClass;
+    private final Class<?> mTableClass;
     private final Class<R> mRowType;
     private final RowGen mRowGen;
     private final long mIndexId;
@@ -84,12 +84,12 @@ public class RowFilterMaker<R> {
      * @param storeRef is passed along to the generated code
      * @param base defines the encode methods; the decode method will be overridden
      */
-    public RowFilterMaker(WeakReference<RowStore> storeRef, Class<?> viewClass,
+    public RowFilterMaker(WeakReference<RowStore> storeRef, Class<?> tableClass,
                           Class<? extends RowDecoderEncoder<R>> base,
                           Class<R> rowType, long indexId, String filterStr, RowFilter filter)
     {
         mStoreRef = storeRef;
-        mViewClass = viewClass;
+        mTableClass = tableClass;
         mRowType = rowType;
         mRowGen = RowInfo.find(rowType).rowGen();
         mIndexId = indexId;
@@ -137,7 +137,7 @@ public class RowFilterMaker<R> {
                 (Object.class, "decodeRow", byte[].class, byte[].class, Object.class).public_();
 
             var indy = mm.var(RowFilterMaker.class).indy
-                ("indyDecodeRow", mStoreRef, mViewClass, mRowType, mIndexId, mFilterStr, mFilter);
+                ("indyDecodeRow", mStoreRef, mTableClass, mRowType, mIndexId, mFilterStr, mFilter);
 
             var valueVar = mm.param(1);
             var schemaVersion = TableMaker.decodeSchemaVersion(mm, valueVar);
@@ -188,11 +188,11 @@ public class RowFilterMaker<R> {
 
     public static CallSite indyDecodeRow(MethodHandles.Lookup lookup, String name, MethodType mt,
                                          WeakReference<RowStore> storeRef,
-                                         Class<?> viewClass, Class<?> rowType, long indexId,
+                                         Class<?> tableClass, Class<?> rowType, long indexId,
                                          String filterStr, RowFilter filter)
     {
         var dm = new DecodeMaker
-            (lookup, mt, storeRef, viewClass, rowType, indexId, filterStr, filter);
+            (lookup, mt, storeRef, tableClass, rowType, indexId, filterStr, filter);
         return new SwitchCallSite(lookup, mt, dm);
     }
 
@@ -200,7 +200,7 @@ public class RowFilterMaker<R> {
         private final MethodHandles.Lookup mLookup;
         private final MethodType mMethodType;
         private final WeakReference<RowStore> mStoreRef;
-        private final Class<?> mViewClass;
+        private final Class<?> mTableClass;
         private final Class<?> mRowType;
         private final long mIndexId;
         private final String mFilterStr;
@@ -209,14 +209,14 @@ public class RowFilterMaker<R> {
         private WeakReference<RowFilter> mFilterRef;
 
         DecodeMaker(MethodHandles.Lookup lookup, MethodType mt,
-                    WeakReference<RowStore> storeRef, Class<?> viewClass,
+                    WeakReference<RowStore> storeRef, Class<?> tableClass,
                     Class<?> rowType, long indexId,
                     String filterStr, RowFilter filter)
         {
             mLookup = lookup;
             mMethodType = mt.dropParameterTypes(0, 1);
             mStoreRef = storeRef;
-            mViewClass = viewClass;
+            mTableClass = tableClass;
             mRowType = rowType;
             mIndexId = indexId;
             mFilterStr = filterStr;
@@ -276,7 +276,7 @@ public class RowFilterMaker<R> {
             RowGen rowGen = rowInfo.rowGen();
 
             var visitor = new DecodeVisitor
-                (mm, schemaVersion, mViewClass, rowClass, rowGen, decoder);
+                (mm, schemaVersion, mTableClass, rowClass, rowGen, decoder);
             filter.accept(visitor);
             visitor.done();
 
@@ -290,7 +290,7 @@ public class RowFilterMaker<R> {
     private static class DecodeVisitor extends Visitor {
         private final MethodMaker mMaker;
         private final int mSchemaVersion;
-        private final Class<?> mViewClass;
+        private final Class<?> mTableClass;
         private final Class<?> mRowClass;
         private final RowGen mRowGen;
         private final MethodHandle mDecoder;
@@ -307,17 +307,17 @@ public class RowFilterMaker<R> {
 
         /**
          * @param mm signature: R decodeRow(Decoder/filter, byte[] key, byte[] value, R row)
-         * @param viewClass current row view implementation class
+         * @param tableClass current table implementation class
          * @param rowClass current row implementation
          * @param rowGen actual row definition to be decoded
          * @param decoder performs full decoding of the value columns
          */
         DecodeVisitor(MethodMaker mm, int schemaVersion,
-                      Class<?> viewClass, Class<?> rowClass, RowGen rowGen, MethodHandle decoder)
+                      Class<?> tableClass, Class<?> rowClass, RowGen rowGen, MethodHandle decoder)
         {
             mMaker = mm;
             mSchemaVersion = schemaVersion;
-            mViewClass = viewClass;
+            mTableClass = tableClass;
             mRowClass = rowClass;
             mRowGen = rowGen;
             mDecoder = decoder;
@@ -337,13 +337,13 @@ public class RowFilterMaker<R> {
 
             // FIXME: Some columns may have already been decoded, so don't double decode them.
 
-            var viewVar = mMaker.var(mViewClass);
+            var tableVar = mMaker.var(mTableClass);
             var rowVar = mMaker.param(3).cast(mRowClass);
             Label hasRow = mMaker.label();
             rowVar.ifNe(null, hasRow);
             rowVar.set(mMaker.new_(mRowClass));
             hasRow.here();
-            viewVar.invoke("decodePrimaryKey", rowVar, mMaker.param(1));
+            tableVar.invoke("decodePrimaryKey", rowVar, mMaker.param(1));
 
             // Invoke the schema-specific decoder directly, instead of calling the decodeValue
             // method which redundantly examines the schema version and switches on it.

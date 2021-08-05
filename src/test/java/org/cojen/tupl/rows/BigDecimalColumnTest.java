@@ -47,45 +47,45 @@ public class BigDecimalColumnTest {
         // CompareUtils handles this case. It calls BigDecimal.compareTo instead of equals.
 
         Database db = Database.open(new DatabaseConfig());
-        Table<Rec> view = db.openTable(Rec.class);
+        Table<Rec> table = db.openTable(Rec.class);
 
-        Rec row1 = view.newRow();
+        Rec row1 = table.newRow();
         row1.id(new BigDecimal("1.00"));
         row1.value1(new BigDecimal("0.00"));
         row1.value2(new BigDecimal("-1.0"));
-        view.store(null, row1);
+        table.store(null, row1);
 
-        Rec row2 = view.newRow();
+        Rec row2 = table.newRow();
         row2.id(new BigDecimal("1.000"));
         row2.value1(new BigDecimal("0.0"));
         row2.value2(new BigDecimal("-1.00"));
-        view.store(null, row2);
+        table.store(null, row2);
 
-        Rec row3 = view.newRow();
+        Rec row3 = table.newRow();
         row3.id(new BigDecimal("1.125"));
         row3.value1(new BigDecimal("0.0000001"));
         row3.value2(new BigDecimal("-1.0000000000000001"));
-        view.store(null, row3);
+        table.store(null, row3);
 
-        expect(Set.of(row1, row2), view.newRowScanner(null, "id == ?", 1));
-        expect(Set.of(row1, row2), view.newRowScanner(null, "value1 == ?", 0.0));
-        expect(Set.of(row1, row2), view.newRowScanner(null, "value2 == ?", -1));
+        expect(Set.of(row1, row2), table.newRowScanner(null, "id == ?", 1));
+        expect(Set.of(row1, row2), table.newRowScanner(null, "value1 == ?", 0.0));
+        expect(Set.of(row1, row2), table.newRowScanner(null, "value2 == ?", -1));
 
-        expect(Set.of(row3), view.newRowScanner(null, "id == ?", 1.125));
-        expect(Set.of(row3), view.newRowScanner(null, "value1 > ?", new BigDecimal("0.0")));
-        expect(Set.of(row1, row2, row3), view.newRowScanner(null, "value2 <= ?", -1));
+        expect(Set.of(row3), table.newRowScanner(null, "id == ?", 1.125));
+        expect(Set.of(row3), table.newRowScanner(null, "value1 > ?", new BigDecimal("0.0")));
+        expect(Set.of(row1, row2, row3), table.newRowScanner(null, "value2 <= ?", -1));
 
-        expect(Set.of(row3), view.newRowScanner(null, "value1 == ?", 0.0000001));
+        expect(Set.of(row3), table.newRowScanner(null, "value1 == ?", 0.0000001));
 
         // Won't find it due to float32 rounding error.
-        expect(Set.of(), view.newRowScanner(null, "value1 == ?", 0.0000001f));
+        expect(Set.of(), table.newRowScanner(null, "value1 == ?", 0.0000001f));
 
         // Need a range search.
         float low = 0.0000001f;
         low -= Math.ulp(low);
         float high = 0.0000001f;
         high += Math.ulp(high);
-        expect(Set.of(row3), view.newRowScanner(null, "value1 >= ? && value1 <= ?", low, high));
+        expect(Set.of(row3), table.newRowScanner(null, "value1 >= ? && value1 <= ?", low, high));
     }
 
     private static void expect(Set<Rec> set, RowScanner<Rec> scanner) throws Exception {

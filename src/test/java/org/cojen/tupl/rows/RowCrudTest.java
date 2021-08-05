@@ -35,7 +35,7 @@ public class RowCrudTest {
     @Before
     public void setup() throws Exception {
         mDb = Database.open(new DatabaseConfig());
-        mView = mDb.openTable(TestRow.class);
+        mTable = mDb.openTable(TestRow.class);
     }
 
     @After
@@ -45,7 +45,7 @@ public class RowCrudTest {
     }
 
     private Database mDb;
-    private Table<TestRow> mView;
+    private Table<TestRow> mTable;
 
     @PrimaryKey("id")
     public interface TestRow {
@@ -65,13 +65,13 @@ public class RowCrudTest {
 
     @Test
     public void basic() throws Exception {
-        assertEquals(TestRow.class, mView.rowType());
-        assertTrue(mView.isEmpty());
-        assertTrue(mView == mDb.openTable(TestRow.class));
+        assertEquals(TestRow.class, mTable.rowType());
+        assertTrue(mTable.isEmpty());
+        assertTrue(mTable == mDb.openTable(TestRow.class));
 
-        TestRow row = mView.newRow();
+        TestRow row = mTable.newRow();
         assertTrue(row.toString().endsWith("TestRow{}"));
-        mView.reset(row);
+        mTable.reset(row);
         assertTrue(row.toString().endsWith("TestRow{}"));
 
         try {
@@ -102,14 +102,14 @@ public class RowCrudTest {
         assertEquals("hello", row.str1());
 
         try {
-            mView.load(null, row);
+            mTable.load(null, row);
             fail();
         } catch (IllegalStateException e) {
             assertEquals("Primary key isn't fully specified", e.getMessage());
         }
 
         try {
-            mView.exists(null, row);
+            mTable.exists(null, row);
             fail();
         } catch (IllegalStateException e) {
             assertEquals("Primary key isn't fully specified", e.getMessage());
@@ -118,7 +118,7 @@ public class RowCrudTest {
         assertEquals("hello", row.str1());
 
         row.id(1);
-        assertFalse(mView.load(null, row));
+        assertFalse(mTable.load(null, row));
 
         assertTrue(row.toString().endsWith("TestRow{id=1}"));
 
@@ -131,13 +131,13 @@ public class RowCrudTest {
         assertEquals(1, row.id());
 
         try {
-            mView.store(null, row);
+            mTable.store(null, row);
             fail();
         } catch (IllegalStateException e) {
             assertEquals("Some required columns are unset: num1, str1, str2", e.getMessage());
         }
 
-        assertFalse(mView.delete(null, row));
+        assertFalse(mTable.delete(null, row));
         assertTrue(row.toString().endsWith("TestRow{id=1}"));
 
         row.str1("hello");
@@ -145,72 +145,72 @@ public class RowCrudTest {
         row.num1(100);
         assertTrue(row.toString().endsWith("TestRow{id=1, num1=100, str1=hello, str2=null}"));
 
-        assertTrue(mView.insert(null, row));
+        assertTrue(mTable.insert(null, row));
         assertTrue(row.toString().endsWith("TestRow{id=1, num1=100, str1=hello, str2=null}"));
-        assertFalse(mView.isEmpty());
-        assertTrue(mView.exists(null, row));
-        assertTrue(mView.load(null, row));
+        assertFalse(mTable.isEmpty());
+        assertTrue(mTable.exists(null, row));
+        assertTrue(mTable.load(null, row));
         assertTrue(row.toString().endsWith("TestRow{id=1, num1=100, str1=hello, str2=null}"));
 
-        TestRow row2 = mView.newRow();
+        TestRow row2 = mTable.newRow();
         row2.id(1);
-        assertTrue(mView.load(null, row2));
+        assertTrue(mTable.load(null, row2));
         assertEquals(row, row2);
         assertEquals(row.hashCode(), row2.hashCode());
         assertEquals(row.toString(), row2.toString());
-        assertFalse(mView.insert(null, row2));
+        assertFalse(mTable.insert(null, row2));
 
         row2.str2("world");
-        assertTrue(mView.update(null, row2));
+        assertTrue(mTable.update(null, row2));
         assertTrue(row2.toString().endsWith("TestRow{id=1, num1=100, str1=hello, str2=world}"));
 
         row.str1("howdy");
-        assertTrue(mView.update(null, row));
+        assertTrue(mTable.update(null, row));
         assertTrue(row.toString().endsWith("TestRow{id=1, num1=100, str1=howdy, str2=null}"));
         row.str1("hi");
-        assertTrue(mView.merge(null, row));
+        assertTrue(mTable.merge(null, row));
         assertTrue(row.toString().endsWith("TestRow{id=1, num1=100, str1=hi, str2=world}"));
 
         row2.num1(-555);
-        assertTrue(mView.update(null, row2));
+        assertTrue(mTable.update(null, row2));
         assertTrue(row2.toString().endsWith("TestRow{id=1, num1=-555, str1=hello, str2=world}"));
 
-        mView.reset(row2);
+        mTable.reset(row2);
         row2.id(1);
         row2.num1(999);
-        assertTrue(mView.update(null, row2));
+        assertTrue(mTable.update(null, row2));
         assertTrue(row2.toString().endsWith("TestRow{id=1, num1=999}"));
 
         row2.str2("everyone");
-        assertTrue(mView.merge(null, row2));
+        assertTrue(mTable.merge(null, row2));
         assertTrue(row2.toString().endsWith("TestRow{id=1, num1=999, str1=hi, str2=everyone}"));
 
-        assertTrue(mView.replace(null, row));
-        mView.load(null, row2);
+        assertTrue(mTable.replace(null, row));
+        mTable.load(null, row2);
         assertTrue(row2.toString().endsWith("TestRow{id=1, num1=100, str1=hi, str2=world}"));
 
-        assertTrue(mView.delete(null, row2));
-        assertFalse(mView.delete(null, row));
-        assertTrue(mView.isEmpty());
+        assertTrue(mTable.delete(null, row2));
+        assertFalse(mTable.delete(null, row));
+        assertTrue(mTable.isEmpty());
 
         assertTrue(row.toString().endsWith("TestRow{id=1, num1=100, str1=hi, str2=world}"));
         assertTrue(row2.toString().endsWith("TestRow{id=1, num1=100, str1=hi, str2=world}"));
 
-        Transaction txn = mView.newTransaction(null);
-        assertTrue(mView.insert(txn, row));
-        assertTrue(mView.exists(txn, row2));
-        assertFalse(mView.isEmpty());
+        Transaction txn = mTable.newTransaction(null);
+        assertTrue(mTable.insert(txn, row));
+        assertTrue(mTable.exists(txn, row2));
+        assertFalse(mTable.isEmpty());
         txn.reset(); // rollback
 
-        assertFalse(mView.exists(null, row2));
-        assertTrue(mView.isEmpty());
+        assertFalse(mTable.exists(null, row2));
+        assertTrue(mTable.isEmpty());
 
-        mView.store(null, row);
+        mTable.store(null, row);
         row2.str1("hello");
-        TestRow row3 = mView.exchange(null, row2);
+        TestRow row3 = mTable.exchange(null, row2);
         assertEquals(row, row3);
-        mView.delete(null, row3);
-        assertNull(mView.exchange(null, row2));
+        mTable.delete(null, row3);
+        assertNull(mTable.exchange(null, row2));
     }
 
     @Test
@@ -248,15 +248,15 @@ public class RowCrudTest {
 
     private void basicUpdaterDelete(Transaction txn) throws Exception {
         for (int i=1; i<=10; i++) {
-            TestRow row = mView.newRow();
+            TestRow row = mTable.newRow();
             row.id(i);
             row.num1(1000 + i);
             row.str1("s1-" + i);
             row.str2("s2-" + i);
-            mView.store(null, row);
+            mTable.store(null, row);
         }
 
-        RowUpdater<TestRow> updater = mView.newRowUpdater
+        RowUpdater<TestRow> updater = mTable.newRowUpdater
             (txn, "num1 > ? && num1 < ? || str2 == ?", 1002, 1006, "s2-9");
 
         for (TestRow row = updater.row(); row != null; ) {
@@ -273,22 +273,22 @@ public class RowCrudTest {
 
         {
             // Can load the row that was skipped because an exclusive lock wasn't acquired.
-            TestRow row = mView.newRow();
+            TestRow row = mTable.newRow();
             row.id(4);
-            assertTrue(mView.exists(null, row));
+            assertTrue(mTable.exists(null, row));
         }
 
         if (txn == null) {
             // Auto-commit transaction releases the exlusive lock.
-            TestRow row = mView.newRow();
+            TestRow row = mTable.newRow();
             row.id(3);
-            assertFalse(mView.exists(null, row));
+            assertFalse(mTable.exists(null, row));
         } else {
             // Regular transaction holds exlusive locks for rows that were deleted.
-            TestRow row = mView.newRow();
+            TestRow row = mTable.newRow();
             row.id(3);
             try {
-                mView.exists(null, row);
+                mTable.exists(null, row);
                 fail();
             } catch (LockTimeoutException e) {
             }
@@ -296,16 +296,16 @@ public class RowCrudTest {
             // No lock is held for a row which was filtered out.
             Transaction txn2 = mDb.newTransaction();
             row.id(1);
-            assertTrue(mView.delete(txn2, row));
+            assertTrue(mTable.delete(txn2, row));
             txn2.reset(); // rollback
 
             // A lock might be held for a row which was manually filtered out by calling step.
             row.id(4);
             if (!txn.lockMode().isRepeatable()) {
-                assertTrue(mView.delete(txn2, row));
+                assertTrue(mTable.delete(txn2, row));
             } else {
                 try {
-                    mView.delete(txn2, row);
+                    mTable.delete(txn2, row);
                     fail();
                 } catch (LockTimeoutException e) {
                 }
@@ -315,7 +315,7 @@ public class RowCrudTest {
             txn.commit();
         }
 
-        RowScanner<TestRow> scanner = mView.newRowScanner
+        RowScanner<TestRow> scanner = mTable.newRowScanner
             (null, "num1 > ? && num1 < ? || str2 == ?", 1002, 1006, "str2 9");
 
         int count = 0;
@@ -361,15 +361,15 @@ public class RowCrudTest {
 
     private void basicUpdaterUpdate(Transaction txn) throws Exception {
         for (int i=1; i<=10; i++) {
-            TestRow row = mView.newRow();
+            TestRow row = mTable.newRow();
             row.id(i);
             row.num1(1000 + i);
             row.str1("s1-" + i);
             row.str2("s2-" + i);
-            mView.store(null, row);
+            mTable.store(null, row);
         }
 
-        RowUpdater<TestRow> updater = mView.newRowUpdater
+        RowUpdater<TestRow> updater = mTable.newRowUpdater
             (txn, "num1 > ? && num1 < ? || str2 == ?", 1002, 1006, "s2-9");
 
         for (TestRow row = updater.row(); row != null; ) {
@@ -401,25 +401,25 @@ public class RowCrudTest {
 
         {
             // Can load the row that was skipped because an exclusive lock wasn't acquired.
-            TestRow row = mView.newRow();
+            TestRow row = mTable.newRow();
             row.id(4);
-            assertTrue(mView.exists(null, row));
+            assertTrue(mTable.exists(null, row));
         }
 
         final long checkId = 1003;
 
         if (txn == null) {
             // Auto-commit transaction releases the exlusive lock.
-            TestRow row = mView.newRow();
+            TestRow row = mTable.newRow();
             row.id(checkId);
-            mView.load(null, row);
+            mTable.load(null, row);
             assertEquals("s2-3x", row.str2());
         } else {
             // Regular transaction holds exlusive locks for rows that were updated.
-            TestRow row = mView.newRow();
+            TestRow row = mTable.newRow();
             row.id(checkId);
             try {
-                mView.exists(null, row);
+                mTable.exists(null, row);
                 fail();
             } catch (LockTimeoutException e) {
             }
@@ -427,16 +427,16 @@ public class RowCrudTest {
             // No lock is held for a row which was filtered out.
             Transaction txn2 = mDb.newTransaction();
             row.id(1);
-            assertTrue(mView.delete(txn2, row));
+            assertTrue(mTable.delete(txn2, row));
             txn2.reset(); // rollback
 
             // A lock might be held for a row which was manually filtered out by calling step.
             row.id(4);
             if (!txn.lockMode().isRepeatable()) {
-                assertTrue(mView.delete(txn2, row));
+                assertTrue(mTable.delete(txn2, row));
             } else {
                 try {
-                    mView.delete(txn2, row);
+                    mTable.delete(txn2, row);
                     fail();
                 } catch (LockTimeoutException e) {
                 }
@@ -446,7 +446,7 @@ public class RowCrudTest {
             txn.commit();
         }
 
-        RowScanner<TestRow> scanner = mView.newRowScanner
+        RowScanner<TestRow> scanner = mTable.newRowScanner
             (null, "num1 > ? && num1 < ? || str2 == ?", 1002, 1006, "s2-9x");
 
         int count = 0;

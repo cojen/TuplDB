@@ -41,14 +41,14 @@ public class FilteringTest {
         // Verify basic filter ordering.
 
         Database db = Database.open(new DatabaseConfig());
-        Table<A> view = db.openTable(A.class);
+        Table<A> table = db.openTable(A.class);
 
         int[] nums = {-1_000_000_000, -100, 0, 100, 1_000_000_000};
 
         for (int num : nums) {
             var a = new int[] {num};
             
-            A row = view.newRow();
+            A row = table.newRow();
             row.id1(a);
             row.id2(a);
             row.value1(a);
@@ -56,15 +56,15 @@ public class FilteringTest {
             row.value3(a);
             row.value4(a);
             row.x("");
-            assertTrue(view.insert(null, row));
+            assertTrue(table.insert(null, row));
         }
 
-        findArrayRows(view, nums, "id1", false);
-        findArrayRows(view, nums, "id2", false);
-        findArrayRows(view, nums, "value1", false);
-        findArrayRows(view, nums, "value2", false);
-        findArrayRows(view, nums, "value3", true);
-        findArrayRows(view, nums, "value4", true);
+        findArrayRows(table, nums, "id1", false);
+        findArrayRows(table, nums, "id2", false);
+        findArrayRows(table, nums, "value1", false);
+        findArrayRows(table, nums, "value2", false);
+        findArrayRows(table, nums, "value3", true);
+        findArrayRows(table, nums, "value4", true);
     }
 
     @Test
@@ -72,22 +72,22 @@ public class FilteringTest {
         // Verify basic filter ordering.
 
         Database db = Database.open(new DatabaseConfig());
-        Table<B> view = db.openTable(B.class);
+        Table<B> table = db.openTable(B.class);
 
         int[] nums = {-1_000_000_000, -100, 0, 100, 1_000_000_000};
 
         for (int num : nums) {
             var a = new int[] {num};
             
-            B row = view.newRow();
+            B row = table.newRow();
             row.id1(a);
             row.id2(a);
             row.x("");
-            assertTrue(view.insert(null, row));
+            assertTrue(table.insert(null, row));
         }
 
-        findArrayRows(view, nums, "id1", true);
-        findArrayRows(view, nums, "id2", true);
+        findArrayRows(table, nums, "id1", true);
+        findArrayRows(table, nums, "id2", true);
     }
 
     @Test
@@ -95,22 +95,22 @@ public class FilteringTest {
         // Verify basic filter ordering.
 
         Database db = Database.open(new DatabaseConfig());
-        Table<C> view = db.openTable(C.class);
+        Table<C> table = db.openTable(C.class);
 
         int[] nums = {-1_000_000_000, -100, 0, 100, 1_000_000_000};
 
         for (int num : nums) {
             var a = new int[] {num};
             
-            C row = view.newRow();
+            C row = table.newRow();
             row.id1(a);
             row.id2(a);
             row.x("");
-            assertTrue(view.insert(null, row));
+            assertTrue(table.insert(null, row));
         }
 
-        findArrayRows(view, nums, "id1", true);
-        findArrayRows(view, nums, "id2", true);
+        findArrayRows(table, nums, "id1", true);
+        findArrayRows(table, nums, "id2", true);
     }
 
     @Test
@@ -118,14 +118,14 @@ public class FilteringTest {
         // Verify basic filter ordering.
 
         Database db = Database.open(new DatabaseConfig());
-        Table<AB> view = db.openTable(AB.class);
+        Table<AB> table = db.openTable(AB.class);
 
         byte[] nums = {-100, 0, 100};
 
         for (byte num : nums) {
             var a = new byte[] {num};
             
-            AB row = view.newRow();
+            AB row = table.newRow();
             row.id1(a);
             row.id2(a);
             row.value1(a);
@@ -133,15 +133,15 @@ public class FilteringTest {
             row.value3(a);
             row.value4(a);
             row.x("");
-            assertTrue(view.insert(null, row));
+            assertTrue(table.insert(null, row));
         }
 
-        findArrayRows(view, nums, "id1", false);
-        findArrayRows(view, nums, "id2", false);
-        findArrayRows(view, nums, "value1", false);
-        findArrayRows(view, nums, "value2", false);
-        findArrayRows(view, nums, "value3", true);
-        findArrayRows(view, nums, "value4", true);
+        findArrayRows(table, nums, "id1", false);
+        findArrayRows(table, nums, "id2", false);
+        findArrayRows(table, nums, "value1", false);
+        findArrayRows(table, nums, "value2", false);
+        findArrayRows(table, nums, "value3", true);
+        findArrayRows(table, nums, "value4", true);
     }
 
     @Test
@@ -149,22 +149,22 @@ public class FilteringTest {
         // Verify basic filter ordering.
 
         Database db = Database.open(new DatabaseConfig());
-        Table<BB> view = db.openTable(BB.class);
+        Table<BB> table = db.openTable(BB.class);
 
         byte[] nums = {-100, 0, 100};
 
         for (byte num : nums) {
             var a = new byte[] {num};
             
-            BB row = view.newRow();
+            BB row = table.newRow();
             row.id1(a);
             row.id2(a);
             row.x("");
-            assertTrue(view.insert(null, row));
+            assertTrue(table.insert(null, row));
         }
 
-        findArrayRows(view, nums, "id1", true);
-        findArrayRows(view, nums, "id2", true);
+        findArrayRows(table, nums, "id1", true);
+        findArrayRows(table, nums, "id2", true);
     }
 
     @Test
@@ -172,22 +172,22 @@ public class FilteringTest {
         // Verify basic filter ordering.
 
         Database db = Database.open(new DatabaseConfig());
-        Table<CB> view = db.openTable(CB.class);
+        Table<CB> table = db.openTable(CB.class);
 
         byte[] nums = {-100, 0, 100};
 
         for (byte num : nums) {
             var a = new byte[] {num};
             
-            CB row = view.newRow();
+            CB row = table.newRow();
             row.id1(a);
             row.id2(a);
             row.x("");
-            assertTrue(view.insert(null, row));
+            assertTrue(table.insert(null, row));
         }
 
-        findArrayRows(view, nums, "id1", true);
-        findArrayRows(view, nums, "id2", true);
+        findArrayRows(table, nums, "id1", true);
+        findArrayRows(table, nums, "id2", true);
     }
 
     @Test
@@ -195,26 +195,26 @@ public class FilteringTest {
         // Verify basic filter ordering.
 
         Database db = Database.open(new DatabaseConfig());
-        Table<F> view = db.openTable(F.class);
+        Table<F> table = db.openTable(F.class);
 
         float[] nums = {-1_000_000_000, -100, 0, 100, 1_000_000_000};
 
         for (float num : nums) {
             var a = new float[] {num};
             
-            F row = view.newRow();
+            F row = table.newRow();
             row.id1(a);
             row.id2(a);
             row.value1(a);
             row.value2(a);
             row.x("");
-            assertTrue(view.insert(null, row));
+            assertTrue(table.insert(null, row));
         }
 
-        findArrayRows(view, nums, "id1");
-        findArrayRows(view, nums, "id2");
-        findArrayRows(view, nums, "value1");
-        findArrayRows(view, nums, "value2");
+        findArrayRows(table, nums, "id1");
+        findArrayRows(table, nums, "id2");
+        findArrayRows(table, nums, "value1");
+        findArrayRows(table, nums, "value2");
     }
 
     @Test
@@ -222,35 +222,35 @@ public class FilteringTest {
         // Verify basic filter ordering.
 
         Database db = Database.open(new DatabaseConfig());
-        Table<G> view = db.openTable(G.class);
+        Table<G> table = db.openTable(G.class);
 
         float[] nums = {-1_000_000_000, -100, 0, 100, 1_000_000_000};
 
         for (float num : nums) {
             var a = new float[] {num};
             
-            G row = view.newRow();
+            G row = table.newRow();
             row.id1(a);
             row.id2(a);
             row.x("");
-            assertTrue(view.insert(null, row));
+            assertTrue(table.insert(null, row));
         }
 
-        findArrayRows(view, nums, "id1");
-        findArrayRows(view, nums, "id2");
+        findArrayRows(table, nums, "id1");
+        findArrayRows(table, nums, "id2");
     }
 
-    private void findArrayRows(Table view, int[] nums, String column, boolean unsigned)
+    private void findArrayRows(Table table, int[] nums, String column, boolean unsigned)
         throws Exception
     {
-        findArrayRows(view, nums, column, unsigned, "<");
-        findArrayRows(view, nums, column, unsigned, ">=");
-        findArrayRows(view, nums, column, unsigned, ">");
-        findArrayRows(view, nums, column, unsigned, "<=");
+        findArrayRows(table, nums, column, unsigned, "<");
+        findArrayRows(table, nums, column, unsigned, ">=");
+        findArrayRows(table, nums, column, unsigned, ">");
+        findArrayRows(table, nums, column, unsigned, "<=");
     }
 
     @SuppressWarnings("unchecked")
-    private void findArrayRows(Table view, int[] nums, String column, boolean unsigned, String op)
+    private void findArrayRows(Table table, int[] nums, String column, boolean unsigned, String op)
         throws Exception
     {
         String filter = column + ' ' + op + " ?";
@@ -287,7 +287,7 @@ public class FilteringTest {
                 }
             }
 
-            RowScanner scanner = view.newRowScanner(null, filter, new int[] {arg});
+            RowScanner scanner = table.newRowScanner(null, filter, new int[] {arg});
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
                 if (method == null) {
                     method = row.getClass().getMethod(column);
@@ -302,17 +302,17 @@ public class FilteringTest {
         }
     }
 
-   private void findArrayRows(Table view, byte[] nums, String column, boolean unsigned)
+   private void findArrayRows(Table table, byte[] nums, String column, boolean unsigned)
         throws Exception
     {
-        findArrayRows(view, nums, column, unsigned, "<");
-        findArrayRows(view, nums, column, unsigned, ">=");
-        findArrayRows(view, nums, column, unsigned, ">");
-        findArrayRows(view, nums, column, unsigned, "<=");
+        findArrayRows(table, nums, column, unsigned, "<");
+        findArrayRows(table, nums, column, unsigned, ">=");
+        findArrayRows(table, nums, column, unsigned, ">");
+        findArrayRows(table, nums, column, unsigned, "<=");
     }
 
     @SuppressWarnings("unchecked")
-    private void findArrayRows(Table view, byte[] nums,
+    private void findArrayRows(Table table, byte[] nums,
                                String column, boolean unsigned, String op)
         throws Exception
     {
@@ -350,7 +350,7 @@ public class FilteringTest {
                 }
             }
 
-            RowScanner scanner = view.newRowScanner(null, filter, new int[] {arg});
+            RowScanner scanner = table.newRowScanner(null, filter, new int[] {arg});
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
                 if (method == null) {
                     method = row.getClass().getMethod(column);
@@ -365,15 +365,15 @@ public class FilteringTest {
         }
     }
 
-    private void findArrayRows(Table view, float[] nums, String column) throws Exception {
-        findArrayRows(view, nums, column, "<");
-        findArrayRows(view, nums, column, ">=");
-        findArrayRows(view, nums, column, ">");
-        findArrayRows(view, nums, column, "<=");
+    private void findArrayRows(Table table, float[] nums, String column) throws Exception {
+        findArrayRows(table, nums, column, "<");
+        findArrayRows(table, nums, column, ">=");
+        findArrayRows(table, nums, column, ">");
+        findArrayRows(table, nums, column, "<=");
     }
 
     @SuppressWarnings("unchecked")
-    private void findArrayRows(Table view, float[] nums, String column, String op)
+    private void findArrayRows(Table table, float[] nums, String column, String op)
         throws Exception
     {
         String filter = column + ' ' + op + " ?";
@@ -407,7 +407,7 @@ public class FilteringTest {
                 }
             }
 
-            RowScanner scanner = view.newRowScanner(null, filter, new float[] {arg});
+            RowScanner scanner = table.newRowScanner(null, filter, new float[] {arg});
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
                 if (method == null) {
                     method = row.getClass().getMethod(column);

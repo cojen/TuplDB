@@ -76,24 +76,24 @@ public class FuzzTest {
             Column[] columns = randomColumns(rnd);
             Class<?> rowType = randomRowType(rnd, columns);
             Index ix = db.openIndex(rowType.getName());
-            Table rowView = ix.asTable(rowType);
+            Table table = ix.asTable(rowType);
 
-            basicTests(rowType, rowView);
+            basicTests(rowType, table);
 
             var cmp = keyComparator(columns, rowType);
             var set = new TreeSet<Object>(cmp);
 
             for (int j=0; j<10; j++) {
-                var row = rowView.newRow();
+                var row = table.newRow();
                 fillInColumns(rnd, columns, row);
-                rowView.store(null, row);
+                table.store(null, row);
 
                 var clone = row.getClass().getMethod("clone").invoke(row);
                 assertEquals(row, clone);
                 assertEquals(row.hashCode(), clone.hashCode());
                 assertEquals(row.toString(), clone.toString());
 
-                rowView.load(null, row);
+                table.load(null, row);
                 assertEquals(clone, row);
 
                 if (!set.add(row)) {
@@ -106,7 +106,7 @@ public class FuzzTest {
 
             int count = 0;
             Iterator<Object> it = set.iterator();
-            RowScanner scanner = rowView.newRowScanner(null);
+            RowScanner scanner = table.newRowScanner(null);
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
                 count++;
                 assertEquals(it.next(), row);
@@ -117,36 +117,36 @@ public class FuzzTest {
             // Verify filtering which matches the exact row.
 
             String filter = filterAll(rnd, columns);
-            scanner = rowView.newRowScanner(null);
+            scanner = table.newRowScanner(null);
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
-                filterAllMatch(rowView, filter, filterAllArgs(columns, row), row);
+                filterAllMatch(table, filter, filterAllArgs(columns, row), row);
             }
 
             filter = filterAll2(rnd, columns);
-            scanner = rowView.newRowScanner(null);
+            scanner = table.newRowScanner(null);
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
-                filterAllMatch(rowView, filter, filterAllArgs(columns, row), row);
+                filterAllMatch(table, filter, filterAllArgs(columns, row), row);
             }
 
             filter = filterAll3(rnd, columns);
-            scanner = rowView.newRowScanner(null);
+            scanner = table.newRowScanner(null);
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
-                filterAllMatch(rowView, filter, filterAllArgsIn(columns, row), row);
+                filterAllMatch(table, filter, filterAllArgsIn(columns, row), row);
             }
 
-            truncateAndClose(ix, rowView);
+            truncateAndClose(ix, table);
         }
 
         db.close();
     }
 
     @SuppressWarnings("unchecked")
-    private static void basicTests(Class<?> rowType, Table rowView) throws Exception {
+    private static void basicTests(Class<?> rowType, Table table) throws Exception {
         // Tests on an empty row instance and index.
 
-        assertTrue(rowView.isEmpty());
+        assertTrue(table.isEmpty());
 
-        var row = rowView.newRow();
+        var row = table.newRow();
         assertTrue(rowType.isInstance(row));
         var clone = row.getClass().getMethod("clone").invoke(row);
         assertTrue(row != clone);
@@ -154,73 +154,73 @@ public class FuzzTest {
         assertEquals(row.hashCode(), clone.hashCode());
         assertEquals(row.toString(), clone.toString());
         assertEquals(rowType.getName() + "{}", row.toString());
-        rowView.reset(clone);
+        table.reset(clone);
         assertEquals(row, clone);
 
         try {
-            rowView.load(null, row);
+            table.load(null, row);
             fail();
         } catch (IllegalStateException e) {
             assertTrue(e.getMessage().indexOf("isn't fully specified") >= 0);
         }
 
         try {
-            rowView.exists(null, row);
+            table.exists(null, row);
             fail();
         } catch (IllegalStateException e) {
             assertTrue(e.getMessage().indexOf("isn't fully specified") >= 0);
         }
 
         try {
-            rowView.delete(null, row);
+            table.delete(null, row);
             fail();
         } catch (IllegalStateException e) {
             assertTrue(e.getMessage().indexOf("isn't fully specified") >= 0);
         }
 
         try {
-            rowView.store(null, row);
+            table.store(null, row);
             fail();
         } catch (IllegalStateException e) {
             assertTrue(e.getMessage().indexOf("columns are unset") >= 0);
         }
 
         try {
-            rowView.exchange(null, row);
+            table.exchange(null, row);
             fail();
         } catch (IllegalStateException e) {
             assertTrue(e.getMessage().indexOf("columns are unset") >= 0);
         }
 
         try {
-            rowView.insert(null, row);
+            table.insert(null, row);
             fail();
         } catch (IllegalStateException e) {
             assertTrue(e.getMessage().indexOf("columns are unset") >= 0);
         }
 
         try {
-            rowView.replace(null, row);
+            table.replace(null, row);
             fail();
         } catch (IllegalStateException e) {
             assertTrue(e.getMessage().indexOf("columns are unset") >= 0);
         }
 
         try {
-            rowView.update(null, row);
+            table.update(null, row);
             fail();
         } catch (IllegalStateException e) {
             assertTrue(e.getMessage().indexOf("isn't fully specified") >= 0);
         }
 
         try {
-            rowView.merge(null, row);
+            table.merge(null, row);
             fail();
         } catch (IllegalStateException e) {
             assertTrue(e.getMessage().indexOf("isn't fully specified") >= 0);
         }
 
-        RowScanner scanner = rowView.newRowScanner(null);
+        RowScanner scanner = table.newRowScanner(null);
         assertNull(scanner.row());
         assertNull(scanner.step());
         assertNull(scanner.step(row));
@@ -231,7 +231,7 @@ public class FuzzTest {
         }
         scanner.close();
 
-        RowUpdater updater = rowView.newRowUpdater(null);
+        RowUpdater updater = table.newRowUpdater(null);
         assertNull(updater.row());
         assertNull(updater.step());
         assertNull(updater.step(row));
