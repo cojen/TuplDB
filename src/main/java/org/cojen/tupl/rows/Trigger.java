@@ -24,9 +24,13 @@ import org.cojen.tupl.Transaction;
 import org.cojen.tupl.core.CommitLock;
 
 /**
- * 
+ * Defines the single main trigger that a table can have. Setting the trigger is relatively
+ * expensive since it acquires an exclusive lock and briefly suspends all mutating operations
+ * against a table. A trigger implementation is expected to have several sub-tasks, and it
+ * might provide a way to quickly add and remove sub-tasks.
  *
  * @author Brian S O'Neill
+ * @see AbstractTable#setTrigger
  */
 public class Trigger<R> extends CommitLock {
     public static final int ACTIVE = 0, SKIP = 1, DISABLED = 2;
@@ -71,9 +75,9 @@ public class Trigger<R> extends CommitLock {
     }
 
     /**
-     * If active, then must call the store method. If skip, then don't call the store method,
-     * but still hold the shared lock for the whole operation. If disabled, then release the
-     * shared lock and retry with the latest trigger instance.
+     * If active, then must call the store or update method. If skip, then don't call a trigger
+     * method, but still hold the shared lock for the whole operation. If disabled, then
+     * release the shared lock and retry with the latest trigger instance.
      */
     public int mode() {
         return mMode;

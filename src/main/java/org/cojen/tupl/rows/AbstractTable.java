@@ -207,7 +207,10 @@ public abstract class AbstractTable<R> implements Table<R> {
     protected abstract MethodHandle filteredFactory(String str, RowFilter filter);
 
     /**
-     * Set the table trigger and then wait for the old trigger to no longer be used.
+     * Set the table trigger and then wait for the old trigger to no longer be used. Waiting is
+     * necessary to prevent certain race conditions. For example, when adding a secondary
+     * index, a backfill task can't safely begin until it's known that no operations are in
+     * flight which aren't aware of the new index.
      *
      * @param trigger can pass null to remove the trigger
      * @throws UnsupportedOperationException if triggers aren't supported by this table
