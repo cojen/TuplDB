@@ -24,10 +24,10 @@ import org.cojen.tupl.Transaction;
 import org.cojen.tupl.core.CommitLock;
 
 /**
- * Defines the single main trigger that a table can have. Setting the trigger is relatively
- * expensive since it acquires an exclusive lock and briefly suspends all mutating operations
- * against a table. A trigger implementation is expected to have several sub-tasks, and it
- * might provide a way to quickly add and remove sub-tasks.
+ * Defines the single main trigger that a table can have. A trigger implementation is expected
+ * to have several sub-tasks, and it might also provide a way to quickly add and remove
+ * sub-tasks. Adding and removing sub-tasks can have race conditions, and so a copy-on-write
+ * approach which replaces the trigger all at once might be safer.
  *
  * @author Brian S O'Neill
  * @see AbstractTable#setTrigger
