@@ -40,6 +40,17 @@ class ColumnSet {
             valueColumns.equals(other.valueColumns) && keyColumns.equals(other.keyColumns);
     }
 
+    /**
+     * Returns a descriptor consisting of the key columns.
+     */
+    String keyDescriptor() {
+        var b = new StringBuilder();
+        for (ColumnInfo ci : keyColumns.values()) {
+            b.append(ci.isDescending() ? '-' : '+').append(ci.name);
+        }
+        return b.toString();
+    }
+
     @Override
     public String toString() {
         return keyColumns.values() + " -> " + valueColumns.values() +

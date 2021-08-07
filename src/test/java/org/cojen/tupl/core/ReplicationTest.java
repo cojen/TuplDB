@@ -1436,11 +1436,13 @@ public class ReplicationTest {
     public void anonymousIndex() throws Exception {
         // Tests that an anonymous index is created and replicated as expected.
 
-        long id = ((CoreDatabase) mLeader).createAnonymousIndex(null, id_ -> {});
+        Transaction txn = mLeader.newTransaction();
+        var ids = new long[1];
+        ((CoreDatabase) mLeader).createSecondaryIndexes(txn, 0, ids, () -> {});
         fence();
 
-        Index leaderIx = mLeader.indexById(id);
-        Index replicaIx = mReplica.indexById(id);
+        Index leaderIx = mLeader.indexById(ids[0]);
+        Index replicaIx = mReplica.indexById(ids[0]);
 
         leaderIx.store(null, "hello".getBytes(), "world".getBytes());
         fence();

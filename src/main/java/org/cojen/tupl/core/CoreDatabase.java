@@ -19,7 +19,6 @@ package org.cojen.tupl.core;
 
 import java.io.IOException;
 
-import java.util.function.LongConsumer;
 import java.util.function.Supplier;
 
 import java.util.zip.Checksum;
@@ -39,14 +38,18 @@ import org.cojen.tupl.Transaction;
  */
 public abstract class CoreDatabase implements Database {
     /**
-     * Defines an anonymous index and invokes a callback which should transactionally store
-     * a reference to the index identifier.
+     * Defines anonymous secondary indexes and invokes a callback which should transactionally
+     * store references to them. Next, a redo op is written which notifies replicas that the
+     * set of secondaries has changed. Finally, the transaction is committed.
      *
      * @param txn is committed as a side effect; will be switched to SYNC mode if replicated
-     * @param callback invoked with the commit lock held
-     * @return the same identifier which was passed to the callback
+     * @param primaryIndexId index id in the notification op
+     * @param ids each array slot is filled in with a new identifier
+     * @param callback invoked after the ids are filled in, with the commit lock held
+     * @throws NullPointerException if any parameter is null
      */
-    public abstract long createAnonymousIndex(Transaction txn, LongConsumer callback)
+    public abstract void createSecondaryIndexes(Transaction txn, long primaryIndexId,
+                                                long[] ids, Runnable callback)
         throws IOException;
 
     public abstract boolean isInTrash(Transaction txn, long treeId) throws IOException;

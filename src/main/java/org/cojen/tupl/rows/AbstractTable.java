@@ -244,7 +244,7 @@ public abstract class AbstractTable<R> implements Table<R> {
     /**
      * Returns the current trigger, which must be held shared during the operation. As soon as
      * acquired, check if the trigger is disabled. This method must be public because it's
-     * sometimes accessed from generated code which isn't the subclass of AbstractTable.
+     * sometimes accessed from generated code which isn't a subclass of AbstractTable.
      */
     public Trigger<R> trigger() {
         return (Trigger<R>) cTriggerHandle.getOpaque(this);

@@ -47,6 +47,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
 
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -3945,43 +3946,60 @@ final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
-    public long createAnonymousIndex(Transaction txn, LongConsumer callback) throws IOException {
-        if (txn == null) {
-            txn = newAlwaysRedoTransaction();
-        }
+    public void createSecondaryIndexes(Transaction txn, long primaryIndexId,
+                                       long[] ids, Runnable callback)
+        throws IOException
+    {
+        Objects.requireNonNull(txn);
+        Objects.requireNonNull(ids);
+        Objects.requireNonNull(callback);
+
+        var localTxn = (LocalTransaction) txn;
 
         if (mRedoWriter instanceof ReplController) {
             // Confirmation is required when replicated.
-            txn.durabilityMode(DurabilityMode.SYNC);
+            localTxn.durabilityMode(DurabilityMode.SYNC);
+        } else {
+            localTxn.durabilityMode(alwaysRedo(localTxn.durabilityMode()));
         }
 
         CommitLock.Shared shared = mCommitLock.acquireShared();
         try {
             checkClosed();
 
-            long treeId = 0;
             var treeIdBytes = new byte[8];
+            int pos = 0;
 
             try {
-                do {
-                    treeId = nextTreeId(RK_NEXT_TREE_ID);
-                    encodeLongBE(treeIdBytes, 0, treeId);
-                } while (!mRegistry.insert(Transaction.BOGUS, treeIdBytes, EMPTY_BYTES));
+                while (pos < ids.length) {
+                    long treeId;
+                    do {
+                        treeId = nextTreeId(RK_NEXT_TREE_ID);
+                        encodeLongBE(treeIdBytes, 0, treeId);
+                    } while (!mRegistry.insert(Transaction.BOGUS, treeIdBytes, EMPTY_BYTES));
 
-                // Insert empty bytes for the name, and don't insert a name to id mapping.
-                if (!mRegistryKeyMap.insert(txn, newKey(RK_INDEX_ID, treeId), EMPTY_BYTES)) {
-                    throw new DatabaseException("Unable to insert index id");
+                    ids[pos++] = treeId;
                 }
 
-                callback.accept(treeId);
+                for (long id : ids) {
+                    // Insert empty bytes for the name, and don't insert a name to id mapping.
+                    if (!mRegistryKeyMap.insert(localTxn, newKey(RK_INDEX_ID, id), EMPTY_BYTES)) {
+                        throw new DatabaseException("Unable to insert index id");
+                    }
+                }
 
-                txn.commit();
+                callback.run();
 
-                return treeId;
+                if (localTxn.mRedo != null) {
+                    localTxn.mContext.redoNotifiySecondaries(localTxn.mRedo, primaryIndexId);
+                }
+
+                localTxn.commit();
             } catch (Throwable e) {
                 try {
-                    txn.reset();
-                    if (treeId != 0) {
+                    localTxn.reset();
+                    for (int i=0; i<pos; i++) {
+                        encodeLongBE(treeIdBytes, 0, ids[i]);
                         mRegistry.delete(Transaction.BOGUS, treeIdBytes);
                     }
                 } catch (Throwable e2) {

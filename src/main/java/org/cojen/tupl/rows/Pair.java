@@ -24,10 +24,11 @@ import java.util.Objects;
  *
  * @author Brian S O'Neill
  */
-class Pair {
-    private final Object a, b;
+class Pair<A, B> {
+    final A a;
+    final B b;
 
-    Pair(Object a, Object b) {
+    Pair(A a, B b) {
         this.a = a;
         this.b = b;
     }

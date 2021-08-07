@@ -37,6 +37,7 @@ import org.cojen.tupl.Index;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
+import org.cojen.tupl.UniqueConstraintException;
 import org.cojen.tupl.View;
 
 import org.cojen.tupl.core.CoreDatabase;
@@ -55,14 +56,14 @@ public class RowStore {
      
        (indexId) ->
          int current schemaVersion,
-         ColumnSet[] alternateKeys,
+         ColumnSet[] alternateKeys, (a type of secondary index)
          ColumnSet[] secondaryIndexes
 
        (indexId, schemaVersion) -> primary ColumnSet
 
        (indexId, hash(primary ColumnSet)) -> schemaVersion[]    // hash collision chain
      
-       (indexId, 0, K_INDEX_IDS) -> long[] index ids for alternateKeys and secondaryIndexes
+       (indexId, 0, K_SECONDARY, descriptor) -> indexId, state
 
        (0L, indexId, taskType) -> ...  workflow task against an index
 
@@ -75,10 +76,10 @@ public class RowStore {
      */
     private final Index mSchemata;
 
-    private final WeakCache<Pair, AbstractTable<?>> mTableCache;
+    private final WeakCache<Pair<Index, Class<?>>, AbstractTable<?>> mTableCache;
 
-    // Extended key for referencing the index ids of alternateKeys and secondaryIndexes.
-    //private static final int K_INDEX_IDS = 1;
+    // Extended key for referencing secondary indexes.
+    private static final int K_SECONDARY = 1;
 
     private static final int TASK_DELETE_SCHEMATA = 1;
 
@@ -95,19 +96,22 @@ public class RowStore {
         return mSchemata;
     }
 
+    /**
+     * @param secondary pass true to support secondary indexes and alternate keys
+     */
     @SuppressWarnings("unchecked")
-    public <R> Table<R> asTable(Index ix, Class<R> type) throws IOException {
-        final var key = new Pair(ix, type);
+    public <R> Table<R> asTable(Index ix, Class<R> type, boolean secondaries) throws IOException {
+        final var key = new Pair<Index, Class<?>>(ix, type);
 
-        AbstractTable rv = mTableCache.get(key);
-        if (rv != null) {
-            return rv;
+        AbstractTable table = mTableCache.get(key);
+        if (table != null) {
+            return table;
         }
 
         synchronized (mTableCache) {
-            rv = mTableCache.get(key);
-            if (rv != null) {
-                return rv;
+            table = mTableCache.get(key);
+            if (table != null) {
+                return table;
             }
         }
 
@@ -130,27 +134,35 @@ public class RowStore {
             }
 
             synchronized (mTableCache) {
-                rv = mTableCache.get(key);
-                if (rv != null) {
-                    return rv;
+                table = mTableCache.get(key);
+                if (table != null) {
+                    return table;
                 }
+            }
 
-                try {
-                    // FIXME: Make sure that secondary indexes don't support triggers (it just
-                    // adds unnecessary overhead).
-                    var mh = new TableMaker(this, type, gen, ix.id(), true).finish();
-                    rv = (AbstractTable) mh.invoke(ix);
-                } catch (Throwable e) {
-                    throw rethrow(e);
-                }
+            try {
+                var mh = new TableMaker(this, type, gen, ix.id(), secondaries).finish();
+                table = (AbstractTable) mh.invoke(ix);
+            } catch (Throwable e) {
+                throw rethrow(e);
+            }
 
-                mTableCache.put(key, rv);
+            synchronized (mTableCache) {
+                mTableCache.put(key, table);
             }
         } finally {
             txn.reset();
         }
 
-        return rv;
+        return table;
+    }
+
+    /**
+     * Called in response to a redo log message. Implementation should examine the set of
+     * secondary indexes associated with the table and perform actions to build or drop them.
+     */
+    public void notifySecondaries(long id) throws IOException {
+        // FIXME: launch a separate runner thread
     }
 
     /**
@@ -250,7 +262,7 @@ public class RowStore {
         try (Cursor c = mSchemata.viewPrefix(indexKey, 0).newCursor(Transaction.BOGUS)) {
             c.autoload(false);
             for (c.first(); c.key() != null; c.next()) {
-                // FIXME: If K_INDEX_IDS, delete the indexes.
+                // FIXME: If K_SECONDARY, delete the indexes.
                 c.delete();
             }
         }
@@ -264,8 +276,9 @@ public class RowStore {
 
         Transaction txn = mSchemata.newTransaction(DurabilityMode.SYNC);
         try (Cursor current = mSchemata.newCursor(txn)) {
-            // FIXME: K_INDEX_IDS must also also be temporary.
-            if (mDatabase.isInTrash(txn, indexId)) {
+            boolean isTempIndex = mDatabase.isInTrash(txn, indexId);
+
+            if (isTempIndex) {
                 // Temporary trees are always in the trash, and they don't replicate. For this
                 // reason, don't attempt to replicate schema metadata either.
                 txn.durabilityMode(DurabilityMode.NO_REDO);
@@ -288,9 +301,8 @@ public class RowStore {
                         return schemaVersion;
                     }
                     // FIXME: This requires some workflow magic. Note that alt keys cannot
-                    // change, and neither can secondary index keys. Only the data columns of a
-                    // secondary index can change. Of course, dropping/adding of alt keys and
-                    // secondary indexes is allowed.
+                    // change, and neither can secondary index keys. Of course,
+                    // dropping/adding of alt keys and secondary indexes is allowed.
                     throw new IllegalStateException("alt keys and indexes don't match");
                 }
 
@@ -303,6 +315,10 @@ public class RowStore {
 
             // Find an existing schemaVersion or create a new one.
 
+            // Map of descriptors for secondary indexes that will need to be created.
+            Map<String, Long> secondaries;
+            View secondariesView;
+
             assignVersion: try (Cursor byHash = mSchemata.newCursor(txn)) {
                 byHash.find(key(indexId, encoded.primaryHash | (1 << 31)));
 
@@ -313,41 +329,14 @@ public class RowStore {
                         RowInfo existing = decodeExisting
                             (txn, info.name, indexId, null, schemaVersion);
                         if (info.matches(existing)) {
+                            secondaries = null;
+                            secondariesView = null;
                             break assignVersion;
                         }
                     }
                 }
 
                 // Create a new version.
-
-                /* FIXME: index set evolution ideas
-
-                   Even when creating a new version, the alt keys and indexes might not
-                   match. Something needs to be in RowInfo to track this in all cases.  The
-                   default set is whatever is stored currently. Any changes to the definition
-                   are tracked as "the new sets". This prevents any immediate issues except
-                   when columns are dropped that indexes depend on. Should any changes to
-                   alternate keys always be rejected? Removing alt keys is safe, but adding new
-                   ones can fail, due to constraints.
-
-                   Names for alternate keys and secondary indexes use '+' and '-' characters,
-                   and so they don't conflict with type names. Lookups against these names can
-                   be used to determine how far along any workflow proceeded. Final updates to
-                   RowInfoStore are made after all new indexes are added and old ones
-                   dropped. Actually, adding might require a different order.
-
-                   The '~' character can be used to prefix all the data columns, and once a '~'
-                   is used, the '+' and '-' characters won't follow. Given only a name,
-                   determining if it refers to an alternate key or secondary index can be
-                   deduced by inspection of the key columns. An alternate key always has data
-                   columns, but this is optional with a secondary index. A covering index has
-                   data columns too. The qualifying distinction is that a secondary index
-                   refers to all primary key columns in its own key. An alternate key never
-                   refers to all primary key columns in this fashion. At least one primary key
-                   column will be in the alternate key data column set. In fact, all of the
-                   alternate key data columns must refer to primary key columns.
-                */
-
 
                 View versionView = mSchemata.viewGt(key(indexId)).viewLt(key(indexId, 1 << 31));
                 try (Cursor highest = versionView.newCursor(txn)) {
@@ -375,12 +364,86 @@ public class RowStore {
 
                 encodeIntLE(schemaVersions, schemaVersions.length - 4, schemaVersion);
                 byHash.store(schemaVersions);
+
+                // Build a map of secondary descriptors to index id, initally zero.
+                secondaries = new HashMap<String, Long>();
+                info.alternateKeys.forEach(cs -> secondaries.put(cs.keyDescriptor(), 0L));
+                info.secondaryIndexes.forEach(cs -> secondaries.put(cs.keyDescriptor(), 0L));
+
+                // Access a view of persisted secondary descriptors to index ids and states.
+                // Find existing secondary index ids, and update the state as necessary.
+                secondariesView = viewExtended(indexId, K_SECONDARY);
+
+                for (Map.Entry<String, Long> secondary : secondaries.entrySet()) {
+                    try (Cursor c = secondariesView.newCursor(txn)) {
+                        c.find(encodeStringUTF(secondary.getKey()));
+                        byte[] value = c.value();
+                        if (value != null) {
+                            // Secondary index is already defined, so update the mapping.
+                            secondary.setValue(decodeLongLE(value, 0));
+                            // If state is "deleting", switch it to "building".
+                            if (value[8] == 'D') {
+                                value[8] = 'B';
+                                c.store(value);
+                            }
+                        } else if (isTempIndex) {
+                            // Secondary index doesn't exist, but temporary ones can be
+                            // immediately created because they're not replicated.
+                            value = new byte[8 + 1];
+                            long id = mDatabase.newTemporaryIndex().id();
+                            encodeLongLE(value, 0, id);
+                            value[8] = 'B'; // "building" state
+                            c.store(value);
+                        }
+                    }
+                }
+
+                // Find and update any secondary indexes that should be deleted.
+                try (Cursor c = secondariesView.newCursor(txn)) {
+                    for (c.first(); c.key() != null; c.next()) {
+                        String desc = decodeStringUTF(c.key(), 0, c.key().length);
+                        if (!secondaries.containsKey(desc)) {
+                            byte[] value = c.value();
+                            if (value[8] != 'D') {
+                                value[8] = 'D'; // "deleting" state
+                                c.store(value);
+                            }
+                        }
+                    }
+                }
+
+                // Retain entries from the secondaries map that still need indexes.
+                secondaries.values().removeIf(id -> id != 0L);
             }
 
             encodeIntLE(encoded.currentData, 0, schemaVersion);
             current.store(encoded.currentData);
 
-            txn.commit();
+            if (secondaries == null || secondaries.isEmpty()) {
+                txn.commit();
+            } else {
+                // The newly created index ids shall be copied into the array.
+                var ids = new long[secondaries.size()];
+
+                // Transaction is committed as a side-effect.
+                mDatabase.createSecondaryIndexes(txn, indexId, ids, () -> {
+                    try {
+                        int i = 0;
+                        for (String desc : secondaries.keySet()) {
+                            byte[] key = encodeStringUTF(desc);
+                            byte[] value = new byte[8 + 1];
+                            encodeLongLE(value, 0, ids[i++]);
+                            value[8] = 'B'; // "building" state
+                            if (!secondariesView.insert(txn, key, value)) {
+                                // Not expected.
+                                throw new UniqueConstraintException();
+                            }
+                        }
+                    } catch (IOException e) {
+                        rethrow(e);
+                    }
+                });
+            }
         } finally {
             txn.reset();
         }
@@ -429,6 +492,16 @@ public class RowStore {
     }
 
     /**
+     * @param key K_SECONDARY, etc
+     */
+    private View viewExtended(long indexId, int key) {
+        var prefix = new byte[8 + 4 + 4];
+        encodeLongBE(prefix, 0, indexId);
+        encodeIntBE(prefix, 8 + 4, key);
+        return mSchemata.viewPrefix(prefix, prefix.length);
+    }
+
+    /**
      * Decodes and caches an existing RowInfo by schemaVersion.
      *
      * @param currentData can be null if not the current schema
@@ -450,7 +523,7 @@ public class RowStore {
      * @param primaryData if null, then null is returned
      * @return null only if primaryData is null
      */
-    private RowInfo decodeExisting(String typeName, byte[] currentData, byte[] primaryData)
+    private static RowInfo decodeExisting(String typeName, byte[] currentData, byte[] primaryData)
         throws CorruptDatabaseException
     {
         if (primaryData == null) {
@@ -522,8 +595,8 @@ public class RowStore {
      * @param columns to be filled in
      * @return updated position
      */
-    private int decodeColumns(byte[] data, int pos, String[] names,
-                              Map<String, ColumnInfo> columns)
+    private static int decodeColumns(byte[] data, int pos, String[] names,
+                                     Map<String, ColumnInfo> columns)
     {
         int num = decodePrefixPF(data, pos);
         pos += lengthPrefixPF(num);
@@ -544,7 +617,9 @@ public class RowStore {
      * @param columnSets to be filled in
      * @return updated position
      */
-    private int decodeColumnSets(byte[] data, int pos, String[] names, Set<ColumnSet> columnSets) {
+    private static int decodeColumnSets(byte[] data, int pos, String[] names,
+                                        Set<ColumnSet> columnSets)
+    {
         int size = decodePrefixPF(data, pos);
         pos += lengthPrefixPF(size);
         for (int i=0; i<size; i++) {

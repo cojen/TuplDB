@@ -333,6 +333,12 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
+    public boolean notifySecondaries(long indexId) throws IOException {
+        mDatabase.rowStore().notifySecondaries(indexId);
+        return true;
+    }
+
+    @Override
     public boolean control(byte[] message) throws IOException {
         // Wait for work to complete.
         if (mWorkerGroup != null) {

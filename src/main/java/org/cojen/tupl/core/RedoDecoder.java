@@ -190,6 +190,18 @@ abstract class RedoDecoder {
                 }
                 break;
 
+            case OP_NOTIFY_SECONDARIES:
+                long indexId;
+                try {
+                    indexId = in.readLongLE();
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in) || !visitor.notifySecondaries(indexId)) {
+                    return false;
+                }
+                break;
+
             case OP_CONTROL:
                 byte[] message;
                 try {
@@ -259,7 +271,6 @@ abstract class RedoDecoder {
                 break;
 
             case OP_STORE:
-                long indexId;
                 byte[] key, value;
                 try {
                     indexId = in.readLongLE();

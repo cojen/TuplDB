@@ -102,6 +102,12 @@ class RedoEventPrinter implements RedoVisitor {
     }
 
     @Override
+    public boolean notifySecondaries(long indexId) {
+        mListener.notify(mType, "Redo %1$s: indexId=%2$d", "notifySecondaries", indexId);
+        return true;
+    }
+
+    @Override
     public boolean control(byte[] message) {
         mListener.notify(mType, "Redo %1$s: %2$s", "control", valueStr(message));
         return true;

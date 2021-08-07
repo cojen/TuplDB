@@ -820,6 +820,15 @@ final class TransactionContext extends Latch implements Flushable {
         }
     }
 
+    void redoNotifiySecondaries(RedoWriter redo, long indexId) throws IOException {
+        acquireRedoLatch();
+        try {
+            doRedoOp(redo, OP_NOTIFY_SECONDARIES, indexId, DurabilityMode.NO_FLUSH);
+        } finally {
+            releaseRedoLatch();
+        }
+    }
+
     /**
      * Terminate and commit a non-transactional operation. Caller must hold redo latch.
      *
