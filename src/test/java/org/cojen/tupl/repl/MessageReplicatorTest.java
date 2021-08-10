@@ -564,7 +564,7 @@ public class MessageReplicatorTest {
             rnd.nextBytes(message);
             assertTrue(writer.writeMessage(message) > 0);
             long highPosition = writer.position();
-            assertEquals(highPosition, writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS));
+            assertTrue(highPosition <= writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS));
             TestUtils.fastAssertArrayEquals(message, replica.readMessage());
         }
 
@@ -585,7 +585,7 @@ public class MessageReplicatorTest {
 
             assertTrue(writer.writeMessage(message) > 0);
             long highPosition = writer.position();
-            assertEquals(highPosition, writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS));
+            assertTrue(highPosition <= writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS));
             TestUtils.fastAssertArrayEquals(message, replica.readMessage());
         }
     }
