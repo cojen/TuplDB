@@ -23,6 +23,8 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -315,8 +317,8 @@ public class RowStore {
 
             // Find an existing schemaVersion or create a new one.
 
-            // Map of descriptors for secondary indexes that will need to be created.
-            Map<String, Long> secondaries;
+            // Set of descriptors for secondary indexes that will need to be created.
+            Set<String> secondaries;
             View secondariesView;
 
             assignVersion: try (Cursor byHash = mSchemata.newCursor(txn)) {
@@ -365,22 +367,24 @@ public class RowStore {
                 encodeIntLE(schemaVersions, schemaVersions.length - 4, schemaVersion);
                 byHash.store(schemaVersions);
 
-                // Build a map of secondary descriptors to index id, initally zero.
-                secondaries = new HashMap<String, Long>();
-                info.alternateKeys.forEach(cs -> secondaries.put(cs.keyDescriptor(), 0L));
-                info.secondaryIndexes.forEach(cs -> secondaries.put(cs.keyDescriptor(), 0L));
+                // Build the full set of secondary descriptors and prune it down.
+                secondaries = new HashSet<String>();
+                info.alternateKeys.forEach(cs -> secondaries.add(cs.keyDescriptor()));
+                info.secondaryIndexes.forEach(cs -> secondaries.add(cs.keyDescriptor()));
 
                 // Access a view of persisted secondary descriptors to index ids and states.
                 // Find existing secondary index ids, and update the state as necessary.
                 secondariesView = viewExtended(indexId, K_SECONDARY);
 
-                for (Map.Entry<String, Long> secondary : secondaries.entrySet()) {
+                Iterator<String> it = secondaries.iterator();
+                while (it.hasNext()) {
+                    String desc = it.next();
                     try (Cursor c = secondariesView.newCursor(txn)) {
-                        c.find(encodeStringUTF(secondary.getKey()));
+                        c.find(encodeStringUTF(desc));
                         byte[] value = c.value();
                         if (value != null) {
-                            // Secondary index is already defined, so update the mapping.
-                            secondary.setValue(decodeLongLE(value, 0));
+                            // Secondary index is already defined.
+                            it.remove();
                             // If state is "deleting", switch it to "building".
                             if (value[8] == 'D') {
                                 value[8] = 'B';
@@ -389,9 +393,9 @@ public class RowStore {
                         } else if (isTempIndex) {
                             // Secondary index doesn't exist, but temporary ones can be
                             // immediately created because they're not replicated.
+                            it.remove();
                             value = new byte[8 + 1];
-                            long id = mDatabase.newTemporaryIndex().id();
-                            encodeLongLE(value, 0, id);
+                            encodeLongLE(value, 0, mDatabase.newTemporaryIndex().id());
                             value[8] = 'B'; // "building" state
                             c.store(value);
                         }
@@ -402,7 +406,7 @@ public class RowStore {
                 try (Cursor c = secondariesView.newCursor(txn)) {
                     for (c.first(); c.key() != null; c.next()) {
                         String desc = decodeStringUTF(c.key(), 0, c.key().length);
-                        if (!secondaries.containsKey(desc)) {
+                        if (!secondaries.contains(desc)) {
                             byte[] value = c.value();
                             if (value[8] != 'D') {
                                 value[8] = 'D'; // "deleting" state
@@ -411,25 +415,27 @@ public class RowStore {
                         }
                     }
                 }
-
-                // Retain entries from the secondaries map that still need indexes.
-                secondaries.values().removeIf(id -> id != 0L);
             }
 
             encodeIntLE(encoded.currentData, 0, schemaVersion);
             current.store(encoded.currentData);
 
-            if (secondaries == null || secondaries.isEmpty()) {
+            if (secondaries == null) {
                 txn.commit();
             } else {
-                // The newly created index ids shall be copied into the array.
+                // The newly created index ids shall be copied into the array. Note that this
+                // array can be empty, in which case calling createSecondaryIndexes is still
+                // necessary for informing any replicas that potential changes have been made.
+                // The state of some secondary indexes might have changed from "building" to
+                // "deleting", or vice versa. If nothing has changed, there's no harm in
+                // sending the notification anyhow.
                 var ids = new long[secondaries.size()];
 
                 // Transaction is committed as a side-effect.
                 mDatabase.createSecondaryIndexes(txn, indexId, ids, () -> {
                     try {
                         int i = 0;
-                        for (String desc : secondaries.keySet()) {
+                        for (String desc : secondaries) {
                             byte[] key = encodeStringUTF(desc);
                             byte[] value = new byte[8 + 1];
                             encodeLongLE(value, 0, ids[i++]);
