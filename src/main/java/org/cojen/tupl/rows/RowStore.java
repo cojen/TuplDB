@@ -23,7 +23,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -398,23 +397,37 @@ public class RowStore {
                 byHash.store(schemaVersions);
             }
 
-            // Build the full set of secondary descriptors and prune it down.
-            var secondaries = new HashSet<String>();
-            info.alternateKeys.forEach(cs -> secondaries.add(cs.descriptor()));
-            info.secondaryIndexes.forEach(cs -> secondaries.add(cs.descriptor()));
+            encodeIntLE(encoded.currentData, 0, schemaVersion);
+            current.store(encoded.currentData);
+
+            // Start with the full set of secondary descriptors and later prune it down to
+            // those that need to be created.
+            var secondaries = encoded.secondaries;
 
             // Access a view of persisted secondary descriptors to index ids and states.
-            // Find existing secondary index ids, and update the state as necessary.
             View secondariesView = viewExtended(indexId, K_SECONDARY);
 
-            Iterator<String> it = secondaries.iterator();
-            while (it.hasNext()) {
-                String desc = it.next();
-                try (Cursor c = secondariesView.newCursor(txn)) {
-                    c.find(encodeStringUTF(desc));
+            // Find and update secondary indexes that should be deleted.
+            try (Cursor c = secondariesView.newCursor(txn)) {
+                for (c.first(); c.key() != null; c.next()) {
+                    if (!secondaries.contains(c.key())) {
+                        byte[] value = c.value();
+                        if (value[8] != 'D') {
+                            value[8] = 'D'; // "deleting" state
+                            c.store(value);
+                        }
+                    }
+                }
+            }
+
+            // Find and update secondary indexes to create.
+            try (Cursor c = secondariesView.newCursor(txn)) {
+                Iterator<byte[]> it = secondaries.iterator();
+                while (it.hasNext()) {
+                    c.findNearby(it.next());
                     byte[] value = c.value();
                     if (value != null) {
-                        // Secondary index is already defined.
+                        // Secondary index already exists.
                         it.remove();
                         // If state is "deleting", switch it to "building".
                         if (value[8] == 'D') {
@@ -433,23 +446,6 @@ public class RowStore {
                 }
             }
 
-            // Find and update any secondary indexes that should be deleted.
-            try (Cursor c = secondariesView.newCursor(txn)) {
-                for (c.first(); c.key() != null; c.next()) {
-                    String desc = decodeStringUTF(c.key(), 0, c.key().length);
-                    if (!secondaries.contains(desc)) {
-                        byte[] value = c.value();
-                        if (value[8] != 'D') {
-                            value[8] = 'D'; // "deleting" state
-                            c.store(value);
-                        }
-                    }
-                }
-            }
-
-            encodeIntLE(encoded.currentData, 0, schemaVersion);
-            current.store(encoded.currentData);
-
             // The newly created index ids are copied into the array. Note that the array can
             // be empty, in which case calling createSecondaryIndexes is still necessary for
             // informing any replicas that potential changes have been made. The state of some
@@ -461,12 +457,11 @@ public class RowStore {
             mDatabase.createSecondaryIndexes(txn, indexId, ids, () -> {
                 try {
                     int i = 0;
-                    for (String desc : secondaries) {
-                        byte[] key = encodeStringUTF(desc);
+                    for (byte[] desc : secondaries) {
                         byte[] value = new byte[8 + 1];
                         encodeLongLE(value, 0, ids[i++]);
                         value[8] = 'B'; // "building" state
-                        if (!secondariesView.insert(txn, key, value)) {
+                        if (!secondariesView.insert(txn, desc, value)) {
                             // Not expected.
                             throw new UniqueConstraintException();
                         }
@@ -695,6 +690,9 @@ public class RowStore {
         // Current schemaVersion (initially zero), alternateKeys, and secondaryIndexes.
         final byte[] currentData;
 
+        // Set of descriptors.
+        final TreeSet<byte[]> secondaries;
+
         /**
          * Constructor for encoding and writing.
          */
@@ -727,6 +725,10 @@ public class RowStore {
             encodeColumnSets(encoder, info.secondaryIndexes, columnNameMap);
 
             currentData = encoder.toByteArray();
+
+            secondaries = new TreeSet<>(Arrays::compareUnsigned);
+            info.alternateKeys.forEach(cs -> secondaries.add(encodeDescriptor(encoder, cs)));
+            info.secondaryIndexes.forEach(cs -> secondaries.add(encodeDescriptor(encoder, cs)));
         }
 
         /**
@@ -751,10 +753,28 @@ public class RowStore {
                                              Map<String, Integer> columnNameMap)
         {
             encoder.writePrefixPF(columnSets.size());
-            for (ColumnSet set : columnSets) {
-                encodeColumns(encoder, set.allColumns.values(), columnNameMap);
-                encodeColumns(encoder, set.keyColumns.values(), columnNameMap);
-                encodeColumns(encoder, set.valueColumns.values(), columnNameMap);
+            for (ColumnSet cs : columnSets) {
+                encodeColumns(encoder, cs.allColumns.values(), columnNameMap);
+                encodeColumns(encoder, cs.keyColumns.values(), columnNameMap);
+                encodeColumns(encoder, cs.valueColumns.values(), columnNameMap);
+            }
+        }
+
+        /**
+         * Encode a secondary index descriptor.
+         */
+        private static byte[] encodeDescriptor(Encoder encoder, ColumnSet cs) {
+            encoder.reset(0);
+            encodeDescriptor(encoder, cs.keyColumns.values());
+            encodeDescriptor(encoder, cs.valueColumns.values());
+            return encoder.toByteArray();
+        }
+
+        private static void encodeDescriptor(Encoder encoder, Collection<ColumnInfo> columns) {
+            encoder.writePrefixPF(columns.size());
+            for (ColumnInfo column : columns) {
+                encoder.writeByte(column.isDescending() ? '-' : '+');
+                encoder.writeStringUTF(column.name);
             }
         }
     }
