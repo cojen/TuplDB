@@ -41,14 +41,20 @@ class ColumnSet {
     }
 
     /**
-     * Returns a descriptor consisting of the key columns.
+     * Returns a descriptor consisting of the key columns followed by the value columns.
      */
-    String keyDescriptor() {
+    String descriptor() {
         var b = new StringBuilder();
-        for (ColumnInfo ci : keyColumns.values()) {
+        appendDescriptor(b, keyColumns);
+        b.append(';');
+        appendDescriptor(b, valueColumns);
+        return b.toString();
+    }
+
+    private static void appendDescriptor(StringBuilder b, Map<String, ColumnInfo> columns) {
+        for (ColumnInfo ci : columns.values()) {
             b.append(ci.isDescending() ? '-' : '+').append(ci.name);
         }
-        return b.toString();
     }
 
     @Override

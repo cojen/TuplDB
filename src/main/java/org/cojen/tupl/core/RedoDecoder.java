@@ -190,14 +190,14 @@ abstract class RedoDecoder {
                 }
                 break;
 
-            case OP_NOTIFY_SECONDARIES:
+            case OP_NOTIFY_SCHEMA:
                 long indexId;
                 try {
                     indexId = in.readLongLE();
                 } catch (EOFException e) {
                     return true;
                 }
-                if (!verifyTerminator(in) || !visitor.notifySecondaries(indexId)) {
+                if (!verifyTerminator(in) || !visitor.notifySchema(indexId)) {
                     return false;
                 }
                 break;

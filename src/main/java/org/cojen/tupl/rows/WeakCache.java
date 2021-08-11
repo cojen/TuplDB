@@ -22,6 +22,8 @@ import java.lang.invoke.VarHandle;
 import java.lang.ref.WeakReference;
 import java.lang.ref.ReferenceQueue;
 
+import java.util.function.IntFunction;
+
 /**
  * Simple cache of weakly referenced values.
  *
@@ -119,6 +121,25 @@ class WeakCache<K, V> extends ReferenceQueue<Object> {
         mSize++;
 
         return null;
+    }
+
+    @SuppressWarnings({"unchecked"})
+    synchronized K[] copyKeys(IntFunction<K[]> generator) {
+        Object obj = poll();
+        if (obj != null) {
+            cleanup(obj);
+        }
+
+        K[] keys = generator.apply(mSize);
+
+        var entries = mEntries;
+        for (int i=0, k=0; i<entries.length; i++) {
+            for (Entry<K, V> e = entries[i]; e != null; e = e.mNext) {
+                keys[k++] = e.mKey;
+            }
+        }
+
+        return keys;
     }
 
     /**

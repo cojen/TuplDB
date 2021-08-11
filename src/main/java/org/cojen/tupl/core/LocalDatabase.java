@@ -3249,7 +3249,7 @@ final class LocalDatabase extends CoreDatabase {
 
             RowStore rs = openRowStore(false);
             if (rs != null) {
-                task = rs.deleteSchemata(tree.mIdBytes);
+                task = rs.deleteSchema(tree.mIdBytes);
             }
         } catch (Throwable e) {
             throw closeOnFailure(this, e);
@@ -3991,7 +3991,7 @@ final class LocalDatabase extends CoreDatabase {
                 callback.run();
 
                 if (localTxn.mRedo != null) {
-                    localTxn.mContext.redoNotifiySecondaries(localTxn.mRedo, primaryIndexId);
+                    localTxn.mContext.redoNotifiySchema(localTxn.mRedo, primaryIndexId);
                 }
 
                 localTxn.commit();

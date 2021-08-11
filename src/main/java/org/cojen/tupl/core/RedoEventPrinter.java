@@ -102,8 +102,8 @@ class RedoEventPrinter implements RedoVisitor {
     }
 
     @Override
-    public boolean notifySecondaries(long indexId) {
-        mListener.notify(mType, "Redo %1$s: indexId=%2$d", "notifySecondaries", indexId);
+    public boolean notifySchema(long indexId) {
+        mListener.notify(mType, "Redo %1$s: indexId=%2$d", "notifySchema", indexId);
         return true;
     }
 

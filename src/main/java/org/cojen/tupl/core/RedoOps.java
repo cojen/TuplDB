@@ -46,7 +46,7 @@ class RedoOps {
         OP_NOP_RANDOM = 6,
 
         /** indexId: long */
-        OP_NOTIFY_SECONDARIES = 7,
+        OP_NOTIFY_SCHEMA = 7,
 
         /** messageLength: varInt, message: bytes */
         OP_CONTROL = 8,

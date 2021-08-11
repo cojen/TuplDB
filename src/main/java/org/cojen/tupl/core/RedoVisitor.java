@@ -55,7 +55,7 @@ interface RedoVisitor {
     /**
      * @return false to stop visiting
      */
-    public boolean notifySecondaries(long indexId) throws IOException;
+    public boolean notifySchema(long indexId) throws IOException;
 
     /**
      * @param message non-null message

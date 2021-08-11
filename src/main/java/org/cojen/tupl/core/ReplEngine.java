@@ -333,8 +333,8 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
-    public boolean notifySecondaries(long indexId) throws IOException {
-        mDatabase.rowStore().notifySecondaries(indexId);
+    public boolean notifySchema(long indexId) throws IOException {
+        mDatabase.rowStore().notifySchema(indexId);
         return true;
     }
 

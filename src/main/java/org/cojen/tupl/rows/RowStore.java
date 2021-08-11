@@ -83,12 +83,14 @@ public class RowStore {
     // Extended key for referencing secondary indexes.
     private static final int K_SECONDARY = 1;
 
-    private static final int TASK_DELETE_SCHEMATA = 1;
+    private static final int TASK_DELETE_SCHEMA = 1;
 
     public RowStore(CoreDatabase db, Index schemata) throws IOException {
         mDatabase = db;
         mSchemata = schemata;
         mTableCache = new WeakCache<>();
+
+        registerToUpdateSchemata();
 
         // Finish any tasks left over from when the RowStore was last used.
         finishAllWorkflowTasks();
@@ -131,6 +133,7 @@ public class RowStore {
                 String name = type.getName();
                 RowInfo currentInfo = decodeExisting(txn, name, ix.id(), value, schemaVersion);
                 if (!gen.info.keyColumns.equals(currentInfo.keyColumns)) {
+                    // FIXME: Better exception.
                     throw new IllegalStateException("Cannot alter primary key: " + name);
                 }
             }
@@ -156,14 +159,44 @@ public class RowStore {
             txn.reset();
         }
 
+        // Attempt to eagerly update schema metadata and secondary indexes.
+        try {
+            schemaVersion(gen.info, ix.id());
+        } catch (IOException e) {
+            // Ignore and try again when storing rows or when the leadership changes.
+        }
+
         return table;
+    }
+
+    private void registerToUpdateSchemata() {
+        // The second task is invoked when leadership is lost, which sets things up for when
+        // leadership is acquired again.
+        mDatabase.uponLeader(this::updateSchemata, this::registerToUpdateSchemata);
+    }
+
+    /**
+     * Called when database has become the leader, providing an opportunity to update the
+     * schema for all tables currently in use.
+     */
+    @SuppressWarnings("unchecked")
+    private void updateSchemata() {
+        for (Pair<Index, Class<?>> keyPair : mTableCache.copyKeys(Pair[]::new)) {
+            try {
+                schemaVersion(RowInfo.find(keyPair.b), keyPair.a.id());
+            } catch (IOException e) {
+                // Ignore and try again when storing rows or when the leadership changes.
+            } catch (Throwable e) {
+                uncaught(e);
+            }
+        }
     }
 
     /**
      * Called in response to a redo log message. Implementation should examine the set of
      * secondary indexes associated with the table and perform actions to build or drop them.
      */
-    public void notifySecondaries(long id) throws IOException {
+    public void notifySchema(long id) throws IOException {
         // FIXME: launch a separate runner thread
     }
 
@@ -172,30 +205,35 @@ public class RowStore {
      * storing rows.
      *
      * This method should be called with the shared commit lock held, and it
-     * non-transactionally stores task metadata which indicates that the schemata should be
+     * non-transactionally stores task metadata which indicates that the schema should be
      * deleted. The caller should run the returned object without holding the commit lock.
      *
-     * If no checkpoint occurs, then the expecation is that the deleteSchemata method is called
-     * again, which allows the deletion to run again. This means that deleteSchemata should
+     * If no checkpoint occurs, then the expecation is that the deleteSchema method is called
+     * again, which allows the deletion to run again. This means that deleteSchema should
      * only really be called from removeFromTrash, which automatically runs again if no
      * checkpoint occurs.
      *
      * @param indexKey long index id, big-endian encoded
      * @return an optional task to run without commit lock held
      */
-    public Runnable deleteSchemata(byte[] indexKey) throws IOException {
+    public Runnable deleteSchema(byte[] indexKey) throws IOException {
         var taskKey = new byte[8 + 8 + 4];
         System.arraycopy(indexKey, 0, taskKey, 8, 8);
-        encodeIntBE(taskKey, 8 + 8, TASK_DELETE_SCHEMATA);
+        encodeIntBE(taskKey, 8 + 8, TASK_DELETE_SCHEMA);
 
         // Use a transaction to lock the task, and so finishAllWorkflowTasks will skip it.
         Transaction txn = mDatabase.newTransaction(DurabilityMode.NO_REDO);
-        mSchemata.store(txn, taskKey, EMPTY_BYTES);
+        try {
+            mSchemata.store(txn, taskKey, EMPTY_BYTES);
+        } catch (Throwable e) {
+            txn.reset(e);
+            throw e;
+        }
 
         return () -> {
             try {
                 try {
-                    doDeleteSchemata(indexKey);
+                    doDeleteSchema(indexKey);
                     mSchemata.delete(txn, taskKey);
                     txn.commit();
                 } finally {
@@ -254,13 +292,13 @@ public class RowStore {
         switch (taskType) {
         default:
             throw new CorruptDatabaseException("Unknown task: " + taskType);
-        case TASK_DELETE_SCHEMATA:
-            doDeleteSchemata(indexKey);
+        case TASK_DELETE_SCHEMA:
+            doDeleteSchema(indexKey);
             break;
         }
     }
 
-    private void doDeleteSchemata(byte[] indexKey) throws IOException {
+    private void doDeleteSchema(byte[] indexKey) throws IOException {
         try (Cursor c = mSchemata.viewPrefix(indexKey, 0).newCursor(Transaction.BOGUS)) {
             c.autoload(false);
             for (c.first(); c.key() != null; c.next()) {
@@ -278,13 +316,7 @@ public class RowStore {
 
         Transaction txn = mSchemata.newTransaction(DurabilityMode.SYNC);
         try (Cursor current = mSchemata.newCursor(txn)) {
-            boolean isTempIndex = mDatabase.isInTrash(txn, indexId);
-
-            if (isTempIndex) {
-                // Temporary trees are always in the trash, and they don't replicate. For this
-                // reason, don't attempt to replicate schema metadata either.
-                txn.durabilityMode(DurabilityMode.NO_REDO);
-            }
+            txn.lockTimeout(-1, null);
 
             current.find(key(indexId));
 
@@ -295,31 +327,31 @@ public class RowStore {
                 RowInfo currentInfo = decodeExisting
                     (txn, info.name, indexId, current.value(), schemaVersion);
 
-                if (info.matches(currentInfo)) {
-                    if (info.alternateKeysMatch(currentInfo) &&
-                        info.secondaryIndexesMatch(currentInfo))
-                    {
-                        // Completely matches.
-                        return schemaVersion;
-                    }
-                    // FIXME: This requires some workflow magic. Note that alt keys cannot
-                    // change, and neither can secondary index keys. Of course,
-                    // dropping/adding of alt keys and secondary indexes is allowed.
-                    throw new IllegalStateException("alt keys and indexes don't match");
+                if (info.matches(currentInfo)
+                    && info.alternateKeysMatch(currentInfo)
+                    && info.secondaryIndexesMatch(currentInfo))
+                {
+                    // Completely matches.
+                    return schemaVersion;
                 }
 
                 if (!info.keyColumns.equals(currentInfo.keyColumns)) {
+                    // FIXME: Better exception.
                     throw new IllegalStateException("Cannot alter primary key: " + info.name);
                 }
             }
 
-            final var encoded = new EncodedRowInfo(info);
-
             // Find an existing schemaVersion or create a new one.
 
-            // Set of descriptors for secondary indexes that will need to be created.
-            Set<String> secondaries;
-            View secondariesView;
+            final boolean isTempIndex = mDatabase.isInTrash(txn, indexId);
+
+            if (isTempIndex) {
+                // Temporary trees are always in the trash, and they don't replicate. For this
+                // reason, don't attempt to replicate schema metadata either.
+                txn.durabilityMode(DurabilityMode.NO_REDO);
+            }
+
+            final var encoded = new EncodedRowInfo(info);
 
             assignVersion: try (Cursor byHash = mSchemata.newCursor(txn)) {
                 byHash.find(key(indexId, encoded.primaryHash | (1 << 31)));
@@ -331,8 +363,6 @@ public class RowStore {
                         RowInfo existing = decodeExisting
                             (txn, info.name, indexId, null, schemaVersion);
                         if (info.matches(existing)) {
-                            secondaries = null;
-                            secondariesView = null;
                             break assignVersion;
                         }
                     }
@@ -366,52 +396,52 @@ public class RowStore {
 
                 encodeIntLE(schemaVersions, schemaVersions.length - 4, schemaVersion);
                 byHash.store(schemaVersions);
+            }
 
-                // Build the full set of secondary descriptors and prune it down.
-                secondaries = new HashSet<String>();
-                info.alternateKeys.forEach(cs -> secondaries.add(cs.keyDescriptor()));
-                info.secondaryIndexes.forEach(cs -> secondaries.add(cs.keyDescriptor()));
+            // Build the full set of secondary descriptors and prune it down.
+            var secondaries = new HashSet<String>();
+            info.alternateKeys.forEach(cs -> secondaries.add(cs.descriptor()));
+            info.secondaryIndexes.forEach(cs -> secondaries.add(cs.descriptor()));
 
-                // Access a view of persisted secondary descriptors to index ids and states.
-                // Find existing secondary index ids, and update the state as necessary.
-                secondariesView = viewExtended(indexId, K_SECONDARY);
+            // Access a view of persisted secondary descriptors to index ids and states.
+            // Find existing secondary index ids, and update the state as necessary.
+            View secondariesView = viewExtended(indexId, K_SECONDARY);
 
-                Iterator<String> it = secondaries.iterator();
-                while (it.hasNext()) {
-                    String desc = it.next();
-                    try (Cursor c = secondariesView.newCursor(txn)) {
-                        c.find(encodeStringUTF(desc));
-                        byte[] value = c.value();
-                        if (value != null) {
-                            // Secondary index is already defined.
-                            it.remove();
-                            // If state is "deleting", switch it to "building".
-                            if (value[8] == 'D') {
-                                value[8] = 'B';
-                                c.store(value);
-                            }
-                        } else if (isTempIndex) {
-                            // Secondary index doesn't exist, but temporary ones can be
-                            // immediately created because they're not replicated.
-                            it.remove();
-                            value = new byte[8 + 1];
-                            encodeLongLE(value, 0, mDatabase.newTemporaryIndex().id());
-                            value[8] = 'B'; // "building" state
+            Iterator<String> it = secondaries.iterator();
+            while (it.hasNext()) {
+                String desc = it.next();
+                try (Cursor c = secondariesView.newCursor(txn)) {
+                    c.find(encodeStringUTF(desc));
+                    byte[] value = c.value();
+                    if (value != null) {
+                        // Secondary index is already defined.
+                        it.remove();
+                        // If state is "deleting", switch it to "building".
+                        if (value[8] == 'D') {
+                            value[8] = 'B';
                             c.store(value);
                         }
+                    } else if (isTempIndex) {
+                        // Secondary index doesn't exist, but temporary ones can be
+                        // immediately created because they're not replicated.
+                        it.remove();
+                        value = new byte[8 + 1];
+                        encodeLongLE(value, 0, mDatabase.newTemporaryIndex().id());
+                        value[8] = 'B'; // "building" state
+                        c.store(value);
                     }
                 }
+            }
 
-                // Find and update any secondary indexes that should be deleted.
-                try (Cursor c = secondariesView.newCursor(txn)) {
-                    for (c.first(); c.key() != null; c.next()) {
-                        String desc = decodeStringUTF(c.key(), 0, c.key().length);
-                        if (!secondaries.contains(desc)) {
-                            byte[] value = c.value();
-                            if (value[8] != 'D') {
-                                value[8] = 'D'; // "deleting" state
-                                c.store(value);
-                            }
+            // Find and update any secondary indexes that should be deleted.
+            try (Cursor c = secondariesView.newCursor(txn)) {
+                for (c.first(); c.key() != null; c.next()) {
+                    String desc = decodeStringUTF(c.key(), 0, c.key().length);
+                    if (!secondaries.contains(desc)) {
+                        byte[] value = c.value();
+                        if (value[8] != 'D') {
+                            value[8] = 'D'; // "deleting" state
+                            c.store(value);
                         }
                     }
                 }
@@ -420,36 +450,31 @@ public class RowStore {
             encodeIntLE(encoded.currentData, 0, schemaVersion);
             current.store(encoded.currentData);
 
-            if (secondaries == null) {
-                txn.commit();
-            } else {
-                // The newly created index ids shall be copied into the array. Note that this
-                // array can be empty, in which case calling createSecondaryIndexes is still
-                // necessary for informing any replicas that potential changes have been made.
-                // The state of some secondary indexes might have changed from "building" to
-                // "deleting", or vice versa. If nothing has changed, there's no harm in
-                // sending the notification anyhow.
-                var ids = new long[secondaries.size()];
+            // The newly created index ids are copied into the array. Note that the array can
+            // be empty, in which case calling createSecondaryIndexes is still necessary for
+            // informing any replicas that potential changes have been made. The state of some
+            // secondary indexes might have changed from "building" to "deleting", or vice
+            // versa. If nothing changed, there's no harm in sending the notification anyhow.
+            var ids = new long[secondaries.size()];
 
-                // Transaction is committed as a side-effect.
-                mDatabase.createSecondaryIndexes(txn, indexId, ids, () -> {
-                    try {
-                        int i = 0;
-                        for (String desc : secondaries) {
-                            byte[] key = encodeStringUTF(desc);
-                            byte[] value = new byte[8 + 1];
-                            encodeLongLE(value, 0, ids[i++]);
-                            value[8] = 'B'; // "building" state
-                            if (!secondariesView.insert(txn, key, value)) {
-                                // Not expected.
-                                throw new UniqueConstraintException();
-                            }
+            // Transaction is committed as a side-effect.
+            mDatabase.createSecondaryIndexes(txn, indexId, ids, () -> {
+                try {
+                    int i = 0;
+                    for (String desc : secondaries) {
+                        byte[] key = encodeStringUTF(desc);
+                        byte[] value = new byte[8 + 1];
+                        encodeLongLE(value, 0, ids[i++]);
+                        value[8] = 'B'; // "building" state
+                        if (!secondariesView.insert(txn, key, value)) {
+                            // Not expected.
+                            throw new UniqueConstraintException();
                         }
-                    } catch (IOException e) {
-                        rethrow(e);
                     }
-                });
-            }
+                } catch (IOException e) {
+                    rethrow(e);
+                }
+            });
         } finally {
             txn.reset();
         }
