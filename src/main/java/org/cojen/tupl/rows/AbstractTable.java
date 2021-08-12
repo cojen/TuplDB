@@ -62,6 +62,8 @@ public abstract class AbstractTable<R> implements Table<R> {
         }
     }
 
+    private final IndexManager<R> mIndexManager;
+
     /**
      * @param triggers pass true to support triggers
      */
@@ -69,8 +71,12 @@ public abstract class AbstractTable<R> implements Table<R> {
         mSource = Objects.requireNonNull(source);
         mFilterFactoryCache = new WeakCache<>();
         if (triggers) {
-            mTrigger = new Trigger<>();
-            mTrigger.mMode = Trigger.SKIP;
+            Trigger<R> trigger = new Trigger<>();
+            trigger.mMode = Trigger.SKIP;
+            cTriggerHandle.setRelease(this, trigger);
+            mIndexManager = new IndexManager<>();
+        } else {
+            mIndexManager = null;
         }
     }
 
@@ -109,7 +115,7 @@ public abstract class AbstractTable<R> implements Table<R> {
     private RowUpdater<R> newRowUpdater(Transaction txn, RowDecoderEncoder<R> encoder)
         throws IOException
     {
-        AbstractTable<R> table = supportsTriggers() ? this : null;
+        AbstractTable<R> table = mTrigger != null ? this : null;
 
         BasicRowUpdater<R> updater;
         if (txn == null) {
@@ -207,6 +213,26 @@ public abstract class AbstractTable<R> implements Table<R> {
     protected abstract MethodHandle filteredFactory(String str, RowFilter filter);
 
     /**
+     * Update the secondary indexes, if any. Caller is expected to hold a lock which prevents
+     * concurrent calls to this method, which isn't thread-safe.
+     *
+     * @param rs used to open tables for indexes
+     * @param txn holds the lock
+     * @param secondaries maps index descriptor to index id and state
+     * @throws NullPointerException if unsupported
+     */
+    void examineSecondaries(RowStore rs, Transaction txn, View secondaries) throws IOException {
+        Trigger<R> trigger = mIndexManager.update(rs, txn, secondaries, this);
+        if (trigger != null) {
+            setTrigger(trigger);
+        }
+    }
+
+    boolean supportsSecondaries() {
+        return mIndexManager != null;
+    }
+
+    /**
      * Set the table trigger and then wait for the old trigger to no longer be used. Waiting is
      * necessary to prevent certain race conditions. For example, when adding a secondary
      * index, a backfill task can't safely begin until it's known that no operations are in
@@ -217,7 +243,7 @@ public abstract class AbstractTable<R> implements Table<R> {
      * @throws UnsupportedOperationException if triggers aren't supported by this table
      */
     void setTrigger(Trigger<R> trigger) {
-        if (!supportsTriggers()) {
+        if (mTrigger == null) {
             throw new UnsupportedOperationException();
         }
 
@@ -248,10 +274,6 @@ public abstract class AbstractTable<R> implements Table<R> {
      */
     public Trigger<R> trigger() {
         return (Trigger<R>) cTriggerHandle.getOpaque(this);
-    }
-
-    protected boolean supportsTriggers() {
-        return false;
     }
 
     static RowFilter parse(Class<?> rowType, String filter) {

@@ -19,12 +19,14 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -124,6 +126,8 @@ public class RowStore {
         // Can use NO_FLUSH because transaction will be only used for reading data.
         Transaction txn = mSchemata.newTransaction(DurabilityMode.NO_FLUSH);
         try {
+            txn.lockMode(LockMode.REPEATABLE_READ);
+
             // With a txn lock held, check if the primary key definition has changed.
             byte[] value = mSchemata.load(txn, key(ix.id()));
 
@@ -160,10 +164,13 @@ public class RowStore {
 
         // Attempt to eagerly update schema metadata and secondary indexes.
         try {
-            schemaVersion(gen.info, ix.id());
+            // Pass false for notify because examineSecondaries will be called below.
+            schemaVersion(gen.info, ix.id(), false);
         } catch (IOException e) {
             // Ignore and try again when storing rows or when the leadership changes.
         }
+
+        examineSecondaries(table);
 
         return table;
     }
@@ -182,7 +189,7 @@ public class RowStore {
     private void updateSchemata() {
         for (Pair<Index, Class<?>> keyPair : mTableCache.copyKeys(Pair[]::new)) {
             try {
-                schemaVersion(RowInfo.find(keyPair.b), keyPair.a.id());
+                schemaVersion(RowInfo.find(keyPair.b), keyPair.a.id(), true);
             } catch (IOException e) {
                 // Ignore and try again when storing rows or when the leadership changes.
             } catch (Throwable e) {
@@ -191,12 +198,59 @@ public class RowStore {
         }
     }
 
+    private void uncaught(Throwable e) {
+        if (!mDatabase.isClosed()) {
+            RowUtils.uncaught(e);
+        }
+    }
+
     /**
      * Called in response to a redo log message. Implementation should examine the set of
      * secondary indexes associated with the table and perform actions to build or drop them.
      */
-    public void notifySchema(long id) throws IOException {
-        // FIXME: launch a separate runner thread
+    public void notifySchema(long indexId) {
+        List<AbstractTable<?>> tables = mTableCache.findValues(null, (list, table) -> {
+            if (table.supportsSecondaries() && table.mSource instanceof Index) {
+                if (((Index) table.mSource).id() == indexId) {
+                    if (list == null) {
+                        list = new ArrayList<>();
+                    }
+                    list.add(table);
+                }
+            }
+            return list;
+        });
+
+        if (tables != null) try {
+            for (var table : tables) {
+                examineSecondaries(table);
+            }
+        } catch (Throwable e) {
+            RowStore.this.uncaught(e);
+        }
+    }
+
+    private void examineSecondaries(AbstractTable<?> table) throws IOException {
+        if (!table.supportsSecondaries() || !(table.mSource instanceof Index)) {
+            return;
+        }
+
+        long indexId = ((Index) table.mSource).id();
+
+        // Can use NO_FLUSH because transaction will be only used for reading data.
+        Transaction txn = mDatabase.newTransaction(DurabilityMode.NO_FLUSH);
+        try {
+            txn.lockTimeout(-1, null);
+
+            // Lock to prevent changes and to allow one thread to call examineSecondaries.
+            mSchemata.lockUpgradable(txn, key(indexId));
+
+            txn.lockMode(LockMode.READ_COMMITTED);
+
+            table.examineSecondaries(this, txn, viewExtended(indexId, K_SECONDARY));
+        } finally {
+            txn.reset();
+        }
     }
 
     /**
@@ -309,8 +363,10 @@ public class RowStore {
 
     /**
      * Returns the schema version for the given row info, creating a new version if necessary.
+     *
+     * @param notify true to call notifySchema if anything changed
      */
-    int schemaVersion(final RowInfo info, final long indexId) throws IOException {
+    int schemaVersion(final RowInfo info, final long indexId, boolean notify) throws IOException {
         int schemaVersion;
 
         Transaction txn = mSchemata.newTransaction(DurabilityMode.SYNC);
@@ -472,6 +528,11 @@ public class RowStore {
             });
         } finally {
             txn.reset();
+        }
+
+        if (notify) {
+            // We're currently the leader, and so this method must be invoked directly.
+            notifySchema(indexId);
         }
 
         return schemaVersion;

@@ -22,6 +22,7 @@ import java.lang.invoke.VarHandle;
 import java.lang.ref.WeakReference;
 import java.lang.ref.ReferenceQueue;
 
+import java.util.function.BiFunction;
 import java.util.function.IntFunction;
 
 /**
@@ -140,6 +141,30 @@ class WeakCache<K, V> extends ReferenceQueue<Object> {
         }
 
         return keys;
+    }
+
+    /**
+     * @param collection passed to the function (can be anything or even null)
+     * @param fun accepts a the collection and a value, and returns a collection
+     * @return the updated collection
+     */
+    synchronized <C> C findValues(C collection, BiFunction<C, V, C> fun) {
+        var entries = mEntries;
+        for (int i=0, k=0; i<entries.length; i++) {
+            for (Entry<K, V> e = entries[i]; e != null; e = e.mNext) {
+                V value = e.get();
+                if (value != null) {
+                    collection = fun.apply(collection, value);
+                }
+            }
+        }
+
+        Object obj = poll();
+        if (obj != null) {
+            cleanup(obj);
+        }
+
+        return collection;
     }
 
     /**

@@ -64,7 +64,7 @@ public class RowStoreTest {
 
         for (int i=0; i<200; i++) {
             RowInfo rowInfo = randomRowInfo("Test", keyColumns, withAltKey, withIndex, rnd);
-            Integer version = rs.schemaVersion(rowInfo, 123);
+            Integer version = rs.schemaVersion(rowInfo, 123, false);
 
             RowInfo existing = rowInfos.get(version);
             if (existing == null) {
@@ -75,7 +75,7 @@ public class RowStoreTest {
         }
 
         for (Map.Entry<Integer, RowInfo> e : rowInfos.entrySet()) {
-            Integer version = rs.schemaVersion(e.getValue(), 123);
+            Integer version = rs.schemaVersion(e.getValue(), 123, false);
             assertEquals(version, e.getKey());
         }
 

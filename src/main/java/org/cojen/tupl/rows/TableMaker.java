@@ -150,10 +150,6 @@ public class TableMaker {
 
         addFilteredFactoryMethod();
 
-        if (mTriggers) {
-            mClassMaker.addMethod(boolean.class, "supportsTriggers").protected_().return_(true);
-        }
-
         try {
             var lookup = mClassMaker.finishLookup();
             return lookup.findConstructor(lookup.lookupClass(),
@@ -469,7 +465,7 @@ public class TableMaker {
                 RowInfo info = RowInfo.find(rowType);
                 int schemaVersion;
                 try {
-                    schemaVersion = store.schemaVersion(info, indexId);
+                    schemaVersion = store.schemaVersion(info, indexId, true);
                 } catch (Exception e) {
                     return new ExceptionCallSite.Failed(mt, mm, e);
                 }
