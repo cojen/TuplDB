@@ -123,8 +123,8 @@ public class TableMaker {
         // Add encode/decode methods.
 
         ColumnCodec[] keyCodecs = mRowGen.keyCodecs();
-        addEncodeColumns("encodePrimaryKey", keyCodecs);
-        addDecodeColumns("decodePrimaryKey", keyCodecs);
+        addEncodeColumnsMethod("encodePrimaryKey", keyCodecs);
+        addDecodeColumnsMethod("decodePrimaryKey", keyCodecs);
 
         addDynamicEncodeValueColumns();
         addDynamicDecodeValueColumns();
@@ -368,7 +368,7 @@ public class TableMaker {
      *
      * @param name method name
      */
-    private void addEncodeColumns(String name, ColumnCodec[] codecs) {
+    private void addEncodeColumnsMethod(String name, ColumnCodec[] codecs) {
         MethodMaker mm = mClassMaker.addMethod(byte[].class, name, mRowClass).static_();
         addEncodeColumns(mm, ColumnCodec.bind(codecs, mm));
     }
@@ -480,7 +480,7 @@ public class TableMaker {
      *
      * @param name method name
      */
-    private void addDecodeColumns(String name, ColumnCodec[] codecs) {
+    private void addDecodeColumnsMethod(String name, ColumnCodec[] codecs) {
         MethodMaker mm = mClassMaker.addMethod(null, name, mRowClass, byte[].class)
             .static_().public_();
         addDecodeColumns(mm, mRowInfo, codecs, 0);
