@@ -53,7 +53,7 @@ import static org.cojen.tupl.rows.RowUtils.*;
  * @author Brian S O'Neill
  */
 public class RowStore {
-    private final CoreDatabase mDatabase;
+    final CoreDatabase mDatabase;
 
     /* Schema metadata for all types.
      
@@ -826,17 +826,19 @@ public class RowStore {
          */
         private static byte[] encodeDescriptor(Encoder encoder, ColumnSet cs) {
             encoder.reset(0);
-            encodeDescriptor(encoder, cs.keyColumns.values());
-            encodeDescriptor(encoder, cs.valueColumns.values());
-            return encoder.toByteArray();
-        }
 
-        private static void encodeDescriptor(Encoder encoder, Collection<ColumnInfo> columns) {
-            encoder.writePrefixPF(columns.size());
-            for (ColumnInfo column : columns) {
+            encoder.writePrefixPF(cs.keyColumns.size());
+            for (ColumnInfo column : cs.keyColumns.values()) {
                 encoder.writeByte(column.isDescending() ? '-' : '+');
                 encoder.writeStringUTF(column.name);
             }
+
+            encoder.writePrefixPF(cs.valueColumns.size());
+            for (ColumnInfo column : cs.valueColumns.values()) {
+                encoder.writeStringUTF(column.name);
+            }
+
+            return encoder.toByteArray();
         }
     }
 }
