@@ -45,12 +45,38 @@ public class Trigger<R> extends CommitLock {
      * @param txn never null, although can be BOGUS
      * @param row never null
      * @param key never null
-     * @param oldValue might be null (is always null for insert)
-     * @param newValue might be null (is always null for delete)
+     * @param oldValue never null
+     * @param newValue never null
      */
     public void store(Transaction txn, R row, byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException
     {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Called after a row has been inserted, but before the row has been marked clean. By
+     * default, this method always throws an exception.
+     *
+     * @param txn never null, although can be BOGUS
+     * @param row never null
+     * @param key never null
+     * @param newValue never null
+     */
+    public void insert(Transaction txn, R row, byte[] key, byte[] newValue) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Called after a row has been deleted, but before the row has been marked clean. By
+     * default, this method always throws an exception.
+     *
+     * @param txn never null, although can be BOGUS
+     * @param row never null
+     * @param key never null
+     * @param oldValue never null
+     */
+    public void delete(Transaction txn, R row, byte[] key, byte[] oldValue) throws IOException {
         throw new UnsupportedOperationException();
     }
 
@@ -65,8 +91,8 @@ public class Trigger<R> extends CommitLock {
      * @param txn never null, although can be BOGUS
      * @param row never null
      * @param key never null
-     * @param oldValue might be null (is always null for insert)
-     * @param newValue might be null (is always null for delete)
+     * @param oldValue never null
+     * @param newValue never null
      */
     public void update(Transaction txn, R row, byte[] key, byte[] oldValue, byte[] newValue)
         throws IOException

@@ -216,7 +216,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
                     }
                     if (mode != Trigger.DISABLED) {
                         c.delete();
-                        trigger.store(txn, mRow, c.key(), null, value);
+                        trigger.insert(txn, mRow, c.key(), value);
                         txn.commit();
                         break doUpdate;
                     }
@@ -248,7 +248,11 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
         try {
             byte[] oldValue = c.value();
             c.store(value);
-            trigger.store(txn, row, c.key(), oldValue, value);
+            if (oldValue == null) {
+                trigger.insert(txn, row, c.key(), value);
+            } else {
+                trigger.store(txn, row, c.key(), oldValue, value);
+            }
             txn.commit();
         } finally {
             txn.exit();
@@ -270,8 +274,10 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
         Transaction txn = ViewUtils.enterScope(mView, c.link());
         try {
             byte[] oldValue = c.value();
-            c.delete();
-            trigger.store(txn, row, c.key(), oldValue, null);
+            if (oldValue != null) {
+                c.delete();
+                trigger.delete(txn, row, c.key(), oldValue);
+            }
             txn.commit();
         } finally {
             txn.exit();

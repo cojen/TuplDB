@@ -681,7 +681,10 @@ public class TableMaker {
             Label txnStart = mm.label().here();
 
             var oldValueVar = source.invoke("exchange", txnVar, keyVar, null);
-            triggerVar.invoke("store", txnVar, rowVar, keyVar, oldValueVar, null);
+            Label commit = mm.label();
+            oldValueVar.ifEq(null, commit);
+            triggerVar.invoke("delete", txnVar, rowVar, keyVar, oldValueVar);
+            commit.here();
             txnVar.invoke("commit");
             mm.return_(oldValueVar.ne(null));
 
@@ -750,7 +753,7 @@ public class TableMaker {
                 insertResultVar.ifTrue(passed);
                 mm.return_(false);
                 passed.here();
-                triggerVar.invoke("store", txnVar, rowVar, keyVar, null, valueVar);
+                triggerVar.invoke("insert", txnVar, rowVar, keyVar, valueVar);
                 txnVar.invoke("commit");
                 markAllClean(rowVar);
                 mm.return_(true);
@@ -771,7 +774,14 @@ public class TableMaker {
                 mm.return_(true);
             } else {
                 var oldValueVar = source.invoke("exchange", txnVar, keyVar, valueVar);
+                Label wasNull = mm.label();
+                oldValueVar.ifEq(null, wasNull);
                 triggerVar.invoke("store", txnVar, rowVar, keyVar, oldValueVar, valueVar);
+                Label commit = mm.label();
+                mm.goto_(commit);
+                wasNull.here();
+                triggerVar.invoke("insert", txnVar, rowVar, keyVar, valueVar);
+                commit.here();
                 txnVar.invoke("commit");
                 if (variant == "store") {
                     markAllClean(rowVar);

@@ -42,10 +42,21 @@ public class TriggerTest {
 
     @After
     public void teardown() throws Exception {
-        var stats = mDb.stats();
-        assertEquals(0, stats.lockCount);
-        assertEquals(0, stats.cursorCount);
-        assertEquals(0, stats.transactionCount);
+        for (int i=10; --i>=0;) {
+            try {
+                var stats = mDb.stats();
+                assertEquals(0, stats.lockCount);
+                assertEquals(0, stats.cursorCount);
+                assertEquals(0, stats.transactionCount);
+                break;
+            } catch (AssertionError e) {
+                if (i == 0) {
+                    throw e;
+                }
+                // Wait for any background threads to finish.
+                Thread.sleep(1000);
+            }
+        }
 
         mDb.close();
         mDb = null;
@@ -579,6 +590,16 @@ public class TriggerTest {
             this.oldValue = oldValue;
             this.newValue = newValue;
             update = false;
+        }
+
+        @Override
+        public void insert(Transaction txn, TestRow row, byte[] key, byte[] newValue) {
+            store(txn, row, key, null, newValue);
+        }
+
+        @Override
+        public void delete(Transaction txn, TestRow row, byte[] key, byte[] oldValue) {
+            store(txn, row, key, oldValue, null);
         }
 
         @Override
