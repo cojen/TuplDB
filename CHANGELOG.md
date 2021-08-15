@@ -1,6 +1,9 @@
 Changelog
 =========
 
+v1.5.3.1
+--------
+
 v1.5.3 (2021-08-09)
 ------
 * Avoid holding global commit lock when deleting an index.
