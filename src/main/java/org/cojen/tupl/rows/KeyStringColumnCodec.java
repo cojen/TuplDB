@@ -27,7 +27,7 @@ import org.cojen.maker.Variable;
  * @see RowUtils#encodeStringKey
  * @author Brian S O'Neill
  */
-class KeyStringColumnCodec extends StringColumnCodec {
+final class KeyStringColumnCodec extends StringColumnCodec {
     KeyStringColumnCodec(ColumnInfo info, MethodMaker mm) {
         super(info, mm);
     }

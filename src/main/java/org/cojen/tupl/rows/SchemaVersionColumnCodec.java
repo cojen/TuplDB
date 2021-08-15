@@ -26,7 +26,7 @@ import org.cojen.maker.Variable;
  * @see RowUtils#lengthPrefixPF
  * @author Brian S O'Neill
  */
-class SchemaVersionColumnCodec extends ColumnCodec {
+final class SchemaVersionColumnCodec extends ColumnCodec {
     // Version is pre-encoded using the prefix format.
     private final int mVersion;
 
@@ -46,6 +46,16 @@ class SchemaVersionColumnCodec extends ColumnCodec {
     @Override
     ColumnCodec bind(MethodMaker mm) {
         return new SchemaVersionColumnCodec(mm, mVersion);
+    }
+
+    @Override
+    protected final boolean doEquals(Object obj) {
+        return ((SchemaVersionColumnCodec) obj).mVersion == mVersion;
+    }
+
+    @Override
+    protected final int doHashCode() {
+        return mVersion;
     }
 
     @Override

@@ -139,7 +139,7 @@ class IndexManager<R> {
             boolean descending = desc[offset++] == '-';
             int nameLength = decodePrefixPF(desc, offset);
             offset += lengthPrefixPF(nameLength);
-            String name = decodeStringUTF(desc, offset, nameLength);
+            String name = decodeStringUTF(desc, offset, nameLength).intern();
             offset += nameLength;
 
             ColumnInfo column = primaryInfo.allColumns.get(name);
@@ -162,7 +162,7 @@ class IndexManager<R> {
             for (int i=0; i<numKeys; i++) {
                 int nameLength = decodePrefixPF(desc, offset);
                 offset += lengthPrefixPF(nameLength);
-                String name = decodeStringUTF(desc, offset, nameLength);
+                String name = decodeStringUTF(desc, offset, nameLength).intern();
                 offset += nameLength;
 
                 ColumnInfo column = primaryInfo.allColumns.get(name);

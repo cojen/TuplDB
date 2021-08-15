@@ -29,7 +29,7 @@ import static org.cojen.tupl.rows.RowUtils.*;
  *
  * @author Brian S O'Neill
  */
-class PrimitiveColumnCodec extends ColumnCodec {
+final class PrimitiveColumnCodec extends ColumnCodec {
     private final boolean mForKey;
     private final int mSize;
 
@@ -48,6 +48,26 @@ class PrimitiveColumnCodec extends ColumnCodec {
     @Override
     ColumnCodec bind(MethodMaker mm) {
         return new PrimitiveColumnCodec(mInfo, mm, mForKey, mSize);
+    }
+
+    @Override
+    protected final boolean doEquals(Object obj) {
+        var other = (PrimitiveColumnCodec) obj;
+        if (mForKey != other.mForKey || mSize != other.mSize) {
+            return false;
+        }
+        int typeCode = mInfo.typeCode;
+        int otherTypeCode = other.mInfo.typeCode;
+        if (!mForKey) {
+            typeCode &= ~TYPE_DESCENDING;
+            otherTypeCode &= ~TYPE_DESCENDING;
+        }
+        return typeCode == otherTypeCode;
+    }
+
+    @Override
+    public final int doHashCode() {
+        return mInfo.typeCode & ~TYPE_DESCENDING;
     }
 
     @Override

@@ -28,7 +28,7 @@ import org.cojen.maker.Variable;
  *
  * @author Brian S O'Neill
  */
-class BigDecimalColumnCodec extends ColumnCodec {
+final class BigDecimalColumnCodec extends ColumnCodec {
     private final ColumnCodec mUnscaledCodec;
 
     protected Variable mScaleVar;
@@ -45,6 +45,16 @@ class BigDecimalColumnCodec extends ColumnCodec {
     @Override
     ColumnCodec bind(MethodMaker mm) {
         return new BigDecimalColumnCodec(mInfo, mUnscaledCodec.bind(mm), mm);
+    }
+
+    @Override
+    protected final boolean doEquals(Object obj) {
+        return ((BigDecimalColumnCodec) obj).mUnscaledCodec.doEquals(mUnscaledCodec);
+    }
+
+    @Override
+    public final int doHashCode() {
+        return mUnscaledCodec.doHashCode();
     }
 
     @Override

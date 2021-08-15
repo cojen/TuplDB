@@ -26,7 +26,7 @@ import org.cojen.maker.Variable;
  *
  * @author Brian S O'Neill
  */
-class KeyPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
+final class KeyPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
     KeyPrimitiveArrayColumnCodec(ColumnInfo info, MethodMaker mm) {
         super(info, mm, true);
     }

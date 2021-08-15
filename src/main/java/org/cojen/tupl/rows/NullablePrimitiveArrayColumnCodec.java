@@ -26,7 +26,7 @@ import org.cojen.maker.Variable;
  *
  * @author Brian S O'Neill
  */
-class NullablePrimitiveArrayColumnCodec extends NonNullPrimitiveArrayColumnCodec {
+final class NullablePrimitiveArrayColumnCodec extends NonNullPrimitiveArrayColumnCodec {
     protected Variable mBytesLengthVar;
 
     /**

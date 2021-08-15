@@ -27,7 +27,7 @@ import org.cojen.maker.Variable;
  *
  * @author Brian S O'Neill
  */
-class NullableLastPrimtiveArrayColumnCodec extends NonNullLastPrimitiveArrayColumnCodec {
+final class NullableLastPrimtiveArrayColumnCodec extends NonNullLastPrimitiveArrayColumnCodec {
     /**
      * @param info non-null
      * @param mm is null for stateless instance

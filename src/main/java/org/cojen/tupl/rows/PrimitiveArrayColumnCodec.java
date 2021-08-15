@@ -53,6 +53,26 @@ abstract class PrimitiveArrayColumnCodec extends BytesColumnCodec {
     }
 
     @Override
+    protected final boolean doEquals(Object obj) {
+        var other = (PrimitiveArrayColumnCodec) obj;
+        if (mForKey != other.mForKey || mBitPow != other.mBitPow) {
+            return false;
+        }
+        int typeCode = mInfo.typeCode;
+        int otherTypeCode = other.mInfo.typeCode;
+        if (!mForKey) {
+            typeCode &= ~TYPE_DESCENDING;
+            otherTypeCode &= ~TYPE_DESCENDING;
+        }
+        return typeCode == otherTypeCode;
+    }
+
+    @Override
+    public final int doHashCode() {
+        return mInfo.typeCode & ~TYPE_DESCENDING;
+    }
+
+    @Override
     protected Variable filterPrepareBytes(Variable argVar) {
         final Variable bytesVar = mMaker.var(byte[].class);
         Label cont = null;

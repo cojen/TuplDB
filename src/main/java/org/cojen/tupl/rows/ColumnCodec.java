@@ -22,6 +22,7 @@ import java.math.BigInteger;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 
 import org.cojen.maker.Field;
 import org.cojen.maker.Label;
@@ -219,6 +220,35 @@ abstract class ColumnCodec {
      * Returns a stateful instance suitable for making code.
      */
     abstract ColumnCodec bind(MethodMaker mm);
+
+    @Override
+    public final boolean equals(Object obj) {
+        if (obj == this) {
+            return true;
+        }
+        if (obj != null && obj.getClass() == getClass()) {
+            return doEquals(obj);
+        }
+        return false;
+    }
+
+    @Override
+    public final int hashCode() {
+        int hash = mInfo == null ? 0 : Objects.hashCode(mInfo.name);
+        return (doHashCode() * 31 + hash) ^ getClass().hashCode();
+    }
+
+    /**
+     * Should only consider the encoding strategy.
+     *
+     * @param obj is an instance of the class being called
+     */
+    protected abstract boolean doEquals(Object obj);
+
+    /**
+     * Should only consider the encoding strategy.
+     */
+    protected abstract int doHashCode();
 
     /**
      * Returns the minimum number of bytes to encode the column.

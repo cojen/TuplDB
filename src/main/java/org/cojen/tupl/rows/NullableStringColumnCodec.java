@@ -29,7 +29,7 @@ import org.cojen.maker.Variable;
  * @see RowUtils#encodeStringUTF
  * @author Brian S O'Neill
  */
-class NullableStringColumnCodec extends NonNullStringColumnCodec {
+final class NullableStringColumnCodec extends NonNullStringColumnCodec {
     /**
      * @param info non-null
      * @param mm is null for stateless instance

@@ -27,7 +27,7 @@ import org.cojen.maker.Variable;
  *
  * @author Brian S O'Neill
  */
-class KeyBigDecimalColumnCodec extends ColumnCodec {
+final class KeyBigDecimalColumnCodec extends ColumnCodec {
     protected Variable mBytesVar;
 
     KeyBigDecimalColumnCodec(ColumnInfo info, MethodMaker mm) {
@@ -37,6 +37,16 @@ class KeyBigDecimalColumnCodec extends ColumnCodec {
     @Override
     ColumnCodec bind(MethodMaker mm) {
         return new KeyBigDecimalColumnCodec(mInfo, mm);
+    }
+
+    @Override
+    protected final boolean doEquals(Object obj) {
+        return true;
+    }
+
+    @Override
+    public final int doHashCode() {
+        return 0;
     }
 
     @Override

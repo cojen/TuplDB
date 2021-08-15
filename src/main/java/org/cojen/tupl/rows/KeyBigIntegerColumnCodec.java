@@ -27,7 +27,7 @@ import org.cojen.maker.Variable;
  * @see RowUtils#encodeBigIntegerKey
  * @author Brian S O'Neill
  */
-class KeyBigIntegerColumnCodec extends BigIntegerColumnCodec {
+final class KeyBigIntegerColumnCodec extends BigIntegerColumnCodec {
     protected Variable mBytesVar;
 
     KeyBigIntegerColumnCodec(ColumnInfo info, MethodMaker mm) {
