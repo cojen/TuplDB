@@ -43,6 +43,19 @@ public class WorkerTest {
 
     @Test
     public void queueFill() {
+        for (int i=10; --i>=0;) {
+            try {
+                doQueueFill();
+                break;
+            } catch (AssertionError e) {
+                if (i == 0) {
+                    throw e;
+                }
+            }
+        }
+    }
+
+    private void doQueueFill() {
         // Call the non-blocking enqueue method.
 
         final int max = 100;
@@ -53,6 +66,8 @@ public class WorkerTest {
             assertTrue(w.tryEnqueue(new Counter(total, i, 10)));
         }
 
+        // It's possible that at least one of the tasks finishes by the time the next
+        // tryEnqueue call is made. For this reason, the test case is run in a loop.
         var task = new Counter(total, 1000, 0);
         assertFalse(w.tryEnqueue(task));
 
