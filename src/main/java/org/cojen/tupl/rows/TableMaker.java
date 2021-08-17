@@ -403,7 +403,7 @@ public class TableMaker {
             dstVar = mm.new_(byte[].class, minSize);
         } else {
             if (minSize != 0) {
-                totalVar.inc(minSize);
+                totalVar = totalVar.add(minSize);
             }
             dstVar = mm.new_(byte[].class, totalVar);
         }

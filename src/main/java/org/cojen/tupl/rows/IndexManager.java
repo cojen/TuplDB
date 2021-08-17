@@ -91,11 +91,10 @@ class IndexManager<R> {
             }
         }
 
-        RowInfo primaryInfo = RowInfo.find(table.rowType());
+        Class<R> rowType = table.rowType();
+        RowInfo primaryInfo = RowInfo.find(rowType);
 
-        var secondaryInfos = new RowInfo[size];
-        var secondaryIndexes = new Index[size];
-        var secondaryStates = new byte[size];
+        var maker = new IndexTriggerMaker<R>(rowType, primaryInfo, size);
 
         try (Cursor c = secondaries.newCursor(txn)) {
             int i = 0;
@@ -107,7 +106,7 @@ class IndexManager<R> {
                     info = buildIndexRowInfo(primaryInfo, desc);
                     mIndexInfos.put(desc, new WeakReference<>(info));
                 }
-                secondaryInfos[i] = info;
+                maker.mSecondaryInfos[i] = info;
 
                 byte[] value = c.value();
 
@@ -116,20 +115,21 @@ class IndexManager<R> {
                 if (index == null) {
                     throw new CorruptDatabaseException("Secondary index is missing: " + indexId);
                 }
-                secondaryIndexes[i] = index;
+                maker.mSecondaryIndexes[i] = index;
 
-                secondaryStates[i] = value[8];
+                maker.mSecondaryStates[i] = value[8];
             }
         }
 
-        // FIXME
-        return null;
+        return maker.make();
     }
 
+    /**
+     * Builds a RowInfo object for a secondary index, by parsing a binary descriptor which was
+     * created by RowStore.EncodedRowInfo.encodeDescriptor.
+     */
     private static RowInfo buildIndexRowInfo(RowInfo primaryInfo, byte[] desc) {
         var info = new RowInfo(null);
-
-        // Descriptor is encoded by RowStore.EncodedRowInfo.encodeDescriptor.
 
         int numKeys = decodePrefixPF(desc, 0);
         int offset = lengthPrefixPF(numKeys);

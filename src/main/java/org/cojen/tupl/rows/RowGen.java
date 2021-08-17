@@ -34,9 +34,14 @@ class RowGen {
     final RowInfo info;
 
     private volatile String[] mStateFields;
+
     private volatile Map<String, Integer> mColumnNumbers;
+
     private volatile ColumnCodec[] mKeyCodecs;
     private volatile ColumnCodec[] mValueCodecs;
+
+    private volatile Map<ColumnCodec, ColumnCodec> mKeyCodecMap;
+    private volatile Map<ColumnCodec, ColumnCodec> mValueCodecMap;
 
     RowGen(RowInfo info) {
         this.info = info;
@@ -185,7 +190,7 @@ class RowGen {
     }
 
     /**
-     * Returns the value codecs in the order in which they should be encoded, which is the same
+     * Returns the key codecs in the order in which they should be encoded, which is the same
      * as RowInfo.keyColumns order (declaration order).
      */
     public ColumnCodec[] keyCodecs() {
@@ -233,5 +238,39 @@ class RowGen {
         }
 
         return codecs;
+    }
+
+    /**
+     * Returns a map of key codecs, in the order in which they should be encoded.
+     *
+     * @return map of codec to itself
+     */
+    public Map<ColumnCodec, ColumnCodec> keyCodecMap() {
+        var map = mKeyCodecMap;
+        if (map == null) {
+            mKeyCodecMap = map = makeCodecMap(keyCodecs());
+        }
+        return map;
+    }
+
+    /**
+     * Returns a map of value codecs, in the order in which they should be encoded.
+     *
+     * @return map of codec to itself
+     */
+    public Map<ColumnCodec, ColumnCodec> valueCodecMap() {
+        var map = mValueCodecMap;
+        if (map == null) {
+            mValueCodecMap = map = makeCodecMap(valueCodecs());
+        }
+        return map;
+    }
+
+    private static Map<ColumnCodec, ColumnCodec> makeCodecMap(ColumnCodec[] codecs) {
+        var map = new LinkedHashMap<ColumnCodec, ColumnCodec>(codecs.length);
+        for (ColumnCodec codec : codecs) {
+            map.put(codec, codec);
+        }
+        return map;
     }
 }
