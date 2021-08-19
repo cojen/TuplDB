@@ -49,7 +49,8 @@ class IndexTriggerMaker<R> {
     final Index[] mSecondaryIndexes;
     final byte[] mSecondaryStates; // FIXME: remember to build indexes
 
-    private Map<ColumnCodec, Pair<Variable, Variable>> mFoundKeyCodecs, mFoundValueCodecs;
+    // Map for all the columns needed by all of the secondary indexes.
+    private Map<String, ColumnSource> mColumnSources;
 
     private ClassMaker mClassMaker;
 
@@ -64,14 +65,11 @@ class IndexTriggerMaker<R> {
     }
 
     Trigger<R> make() {
-        for (RowInfo secondaryInfo : mSecondaryInfos) {
-            mFoundKeyCodecs = findCodecs(mPrimaryGen.keyCodecMap(), secondaryInfo, false);
-            mFoundValueCodecs = findCodecs(mPrimaryGen.valueCodecMap(), secondaryInfo, false);
-        }
-
         mClassMaker = mPrimaryGen.beginClassMaker(IndexTriggerMaker.class, mRowType, "Trigger");
         mClassMaker.extend(Trigger.class);
         mClassMaker.addConstructor();
+
+        mColumnSources = buildColumnSources();
 
         addInsertMethod();
 
@@ -88,81 +86,131 @@ class IndexTriggerMaker<R> {
         }
     }
 
-    /**
-     * For the given secondary index RowInfo, find all matching primary ColumnCodecs. A
-     * matching ColumnCodec has the same name and encoding strategy. The map keys are exact
-     * ColumnCodec instances from primaryCodecMap, and the map values are null.
-     *
-     * @param primitive pass false to ignore primitive columns
-     * @return a new map or null if it would be empty
-     */
-    private static Map<ColumnCodec, Pair<Variable, Variable>> findCodecs
-        (Map<ColumnCodec, ColumnCodec> primaryCodecMap, RowInfo secondaryInfo, boolean primitive)
-    {
-        RowGen secondaryGen = secondaryInfo.rowGen();
-        Map<ColumnCodec, Pair<Variable, Variable>> foundMap = null;
-        foundMap = findCodecs(primaryCodecMap, secondaryGen.keyCodecs(), primitive, foundMap);
-        foundMap = findCodecs(primaryCodecMap, secondaryGen.valueCodecs(), primitive, foundMap);
-        return foundMap;
+    private Map<String, ColumnSource> buildColumnSources() {
+        Map<String, ColumnCodec> keyCodecMap = mPrimaryGen.keyCodecMap();
+        Map<String, ColumnCodec> valueCodecMap = mPrimaryGen.valueCodecMap();
+
+        var sources = new HashMap<String, ColumnSource>();
+
+        for (RowInfo secondaryInfo : mSecondaryInfos) {
+            RowGen secondaryGen = secondaryInfo.rowGen();
+            ColumnCodec[] secondaryKeyCodecs = secondaryGen.keyCodecs();
+            ColumnCodec[] secondaryValueCodecs = secondaryGen.valueCodecs();
+
+            buildColumnSources(keyCodecMap, true, sources, secondaryKeyCodecs);
+            buildColumnSources(keyCodecMap, true, sources, secondaryValueCodecs);
+
+            buildColumnSources(valueCodecMap, false, sources, secondaryKeyCodecs);
+            buildColumnSources(valueCodecMap, false, sources, secondaryValueCodecs);
+        }
+
+        return sources;
     }
 
     /**
-     * @param foundMap the current map, which can be initially null
-     * @return a new or current map (can still be null)
+     * @param primaryCodecMap
+     * @param sources results stored here
+     * @param secondaryCodecs secondary index columns which need to be found
      */
-    private static Map<ColumnCodec, Pair<Variable, Variable>> findCodecs
-        (Map<ColumnCodec, ColumnCodec> primaryCodecMap, ColumnCodec[] secondaryCodecs,
-         boolean primitive, Map<ColumnCodec, Pair<Variable, Variable>> foundMap)
+    private void buildColumnSources(Map<String, ColumnCodec> primaryCodecMap, boolean fromKey,
+                                    Map<String, ColumnSource> sources,
+                                    ColumnCodec[] secondaryCodecs)
     {
         for (ColumnCodec codec : secondaryCodecs) {
-            if (!primitive && codec instanceof PrimitiveColumnCodec) {
-                continue;
-            }
-            ColumnCodec found = primaryCodecMap.get(codec);
-            if (found != null) {
-                if (foundMap == null) {
-                    foundMap = new HashMap<>();
+            String name = codec.mInfo.name;
+            ColumnSource source = sources.get(name);
+            if (source == null) {
+                ColumnCodec primaryCodec = primaryCodecMap.get(name);
+                if (primaryCodec == null) {
+                    continue;
                 }
-                foundMap.put(found, null);
+                source = new ColumnSource(primaryCodec, fromKey);
+                sources.put(name, source);
+            }
+            if (source.mCodec.equals(codec)) {
+                source.mMatches++;
+            } else {
+                source.mMismatches++;
+            }
+        }
+    }
+
+    /**
+     * Generates code which finds column offsets in the encoded primary row. As a side-effect,
+     * the Variable fields of all ColumnSources are updated.
+     *
+     * @param keyVar primary key byte array
+     * @param valueVar primary value byte array
+     * @param fullRow true of all columns of the primary row are valid; false if only the
+     * primary key columns are valid
+     */
+    private void findColumns(MethodMaker mm, Variable keyVar, Variable valueVar, boolean fullRow) {
+        // Determine how many columns must be accessed from the encoded form.
+
+        int remainingKeys = 0, remainingValues = 0;
+        for (ColumnSource source : mColumnSources.values()) {
+            source.clearVars();
+            if (source.mustFind(fullRow)) {
+                if (source.mFromKey) {
+                    remainingKeys++;
+                } else {
+                    remainingValues++;
+                }
             }
         }
 
-        return foundMap;
+        // Note that true is passed for fullRow because only the key columns are found.
+        findColumns(mm, keyVar, true, true, remainingKeys);
+
+        // Here the value columns are found, and so the fullRow param must be passed as-is.
+        findColumns(mm, valueVar, false, fullRow, remainingValues);
     }
 
-
     /**
-     * Generates code which finds column offsets in an encoded byte array.
+     * Generates code which finds column offsets in the encoded primary row. As a side-effect,
+     * the Variable fields of all ColumnSources are updated.
      *
-     * @param srcVar src byte array
-     * @param hasVersion true if byte array has a schema version field
-     * @param codecs must be bound to the MethodMaker, without a schema version column
-     * @param foundMap map whose values must be filled in with start/end offsets pairs
+     * @param srcVar byte array
+     * @param forKey true if the byte array is an encoded key
+     * @param fullRow true of all columns of the primary row are valid; false if only the
+     * primary key columns are valid
+     * @param remaining number of columns to decode/skip from the byte array
      */
-    private static void findColumns(MethodMaker mm, Variable srcVar, boolean hasVersion,
-                                    ColumnCodec[] codecs,
-                                    Map<ColumnCodec, Pair<Variable, Variable>> foundMap)
+    private void findColumns(MethodMaker mm, Variable srcVar, boolean forKey, boolean fullRow,
+                             int remaining)
     {
-        int remaining;
-        if (foundMap == null || (remaining = foundMap.size()) == 0) {
+        if (remaining == 0) {
             return;
         }
 
-        var offsetVar = mm.var(int.class).set(0);
+        ColumnCodec[] codecs;
+        Variable offsetVar = mm.var(int.class);
 
-        if (hasVersion) {
-            Variable versionVar = srcVar.aget(offsetVar);
-            offsetVar.inc(1);
+        if (forKey) {
+            codecs = mPrimaryGen.keyCodecs();
+            offsetVar.set(0);
+        } else {
+            codecs = mPrimaryGen.valueCodecs();
+            // Skip the schema version pseudo field.
+            Variable versionVar = srcVar.aget(0);
+            offsetVar.set(1);
             Label cont = mm.label();
             versionVar.ifGe(0, cont);
             offsetVar.inc(3);
             cont.here();
         }
 
+        codecs = ColumnCodec.bind(codecs, mm);
         Variable endVar = null;
 
         for (ColumnCodec codec : codecs) {
-            if (!foundMap.containsKey(codec)) {
+            ColumnSource source = mColumnSources.get(codec.mInfo.name);
+
+            if (source.mFromKey != forKey) {
+                throw new AssertionError();
+            }
+
+            if (!source.mustFind(fullRow)) {
                 // Can't re-use end offset for next start offset when a gap exists.
                 endVar = null;
                 codec.decodeSkip(srcVar, offsetVar, null);
@@ -175,12 +223,22 @@ class IndexTriggerMaker<R> {
                 startVar = mm.var(int.class).set(offsetVar);
             }
 
-            codec.decodeSkip(srcVar, offsetVar, null);
+            if (fullRow || source.mMismatches == 0) {
+                codec.decodeSkip(srcVar, offsetVar, null);
+            } else {
+                var dstVar = mm.var(codec.mInfo.type);
+                codec.decode(dstVar, srcVar, offsetVar, null);
+                source.mDecodedVar = dstVar;
+            }
 
             // Need a stable copy.
             endVar = mm.var(int.class).set(offsetVar);
 
-            foundMap.put(codec, new Pair<>(startVar, endVar));
+            if (source.mMatches != 0) {
+                source.mSrcVar = srcVar;
+                source.mStartVar = startVar;
+                source.mEndVar = endVar;
+            }
 
             if (--remaining <= 0) {
                 break;
@@ -197,11 +255,10 @@ class IndexTriggerMaker<R> {
         var keyVar = mm.param(2);
         var newValueVar = mm.param(3);
 
-        ColumnCodec[] keyCodecs = ColumnCodec.bind(mPrimaryGen.keyCodecs(), mm);
-        ColumnCodec[] valueCodecs = ColumnCodec.bind(mPrimaryGen.valueCodecs(), mm);
+        findColumns(mm, keyVar, newValueVar, true);
 
-        findColumns(mm, keyVar, false, keyCodecs, mFoundKeyCodecs);
-        findColumns(mm, newValueVar, true, valueCodecs, mFoundValueCodecs);
+        // FIXME: As an optimization, when encoding complex columns (non-primitive), check if
+        // prior secondary indexes have a matching codec and copy from them.
 
         for (int i=0; i<mSecondaryInfos.length; i++) {
             RowInfo secondaryInfo = mSecondaryInfos[i];
@@ -210,10 +267,10 @@ class IndexTriggerMaker<R> {
             ColumnCodec[] secondaryKeyCodecs = ColumnCodec.bind(secondaryGen.keyCodecs(), mm);
             ColumnCodec[] secondaryValueCodecs = ColumnCodec.bind(secondaryGen.valueCodecs(), mm);
 
-            var secondaryKeyVar = addEncodeColumns
+            var secondaryKeyVar = encodeColumns
                 (mm, rowVar, keyVar, newValueVar, secondaryKeyCodecs);
 
-            var secondaryValueVar = addEncodeColumns
+            var secondaryValueVar = encodeColumns
                 (mm, rowVar, keyVar, newValueVar, secondaryValueCodecs);
 
             var ix = mm.var(Index.class).setExact(mSecondaryIndexes[i]);
@@ -230,9 +287,9 @@ class IndexTriggerMaker<R> {
      * @param codecs secondary key or value codecs, bound to MethodMaker
      * @return a filled-in byte[] variable
      */
-    private Variable addEncodeColumns(MethodMaker mm,
-                                      Variable rowVar, Variable keyVar, Variable valueVar,
-                                      ColumnCodec[] codecs)
+    private Variable encodeColumns(MethodMaker mm,
+                                   Variable rowVar, Variable keyVar, Variable valueVar,
+                                   ColumnCodec[] codecs)
     {
         if (codecs.length == 0) {
             return mm.var(RowUtils.class).field("EMPTY_BYTES");
@@ -240,25 +297,14 @@ class IndexTriggerMaker<R> {
 
         // Determine the minimum byte array size and prepare the encoders.
 
-        // 0: must encode from row, 1: copy from primary key, 2: copy from primary value
-        var wheres = new int[codecs.length];
-
         int minSize = 0;
         for (int i=0; i<codecs.length; i++) {
             ColumnCodec codec = codecs[i];
-
-            int where;
-            if (mFoundKeyCodecs != null && mFoundKeyCodecs.containsKey(codec)) {
-                where = 1;
-            } else if (mFoundValueCodecs != null && mFoundValueCodecs.containsKey(codec)) {
-                where = 2;
-            } else {
-                where = 0;
+            ColumnSource source = mColumnSources.get(codec.mInfo.name);
+            if (!source.shouldCopy(codec)) {
                 minSize += codec.minSize();
                 codec.encodePrepare();
             }
-
-            wheres[i] = where;
         }
 
         // Generate code which determines the additional runtime length.
@@ -266,23 +312,12 @@ class IndexTriggerMaker<R> {
         Variable totalVar = null;
         for (int i=0; i<codecs.length; i++) {
             ColumnCodec codec = codecs[i];
-            int where = wheres[i];
-            if (where == 0) {
-                Field srcVar = rowVar.field(codec.mInfo.name);
-                totalVar = codec.encodeSize(srcVar, totalVar);
+            ColumnSource source = mColumnSources.get(codec.mInfo.name);
+            if (!source.shouldCopy(codec)) {
+                totalVar = codec.encodeSize(source.accessColumn(rowVar), totalVar);
             } else {
-                Variable bytesVar;
-                Map<ColumnCodec, Pair<Variable, Variable>> foundCodecs;
-                if (where == 1) {
-                    bytesVar = keyVar;
-                    foundCodecs = mFoundKeyCodecs;
-                } else {
-                    bytesVar = valueVar;
-                    foundCodecs = mFoundValueCodecs;
-                }
                 // FIXME: Detect spans and reduce additions.
-                Pair<Variable, Variable> foundOffsets = foundCodecs.get(codec);
-                var lengthVar = foundOffsets.b.sub(foundOffsets.a);
+                var lengthVar = source.mEndVar.sub(source.mStartVar);
                 if (totalVar == null) {
                     totalVar = lengthVar;
                 } else {
@@ -308,26 +343,15 @@ class IndexTriggerMaker<R> {
         var offsetVar = mm.var(int.class).set(0);
         for (int i=0; i<codecs.length; i++) {
             ColumnCodec codec = codecs[i];
-            int where = wheres[i];
-            if (where == 0) {
-                Field srcVar = rowVar.field(codec.mInfo.name);
-                codec.encode(srcVar, dstVar, offsetVar);
+            ColumnSource source = mColumnSources.get(codec.mInfo.name);
+            if (!source.shouldCopy(codec)) {
+                codec.encode(source.accessColumn(rowVar), dstVar, offsetVar);
             } else {
-                // FIXME: Duplicate code. See above.
-                Variable bytesVar;
-                Map<ColumnCodec, Pair<Variable, Variable>> foundCodecs;
-                if (where == 1) {
-                    bytesVar = keyVar;
-                    foundCodecs = mFoundKeyCodecs;
-                } else {
-                    bytesVar = valueVar;
-                    foundCodecs = mFoundValueCodecs;
-                }
                 // FIXME: Detect spans and reduce copies.
-                Pair<Variable, Variable> foundOffsets = foundCodecs.get(codec);
-                var lengthVar = foundOffsets.b.sub(foundOffsets.a);
+                Variable bytesVar = source.mFromKey ? keyVar : valueVar;
+                var lengthVar = source.mEndVar.sub(source.mStartVar);
                 mm.var(System.class).invoke
-                    ("arraycopy", bytesVar, foundOffsets.a, dstVar, offsetVar, lengthVar);
+                    ("arraycopy", bytesVar, source.mStartVar, dstVar, offsetVar, lengthVar);
                 if (i < codecs.length - 1) {
                     offsetVar.inc(lengthVar);
                 }
@@ -335,5 +359,86 @@ class IndexTriggerMaker<R> {
         }
 
         return dstVar;
+    }
+
+    private static class ColumnSource {
+        // Describes the encoding of the column within the primary key or primary value.
+        final ColumnCodec mCodec;
+
+        // When true, the column is in the primary key, else in the primary value.
+        final boolean mFromKey;
+
+        // Number of secondary indexes that can use the codec directly; encoding is the same.
+        int mMatches;
+
+        // Number of secondary indexes that need to be transformed.
+        int mMismatches;
+
+        // The remaining fields are used during code generation passes.
+
+        // Source byte array and offsets. These are set when the column can be copied directly
+        // without any transformation.
+        Variable mSrcVar, mStartVar, mEndVar;
+
+        // Fully decoded column. Is set when the column cannot be directly copied from the
+        // source, and it needed a transformation step.
+        Variable mDecodedVar;
+
+        ColumnSource(ColumnCodec codec, boolean fromKey) {
+            mCodec = codec;
+            mFromKey = fromKey;
+        }
+
+        boolean isPrimitive() {
+            return mCodec instanceof PrimitiveColumnCodec;
+        }
+
+        /**
+         * Returns true if the column must be found in the encoded byte array.
+         *
+         * @param fullRow true of all columns of the primary row are valid; false if only the
+         * primary key columns are valid
+         */
+        boolean mustFind(boolean fullRow) {
+            if (fullRow || mFromKey) {
+                if (isPrimitive()) {
+                    // Primitive columns are cheap to encode, so no need to copy byte form.
+                    return false;
+                } else {
+                    // Return true if at least one secondary index can use copy the byte form,
+                    // avoiding the cost of encoding the column from the row object.
+                    return mMatches != 0;
+                }
+            } else {
+                // Without a valid column in the row, must find it in the byte form.
+                return true;
+            }
+        }
+
+        /**
+         * @param dstCodec codec of secondary index
+         */
+        boolean shouldCopy(ColumnCodec dstCodec) {
+            return mSrcVar != null && mCodec.equals(dstCodec);
+        }
+
+        /**
+         * @param rowVar primary row
+         * @return a decoded variable or a field from the row
+         */
+        Variable accessColumn(Variable rowVar) {
+            Variable colVar = mDecodedVar;
+            if (colVar == null) {
+                colVar = rowVar.field(mCodec.mInfo.name);
+            }
+            return colVar;
+        }
+
+        void clearVars() {
+            mSrcVar = null;
+            mStartVar = null;
+            mEndVar = null;
+            mDecodedVar = null;
+        }
     }
 }

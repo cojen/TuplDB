@@ -40,8 +40,8 @@ class RowGen {
     private volatile ColumnCodec[] mKeyCodecs;
     private volatile ColumnCodec[] mValueCodecs;
 
-    private volatile Map<ColumnCodec, ColumnCodec> mKeyCodecMap;
-    private volatile Map<ColumnCodec, ColumnCodec> mValueCodecMap;
+    private volatile Map<String, ColumnCodec> mKeyCodecMap;
+    private volatile Map<String, ColumnCodec> mValueCodecMap;
 
     RowGen(RowInfo info) {
         this.info = info;
@@ -242,10 +242,8 @@ class RowGen {
 
     /**
      * Returns a map of key codecs, in the order in which they should be encoded.
-     *
-     * @return map of codec to itself
      */
-    public Map<ColumnCodec, ColumnCodec> keyCodecMap() {
+    public Map<String, ColumnCodec> keyCodecMap() {
         var map = mKeyCodecMap;
         if (map == null) {
             mKeyCodecMap = map = makeCodecMap(keyCodecs());
@@ -255,10 +253,8 @@ class RowGen {
 
     /**
      * Returns a map of value codecs, in the order in which they should be encoded.
-     *
-     * @return map of codec to itself
      */
-    public Map<ColumnCodec, ColumnCodec> valueCodecMap() {
+    public Map<String, ColumnCodec> valueCodecMap() {
         var map = mValueCodecMap;
         if (map == null) {
             mValueCodecMap = map = makeCodecMap(valueCodecs());
@@ -266,10 +262,10 @@ class RowGen {
         return map;
     }
 
-    private static Map<ColumnCodec, ColumnCodec> makeCodecMap(ColumnCodec[] codecs) {
-        var map = new LinkedHashMap<ColumnCodec, ColumnCodec>(codecs.length);
+    private static Map<String, ColumnCodec> makeCodecMap(ColumnCodec[] codecs) {
+        var map = new LinkedHashMap<String, ColumnCodec>(codecs.length);
         for (ColumnCodec codec : codecs) {
-            map.put(codec, codec);
+            map.put(codec.mInfo.name, codec);
         }
         return map;
     }
