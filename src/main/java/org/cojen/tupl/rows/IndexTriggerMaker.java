@@ -38,6 +38,7 @@ import static org.cojen.tupl.rows.RowUtils.*;
  * 
  *
  * @author Brian S O'Neill
+ * @see IndexManager
  */
 class IndexTriggerMaker<R> {
     private final Class<R> mRowType;
@@ -72,8 +73,9 @@ class IndexTriggerMaker<R> {
         mColumnSources = buildColumnSources();
 
         addInsertMethod();
+        addDeleteMethod();
 
-        // FIXME: delete, store, update
+        // FIXME: store, update
 
         var lookup = mClassMaker.finishHidden();
 
@@ -206,11 +208,15 @@ class IndexTriggerMaker<R> {
         for (ColumnCodec codec : codecs) {
             ColumnSource source = mColumnSources.get(codec.mInfo.name);
 
-            if (source.mFromKey != forKey) {
-                throw new AssertionError();
-            }
-
-            if (!source.mustFind(fullRow)) {
+            findCheck: {
+                if (source != null) {
+                    if (source.mFromKey != forKey) {
+                        throw new AssertionError();
+                    }
+                    if (source.mustFind(fullRow)) {
+                        break findCheck;
+                    }
+                }
                 // Can't re-use end offset for next start offset when a gap exists.
                 endVar = null;
                 codec.decodeSkip(srcVar, offsetVar, null);
@@ -275,6 +281,42 @@ class IndexTriggerMaker<R> {
 
             var ix = mm.var(Index.class).setExact(mSecondaryIndexes[i]);
             ix.invoke("store", txnVar, secondaryKeyVar, secondaryValueVar);
+        }
+    }
+
+    private void addDeleteMethod() {
+        MethodMaker mm = mClassMaker.addMethod
+            (null, "delete", Transaction.class, Object.class, byte[].class, byte[].class).public_();
+
+        var txnVar = mm.param(0);
+        var rowVar = mm.param(1).cast(mRowClass);
+        var keyVar = mm.param(2);
+        var oldValueVar = mm.param(3);
+
+        ColumnCodec[] keyCodecs = ColumnCodec.bind(mPrimaryGen.keyCodecs(), mm);
+        ColumnCodec[] valueCodecs = ColumnCodec.bind(mPrimaryGen.valueCodecs(), mm);
+
+        // FIXME: Old value might not have a matching schema. This shouldn't be a problem
+        // because any changes to a column which affect an index should be disallowed. The
+        // index must be dropped first and added back. Currently, this check doesn't seem to
+        // be enforced.
+        findColumns(mm, keyVar, oldValueVar, false);
+
+        // FIXME: As an optimization, when encoding complex columns (non-primitive), check if
+        // prior secondary indexes have a matching codec and copy from them.
+
+        for (int i=0; i<mSecondaryInfos.length; i++) {
+            RowInfo secondaryInfo = mSecondaryInfos[i];
+            RowGen secondaryGen = secondaryInfo.rowGen();
+
+            ColumnCodec[] secondaryKeyCodecs = ColumnCodec.bind(secondaryGen.keyCodecs(), mm);
+            ColumnCodec[] secondaryValueCodecs = ColumnCodec.bind(secondaryGen.valueCodecs(), mm);
+
+            var secondaryKeyVar = encodeColumns
+                (mm, rowVar, keyVar, oldValueVar, secondaryKeyCodecs);
+
+            var ix = mm.var(Index.class).setExact(mSecondaryIndexes[i]);
+            ix.invoke("store", txnVar, secondaryKeyVar, null);
         }
     }
 
