@@ -296,10 +296,10 @@ class IndexTriggerMaker<R> {
         ColumnCodec[] keyCodecs = ColumnCodec.bind(mPrimaryGen.keyCodecs(), mm);
         ColumnCodec[] valueCodecs = ColumnCodec.bind(mPrimaryGen.valueCodecs(), mm);
 
-        // FIXME: Old value might not have a matching schema. This shouldn't be a problem
-        // because any changes to a column which affect an index should be disallowed. The
-        // index must be dropped first and added back. Currently, this check doesn't seem to
-        // be enforced.
+        // FIXME: Old value might not have a matching schema. Columns needed by the index
+        // itself should always exist, because any changes to a column which affect an index
+        // should be disallowed. The index must be dropped first and added back. Currently,
+        // this check doesn't exist.
         findColumns(mm, keyVar, oldValueVar, false);
 
         // FIXME: As an optimization, when encoding complex columns (non-primitive), check if

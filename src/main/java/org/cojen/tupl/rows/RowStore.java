@@ -139,6 +139,7 @@ public class RowStore {
                     // FIXME: Better exception.
                     throw new IllegalStateException("Cannot alter primary key: " + name);
                 }
+                // FIXME: Also check that alt key and secondary definitions haven't changed.
             }
 
             synchronized (mTableCache) {
@@ -394,6 +395,8 @@ public class RowStore {
                     // FIXME: Better exception.
                     throw new IllegalStateException("Cannot alter primary key: " + info.name);
                 }
+
+                // FIXME: Also check that alt key and secondary definitions haven't changed.
             }
 
             // Find an existing schemaVersion or create a new one.
