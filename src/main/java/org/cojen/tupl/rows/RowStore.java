@@ -19,6 +19,8 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
+import java.lang.ref.WeakReference;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -53,6 +55,7 @@ import static org.cojen.tupl.rows.RowUtils.*;
  * @author Brian S O'Neill
  */
 public class RowStore {
+    private final WeakReference<RowStore> mSelfRef;
     final CoreDatabase mDatabase;
 
     /* Schema metadata for all types.
@@ -87,6 +90,7 @@ public class RowStore {
     private static final int TASK_DELETE_SCHEMA = 1;
 
     public RowStore(CoreDatabase db, Index schemata) throws IOException {
+        mSelfRef = new WeakReference<>(this);
         mDatabase = db;
         mSchemata = schemata;
         mTableCache = new WeakCache<>();
@@ -95,6 +99,10 @@ public class RowStore {
 
         // Finish any tasks left over from when the RowStore was last used.
         finishAllWorkflowTasks();
+    }
+
+    WeakReference<RowStore> ref() {
+        return mSelfRef;
     }
 
     public Index schemata() {
@@ -212,7 +220,7 @@ public class RowStore {
     public void notifySchema(long indexId) {
         List<AbstractTable<?>> tables = mTableCache.findValues(null, (list, table) -> {
             if (table.supportsSecondaries() && table.mSource instanceof Index) {
-                if (((Index) table.mSource).id() == indexId) {
+                if (table.mSource.id() == indexId) {
                     if (list == null) {
                         list = new ArrayList<>();
                     }
@@ -236,7 +244,7 @@ public class RowStore {
             return;
         }
 
-        long indexId = ((Index) table.mSource).id();
+        long indexId = table.mSource.id();
 
         // Can use NO_FLUSH because transaction will be only used for reading data.
         Transaction txn = mDatabase.newTransaction(DurabilityMode.NO_FLUSH);
@@ -545,9 +553,11 @@ public class RowStore {
      * Finds a RowInfo for a specific schemaVersion. If not the same as the current version,
      * the alternateKeys and secondaryIndexes will be null (not just empty sets).
      *
-     * @return null if not found
+     * @throws CorruptDatabaseException if not found
      */
-    RowInfo rowInfo(Class<?> rowType, long indexId, int schemaVersion) throws IOException {
+    RowInfo rowInfo(Class<?> rowType, long indexId, int schemaVersion)
+        throws IOException, CorruptDatabaseException
+    {
         // Can use NO_FLUSH because transaction will be only used for reading data.
         Transaction txn = mSchemata.newTransaction(DurabilityMode.NO_FLUSH);
         txn.lockMode(LockMode.REPEATABLE_READ);
@@ -573,6 +583,9 @@ public class RowStore {
             if (current != null && current.allColumns.equals(info.allColumns)) {
                 // Current one matches, so use the canonical RowInfo instance.
                 return current;
+            } else if (info == null) {
+                throw new CorruptDatabaseException
+                    ("Schema version not found: " + schemaVersion + ", indexId=" + indexId);
             } else {
                 return info;
             }

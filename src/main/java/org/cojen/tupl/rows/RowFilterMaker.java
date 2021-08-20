@@ -36,7 +36,6 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.DatabaseException;
 
 import org.cojen.tupl.filter.AndFilter;
@@ -250,10 +249,6 @@ public class RowFilterMaker<R> {
             try {
                 if (schemaVersion != 0) {
                     rowInfo = store.rowInfo(mRowType, mIndexId, schemaVersion);
-                    if (rowInfo == null) {
-                        throw new CorruptDatabaseException
-                            ("Schema version not found: " + schemaVersion);
-                    }
                 } else {
                     // No value columns to decode, and the primary key cannot change.
                     RowInfo dstRowInfo = RowInfo.find(mRowType);

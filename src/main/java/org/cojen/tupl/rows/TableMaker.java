@@ -33,10 +33,9 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.DatabaseException;
+import org.cojen.tupl.Index;
 import org.cojen.tupl.Transaction;
-import org.cojen.tupl.View;
 
 import org.cojen.tupl.filter.RowFilter;
 
@@ -50,7 +49,7 @@ import org.cojen.tupl.views.ViewUtils;
  * @author Brian S O'Neill
  */
 public class TableMaker {
-    private final WeakReference<RowStore> mStoreRef;
+    private final RowStore mStore;
     private final Class<?> mRowType;
     private final RowGen mRowGen;
     private final RowInfo mRowInfo;
@@ -64,7 +63,7 @@ public class TableMaker {
      * @param triggers pass true to support triggers
      */
     TableMaker(RowStore store, Class<?> type, RowGen gen, long indexId, boolean triggers) {
-        mStoreRef = new WeakReference<>(store);
+        mStore = store;
         mRowType = type;
         mRowGen = gen;
         mRowInfo = gen.info;
@@ -80,7 +79,7 @@ public class TableMaker {
      */
     MethodHandle finish() {
         {
-            MethodMaker mm = mClassMaker.addConstructor(View.class);
+            MethodMaker mm = mClassMaker.addConstructor(Index.class);
             mm.invokeSuperConstructor(mm.param(0), mTriggers);
         }
 
@@ -153,7 +152,7 @@ public class TableMaker {
         try {
             var lookup = mClassMaker.finishLookup();
             return lookup.findConstructor(lookup.lookupClass(),
-                                          MethodType.methodType(void.class, View.class));
+                                          MethodType.methodType(void.class, Index.class));
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }
@@ -425,7 +424,7 @@ public class TableMaker {
     private void addDynamicEncodeValueColumns() {
         MethodMaker mm = mClassMaker.addMethod(byte[].class, "encodeValue", mRowClass).static_();
         var indy = mm.var(TableMaker.class).indy
-            ("indyEncodeValueColumns", mStoreRef, mRowType, mIndexId);
+            ("indyEncodeValueColumns", mStore.ref(), mRowType, mIndexId);
         mm.return_(indy.invoke(byte[].class, "encodeValue", null, mm.param(0)));
     }
 
@@ -518,7 +517,7 @@ public class TableMaker {
             MethodMaker mm = mClassMaker.addMethod
                 (SwitchCallSite.class, "decodeValueSwitchCallSite").static_();
             var condy = mm.var(TableMaker.class).condy
-                ("condyDecodeValueColumns",  mStoreRef, mRowType, mRowClass, mIndexId);
+                ("condyDecodeValueColumns",  mStore.ref(), mRowType, mRowClass, mIndexId);
             mm.return_(condy.invoke(SwitchCallSite.class, "_"));
         }
 
@@ -575,10 +574,6 @@ public class TableMaker {
                     RowInfo srcRowInfo;
                     try {
                         srcRowInfo = store.rowInfo(rowType, indexId, schemaVersion);
-                        if (srcRowInfo == null) {
-                            throw new CorruptDatabaseException
-                                ("Schema version not found: " + schemaVersion);
-                        }
                     } catch (Exception e) {
                         return new ExceptionCallSite.Failed
                             (MethodType.methodType(void.class, rowClass, byte[].class), mm, e);
@@ -972,7 +967,7 @@ public class TableMaker {
         // of the current schema version.
 
         var indy = mm.var(TableMaker.class).indy
-            ("indyDoUpdate", mStoreRef, mRowType, mIndexId, mTriggers);
+            ("indyDoUpdate", mStore.ref(), mRowType, mIndexId, mTriggers);
         indy.invoke(null, "doUpdate", null, mm.this_(), rowVar, mergeVar, cursorVar);
         mm.return_(true);
 
@@ -1413,7 +1408,7 @@ public class TableMaker {
     private void addFilteredFactoryMethod() {
         MethodMaker mm = mClassMaker.addMethod
             (MethodHandle.class, "filteredFactory", String.class, RowFilter.class);
-        var storeRefVar = mm.var(WeakReference.class).setExact(mStoreRef);
+        var storeRefVar = mm.var(WeakReference.class).setExact(mStore.ref());
         var maker = mm.new_(RowFilterMaker.class, storeRefVar,
                             mm.class_(), mm.invoke("unfiltered").invoke("getClass"),
                             mRowType, mIndexId, mm.param(0), mm.param(1));

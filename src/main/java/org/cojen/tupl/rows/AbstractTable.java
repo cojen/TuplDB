@@ -27,6 +27,7 @@ import java.util.Objects;
 
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DurabilityMode;
+import org.cojen.tupl.Index;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.RowScanner;
 import org.cojen.tupl.RowUpdater;
@@ -45,7 +46,7 @@ import org.cojen.tupl.io.Utils;
  * @author Brian S O'Neill
  */
 public abstract class AbstractTable<R> implements Table<R> {
-    protected final View mSource;
+    protected final Index mSource;
 
     // MethodHandle signature: RowDecoderEncoder filtered(Object... args)
     private final WeakCache<String, MethodHandle> mFilterFactoryCache;
@@ -67,7 +68,7 @@ public abstract class AbstractTable<R> implements Table<R> {
     /**
      * @param triggers pass true to support triggers
      */
-    protected AbstractTable(View source, boolean triggers) {
+    protected AbstractTable(Index source, boolean triggers) {
         mSource = Objects.requireNonNull(source);
         mFilterFactoryCache = new WeakCache<>();
         if (triggers) {

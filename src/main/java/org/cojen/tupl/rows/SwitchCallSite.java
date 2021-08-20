@@ -49,6 +49,7 @@ public class SwitchCallSite extends MutableCallSite {
      * and return type can be anything. The generator must make MethodHandles which match the
      * given MethodType except without the key parameter.
      *
+     * @param lookup typically the parameter passed to a bootstrap method
      * @param mt must be: <ret> (int key, <remaining>)
      * @param generator supplies cases for keys; supplies MethodHandle or
      * ExceptionCallSite.Failed. MethodType must omit the key: <ret> (<remaining>)
