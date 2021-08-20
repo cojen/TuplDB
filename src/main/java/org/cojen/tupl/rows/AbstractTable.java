@@ -223,7 +223,7 @@ public abstract class AbstractTable<R> implements Table<R> {
      * @throws NullPointerException if unsupported
      */
     void examineSecondaries(RowStore rs, Transaction txn, View secondaries) throws IOException {
-        Trigger<R> trigger = mIndexManager.update(rs, txn, secondaries, this);
+        Trigger<R> trigger = mIndexManager.update(rs, txn, secondaries, rowType());
         if (trigger != null) {
             setTrigger(trigger);
         }

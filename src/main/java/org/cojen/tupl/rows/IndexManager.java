@@ -52,12 +52,11 @@ class IndexManager<R> {
      * primary table trigger. Caller is expected to hold a lock which prevents concurrent calls
      * to this method, which isn't thread-safe.
      *
-     * @param rs used to open tables for indexes
+     * @param rs used to open secondary indexes
      * @param txn holds the lock
      * @param secondaries maps index descriptor to index id and state
-     * @param table owns the secondaries
      */
-    Trigger<R> update(RowStore rs, Transaction txn, View secondaries, AbstractTable<R> table)
+    Trigger<R> update(RowStore rs, Transaction txn, View secondaries, Class<R> rowType)
         throws IOException
     {
         int size = 0;
@@ -91,7 +90,6 @@ class IndexManager<R> {
             }
         }
 
-        Class<R> rowType = table.rowType();
         RowInfo primaryInfo = RowInfo.find(rowType);
 
         var maker = new IndexTriggerMaker<R>(rowType, primaryInfo, size);

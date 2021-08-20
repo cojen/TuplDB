@@ -68,7 +68,18 @@ class IndexTriggerMaker<R> {
     Trigger<R> make() {
         mClassMaker = mPrimaryGen.beginClassMaker(IndexTriggerMaker.class, mRowType, "Trigger");
         mClassMaker.extend(Trigger.class);
-        mClassMaker.addConstructor();
+
+        for (int i=0; i<mSecondaryIndexes.length; i++) {
+            mClassMaker.addField(Index.class, "ix$" + i).private_().final_();
+        }
+
+        {
+            MethodMaker mm = mClassMaker.addConstructor(Index[].class);
+            mm.invokeSuperConstructor();
+            for (int i=0; i<mSecondaryIndexes.length; i++) {
+                mm.field("ix$" + i).set(mm.param(0).aget(i));
+            }
+        }
 
         mColumnSources = buildColumnSources();
 
@@ -81,8 +92,8 @@ class IndexTriggerMaker<R> {
 
         try {
             var ctor = lookup.findConstructor
-                (lookup.lookupClass(), MethodType.methodType(void.class));
-            return (Trigger<R>) ctor.invoke();
+                (lookup.lookupClass(), MethodType.methodType(void.class, Index[].class));
+            return (Trigger<R>) ctor.invoke(mSecondaryIndexes);
         } catch (Throwable e) {
             throw rethrow(e);
         }
@@ -279,8 +290,7 @@ class IndexTriggerMaker<R> {
             var secondaryValueVar = encodeColumns
                 (mm, rowVar, keyVar, newValueVar, secondaryValueCodecs);
 
-            var ix = mm.var(Index.class).setExact(mSecondaryIndexes[i]);
-            ix.invoke("store", txnVar, secondaryKeyVar, secondaryValueVar);
+            mm.field("ix$" + i).invoke("store", txnVar, secondaryKeyVar, secondaryValueVar);
         }
     }
 
@@ -315,8 +325,7 @@ class IndexTriggerMaker<R> {
             var secondaryKeyVar = encodeColumns
                 (mm, rowVar, keyVar, oldValueVar, secondaryKeyCodecs);
 
-            var ix = mm.var(Index.class).setExact(mSecondaryIndexes[i]);
-            ix.invoke("store", txnVar, secondaryKeyVar, null);
+            mm.field("ix$" + i).invoke("store", txnVar, secondaryKeyVar, null);
         }
     }
 
