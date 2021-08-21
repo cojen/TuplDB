@@ -22,8 +22,6 @@ import java.io.IOException;
 import java.lang.ref.WeakReference;
 
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.TreeMap;
 
 import org.cojen.tupl.CorruptDatabaseException;
@@ -55,8 +53,10 @@ class IndexManager<R> {
      * @param rs used to open secondary indexes
      * @param txn holds the lock
      * @param secondaries maps index descriptor to index id and state
+     * @param primaryIndexId primary index id
      */
-    Trigger<R> update(RowStore rs, Transaction txn, View secondaries, Class<R> rowType)
+    Trigger<R> update(RowStore rs, Transaction txn, View secondaries, Class<R> rowType,
+                      long primaryIndexId)
         throws IOException
     {
         int size = 0;
@@ -98,10 +98,12 @@ class IndexManager<R> {
             int i = 0;
             byte[] desc;
             for (c.first(); (desc = c.key()) != null; c.next(), i++) {
+                maker.mSecondaryDescriptors[i] = desc;
+
                 WeakReference<RowInfo> infoRef = mIndexInfos.get(desc);
                 RowInfo info;
                 if (infoRef == null || (info = infoRef.get()) == null) {
-                    info = buildIndexRowInfo(primaryInfo, desc);
+                    info = RowStore.indexRowInfo(primaryInfo, desc);
                     mIndexInfos.put(desc, new WeakReference<>(info));
                 }
                 maker.mSecondaryInfos[i] = info;
@@ -119,59 +121,6 @@ class IndexManager<R> {
             }
         }
 
-        return maker.make();
-    }
-
-    /**
-     * Builds a RowInfo object for a secondary index, by parsing a binary descriptor which was
-     * created by RowStore.EncodedRowInfo.encodeDescriptor.
-     */
-    private static RowInfo buildIndexRowInfo(RowInfo primaryInfo, byte[] desc) {
-        var info = new RowInfo(null);
-
-        int numKeys = decodePrefixPF(desc, 0);
-        int offset = lengthPrefixPF(numKeys);
-        info.keyColumns = new LinkedHashMap<>(numKeys);
-
-        for (int i=0; i<numKeys; i++) {
-            boolean descending = desc[offset++] == '-';
-            int nameLength = decodePrefixPF(desc, offset);
-            offset += lengthPrefixPF(nameLength);
-            String name = decodeStringUTF(desc, offset, nameLength).intern();
-            offset += nameLength;
-
-            ColumnInfo column = primaryInfo.allColumns.get(name);
-
-            if (descending != column.isDescending()) {
-                column = column.copy();
-                column.typeCode ^= ColumnInfo.TYPE_DESCENDING;
-            }
-
-            info.keyColumns.put(name, column);
-        }
-
-        int numValues = decodePrefixPF(desc, offset);
-        if (numValues == 0) {
-            info.valueColumns = Collections.emptyNavigableMap();
-        } else {
-            offset += lengthPrefixPF(numValues);
-            info.valueColumns = new TreeMap<>();
-
-            for (int i=0; i<numKeys; i++) {
-                int nameLength = decodePrefixPF(desc, offset);
-                offset += lengthPrefixPF(nameLength);
-                String name = decodeStringUTF(desc, offset, nameLength).intern();
-                offset += nameLength;
-
-                ColumnInfo column = primaryInfo.allColumns.get(name);
-
-                info.valueColumns.put(name, column);
-            }
-        }
-
-        info.allColumns = new TreeMap<>(info.keyColumns);
-        info.allColumns.putAll(info.valueColumns);
-
-        return info;
+        return maker.make(rs, primaryIndexId);
     }
 }

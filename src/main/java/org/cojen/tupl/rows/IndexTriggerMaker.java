@@ -17,12 +17,16 @@
 
 package org.cojen.tupl.rows;
 
+import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+
+import java.lang.ref.WeakReference;
 
 import java.util.HashMap;
 import java.util.Map;
 
+import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.Transaction;
 
@@ -40,12 +44,13 @@ import static org.cojen.tupl.rows.RowUtils.*;
  * @author Brian S O'Neill
  * @see IndexManager
  */
-class IndexTriggerMaker<R> {
+public class IndexTriggerMaker<R> {
     private final Class<R> mRowType;
     private final Class<? extends R> mRowClass;
     private final RowGen mPrimaryGen;
 
-    // To be filled in by caller.
+    // To be filled in by caller (IndexManager).
+    final byte[][] mSecondaryDescriptors;
     final RowInfo[] mSecondaryInfos;
     final Index[] mSecondaryIndexes;
     final byte[] mSecondaryStates; // FIXME: remember to build indexes
@@ -60,39 +65,62 @@ class IndexTriggerMaker<R> {
         mRowClass = RowMaker.find(rowType);
         mPrimaryGen = primaryInfo.rowGen();
 
+        mSecondaryDescriptors = new byte[numIndexes][];
         mSecondaryInfos = new RowInfo[numIndexes];
         mSecondaryIndexes = new Index[numIndexes];
         mSecondaryStates = new byte[numIndexes];
     }
 
-    Trigger<R> make() {
+    /**
+     * Used by indy methods.
+     *
+     * @param secondaryIndexes note: elements are null for dropped indexes
+     */
+    private IndexTriggerMaker(Class<R> rowType, RowInfo primaryInfo,
+                              RowInfo[] secondaryInfos, Index[] secondaryIndexes)
+    {
+        mRowType = rowType;
+        mRowClass = RowMaker.find(rowType);
+        mPrimaryGen = primaryInfo.rowGen();
+
+        mSecondaryDescriptors = null;
+        mSecondaryInfos = secondaryInfos;
+        mSecondaryIndexes = secondaryIndexes;
+        mSecondaryStates = null;
+    }
+
+    /**
+     * @param primaryIndexId primary index id
+     */
+    Trigger<R> make(RowStore rs, long primaryIndexId) {
         mClassMaker = mPrimaryGen.beginClassMaker(IndexTriggerMaker.class, mRowType, "Trigger");
-        mClassMaker.extend(Trigger.class);
+        mClassMaker.extend(Trigger.class).final_();
 
         for (int i=0; i<mSecondaryIndexes.length; i++) {
-            mClassMaker.addField(Index.class, "ix$" + i).private_().final_();
+            mClassMaker.addField(Index.class, "ix" + i).private_().final_();
         }
 
         {
             MethodMaker mm = mClassMaker.addConstructor(Index[].class);
             mm.invokeSuperConstructor();
             for (int i=0; i<mSecondaryIndexes.length; i++) {
-                mm.field("ix$" + i).set(mm.param(0).aget(i));
+                mm.field("ix" + i).set(mm.param(0).aget(i));
             }
         }
 
         mColumnSources = buildColumnSources();
 
         addInsertMethod();
-        addDeleteMethod();
+
+        addDeleteMethod(rs, primaryIndexId);
 
         // FIXME: store, update
 
         var lookup = mClassMaker.finishHidden();
 
         try {
-            var ctor = lookup.findConstructor
-                (lookup.lookupClass(), MethodType.methodType(void.class, Index[].class));
+            var mt = MethodType.methodType(void.class, Index[].class);
+            var ctor = lookup.findConstructor(lookup.lookupClass(), mt);
             return (Trigger<R>) ctor.invoke(mSecondaryIndexes);
         } catch (Throwable e) {
             throw rethrow(e);
@@ -154,10 +182,13 @@ class IndexTriggerMaker<R> {
      *
      * @param keyVar primary key byte array
      * @param valueVar primary value byte array
+     * @param valueOffset initial offset into byte array, or -1 to auto skip schema version
      * @param fullRow true of all columns of the primary row are valid; false if only the
      * primary key columns are valid
      */
-    private void findColumns(MethodMaker mm, Variable keyVar, Variable valueVar, boolean fullRow) {
+    private void findColumns(MethodMaker mm, Variable keyVar,
+                             Variable valueVar, int valueOffset, boolean fullRow)
+    {
         // Determine how many columns must be accessed from the encoded form.
 
         int remainingKeys = 0, remainingValues = 0;
@@ -173,10 +204,10 @@ class IndexTriggerMaker<R> {
         }
 
         // Note that true is passed for fullRow because only the key columns are found.
-        findColumns(mm, keyVar, true, true, remainingKeys);
+        findColumns(mm, keyVar, 0, true, true, remainingKeys);
 
         // Here the value columns are found, and so the fullRow param must be passed as-is.
-        findColumns(mm, valueVar, false, fullRow, remainingValues);
+        findColumns(mm, valueVar, valueOffset, false, fullRow, remainingValues);
     }
 
     /**
@@ -184,13 +215,14 @@ class IndexTriggerMaker<R> {
      * the Variable fields of all ColumnSources are updated.
      *
      * @param srcVar byte array
+     * @param offset initial offset into byte array, or -1 to auto skip schema version
      * @param forKey true if the byte array is an encoded key
      * @param fullRow true of all columns of the primary row are valid; false if only the
      * primary key columns are valid
      * @param remaining number of columns to decode/skip from the byte array
      */
-    private void findColumns(MethodMaker mm, Variable srcVar, boolean forKey, boolean fullRow,
-                             int remaining)
+    private void findColumns(MethodMaker mm, Variable srcVar, int offset,
+                             boolean forKey, boolean fullRow, int remaining)
     {
         if (remaining == 0) {
             return;
@@ -204,13 +236,17 @@ class IndexTriggerMaker<R> {
             offsetVar.set(0);
         } else {
             codecs = mPrimaryGen.valueCodecs();
-            // Skip the schema version pseudo field.
-            Variable versionVar = srcVar.aget(0);
-            offsetVar.set(1);
-            Label cont = mm.label();
-            versionVar.ifGe(0, cont);
-            offsetVar.inc(3);
-            cont.here();
+            if (offset >= 0) {
+                offsetVar.set(offset);
+            } else {
+                // Skip the schema version pseudo field.
+                Variable versionVar = srcVar.aget(0);
+                offsetVar.set(1);
+                Label cont = mm.label();
+                versionVar.ifGe(0, cont);
+                offsetVar.inc(3);
+                cont.here();
+            }
         }
 
         codecs = ColumnCodec.bind(codecs, mm);
@@ -272,14 +308,13 @@ class IndexTriggerMaker<R> {
         var keyVar = mm.param(2);
         var newValueVar = mm.param(3);
 
-        findColumns(mm, keyVar, newValueVar, true);
+        findColumns(mm, keyVar, newValueVar, -1, true);
 
         // FIXME: As an optimization, when encoding complex columns (non-primitive), check if
         // prior secondary indexes have a matching codec and copy from them.
 
         for (int i=0; i<mSecondaryInfos.length; i++) {
-            RowInfo secondaryInfo = mSecondaryInfos[i];
-            RowGen secondaryGen = secondaryInfo.rowGen();
+            RowGen secondaryGen = mSecondaryInfos[i].rowGen();
 
             ColumnCodec[] secondaryKeyCodecs = ColumnCodec.bind(secondaryGen.keyCodecs(), mm);
             ColumnCodec[] secondaryValueCodecs = ColumnCodec.bind(secondaryGen.valueCodecs(), mm);
@@ -290,42 +325,142 @@ class IndexTriggerMaker<R> {
             var secondaryValueVar = encodeColumns
                 (mm, rowVar, keyVar, newValueVar, secondaryValueCodecs);
 
-            mm.field("ix$" + i).invoke("store", txnVar, secondaryKeyVar, secondaryValueVar);
+            mm.field("ix" + i).invoke("store", txnVar, secondaryKeyVar, secondaryValueVar);
         }
     }
 
-    private void addDeleteMethod() {
+    private void addDeleteMethod(RowStore rs, long primaryIndexId) {
         MethodMaker mm = mClassMaker.addMethod
             (null, "delete", Transaction.class, Object.class, byte[].class, byte[].class).public_();
+
+        // The deletion of secondary indexes typically requires that the old value be
+        // decoded. Given that the schema version can vary, don't fully implement this method
+        // until needed. Create a new delegate for each schema version encountered.
 
         var txnVar = mm.param(0);
         var rowVar = mm.param(1).cast(mRowClass);
         var keyVar = mm.param(2);
         var oldValueVar = mm.param(3);
 
-        ColumnCodec[] keyCodecs = ColumnCodec.bind(mPrimaryGen.keyCodecs(), mm);
-        ColumnCodec[] valueCodecs = ColumnCodec.bind(mPrimaryGen.valueCodecs(), mm);
+        var schemaVersion = TableMaker.decodeSchemaVersion(mm, oldValueVar);
 
-        // FIXME: Old value might not have a matching schema. Columns needed by the index
-        // itself should always exist, because any changes to a column which affect an index
-        // should be disallowed. The index must be dropped first and added back. Currently,
-        // this check doesn't exist.
-        findColumns(mm, keyVar, oldValueVar, false);
+        var secondaryIndexIds = new long[mSecondaryIndexes.length];
+        for (int i=0; i<secondaryIndexIds.length; i++) {
+            secondaryIndexIds[i] = mSecondaryIndexes[i].id();
+        }
+
+        var indy = mm.var(IndexTriggerMaker.class).indy
+            ("indyDelete", rs.ref(), mRowType, primaryIndexId,
+             mSecondaryDescriptors, secondaryIndexIds);
+        indy.invoke(null, "delete", null, schemaVersion, txnVar, rowVar, keyVar, oldValueVar);
+    }
+
+    /**
+     * Bootstrap method for the trigger delete method.
+     *
+     * MethodType is:
+     *
+     *     void (int schemaVersion, Transaction txn, Row row, byte[] key, byte[] oldValueVar)
+     */
+    public static SwitchCallSite indyDelete(MethodHandles.Lookup lookup, String name,
+                                            MethodType mt, WeakReference<RowStore> storeRef,
+                                            Class<?> rowType, long indexId,
+                                            byte[][] secondaryDescs, long[] secondaryIndexIds)
+    {
+        Class<?> rowClass = mt.parameterType(2);
+
+        return new SwitchCallSite(lookup, mt, schemaVersion -> {
+            // Drop the schemaVersion parameter.
+            var mtx = MethodType.methodType
+                (void.class, Transaction.class, rowClass, byte[].class, byte[].class);
+
+            RowStore store = storeRef.get();
+            if (store == null) {
+                var mm = MethodMaker.begin(lookup, "delete", mtx);
+                mm.new_(DatabaseException.class, "Closed").throw_();
+                return mm.finish();
+            }
+
+            if (schemaVersion == 0) {
+                // When the schema version is zero, the primary value is empty.
+                throw new RuntimeException("FIXME: handle schemaVersion 0");
+            }
+
+            RowInfo primaryInfo;
+            var secondaryIndexes = new Index[secondaryIndexIds.length];
+            try {
+                primaryInfo = store.rowInfo(rowType, indexId, schemaVersion);
+                for (int i=0; i<secondaryIndexIds.length; i++) {
+                    secondaryIndexes[i] = store.mDatabase.indexById(secondaryIndexIds[i]);
+                }
+            } catch (Exception e) {
+                var mm = MethodMaker.begin(lookup, "delete", mtx);
+                return new ExceptionCallSite.Failed(mtx, mm, e);
+            }
+
+            RowInfo[] secondaryInfos = RowStore.indexRowInfos(primaryInfo, secondaryDescs);
+
+            var maker = new IndexTriggerMaker<>
+                (rowType, primaryInfo, secondaryInfos, secondaryIndexes);
+
+            return maker.makeDeleteMethod(mtx, schemaVersion);
+        });
+    }
+
+    private MethodHandle makeDeleteMethod(MethodType mt, int schemaVersion) {
+        mClassMaker = mPrimaryGen.beginClassMaker(IndexTriggerMaker.class, mRowType, "Trigger");
+        mClassMaker.final_();
+
+        MethodMaker ctorMaker = mClassMaker.addConstructor(Index[].class);
+        ctorMaker.invokeSuperConstructor();
+
+        MethodMaker mm = mClassMaker.addMethod("delete", mt);
+
+        mColumnSources = buildColumnSources();
+
+        var txnVar = mm.param(0);
+        var rowVar = mm.param(1);
+        var keyVar = mm.param(2);
+        var oldValueVar = mm.param(3);
+
+        findColumns(mm, keyVar, oldValueVar, schemaVersion < 128 ? 1 : 4, false);
 
         // FIXME: As an optimization, when encoding complex columns (non-primitive), check if
         // prior secondary indexes have a matching codec and copy from them.
 
         for (int i=0; i<mSecondaryInfos.length; i++) {
-            RowInfo secondaryInfo = mSecondaryInfos[i];
-            RowGen secondaryGen = secondaryInfo.rowGen();
+            Index ix = mSecondaryIndexes[i];
+            if (ix == null) {
+                // Index was dropped, so no need to delete anything from it either.
+                continue;
+            }
+
+            String ixFieldName = "ix" + i;
+            mClassMaker.addField(Index.class, ixFieldName).private_().final_();
+
+            ctorMaker.field(ixFieldName).set(ctorMaker.param(0).aget(i));
+
+            RowGen secondaryGen = mSecondaryInfos[i].rowGen();
 
             ColumnCodec[] secondaryKeyCodecs = ColumnCodec.bind(secondaryGen.keyCodecs(), mm);
-            ColumnCodec[] secondaryValueCodecs = ColumnCodec.bind(secondaryGen.valueCodecs(), mm);
 
             var secondaryKeyVar = encodeColumns
                 (mm, rowVar, keyVar, oldValueVar, secondaryKeyCodecs);
 
-            mm.field("ix$" + i).invoke("store", txnVar, secondaryKeyVar, null);
+            mm.field(ixFieldName).invoke("store", txnVar, secondaryKeyVar, null);
+        }
+
+        var lookup = mClassMaker.finishHidden();
+        var clazz = lookup.lookupClass();
+
+        try {
+            Object deleter = lookup.findConstructor
+                (clazz, MethodType.methodType(void.class, Index[].class))
+                .invoke(mSecondaryIndexes);
+
+            return lookup.findVirtual(clazz, "delete", mt).bindTo(deleter);
+        } catch (Throwable e) {
+            throw rethrow(e);
         }
     }
 

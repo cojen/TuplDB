@@ -59,7 +59,7 @@ public class RowStore {
     final CoreDatabase mDatabase;
 
     /* Schema metadata for all types.
-     
+
        (indexId) ->
          int current schemaVersion,
          ColumnSet[] alternateKeys, (a type of secondary index)
@@ -219,7 +219,7 @@ public class RowStore {
      */
     public void notifySchema(long indexId) {
         List<AbstractTable<?>> tables = mTableCache.findValues(null, (list, table) -> {
-            if (table.supportsSecondaries() && table.mSource instanceof Index) {
+            if (table.supportsSecondaries()) {
                 if (table.mSource.id() == indexId) {
                     if (list == null) {
                         list = new ArrayList<>();
@@ -240,7 +240,7 @@ public class RowStore {
     }
 
     private void examineSecondaries(AbstractTable<?> table) throws IOException {
-        if (!table.supportsSecondaries() || !(table.mSource instanceof Index)) {
+        if (!table.supportsSecondaries()) {
             return;
         }
 
@@ -592,6 +592,70 @@ public class RowStore {
         } finally {
             txn.reset();
         }
+    }
+
+    /**
+     * Decodes a RowInfo object for a secondary index, by parsing a binary descriptor which was
+     * created by EncodedRowInfo.encodeDescriptor.
+     */
+    static RowInfo indexRowInfo(RowInfo primaryInfo, byte[] desc) {
+        var info = new RowInfo(null);
+
+        int numKeys = decodePrefixPF(desc, 0);
+        int offset = lengthPrefixPF(numKeys);
+        info.keyColumns = new LinkedHashMap<>(numKeys);
+
+        for (int i=0; i<numKeys; i++) {
+            boolean descending = desc[offset++] == '-';
+            int nameLength = decodePrefixPF(desc, offset);
+            offset += lengthPrefixPF(nameLength);
+            String name = decodeStringUTF(desc, offset, nameLength).intern();
+            offset += nameLength;
+
+            ColumnInfo column = primaryInfo.allColumns.get(name);
+
+            if (descending != column.isDescending()) {
+                column = column.copy();
+                column.typeCode ^= ColumnInfo.TYPE_DESCENDING;
+            }
+
+            info.keyColumns.put(name, column);
+        }
+
+        int numValues = decodePrefixPF(desc, offset);
+        if (numValues == 0) {
+            info.valueColumns = Collections.emptyNavigableMap();
+        } else {
+            offset += lengthPrefixPF(numValues);
+            info.valueColumns = new TreeMap<>();
+
+            for (int i=0; i<numKeys; i++) {
+                int nameLength = decodePrefixPF(desc, offset);
+                offset += lengthPrefixPF(nameLength);
+                String name = decodeStringUTF(desc, offset, nameLength).intern();
+                offset += nameLength;
+
+                ColumnInfo column = primaryInfo.allColumns.get(name);
+
+                info.valueColumns.put(name, column);
+            }
+        }
+
+        info.allColumns = new TreeMap<>(info.keyColumns);
+        info.allColumns.putAll(info.valueColumns);
+
+        return info;
+    }
+
+    /**
+     * Decodes a set of secondary index RowInfo objects.
+     */
+    static RowInfo[] indexRowInfos(RowInfo primaryInfo, byte[][] descriptors) {
+        var infos = new RowInfo[descriptors.length];
+        for (int i=0; i<descriptors.length; i++) {
+            infos[i] = indexRowInfo(primaryInfo, descriptors[i]);
+        }
+        return infos;
     }
 
     /**
