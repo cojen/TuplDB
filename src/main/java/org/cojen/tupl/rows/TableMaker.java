@@ -75,9 +75,14 @@ public class TableMaker {
     }
 
     /**
-     * @return a constructor which accepts a View and returns an AbstractTable implementation
+     * @return a constructor which accepts an Index and returns an AbstractTable implementation
      */
     MethodHandle finish() {
+        {
+            mClassMaker.addField(WeakReference.class, "storeRef").private_().static_().final_();
+            mClassMaker.addClinit().field("storeRef").setExact(mStore.ref());
+        }
+
         {
             MethodMaker mm = mClassMaker.addConstructor(Index.class);
             mm.invokeSuperConstructor(mm.param(0), mTriggers);
@@ -1408,8 +1413,7 @@ public class TableMaker {
     private void addFilteredFactoryMethod() {
         MethodMaker mm = mClassMaker.addMethod
             (MethodHandle.class, "filteredFactory", String.class, RowFilter.class);
-        var storeRefVar = mm.var(WeakReference.class).setExact(mStore.ref());
-        var maker = mm.new_(RowFilterMaker.class, storeRefVar,
+        var maker = mm.new_(RowFilterMaker.class, mm.field("storeRef"),
                             mm.class_(), mm.invoke("unfiltered").invoke("getClass"),
                             mRowType, mIndexId, mm.param(0), mm.param(1));
         mm.return_(maker.invoke("finish"));

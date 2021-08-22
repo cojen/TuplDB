@@ -68,7 +68,7 @@ public class RowStore {
        (indexId, schemaVersion) -> primary ColumnSet
 
        (indexId, hash(primary ColumnSet)) -> schemaVersion[]    // hash collision chain
-     
+
        (indexId, 0, K_SECONDARY, descriptor) -> indexId, state
 
        (0L, indexId, taskType) -> ...  workflow task against an index
