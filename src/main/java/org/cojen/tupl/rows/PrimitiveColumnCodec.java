@@ -365,6 +365,24 @@ final class PrimitiveColumnCodec extends ColumnCodec {
     }
 
     @Override
+    Variable[] decodeDiff(Variable src1Var, Variable offset1Var, Variable end1Var,
+                          Variable src2Var, Variable offset2Var, Variable end2Var,
+                          ColumnCodec codec2, Label same)
+    {
+        if (mInfo.isNullable() && mInfo.plainTypeCode() != TYPE_BOOLEAN) {
+            return super.decodeDiff
+                (src1Var, offset1Var, end1Var, src2Var, offset2Var, end2Var, codec2, same);
+        } else {
+            var dst1Var = mMaker.var(mInfo.type);
+            decode(dst1Var, src1Var, offset1Var, end1Var);
+            var dst2Var = mMaker.var(dst1Var);
+            codec2.decode(dst2Var, src2Var, offset2Var, end2Var);
+            dst1Var.ifEq(dst2Var, same);
+            return new Variable[] {dst1Var, dst2Var};
+        }
+    }
+
+    @Override
     boolean canFilterQuick(ColumnInfo dstInfo) {
         // The quick variant skips conversions and boxing. If no boxing is necessary, or boxing
         // is cheap (Boolean), then use the regular full decode.

@@ -200,7 +200,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
                 if (cmp < 0) {
                     mKeysToSkip.remove(key);
                 }
-                throw new UniqueConstraintException();
+                throw new UniqueConstraintException("Primary key");
             }
 
             if (mTriggerTable == null) {

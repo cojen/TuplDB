@@ -117,7 +117,9 @@ public class IndexTriggerMaker<R> {
 
         addDeleteMethod(rs, primaryIndexId);
 
-        // FIXME: store, update
+        addStoreMethod();
+
+        // FIXME: update
 
         var lookup = mClassMaker.finishHidden();
 
@@ -168,7 +170,7 @@ public class IndexTriggerMaker<R> {
                 if (primaryCodec == null) {
                     continue;
                 }
-                source = new ColumnSource(primaryCodec, fromKey);
+                source = new ColumnSource(sources.size(), primaryCodec, fromKey);
                 sources.put(name, source);
             }
             if (source.mCodec.equals(codec)) {
@@ -296,6 +298,174 @@ public class IndexTriggerMaker<R> {
         }
     }
 
+    /**
+     * Generates code which finds columns in two encoded rows and determines if they differ.
+     * Both rows must have the same schema version. As a side-effect, the Variable fields of
+     * all ColumnSources are updated.
+     *
+     * The returned variables represent a bit map, whose bits correspond to a ColumnSource
+     * slot. Some variables in the array will be null, which implies that the bit map is all
+     * zero for that particular range.
+     *
+     * @param value1Var primary value byte array
+     * @param value2Var primary value byte array
+     * @return a set of long varibles representing a bit map
+     */
+    private Variable[] diffColumns(MethodMaker mm, Variable value1Var, Variable value2Var) {
+        var bitMap = new Variable[numBitMapWords()];
+
+        // Determine how many columns must be accessed from the encoded form.
+
+        int remainingValues = 0;
+        for (ColumnSource source : mColumnSources.values()) {
+            source.clearVars();
+            if (!source.mFromKey) {
+                remainingValues++;
+            }
+        }
+
+        diffColumns(mm, value1Var, value2Var, bitMap, false, remainingValues);
+
+        return bitMap;
+    }
+
+    private void diffColumns(MethodMaker mm, Variable src1Var, Variable src2Var,
+                             Variable[] bitMap, boolean forKey, int remaining)
+    {
+        if (remaining == 0) {
+            return;
+        }
+
+        ColumnCodec[] codecs1;
+        Variable offset1Var = mm.var(int.class);
+        Variable offset2Var = mm.var(int.class);
+
+        if (forKey) {
+            codecs1 = mPrimaryGen.keyCodecs();
+            offset1Var.set(0);
+            offset2Var.set(0);
+        } else {
+            codecs1 = mPrimaryGen.valueCodecs();
+            offset1Var.set(mm.var(RowUtils.class).invoke("skipSchemaVersion", src1Var));
+            offset2Var.set(offset1Var); // same schema version
+        }
+
+        codecs1 = ColumnCodec.bind(codecs1, mm);
+        ColumnCodec[] codecs2 = ColumnCodec.bind(codecs1, mm);
+        Variable end1Var = null, end2Var = null;
+
+        for (int i=0; i<codecs1.length; i++) {
+            ColumnCodec codec1 = codecs1[i];
+            ColumnCodec codec2 = codecs2[i];
+
+            ColumnSource source = mColumnSources.get(codec1.mInfo.name);
+
+            if (source == null) {
+                // Can't re-use end offset for next start offset when a gap exists.
+                end1Var = null;
+                end2Var = null;
+                codec1.decodeSkip(src1Var, offset1Var, null);
+                codec2.decodeSkip(src2Var, offset2Var, null);
+                continue;
+            }
+
+            Variable bitsVar = bitMap[bitMapWord(source.mSlot)];
+            if (bitsVar == null) {
+                bitsVar = mm.var(long.class).set(0);
+                bitMap[bitMapWord(source.mSlot)] = bitsVar;
+            }
+
+            Variable start1Var = end1Var;
+            Variable start2Var = end2Var;
+
+            if (start1Var == null) {
+                // Need a stable copy.
+                start1Var = mm.var(int.class).set(offset1Var);
+                start2Var = mm.var(int.class).set(offset2Var);
+            }
+
+            Label same = mm.label();
+
+            Variable[] decoded = codec1.decodeDiff
+                (src1Var, offset1Var, null, src2Var, offset2Var, null,
+                 codec2, same);
+
+            bitsVar.set(bitsVar.or(bitMapWordMask(source.mSlot)));
+            same.here();
+
+            // Need a stable copy.
+            end1Var = mm.var(int.class).set(offset1Var);
+            end2Var = mm.var(int.class).set(offset2Var);
+
+            if (decoded == null || decoded[0] == null) {
+                source.mSrcVar = src1Var;
+                source.mStartVar = start1Var;
+                source.mEndVar = end1Var;
+            } else {
+                source.mDecodedVar = decoded[0];
+            }
+
+            if (decoded == null || decoded[1] == null) {
+                source.mSrc2Var = src2Var;
+                source.mStart2Var = start2Var;
+                source.mEnd2Var = end2Var;
+            } else {
+                source.mDecoded2Var = decoded[1];
+            }
+
+            if (--remaining <= 0) {
+                break;
+            }
+        }
+    }
+
+    /**
+     * Each "word" is a long and holds 64 bits.
+     */
+    private int numBitMapWords() {
+        return (mColumnSources.size() + 63) >> 6;
+    }
+
+    /**
+     * Returns the zero-based bit map word ordinal.
+     */
+    private static int bitMapWord(int slot) {
+        return slot >> 6;
+    }
+
+    /**
+     * Returns a single bit shifted into the correct bit map word position.
+     */
+    private static long bitMapWordMask(int slot) {
+        return 1L << (slot & 0x3f);
+    }
+
+    /**
+     * Compute the bit mask to use in conjunction with diffColumns to determine which indexes
+     * need to be updated.
+     *
+     * @param masks to fill in
+     * @return false if index consists only of primary key columns
+     */
+    private boolean bitMask(RowInfo info, long[] masks) {
+        for (int i=0; i<masks.length; i++) {
+            masks[i] = 0;
+        }
+
+        boolean any = false;
+
+        for (String name : info.allColumns.keySet()) {
+            ColumnSource source = mColumnSources.get(name);
+            if (!source.mFromKey) {
+                any = true;
+                int slot = source.mSlot;
+                masks[bitMapWord(slot)] |= bitMapWordMask(slot);
+            }
+        }
+
+        return any;
+    }
+
     private void addInsertMethod() {
         MethodMaker mm = mClassMaker.addMethod
             (null, "insert", Transaction.class, Object.class, byte[].class, byte[].class).public_();
@@ -317,11 +487,15 @@ public class IndexTriggerMaker<R> {
             ColumnCodec[] secondaryValueCodecs = ColumnCodec.bind(secondaryGen.valueCodecs(), mm);
 
             var secondaryKeyVar = encodeColumns
-                (mm, rowVar, keyVar, newValueVar, secondaryKeyCodecs);
+                (mm, rowVar, keyVar, newValueVar, secondaryKeyCodecs, false);
 
             var secondaryValueVar = encodeColumns
-                (mm, rowVar, keyVar, newValueVar, secondaryValueCodecs);
+                (mm, rowVar, keyVar, newValueVar, secondaryValueCodecs, false);
 
+            // FIXME: If an alternate key, call "insert" and maybe throw new
+            // UniqueConstraintException("Alternate key"). Must do the same for the trigger
+            // store/update operations. Should order secondary infos such that alternate keys
+            // are acted upon first, as an optimization.
             mm.field("ix" + i).invoke("store", txnVar, secondaryKeyVar, secondaryValueVar);
         }
     }
@@ -442,7 +616,7 @@ public class IndexTriggerMaker<R> {
             ColumnCodec[] secondaryKeyCodecs = ColumnCodec.bind(secondaryGen.keyCodecs(), mm);
 
             var secondaryKeyVar = encodeColumns
-                (mm, rowVar, keyVar, oldValueVar, secondaryKeyCodecs);
+                (mm, rowVar, keyVar, oldValueVar, secondaryKeyCodecs, false);
 
             mm.field(ixFieldName).invoke("store", txnVar, secondaryKeyVar, null);
         }
@@ -461,6 +635,75 @@ public class IndexTriggerMaker<R> {
         }
     }
 
+    private void addStoreMethod() {
+        MethodMaker mm = mClassMaker.addMethod
+            (null, "store", Transaction.class, Object.class,
+             byte[].class, byte[].class, byte[].class).public_();
+
+        var txnVar = mm.param(0);
+        var rowVar = mm.param(1).cast(mRowClass);
+        var keyVar = mm.param(2);
+        var oldValueVar = mm.param(3);
+        var newValueVar = mm.param(4);
+
+        // Note that newValueVar is second. This means that the second set of source variables
+        // will apply to newValueVar.
+        Variable[] bitMap = diffColumns(mm, oldValueVar, newValueVar);
+
+        // FIXME: As an optimization, when encoding complex columns (non-primitive), check if
+        // prior secondary indexes have a matching codec and copy from them.
+
+        var masks = new long[bitMap.length];
+
+        for (int i=0; i<mSecondaryInfos.length; i++) {
+            RowInfo secondaryInfo = mSecondaryInfos[i];
+
+            if (!bitMask(secondaryInfo, masks)) {
+                continue;
+            }
+
+            Label modified = mm.label();
+
+            for (int j=0; j<bitMap.length; j++) {
+                bitMap[j].and(masks[j]).ifNe(0L, modified);
+            }
+
+            Label cont = mm.label();
+            mm.goto_(cont);
+
+            // Index needs to be updated. Delete the old entry and insert a new one.
+            modified.here();
+
+            RowGen secondaryGen = secondaryInfo.rowGen();
+            Field ixField = mm.field("ix" + i);
+
+            {
+                ColumnCodec[] secondaryKeyCodecs = ColumnCodec.bind(secondaryGen.keyCodecs(), mm);
+
+                var secondaryKeyVar = encodeColumns
+                    (mm, rowVar, keyVar, oldValueVar, secondaryKeyCodecs, false);
+
+                ixField.invoke("store", txnVar, secondaryKeyVar, null);
+            }
+
+            // Now insert a new entry.
+
+            ColumnCodec[] secondaryKeyCodecs = ColumnCodec.bind(secondaryGen.keyCodecs(), mm);
+            ColumnCodec[] secondaryValueCodecs = ColumnCodec.bind(secondaryGen.valueCodecs(), mm);
+
+            var secondaryKeyVar = encodeColumns
+                (mm, rowVar, keyVar, newValueVar, secondaryKeyCodecs, true); // secondSet
+
+            var secondaryValueVar = encodeColumns
+                (mm, rowVar, keyVar, newValueVar, secondaryValueCodecs, true); // secondSet
+
+            // FIXME: UniqueConstraintException("Alternate key"). See addInsertMethod.
+            ixField.invoke("store", txnVar, secondaryKeyVar, secondaryValueVar);
+
+            cont.here();
+        }
+    }
+
     /**
      * Generate a key or value for a secondary index.
      *
@@ -468,11 +711,12 @@ public class IndexTriggerMaker<R> {
      * @param keyVar primary key byte[], fully specified
      * @param valueVar primary value byte[], fully specified
      * @param codecs secondary key or value codecs, bound to MethodMaker
+     * @param secondSet true to the second set of source variables
      * @return a filled-in byte[] variable
      */
     private Variable encodeColumns(MethodMaker mm,
                                    Variable rowVar, Variable keyVar, Variable valueVar,
-                                   ColumnCodec[] codecs)
+                                   ColumnCodec[] codecs, boolean secondSet)
     {
         if (codecs.length == 0) {
             return mm.var(RowUtils.class).field("EMPTY_BYTES");
@@ -484,7 +728,7 @@ public class IndexTriggerMaker<R> {
         for (int i=0; i<codecs.length; i++) {
             ColumnCodec codec = codecs[i];
             ColumnSource source = mColumnSources.get(codec.mInfo.name);
-            if (!source.shouldCopy(codec)) {
+            if (!source.shouldCopy(codec, secondSet)) {
                 minSize += codec.minSize();
                 codec.encodePrepare();
             }
@@ -496,11 +740,11 @@ public class IndexTriggerMaker<R> {
         for (int i=0; i<codecs.length; i++) {
             ColumnCodec codec = codecs[i];
             ColumnSource source = mColumnSources.get(codec.mInfo.name);
-            if (!source.shouldCopy(codec)) {
-                totalVar = codec.encodeSize(source.accessColumn(rowVar), totalVar);
+            if (!source.shouldCopy(codec, secondSet)) {
+                totalVar = codec.encodeSize(source.accessColumn(rowVar, secondSet), totalVar);
             } else {
                 // FIXME: Detect spans and reduce additions.
-                var lengthVar = source.mEndVar.sub(source.mStartVar);
+                var lengthVar = source.byteLength(secondSet);
                 if (totalVar == null) {
                     totalVar = lengthVar;
                 } else {
@@ -527,14 +771,15 @@ public class IndexTriggerMaker<R> {
         for (int i=0; i<codecs.length; i++) {
             ColumnCodec codec = codecs[i];
             ColumnSource source = mColumnSources.get(codec.mInfo.name);
-            if (!source.shouldCopy(codec)) {
-                codec.encode(source.accessColumn(rowVar), dstVar, offsetVar);
+            if (!source.shouldCopy(codec, secondSet)) {
+                codec.encode(source.accessColumn(rowVar, secondSet), dstVar, offsetVar);
             } else {
                 // FIXME: Detect spans and reduce copies.
                 Variable bytesVar = source.mFromKey ? keyVar : valueVar;
-                var lengthVar = source.mEndVar.sub(source.mStartVar);
+                var lengthVar = source.byteLength(secondSet);
                 mm.var(System.class).invoke
-                    ("arraycopy", bytesVar, source.mStartVar, dstVar, offsetVar, lengthVar);
+                    ("arraycopy", bytesVar, source.startVar(secondSet),
+                     dstVar, offsetVar, lengthVar);
                 if (i < codecs.length - 1) {
                     offsetVar.inc(lengthVar);
                 }
@@ -545,6 +790,8 @@ public class IndexTriggerMaker<R> {
     }
 
     private static class ColumnSource {
+        final int mSlot;
+
         // Describes the encoding of the column within the primary key or primary value.
         final ColumnCodec mCodec;
 
@@ -564,10 +811,14 @@ public class IndexTriggerMaker<R> {
         Variable mSrcVar, mStartVar, mEndVar;
 
         // Fully decoded column. Is set when the column cannot be directly copied from the
-        // source, and it needed a transformation step.
+        // source, and it needed a transformation step. Or when decoding is cheap.
         Variable mDecodedVar;
 
-        ColumnSource(ColumnCodec codec, boolean fromKey) {
+        // Second set of variables for diffs.
+        Variable mSrc2Var, mStart2Var, mEnd2Var, mDecoded2Var;
+
+        ColumnSource(int slot, ColumnCodec codec, boolean fromKey) {
+            mSlot = slot;
             mCodec = codec;
             mFromKey = fromKey;
         }
@@ -601,20 +852,33 @@ public class IndexTriggerMaker<R> {
         /**
          * @param dstCodec codec of secondary index
          */
-        boolean shouldCopy(ColumnCodec dstCodec) {
-            return mSrcVar != null && mCodec.equals(dstCodec);
+        boolean shouldCopy(ColumnCodec dstCodec, boolean secondSet) {
+            Variable srcVar = secondSet ? mSrc2Var : mSrcVar;
+            return srcVar != null && mCodec.equals(dstCodec);
         }
 
         /**
          * @param rowVar primary row
          * @return a decoded variable or a field from the row
          */
-        Variable accessColumn(Variable rowVar) {
-            Variable colVar = mDecodedVar;
+        Variable accessColumn(Variable rowVar, boolean secondSet) {
+            Variable colVar = secondSet ? mDecoded2Var : mDecodedVar;
             if (colVar == null) {
                 colVar = rowVar.field(mCodec.mInfo.name);
             }
             return colVar;
+        }
+
+        Variable byteLength(boolean secondSet) {
+            if (secondSet) {
+                return mEnd2Var.sub(mStart2Var);
+            } else {
+                return mEndVar.sub(mStartVar);
+            }
+        }
+
+        Variable startVar(boolean secondSet) {
+            return secondSet ? mStart2Var : mStartVar;
         }
 
         void clearVars() {
@@ -622,6 +886,11 @@ public class IndexTriggerMaker<R> {
             mStartVar = null;
             mEndVar = null;
             mDecodedVar = null;
+
+            mSrc2Var = null;
+            mStart2Var = null;
+            mEnd2Var = null;
+            mDecoded2Var = null;
         }
     }
 }

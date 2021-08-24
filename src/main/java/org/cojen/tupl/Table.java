@@ -75,6 +75,7 @@ public interface Table<R> {
      * already exists.
      *
      * @throws IllegalStateException if any required columns aren't set
+     * @throws UniqueConstraintException if a conflicting alternate key exists
      */
     public void store(Transaction txn, R row) throws IOException;
 
@@ -84,6 +85,7 @@ public interface Table<R> {
      *
      * @return a copy of the replaced row, or null if none existed
      * @throws IllegalStateException if any required columns aren't set
+     * @throws UniqueConstraintException if a conflicting alternate key exists
      */
     public R exchange(Transaction txn, R row) throws IOException;
 
@@ -92,6 +94,7 @@ public interface Table<R> {
      *
      * @return false if a corresponding row already exists and nothing was inserted
      * @throws IllegalStateException if any required columns aren't set
+     * @throws UniqueConstraintException if a conflicting alternate key exists
      */
     public boolean insert(Transaction txn, R row) throws IOException;
 
@@ -100,6 +103,7 @@ public interface Table<R> {
      *
      * @return false if a corresponding row doesn't exist
      * @throws IllegalStateException if any required columns aren't set
+     * @throws UniqueConstraintException if a conflicting alternate key exists
      */
     public boolean replace(Transaction txn, R row) throws IOException;
 
@@ -109,6 +113,7 @@ public interface Table<R> {
      *
      * @return false if a corresponding row doesn't exist
      * @throws IllegalStateException if no primary or alternate key is fully specified
+     * @throws UniqueConstraintException if a conflicting alternate key exists
      */
     public boolean update(Transaction txn, R row) throws IOException;
 
@@ -120,6 +125,7 @@ public interface Table<R> {
      * @param row the row modifications to apply
      * @return false if a matching row doesn't exist
      * @throws IllegalStateException if no primary or alternate key is fully specified
+     * @throws UniqueConstraintException if a conflicting alternate key exists
      */
     //public boolean update(Transaction txn, R match, R row) throws IOException;
 
@@ -129,6 +135,7 @@ public interface Table<R> {
      *
      * @return false if a corresponding row doesn't exist
      * @throws IllegalStateException if no primary or alternate key is fully specified
+     * @throws UniqueConstraintException if a conflicting alternate key exists
      */
     public boolean merge(Transaction txn, R row) throws IOException;
 
@@ -141,6 +148,7 @@ public interface Table<R> {
      * @param row the row modifications to apply, and also the target of the loaded result
      * @return false if a matching row doesn't exist
      * @throws IllegalStateException if no primary or alternate key is fully specified
+     * @throws UniqueConstraintException if a conflicting alternate key exists
      */
     //public boolean merge(Transaction txn, R match, R row) throws IOException;
 
