@@ -45,7 +45,7 @@ public class Trigger<R> extends CommitLock {
      * @param txn never null, although can be BOGUS
      * @param row never null
      * @param key never null
-     * @param oldValue never null
+     * @param oldValue never null, same schema as new value (might have been converted)
      * @param newValue never null
      */
     public void store(Transaction txn, R row, byte[] key, byte[] oldValue, byte[] newValue)
@@ -91,7 +91,7 @@ public class Trigger<R> extends CommitLock {
      * @param txn never null, although can be BOGUS
      * @param row never null
      * @param key never null
-     * @param oldValue never null
+     * @param oldValue never null, same schema as new value (might have been converted)
      * @param newValue never null
      */
     public void update(Transaction txn, R row, byte[] key, byte[] oldValue, byte[] newValue)

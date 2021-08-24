@@ -617,6 +617,16 @@ public class RowUtils extends Utils {
         return srcOffset;
     }
 
+    /**
+     * Skip the schema version pseudo field, which is encoded at the start of a value.
+     *
+     * @param src source of encoded data
+     * @return offset of 1 or 4
+     */
+    public static int skipSchemaVersion(byte[] src) {
+        return (src[0] >>> 30) + 1;
+    }
+
     public static int encodeFloatSign(int bits) {
         bits ^= (bits < 0 ? 0xffffffff : 0x80000000);
         return bits;

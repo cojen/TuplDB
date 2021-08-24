@@ -51,6 +51,9 @@ public class IndexTriggerMaker<R> {
 
     // To be filled in by caller (IndexManager).
     final byte[][] mSecondaryDescriptors;
+    // FIXME: Somehow make sure that the codecs which reference primary keys match the primary
+    // key codec. Perhaps pass something to the valueCodecs method. The primary gen or
+    // something. The Key* codecs are the ones that really need to be matched.
     final RowInfo[] mSecondaryInfos;
     final Index[] mSecondaryIndexes;
     final byte[] mSecondaryStates; // FIXME: remember to build indexes
@@ -239,13 +242,7 @@ public class IndexTriggerMaker<R> {
             if (offset >= 0) {
                 offsetVar.set(offset);
             } else {
-                // Skip the schema version pseudo field.
-                Variable versionVar = srcVar.aget(0);
-                offsetVar.set(1);
-                Label cont = mm.label();
-                versionVar.ifGe(0, cont);
-                offsetVar.inc(3);
-                cont.here();
+                offsetVar.set(mm.var(RowUtils.class).invoke("skipSchemaVersion", srcVar));
             }
         }
 
