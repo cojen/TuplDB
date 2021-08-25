@@ -307,11 +307,11 @@ public class IndexTriggerMaker<R> {
      * slot. Some variables in the array will be null, which implies that the bit map is all
      * zero for that particular range.
      *
-     * @param value1Var primary value byte array
-     * @param value2Var primary value byte array
+     * @param oldSrcVar primary value byte array
+     * @param newSrcVar primary value byte array
      * @return a set of long varibles representing a bit map
      */
-    private Variable[] diffColumns(MethodMaker mm, Variable value1Var, Variable value2Var) {
+    private Variable[] diffColumns(MethodMaker mm, Variable oldSrcVar, Variable newSrcVar) {
         var bitMap = new Variable[numBitMapWords()];
 
         // Determine how many columns must be accessed from the encoded form.
@@ -324,12 +324,12 @@ public class IndexTriggerMaker<R> {
             }
         }
 
-        diffColumns(mm, value1Var, value2Var, bitMap, false, remainingValues);
+        diffColumns(mm, oldSrcVar, newSrcVar, bitMap, false, remainingValues);
 
         return bitMap;
     }
 
-    private void diffColumns(MethodMaker mm, Variable src1Var, Variable src2Var,
+    private void diffColumns(MethodMaker mm, Variable oldSrcVar, Variable newSrcVar,
                              Variable[] bitMap, boolean forKey, int remaining)
     {
         if (remaining == 0) {
@@ -346,7 +346,7 @@ public class IndexTriggerMaker<R> {
             offset2Var.set(0);
         } else {
             codecs1 = mPrimaryGen.valueCodecs();
-            offset1Var.set(mm.var(RowUtils.class).invoke("skipSchemaVersion", src1Var));
+            offset1Var.set(mm.var(RowUtils.class).invoke("skipSchemaVersion", oldSrcVar));
             offset2Var.set(offset1Var); // same schema version
         }
 
@@ -364,8 +364,8 @@ public class IndexTriggerMaker<R> {
                 // Can't re-use end offset for next start offset when a gap exists.
                 end1Var = null;
                 end2Var = null;
-                codec1.decodeSkip(src1Var, offset1Var, null);
-                codec2.decodeSkip(src2Var, offset2Var, null);
+                codec1.decodeSkip(oldSrcVar, offset1Var, null);
+                codec2.decodeSkip(newSrcVar, offset2Var, null);
                 continue;
             }
 
@@ -387,7 +387,7 @@ public class IndexTriggerMaker<R> {
             Label same = mm.label();
 
             Variable[] decoded = codec1.decodeDiff
-                (src1Var, offset1Var, null, src2Var, offset2Var, null,
+                (oldSrcVar, offset1Var, null, newSrcVar, offset2Var, null,
                  codec2, same);
 
             bitsVar.set(bitsVar.or(bitMapWordMask(source.mSlot)));
@@ -398,7 +398,7 @@ public class IndexTriggerMaker<R> {
             end2Var = mm.var(int.class).set(offset2Var);
 
             if (decoded == null || decoded[0] == null) {
-                source.mSrcVar = src1Var;
+                source.mSrcVar = oldSrcVar;
                 source.mStartVar = start1Var;
                 source.mEndVar = end1Var;
             } else {
@@ -406,7 +406,7 @@ public class IndexTriggerMaker<R> {
             }
 
             if (decoded == null || decoded[1] == null) {
-                source.mSrc2Var = src2Var;
+                source.mSrc2Var = newSrcVar;
                 source.mStart2Var = start2Var;
                 source.mEnd2Var = end2Var;
             } else {
@@ -680,6 +680,15 @@ public class IndexTriggerMaker<R> {
             {
                 ColumnCodec[] secondaryKeyCodecs = ColumnCodec.bind(secondaryGen.keyCodecs(), mm);
 
+                // FIXME: The encoded secondary key might need to use a column from the primary
+                // row, if a complex type and uses a different codec. The rowVar is the new
+                // row, and the value columns from it cannot be used for delete. Note that in
+                // findColumns, there's the mMismatches check. Forces full decode. Add a
+                // boolean param to the decodeDiff method, for the oldSrcVar. Pass true if
+                // source.mMismatches != 0. If forces a full decode if the diff result isn't
+                // same. At least one index will need it. Creates an issue for definite
+                // assignment analysis. Need to set to null (or zero) when same. BUT even if
+                // same, it still might be needed. Need lazy decode with runtime checks.
                 var secondaryKeyVar = encodeColumns
                     (mm, rowVar, keyVar, oldValueVar, secondaryKeyCodecs, false);
 
