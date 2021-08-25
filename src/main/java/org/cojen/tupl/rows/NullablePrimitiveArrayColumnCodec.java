@@ -49,6 +49,12 @@ final class NullablePrimitiveArrayColumnCodec extends NonNullPrimitiveArrayColum
     }
 
     @Override
+    void encodeSkip() {
+        super.encodeSkip();
+        mBytesLengthVar.set(0);
+    }
+
+    @Override
     Variable encodeSize(Variable srcVar, Variable totalVar) {
         // The length prefix encodes the byte length with one added. This allows zero to be
         // used to indicate null. See comments in NullableStringColumnCodec.encodeSize.
