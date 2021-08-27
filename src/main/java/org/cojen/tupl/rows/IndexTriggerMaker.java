@@ -292,7 +292,7 @@ public class IndexTriggerMaker<R> {
             } else {
                 var dstVar = mm.var(codec.mInfo.type);
                 codec.decode(dstVar, srcVar, offsetVar, null);
-                source.mDecodedVar = dstVar;
+                source.setDecodedVar(dstVar);
             }
 
             // Need a stable copy.
@@ -432,7 +432,7 @@ public class IndexTriggerMaker<R> {
                 oldSource.mStartVar = oldStartVar;
                 oldSource.mEndVar = oldEndVar;
             } else {
-                oldSource.mDecodedVar = decoded[0];
+                oldSource.setDecodedVar(decoded[0]);
             }
 
             ColumnSource newSource = newColumnSources.get(newCodec.mInfo.name);
@@ -442,7 +442,7 @@ public class IndexTriggerMaker<R> {
                 newSource.mStartVar = newStartVar;
                 newSource.mEndVar = newEndVar;
             } else {
-                newSource.mDecodedVar = decoded[1];
+                newSource.setDecodedVar(decoded[1]);
             }
 
             if (--remaining <= 0) {
@@ -519,10 +519,10 @@ public class IndexTriggerMaker<R> {
             ColumnCodec[] secondaryValueCodecs = ColumnCodec.bind(secondaryGen.valueCodecs(), mm);
 
             var secondaryKeyVar = encodeColumns
-                (mm, mColumnSources, rowVar, false, keyVar, newValueVar, secondaryKeyCodecs);
+                (mm, mColumnSources, rowVar, keyVar, newValueVar, secondaryKeyCodecs);
 
             var secondaryValueVar = encodeColumns
-                (mm, mColumnSources, rowVar, false, keyVar, newValueVar, secondaryValueCodecs);
+                (mm, mColumnSources, rowVar, keyVar, newValueVar, secondaryValueCodecs);
 
             // FIXME: If an alternate key, call "insert" and maybe throw new
             // UniqueConstraintException("Alternate key"). Must do the same for the trigger
@@ -648,7 +648,7 @@ public class IndexTriggerMaker<R> {
             ColumnCodec[] secondaryKeyCodecs = ColumnCodec.bind(secondaryGen.keyCodecs(), mm);
 
             var secondaryKeyVar = encodeColumns
-                (mm, mColumnSources, rowVar, false, keyVar, oldValueVar, secondaryKeyCodecs);
+                (mm, mColumnSources, rowVar, keyVar, oldValueVar, secondaryKeyCodecs);
 
             mm.field(ixFieldName).invoke("store", txnVar, secondaryKeyVar, null);
         }
@@ -676,6 +676,7 @@ public class IndexTriggerMaker<R> {
              byte[].class, byte[].class, byte[].class).public_();
 
         Map<String, ColumnSource> oldColumnSources = mColumnSources;
+        Map<String, ColumnSource> newColumnSources = cloneColumnSources();
 
         var bitMap = new Variable[numBitMapWords(oldColumnSources)];
         var masks = new long[bitMap.length];
@@ -683,8 +684,8 @@ public class IndexTriggerMaker<R> {
 
         boolean isUpdate = variant == "update";
 
-        // Determine which indexes should be skipped, and if the "update" variant, determine it
-        // does the exact same thing as the "store" variant.
+        // Determine which indexes should be skipped, and if the "update" variant, determine if
+        // it does the exact same thing as the "store" variant.
         boolean sameAsStore = true;
         for (int i=0; i<mSecondaryInfos.length; i++) {
             RowInfo secondaryInfo = mSecondaryInfos[i];
@@ -694,14 +695,16 @@ public class IndexTriggerMaker<R> {
                 continue;
             }
 
-            if (!isUpdate || !sameAsStore) {
+            if (!isUpdate) {
                 continue;
             }
 
             RowGen secondaryGen = secondaryInfo.rowGen();
 
-            if (requiresPreparedColumns(oldColumnSources, secondaryGen.keyCodecs()) ||
-                requiresPreparedColumns(oldColumnSources, secondaryGen.valueCodecs()))
+            // See comments in requiresColumnChecks regarding side-effects. This also requires that
+            // newColumnSources be a clone of mColumnSources, which is later discarded.
+            if (requiresColumnChecks(mm, newColumnSources, secondaryGen.keyCodecs()) ||
+                requiresColumnChecks(mm, newColumnSources, secondaryGen.valueCodecs()))
             {
                 sameAsStore = false;
             }
@@ -718,8 +721,6 @@ public class IndexTriggerMaker<R> {
         var keyVar = mm.param(2);
         var oldValueVar = mm.param(3);
         var newValueVar = mm.param(4);
-
-        Map<String, ColumnSource> newColumnSources = cloneColumnSources();
 
         diffColumns(mm, bitMap, oldColumnSources, newColumnSources, oldValueVar, newValueVar);
 
@@ -759,7 +760,7 @@ public class IndexTriggerMaker<R> {
                 // assignment analysis. Need to set to null (or zero) when same. BUT even if
                 // same, it still might be needed. Need lazy decode with runtime checks.
                 var secondaryKeyVar = encodeColumns
-                    (mm, oldColumnSources, rowVar, false, keyVar, oldValueVar, secondaryKeyCodecs);
+                    (mm, oldColumnSources, rowVar, keyVar, oldValueVar, secondaryKeyCodecs);
 
                 ixField.invoke("store", txnVar, secondaryKeyVar, null);
             }
@@ -770,12 +771,10 @@ public class IndexTriggerMaker<R> {
             ColumnCodec[] secondaryValueCodecs = ColumnCodec.bind(secondaryGen.valueCodecs(), mm);
 
             var secondaryKeyVar = encodeColumns
-                (mm, newColumnSources, rowVar, isUpdate,
-                 keyVar, newValueVar, secondaryKeyCodecs);
+                (mm, newColumnSources, rowVar, keyVar, newValueVar, secondaryKeyCodecs);
 
             var secondaryValueVar = encodeColumns
-                (mm, newColumnSources, rowVar, isUpdate,
-                 keyVar, newValueVar, secondaryValueCodecs);
+                (mm, newColumnSources, rowVar, keyVar, newValueVar, secondaryValueCodecs);
 
             // FIXME: UniqueConstraintException("Alternate key"). See addInsertMethod.
             ixField.invoke("store", txnVar, secondaryKeyVar, secondaryValueVar);
@@ -785,21 +784,22 @@ public class IndexTriggerMaker<R> {
     }
 
     /**
-     * Determines if prepareColumn needs to be called at all. Should only be called for the
-     * "update" variant.
+     * Calls requiresColumnCheck for all sources used by secondary indexes. This method is only
+     * expected to be called for the "update" trigger variant.
      *
      * @param codecs secondary key or value codecs
      */
-    private boolean requiresPreparedColumns(Map<String, ColumnSource> columnSources,
-                                            ColumnCodec[] codecs)
+    private boolean requiresColumnChecks(MethodMaker mm, Map<String, ColumnSource> columnSources,
+                                         ColumnCodec[] codecs)
     {
+        boolean result = false;
         for (ColumnCodec codec : codecs) {
-            ColumnSource source = columnSources.get(codec.mInfo.name);
-            if (!source.shouldCopy(codec) && source.shouldPrepareColumn(true)) {
-                return true;
-            }
+            // Because the requiresColumnCheck method can have a side-effect (creating new
+            // variables), cannot short-circuit when true is returned. All sources must be
+            // called to ensure that the side-effects are applied.
+            result |= columnSources.get(codec.mInfo.name).requiresColumnCheck(mm, codec);
         }
-        return false;
+        return result;
     }
 
     /**
@@ -813,8 +813,8 @@ public class IndexTriggerMaker<R> {
      * @return a filled-in byte[] variable
      */
     private Variable encodeColumns(MethodMaker mm, Map<String, ColumnSource> columnSources,
-                                   Variable rowVar, boolean columnCheck,
-                                   Variable keyVar, Variable valueVar, ColumnCodec[] codecs)
+                                   Variable rowVar, Variable keyVar, Variable valueVar,
+                                   ColumnCodec[] codecs)
     {
         if (codecs.length == 0) {
             return mm.var(RowUtils.class).field("EMPTY_BYTES");
@@ -829,9 +829,7 @@ public class IndexTriggerMaker<R> {
             if (!source.shouldCopy(codec)) {
                 minSize += codec.minSize();
                 codec.encodePrepare();
-                if (source.shouldPrepareColumn(columnCheck)) {
-                    source.prepareColumn(mm, mPrimaryGen, rowVar);
-                }
+                source.prepareColumn(mm, mPrimaryGen, rowVar);
             }
         }
 
@@ -914,6 +912,9 @@ public class IndexTriggerMaker<R> {
         // source, and it needed a transformation step. Or when decoding is cheap.
         Variable mDecodedVar;
 
+        // Set as a side-effect of calling requiresColumnCheck.
+        Checked mChecked;
+
         ColumnSource(int slot, ColumnCodec codec, boolean fromKey) {
             mSlot = slot;
             mCodec = codec;
@@ -965,30 +966,96 @@ public class IndexTriggerMaker<R> {
         }
 
         /**
-         * If shouldCopy returns false, then this method should be called too. If it returns
-         * true, then prepareColumn must be called at least once.
+         * Determines if a row column might need to be checked at runtime if valid or not.
          *
-         * @param columnCheck when true, must check if row value column is dirty before using it
+         * - If the column value can be copied in binary form, then the row object isn't
+         *   examined and this method returns false.
+         *
+         * - If the column is part of the primary key, then it's always assumed to be valid,
+         *   and so false is returned.
+         *
+         * This method is only expected to be called for the "update" trigger variant, which
+         * cannot always trust that row fields are usable. When they're marked dirty, they can
+         * be trusted because they were encoded into the new binary value.
+         *
+         * When true is returned, additional variables are created for tracking runtime state.
+         *
+         * @param dstCodec codec of secondary index
          */
-        boolean shouldPrepareColumn(boolean columnCheck) {
-            return columnCheck && !mFromKey && mDecodedVar == null;
+        boolean requiresColumnCheck(MethodMaker mm, ColumnCodec dstCodec) {
+            if (shouldCopy(dstCodec) || mFromKey) {
+                return false;
+            }
+
+            Checked checked = mChecked;
+
+            if (checked == null) {
+                mChecked = checked = new Checked();
+                checked.mColumnVar = mm.var(mCodec.mInfo.type);
+                if (mCodec.mInfo.isPrimitive() || mCodec.mInfo.isNullable()) {
+                    // Cannot use null to detect if column hasn't been prepared yet.
+                    checked.mCheckVar = mm.var(boolean.class);
+                }
+            } else if (checked.mUsageCount == 1) {
+                // Need to initialize these variables to ensure definite assignment.
+                if (checked.mCheckVar != null) {
+                    checked.mCheckVar.set(false);
+                } else {
+                    checked.mColumnVar.set(null);
+                }
+            }
+
+            checked.mUsageCount++;
+
+            return true;
+        }
+
+        void setDecodedVar(Variable var) {
+            mDecodedVar = var;
+            // Won't need column check when it got decoded anyhow. If it initialized some extra
+            // varaibles, they'll be dead stores, so assume that the compiler eliminates them.
+            mChecked = null;
         }
 
         /**
-         * Should be called at least once when shouldCopy returns false and shouldPrepareColumn
-         * returns true.
+         * If requiresColumnCheck was called earlier and returned true, this method ensures
+         * that the column is decoded or copied from the row. Must be called before accessColumn.
          *
          * @param rowVar primary row
          * @throws IllegalStateException if column check is required but location of encoded
          * column is unknown
          */
         void prepareColumn(MethodMaker mm, RowGen primaryGen, Variable rowVar) {
-            if (mSrcVar == null) {
-                // Cannot decode if location is unknown.
-                throw new IllegalStateException();
+            Checked checked = mChecked;
+
+            if (checked == null) {
+                return;
             }
 
-            mDecodedVar = mm.var(mCodec.mInfo.type);
+            if (mSrcVar == null) {
+                // Cannot decode if location is unknown.
+                throw new IllegalStateException("" + mDecodedVar);
+            }
+
+            checked.mPrepareCount++;
+
+            Label cont = mm.label();
+
+            if (checked.mPrepareCount > 1) {
+                if (checked.mPrepareCount > checked.mUsageCount) {
+                    throw new AssertionError();
+                }
+                // Might already have been prepared.
+                if (checked.mCheckVar != null) {
+                    checked.mCheckVar.ifTrue(cont);
+                } else {
+                    checked.mColumnVar.ifNe(null, cont);
+                }
+            }
+
+            if (checked.mCheckVar != null) {
+                checked.mCheckVar.set(true);
+            }
 
             String columnName = mCodec.mInfo.name;
             int columnNum = primaryGen.columnNumbers().get(columnName);
@@ -998,11 +1065,11 @@ public class IndexTriggerMaker<R> {
             Label isDirty = mm.label();
             rowVar.field(stateField).and(stateFieldMask).ifEq(stateFieldMask, isDirty);
             var offsetVar = mStartVar.get(); // decode method modifies the offset, so copy it
-            mCodec.bind(mm).decode(mDecodedVar, mSrcVar, offsetVar, null);
-            Label cont = mm.label();
+            mCodec.bind(mm).decode(checked.mColumnVar, mSrcVar, offsetVar, null);
             mm.goto_(cont);
             isDirty.here();
-            mDecodedVar.set(rowVar.field(columnName));
+            checked.mColumnVar.set(rowVar.field(columnName));
+
             cont.here();
         }
 
@@ -1013,7 +1080,12 @@ public class IndexTriggerMaker<R> {
         Variable accessColumn(Variable rowVar) {
             Variable colVar = mDecodedVar;
             if (colVar == null) {
-                colVar = rowVar.field(mCodec.mInfo.name);
+                Checked checked = mChecked;
+                if (checked != null) {
+                    colVar = checked.mColumnVar;
+                } else {
+                    colVar = rowVar.field(mCodec.mInfo.name);
+                }
             }
             return colVar;
         }
@@ -1023,6 +1095,25 @@ public class IndexTriggerMaker<R> {
             mStartVar = null;
             mEndVar = null;
             mDecodedVar = null;
+        }
+
+        /**
+         * State to check if a row field is valid or not at runtime.
+         */
+        static class Checked {
+            // Count of indexes that depend on this.
+            int mUsageCount;
+
+            // Variable which holds the column value, either from the row, or decoded from the
+            // binary representation.
+            Variable mColumnVar;
+
+            // Optional boolean variable for checking if mColumnVar has been prepared yet. When
+            // mCheckVar is null, then a runtime comparison of mColumnVar to null is performed.
+            Variable mCheckVar;
+
+            // Count of times that prepareColumn has been called against this.
+            int mPrepareCount;
         }
     }
 }
