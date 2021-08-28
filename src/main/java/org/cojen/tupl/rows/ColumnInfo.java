@@ -105,6 +105,8 @@ public class ColumnInfo implements Cloneable {
 
     Method accessor, mutator;
 
+    boolean hidden;
+
     public String name() {
         return name;
     }

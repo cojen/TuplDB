@@ -268,20 +268,22 @@ public class RowMaker {
 
         int num = 0;
         for (ColumnInfo info : rowInfo.keyColumns.values()) {
-            append(mm, rowGen, rowObject, bob, initSize, num, info);
-            num++;
+            num = append(mm, rowGen, rowObject, bob, initSize, num, info);
         }
         for (ColumnCodec codec : rowGen.valueCodecs()) { // use encoding order
-            append(mm, rowGen, rowObject, bob, initSize, num, codec.mInfo);
-            num++;
+            num = append(mm, rowGen, rowObject, bob, initSize, num, codec.mInfo);
         }
 
         mm.return_(bob.invoke("append", '}').invoke("toString"));
     }
 
-    private static void append(MethodMaker mm, RowGen rowGen, Variable rowObject,
-                               Variable bob, Variable initSize, int num, ColumnInfo info)
+    private static int append(MethodMaker mm, RowGen rowGen, Variable rowObject,
+                              Variable bob, Variable initSize, int num, ColumnInfo info)
     {
+        if (info.hidden) {
+            return num;
+        }
+
         Label unset = mm.label();
         rowObject.field(rowGen.stateField(num)).and(RowGen.stateFieldMask(num)).ifEq(0, unset);
         Label sep = mm.label();
@@ -317,6 +319,8 @@ public class RowMaker {
         }
 
         unset.here();
+
+        return num + 1;
     }
 
     private void addClone() {

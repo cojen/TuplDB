@@ -35,6 +35,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 import org.cojen.tupl.AlternateKey;
+import org.cojen.tupl.Hidden;
 import org.cojen.tupl.Nullable;
 import org.cojen.tupl.PrimaryKey;
 import org.cojen.tupl.SecondaryIndex;
@@ -277,6 +278,8 @@ class RowInfo extends ColumnSet {
                     info.typeCode &= ~0b000_01000;
                 }
             }
+
+            info.hidden |= method.isAnnotationPresent(Hidden.class);
         }
 
         for (ColumnInfo info : allColumns.values()) {
