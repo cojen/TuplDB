@@ -38,7 +38,7 @@ import static org.cojen.tupl.rows.RowUtils.*;
  * @author Brian S O'Neill
  */
 class IndexManager<R> {
-    private final TreeMap<byte[], WeakReference<RowInfo>> mIndexInfos;
+    private final TreeMap<byte[], WeakReference<SecondaryInfo>> mIndexInfos;
 
     IndexManager() {
         mIndexInfos = new TreeMap<>(Arrays::compareUnsigned);
@@ -100,8 +100,8 @@ class IndexManager<R> {
             for (c.first(); (desc = c.key()) != null; c.next(), i++) {
                 maker.mSecondaryDescriptors[i] = desc;
 
-                WeakReference<RowInfo> infoRef = mIndexInfos.get(desc);
-                RowInfo info;
+                WeakReference<SecondaryInfo> infoRef = mIndexInfos.get(desc);
+                SecondaryInfo info;
                 if (infoRef == null || (info = infoRef.get()) == null) {
                     info = RowStore.indexRowInfo(primaryInfo, desc);
                     mIndexInfos.put(desc, new WeakReference<>(info));

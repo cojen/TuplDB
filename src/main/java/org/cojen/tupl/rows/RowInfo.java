@@ -385,7 +385,7 @@ class RowInfo extends ColumnSet {
         String[] columnNames = pk.value();
 
         if (columnNames.length == 0) {
-            messages.add("primary key doesn't specify any columns");
+            messages.add(noColumns("primary key"));
             return;
         }
 
@@ -443,8 +443,8 @@ class RowInfo extends ColumnSet {
     private void examineIndex(Set<String> messages, NavigableSet<ColumnSet> fullSet,
                               String[] columnNames, boolean forAltKey)
     {
-        if (columnNames.length == 0 && forAltKey) {
-            messages.add("alternate key doesn't specify any columns");
+        if (columnNames.length == 0) {
+            messages.add(noColumns(forAltKey ? "alternate key" : "secondary index"));
             return;
         }
 
@@ -565,6 +565,10 @@ class RowInfo extends ColumnSet {
 
     private static String duplicate(String prefix, String name) {
         return prefix + " refers to a column more than once: " + name;
+    }
+
+    private static String noColumns(String prefix) {
+        return prefix + " doesn't specify any columns";
     }
 
     private static ColumnInfo withUnspecifiedType(ColumnInfo info) {

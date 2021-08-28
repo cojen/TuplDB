@@ -631,11 +631,14 @@ public class RowStore {
      * Decodes a RowInfo object for a secondary index, by parsing a binary descriptor which was
      * created by EncodedRowInfo.encodeDescriptor.
      */
-    static RowInfo indexRowInfo(RowInfo primaryInfo, byte[] desc) {
-        var info = new RowInfo(null);
+    static SecondaryInfo indexRowInfo(RowInfo primaryInfo, byte[] desc) {
+        byte type = desc[0];
+        int offset = 1;
 
-        int numKeys = decodePrefixPF(desc, 0);
-        int offset = lengthPrefixPF(numKeys);
+        var info = new SecondaryInfo(type == 'A');
+
+        int numKeys = decodePrefixPF(desc, offset);
+        offset += lengthPrefixPF(numKeys);
         info.keyColumns = new LinkedHashMap<>(numKeys);
 
         for (int i=0; i<numKeys; i++) {
@@ -662,7 +665,7 @@ public class RowStore {
             offset += lengthPrefixPF(numValues);
             info.valueColumns = new TreeMap<>();
 
-            for (int i=0; i<numKeys; i++) {
+            for (int i=0; i<numValues; i++) {
                 int nameLength = decodePrefixPF(desc, offset);
                 offset += lengthPrefixPF(nameLength);
                 String name = decodeStringUTF(desc, offset, nameLength).intern();
@@ -683,8 +686,8 @@ public class RowStore {
     /**
      * Decodes a set of secondary index RowInfo objects.
      */
-    static RowInfo[] indexRowInfos(RowInfo primaryInfo, byte[][] descriptors) {
-        var infos = new RowInfo[descriptors.length];
+    static SecondaryInfo[] indexRowInfos(RowInfo primaryInfo, byte[][] descriptors) {
+        var infos = new SecondaryInfo[descriptors.length];
         for (int i=0; i<descriptors.length; i++) {
             infos[i] = indexRowInfo(primaryInfo, descriptors[i]);
         }
@@ -901,8 +904,8 @@ public class RowStore {
             currentData = encoder.toByteArray();
 
             secondaries = new TreeSet<>(Arrays::compareUnsigned);
-            info.alternateKeys.forEach(cs -> secondaries.add(encodeDescriptor(encoder, cs)));
-            info.secondaryIndexes.forEach(cs -> secondaries.add(encodeDescriptor(encoder, cs)));
+            info.alternateKeys.forEach(cs -> secondaries.add(encodeDescriptor('A', encoder, cs)));
+            info.secondaryIndexes.forEach(cs -> secondaries.add(encodeDescriptor('I', encoder,cs)));
         }
 
         /**
@@ -936,9 +939,13 @@ public class RowStore {
 
         /**
          * Encode a secondary index descriptor.
+         *
+         * @param type 'A' or 'I'; alternate key descriptors are ordered first
          */
-        private static byte[] encodeDescriptor(Encoder encoder, ColumnSet cs) {
+        private static byte[] encodeDescriptor(char type, Encoder encoder, ColumnSet cs) {
             encoder.reset(0);
+
+            encoder.writeByte((byte) type);
 
             encoder.writePrefixPF(cs.keyColumns.size());
             for (ColumnInfo column : cs.keyColumns.values()) {

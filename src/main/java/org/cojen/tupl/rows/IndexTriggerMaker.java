@@ -29,6 +29,7 @@ import java.util.Map;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.Transaction;
+import org.cojen.tupl.UniqueConstraintException;
 
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Field;
@@ -54,7 +55,7 @@ public class IndexTriggerMaker<R> {
     // FIXME: Somehow make sure that the codecs which reference primary keys match the primary
     // key codec. Perhaps pass something to the valueCodecs method. The primary gen or
     // something. The Key* codecs are the ones that really need to be matched.
-    final RowInfo[] mSecondaryInfos;
+    final SecondaryInfo[] mSecondaryInfos;
     final Index[] mSecondaryIndexes;
     final byte[] mSecondaryStates; // FIXME: remember to build indexes
 
@@ -69,7 +70,7 @@ public class IndexTriggerMaker<R> {
         mPrimaryGen = primaryInfo.rowGen();
 
         mSecondaryDescriptors = new byte[numIndexes][];
-        mSecondaryInfos = new RowInfo[numIndexes];
+        mSecondaryInfos = new SecondaryInfo[numIndexes];
         mSecondaryIndexes = new Index[numIndexes];
         mSecondaryStates = new byte[numIndexes];
     }
@@ -80,7 +81,7 @@ public class IndexTriggerMaker<R> {
      * @param secondaryIndexes note: elements are null for dropped indexes
      */
     private IndexTriggerMaker(Class<R> rowType, RowInfo primaryInfo,
-                              RowInfo[] secondaryInfos, Index[] secondaryIndexes)
+                              SecondaryInfo[] secondaryInfos, Index[] secondaryIndexes)
     {
         mRowType = rowType;
         mRowClass = RowMaker.find(rowType);
@@ -511,7 +512,8 @@ public class IndexTriggerMaker<R> {
         // prior secondary indexes have a matching codec and copy from them.
 
         for (int i=0; i<mSecondaryInfos.length; i++) {
-            RowGen secondaryGen = mSecondaryInfos[i].rowGen();
+            SecondaryInfo secondaryInfo = mSecondaryInfos[i];
+            RowGen secondaryGen = secondaryInfo.rowGen();
 
             ColumnCodec[] secondaryKeyCodecs = ColumnCodec.bind(secondaryGen.keyCodecs(), mm);
             ColumnCodec[] secondaryValueCodecs = ColumnCodec.bind(secondaryGen.valueCodecs(), mm);
@@ -522,11 +524,17 @@ public class IndexTriggerMaker<R> {
             var secondaryValueVar = encodeColumns
                 (mm, mColumnSources, rowVar, true, keyVar, newValueVar, secondaryValueCodecs);
 
-            // FIXME: If an alternate key, call "insert" and maybe throw new
-            // UniqueConstraintException("Alternate key"). Must do the same for the trigger
-            // store/update operations. Should order secondary infos such that alternate keys
-            // are acted upon first, as an optimization.
-            mm.field("ix" + i).invoke("store", txnVar, secondaryKeyVar, secondaryValueVar);
+            var ixField = mm.field("ix" + i);
+
+            if (!secondaryInfo.isAltKey) {
+                ixField.invoke("store", txnVar, secondaryKeyVar, secondaryValueVar);
+            } else {
+                var result = ixField.invoke("insert", txnVar, secondaryKeyVar, secondaryValueVar);
+                Label pass = mm.label();
+                result.ifTrue(pass);
+                mm.new_(UniqueConstraintException.class, "Alternate key").throw_();
+                pass.here();
+            }
         }
     }
 
@@ -599,7 +607,7 @@ public class IndexTriggerMaker<R> {
                 return new ExceptionCallSite.Failed(mtx, mm, e);
             }
 
-            RowInfo[] secondaryInfos = RowStore.indexRowInfos(primaryInfo, secondaryDescs);
+            SecondaryInfo[] secondaryInfos = RowStore.indexRowInfos(primaryInfo, secondaryDescs);
 
             var maker = new IndexTriggerMaker<>
                 (rowType, primaryInfo, secondaryInfos, secondaryIndexes);
@@ -745,7 +753,8 @@ public class IndexTriggerMaker<R> {
             // Index needs to be updated. Delete the old entry and insert a new one.
             modified.here();
 
-            RowGen secondaryGen = mSecondaryInfos[i].rowGen();
+            SecondaryInfo secondaryInfo = mSecondaryInfos[i];
+            RowGen secondaryGen = secondaryInfo.rowGen();
             Field ixField = mm.field("ix" + i);
 
             {
@@ -768,8 +777,15 @@ public class IndexTriggerMaker<R> {
             var secondaryValueVar = encodeColumns
                 (mm, newColumnSources, rowVar, true, keyVar, newValueVar, secondaryValueCodecs);
 
-            // FIXME: UniqueConstraintException("Alternate key"). See addInsertMethod.
-            ixField.invoke("store", txnVar, secondaryKeyVar, secondaryValueVar);
+            if (!secondaryInfo.isAltKey) {
+                ixField.invoke("store", txnVar, secondaryKeyVar, secondaryValueVar);
+            } else {
+                var result = ixField.invoke("insert", txnVar, secondaryKeyVar, secondaryValueVar);
+                Label pass = mm.label();
+                result.ifTrue(pass);
+                mm.new_(UniqueConstraintException.class, "Alternate key").throw_();
+                pass.here();
+            }
 
             cont.here();
         }
