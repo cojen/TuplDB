@@ -3,6 +3,7 @@ Changelog
 
 v1.5.3.1
 --------
+* Fix potential race condition when concurrently deleting and truncating the checkpoint undo log.
 
 v1.5.3 (2021-08-09)
 ------

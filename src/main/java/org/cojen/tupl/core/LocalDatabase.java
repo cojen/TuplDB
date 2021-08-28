@@ -6207,7 +6207,7 @@ final class LocalDatabase extends CoreDatabase {
 
                 if (masterUndoLog != null) {
                     try {
-                        masterUndoLog.truncate();
+                        masterUndoLog.truncateMaster();
                     } catch (Throwable e2) {
                         // Panic.
                         suppress(e2, e);
@@ -6227,7 +6227,7 @@ final class LocalDatabase extends CoreDatabase {
         if (masterUndoLog != null) {
             // Delete the master undo log, which won't take effect until the next checkpoint.
             try {
-                masterUndoLog.truncate();
+                masterUndoLog.truncateMaster();
             } catch (Throwable e) {
                 if (!isClosed()) {
                     throw e;
