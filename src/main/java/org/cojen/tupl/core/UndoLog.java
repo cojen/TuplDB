@@ -887,6 +887,44 @@ final class UndoLog implements DatabaseAccess {
     }
 
     /**
+     * Truncate all master undo log entries. Caller does not need to hold db commit lock. This
+     * method is different from the regular truncate method by checking if the database has
+     * been closed, and by never checking for commit lock waiters.
+     */
+    final void truncateMaster() throws IOException {
+        final CommitLock commitLock = mDatabase.commitLock();
+        CommitLock.Shared shared = commitLock.acquireShared();
+        try {
+            if (mDatabase.isClosed()) {
+                delete();
+            } else {
+                Node node = mNode;
+                if (node == null) {
+                    mBufferPos = mBuffer.length;
+                } else {
+                    node.acquireExclusive();
+                    while (true) {
+                        try {
+                            if ((node = popNode(node, true)) == null) {
+                                break;
+                            }
+                        } catch (Throwable e) {
+                            mNodeTopPos = 0;
+                            mActiveKey = null;
+                            throw e;
+                        }
+                    }
+                }
+                mLength = 0;
+                mActiveIndexId = 0;
+                mActiveKey = null;
+            }
+        } finally {
+            shared.release();
+        }
+    }
+
+    /**
      * Rollback all log entries, and then discard this UndoLog object. Caller does not need to
      * hold db commit lock.
      */
