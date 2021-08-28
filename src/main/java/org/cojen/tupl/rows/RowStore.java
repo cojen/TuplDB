@@ -46,6 +46,7 @@ import org.cojen.tupl.UniqueConstraintException;
 import org.cojen.tupl.View;
 
 import org.cojen.tupl.core.CoreDatabase;
+import org.cojen.tupl.core.ScanVisitor;
 
 import static org.cojen.tupl.rows.RowUtils.*;
 
@@ -107,6 +108,38 @@ public class RowStore {
 
     public Index schemata() {
         return mSchemata;
+    }
+
+    /**
+     * Scans the schemata and all table secondary indexes. Doesn't scan table primary indexes.
+     */
+    public void scanAllIndexes(ScanVisitor visitor) throws IOException {
+        visitor.apply(mSchemata);
+
+        try (Cursor c = mSchemata.newCursor(null)) {
+            byte[] key;
+            for (c.first(); (key = c.key()) != null; ) {
+                if (key.length <= 8) {
+                    c.next();
+                    continue;
+                }
+                long indexId = decodeLongBE(key, 0);
+                if (indexId == 0 ||
+                    decodeIntBE(key, 8) != 0 || decodeIntBE(key, 8 + 4) != K_SECONDARY)
+                {
+                    if (++indexId == 0) {
+                        break;
+                    }
+                    c.findNearbyGe(key(indexId));
+                } else {
+                    Index secondaryIndex = mDatabase.indexById(decodeLongLE(c.value(), 0));
+                    if (secondaryIndex != null) {
+                        visitor.apply(secondaryIndex);
+                    }
+                    c.next();
+                }
+            }
+        }
     }
 
     /**

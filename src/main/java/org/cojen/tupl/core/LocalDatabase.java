@@ -2697,7 +2697,8 @@ final class LocalDatabase extends CoreDatabase {
             final long highestNodeId = targetPageCount - 1;
             final CompactionObserver fobserver = observer;
 
-            completed = scanAllIndexes(tree -> {
+            completed = scanAllIndexes(ix -> {
+                var tree = (Tree) ix;
                 return tree.compactTree(tree.observableView(), highestNodeId, fobserver);
             });
 
@@ -2743,7 +2744,8 @@ final class LocalDatabase extends CoreDatabase {
         final boolean[] passedRef = {true};
         final VerificationObserver fobserver = observer;
 
-        scanAllIndexes(tree -> {
+        scanAllIndexes(ix -> {
+            var tree = (Tree) ix;
             Index view = tree.observableView();
             fobserver.failed = false;
             boolean keepGoing = tree.verifyTree(view, fobserver);
@@ -2805,14 +2807,6 @@ final class LocalDatabase extends CoreDatabase {
         }
     }
 
-    @FunctionalInterface
-    static interface ScanVisitor {
-        /**
-         * @return false if should stop
-         */
-        boolean apply(Tree tree) throws IOException;
-    }
-
     /**
      * @return false if stopped
      */
@@ -2827,7 +2821,7 @@ final class LocalDatabase extends CoreDatabase {
 
         RowStore rs = openRowStore(false);
         if (rs != null) {
-            visitor.apply((Tree) rs.schemata());
+            rs.scanAllIndexes(visitor);
         }
 
         // Note that temporary indexes aren't scanned. Some operations performed on them (the
