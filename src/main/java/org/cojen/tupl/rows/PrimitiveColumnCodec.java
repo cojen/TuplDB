@@ -51,20 +51,6 @@ final class PrimitiveColumnCodec extends ColumnCodec {
     }
 
     @Override
-    protected final boolean doSimilarTo(ColumnCodec codec) {
-        if (!(codec instanceof PrimitiveColumnCodec)) {
-            return false;
-        }
-        var other = (PrimitiveColumnCodec) codec;
-        if (mSize != other.mSize) {
-            return false;
-        }
-        int typeCode = mInfo.typeCode & ~TYPE_DESCENDING;
-        int otherTypeCode = other.mInfo.typeCode & ~TYPE_DESCENDING;
-        return typeCode == otherTypeCode;
-    }
-
-    @Override
     protected final boolean doEquals(Object obj) {
         var other = (PrimitiveColumnCodec) obj;
         if (mLex != other.mLex || mSize != other.mSize) {

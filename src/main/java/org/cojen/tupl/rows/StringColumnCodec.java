@@ -35,12 +35,6 @@ abstract class StringColumnCodec extends BytesColumnCodec {
     }
 
     @Override
-    protected boolean doSimilarTo(ColumnCodec codec) {
-        return codec instanceof StringColumnCodec
-            && !(codec instanceof LexStringColumnCodec);
-    }
-
-    @Override
     protected final boolean doEquals(Object obj) {
         return true;
     }

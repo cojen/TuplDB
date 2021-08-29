@@ -90,7 +90,9 @@ abstract class ColumnCodec {
                 boolean hasNext = it.hasNext();
                 ColumnCodec codec = make(info, false, !hasNext);
                 ColumnCodec pkCodec = pkCodecs.get(info.name);
-                if (pkCodec != null && (pkCodec.equals(codec) || !pkCodec.similarTo(codec))) {
+                if (pkCodec != null &&
+                    (pkCodec.equals(codec) || !pkCodec.isLast() || codec.isLast()))
+                {
                     codec = pkCodec;
                 }
                 codecs[slot++] = codec;
@@ -251,21 +253,6 @@ abstract class ColumnCodec {
      * Returns a stateful instance suitable for making code.
      */
     abstract ColumnCodec bind(MethodMaker mm);
-
-    /**
-     * Returns true if the other codec is equal to this one, or if the types match and
-     * conversion is simple.
-     */
-    final boolean similarTo(ColumnCodec codec) {
-        return this.equals(codec) || doSimilarTo(codec);
-    }
-
-    /**
-     * @param codec isn't equal to this codec
-     */
-    protected boolean doSimilarTo(ColumnCodec codec) {
-        return false;
-    }
 
     @Override
     public final boolean equals(Object obj) {

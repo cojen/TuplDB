@@ -38,11 +38,6 @@ final class LexStringColumnCodec extends StringColumnCodec {
     }
 
     @Override
-    protected boolean doSimilarTo(ColumnCodec codec) {
-        return false;
-    }
-
-    @Override
     boolean isLast() {
         return false;
     }

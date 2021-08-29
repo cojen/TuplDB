@@ -40,11 +40,6 @@ final class LexBigIntegerColumnCodec extends BigIntegerColumnCodec {
     }
 
     @Override
-    protected boolean doSimilarTo(ColumnCodec codec) {
-        return false;
-    }
-
-    @Override
     int minSize() {
         return 1;
     }

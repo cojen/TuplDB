@@ -277,10 +277,8 @@ class RowGen {
             });
 
             // To reduce the cost of loading by primary key, alternate key columns should adopt
-            // the same encoding format as primary key columns, when they're not similar. If
-            // the primary key is using a complex lexicographical encoding, then the alternate
-            // key should do the same. In other cases no conversion is necessary, or the
-            // conversion is cheap.
+            // the same encoding format as primary key columns, when possible. This eliminates
+            // extra conversion steps.
 
             var pkCodecs = new HashMap<String, ColumnCodec>();
             for (ColumnCodec codec : primaryInfo.rowGen().keyCodecs()) {
