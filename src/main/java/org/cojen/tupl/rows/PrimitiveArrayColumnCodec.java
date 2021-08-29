@@ -53,6 +53,22 @@ abstract class PrimitiveArrayColumnCodec extends BytesColumnCodec {
     }
 
     @Override
+    protected boolean doSimilarTo(ColumnCodec codec) {
+        if (!(codec instanceof PrimitiveArrayColumnCodec)
+            | codec instanceof LexPrimitiveArrayColumnCodec)
+        {
+            return false;
+        }
+        var other = (PrimitiveArrayColumnCodec) codec;
+        if (mBitPow != other.mBitPow) {
+            return false;
+        }
+        int typeCode = mInfo.typeCode & ~TYPE_DESCENDING;
+        int otherTypeCode = other.mInfo.typeCode & ~TYPE_DESCENDING;
+        return typeCode == otherTypeCode;
+    }
+
+    @Override
     protected final boolean doEquals(Object obj) {
         var other = (PrimitiveArrayColumnCodec) obj;
         if (mLex != other.mLex || mBitPow != other.mBitPow) {

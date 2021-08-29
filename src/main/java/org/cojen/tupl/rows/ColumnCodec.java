@@ -223,6 +223,21 @@ abstract class ColumnCodec {
      */
     abstract ColumnCodec bind(MethodMaker mm);
 
+    /**
+     * Returns true if the other codec is equal to this one, or if the types match and
+     * conversion is simple.
+     */
+    final boolean similarTo(ColumnCodec codec) {
+        return this.equals(codec) || doSimilarTo(codec);
+    }
+
+    /**
+     * @param codec isn't equal to this codec
+     */
+    protected boolean doSimilarTo(ColumnCodec codec) {
+        return false;
+    }
+
     @Override
     public final boolean equals(Object obj) {
         if (obj == this) {
