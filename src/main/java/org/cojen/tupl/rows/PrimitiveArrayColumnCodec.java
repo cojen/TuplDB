@@ -29,7 +29,7 @@ import static org.cojen.tupl.rows.ColumnInfo.*;
  * @author Brian S O'Neill
  */
 abstract class PrimitiveArrayColumnCodec extends BytesColumnCodec {
-    protected final boolean mForKey;
+    protected final boolean mLex;
 
     // Power-of-2 number of bits per element.
     protected final int mBitPow;
@@ -38,10 +38,10 @@ abstract class PrimitiveArrayColumnCodec extends BytesColumnCodec {
      * @param info non-null
      * @param mm is null for stateless instance
      */
-    PrimitiveArrayColumnCodec(ColumnInfo info, MethodMaker mm, boolean forKey) {
+    PrimitiveArrayColumnCodec(ColumnInfo info, MethodMaker mm, boolean lex) {
         super(info, mm);
 
-        mForKey = forKey;
+        mLex = lex;
 
         int typeCode = info.plainTypeCode();
 
@@ -55,12 +55,12 @@ abstract class PrimitiveArrayColumnCodec extends BytesColumnCodec {
     @Override
     protected final boolean doEquals(Object obj) {
         var other = (PrimitiveArrayColumnCodec) obj;
-        if (mForKey != other.mForKey || mBitPow != other.mBitPow) {
+        if (mLex != other.mLex || mBitPow != other.mBitPow) {
             return false;
         }
         int typeCode = mInfo.typeCode;
         int otherTypeCode = other.mInfo.typeCode;
-        if (!mForKey) {
+        if (!mLex) {
             typeCode &= ~TYPE_DESCENDING;
             otherTypeCode &= ~TYPE_DESCENDING;
         }
@@ -98,7 +98,7 @@ abstract class PrimitiveArrayColumnCodec extends BytesColumnCodec {
 
     @Override
     protected boolean compareBytesUnsigned() {
-        return mForKey || mInfo.isUnsigned() || ColumnInfo.isFloat(mInfo.plainTypeCode());
+        return mLex || mInfo.isUnsigned() || ColumnInfo.isFloat(mInfo.plainTypeCode());
     }
 
     /**
@@ -123,7 +123,7 @@ abstract class PrimitiveArrayColumnCodec extends BytesColumnCodec {
         if (mBitPow == 3) {
             var lengthVar = srcVar.alength();
             mMaker.var(System.class).invoke("arraycopy", srcVar, 0, dstVar, offset, lengthVar);
-            if (mForKey && !mInfo.isUnsigned()) {
+            if (mLex && !mInfo.isUnsigned()) {
                 utilsVar.invoke("signFlip", dstVar, offset, lengthVar);
             }
         } else {
@@ -144,7 +144,7 @@ abstract class PrimitiveArrayColumnCodec extends BytesColumnCodec {
         if (mBitPow == 3) {
             valueVar = mMaker.new_(byte[].class, length);
             mMaker.var(System.class).invoke("arraycopy", srcVar, offset, valueVar, 0, length);
-            if (mForKey && !mInfo.isUnsigned()) {
+            if (mLex && !mInfo.isUnsigned()) {
                 utilsVar.invoke("signFlip", valueVar, 0, length);
             }
         } else {
@@ -173,6 +173,6 @@ abstract class PrimitiveArrayColumnCodec extends BytesColumnCodec {
     protected String methodSuffix() {
         // Note that descending order isn't supported, so fewer key formats to implement. Only
         // LexPrimitiveArrayColumnCodec supports descending order.
-        return mBitPow == 0 ? "" : ((mForKey && !mInfo.isUnsigned()) ? "Lex" : "BE");
+        return mBitPow == 0 ? "" : ((mLex && !mInfo.isUnsigned()) ? "Lex" : "BE");
     }
 }

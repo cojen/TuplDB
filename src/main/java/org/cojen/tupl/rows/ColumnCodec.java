@@ -44,18 +44,18 @@ abstract class ColumnCodec {
     /**
      * Returns an array of new stateless ColumnCodec instances.
      *
-     * @param forKey true to use key encoding (lexicographical order)
+     * @param lex true to use lexicographical encoding
      */
-    static ColumnCodec[] make(Map<String, ColumnInfo> infoMap, boolean forKey) {
-        return make(infoMap.values(), forKey);
+    static ColumnCodec[] make(Map<String, ColumnInfo> infoMap, boolean lex) {
+        return make(infoMap.values(), lex);
     }
 
     /**
      * Returns an array of new stateless ColumnCodec instances.
      *
-     * @param forKey true to use key encoding (lexicographical order)
+     * @param lex true to use lexicographical encoding
      */
-    static ColumnCodec[] make(Collection<ColumnInfo> infos, boolean forKey) {
+    static ColumnCodec[] make(Collection<ColumnInfo> infos, boolean lex) {
         var codecs = new ColumnCodec[infos.size()];
 
         if (codecs.length != 0) {
@@ -64,7 +64,7 @@ abstract class ColumnCodec {
             ColumnInfo info = it.next();
             while (true) {
                 boolean hasNext = it.hasNext();
-                codecs[slot++] = make(info, forKey, !hasNext);
+                codecs[slot++] = make(info, lex, !hasNext);
                 if (!hasNext) {
                     break;
                 }
@@ -78,10 +78,10 @@ abstract class ColumnCodec {
     /**
      * Returns a new stateless ColumnCodec instance.
      *
-     * @param forKey true to use key encoding (lexicographical order)
+     * @param lex true to use lexicographical encoding
      * @param isLast true if this is the last column in a group
      */
-    static ColumnCodec make(ColumnInfo info, boolean forKey, boolean isLast) {
+    static ColumnCodec make(ColumnInfo info, boolean lex, boolean isLast) {
         int typeCode = info.typeCode;
 
         if (isArray(typeCode)) {
@@ -91,15 +91,15 @@ abstract class ColumnCodec {
             }
         
             if (isLast && !info.isDescending()) {
-                // Note that with descending order, key format is still required. Otherwise,
-                // two arrays which share a common prefix would be ordered wrong, even when all
-                // the bits are flipped.
+                // Note that with descending order, lexicographical encoding is still required.
+                // Otherwise, two arrays which share a common prefix would be ordered wrong,
+                // even when all the bits are flipped.
                 if (info.isNullable()) {
-                    return new NullableLastPrimtiveArrayColumnCodec(info, null, forKey);
+                    return new NullableLastPrimtiveArrayColumnCodec(info, null, lex);
                 } else {
-                    return new NonNullLastPrimitiveArrayColumnCodec(info, null, forKey);
+                    return new NonNullLastPrimitiveArrayColumnCodec(info, null, lex);
                 }
-            } else if (forKey) {
+            } else if (lex) {
                 return new LexPrimitiveArrayColumnCodec(info, null);
             } else if (info.isNullable()) {
                 return new NullablePrimitiveArrayColumnCodec(info, null);
@@ -112,29 +112,29 @@ abstract class ColumnCodec {
 
         if (typeCode <= 0b1111) {
             int bitSize = 1 << (typeCode & 0b111);
-            return new PrimitiveColumnCodec(info, null, forKey, (bitSize + 7) >>> 3);
+            return new PrimitiveColumnCodec(info, null, lex, (bitSize + 7) >>> 3);
         }
 
         switch (typeCode) {
         case TYPE_FLOAT:
-            return new PrimitiveColumnCodec(info, null, forKey, 4);
+            return new PrimitiveColumnCodec(info, null, lex, 4);
         case TYPE_DOUBLE:
-            return new PrimitiveColumnCodec(info, null, forKey, 8);
+            return new PrimitiveColumnCodec(info, null, lex, 8);
 
         case TYPE_CHAR:
-            return new PrimitiveColumnCodec(info, null, forKey, 2);
+            return new PrimitiveColumnCodec(info, null, lex, 2);
 
         case TYPE_UTF8:
             if (isLast && !info.isDescending()) {
-                // Note that with descending order, key format is still required. Otherwise,
-                // two strings which share a common prefix would be ordered wrong, even when
-                // all the bits are flipped.
+                // Note that with descending order, lexicographical encoding is still required.
+                // Otherwise, two strings which share a common prefix would be ordered wrong,
+                // even when all the bits are flipped.
                 if (info.isNullable()) {
                     return new NullableLastStringColumnCodec(info, null);
                 } else {
                     return new NonNullLastStringColumnCodec(info, null);
                 }
-            } else if (forKey) {
+            } else if (lex) {
                 return new LexStringColumnCodec(info, null);
             } else if (info.isNullable()) {
                 return new NullableStringColumnCodec(info, null);
@@ -143,9 +143,10 @@ abstract class ColumnCodec {
             }
 
         case TYPE_BIG_INTEGER:
-            if (forKey) {
-                // Must always use key format, even when the last because of variable length
-                // encoding, and numerical ordering rules are different than for strings.
+            if (lex) {
+                // Must always use lexicographical encoding, even when the last because of
+                // variable length encoding, and numerical ordering rules are different than
+                // for strings.
                 return new LexBigIntegerColumnCodec(info, null);
             } else if (isLast) {
                 if (info.isNullable()) {
@@ -160,7 +161,7 @@ abstract class ColumnCodec {
             }
 
         case TYPE_BIG_DECIMAL:
-            if (forKey) {
+            if (lex) {
                 return new LexBigDecimalColumnCodec(info, null);
             } else {
                 ColumnInfo unscaledInfo = info.copy();

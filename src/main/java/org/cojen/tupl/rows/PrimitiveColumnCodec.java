@@ -30,35 +30,35 @@ import static org.cojen.tupl.rows.RowUtils.*;
  * @author Brian S O'Neill
  */
 final class PrimitiveColumnCodec extends ColumnCodec {
-    private final boolean mForKey;
+    private final boolean mLex;
     private final int mSize;
 
     /**
      * @param info non-null
      * @param mm is null for stateless instance
-     * @param forKey true to use key encoding (lexicographical order)
+     * @param lex true to use lexicographical encoding
      * @param size byte count
      */
-    PrimitiveColumnCodec(ColumnInfo info, MethodMaker mm, boolean forKey, int size) {
+    PrimitiveColumnCodec(ColumnInfo info, MethodMaker mm, boolean lex, int size) {
         super(info, mm);
-        mForKey = forKey;
+        mLex = lex;
         mSize = size;
     }
 
     @Override
     ColumnCodec bind(MethodMaker mm) {
-        return new PrimitiveColumnCodec(mInfo, mm, mForKey, mSize);
+        return new PrimitiveColumnCodec(mInfo, mm, mLex, mSize);
     }
 
     @Override
     protected final boolean doEquals(Object obj) {
         var other = (PrimitiveColumnCodec) obj;
-        if (mForKey != other.mForKey || mSize != other.mSize) {
+        if (mLex != other.mLex || mSize != other.mSize) {
             return false;
         }
         int typeCode = mInfo.typeCode;
         int otherTypeCode = other.mInfo.typeCode;
-        if (!mForKey) {
+        if (!mLex) {
             typeCode &= ~TYPE_DESCENDING;
             otherTypeCode &= ~TYPE_DESCENDING;
         }
@@ -123,7 +123,7 @@ final class PrimitiveColumnCodec extends ColumnCodec {
                 if (plain == TYPE_BOOLEAN) {
                     byte f, t, n;
                     n = NULL_BYTE_HIGH;
-                    if (!mForKey) {
+                    if (!mLex) {
                         f = 0;
                         t = 1;
                     } else {
@@ -156,7 +156,7 @@ final class PrimitiveColumnCodec extends ColumnCodec {
                     srcVar = byteVar;
 
                     cont.here();
-                } else if (mForKey) {
+                } else if (mLex) {
                     if (plain == TYPE_BYTE) {
                         byte mask = (byte) (mInfo.isDescending() ? 0x7f : 0x80);
                         srcVar = srcVar.unbox().xor(mask);
@@ -194,7 +194,7 @@ final class PrimitiveColumnCodec extends ColumnCodec {
             var rowUtils = mMaker.var(RowUtils.class);
 
             String format;
-            if (!mForKey) {
+            if (!mLex) {
                 format = "LE";
             } else {
                 format = "BE";
@@ -275,7 +275,7 @@ final class PrimitiveColumnCodec extends ColumnCodec {
                         cont.here();
                     }
                 } else {
-                    if (mForKey) {
+                    if (mLex) {
                         if (plain == TYPE_BYTE) {
                             byte mask = (byte) (mInfo.isDescending() ? 0x7f : 0x80);
                             byteVar = byteVar.xor(mask);
@@ -307,11 +307,11 @@ final class PrimitiveColumnCodec extends ColumnCodec {
 
             var rowUtils = mMaker.var(RowUtils.class);
 
-            String methodName = "decode" + methodType + (mForKey ? "BE" : "LE");
+            String methodName = "decode" + methodType + (mLex ? "BE" : "LE");
             valueVar = rowUtils.invoke(methodName, srcVar, offsetVar);
             offsetVar.inc(mSize);
 
-            if (mForKey) {
+            if (mLex) {
                 if (isFloat(plain)) {
                     String method = "decodeFloatSign";
                     if (mInfo.isDescending()) {

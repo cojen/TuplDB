@@ -32,13 +32,13 @@ final class NullableLastPrimtiveArrayColumnCodec extends NonNullLastPrimitiveArr
      * @param info non-null
      * @param mm is null for stateless instance
      */
-    NullableLastPrimtiveArrayColumnCodec(ColumnInfo info, MethodMaker mm, boolean forKey) {
-        super(info, mm, forKey);
+    NullableLastPrimtiveArrayColumnCodec(ColumnInfo info, MethodMaker mm, boolean lex) {
+        super(info, mm, lex);
     }
 
     @Override
     ColumnCodec bind(MethodMaker mm) {
-        return new NullableLastPrimtiveArrayColumnCodec(mInfo, mm, mForKey);
+        return new NullableLastPrimtiveArrayColumnCodec(mInfo, mm, mLex);
     }
 
     @Override
