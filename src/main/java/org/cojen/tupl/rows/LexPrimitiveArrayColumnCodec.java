@@ -22,18 +22,18 @@ import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 /**
- * Encoding suitable for non-last key columns which supports nulls.
+ * Encoding suitable for lexicographically ordered columns which supports nulls.
  *
  * @author Brian S O'Neill
  */
-final class KeyPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
-    KeyPrimitiveArrayColumnCodec(ColumnInfo info, MethodMaker mm) {
+final class LexPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
+    LexPrimitiveArrayColumnCodec(ColumnInfo info, MethodMaker mm) {
         super(info, mm, true);
     }
 
     @Override
     ColumnCodec bind(MethodMaker mm) {
-        return new KeyPrimitiveArrayColumnCodec(mInfo, mm);
+        return new LexPrimitiveArrayColumnCodec(mInfo, mm);
     }
 
     @Override
@@ -183,7 +183,7 @@ final class KeyPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
                             int op, Object decoded, Variable argObjVar, int argNum,
                             Label pass, Label fail)
     {
-        filterQuickCompareKey(dstInfo, srcVar, offsetVar, (Variable) decoded,
+        filterQuickCompareLex(dstInfo, srcVar, offsetVar, (Variable) decoded,
                               op, argObjVar, argNum, pass, fail);
     }
 

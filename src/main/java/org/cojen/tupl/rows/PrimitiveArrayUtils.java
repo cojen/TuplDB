@@ -85,7 +85,7 @@ public class PrimitiveArrayUtils extends RowUtils {
     /**
      * Encode an array into the destination byte array, in big-endian format, with bit flips.
      */
-    public static void encodeArrayKey(byte[] dst, int offset, short[] a) {
+    public static void encodeArrayLex(byte[] dst, int offset, short[] a) {
         for (short v : a) {
             cShortArrayBEHandle.set(dst, offset, (short) (v ^ (1 << 15)));
             offset += 2;
@@ -105,7 +105,7 @@ public class PrimitiveArrayUtils extends RowUtils {
     /**
      * Encode an array into the destination byte array, in big-endian format, with bit flips.
      */
-    public static void encodeArrayKey(byte[] dst, int offset, int[] a) {
+    public static void encodeArrayLex(byte[] dst, int offset, int[] a) {
         for (int v : a) {
             cIntArrayBEHandle.set(dst, offset, v ^ (1 << 31));
             offset += 4;
@@ -125,7 +125,7 @@ public class PrimitiveArrayUtils extends RowUtils {
     /**
      * Encode an array into the destination byte array, in big-endian format, with bit flips.
      */
-    public static void encodeArrayKey(byte[] dst, int offset, long[] a) {
+    public static void encodeArrayLex(byte[] dst, int offset, long[] a) {
         for (long v : a) {
             cLongArrayBEHandle.set(dst, offset, v ^ (1L << 63));
             offset += 8;
@@ -136,13 +136,13 @@ public class PrimitiveArrayUtils extends RowUtils {
      * Encode an array into the destination byte array, in big-endian format, with bit flips.
      */
     public static void encodeArrayBE(byte[] dst, int offset, float[] a) {
-        encodeArrayKey(dst, offset, a);
+        encodeArrayLex(dst, offset, a);
     }
 
     /**
      * Encode an array into the destination byte array, in big-endian format, with bit flips.
      */
-    public static void encodeArrayKey(byte[] dst, int offset, float[] a) {
+    public static void encodeArrayLex(byte[] dst, int offset, float[] a) {
         for (float v : a) {
             cIntArrayBEHandle.set(dst, offset, encodeFloatSign(Float.floatToRawIntBits(v)));
             offset += 4;
@@ -153,13 +153,13 @@ public class PrimitiveArrayUtils extends RowUtils {
      * Encode an array into the destination byte array, in big-endian format, with bit flips.
      */
     public static void encodeArrayBE(byte[] dst, int offset, double[] a) {
-        encodeArrayKey(dst, offset, a);
+        encodeArrayLex(dst, offset, a);
     }
 
     /**
      * Encode an array into the destination byte array, in big-endian format, with bit flips.
      */
-    public static void encodeArrayKey(byte[] dst, int offset, double[] a) {
+    public static void encodeArrayLex(byte[] dst, int offset, double[] a) {
         for (double v : a) {
             cLongArrayBEHandle.set(dst, offset, encodeFloatSign(Double.doubleToRawLongBits(v)));
             offset += 8;
@@ -180,7 +180,7 @@ public class PrimitiveArrayUtils extends RowUtils {
      * Encode an array into the destination byte array, in big-endian format. No bit flips are
      * performed because char type is unsigned.
      */
-    public static void encodeArrayKey(byte[] dst, int offset, char[] a) {
+    public static void encodeArrayLex(byte[] dst, int offset, char[] a) {
         encodeArrayBE(dst, offset, a);
     }
 
@@ -199,7 +199,7 @@ public class PrimitiveArrayUtils extends RowUtils {
     /**
      * Decode a short array from the source byte array, in big-endian format, with bit flips.
      */
-    public static short[] decodeShortArrayKey(byte[] src, int offset, int length) {
+    public static short[] decodeShortArrayLex(byte[] src, int offset, int length) {
         var a = new short[length >> 1];
         int end = offset + length;
         for (int i=0; offset < end; offset += 2) {
@@ -223,7 +223,7 @@ public class PrimitiveArrayUtils extends RowUtils {
     /**
      * Decode an int array from the source byte array, in big-endian format, with bit flips.
      */
-    public static int[] decodeIntArrayKey(byte[] src, int offset, int length) {
+    public static int[] decodeIntArrayLex(byte[] src, int offset, int length) {
         var a = new int[length >> 2];
         int end = offset + length;
         for (int i=0; offset < end; offset += 4) {
@@ -247,7 +247,7 @@ public class PrimitiveArrayUtils extends RowUtils {
     /**
      * Decode a long array from the source byte array, in big-endian format, with bit flips.
      */
-    public static long[] decodeLongArrayKey(byte[] src, int offset, int length) {
+    public static long[] decodeLongArrayLex(byte[] src, int offset, int length) {
         var a = new long[length >> 3];
         int end = offset + length;
         for (int i=0; offset < end; offset += 8) {
@@ -260,13 +260,13 @@ public class PrimitiveArrayUtils extends RowUtils {
      * Decode a float array from the source byte array, in big-endian format, with bit flips.
      */
     public static float[] decodeFloatArrayBE(byte[] src, int offset, int length) {
-        return decodeFloatArrayKey(src, offset, length);
+        return decodeFloatArrayLex(src, offset, length);
     }
 
     /**
      * Decode a float array from the source byte array, in big-endian format, with bit flips.
      */
-    public static float[] decodeFloatArrayKey(byte[] src, int offset, int length) {
+    public static float[] decodeFloatArrayLex(byte[] src, int offset, int length) {
         var a = new float[length >> 2];
         int end = offset + length;
         for (int i=0; offset < end; offset += 4) {
@@ -280,13 +280,13 @@ public class PrimitiveArrayUtils extends RowUtils {
      * Decode a double array from the source byte array, in big-endian format, with bit flips.
      */
     public static double[] decodeDoubleArrayBE(byte[] src, int offset, int length) {
-        return decodeDoubleArrayKey(src, offset, length);
+        return decodeDoubleArrayLex(src, offset, length);
     }
 
     /**
      * Decode a double array from the source byte array, in big-endian format, with bit flips.
      */
-    public static double[] decodeDoubleArrayKey(byte[] src, int offset, int length) {
+    public static double[] decodeDoubleArrayLex(byte[] src, int offset, int length) {
         var a = new double[length >> 3];
         int end = offset + length;
         for (int i=0; offset < end; offset += 8) {
@@ -312,7 +312,7 @@ public class PrimitiveArrayUtils extends RowUtils {
      * Decode a char array from the source byte array, in big-endian format. No bit flips are
      * performed because char type is unsigned.
      */
-    public static char[] decodeCharArrayKey(byte[] src, int offset, int length) {
+    public static char[] decodeCharArrayLex(byte[] src, int offset, int length) {
         return decodeCharArrayBE(src, offset, length);
     }
 

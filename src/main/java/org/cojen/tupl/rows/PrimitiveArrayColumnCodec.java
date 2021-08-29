@@ -172,7 +172,7 @@ abstract class PrimitiveArrayColumnCodec extends BytesColumnCodec {
 
     protected String methodSuffix() {
         // Note that descending order isn't supported, so fewer key formats to implement. Only
-        // KeyPrimitiveArrayColumnCodec supports descending order.
-        return mBitPow == 0 ? "" : ((mForKey && !mInfo.isUnsigned()) ? "Key" : "BE");
+        // LexPrimitiveArrayColumnCodec supports descending order.
+        return mBitPow == 0 ? "" : ((mForKey && !mInfo.isUnsigned()) ? "Lex" : "BE");
     }
 }

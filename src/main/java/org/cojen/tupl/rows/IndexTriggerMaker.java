@@ -54,7 +54,7 @@ public class IndexTriggerMaker<R> {
     final byte[][] mSecondaryDescriptors;
     // FIXME: Somehow make sure that the codecs which reference primary keys match the primary
     // key codec. Perhaps pass something to the valueCodecs method. The primary gen or
-    // something. The Key* codecs are the ones that really need to be matched.
+    // something. The Lex* codecs are the ones that really need to be matched.
     final SecondaryInfo[] mSecondaryInfos;
     final Index[] mSecondaryIndexes;
     final byte[] mSecondaryStates; // FIXME: remember to build indexes

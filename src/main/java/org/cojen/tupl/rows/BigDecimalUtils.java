@@ -29,18 +29,18 @@ public class BigDecimalUtils extends RowUtils {
     static final BigInteger ONE_HUNDRED = BigInteger.valueOf(100);
     static final BigInteger ONE_THOUSAND = BigInteger.valueOf(1000);
 
-    public static byte[] encodeBigDecimalKey(BigDecimal bd) {
-        return encodeBigDecimalKey(bd, 0);
+    public static byte[] encodeBigDecimalLex(BigDecimal bd) {
+        return encodeBigDecimalLex(bd, 0);
     }
 
-    public static byte[] encodeBigDecimalKeyDesc(BigDecimal bd) {
-        return encodeBigDecimalKey(bd, -1);
+    public static byte[] encodeBigDecimalLexDesc(BigDecimal bd) {
+        return encodeBigDecimalLex(bd, -1);
     }
 
     /**
      * @param xor 0 for normal encoding, -1 for descending encoding
      */
-    private static byte[] encodeBigDecimalKey(BigDecimal bd, int xor) {
+    private static byte[] encodeBigDecimalLex(BigDecimal bd, int xor) {
         /* Header encoding:
 
            0x00:       null low
@@ -175,16 +175,16 @@ public class BigDecimalUtils extends RowUtils {
      * @param bdRef destination; pass null to skip
      * @return new offset
      */
-    public static int decodeBigDecimalKey(byte[] src, int srcOffset, BigDecimal[] bdRef) {
-        return decodeBigDecimalKey(src, srcOffset, bdRef, 0);
+    public static int decodeBigDecimalLex(byte[] src, int srcOffset, BigDecimal[] bdRef) {
+        return decodeBigDecimalLex(src, srcOffset, bdRef, 0);
     }
 
     /**
      * @param bdRef destination; pass null to skip
      * @return new offset
      */
-    public static int decodeBigDecimalKeyDesc(byte[] src, int srcOffset, BigDecimal[] bdRef) {
-        return decodeBigDecimalKey(src, srcOffset, bdRef, -1);
+    public static int decodeBigDecimalLexDesc(byte[] src, int srcOffset, BigDecimal[] bdRef) {
+        return decodeBigDecimalLex(src, srcOffset, bdRef, -1);
     }
 
     /**
@@ -192,7 +192,7 @@ public class BigDecimalUtils extends RowUtils {
      * @param xor 0 for normal decoding, -1 for descending decoding
      * @return new offset
      */
-    private static int decodeBigDecimalKey(byte[] src, int srcOffset, BigDecimal[] bdRef, int xor) {
+    private static int decodeBigDecimalLex(byte[] src, int srcOffset, BigDecimal[] bdRef, int xor) {
         int exponent = (src[srcOffset++] ^ xor) & 0xff;
         int digitAdjust;
 

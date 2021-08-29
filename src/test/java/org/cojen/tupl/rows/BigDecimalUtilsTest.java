@@ -37,16 +37,16 @@ public class BigDecimalUtilsTest {
     }
 
     @Test
-    public void bigDecimalKey() throws Exception {
-        bigDecimalKey(false);
+    public void bigDecimalLex() throws Exception {
+        bigDecimalLex(false);
     }
 
     @Test
-    public void bigDecimalKeyDesc() throws Exception {
-        bigDecimalKey(true);
+    public void bigDecimalLexDesc() throws Exception {
+        bigDecimalLex(true);
     }
 
-    private void bigDecimalKey(boolean desc) throws Exception {
+    private void bigDecimalLex(boolean desc) throws Exception {
         BigDecimal[] values = {
             new BigDecimal("-123.0"),
             new BigDecimal("-123"),
@@ -108,9 +108,9 @@ public class BigDecimalUtilsTest {
 
         for (int i=0; i<values.length; i++) {
             if (desc) {
-                encoded[i] = BigDecimalUtils.encodeBigDecimalKeyDesc(values[i]);
+                encoded[i] = BigDecimalUtils.encodeBigDecimalLexDesc(values[i]);
             } else {
-                encoded[i] = BigDecimalUtils.encodeBigDecimalKey(values[i]);
+                encoded[i] = BigDecimalUtils.encodeBigDecimalLex(values[i]);
             }
         }
 
@@ -119,9 +119,9 @@ public class BigDecimalUtilsTest {
             ref[0] = BigDecimal.ZERO;
             int offset;
             if (desc) {
-                offset = BigDecimalUtils.decodeBigDecimalKeyDesc(encoded[i], 0, ref);
+                offset = BigDecimalUtils.decodeBigDecimalLexDesc(encoded[i], 0, ref);
             } else {
-                offset = BigDecimalUtils.decodeBigDecimalKey(encoded[i], 0, ref);
+                offset = BigDecimalUtils.decodeBigDecimalLex(encoded[i], 0, ref);
             }
             assertEquals(values[i], ref[0]);
             assertEquals(encoded[i].length, offset);
@@ -138,16 +138,16 @@ public class BigDecimalUtilsTest {
     }
 
     @Test
-    public void fuzzBigDecimalKey() throws Exception {
-        fuzzBigDecimalKey(false);
+    public void fuzzBigDecimalLex() throws Exception {
+        fuzzBigDecimalLex(false);
     }
 
     @Test
-    public void fuzzBigDecimalKeyDesc() throws Exception {
-        fuzzBigDecimalKey(true);
+    public void fuzzBigDecimalLexDesc() throws Exception {
+        fuzzBigDecimalLex(true);
     }
 
-    private void fuzzBigDecimalKey(boolean desc) throws Exception {
+    private void fuzzBigDecimalLex(boolean desc) throws Exception {
         var rnd = new Random(desc ? 123654 : 456321);
         var ref = new BigDecimal[1];
 
@@ -177,16 +177,16 @@ public class BigDecimalUtilsTest {
 
             byte[] encoded;
             if (desc) {
-                encoded = BigDecimalUtils.encodeBigDecimalKeyDesc(value);
+                encoded = BigDecimalUtils.encodeBigDecimalLexDesc(value);
             } else {
-                encoded = BigDecimalUtils.encodeBigDecimalKey(value);
+                encoded = BigDecimalUtils.encodeBigDecimalLex(value);
             }
 
             int offset;
             if (desc) {
-                offset = BigDecimalUtils.decodeBigDecimalKeyDesc(encoded, 0, ref);
+                offset = BigDecimalUtils.decodeBigDecimalLexDesc(encoded, 0, ref);
             } else {
-                offset = BigDecimalUtils.decodeBigDecimalKey(encoded, 0, ref);
+                offset = BigDecimalUtils.decodeBigDecimalLex(encoded, 0, ref);
             }
             if (value != null && value.compareTo(BigDecimal.ZERO) == 0) {
                 assertTrue(value.compareTo(ref[0]) == 0);

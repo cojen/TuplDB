@@ -200,8 +200,9 @@ abstract class BytesColumnCodec extends ColumnCodec {
     }
 
     /**
-     * Implementation of filterQuickCompare method for keys. Doesn't perform any special null
-     * handling because that must be encoded directly in the bytes. Supports descending keys.
+     * Implementation of filterQuickCompare method for lexicographically ordered encodings.
+     * Doesn't perform any special null handling because that must be encoded directly in the
+     * bytes. Supports descending keys.
      *
      * @param dstInfo current definition for column
      * @param srcVar source byte array
@@ -213,7 +214,7 @@ abstract class BytesColumnCodec extends ColumnCodec {
      * @param pass branch here when comparison passes
      * @param fail branch here when comparison fails
      */
-    protected void filterQuickCompareKey(ColumnInfo dstInfo,
+    protected void filterQuickCompareLex(ColumnInfo dstInfo,
                                          Variable srcVar, Variable offsetVar, Variable endVar,
                                          int op, Variable argObjVar, int argNum,
                                          Label pass, Label fail)

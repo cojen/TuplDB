@@ -22,21 +22,21 @@ import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 /**
- * Encoding suitable for non-last key columns which supports nulls.
+ * Encoding suitable for lexicographically ordered columns which supports nulls.
  *
- * @see RowUtils#encodeBigIntegerKey
+ * @see RowUtils#encodeBigIntegerLex
  * @author Brian S O'Neill
  */
-final class KeyBigIntegerColumnCodec extends BigIntegerColumnCodec {
+final class LexBigIntegerColumnCodec extends BigIntegerColumnCodec {
     protected Variable mBytesVar;
 
-    KeyBigIntegerColumnCodec(ColumnInfo info, MethodMaker mm) {
+    LexBigIntegerColumnCodec(ColumnInfo info, MethodMaker mm) {
         super(info, mm);
     }
 
     @Override
     ColumnCodec bind(MethodMaker mm) {
-        return new KeyBigIntegerColumnCodec(mInfo, mm);
+        return new LexBigIntegerColumnCodec(mInfo, mm);
     }
 
     @Override
@@ -85,7 +85,7 @@ final class KeyBigIntegerColumnCodec extends BigIntegerColumnCodec {
 
     @Override
     void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
-        String methodName = "encodeBigIntegerKey";
+        String methodName = "encodeBigIntegerLex";
         if (mInfo.isDescending()) {
             methodName += "Desc";
         }
@@ -95,7 +95,7 @@ final class KeyBigIntegerColumnCodec extends BigIntegerColumnCodec {
     @Override
     void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
         var rowUtils = mMaker.var(RowUtils.class);
-        var resultVar = rowUtils.invoke("decodeBigIntegerKeyHeader", srcVar, offsetVar);
+        var resultVar = rowUtils.invoke("decodeBigIntegerLexHeader", srcVar, offsetVar);
         offsetVar.set(resultVar.cast(int.class));
 
         var lengthVar = resultVar.shr(32).cast(int.class);
@@ -131,7 +131,7 @@ final class KeyBigIntegerColumnCodec extends BigIntegerColumnCodec {
 
     @Override
     protected Variable filterPrepareBytes(Variable argVar) {
-        String methodName = "encodeBigIntegerKey";
+        String methodName = "encodeBigIntegerLex";
         if (mInfo.isDescending()) {
             methodName += "Desc";
         }
@@ -169,7 +169,7 @@ final class KeyBigIntegerColumnCodec extends BigIntegerColumnCodec {
                             int op, Object decoded, Variable argObjVar, int argNum,
                             Label pass, Label fail)
     {
-        filterQuickCompareKey(dstInfo, srcVar, offsetVar, (Variable) decoded,
+        filterQuickCompareLex(dstInfo, srcVar, offsetVar, (Variable) decoded,
                               op, argObjVar, argNum, pass, fail);
     }
 

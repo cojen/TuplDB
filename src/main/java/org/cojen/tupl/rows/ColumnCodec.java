@@ -100,7 +100,7 @@ abstract class ColumnCodec {
                     return new NonNullLastPrimitiveArrayColumnCodec(info, null, forKey);
                 }
             } else if (forKey) {
-                return new KeyPrimitiveArrayColumnCodec(info, null);
+                return new LexPrimitiveArrayColumnCodec(info, null);
             } else if (info.isNullable()) {
                 return new NullablePrimitiveArrayColumnCodec(info, null);
             } else {
@@ -135,7 +135,7 @@ abstract class ColumnCodec {
                     return new NonNullLastStringColumnCodec(info, null);
                 }
             } else if (forKey) {
-                return new KeyStringColumnCodec(info, null);
+                return new LexStringColumnCodec(info, null);
             } else if (info.isNullable()) {
                 return new NullableStringColumnCodec(info, null);
             } else {
@@ -146,7 +146,7 @@ abstract class ColumnCodec {
             if (forKey) {
                 // Must always use key format, even when the last because of variable length
                 // encoding, and numerical ordering rules are different than for strings.
-                return new KeyBigIntegerColumnCodec(info, null);
+                return new LexBigIntegerColumnCodec(info, null);
             } else if (isLast) {
                 if (info.isNullable()) {
                     return new NullableLastBigIntegerColumnCodec(info, null);
@@ -161,7 +161,7 @@ abstract class ColumnCodec {
 
         case TYPE_BIG_DECIMAL:
             if (forKey) {
-                return new KeyBigDecimalColumnCodec(info, null);
+                return new LexBigDecimalColumnCodec(info, null);
             } else {
                 ColumnInfo unscaledInfo = info.copy();
                 unscaledInfo.type = BigInteger.class;

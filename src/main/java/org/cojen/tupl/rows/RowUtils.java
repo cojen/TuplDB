@@ -51,10 +51,10 @@ public class RowUtils extends Utils {
 
       op:     length, encode, decode, skip
       type:   String, etc
-      format: UTF, Key, KeyDesc, etc.
+      format: UTF, Lex, LexDesc, etc.
 
-      The "Key" format encodes into a binary format which is lexicographically ordered, and the
-      "KeyDesc" variant encodes in descending order.
+      The "Lex" format encodes into a binary format which is lexicographically ordered, and the
+      "LexDesc" variant encodes in descending order.
      */
 
     /**
@@ -231,17 +231,17 @@ public class RowUtils extends Utils {
     }
 
     /**
-     * Returns the amount of bytes required to encode the given String using "Key" format.
+     * Returns the amount of bytes required to encode the given String using "Lex" format.
      *
-     * @param key String to encode, may be null
+     * @param str String to encode, may be null
      */
-    public static int lengthStringKey(String key) {
+    public static int lengthStringLex(String str) {
         long encodedLen = 1;
 
-        if (key != null) {
-            int keyLength = key.length();
-            for (int i = 0; i < keyLength; i++) {
-                int c = key.charAt(i);
+        if (str != null) {
+            int strLength = str.length();
+            for (int i = 0; i < strLength; i++) {
+                int c = str.charAt(i);
                 if (c <= (0x7f - 2)) {
                     encodedLen++;
                 } else if (c <= (12415 - 2)) {
@@ -250,8 +250,8 @@ public class RowUtils extends Utils {
                     if (c >= 0xd800 && c <= 0xdbff) {
                         // Found a high surrogate. Verify that surrogate pair is
                         // well-formed. Low surrogate must follow high surrogate.
-                        if (i + 1 < keyLength) {
-                            int c2 = key.charAt(i + 1);
+                        if (i + 1 < strLength) {
+                            int c2 = str.charAt(i + 1);
                             if (c2 >= 0xdc00 && c2 <= 0xdfff) {
                                 i++;
                             }
@@ -267,7 +267,7 @@ public class RowUtils extends Utils {
 
     /**
      * Encodes the given optional String into a variable amount of bytes. The amount written
-     * can be determined by calling lengthStringKey.
+     * can be determined by calling lengthStringLex.
      *
      * <p>Strings are encoded in a fashion similar to UTF-8, in that ASCII characters are
      * usually written in one byte. This encoding is more efficient than UTF-8, but it isn't
@@ -275,22 +275,22 @@ public class RowUtils extends Utils {
      *
      * @param dst destination for encoded bytes
      * @param dstOffset offset into destination array
-     * @param key String key to encode, may be null
+     * @param str String str to encode, may be null
      * @return new offset
      */
-    public static int encodeStringKey(byte[] dst, int dstOffset, String key) {
-        return encodeStringKey(dst, dstOffset, key, 0);
+    public static int encodeStringLex(byte[] dst, int dstOffset, String str) {
+        return encodeStringLex(dst, dstOffset, str, 0);
     }
 
-    public static int encodeStringKeyDesc(byte[] dst, int dstOffset, String key) {
-        return encodeStringKey(dst, dstOffset, key, -1);
+    public static int encodeStringLexDesc(byte[] dst, int dstOffset, String str) {
+        return encodeStringLex(dst, dstOffset, str, -1);
     }
 
     /**
      * @param xorMask 0 for normal encoding, -1 for descending encoding
      */
-    private static int encodeStringKey(byte[] dst, int dstOffset, String key, int xorMask) {
-        if (key == null) {
+    private static int encodeStringLex(byte[] dst, int dstOffset, String str, int xorMask) {
+        if (str == null) {
             dst[dstOffset] = (byte) (NULL_BYTE_HIGH ^ xorMask);
             return dstOffset + 1;
         }
@@ -300,9 +300,9 @@ public class RowUtils extends Utils {
         // encoded as "JgnnqYqtnf". This also means that the ASCII '~' and del characters are
         // encoded in two bytes.
 
-        int length = key.length();
+        int length = str.length();
         for (int i = 0; i < length; i++) {
-            int c = key.charAt(i) + 2;
+            int c = str.charAt(i) + 2;
             if (c <= 0x7f) {
                 // 0xxxxxxx
                 dst[dstOffset++] = (byte) (c ^ xorMask);
@@ -333,7 +333,7 @@ public class RowUtils extends Utils {
                     // Found a high surrogate. Verify that surrogate pair is well-formed. Low
                     // surrogate must follow high surrogate.
                     if (i + 1 < length) {
-                        int c2 = key.charAt(i + 1);
+                        int c2 = str.charAt(i + 1);
                         if (c2 >= 0xdc00 && c2 <= 0xdfff) {
                             c = ((((c - 2) & 0x3ff) << 10) | (c2 & 0x3ff)) + 0x10002;
                             i++;
@@ -383,7 +383,7 @@ public class RowUtils extends Utils {
      * @param src source of encoded data
      * @param srcOffset offset into encoded data
      */
-    public static int lengthStringKey(byte[] src, int srcOffset) {
+    public static int lengthStringLex(byte[] src, int srcOffset) {
         // Look for the terminator.
         final int start = srcOffset;
         while (true) {
@@ -401,18 +401,18 @@ public class RowUtils extends Utils {
      * @param srcOffset offset into encoded data
      * @param length number of bytes to decode, including the terminator
      */
-    public static String decodeStringKey(byte[] src, int srcOffset, int length) {
-        return decodeStringKey(src, srcOffset, length, 0);
+    public static String decodeStringLex(byte[] src, int srcOffset, int length) {
+        return decodeStringLex(src, srcOffset, length, 0);
     }
 
-    public static String decodeStringKeyDesc(byte[] src, int srcOffset, int length) {
-        return decodeStringKey(src, srcOffset, length, -1);
+    public static String decodeStringLexDesc(byte[] src, int srcOffset, int length) {
+        return decodeStringLex(src, srcOffset, length, -1);
     }
 
     /**
      * @param xorMask 0 for normal encoding, -1 for descending encoding
      */
-    private static String decodeStringKey(byte[] src, int srcOffset, int length, int xorMask) {
+    private static String decodeStringLex(byte[] src, int srcOffset, int length, int xorMask) {
         if (length <= 1) {
             byte b = src[srcOffset];
             if (b == NULL_BYTE_HIGH || b == NULL_BYTE_LOW) {
@@ -474,10 +474,10 @@ public class RowUtils extends Utils {
     }
 
     /**
-     * @param key BigInteger.toByteArray
+     * @param src BigInteger.toByteArray
      * @return new offset
      */
-    public static int encodeBigIntegerKey(byte[] dst, int dstOffset, byte[] key) {
+    public static int encodeBigIntegerLex(byte[] dst, int dstOffset, byte[] src) {
         /* Encoding of first byte:
 
         0x00:       null low (unused)
@@ -488,14 +488,14 @@ public class RowUtils extends Utils {
         0xff:       null high
         */
 
-        if (key == null) {
+        if (src == null) {
             dst[dstOffset++] = NULL_BYTE_HIGH;
             return dstOffset;
         }
 
         // Length is always at least one.
-        int len = key.length;
-        byte msb = key[0];
+        int len = src.length;
+        byte msb = src[0];
 
         if (len < 0x7f) {
             dst[dstOffset++] = (byte) (msb < 0 ? (0x80 - len) : (len + 0x7f));
@@ -510,17 +510,17 @@ public class RowUtils extends Utils {
             dstOffset += 4;
         }
 
-        System.arraycopy(key, 0, dst, dstOffset, len);
+        System.arraycopy(src, 0, dst, dstOffset, len);
         dstOffset += len;
 
         return dstOffset;
     }
 
     /**
-     * @param key BigInteger.toByteArray
+     * @param src BigInteger.toByteArray
      * @return new offset
      */
-    public static int encodeBigIntegerKeyDesc(byte[] dst, int dstOffset, byte[] key) {
+    public static int encodeBigIntegerLexDesc(byte[] dst, int dstOffset, byte[] src) {
         /* Encoding of first byte:
 
         0x00:       null high (unused)
@@ -531,14 +531,14 @@ public class RowUtils extends Utils {
         0xff:       null low
         */
 
-        if (key == null) {
+        if (src == null) {
             dst[dstOffset++] = NULL_BYTE_LOW;
             return dstOffset;
         }
 
         // Length is always at least one.
-        int len = key.length;
-        byte msb = key[0];
+        int len = src.length;
+        byte msb = src[0];
 
         if (len < 0x7f) {
             dst[dstOffset++] = (byte) (msb < 0 ? (len + 0x7f) : (0x80 - len));
@@ -553,7 +553,7 @@ public class RowUtils extends Utils {
             dstOffset += 4;
         }
 
-        for (byte b : key) {
+        for (byte b : src) {
             dst[dstOffset++] = (byte) ~b;
         }
 
@@ -564,7 +564,7 @@ public class RowUtils extends Utils {
      * @return new offset in the lower word, and the number of bytes remaining in the upper
      * word; if the number remaining is zero, then the BigInteger is null
      */
-    public static long decodeBigIntegerKeyHeader(byte[] src, int srcOffset) {
+    public static long decodeBigIntegerLexHeader(byte[] src, int srcOffset) {
         int header = src[srcOffset++] & 0xff;
         if (header == (NULL_BYTE_HIGH & 0xff) || header == (NULL_BYTE_LOW & 0xff)) {
             return srcOffset;

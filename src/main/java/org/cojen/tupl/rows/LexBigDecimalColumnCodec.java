@@ -23,20 +23,20 @@ import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 /**
- * Encoding suitable for non-last key columns which supports nulls.
+ * Encoding suitable for lexicographically ordered columns which supports nulls.
  *
  * @author Brian S O'Neill
  */
-final class KeyBigDecimalColumnCodec extends ColumnCodec {
+final class LexBigDecimalColumnCodec extends ColumnCodec {
     protected Variable mBytesVar;
 
-    KeyBigDecimalColumnCodec(ColumnInfo info, MethodMaker mm) {
+    LexBigDecimalColumnCodec(ColumnInfo info, MethodMaker mm) {
         super(info, mm);
     }
 
     @Override
     ColumnCodec bind(MethodMaker mm) {
-        return new KeyBigDecimalColumnCodec(mInfo, mm);
+        return new LexBigDecimalColumnCodec(mInfo, mm);
     }
 
     @Override
@@ -71,7 +71,7 @@ final class KeyBigDecimalColumnCodec extends ColumnCodec {
 
     @Override
     Variable encodeSize(Variable srcVar, Variable totalVar) {
-        String methodName = "encodeBigDecimalKey";
+        String methodName = "encodeBigDecimalLex";
         if (mInfo.isDescending()) {
             methodName += "Desc";
         }
@@ -88,7 +88,7 @@ final class KeyBigDecimalColumnCodec extends ColumnCodec {
 
     @Override
     void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
-        String methodName = "decodeBigDecimalKey";
+        String methodName = "decodeBigDecimalLex";
         if (mInfo.isDescending()) {
             methodName += "Desc";
         }

@@ -22,19 +22,19 @@ import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 /**
- * Encoding suitable for non-last key columns which supports nulls.
+ * Encoding suitable for lexicographically ordered columns which supports nulls.
  *
- * @see RowUtils#encodeStringKey
+ * @see RowUtils#encodeStringLex
  * @author Brian S O'Neill
  */
-final class KeyStringColumnCodec extends StringColumnCodec {
-    KeyStringColumnCodec(ColumnInfo info, MethodMaker mm) {
+final class LexStringColumnCodec extends StringColumnCodec {
+    LexStringColumnCodec(ColumnInfo info, MethodMaker mm) {
         super(info, mm);
     }
 
     @Override
     ColumnCodec bind(MethodMaker mm) {
-        return new KeyStringColumnCodec(mInfo, mm);
+        return new LexStringColumnCodec(mInfo, mm);
     }
 
     @Override
@@ -53,12 +53,12 @@ final class KeyStringColumnCodec extends StringColumnCodec {
     @Override
     Variable encodeSize(Variable srcVar, Variable totalVar) {
         var rowUtils = mMaker.var(RowUtils.class);
-        return accum(totalVar, rowUtils.invoke("lengthStringKey", srcVar));
+        return accum(totalVar, rowUtils.invoke("lengthStringLex", srcVar));
     }
 
     @Override
     void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
-        String methodName = "encodeStringKey";
+        String methodName = "encodeStringLex";
         if (mInfo.isDescending()) {
             methodName += "Desc";
         }
@@ -67,12 +67,12 @@ final class KeyStringColumnCodec extends StringColumnCodec {
 
     @Override
     void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
-        String methodName = "decodeStringKey";
+        String methodName = "decodeStringLex";
         if (mInfo.isDescending()) {
             methodName += "Desc";
         }
         var rowUtils = mMaker.var(RowUtils.class);
-        var lengthVar = rowUtils.invoke("lengthStringKey", srcVar, offsetVar);
+        var lengthVar = rowUtils.invoke("lengthStringLex", srcVar, offsetVar);
         var valueVar = rowUtils.invoke(methodName, srcVar, offsetVar, lengthVar);
         offsetVar.inc(lengthVar);
         dstVar.set(valueVar);
@@ -80,15 +80,15 @@ final class KeyStringColumnCodec extends StringColumnCodec {
 
     @Override
     void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
-        offsetVar.inc(mMaker.var(RowUtils.class).invoke("lengthStringKey", srcVar, offsetVar));
+        offsetVar.inc(mMaker.var(RowUtils.class).invoke("lengthStringLex", srcVar, offsetVar));
     }
 
     @Override
     protected Variable filterPrepareBytes(Variable strVar) {
         var rowUtils = mMaker.var(RowUtils.class);
-        var lengthVar = rowUtils.invoke("lengthStringKey", strVar);
+        var lengthVar = rowUtils.invoke("lengthStringLex", strVar);
         var bytesVar = mMaker.new_(byte[].class, lengthVar);
-        String methodName = "encodeStringKey";
+        String methodName = "encodeStringLex";
         if (mInfo.isDescending()) {
             methodName += "Desc";
         }
@@ -118,7 +118,7 @@ final class KeyStringColumnCodec extends StringColumnCodec {
                             int op, Object decoded, Variable argObjVar, int argNum,
                             Label pass, Label fail)
     {
-        filterQuickCompareKey(dstInfo, srcVar, offsetVar, (Variable) decoded,
+        filterQuickCompareLex(dstInfo, srcVar, offsetVar, (Variable) decoded,
                               op, argObjVar, argNum, pass, fail);
     }
 

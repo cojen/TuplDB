@@ -78,26 +78,26 @@ public class RowUtilsTest {
     }
 
     @Test
-    public void stringKey() {
-        stringKey(false);
+    public void stringLex() {
+        stringLex(false);
     }
 
     @Test
-    public void stringKeyDesc() {
-        stringKey(true);
+    public void stringLexDesc() {
+        stringLex(true);
     }
 
-    private void stringKey(boolean desc) {
+    private void stringLex(boolean desc) {
         var rnd = new Random(4365914224358570741L);
 
         var all = new TreeMap<String, byte[]>(new CodePointComparator());
 
         for (int i=0; i<1000; i++) {
-            stringKey(all, desc, rnd, 0, 1000, 0xd7ff);
+            stringLex(all, desc, rnd, 0, 1000, 0xd7ff);
         }
 
         for (int i=0; i<1000; i++) {
-            stringKey(all, desc, rnd, 0, 1000);
+            stringLex(all, desc, rnd, 0, 1000);
         }
 
         var allEncoded = new byte[all.size()][];
@@ -122,13 +122,13 @@ public class RowUtilsTest {
         }
     }
 
-    private void stringKey(Map<String, byte[]> all, boolean desc,
+    private void stringLex(Map<String, byte[]> all, boolean desc,
                            Random rnd, int minLen, int maxLen)
     {
-        stringKey(all, desc, rnd, minLen, maxLen, Character.MAX_CODE_POINT);
+        stringLex(all, desc, rnd, minLen, maxLen, Character.MAX_CODE_POINT);
     }
 
-    private void stringKey(Map<String, byte[]> all, boolean desc,
+    private void stringLex(Map<String, byte[]> all, boolean desc,
                            Random rnd, int minLen, int maxLen, int maxCodePoint)
     {
         String str;
@@ -138,32 +138,32 @@ public class RowUtilsTest {
 
         byte[] encoded;
         {
-            int len = RowUtils.lengthStringKey(str);
+            int len = RowUtils.lengthStringLex(str);
 
             encoded = new byte[len];
             int offset;
             if (desc) {
-                offset = RowUtils.encodeStringKeyDesc(encoded, 0, str);
+                offset = RowUtils.encodeStringLexDesc(encoded, 0, str);
             } else {
-                offset = RowUtils.encodeStringKey(encoded, 0, str);
+                offset = RowUtils.encodeStringLex(encoded, 0, str);
             }
 
             assertEquals(encoded.length, offset);
         }
 
-        assertEquals(encoded.length, RowUtils.lengthStringKey(encoded, 0));
+        assertEquals(encoded.length, RowUtils.lengthStringLex(encoded, 0));
 
         if (desc) {
-            assertEquals(str, RowUtils.decodeStringKeyDesc(encoded, 0, encoded.length));
+            assertEquals(str, RowUtils.decodeStringLexDesc(encoded, 0, encoded.length));
         } else {
-            assertEquals(str, RowUtils.decodeStringKey(encoded, 0, encoded.length));
+            assertEquals(str, RowUtils.decodeStringLex(encoded, 0, encoded.length));
         }
 
         all.put(str, encoded);
     }
 
     /**
-     * Java Strings are naturally ordered by UTF-16 chars, but encodeStringKey orders by
+     * Java Strings are naturally ordered by UTF-16 chars, but encodeStringLex orders by
      * Unicode codepoints, which is more accurate.
      */
     static class CodePointComparator implements Comparator<String> {
@@ -174,22 +174,22 @@ public class RowUtilsTest {
     }
 
     @Test
-    public void bigIntegerKey() {
-        bigIntegerKey(false);
+    public void bigIntegerLex() {
+        bigIntegerLex(false);
     }
 
     @Test
-    public void bigIntegerKeyDesc() {
-        bigIntegerKey(true);
+    public void bigIntegerLexDesc() {
+        bigIntegerLex(true);
     }
 
-    private void bigIntegerKey(boolean desc) {
+    private void bigIntegerLex(boolean desc) {
         var rnd = new Random(1316229822956025521L);
 
         var all = new TreeMap<BigInteger, byte[]>();
 
         for (int i=0; i<1000; i++) {
-            bigIntegerKey(all, desc, rnd, 500);
+            bigIntegerLex(all, desc, rnd, 500);
         }
 
         var allEncoded = new byte[all.size()][];
@@ -214,7 +214,7 @@ public class RowUtilsTest {
         }
     }
 
-    private void bigIntegerKey(Map<BigInteger, byte[]> all, boolean desc, Random rnd, int maxLen) {
+    private void bigIntegerLex(Map<BigInteger, byte[]> all, boolean desc, Random rnd, int maxLen) {
         BigInteger bi;
         do {
             bi = RowTestUtils.randomBigInteger(rnd, maxLen);
@@ -233,15 +233,15 @@ public class RowUtilsTest {
 
             int offset;
             if (desc) {
-                offset = RowUtils.encodeBigIntegerKeyDesc(encoded, 0, bytes);
+                offset = RowUtils.encodeBigIntegerLexDesc(encoded, 0, bytes);
             } else {
-                offset = RowUtils.encodeBigIntegerKey(encoded, 0, bytes);
+                offset = RowUtils.encodeBigIntegerLex(encoded, 0, bytes);
             }
 
             assertEquals(encoded.length, offset);
         }
 
-        long result = RowUtils.decodeBigIntegerKeyHeader(encoded, 0);
+        long result = RowUtils.decodeBigIntegerLexHeader(encoded, 0);
 
         int offset = (int) result;
         int remaining = (int) (result >> 32);
