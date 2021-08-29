@@ -18,6 +18,7 @@
 package org.cojen.tupl.rows;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -208,10 +209,17 @@ class RowGen {
     public ColumnCodec[] valueCodecs() {
         ColumnCodec[] codecs = mValueCodecs;
 
-        if (codecs == null) {
-            // Encode fixed sized columns first (primitives), then nullable primitives, then
-            // the rest in natural order (lexicographical).
-            var infos = new ArrayList<ColumnInfo>(info.valueColumns.values());
+        if (codecs != null) {
+            return codecs;
+        }
+
+        var infos = new ArrayList<ColumnInfo>(info.valueColumns.values());
+
+        SecondaryInfo sInfo;
+        if (!(info instanceof SecondaryInfo) || !(sInfo = ((SecondaryInfo) info)).isAltKey) {
+            // Encode fixed sized columns first (primitives), then nullable primitives, and
+            // then the remaining in natural order (lexicographical).
+
             infos.sort((a, b) -> {
                 int ap = a.plainTypeCode();
                 int bp = b.plainTypeCode();
@@ -234,10 +242,55 @@ class RowGen {
                 return 0;
             });
 
-            mValueCodecs = codecs = ColumnCodec.make(infos, false);
+            codecs = ColumnCodec.make(infos, false);
+        } else {
+            // For alternate keys, encode fixed sized columns first (primitives), then the same
+            // order as the primary key columns, and then the remaining in natural order
+            // (lexicographical). It's generally not expected that there will be any "remaining"
+            // columns because alternate keys cannot currently be defined as covering indexes.
+            // In other words, all value columns of an alternate key are part of the primary key.
+
+            RowInfo primaryInfo = sInfo.primaryInfo;
+            Map<String, ColumnInfo> primaryKeys = primaryInfo.keyColumns;
+
+            infos.sort((a, b) -> {
+                int ap = a.plainTypeCode();
+                int bp = b.plainTypeCode();
+
+                if (ColumnInfo.isPrimitive(ap)) {
+                    if (!ColumnInfo.isPrimitive(bp)) {
+                        return -1;
+                    }
+                } else if (ColumnInfo.isPrimitive(bp)) {
+                    return 1;
+                }
+
+                if (primaryKeys.containsKey(a.name)) {
+                    if (!primaryKeys.containsKey(b.name)) {
+                        return -1;
+                    }
+                } else if (primaryKeys.containsKey(b.name)) {
+                    return 1;
+                }
+
+                return 0;
+            });
+
+            // To reduce the cost of loading by primary key, alternate key columns should adopt
+            // the same encoding format as primary key columns, when they're not similar. If
+            // the primary key is using a complex lexicographical encoding, then the alternate
+            // key should do the same. In other cases no conversion is necessary, or the
+            // conversion is cheap.
+
+            var pkCodecs = new HashMap<String, ColumnCodec>();
+            for (ColumnCodec codec : primaryInfo.rowGen().keyCodecs()) {
+                pkCodecs.put(codec.mInfo.name, codec);
+            }
+
+            codecs = ColumnCodec.make(infos, pkCodecs);
         }
 
-        return codecs;
+        return mValueCodecs = codecs;
     }
 
     /**

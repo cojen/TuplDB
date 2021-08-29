@@ -635,7 +635,7 @@ public class RowStore {
         byte type = desc[0];
         int offset = 1;
 
-        var info = new SecondaryInfo(type == 'A');
+        var info = new SecondaryInfo(primaryInfo, type == 'A');
 
         int numKeys = decodePrefixPF(desc, offset);
         offset += lengthPrefixPF(numKeys);

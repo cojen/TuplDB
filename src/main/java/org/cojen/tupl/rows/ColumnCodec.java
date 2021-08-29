@@ -76,6 +76,35 @@ abstract class ColumnCodec {
     }
 
     /**
+     * Returns an array of new stateless ColumnCodec instances, favoring non-lexicographical
+     * encoding, but adopting the encoding from the given map if preferred.
+     */
+    static ColumnCodec[] make(Collection<ColumnInfo> infos, Map<String, ColumnCodec> pkCodecs) {
+        var codecs = new ColumnCodec[infos.size()];
+
+        if (codecs.length != 0) {
+            int slot = 0;
+            Iterator<ColumnInfo> it = infos.iterator();
+            ColumnInfo info = it.next();
+            while (true) {
+                boolean hasNext = it.hasNext();
+                ColumnCodec codec = make(info, false, !hasNext);
+                ColumnCodec pkCodec = pkCodecs.get(info.name);
+                if (pkCodec != null && (pkCodec.equals(codec) || !pkCodec.similarTo(codec))) {
+                    codec = pkCodec;
+                }
+                codecs[slot++] = codec;
+                if (!hasNext) {
+                    break;
+                }
+                info = it.next();
+            }
+        }
+
+        return codecs;
+    }
+
+    /**
      * Returns a new stateless ColumnCodec instance.
      *
      * @param lex true to use lexicographical encoding

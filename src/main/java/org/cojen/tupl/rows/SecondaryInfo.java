@@ -24,10 +24,12 @@ package org.cojen.tupl.rows;
  * @see RowStore#indexRowInfo
  */
 class SecondaryInfo extends RowInfo {
+    final RowInfo primaryInfo;
     final boolean isAltKey;
 
-    SecondaryInfo(boolean isAltKey) {
+    SecondaryInfo(RowInfo primaryInfo, boolean isAltKey) {
         super(null);
+        this.primaryInfo = primaryInfo;
         this.isAltKey = isAltKey;
     }
 

@@ -37,6 +37,11 @@ final class LexPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
     }
 
     @Override
+    protected boolean doSimilarTo(ColumnCodec codec) {
+        return false;
+    }
+
+    @Override
     boolean isLast() {
         return false;
     }
