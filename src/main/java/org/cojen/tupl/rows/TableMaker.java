@@ -191,9 +191,12 @@ public class TableMaker {
 
         for (int step = 0; step < 2; step++) {
             // Key columns are numbered before value columns. Add checks in two steps.
-            var baseColumns = step == 0 ? mRowInfo.keyColumns : mRowInfo.valueColumns;
+            // Note that the codecs are accessed, to match encoding order.
+            var baseCodecs = step == 0 ? mRowGen.keyCodecs() : mRowGen.valueCodecs();
 
-            for (ColumnInfo info : baseColumns.values()) {
+            for (ColumnCodec codec : baseCodecs) {
+                ColumnInfo info = codec.mInfo;
+
                 if (columns.containsKey(info.name)) {
                     mask |= RowGen.stateFieldMask(num);
                 }
@@ -237,9 +240,12 @@ public class TableMaker {
 
         for (int step = 0; step < 2; step++) {
             // Key columns are numbered before value columns. Add checks in two steps.
-            var baseColumns = step == 0 ? mRowInfo.keyColumns : mRowInfo.valueColumns;
+            // Note that the codecs are accessed, to match encoding order.
+            var baseCodecs = step == 0 ? mRowGen.keyCodecs() : mRowGen.valueCodecs();
 
-            for (ColumnInfo info : baseColumns.values()) {
+            for (ColumnCodec codec : baseCodecs) {
+                ColumnInfo info = codec.mInfo;
+
                 if (columns.containsKey(info.name)) {
                     mask |= RowGen.stateFieldMask(num);
                 }
@@ -270,9 +276,12 @@ public class TableMaker {
 
         for (int step = 0; step < 2; step++) {
             // Key columns are numbered before value columns. Add checks in two steps.
-            var baseColumns = step == 0 ? mRowInfo.keyColumns : mRowInfo.valueColumns;
+            // Note that the codecs are accessed, to match encoding order.
+            var baseCodecs = step == 0 ? mRowGen.keyCodecs() : mRowGen.valueCodecs();
 
-            for (ColumnInfo info : baseColumns.values()) {
+            for (ColumnCodec codec : baseCodecs) {
+                ColumnInfo info = codec.mInfo;
+
                 if (columns.containsKey(info.name)) {
                     mask |= RowGen.stateFieldMask(num, 0b10);
                 }
@@ -1252,9 +1261,10 @@ public class TableMaker {
         }
 
         // Clear the value column state fields. Skip the key columns, which are numbered first.
+        // Note that the codecs are accessed, to match encoding order.
         int num = mRowInfo.keyColumns.size();
         int mask = 0;
-        for (ColumnInfo info : mRowInfo.valueColumns.values()) {
+        for (ColumnCodec codec : mRowGen.valueCodecs()) {
             mask |= RowGen.stateFieldMask(num);
             if (isMaskReady(++num, mask)) {
                 mask = maskRemainder(num, mask);
@@ -1299,11 +1309,8 @@ public class TableMaker {
         markAllClean(rowVar, mRowInfo);
     }
 
-    static void markAllClean(Variable rowVar, RowInfo info) {
-        markAll(rowVar, info, 0x5555_5555);
-    }
-
-    private static void markAll(Variable rowVar, RowInfo info, int mask) {
+    private static void markAllClean(Variable rowVar, RowInfo info) {
+        int mask = 0x5555_5555;
         int i = 0;
         String[] stateFields = info.rowGen().stateFields();
         for (; i < stateFields.length - 1; i++) {
