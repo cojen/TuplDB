@@ -162,7 +162,7 @@ public class RowStore {
         }
 
         // Throws an exception if type is malformed.
-        RowGen gen = RowInfo.find(type).rowGen();
+        RowInfo info = RowInfo.find(type);
 
         // Can use NO_FLUSH because transaction will be only used for reading data.
         Transaction txn = mSchemata.newTransaction(DurabilityMode.NO_FLUSH);
@@ -176,7 +176,7 @@ public class RowStore {
                 int schemaVersion = decodeIntLE(value, 0);
                 String name = type.getName();
                 RowInfo currentInfo = decodeExisting(txn, name, ix.id(), value, schemaVersion);
-                if (!gen.info.keyColumns.equals(currentInfo.keyColumns)) {
+                if (!info.keyColumns.equals(currentInfo.keyColumns)) {
                     // FIXME: Better exception.
                     throw new IllegalStateException("Cannot alter primary key: " + name);
                 }
@@ -191,7 +191,7 @@ public class RowStore {
             }
 
             try {
-                var mh = new TableMaker(this, type, gen, ix.id(), secondaries).finish();
+                var mh = new TableMaker(this, type, info.rowGen(), ix.id(), secondaries).finish();
                 table = (AbstractTable) mh.invoke(ix);
             } catch (Throwable e) {
                 throw rethrow(e);
@@ -207,7 +207,7 @@ public class RowStore {
         // Attempt to eagerly update schema metadata and secondary indexes.
         try {
             // Pass false for notify because examineSecondaries will be called below.
-            schemaVersion(gen.info, ix.id(), false);
+            schemaVersion(info, ix.id(), false);
         } catch (IOException e) {
             // Ignore and try again when storing rows or when the leadership changes.
         }
