@@ -600,8 +600,6 @@ public class TableMaker {
                         }
                     }
                 }
-
-                markAllClean(mm.param(0), dstRowInfo);
             }
 
             return mm.finish();
@@ -707,6 +705,7 @@ public class TableMaker {
             mm.return_(false);
             notNull.here();
             mm.invoke("decodeValue", rowVar, valueVar);
+            markAllClean(rowVar);
             mm.return_(true);
         }
     }
@@ -836,6 +835,7 @@ public class TableMaker {
         var copyVar = mm.new_(mRowClass);
         copyFields(mm, rowVar, copyVar, mRowInfo.keyColumns.values());
         mm.invoke("decodeValue", copyVar, resultVar);
+        markAllClean(copyVar);
         mm.return_(copyVar);
 
         // Now implement the exchange bridge method.
