@@ -446,9 +446,25 @@ class RowInfo extends ColumnSet {
     private void examineIndex(Set<String> messages, NavigableSet<ColumnSet> fullSet,
                               String[] columnNames, boolean forAltKey)
     {
+        ColumnSet set = examineIndex(messages, columnNames, forAltKey);
+        if (set != null) {
+            fullSet.add(set);
+        }
+    }
+
+    /**
+     * Examines an alternate key or secondary index and fills in the key and data columns.
+     * The "allColumns" map isn't filled in, and some column types might be unspecified.
+     *
+     * @param messages error messages are added to this set (optional)
+     * @return null if there was an error
+     */
+    ColumnSet examineIndex(Set<String> messages, String[] columnNames, boolean forAltKey) {
         if (columnNames.length == 0) {
-            messages.add(noColumns(forAltKey ? "alternate key" : "secondary index"));
-            return;
+            if (messages != null) {
+                messages.add(noColumns(forAltKey ? "alternate key" : "secondary index"));
+            }
+            return null;
         }
 
         var set = new ColumnSet();
@@ -471,8 +487,10 @@ class RowInfo extends ColumnSet {
             ColumnInfo info = allColumns.get(name);
 
             if (info == null) {
-                messages.add(notExist(forAltKey ? "alternate key" : "secondary index", name));
-                return;
+                if (messages != null) {
+                    messages.add(notExist(forAltKey ? "alternate key" : "secondary index", name));
+                }
+                return null;
             }
 
             // Use intern'd string.
@@ -497,8 +515,10 @@ class RowInfo extends ColumnSet {
                 set.keyColumns = new HashMap<>(1); // might be modified during index set reduction
                 set.keyColumns.put(name, info);
             } else if (set.keyColumns.put(name, info) != null) {
-                messages.add(duplicate(forAltKey ? "alternate key" : "secondary index", name));
-                return;
+                if (messages != null) {
+                    messages.add(duplicate(forAltKey ? "alternate key" : "secondary index", name));
+                }
+                return null;
             }
         }
 
@@ -507,8 +527,10 @@ class RowInfo extends ColumnSet {
         if (forAltKey) {
             if (hasFullPrimaryKey) {
                 // Alternate key is effectively a secondary index and doesn't affect uniqueness.
-                messages.add("alternate key contains all columns of the primary key");
-                return;
+                if (messages != null) {
+                    messages.add("alternate key contains all columns of the primary key");
+                }
+                return null;
             }
 
             // Add the remaining primary key columns as data columns.
@@ -559,7 +581,7 @@ class RowInfo extends ColumnSet {
             }
         }
 
-        fullSet.add(set);
+        return set;
     }
 
     private static String notExist(String prefix, String name) {

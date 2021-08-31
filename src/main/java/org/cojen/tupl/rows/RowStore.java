@@ -217,6 +217,129 @@ public class RowStore {
         return table;
     }
 
+    public <R> Table<R> alternateKeyTable(AbstractTable<R> primaryTable, String... columns)
+        throws IOException
+    {
+        return indexTable(primaryTable, true, columns);
+    }
+
+    public <R> Table<R> secondaryIndexTable(AbstractTable<R> primaryTable, String... columns)
+        throws IOException
+    {
+        return indexTable(primaryTable, false, columns);
+    }
+
+    @SuppressWarnings("unchecked")
+    private <R> Table<R> indexTable(AbstractTable<R> primaryTable, boolean alt, String... columns)
+        throws IOException
+    {
+        // FIXME: Cache it, normalize descriptor key.
+
+        Class<R> rowType = primaryTable.rowType();
+        RowInfo rowInfo = RowInfo.find(rowType);
+        ColumnSet cs = rowInfo.examineIndex(null, columns, alt);
+
+        if (cs == null) {
+            return null;
+        }
+
+        var encoder = new Encoder(columns.length * 16);
+        char type = alt ? 'A' : 'I';
+        byte[] search = EncodedRowInfo.encodeDescriptor(type, encoder, cs);
+
+        View secondariesView = viewExtended(primaryTable.mSource.id(), K_SECONDARY);
+        secondariesView = secondariesView.viewPrefix(new byte[] {(byte) type}, 0);
+
+        // Identify the first match. The ASCII value for '+' is less than '-', and so a match
+        // for ascending order is generally found first when an unspecified order was given.
+        long indexId;
+        RowInfo indexRowInfo;
+        byte[] descriptor;
+        find: {
+            try (Cursor c = secondariesView.newCursor(null)) {
+                for (c.first(); c.key() != null; c.next()) {
+                    if (!descriptorMatches(search, c.key())) {
+                        continue;
+                    }
+                    // FIXME: return null if not active
+                    indexId = decodeLongLE(c.value(), 0);
+                    indexRowInfo = indexRowInfo(RowInfo.find(rowType), c.key());
+                    descriptor = c.key();
+                    break find;
+                }
+            }
+            return null;
+        }
+
+        Index ix = mDatabase.indexById(indexId);
+
+        if (ix == null) {
+            return null;
+        }
+
+        // Indexes don't have indexes.
+        indexRowInfo.alternateKeys = Collections.emptyNavigableSet();
+        indexRowInfo.secondaryIndexes = Collections.emptyNavigableSet();
+
+        AbstractTable table;
+
+        try {
+            var maker = new TableMaker
+                (this, rowType, rowInfo.rowGen(), indexRowInfo.rowGen(), descriptor, ix.id());
+            var mh = maker.finish();
+            table = (AbstractTable) mh.invoke(ix);
+        } catch (Throwable e) {
+            throw rethrow(e);
+        }
+
+        return table;
+    }
+
+    /**
+     * Compares descriptors as encoded by EncodedRowInfo.encodeDescriptor.
+     *
+     * @param search can have '~' unspecified orderings
+     * @param found should not have any unspecified orderings
+     */
+    private static boolean descriptorMatches(byte[] search, byte[] found) {
+        if (search.length != found.length) {
+            return false;
+        }
+
+        int offset = 1; // skip the type prefix
+
+        for (int part=1; part<=2; part++) {
+            int numColumns = decodePrefixPF(search, offset);
+            if (numColumns != decodePrefixPF(found, offset)) {
+                return false;
+            }
+            offset += lengthPrefixPF(numColumns);
+
+            for (int i=0; i<numColumns; i++) {
+                if (part == 1) { // first part examines the "keys" portion of the descriptor
+                    byte ordering = search[offset];
+                    if (ordering != found[offset] && ordering != '~') {
+                        return false;
+                    }
+                    offset++;
+                }
+                int nameLength = decodePrefixPF(search, offset);
+                if (nameLength != decodePrefixPF(found, offset)) {
+                    return false;
+                }
+                if (!Arrays.equals(search, offset, offset + nameLength,
+                                   found, offset, offset + nameLength))
+                {
+                    return false;
+                }
+                offset += lengthPrefixPF(nameLength);
+                offset += nameLength;
+            }
+        }
+
+        return offset == search.length; // should always be true unless descriptor is malformed
+    }
+
     private void registerToUpdateSchemata() {
         // The second task is invoked when leadership is lost, which sets things up for when
         // leadership is acquired again.
@@ -949,7 +1072,16 @@ public class RowStore {
 
             encoder.writePrefixPF(cs.keyColumns.size());
             for (ColumnInfo column : cs.keyColumns.values()) {
-                encoder.writeByte(column.isDescending() ? '-' : '+');
+                int typeCode = column.typeCode;
+                char prefix;
+                if (typeCode == -1) {
+                    // The "unspecified" prefix is expected only when calling examineIndex from
+                    // the indexTable method.
+                    prefix = '~';
+                } else {
+                    prefix = ColumnInfo.isDescending(typeCode) ? '-' : '+';
+                }
+                encoder.writeByte(prefix);
                 encoder.writeStringUTF(column.name);
             }
 

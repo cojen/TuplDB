@@ -35,7 +35,9 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.Index;
+import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
+import org.cojen.tupl.UnmodifiableViewException;
 
 import org.cojen.tupl.filter.RowFilter;
 
@@ -53,25 +55,69 @@ public class TableMaker {
     private final Class<?> mRowType;
     private final RowGen mRowGen;
     private final RowInfo mRowInfo;
+    private final RowGen mCodecGen;
     private final Class<?> mRowClass;
+    private final byte[] mSecondaryDescriptor;
     private final long mIndexId;
     private final boolean mTriggers;
     private final ClassMaker mClassMaker;
 
     /**
+     * Constructor for primary table.
+     *
+     * @param store generated class is pinned to this specific instance
+     * @param rowGen describes row encoding
+     * @param triggers pass true to support triggers
+     */
+    TableMaker(RowStore store, Class<?> type, RowGen rowGen, long indexId, boolean triggers) {
+        this(store, type, rowGen, rowGen, null, indexId, triggers);
+    }
+
+    /**
+     * Constructor for secondary index view table.
+     *
+     * @param store generated class is pinned to this specific instance
+     * @param rowGen describes row encoding
+     * @param codecGen describes key and value codecs (different than gen)
+     * @param secondaryDesc secondary index descriptor
+     */
+    TableMaker(RowStore store, Class<?> type, RowGen rowGen, RowGen codecGen,
+               byte[] secondaryDesc, long indexId)
+    {
+        this(store, type, rowGen, codecGen, secondaryDesc, indexId, false);
+    }
+
+    /**
+     * @param codecGen same as rowGen for primary table, different for secondary index view
      * @param store generated class is pinned to this specific instance
      * @param triggers pass true to support triggers
      */
-    TableMaker(RowStore store, Class<?> type, RowGen gen, long indexId, boolean triggers) {
+    private TableMaker(RowStore store, Class<?> type, RowGen rowGen, RowGen codecGen,
+                       byte[] secondaryDesc, long indexId, boolean triggers)
+    {
         mStore = store;
         mRowType = type;
-        mRowGen = gen;
-        mRowInfo = gen.info;
+        mRowGen = rowGen;
+        mRowInfo = rowGen.info;
+        mCodecGen = codecGen;
         mRowClass = RowMaker.find(type);
+        mSecondaryDescriptor = secondaryDesc;
         mIndexId = indexId;
         mTriggers = triggers;
-        mClassMaker = gen.beginClassMaker(getClass(), type, "Table")
-            .extend(AbstractTable.class).final_().public_();
+
+        String suffix = "Table";
+        Class baseClass;
+
+        if (isPrimaryTable()) {
+            baseClass = AbstractTable.class;
+        } else {
+            baseClass = AbstractTableView.class;
+            suffix += "View";
+        }
+
+        mClassMaker = codecGen.beginClassMaker(getClass(), type, suffix).extend(baseClass);
+
+        mClassMaker.final_().public_();
     }
 
     /**
@@ -85,7 +131,11 @@ public class TableMaker {
 
         {
             MethodMaker mm = mClassMaker.addConstructor(Index.class);
-            mm.invokeSuperConstructor(mm.param(0), mTriggers);
+            if (isPrimaryTable()) {
+                mm.invokeSuperConstructor(mm.param(0), mTriggers);
+            } else {
+                mm.invokeSuperConstructor(mm.param(0));
+            }
         }
 
         // Add the simple rowType method.
@@ -104,51 +154,68 @@ public class TableMaker {
 
         // Add private methods which check that required columns are set.
         {
-            addCheckSet("checkPrimaryKeySet", mRowInfo.keyColumns);
+            addCheckSet("checkPrimaryKeySet", mCodecGen.info.keyColumns);
 
-            //addCheckSet("checkValue", mRowInfo.valueColumns);
+            //addCheckSet("checkValue", mCodecGen.info.valueColumns);
 
-            addCheckSet("checkAllSet", mRowInfo.allColumns);
-            addRequireSet("requireAllSet", mRowInfo.allColumns);
+            if (isPrimaryTable()) {
+                addCheckSet("checkAllSet", mCodecGen.info.allColumns);
+                addRequireSet("requireAllSet", mCodecGen.info.allColumns);
+            }
 
             int i = 0;
-            for (ColumnSet altKey : mRowInfo.alternateKeys) {
+            for (ColumnSet altKey : mCodecGen.info.alternateKeys) {
                 addCheckSet("checkAltKeySet$" + i, altKey.keyColumns);
                 i++;
             }
 
-            if (!mRowInfo.valueColumns.isEmpty()) {
-                addCheckAllDirty("checkValueAllDirty", mRowInfo.valueColumns);
+            if (isPrimaryTable() && !mCodecGen.info.valueColumns.isEmpty()) {
+                addCheckAllDirty("checkValueAllDirty", mCodecGen.info.valueColumns);
             }
 
-            addCheckAnyDirty("checkPrimaryKeyAnyDirty", mRowInfo.keyColumns);
+            addCheckAnyDirty("checkPrimaryKeyAnyDirty", mCodecGen.info.keyColumns);
         }
 
         // Add encode/decode methods.
 
-        ColumnCodec[] keyCodecs = mRowGen.keyCodecs();
+        ColumnCodec[] keyCodecs = mCodecGen.keyCodecs();
         addEncodeColumnsMethod("encodePrimaryKey", keyCodecs);
         addDecodeColumnsMethod("decodePrimaryKey", keyCodecs);
 
-        addDynamicEncodeValueColumns();
-        addDynamicDecodeValueColumns();
+        if (isPrimaryTable()) {
+            addDynamicEncodeValueColumns();
+            addDynamicDecodeValueColumns();
+        } else {
+            // The encodeValue method is only used for storing rows into the table. By making
+            // it always fail, there's no backdoor to permit modifications.
+            mClassMaker.addMethod(byte[].class, "encodeValue", mRowClass)
+                .static_().new_(UnmodifiableViewException.class).throw_();
+
+            addDecodeColumnsMethod("decodeValue", mCodecGen.valueCodecs());
+        }
 
         // Add the public load/store methods, etc.
 
         addByKeyMethod("load");
         addByKeyMethod("exists");
-        addByKeyMethod("delete");
 
-        addStoreMethod("store", null);
-        addStoreMethod("exchange", mRowType);
-        addStoreMethod("insert", boolean.class);
-        addStoreMethod("replace", boolean.class);
+        if (isPrimaryTable()) {
+            addByKeyMethod("delete");
 
-        addDoUpdateMethod();
-        addUpdateMethod("update", false);
-        addUpdateMethod("merge", true);
+            addStoreMethod("store", null);
+            addStoreMethod("exchange", mRowType);
+            addStoreMethod("insert", boolean.class);
+            addStoreMethod("replace", boolean.class);
 
-        // TODO: define update, merge, and remove methods that accept a match row
+            addDoUpdateMethod();
+            addUpdateMethod("update", false);
+            addUpdateMethod("merge", true);
+
+            // TODO: define update, merge, and remove methods that accept a match row
+
+            addTableViewMethod("alternateKeyTable");
+            addTableViewMethod("secondaryIndexTable");
+        }
 
         addUnfilteredMethod();
 
@@ -161,6 +228,10 @@ public class TableMaker {
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }
+    }
+
+    private boolean isPrimaryTable() {
+        return mRowGen == mCodecGen;
     }
 
     /**
@@ -659,7 +730,7 @@ public class TableMaker {
         Label ready = mm.label();
         mm.invoke("checkPrimaryKeySet", rowVar).ifTrue(ready);
 
-        if (mRowInfo.alternateKeys.isEmpty()) {
+        if (mCodecGen.info.alternateKeys.isEmpty()) {
             mm.new_(IllegalStateException.class, "Primary key isn't fully specified").throw_();
         } else {
             // FIXME: check alternate keys too, and load using a join
@@ -842,7 +913,7 @@ public class TableMaker {
         found.here();
 
         var copyVar = mm.new_(mRowClass);
-        copyFields(mm, rowVar, copyVar, mRowInfo.keyColumns.values());
+        copyFields(mm, rowVar, copyVar, mCodecGen.info.keyColumns.values());
         mm.invoke("decodeValue", copyVar, resultVar);
         markAllClean(copyVar);
         mm.return_(copyVar);
@@ -893,7 +964,7 @@ public class TableMaker {
         Label ready = mm.label();
         mm.invoke("checkPrimaryKeySet", rowVar).ifTrue(ready);
 
-        if (mRowInfo.alternateKeys.isEmpty()) {
+        if (mCodecGen.info.alternateKeys.isEmpty()) {
             mm.new_(IllegalStateException.class, "Primary key isn't fully specified").throw_();
         } else {
             // FIXME: check alternate keys too, and load using a join
@@ -912,7 +983,7 @@ public class TableMaker {
         // If all value columns are dirty, replace the whole row and commit.
         {
             Label cont;
-            if (mRowInfo.valueColumns.isEmpty()) {
+            if (mCodecGen.info.valueColumns.isEmpty()) {
                 // If the checkValueAllDirty method was defined, it would always return true.
                 cont = null;
             } else {
@@ -1215,7 +1286,7 @@ public class TableMaker {
             cont.here();
         }
 
-        markAllClean(rowVar, rowInfo);
+        markAllClean(rowVar, rowGen, rowGen);
     }
 
     /**
@@ -1306,18 +1377,44 @@ public class TableMaker {
     }
 
     private void markAllClean(Variable rowVar) {
-        markAllClean(rowVar, mRowInfo);
+        markAllClean(rowVar, mRowGen, mCodecGen);
     }
 
-    private static void markAllClean(Variable rowVar, RowInfo info) {
-        int mask = 0x5555_5555;
-        int i = 0;
-        String[] stateFields = info.rowGen().stateFields();
-        for (; i < stateFields.length - 1; i++) {
+    private static void markAllClean(Variable rowVar, RowGen rowGen, RowGen codecGen) {
+        if (rowGen == codecGen) { // isPrimaryTable, so truly mark all clean
+            int mask = 0x5555_5555;
+            int i = 0;
+            String[] stateFields = rowGen.stateFields();
+            for (; i < stateFields.length - 1; i++) {
+                rowVar.field(stateFields[i]).set(mask);
+            }
+            mask >>>= (32 - ((rowGen.info.allColumns.size() & 0b1111) << 1));
             rowVar.field(stateFields[i]).set(mask);
+            return;
         }
-        mask >>>= (32 - ((info.allColumns.size() & 0b1111) << 1));
-        rowVar.field(stateFields[i]).set(mask);
+
+        // Only mark columns clean that are defined by codecGen. All others are unset.
+
+        final Map<String, ColumnInfo> columns = codecGen.info.allColumns;
+        final int maxNum = rowGen.info.allColumns.size();
+
+        int num = 0, mask = 0;
+
+        for (int step = 0; step < 2; step++) {
+            // Key columns are numbered before value columns. Add checks in two steps.
+            // Note that the codecs are accessed, to match encoding order.
+            var baseCodecs = step == 0 ? rowGen.keyCodecs() : rowGen.valueCodecs();
+
+            for (ColumnCodec codec : baseCodecs) {
+                if (columns.containsKey(codec.mInfo.name)) {
+                    mask |= RowGen.stateFieldMask(num, 0b01); // clean state
+                }
+                if ((++num & 0b1111) == 0 || num >= maxNum) {
+                    rowVar.field(rowGen.stateField(num - 1)).set(mask);
+                    mask = 0;
+                }
+            }
+        }
     }
 
     /**
@@ -1340,20 +1437,37 @@ public class TableMaker {
         return rowVar.field(mRowGen.stateField(columnNum));
     }
 
+    private void addTableViewMethod(String variant) {
+        MethodMaker mm = mClassMaker.addMethod(Table.class, variant, String[].class);
+        mm.varargs().public_();
+        // Call inherited method.
+        mm.return_(mm.invoke(variant, mm.field("storeRef"), mm.param(0)));
+    }
+
     /**
      * Defines a method which returns a singleton RowDecoderEncoder instance.
      */
     private void addUnfilteredMethod() {
         MethodMaker mm = mClassMaker.addMethod(RowDecoderEncoder.class, "unfiltered").protected_();
-        var condy = mm.var(TableMaker.class).condy("condyDefineUnfiltered", mRowType, mRowClass);
+        var condy = mm.var(TableMaker.class).condy
+            ("condyDefineUnfiltered", mRowType, mRowClass, mSecondaryDescriptor);
         mm.return_(condy.invoke(RowDecoderEncoder.class, "unfiltered"));
     }
 
+    /**
+     * @param secondaryDesc pass null for primary table
+     */
     public static Object condyDefineUnfiltered(MethodHandles.Lookup lookup, String name, Class type,
-                                               Class rowType, Class rowClass)
+                                               Class rowType, Class rowClass, byte[] secondaryDesc)
         throws Throwable
     {
         RowInfo rowInfo = RowInfo.find(rowType);
+        RowGen rowGen = rowInfo.rowGen();
+        RowGen codecGen = rowGen;
+
+        if (secondaryDesc != null) {
+            codecGen = RowStore.indexRowInfo(rowInfo, secondaryDesc).rowGen();
+        }
 
         ClassMaker cm = RowGen.beginClassMaker
             (TableMaker.class, rowType, rowInfo, null, "Unfiltered")
@@ -1363,7 +1477,7 @@ public class TableMaker {
         cm.addConstructor().protected_();
 
         {
-            // Defined by RowDecoderEncoder.
+            // Specified by RowDecoderEncoder.
             MethodMaker mm = cm.addMethod
                 (Object.class, "decodeRow", byte[].class, byte[].class, Object.class).public_();
             var tableVar = mm.var(lookup.lookupClass());
@@ -1374,12 +1488,12 @@ public class TableMaker {
             hasRow.here();
             tableVar.invoke("decodePrimaryKey", rowVar, mm.param(0));
             tableVar.invoke("decodeValue", rowVar, mm.param(1));
-            markAllClean(rowVar, rowInfo);
+            markAllClean(rowVar, rowGen, codecGen);
             mm.return_(rowVar);
         }
 
         {
-            // Defined by RowDecoderEncoder.
+            // Specified by RowDecoderEncoder.
             MethodMaker mm = cm.addMethod(byte[].class, "encodeKey", Object.class).public_();
             var rowVar = mm.param(0).cast(rowClass);
             var tableVar = mm.var(lookup.lookupClass());
@@ -1391,7 +1505,7 @@ public class TableMaker {
         }
 
         {
-            // Defined by RowDecoderEncoder.
+            // Specified by RowDecoderEncoder.
             MethodMaker mm = cm.addMethod(byte[].class, "encodeValue", Object.class).public_();
             var rowVar = mm.param(0).cast(rowClass);
             var tableVar = mm.var(lookup.lookupClass());
@@ -1401,10 +1515,10 @@ public class TableMaker {
         {
             // Used by filter subclasses.
             MethodMaker mm = cm.addMethod(null, "markAllClean", rowClass).protected_().static_();
-            TableMaker.markAllClean(mm.param(0), rowInfo);
+            TableMaker.markAllClean(mm.param(0), rowGen, codecGen);
         }
 
-        {
+        if (rowGen == codecGen) { // isPrimaryTable, so a schema must be decoded
             // Used by filter subclasses. The int param is the schema version.
             MethodMaker mm = cm.addMethod
                 (MethodHandle.class, "decodeValueHandle", int.class).protected_().static_();
@@ -1419,10 +1533,18 @@ public class TableMaker {
 
     private void addFilteredFactoryMethod() {
         MethodMaker mm = mClassMaker.addMethod
-            (MethodHandle.class, "filteredFactory", String.class, RowFilter.class);
+            (MethodHandle.class, "filteredFactory", String.class, RowFilter.class).protected_();
+
+        Object secondaryDesc = null;
+
+        if (mSecondaryDescriptor != null) {
+            secondaryDesc = mm.var(byte[].class).setExact(mSecondaryDescriptor);
+        }
+
         var maker = mm.new_(RowFilterMaker.class, mm.field("storeRef"),
                             mm.class_(), mm.invoke("unfiltered").invoke("getClass"),
-                            mRowType, mIndexId, mm.param(0), mm.param(1));
+                            mRowType, secondaryDesc, mIndexId, mm.param(0), mm.param(1));
+
         mm.return_(maker.invoke("finish"));
     }
 }

@@ -28,14 +28,14 @@ class SecondaryInfo extends RowInfo {
     final boolean isAltKey;
 
     SecondaryInfo(RowInfo primaryInfo, boolean isAltKey) {
-        super(null);
+        super(primaryInfo.name);
         this.primaryInfo = primaryInfo;
         this.isAltKey = isAltKey;
     }
 
     @Override
     public String toString() {
-        return keyColumns.values() + " -> " + valueColumns.values() +
+        return "name: " + name + ", " + keyColumns.values() + " -> " + valueColumns.values() +
             ", allColumns: " + allColumns.values() + ", isAltKey: " + isAltKey;
     }
 }

@@ -70,6 +70,7 @@ public class RowFilterMaker<R> {
     private final Class<?> mTableClass;
     private final Class<R> mRowType;
     private final RowGen mRowGen;
+    private final boolean mIsPrimaryTable;
     private final long mIndexId;
     private final String mFilterStr;
     private final RowFilter mFilter;
@@ -82,15 +83,26 @@ public class RowFilterMaker<R> {
     /**
      * @param storeRef is passed along to the generated code
      * @param base defines the encode methods; the decode method will be overridden
+     * @param secondaryDesc pass null for primary table
      */
     public RowFilterMaker(WeakReference<RowStore> storeRef, Class<?> tableClass,
                           Class<? extends RowDecoderEncoder<R>> base,
-                          Class<R> rowType, long indexId, String filterStr, RowFilter filter)
+                          Class<R> rowType, byte[] secondaryDesc,
+                          long indexId, String filterStr, RowFilter filter)
     {
         mStoreRef = storeRef;
         mTableClass = tableClass;
         mRowType = rowType;
-        mRowGen = RowInfo.find(rowType).rowGen();
+
+        RowInfo rowInfo = RowInfo.find(rowType);
+        if (secondaryDesc == null) {
+            mRowGen = rowInfo.rowGen();
+            mIsPrimaryTable = true;
+        } else {
+            mRowGen = RowStore.indexRowInfo(rowInfo, secondaryDesc).rowGen();
+            mIsPrimaryTable = false;
+        }
+
         mIndexId = indexId;
         mFilterStr = filterStr;
         mFilter = filter;
@@ -129,21 +141,7 @@ public class RowFilterMaker<R> {
             }
         });
 
-        // The decode method is implemented using indy, to support multiple schema versions.
-        {
-            // Defined by RowDecoderEncoder.
-            MethodMaker mm = mFilterMaker.addMethod
-                (Object.class, "decodeRow", byte[].class, byte[].class, Object.class).public_();
-
-            var indy = mm.var(RowFilterMaker.class).indy
-                ("indyDecodeRow", mStoreRef, mTableClass, mRowType, mIndexId, mFilterStr, mFilter);
-
-            var valueVar = mm.param(1);
-            var schemaVersion = TableMaker.decodeSchemaVersion(mm, valueVar);
-
-            mm.return_(indy.invoke(Object.class, "decodeRow", null,
-                                   schemaVersion, mm.this_(), mm.param(0), valueVar, mm.param(2)));
-        }
+        addDecodeRowMethod();
 
         // Provide access to the inherited markAllClean method.
         {
@@ -183,6 +181,32 @@ public class RowFilterMaker<R> {
     private ColumnCodec codecFor(int colNum) {
         ColumnCodec[] codecs = mKeyCodecs;
         return colNum < codecs.length ? codecs[colNum] : mValueCodecs[colNum - codecs.length];
+    }
+
+    private void addDecodeRowMethod() {
+        // Specified by RowDecoderEncoder.
+        MethodMaker mm = mFilterMaker.addMethod
+            (Object.class, "decodeRow", byte[].class, byte[].class, Object.class).public_();
+
+        if (mIsPrimaryTable) {
+            // The decode method is implemented using indy, to support multiple schema versions.
+
+            var indy = mm.var(RowFilterMaker.class).indy
+                ("indyDecodeRow", mStoreRef, mTableClass, mRowType, mIndexId, mFilterStr, mFilter);
+
+            var valueVar = mm.param(1);
+            var schemaVersion = TableMaker.decodeSchemaVersion(mm, valueVar);
+
+            mm.return_(indy.invoke(Object.class, "decodeRow", null,
+                                   schemaVersion, mm.param(0), valueVar, mm.param(2), mm.this_()));
+        } else {
+            // Decoding secondary index row is simpler because it has no schema version.
+            Class<?> rowClass = RowMaker.find(mRowType);
+            var visitor = new DecodeVisitor
+                (mm, 0, mTableClass, rowClass, mRowGen, null, mm.this_());
+            mFilter.accept(visitor);
+            visitor.done();
+        }
     }
 
     public static CallSite indyDecodeRow(MethodHandles.Lookup lookup, String name, MethodType mt,
@@ -270,8 +294,10 @@ public class RowFilterMaker<R> {
             Class<?> rowClass = RowMaker.find(mRowType);
             RowGen rowGen = rowInfo.rowGen();
 
+            int valueOffset = RowUtils.lengthPrefixPF(schemaVersion);
+
             var visitor = new DecodeVisitor
-                (mm, schemaVersion, mTableClass, rowClass, rowGen, decoder);
+                (mm, valueOffset, mTableClass, rowClass, rowGen, decoder, null);
             filter.accept(visitor);
             visitor.done();
 
@@ -284,11 +310,12 @@ public class RowFilterMaker<R> {
      */
     private static class DecodeVisitor extends Visitor {
         private final MethodMaker mMaker;
-        private final int mSchemaVersion;
+        private final int mValueOffset;
         private final Class<?> mTableClass;
         private final Class<?> mRowClass;
         private final RowGen mRowGen;
         private final MethodHandle mDecoder;
+        private final Variable mDecoderVar;
 
         private final ColumnCodec[] mKeyCodecs, mValueCodecs;
 
@@ -301,21 +328,44 @@ public class RowFilterMaker<R> {
         private int mHighestLocatedValue;
 
         /**
-         * @param mm signature: R decodeRow(Decoder/filter, byte[] key, byte[] value, R row)
+         * Supports two forms of methods:
+         *
+         *     R decodeRow(byte[] key, byte[] value, R row, decoder/filter)
+         *     R decodeRow(byte[] key, byte[] value, R row)
+         *
+         * When using the first form, a decoder MethodHandle must be provided. When using the
+         * second form, a decoderVar msut be provided.
+
+         * @param mm signature: R decodeRow(byte[] key, byte[] value, R row [, decoder/filter])
+         * @param valueOffset offset to skip past the schema version
          * @param tableClass current table implementation class
          * @param rowClass current row implementation
          * @param rowGen actual row definition to be decoded
          * @param decoder performs full decoding of the value columns
+         * @param decoderVar the actual decoder/filter instance
          */
-        DecodeVisitor(MethodMaker mm, int schemaVersion,
-                      Class<?> tableClass, Class<?> rowClass, RowGen rowGen, MethodHandle decoder)
+        DecodeVisitor(MethodMaker mm, int valueOffset,
+                      Class<?> tableClass, Class<?> rowClass, RowGen rowGen,
+                      MethodHandle decoder, Variable decoderVar)
         {
             mMaker = mm;
-            mSchemaVersion = schemaVersion;
+            mValueOffset = valueOffset;
             mTableClass = tableClass;
             mRowClass = rowClass;
             mRowGen = rowGen;
             mDecoder = decoder;
+
+            if (decoderVar == null) {
+                if (decoder == null) {
+                    throw new IllegalArgumentException();
+                }
+                mDecoderVar = mm.param(3);
+            } else {
+                if (decoder != null) {
+                    throw new IllegalArgumentException();
+                }
+                mDecoderVar = decoderVar;
+            }
 
             mKeyCodecs = ColumnCodec.bind(rowGen.keyCodecs(), mm);
             mValueCodecs = ColumnCodec.bind(rowGen.valueCodecs(), mm);
@@ -333,20 +383,25 @@ public class RowFilterMaker<R> {
             // FIXME: Some columns may have already been decoded, so don't double decode them.
 
             var tableVar = mMaker.var(mTableClass);
-            var rowVar = mMaker.param(3).cast(mRowClass);
+            var rowVar = mMaker.param(2).cast(mRowClass);
             Label hasRow = mMaker.label();
             rowVar.ifNe(null, hasRow);
             rowVar.set(mMaker.new_(mRowClass));
             hasRow.here();
-            tableVar.invoke("decodePrimaryKey", rowVar, mMaker.param(1));
+            tableVar.invoke("decodePrimaryKey", rowVar, mMaker.param(0));
 
             // Invoke the schema-specific decoder directly, instead of calling the decodeValue
             // method which redundantly examines the schema version and switches on it.
-            mMaker.invoke(mDecoder, rowVar, mMaker.param(2)); // param(2) is the byte array
+            var valueVar = mMaker.param(1); // param(1) is the value byte array
+            if (mDecoder != null) {
+                mMaker.invoke(mDecoder, rowVar, valueVar);
+            } else {
+                mMaker.var(mTableClass).invoke("decodeValue", rowVar, valueVar);
+            }
 
-            // Param(0) is the generated filter class, which has access to the inherited
-            // markAllClean method.
-            mMaker.param(0).invoke("markAllClean", rowVar);
+            // Call the generated filter class, which has access to the inherited markAllClean
+            // method.
+            mDecoderVar.invoke("markAllClean", rowVar);
 
             mMaker.return_(rowVar);
         }
@@ -411,7 +466,7 @@ public class RowFilterMaker<R> {
         public void visit(ColumnToArgFilter filter) {
             ColumnInfo colInfo = filter.column();
             int op = filter.operator();
-            Variable argObjVar = mMaker.param(0); // contains the arg fields prepared earlier
+            Variable argObjVar = mDecoderVar; // contains the arg fields prepared earlier
             int argNum = filter.argument();
 
             Integer colNum = columnNumberFor(colInfo.name);
@@ -512,7 +567,7 @@ public class RowFilterMaker<R> {
                 if (colNum < codecs.length) {
                     // Key column.
                     highestNum = mHighestLocatedKey;
-                    srcVar = mMaker.param(1);
+                    srcVar = mMaker.param(0);
                     if ((located = mLocatedKeys) != null) {
                         break init;
                     }
@@ -522,13 +577,13 @@ public class RowFilterMaker<R> {
                     // Value column.
                     colNum -= codecs.length;
                     highestNum = mHighestLocatedValue;
-                    srcVar = mMaker.param(2);
+                    srcVar = mMaker.param(1);
                     codecs = mValueCodecs;
                     if ((located = mLocatedValues) != null) {
                         break init;
                     }
                     mLocatedValues = located = new LocatedColumn[mRowGen.info.valueColumns.size()];
-                    startOffset = RowUtils.lengthPrefixPF(mSchemaVersion);
+                    startOffset = mValueOffset;
                 }
                 located[0] = new LocatedColumn();
                 located[0].located(srcVar, mMaker.var(int.class).set(startOffset));

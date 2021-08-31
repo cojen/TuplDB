@@ -66,6 +66,7 @@ class RowGen {
     }
 
     /**
+     * @param info used for defining the class name
      * @param subPackage optional
      * @param suffix appended to class name
      */

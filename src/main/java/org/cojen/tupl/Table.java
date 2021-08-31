@@ -170,6 +170,24 @@ public interface Table<R> {
     //public boolean remove(Transaction txn, R match) throws IOException;
 
     /**
+     * Returns a direct view of an alternate key, in the form of an unmodifiable table. The
+     * rows of the table only contain the columns that are provided by the alternate key.
+     *
+     * @param columns column specifications for the alternate key
+     * @return alternate key as a table, or null if not found
+     */
+    public Table<R> alternateKeyTable(String... columns) throws IOException;
+
+    /**
+     * Returns a direct view of a secondary index, in the form of an unmodifiable table. The
+     * rows of the table only contain the columns that are provided by the secondary index.
+     *
+     * @param columns column specifications for the secondary index
+     * @return secondary index as a table, or null if not found
+     */
+    public Table<R> secondaryIndexTable(String... columns) throws IOException;
+
+    /**
      * Returns a view which is filtered by the given expression and arguments.
      *
      * <blockquote><pre>{@code

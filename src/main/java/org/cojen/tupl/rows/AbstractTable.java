@@ -23,6 +23,8 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
+import java.lang.ref.WeakReference;
+
 import java.util.Objects;
 
 import org.cojen.tupl.Cursor;
@@ -41,7 +43,7 @@ import org.cojen.tupl.filter.RowFilter;
 import org.cojen.tupl.io.Utils;
 
 /**
- * 
+ * Base class for all generated table classes.
  *
  * @author Brian S O'Neill
  */
@@ -113,7 +115,7 @@ public abstract class AbstractTable<R> implements Table<R> {
         return newRowUpdater(txn, filtered(filter, args));
     }
 
-    private RowUpdater<R> newRowUpdater(Transaction txn, RowDecoderEncoder<R> encoder)
+    protected RowUpdater<R> newRowUpdater(Transaction txn, RowDecoderEncoder<R> encoder)
         throws IOException
     {
         AbstractTable<R> table = mTrigger != null ? this : null;
@@ -166,6 +168,20 @@ public abstract class AbstractTable<R> implements Table<R> {
     @Override
     public boolean isEmpty() throws IOException {
         return mSource.isEmpty();
+    }
+
+    protected Table<R> alternateKeyTable(WeakReference<RowStore> storeRef, String... columns)
+        throws IOException
+    {
+        var rs = storeRef.get();
+        return rs == null ? null : rs.alternateKeyTable(this, columns);
+    }
+
+    protected Table<R> secondaryIndexTable(WeakReference<RowStore> storeRef, String... columns)
+        throws IOException
+    {
+        var rs = storeRef.get();
+        return rs == null ? null : rs.secondaryIndexTable(this, columns);
     }
 
     private RowDecoderEncoder<R> filtered(String filter, Object... args) throws IOException {
