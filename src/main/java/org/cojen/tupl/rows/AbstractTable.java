@@ -269,19 +269,7 @@ public abstract class AbstractTable<R> implements Table<R> {
             trigger.mMode = Trigger.SKIP;
         }
 
-        var old = (Trigger<R>) cTriggerHandle.getAndSet(this, trigger);
-
-        // Note that mode field can be assigned using "plain" mode because lock acquisition
-        // applies a volatile fence.
-        old.mMode = Trigger.DISABLED;
-
-        // Wait for in-flight operations against the old trigger to finish.
-        old.acquireExclusive();
-        old.releaseExclusive();
-
-        // At this point, any threads which acquire the shared lock on the trigger will observe
-        // that it's disabled by virtue of having applied a volatile fence to obtain the lock
-        // in the first place.
+        ((Trigger<R>) cTriggerHandle.getAndSet(this, trigger)).disabled();
     }
 
     /**

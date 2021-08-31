@@ -108,4 +108,30 @@ public class Trigger<R> extends CommitLock {
     public int mode() {
         return mMode;
     }
+
+    /**
+     * Called by AbstractTable at most once.
+     */
+    final void disabled() {
+        // Note that mode field can be assigned using "plain" mode because lock acquisition
+        // applies a volatile fence.
+        mMode = Trigger.DISABLED;
+
+        // Wait for in-flight operations to finish.
+        acquireExclusive();
+        releaseExclusive();
+
+        // At this point, any threads which acquire the shared lock on old trigger will observe
+        // that it's disabled by virtue of having applied a volatile fence to obtain the lock
+        // in the first place.
+
+        notifyDisabled();
+    }
+
+    /**
+     * Called after trigger has been disabled and isn't being used anymore. Implementation
+     * should return quickly or else run any tasks in a separate thread.
+     */
+    protected void notifyDisabled() {
+    }
 }
