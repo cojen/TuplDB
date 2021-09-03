@@ -1,6 +1,10 @@
 Changelog
 =========
 
+v1.5.3.2
+--------
+* Suppress uncaught exception from background sorter thread when database is closed.
+
 v1.5.3.1 (2021-08-30)
 --------
 * Fix potential race condition when concurrently deleting and truncating the checkpoint undo log.

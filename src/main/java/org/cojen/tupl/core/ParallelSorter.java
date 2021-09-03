@@ -721,7 +721,9 @@ final class ParallelSorter implements Sorter, Node.Supplier {
                         tree.drop(false).run();
                     } catch (Throwable e) {
                         inactive();
-                        Utils.rethrow(e);
+                        if (!mDatabase.isClosed()) {
+                            Utils.rethrow(e);
+                        }
                     }
                 }
             }
