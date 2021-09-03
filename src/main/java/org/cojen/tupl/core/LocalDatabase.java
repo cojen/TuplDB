@@ -5980,7 +5980,7 @@ final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
-    EventListener eventListener() {
+    public EventListener eventListener() {
         return mEventListener;
     }
 

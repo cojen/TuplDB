@@ -69,7 +69,7 @@ public abstract class CoreDatabase implements Database {
     /**
      * @return null if none
      */
-    abstract EventListener eventListener();
+    public abstract EventListener eventListener();
 
     /**
      * Called by Checkpointer task.

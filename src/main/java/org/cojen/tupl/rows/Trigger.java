@@ -110,7 +110,7 @@ public class Trigger<R> extends CommitLock {
     }
 
     /**
-     * Called by AbstractTable at most once.
+     * Disables this trigger and waits. Called by AbstractTable at most once.
      */
     final void disabled() {
         // Note that mode field can be assigned using "plain" mode because lock acquisition

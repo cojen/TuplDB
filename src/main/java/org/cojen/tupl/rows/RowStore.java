@@ -88,6 +88,27 @@ public class RowStore {
     // Extended key for referencing secondary indexes.
     private static final int K_SECONDARY = 1;
 
+    /*
+      FIXME: notes
+
+      - For indexes to delete, acquire a lock to delete them. If state is backfill, then stop
+        any backfill task, and delete the index. If state is active, then cannot delete until all
+        queries using the index are done with it.
+
+      - Replicas cannot delete indexes. Only the leader can. However, the leader cannot delete
+        an index if any replica is still using it. Hmm... there's no way to ask this. Need to
+        define a new redo operation which deletes an index when no longer in use. Using GC
+        takes too long. Need a latch or clutch to manage a ref count.
+
+      - What if the replica becomes the leader and has a different set of index annotations?
+        Should it revert? This is a problem during deployments. Should index definitions not be
+        defined as annotations? Won't really help if old code is still running. Is an explicit
+        index set version required to be manually defined? I think in practice it should be
+        fine for indexes to flip on and off during a deployment. Everything should be fine when
+        the dust settles.
+
+     */
+
     private static final int TASK_DELETE_SCHEMA = 1;
 
     public RowStore(CoreDatabase db, Index schemata) throws IOException {
@@ -419,6 +440,53 @@ public class RowStore {
     }
 
     /**
+     * Called by IndexManager when an index backfill has finished.
+     */
+    void activateSecondaryIndex(IndexBackfill backfill, boolean success) throws IOException {
+        long indexId = backfill.mTable.mSource.id();
+        long secondaryId = backfill.mSecondaryIndex.id();
+
+        boolean activated = false;
+
+        // Use NO_REDO it because this method can be called by a replica.
+        Transaction txn = mDatabase.newTransaction(DurabilityMode.NO_REDO);
+        try {
+            txn.lockTimeout(-1, null);
+
+            // Lock to prevent changes and to allow one thread to call examineSecondaries.
+            mSchemata.lockUpgradable(txn, key(indexId));
+
+            View secondariesView = viewExtended(indexId, K_SECONDARY);
+
+            if (success) {
+                try (Cursor c = secondariesView.newCursor(txn)) {
+                    c.find(backfill.mSecondaryDescriptor);
+                    byte[] value = c.value();
+                    if (value != null && value[8] == 'B' && decodeLongLE(value, 0) == secondaryId) {
+                        // Switch to "active" state.
+                        value[8] = 'A';
+                        c.store(value);
+                        activated = true;
+                    }
+                }
+            }
+
+            backfill.mTable.examineSecondaries(this, txn, secondariesView);
+
+            txn.commit();
+        } finally {
+            txn.reset();
+        }
+
+        if (activated) {
+            // With NO_REDO, need a checkpoint to ensure durability. If the database is closed
+            // before it finishes, the whole backfill process starts over when the database is
+            // later reopened.
+            mDatabase.checkpoint();
+        }
+    }
+
+    /**
      * Should be called when the index is being dropped. Does nothing if index wasn't used for
      * storing rows.
      *
@@ -652,7 +720,7 @@ public class RowStore {
                     if (value != null) {
                         // Secondary index already exists.
                         it.remove();
-                        // If state is "deleting", switch it to "building".
+                        // If state is "deleting", switch it to "backfill".
                         if (value[8] == 'D') {
                             value[8] = 'B';
                             c.store(value);
@@ -663,7 +731,7 @@ public class RowStore {
                         it.remove();
                         value = new byte[8 + 1];
                         encodeLongLE(value, 0, mDatabase.newTemporaryIndex().id());
-                        value[8] = 'B'; // "building" state
+                        value[8] = 'B'; // "backfill" state
                         c.store(value);
                     }
                 }
@@ -672,7 +740,7 @@ public class RowStore {
             // The newly created index ids are copied into the array. Note that the array can
             // be empty, in which case calling createSecondaryIndexes is still necessary for
             // informing any replicas that potential changes have been made. The state of some
-            // secondary indexes might have changed from "building" to "deleting", or vice
+            // secondary indexes might have changed from "backfill" to "deleting", or vice
             // versa. If nothing changed, there's no harm in sending the notification anyhow.
             var ids = new long[secondaries.size()];
 
@@ -683,7 +751,7 @@ public class RowStore {
                     for (byte[] desc : secondaries) {
                         byte[] value = new byte[8 + 1];
                         encodeLongLE(value, 0, ids[i++]);
-                        value[8] = 'B'; // "building" state
+                        value[8] = 'B'; // "backfill" state
                         if (!secondariesView.insert(txn, desc, value)) {
                             // Not expected.
                             throw new UniqueConstraintException();

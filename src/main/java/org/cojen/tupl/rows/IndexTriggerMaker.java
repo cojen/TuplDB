@@ -54,12 +54,18 @@ public class IndexTriggerMaker<R> {
     final byte[][] mSecondaryDescriptors;
     final SecondaryInfo[] mSecondaryInfos;
     final Index[] mSecondaryIndexes;
-    final byte[] mSecondaryStates; // FIXME: remember to build indexes
+    final IndexBackfill[] mBackfills;
 
     // Map for all the columns needed by all of the secondary indexes.
     private Map<String, ColumnSource> mColumnSources;
 
     private ClassMaker mClassMaker;
+
+    // Values for rowMode param.
+    //  ROW_NONE     - no row exists
+    //  ROW_KEY_ONLY - only key fields of the row can be used
+    //  ROW_FULL     - the full row can be used
+    private static final int ROW_NONE = 0, ROW_KEY_ONLY = 1, ROW_FULL = 2;
 
     IndexTriggerMaker(Class<R> rowType, RowInfo primaryInfo, int numIndexes) {
         mRowType = rowType;
@@ -69,7 +75,7 @@ public class IndexTriggerMaker<R> {
         mSecondaryDescriptors = new byte[numIndexes][];
         mSecondaryInfos = new SecondaryInfo[numIndexes];
         mSecondaryIndexes = new Index[numIndexes];
-        mSecondaryStates = new byte[numIndexes];
+        mBackfills = new IndexBackfill[numIndexes];
     }
 
     /**
@@ -87,25 +93,116 @@ public class IndexTriggerMaker<R> {
         mSecondaryDescriptors = null;
         mSecondaryInfos = secondaryInfos;
         mSecondaryIndexes = secondaryIndexes;
-        mSecondaryStates = null;
+        mBackfills = null;
+    }
+
+    /**
+     * @param which which secondary index to make a backfill for 
+     */
+    IndexBackfill<R> makeBackfill(IndexManager<R> manager, RowStore rs, AbstractTable<R> table,
+                                  int which)
+    {
+        SecondaryInfo secondaryInfo = mSecondaryInfos[which];
+        Index secondaryIndex = mSecondaryIndexes[which];
+
+        ClassMaker cm = mPrimaryGen.beginClassMaker(IndexTriggerMaker.class, mRowType, "Backfill");
+        cm.extend(IndexBackfill.class).final_();
+
+        mColumnSources = buildColumnSources(secondaryInfo);
+
+        MethodMaker mm = cm.addMethod
+            (null, "encode", byte[].class, byte[].class, byte[][].class, int.class);
+        mm.protected_();
+
+        var primaryKeyVar = mm.param(0);
+        var primaryValueVar = mm.param(1);
+        var secondaryEntryVar = mm.param(2);
+        var offsetVar = mm.param(3);
+
+        int numValues = findColumns(mm, primaryKeyVar, primaryValueVar, -1, ROW_NONE);
+
+        RowGen secondaryGen = secondaryInfo.rowGen();
+
+        ColumnCodec[] secondaryKeyCodecs = ColumnCodec.bind(secondaryGen.keyCodecs(), mm);
+        ColumnCodec[] secondaryValueCodecs = ColumnCodec.bind(secondaryGen.valueCodecs(), mm);
+
+        var secondaryKeyVar = encodeColumns(mm, mColumnSources, null, ROW_NONE,
+                                            primaryKeyVar, primaryValueVar, secondaryKeyCodecs);
+
+        secondaryEntryVar.aset(offsetVar, secondaryKeyVar);
+
+        var secondaryValueVar = encodeColumns(mm, mColumnSources, null, ROW_NONE,
+                                              primaryKeyVar, primaryValueVar, secondaryValueCodecs);
+
+        secondaryEntryVar.aset(offsetVar.add(1), secondaryValueVar);
+        
+        // Now define the constructor.
+
+        MethodType ctorMethodType = MethodType.methodType
+            (void.class, IndexManager.class, RowStore.class, AbstractTable.class,
+             Index.class, byte[].class, String.class);
+
+        mm = cm.addConstructor(ctorMethodType);
+        boolean autoload = numValues != 0;
+        mm.invokeSuperConstructor(mm.param(0), mm.param(1), mm.param(2), autoload,
+                                  mm.param(3), mm.param(4), mm.param(5));
+
+        var lookup = cm.finishHidden();
+
+        byte[] secondaryDesc = mSecondaryDescriptors[which];
+        String secondaryStr = secondaryInfo.eventString();
+
+        try {
+            var ctor = lookup.findConstructor(lookup.lookupClass(), ctorMethodType);
+            return (IndexBackfill<R>) ctor.invoke
+                (manager, rs, table, secondaryIndex, secondaryDesc, secondaryStr);
+        } catch (Throwable e) {
+            throw rethrow(e);
+        }
     }
 
     /**
      * @param primaryIndexId primary index id
      */
-    Trigger<R> make(RowStore rs, long primaryIndexId) {
+    Trigger<R> makeTrigger(RowStore rs, long primaryIndexId) {
         mClassMaker = mPrimaryGen.beginClassMaker(IndexTriggerMaker.class, mRowType, "Trigger");
         mClassMaker.extend(Trigger.class).final_();
 
+        boolean hasBackfills = false;
+
         for (int i=0; i<mSecondaryIndexes.length; i++) {
             mClassMaker.addField(Index.class, "ix" + i).private_().final_();
+
+            IndexBackfill backfill = mBackfills[i];
+            if (backfill != null) {
+                hasBackfills = true;
+                mClassMaker.addField(IndexBackfill.class, "backfill" + i).private_().final_();
+            }
+        }
+
+
+        MethodType ctorMethodType;
+        if (!hasBackfills) {
+            ctorMethodType = MethodType.methodType(void.class, Index[].class);
+        } else {
+            ctorMethodType = MethodType.methodType
+                (void.class, Index[].class, IndexBackfill[].class);
         }
 
         {
-            MethodMaker mm = mClassMaker.addConstructor(Index[].class);
+            MethodMaker mm = mClassMaker.addConstructor(ctorMethodType);
             mm.invokeSuperConstructor();
+
             for (int i=0; i<mSecondaryIndexes.length; i++) {
                 mm.field("ix" + i).set(mm.param(0).aget(i));
+            }
+
+            if (hasBackfills) {
+                for (int i=0; i<mBackfills.length; i++) {
+                    if (mBackfills[i] != null) {
+                        mm.field("backfill" + i).set(mm.param(1).aget(i));
+                    }
+                }
             }
         }
 
@@ -113,51 +210,79 @@ public class IndexTriggerMaker<R> {
 
         addInsertMethod();
 
-        addDeleteMethod(rs, primaryIndexId);
+        addDeleteMethod(rs, primaryIndexId, hasBackfills);
 
         addStoreMethod("store");
 
         addStoreMethod("update");
 
+        if (hasBackfills) {
+            MethodMaker mm = mClassMaker.addMethod(null, "notifyDisabled").protected_();
+            for (int i=0; i<mBackfills.length; i++) {
+                if (mBackfills[i] != null) {
+                    mm.field("backfill" + i).invoke("unused");
+                }
+            }
+        }
+
         var lookup = mClassMaker.finishHidden();
 
+        Trigger<R> trigger;
+
         try {
-            var mt = MethodType.methodType(void.class, Index[].class);
-            var ctor = lookup.findConstructor(lookup.lookupClass(), mt);
-            return (Trigger<R>) ctor.invoke(mSecondaryIndexes);
+            var ctor = lookup.findConstructor(lookup.lookupClass(), ctorMethodType);
+            if (!hasBackfills) {
+                trigger = (Trigger<R>) ctor.invoke(mSecondaryIndexes);
+            } else {
+                trigger = (Trigger<R>) ctor.invoke(mSecondaryIndexes, mBackfills);
+            }
         } catch (Throwable e) {
             throw rethrow(e);
         }
+
+        if (hasBackfills) {
+            for (IndexBackfill b : mBackfills) {
+                if (b != null) {
+                    b.used();
+                }
+            }
+        }
+
+        return trigger;
     }
 
     private Map<String, ColumnSource> buildColumnSources() {
+        return buildColumnSources(mSecondaryInfos);
+    }
+
+    private Map<String, ColumnSource> buildColumnSources(SecondaryInfo... secondaryInfos) {
         Map<String, ColumnCodec> keyCodecMap = mPrimaryGen.keyCodecMap();
         Map<String, ColumnCodec> valueCodecMap = mPrimaryGen.valueCodecMap();
 
         var sources = new HashMap<String, ColumnSource>();
 
-        for (RowInfo secondaryInfo : mSecondaryInfos) {
+        for (RowInfo secondaryInfo : secondaryInfos) {
             RowGen secondaryGen = secondaryInfo.rowGen();
             ColumnCodec[] secondaryKeyCodecs = secondaryGen.keyCodecs();
             ColumnCodec[] secondaryValueCodecs = secondaryGen.valueCodecs();
 
-            buildColumnSources(keyCodecMap, true, sources, secondaryKeyCodecs);
-            buildColumnSources(keyCodecMap, true, sources, secondaryValueCodecs);
+            buildColumnSources(sources, keyCodecMap, true, secondaryKeyCodecs);
+            buildColumnSources(sources, keyCodecMap, true, secondaryValueCodecs);
 
-            buildColumnSources(valueCodecMap, false, sources, secondaryKeyCodecs);
-            buildColumnSources(valueCodecMap, false, sources, secondaryValueCodecs);
+            buildColumnSources(sources, valueCodecMap, false, secondaryKeyCodecs);
+            buildColumnSources(sources, valueCodecMap, false, secondaryValueCodecs);
         }
 
         return sources;
     }
 
     /**
-     * @param primaryCodecMap
      * @param sources results stored here
+     * @param primaryCodecMap
      * @param secondaryCodecs secondary index columns which need to be found
      */
-    private void buildColumnSources(Map<String, ColumnCodec> primaryCodecMap, boolean fromKey,
-                                    Map<String, ColumnSource> sources,
+    private void buildColumnSources(Map<String, ColumnSource> sources,
+                                    Map<String, ColumnCodec> primaryCodecMap, boolean fromKey,
                                     ColumnCodec[] secondaryCodecs)
     {
         for (ColumnCodec codec : secondaryCodecs) {
@@ -197,28 +322,32 @@ public class IndexTriggerMaker<R> {
      * @param keyVar primary key byte array
      * @param valueVar primary value byte array
      * @param valueOffset initial offset into byte array, or -1 to auto skip schema version
-     * @param fullRow when false, only key fields of the row can be used
+     * @param rowMode see ROW_* fields
+     * @return the number of columns accessed from the encoded value
      */
-    private void findColumns(MethodMaker mm, Map<String, ColumnSource> columnSources,
-                             Variable keyVar, Variable valueVar, int valueOffset, boolean fullRow)
+    private int findColumns(MethodMaker mm,
+                            Variable keyVar, Variable valueVar, int valueOffset, int rowMode)
     {
         // Determine how many columns must be accessed from the encoded form.
 
-        int remainingKeys = 0, remainingValues = 0;
-        for (ColumnSource source : columnSources.values()) {
+        int numKeys = 0, numValues = 0;
+
+        for (ColumnSource source : mColumnSources.values()) {
             source.clearVars();
-            if (source.mustFind(fullRow)) {
+            if (source.mustFind(rowMode)) {
                 if (source.mFromKey) {
-                    remainingKeys++;
+                    numKeys++;
                 } else {
-                    remainingValues++;
+                    numValues++;
                 }
             }
         }
 
-        findColumns(mm, columnSources, keyVar, 0, true, fullRow, remainingKeys);
+        findColumns(mm, keyVar, 0, true, rowMode, numKeys);
 
-        findColumns(mm, columnSources, valueVar, valueOffset, false, fullRow, remainingValues);
+        findColumns(mm, valueVar, valueOffset, false, rowMode, numValues);
+
+        return numValues;
     }
 
     /**
@@ -227,15 +356,14 @@ public class IndexTriggerMaker<R> {
      *
      * @param srcVar byte array
      * @param offset initial offset into byte array, or -1 to auto skip schema version
-     * @param forKey true if the byte array is an encoded key
-     * @param fullRow when false, only key fields of the row can be used
-     * @param remaining number of columns to decode/skip from the byte array
+     * @param rowMode see ROW_* fields
+     * @param num number of columns to decode/skip from the byte array
      */
-    private void findColumns(MethodMaker mm, Map<String, ColumnSource> columnSources,
+    private void findColumns(MethodMaker mm,
                              Variable srcVar, int offset,
-                             boolean forKey, boolean fullRow, int remaining)
+                             boolean forKey, int rowMode, int num)
     {
-        if (remaining == 0) {
+        if (num == 0) {
             return;
         }
 
@@ -258,14 +386,14 @@ public class IndexTriggerMaker<R> {
         Variable endVar = null;
 
         for (ColumnCodec codec : codecs) {
-            ColumnSource source = columnSources.get(codec.mInfo.name);
+            ColumnSource source = mColumnSources.get(codec.mInfo.name);
 
             findCheck: {
                 if (source != null) {
                     if (source.mFromKey != forKey) {
                         throw new AssertionError();
                     }
-                    if (source.mustFind(fullRow)) {
+                    if (source.mustFind(rowMode)) {
                         break findCheck;
                     }
                 }
@@ -281,9 +409,11 @@ public class IndexTriggerMaker<R> {
                 startVar = mm.var(int.class).set(offsetVar);
             }
 
-            if (fullRow || source.mFromKey || source.mMismatches == 0) {
-                // Can skip decoding if the column can be found in the row or if it doesn't
-                // need to be transformed.
+            if (source.mMismatches == 0 ||
+                rowMode == ROW_FULL || (rowMode == ROW_KEY_ONLY && source.mFromKey))
+            {
+                // Can skip decoding if the column doesn't need to be transformed or if it can
+                // be found in the row.
                 codec.decodeSkip(srcVar, offsetVar, null);
             } else {
                 var dstVar = mm.var(codec.mInfo.type);
@@ -300,7 +430,7 @@ public class IndexTriggerMaker<R> {
                 source.mEndVar = endVar;
             }
 
-            if (--remaining <= 0) {
+            if (--num <= 0) {
                 break;
             }
         }
@@ -330,22 +460,23 @@ public class IndexTriggerMaker<R> {
 
         // Determine how many columns must be accessed from the encoded form.
 
-        int remainingValues = 0;
+        int numValues = 0;
+
         for (ColumnSource source : oldColumnSources.values()) {
             source.clearVars();
             if (!source.mFromKey) {
-                remainingValues++;
+                numValues++;
             }
         }
 
         for (ColumnSource source : newColumnSources.values()) {
             source.clearVars();
-            // ColumnSources are expected to be equivalent, so don't double count remaining
+            // ColumnSources are expected to be equivalent, so don't double count the
             // values. Two source instances are used to track separate sets of Variables.
         }
 
         diffColumns(mm, oldColumnSources, newColumnSources,
-                    oldSrcVar, newSrcVar, bitMap, false, remainingValues);
+                    oldSrcVar, newSrcVar, bitMap, false, numValues);
 
         return bitMap;
     }
@@ -354,9 +485,9 @@ public class IndexTriggerMaker<R> {
                              Map<String, ColumnSource> oldColumnSources,
                              Map<String, ColumnSource> newColumnSources,
                              Variable oldSrcVar, Variable newSrcVar,
-                             Variable[] bitMap, boolean forKey, int remaining)
+                             Variable[] bitMap, boolean forKey, int num)
     {
-        if (remaining == 0) {
+        if (num == 0) {
             return;
         }
 
@@ -441,7 +572,7 @@ public class IndexTriggerMaker<R> {
                 newSource.setDecodedVar(decoded[1]);
             }
 
-            if (--remaining <= 0) {
+            if (--num <= 0) {
                 break;
             }
         }
@@ -503,7 +634,7 @@ public class IndexTriggerMaker<R> {
         var keyVar = mm.param(2);
         var newValueVar = mm.param(3);
 
-        findColumns(mm, mColumnSources, keyVar, newValueVar, -1, true);
+        findColumns(mm, keyVar, newValueVar, -1, ROW_FULL);
 
         // FIXME: As an optimization, when encoding complex columns (non-primitive), check if
         // prior secondary indexes have a matching codec and copy from them.
@@ -516,10 +647,10 @@ public class IndexTriggerMaker<R> {
             ColumnCodec[] secondaryValueCodecs = ColumnCodec.bind(secondaryGen.valueCodecs(), mm);
 
             var secondaryKeyVar = encodeColumns
-                (mm, mColumnSources, rowVar, true, keyVar, newValueVar, secondaryKeyCodecs);
+                (mm, mColumnSources, rowVar, ROW_FULL, keyVar, newValueVar, secondaryKeyCodecs);
 
             var secondaryValueVar = encodeColumns
-                (mm, mColumnSources, rowVar, true, keyVar, newValueVar, secondaryValueCodecs);
+                (mm, mColumnSources, rowVar, ROW_FULL, keyVar, newValueVar, secondaryValueCodecs);
 
             var ixField = mm.field("ix" + i);
 
@@ -535,7 +666,8 @@ public class IndexTriggerMaker<R> {
         }
     }
 
-    private void addDeleteMethod(RowStore rs, long primaryIndexId) {
+    @SuppressWarnings("unchecked")
+    private void addDeleteMethod(RowStore rs, long primaryIndexId, boolean hasBackfills) {
         MethodMaker mm = mClassMaker.addMethod
             (null, "delete", Transaction.class, Object.class, byte[].class, byte[].class).public_();
 
@@ -555,9 +687,21 @@ public class IndexTriggerMaker<R> {
             secondaryIndexIds[i] = mSecondaryIndexes[i].id();
         }
 
+        WeakReference<IndexBackfill>[] backfillRefs = null;
+        if (hasBackfills) {
+            backfillRefs = new WeakReference[mBackfills.length];
+            for (int i=0; i<mBackfills.length; i++) {
+                IndexBackfill backfill = mBackfills[i];
+                if (backfill != null) {
+                    backfillRefs[i] = new WeakReference<IndexBackfill>(backfill);
+                }
+            }
+        }
+
         var indy = mm.var(IndexTriggerMaker.class).indy
             ("indyDelete", rs.ref(), mRowType, primaryIndexId,
-             mSecondaryDescriptors, secondaryIndexIds);
+             mSecondaryDescriptors, secondaryIndexIds, backfillRefs);
+
         indy.invoke(null, "delete", null, schemaVersion, txnVar, rowVar, keyVar, oldValueVar);
     }
 
@@ -571,7 +715,8 @@ public class IndexTriggerMaker<R> {
     public static SwitchCallSite indyDelete(MethodHandles.Lookup lookup, String name,
                                             MethodType mt, WeakReference<RowStore> storeRef,
                                             Class<?> rowType, long indexId,
-                                            byte[][] secondaryDescs, long[] secondaryIndexIds)
+                                            byte[][] secondaryDescs, long[] secondaryIndexIds,
+                                            WeakReference<IndexBackfill>[] backfillRefs)
     {
         Class<?> rowClass = mt.parameterType(2);
 
@@ -609,15 +754,39 @@ public class IndexTriggerMaker<R> {
             var maker = new IndexTriggerMaker<>
                 (rowType, primaryInfo, secondaryInfos, secondaryIndexes);
 
-            return maker.makeDeleteMethod(mtx, schemaVersion);
+            IndexBackfill[] backfills = null;
+            if (backfillRefs != null) {
+                backfills = new IndexBackfill[backfillRefs.length];
+                for (int i=0; i<backfills.length; i++) {
+                    var backfillRef = backfillRefs[i];
+                    if (backfillRef != null) {
+                        backfills[i] = backfillRef.get();
+                    }
+                }
+            }
+
+            return maker.makeDeleteMethod(mtx, schemaVersion, backfills);
         });
     }
 
-    private MethodHandle makeDeleteMethod(MethodType mt, int schemaVersion) {
+    private MethodHandle makeDeleteMethod(MethodType mt, int schemaVersion,
+                                          IndexBackfill[] backfills)
+    {
         mClassMaker = mPrimaryGen.beginClassMaker(IndexTriggerMaker.class, mRowType, "Trigger");
         mClassMaker.final_();
 
-        MethodMaker ctorMaker = mClassMaker.addConstructor(Index[].class);
+        MethodType ctorMethodType;
+        MethodMaker ctorMaker;
+
+        if (backfills == null) {
+            ctorMethodType = MethodType.methodType(void.class, Index[].class);
+            ctorMaker = mClassMaker.addConstructor(ctorMethodType);
+        } else {
+            ctorMethodType = MethodType.methodType
+                (void.class, Index[].class, IndexBackfill.class);
+            ctorMaker = mClassMaker.addConstructor(ctorMethodType);
+        }
+
         ctorMaker.invokeSuperConstructor();
 
         MethodMaker mm = mClassMaker.addMethod("delete", mt);
@@ -629,7 +798,7 @@ public class IndexTriggerMaker<R> {
         var keyVar = mm.param(2);
         var oldValueVar = mm.param(3);
 
-        findColumns(mm, mColumnSources, keyVar, oldValueVar, schemaVersion < 128 ? 1 : 4, false);
+        findColumns(mm, keyVar, oldValueVar, schemaVersion < 128 ? 1 : 4, ROW_KEY_ONLY);
 
         // FIXME: As an optimization, when encoding complex columns (non-primitive), check if
         // prior secondary indexes have a matching codec and copy from them.
@@ -646,24 +815,39 @@ public class IndexTriggerMaker<R> {
 
             ctorMaker.field(ixFieldName).set(ctorMaker.param(0).aget(i));
 
+            String backfillFieldName = null;
+            if (backfills != null && backfills[i] != null) {
+                backfillFieldName = "backfill" + i;
+                mClassMaker.addField(IndexBackfill.class, backfillFieldName)
+                    .private_().final_();
+                ctorMaker.field(backfillFieldName).set(ctorMaker.param(1).aget(i));
+            }
+
             RowGen secondaryGen = mSecondaryInfos[i].rowGen();
 
             ColumnCodec[] secondaryKeyCodecs = ColumnCodec.bind(secondaryGen.keyCodecs(), mm);
 
             var secondaryKeyVar = encodeColumns
-                (mm, mColumnSources, rowVar, false, keyVar, oldValueVar, secondaryKeyCodecs);
+                (mm, mColumnSources, rowVar, ROW_KEY_ONLY, keyVar, oldValueVar, secondaryKeyCodecs);
 
             mm.field(ixFieldName).invoke("store", txnVar, secondaryKeyVar, null);
+
+            if (backfillFieldName != null) {
+                mm.field(backfillFieldName).invoke("deleted", txnVar, secondaryKeyVar);
+            }
         }
 
         var lookup = mClassMaker.finishHidden();
         var clazz = lookup.lookupClass();
 
         try {
-            Object deleter = lookup.findConstructor
-                (clazz, MethodType.methodType(void.class, Index[].class))
-                .invoke(mSecondaryIndexes);
-
+            var ctor = lookup.findConstructor(clazz, ctorMethodType);
+            Object deleter;
+            if (backfills == null) {
+                deleter = ctor.invoke(mSecondaryIndexes);
+            } else {
+                deleter = ctor.invoke(mSecondaryIndexes, backfills);
+            }
             return lookup.findVirtual(clazz, "delete", mt).bindTo(deleter);
         } catch (Throwable e) {
             throw rethrow(e);
@@ -758,9 +942,14 @@ public class IndexTriggerMaker<R> {
                 ColumnCodec[] secondaryKeyCodecs = ColumnCodec.bind(secondaryGen.keyCodecs(), mm);
 
                 var secondaryKeyVar = encodeColumns
-                    (mm, oldColumnSources, rowVar, false, keyVar, oldValueVar, secondaryKeyCodecs);
+                    (mm, oldColumnSources, rowVar, ROW_KEY_ONLY,
+                     keyVar, oldValueVar, secondaryKeyCodecs);
 
                 ixField.invoke("store", txnVar, secondaryKeyVar, null);
+
+                if (mBackfills[i] != null) {
+                    mm.field("backfill" + i).invoke("deleted", txnVar, secondaryKeyVar);
+                }
             }
 
             // Now insert a new entry.
@@ -769,10 +958,10 @@ public class IndexTriggerMaker<R> {
             ColumnCodec[] secondaryValueCodecs = ColumnCodec.bind(secondaryGen.valueCodecs(), mm);
 
             var secondaryKeyVar = encodeColumns
-                (mm, newColumnSources, rowVar, true, keyVar, newValueVar, secondaryKeyCodecs);
+                (mm, newColumnSources, rowVar, ROW_FULL, keyVar, newValueVar, secondaryKeyCodecs);
 
             var secondaryValueVar = encodeColumns
-                (mm, newColumnSources, rowVar, true, keyVar, newValueVar, secondaryValueCodecs);
+                (mm, newColumnSources, rowVar, ROW_FULL, keyVar, newValueVar, secondaryValueCodecs);
 
             if (!secondaryInfo.isAltKey) {
                 ixField.invoke("store", txnVar, secondaryKeyVar, secondaryValueVar);
@@ -810,17 +999,19 @@ public class IndexTriggerMaker<R> {
     /**
      * Generate a key or value for a secondary index.
      *
-     * @param rowVar primary row object, fully specified
-     * @param fullRow when false, only key fields of the row can be used
+     * @param rowVar primary row object, filled in according to rowMode
+     * @param rowMode see ROW_* fields
      * @param keyVar primary key byte[], fully specified
      * @param valueVar primary value byte[], fully specified
      * @param codecs secondary key or value codecs, bound to MethodMaker
      * @return a filled-in byte[] variable
      */
     private Variable encodeColumns(MethodMaker mm, Map<String, ColumnSource> columnSources,
-                                   Variable rowVar, boolean fullRow,
+                                   Variable rowVar, int rowMode,
                                    Variable keyVar, Variable valueVar, ColumnCodec[] codecs)
     {
+        assert rowVar != null || rowMode == ROW_NONE;
+
         if (codecs.length == 0) {
             return mm.var(RowUtils.class).field("EMPTY_BYTES");
         }
@@ -831,10 +1022,11 @@ public class IndexTriggerMaker<R> {
         for (int i=0; i<codecs.length; i++) {
             ColumnCodec codec = codecs[i];
             ColumnSource source = columnSources.get(codec.mInfo.name);
-            if (!source.shouldCopy(codec)) {
+            if (!source.shouldCopyBytes(codec)) {
                 minSize += codec.minSize();
                 codec.encodePrepare();
-                source.prepareColumn(mm, mPrimaryGen, fullRow ? rowVar : null);
+                // Note that prepareColumn only does anything for the "update" variant.
+                source.prepareColumn(mm, mPrimaryGen, rowMode == ROW_FULL ? rowVar : null);
             }
         }
 
@@ -844,7 +1036,7 @@ public class IndexTriggerMaker<R> {
         for (int i=0; i<codecs.length; i++) {
             ColumnCodec codec = codecs[i];
             ColumnSource source = columnSources.get(codec.mInfo.name);
-            if (!source.shouldCopy(codec)) {
+            if (!source.shouldCopyBytes(codec)) {
                 totalVar = codec.encodeSize(source.accessColumn(rowVar), totalVar);
             } else {
                 // FIXME: Detect spans and reduce additions.
@@ -875,7 +1067,7 @@ public class IndexTriggerMaker<R> {
         for (int i=0; i<codecs.length; i++) {
             ColumnCodec codec = codecs[i];
             ColumnSource source = columnSources.get(codec.mInfo.name);
-            if (!source.shouldCopy(codec)) {
+            if (!source.shouldCopyBytes(codec)) {
                 codec.encode(source.accessColumn(rowVar), dstVar, offsetVar);
             } else {
                 // FIXME: Detect spans and reduce copies.
@@ -943,9 +1135,11 @@ public class IndexTriggerMaker<R> {
 
         /**
          * Returns true if the column must be found in the encoded byte array.
+         *
+         * @param rowMode see ROW_* fields
          */
-        boolean mustFind(boolean fullRow) {
-            if (fullRow || mFromKey) {
+        boolean mustFind(int rowMode) {
+            if (rowMode == ROW_FULL || (rowMode == ROW_KEY_ONLY && mFromKey)) {
                 if (isPrimitive()) {
                     // Primitive columns are cheap to encode, so no need to copy the byte form.
                     return false;
@@ -966,7 +1160,7 @@ public class IndexTriggerMaker<R> {
          *
          * @param dstCodec codec of secondary index
          */
-        boolean shouldCopy(ColumnCodec dstCodec) {
+        boolean shouldCopyBytes(ColumnCodec dstCodec) {
             return mSrcVar != null && mCodec.equals(dstCodec);
         }
 
@@ -988,7 +1182,7 @@ public class IndexTriggerMaker<R> {
          * @param dstCodec codec of secondary index
          */
         boolean requiresColumnCheck(MethodMaker mm, ColumnCodec dstCodec) {
-            if (shouldCopy(dstCodec) || mFromKey) {
+            if (shouldCopyBytes(dstCodec) || mFromKey) {
                 return false;
             }
 

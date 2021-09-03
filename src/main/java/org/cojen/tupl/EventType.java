@@ -74,6 +74,11 @@ public enum EventType {
     /** Unhandled in the replication system, and the database must be shutdown. */
     REPLICATION_PANIC(Category.REPLICATION, Level.ERROR),
 
+    /** Information regarding a backfill task on a new secondary index or alternate key. */
+    TABLE_INDEX_BACKFILL_INFO(Category.TABLE, Level.INFO),
+    /** Error regarding a backfill task on a new secondary index or alternate key. */
+    TABLE_INDEX_BACKFILL_ERROR(Category.TABLE, Level.ERROR),
+
     /** Signals the beginning of a checkpoint. */
     CHECKPOINT_BEGIN(Category.CHECKPOINT, Level.INFO),
     /** Signals the checkpoint phase which flushes all dirty nodes to the main database file. */
@@ -119,6 +124,9 @@ public enum EventType {
 
         /** Event category for replication tasks performed by background threads. */
         REPLICATION,
+
+        /** Event category for table tasks performed by background threads. */
+        TABLE,
 
         /** Checkpoints commit transactional and non-transactional changes to the main database. */
         CHECKPOINT,

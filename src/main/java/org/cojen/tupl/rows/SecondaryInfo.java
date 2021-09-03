@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.rows;
 
+import java.util.Map;
+
 /**
  * Decoded RowInfo for a secondary index.
  *
@@ -31,6 +33,37 @@ class SecondaryInfo extends RowInfo {
         super(primaryInfo.name);
         this.primaryInfo = primaryInfo;
         this.isAltKey = isAltKey;
+    }
+
+    /**
+     * Returns a string suitable for EventListener messages.
+     */
+    String eventString() {
+        StringBuilder bob = new StringBuilder();
+        bob.append(isAltKey ? "alternate key" : "secondary index").append(' ');
+        bob.append(name).append('(');
+
+        appendNames(bob, keyColumns);
+
+        if (!isAltKey && !valueColumns.isEmpty()) {
+            bob.append('|');
+            appendNames(bob, valueColumns);
+        }
+
+        return bob.append(')').toString();
+    }
+
+    private static void appendNames(StringBuilder bob, Map<String, ColumnInfo> map) {
+        boolean first = true;
+        for (ColumnInfo ci : map.values()) {
+            if (first) {
+                first = false;
+            } else {
+                bob.append(',');
+            }
+            bob.append(ci.isDescending() ? '-' : '+');
+            bob.append(ci.name);
+        }
     }
 
     @Override
