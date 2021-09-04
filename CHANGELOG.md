@@ -3,6 +3,9 @@ Changelog
 
 v1.5.3.2
 --------
+* Fix storage leaks caused by fragmented keys.
+* Fix NPE when obtaining stats on a closed database.
+* Compaction scan now finds fragmented keys.
 * Suppress uncaught exception from background sorter thread when database is closed.
 
 v1.5.3.1 (2021-08-30)

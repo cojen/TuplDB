@@ -2481,8 +2481,10 @@ final class LocalDatabase extends CoreDatabase {
         }
 
         for (NodeGroup group : mNodeGroups) {
-            stats.cachePages += group.nodeCount();
-            stats.dirtyPages += group.dirtyCount();
+            if (group != null) { // is null if closed
+                stats.cachePages += group.nodeCount();
+                stats.dirtyPages += group.dirtyCount();
+            }
         }
 
         if (stats.dirtyPages > stats.totalPages) {
