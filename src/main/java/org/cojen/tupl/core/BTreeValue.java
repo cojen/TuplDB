@@ -23,6 +23,7 @@ import java.math.BigInteger;
 
 import java.util.Arrays;
 
+import org.cojen.tupl.LargeKeyException;
 import org.cojen.tupl.LargeValueException;
 
 import static org.cojen.tupl.core.PageOps.*;
@@ -37,57 +38,67 @@ final class BTreeValue {
     // Op ordinals are relevant.
     static final int OP_LENGTH = 0, OP_READ = 1, OP_CLEAR = 2, OP_SET_LENGTH = 3, OP_WRITE = 4;
 
-    // Touches a fragment without extending the value length. Used for file compaction.
-    static final byte[] TOUCH_VALUE = new byte[0];
-
     private BTreeValue() {}
 
     /**
      * Determine if any fragment nodes at the given position are outside the compaction zone.
+     * Should only be called when an entry exists and is fragmented, although this method
+     * double checks these conditions in case the node latch was released and re-acquired.
      *
      * @param frame latched leaf, not split, never released by this method
+     * @param isKey true to examine the key instead of the value
+     * @param pos logical position within the key or value
      * @param highestNodeId defines the highest node before the compaction zone; anything
      * higher is in the compaction zone
      * @return -2 if position is too high, -1 if no compaction required, 0 if any nodes are
      * in the compaction zone, or else the inline content length to skip
      */
-    static int compactCheck(final CursorFrame frame, long pos, final long highestNodeId)
+    static int compactCheck(final CursorFrame frame, boolean isKey, long pos, long highestNodeId)
         throws IOException
     {
         final Node node = frame.mNode;
 
         int nodePos = frame.mNodePos;
         if (nodePos < 0) {
-            // Value doesn't exist.
+            // Entry doesn't exist.
             return -2;
         }
 
         final var page = node.mPage;
         int loc = p_ushortGetLE(page, node.searchVecStart() + nodePos);
-        // Skip the key.
-        loc += Node.keyLengthAtLoc(page, loc);
 
-        int vHeader = p_byteGet(page, loc++);
-        if (vHeader >= 0) {
-            // Not fragmented.
-            return pos >= vHeader ? -2 : -1;
-        }
+        final int header, len;
+        if (isKey) {
+            header = p_byteGet(page, loc++);
+            if (header >= 0) {
+                // Not fragmented.
+                return pos >= (header + 1) ? -2 : -1;
+            }
 
-        int len;
-        if ((vHeader & 0x20) == 0) {
-            len = 1 + (((vHeader & 0x1f) << 8) | p_ubyteGet(page, loc++));
-        } else if (vHeader != -1) {
-            len = 1 + (((vHeader & 0x0f) << 16)
-                       | (p_ubyteGet(page, loc++) << 8) | p_ubyteGet(page, loc++));
+            len = ((header & 0x3f) << 8) | p_ubyteGet(page, loc++);
         } else {
-            // Ghost. This case isn't expected, because BTreeCursor.compact doesn't
-            // call this method for non-fragmented values.
-            return -2;
+            // Skip the key.
+            loc += Node.keyLengthAtLoc(page, loc);
+
+            header = p_byteGet(page, loc++);
+            if (header >= 0) {
+                // Not fragmented.
+                return pos >= header ? -2 : -1;
+            }
+
+            if ((header & 0x20) == 0) {
+                len = 1 + (((header & 0x1f) << 8) | p_ubyteGet(page, loc++));
+            } else if (header != -1) {
+                len = 1 + (((header & 0x0f) << 16)
+                           | (p_ubyteGet(page, loc++) << 8) | p_ubyteGet(page, loc++));
+            } else {
+                // Ghost.
+                return -2;
+            }
         }
 
-        if ((vHeader & Node.ENTRY_FRAGMENTED) == 0) {
-            // Not fragmented. This case isn't expected, because BTreeCursor.compact doesn't
-            // call this method for non-fragmented values.
+        if ((header & Node.ENTRY_FRAGMENTED) == 0) {
+            // Not fragmented.
             return pos >= len ? -2 : -1;
         }
 
@@ -155,6 +166,147 @@ final class BTreeValue {
     }
 
     /**
+     * Touches a fragmented key or value by marking the node at the given position dirty.
+     * Caller must hold shared commit lock.
+     *
+     * @param frame latched exclusive; released only if an exception is thrown
+     * @param isKey true to examine the key instead of the value
+     */
+    static void touch(CursorFrame frame, boolean isKey, final long pos) throws IOException {
+        Node node = frame.mNode;
+
+        int nodePos = frame.mNodePos;
+        if (nodePos < 0) {
+            // Value doesn't exist.
+            return;
+        }
+
+        final var page = node.mPage;
+        int loc = p_ushortGetLE(page, node.searchVecStart() + nodePos);
+
+        final int header;
+        if (isKey) {
+            header = p_byteGet(page, loc);
+            if (header >= 0) {
+                // Not fragmented.
+                return;
+            }
+            loc += 2;
+        } else {
+            // Skip the key.
+            loc += Node.keyLengthAtLoc(page, loc);
+            header = p_byteGet(page, loc);
+            if (header >= 0) {
+                // Not fragmented.
+                return;
+            }
+            if ((header & 0x20) == 0) {
+                loc += 2;
+            } else if (header != -1) {
+                loc += 3;
+            } else {
+                // ghost
+                return;
+            }
+        }
+
+        if ((header & Node.ENTRY_FRAGMENTED) == 0) {
+            // Not fragmented.
+            return;
+        }
+
+        // Read the fragment header, as described by the LocalDatabase.fragment method.
+
+        final int fHeader = p_byteGet(page, loc++);
+        final long fLen; // length of fragmented value (when fully reconstructed)
+
+        switch ((fHeader >> 2) & 0x03) {
+        default:
+            fLen = p_ushortGetLE(page, loc);
+            break;
+        case 1:
+            fLen = p_intGetLE(page, loc) & 0xffffffffL;
+            break;
+        case 2:
+            fLen = p_uint48GetLE(page, loc);
+            break;
+        case 3:
+            fLen = p_longGetLE(page, loc);
+            if (fLen < 0) {
+                node.releaseExclusive();
+                if (isKey) {
+                    throw new LargeKeyException(fLen);
+                } else {
+                    throw new LargeValueException(fLen);
+                }
+            }
+            break;
+        }
+
+        loc = skipFragmentedLengthField(loc, fHeader);
+
+        int fInlineLen = 0;
+        if ((fHeader & 0x02) != 0) {
+            // Inline content.
+            fInlineLen = p_ushortGetLE(page, loc);
+            if (pos < fInlineLen) {
+                return;
+            }
+            loc += 2;
+            // Move location to first page pointer.
+            loc += fInlineLen;
+        }
+
+        if (pos > fLen) {
+            return;
+        }
+
+        final LocalDatabase db = node.getDatabase();
+
+        try {
+            if ((fHeader & 0x01) == 0) {
+                // Direct pointers.
+                loc += (((int) (pos - fInlineLen)) / pageSize(db, page)) * 6;
+                final long fNodeId = p_uint48GetLE(page, loc);
+                if (fNodeId != 0) {
+                    final Node fNode = db.nodeMapLoadFragmentExclusive(fNodeId, true);
+                    try {
+                        if (db.markFragmentDirty(fNode)) {
+                            p_int48PutLE(page, loc, fNode.id());
+                        }
+                    } finally {
+                        fNode.releaseExclusive();
+                    }
+                }
+                return;
+            }
+
+            // Indirect pointers.
+
+            final long inodeId = p_uint48GetLE(page, loc);
+            if (inodeId == 0) {
+                // Sparse value.
+                return;
+            }
+
+            final Node inode = db.nodeMapLoadFragmentExclusive(inodeId, true);
+            try {
+                if (db.markFragmentDirty(inode)) {
+                    p_int48PutLE(page, loc, inode.id());
+                }
+            } catch (Throwable e) {
+                throw releaseExclusive(inode, e);
+            }
+
+            final int levels = db.calculateInodeLevels(fLen - fInlineLen);
+
+            touchMultilevelFragment(pos - fInlineLen, levels, inode);
+        } catch (Throwable e) {
+            throw releaseExclusive(node, e);
+        }
+    }
+
+    /**
      * Caller must hold shared commit lock when using OP_SET_LENGTH or OP_WRITE.
      *
      * @param txn optional transaction for undo operations
@@ -182,10 +334,6 @@ final class BTreeValue {
                 }
 
                 // Handle OP_SET_LENGTH and OP_WRITE.
-
-                if (b == TOUCH_VALUE) {
-                    return 0;
-                }
 
                 if (txn != null) try {
                     txn.pushUncreate(cursor.mTree.mId, cursor.mKey);
@@ -239,12 +387,6 @@ final class BTreeValue {
                         if (op <= OP_CLEAR) {
                             // Handle OP_LENGTH, OP_READ, and OP_CLEAR.
                             return -1;
-                        }
-
-                        if (b == TOUCH_VALUE) {
-                            // This case isn't expected, because BTreeCursor.compact doesn't
-                            // call this method for non-fragmented values.
-                            return 0;
                         }
 
                         // Replace the ghost with an empty value.
@@ -337,12 +479,6 @@ final class BTreeValue {
                     break;
 
                 case OP_WRITE:
-                    if (b == TOUCH_VALUE) {
-                        // This case isn't expected, because BTreeCursor.compact doesn't
-                        // call this method for non-fragmented values.
-                        return 0;
-                    }
-
                     if (pos < vLen) {
                         final long end = pos + bLen;
                         if (end <= vLen) {
@@ -828,7 +964,7 @@ final class BTreeValue {
 
                     // Value doesn't need to be extended.
 
-                    if (bLen == 0 && b != TOUCH_VALUE) {
+                    if (bLen == 0) {
                         return 0;
                     }
 
@@ -850,13 +986,6 @@ final class BTreeValue {
 
                     pageSize = pageSize(db, page);
                 } else {
-                    if (b == TOUCH_VALUE) {
-                        // Don't extend the value.
-                        // This case isn't expected, because BTreeCursor.compact holds the node
-                        // latch and doesn't touch beyond the end of the value.
-                        return 0;
-                    }
-
                     // Extend the value.
 
                     int fieldGrowth = lengthFieldGrowth(fHeader, endPos);
@@ -991,9 +1120,9 @@ final class BTreeValue {
 
                 while (true) try {
                     final int amt = Math.min((int) bLen, pageSize - fNodeOff);
-                    final long fNodeId = p_uint48GetLE(page, loc);
-                    if (fNodeId == 0) {
-                        if (amt > 0) {
+                    if (amt > 0) {
+                        final long fNodeId = p_uint48GetLE(page, loc);
+                        if (fNodeId == 0) {
                             // Writing into a sparse value. Allocate a node and point to it.
                             if (txn != null) {
                                 txn.pushUnalloc(cursor.mTree.mId, cursor.mKey, pos, amt);
@@ -1010,9 +1139,7 @@ final class BTreeValue {
                             } finally {
                                 fNode.releaseExclusive();
                             }
-                        }
-                    } else {
-                        if (amt > 0 || b == TOUCH_VALUE) {
+                        } else {
                             // Obtain node from cache, or read it only for partial write.
                             final Node fNode;
                             if (txn == null) {
@@ -1037,8 +1164,8 @@ final class BTreeValue {
                                 fNode.releaseExclusive();
                             }
                         }
+                        bLen -= amt;
                     }
-                    bLen -= amt;
                     if (bLen <= 0) {
                         return 0;
                     }
@@ -1393,6 +1520,57 @@ final class BTreeValue {
 
             // Remaining clear steps begin at the start of the page.
             ppos = 0;
+        }
+    }
+
+    /**
+     * @param ppos partial value position being written (same as pos - fInlineLen initially)
+     * @param level inode level; at least 1
+     * @param inode exclusively latched parent inode; always released by this method
+     */
+    private static void touchMultilevelFragment(long ppos, int level, Node inode)
+        throws IOException
+    {
+        LocalDatabase db = inode.getDatabase();
+
+        while (true) {
+            var page = inode.mPage;
+            level--;
+            long levelCap = db.levelCap(level);
+
+            int poffset = ((int) (ppos / levelCap)) * 6;
+
+            final long childNodeId = p_uint48GetLE(page, poffset);
+            if (childNodeId == 0) {
+                // Sparse value.
+                return;
+            }
+
+            final Node childNode;
+            try {
+                childNode = db.nodeMapLoadFragmentExclusive(childNodeId, true);
+                try {
+                    if (db.markFragmentDirty(childNode)) {
+                        p_int48PutLE(page, poffset, childNode.id());
+                    }
+                } catch (Throwable e) {
+                    throw releaseExclusive(childNode, e);
+                }
+            } catch (Throwable e) {
+                throw releaseExclusive(inode, e);
+            }
+
+            if (level <= 0) {
+                childNode.releaseExclusive();
+                inode.releaseExclusive();
+                return;
+            }
+
+            inode.releaseExclusive(); // latch coupling release
+            inode = childNode;
+
+            // Handle a possible partial write to the first page.
+            ppos %= levelCap;
         }
     }
 

@@ -1635,11 +1635,38 @@ final class Node extends Clutch implements DatabaseAccess {
 
     /**
      * @param loc absolute location of entry
+     * @param split store the results here, capturing the actual key if fragmented
+     */
+    private void retrieveKeyAtLoc(final /*P*/ byte[] page, int loc, Split split)
+        throws IOException
+    {
+        byte[] fullKey, actualKey;
+        int keyLen = p_byteGet(page, loc++);
+        if (keyLen >= 0) {
+            keyLen++;
+            actualKey = new byte[keyLen];
+            p_copyToArray(page, loc, actualKey, 0, keyLen);
+            fullKey = actualKey;
+        } else {
+            int header = keyLen;
+            keyLen = ((keyLen & 0x3f) << 8) | p_ubyteGet(page, loc++);
+            actualKey = new byte[keyLen];
+            p_copyToArray(page, loc, actualKey, 0, keyLen);
+            fullKey = actualKey;
+            if ((header & ENTRY_FRAGMENTED) != 0) {
+                fullKey = getDatabase().reconstructKey(page, loc, keyLen);
+            }
+        }
+        split.setKey(fullKey, actualKey);
+    }
+
+    /**
+     * @param loc absolute location of entry
      * @param akeyRef [0] is set to the actual key
      * @return false if key is fragmented and actual doesn't match original
      */
-    private boolean retrieveActualKeyAtLoc(final /*P*/ byte[] page, int loc,
-                                           final byte[][] akeyRef)
+    private static boolean retrieveActualKeyAtLoc(final /*P*/ byte[] page, int loc,
+                                                  final byte[][] akeyRef)
         throws IOException
     {
         boolean result = true;
@@ -1971,12 +1998,21 @@ final class Node extends Clutch implements DatabaseAccess {
     /**
      * @param pos position as provided by binarySearch; must be positive
      */
+    boolean isFragmentedKey(int pos) {
+        final var page = mPage;
+        int loc = p_ushortGetLE(page, searchVecStart() + pos);
+        return (p_byteGet(page, loc) & 0xc0) == 0xc0;
+    }
+
+    /**
+     * @param pos position as provided by binarySearch; must be positive
+     */
     boolean isFragmentedLeafValue(int pos) {
         final var page = mPage;
         int loc = p_ushortGetLE(page, searchVecStart() + pos);
         loc += keyLengthAtLoc(page, loc);
         int header = p_byteGet(page, loc);
-        return ((header & 0xc0) >= 0xc0) & (header < -1);
+        return ((header & 0xc0) == 0xc0) & (header < -1);
     }
 
     /**
@@ -4180,7 +4216,9 @@ final class Node extends Clutch implements DatabaseAccess {
      *
      * @param childPos non-zero two-based position of the right child
      */
-    void deleteRightChildRef(int childPos) {
+    void deleteRightChildRef(int childPos) throws IOException {
+        deleteChildRef(childPos);
+
         // Fix affected cursors.
         for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
             int framePos = frame.mNodePos;
@@ -4189,8 +4227,6 @@ final class Node extends Clutch implements DatabaseAccess {
             }
             frame = frame.mPrevCousin;
         }
-
-        deleteChildRef(childPos);
     }
 
     /**
@@ -4198,7 +4234,9 @@ final class Node extends Clutch implements DatabaseAccess {
      *
      * @param childPos two-based position of the left child
      */
-    void deleteLeftChildRef(int childPos) {
+    void deleteLeftChildRef(int childPos) throws IOException {
+        deleteChildRef(childPos);
+
         // Fix affected cursors.
         for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
             int framePos = frame.mNodePos;
@@ -4207,8 +4245,6 @@ final class Node extends Clutch implements DatabaseAccess {
             }
             frame = frame.mPrevCousin;
         }
-
-        deleteChildRef(childPos);
     }
 
     /**
@@ -4216,14 +4252,24 @@ final class Node extends Clutch implements DatabaseAccess {
      *
      * @param childPos two-based position
      */
-    private void deleteChildRef(int childPos) {
+    private void deleteChildRef(int childPos) throws IOException {
         final var page = mPage;
         int keyPos = childPos == 0 ? 0 : (childPos - 2);
         int searchVecStart = searchVecStart();
 
         int entryLoc = p_ushortGetLE(page, searchVecStart + keyPos);
+        int keyLen = keyLengthAtLoc(page, entryLoc);
+
+        // If the key is fragmented, must delete it, but only if this is a bottom internal
+        // node. In all other cases, the parent key is effectively moved down. See "absorb
+        // parent key" in the moveInternalToLeftAndDelete method. Leaf nodes don't absorb the
+        // key, which is why only bottom internal nodes can delete it.
+        if (isBottomInternal() && (p_byteGet(page, entryLoc) & 0xc0) == 0xc0) {
+            getDatabase().deleteFragments(page, entryLoc + 2, keyLen - 2);
+        }
+
         // Increment garbage by the size of the encoded entry.
-        garbage(garbage() + keyLengthAtLoc(page, entryLoc));
+        garbage(garbage() + keyLen);
 
         // Rescale for long ids as encoded in page.
         childPos <<= 2;
@@ -5385,7 +5431,7 @@ final class Node extends Clutch implements DatabaseAccess {
                             // ...and split key has been found.
                             try {
                                 split = newSplitLeft(newNode);
-                                split.setKey(tree, retrieveKeyAtLoc(page, entryLoc));
+                                retrieveKeyAtLoc(page, entryLoc, split);
                             } catch (Throwable e) {
                                 cleanupSplit(e, newNode, split);
                                 throw e;
@@ -5490,7 +5536,7 @@ final class Node extends Clutch implements DatabaseAccess {
                             // ...and split key has been found.
                             try {
                                 split = newSplitRight(newNode);
-                                split.setKey(tree, retrieveKeyAtLoc(page, entryLoc));
+                                retrieveKeyAtLoc(page, entryLoc, split);
                             } catch (Throwable e) {
                                 cleanupSplit(e, newNode, split);
                                 throw e;

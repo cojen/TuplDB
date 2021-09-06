@@ -74,6 +74,14 @@ final class Split {
     }
 
     /**
+     * Set full and actual key. Use same instance if not fragmented.
+     */
+    final void setKey(byte[] fullKey, byte[] actualKey) {
+        mFullKey = fullKey;
+        mActualKey = actualKey;
+    }
+
+    /**
      * @return null if key is not fragmented
      */
     final byte[] fragmentedKey() {

@@ -4708,32 +4708,43 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
         // represents the leaf node. Detection may also be triggered by concurrent
         // modifications to the tree, but this is not harmful.
         var frameNodes = new Node[height];
+        var nodePositions = new int[height];
 
         CursorFrame frame = mFrame;
 
         outer: while (true) {
             for (int level = 0; level < height; level++) {
                 Node node = frame.acquireShared();
-                if (frameNodes[level] == node) {
+
+                if (frameNodes[level] == node &&
+                    (level == 0 || nodePositions[level] == frame.mNodePos))
+                {
                     // No point in checking upwards if this level is unchanged.
                     node.releaseShared();
                     break;
-                } else {
-                    frameNodes[level] = node;
-                    long id = compactFrame(highestNodeId, frame, node);
-                    if (id > highestNodeId) {
-                        // Abort compaction.
-                        return false;
-                    }
-                    try {
-                        if (!observer.indexNodeVisited(id)) {
-                            return false;
-                        }
-                    } catch (Throwable e) {
-                        uncaught(e);
-                        return false;
-                    }
                 }
+
+                frameNodes[level] = node;
+                nodePositions[level] = frame.mNodePos;
+                long id = compactFrame(highestNodeId, frame, node);
+                if (id > highestNodeId) {
+                    // Abort compaction.
+                    return false;
+                }
+
+                try {
+                    if (!observer.indexNodeVisited(id)) {
+                        return false;
+                    }
+                } catch (Throwable e) {
+                    uncaught(e);
+                    return false;
+                }
+
+                if (level != 0 && !compactInternalNode(highestNodeId, frame)) {
+                    return false;
+                }
+
                 frame = frame.mParentFrame;
             }
 
@@ -4750,7 +4761,7 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
                     pos = ~pos;
                 }
                 for (; pos <= end; pos += 2) {
-                    if (node.isFragmentedLeafValue(pos)) {
+                    if (node.isFragmentedKey(pos) || node.isFragmentedLeafValue(pos)) {
                         // Found one, so abort the quick check.
                         break quick;
                     }
@@ -4766,55 +4777,23 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
             }
 
             while (true) {
-                try {
-                    int nodePos = frame.mNodePos;
-                    if (nodePos >= 0 && node.isFragmentedLeafValue(nodePos)) {
-                        int pLen = pageSize(node.mPage);
-                        long pos = 0;
-                        while (true) {
-                            int result = BTreeValue.compactCheck(frame, pos, highestNodeId);
-
-                            if (result < -1) {
-                                break;
-                            }
-
-                            if (result > -1) {
-                                if (result > 0) {
-                                    // Skip over inline content.
-                                    pos = result;
-                                    continue;
-                                }
-
-                                node = null; // don't release in the finally block
-
-                                // Can pass null and still force the node to be dirtied because
-                                // the node position isn't negative.
-                                CommitLock.Shared shared = prepareStoreUpgrade(frame, null);
-
-                                try {
-                                    BTreeValue.action(null, this, frame, BTreeValue.OP_WRITE,
-                                                     pos, BTreeValue.TOUCH_VALUE, 0, 0);
-                                } finally {
-                                    shared.release();
-                                }
-
-                                node = frame.mNode;
-                                node.downgrade();
-
-                                if (node.id() > highestNodeId) {
-                                    // Abort compaction.
-                                    return false;
-                                }
-                            }
-
-                            pos += pLen;
+                int nodePos = frame.mNodePos;
+                if (nodePos >= 0) {
+                    if (node.isFragmentedKey(nodePos)) {
+                        node = compactFragmentedEntry(frame, node, true, highestNodeId);
+                        if (node == null) {
+                            return false;
                         }
                     }
-                } finally {
-                    if (node != null) {
-                        node.releaseShared();
+                    if (node.isFragmentedLeafValue(nodePos)) {
+                        node = compactFragmentedEntry(frame, node, false, highestNodeId);
+                        if (node == null) {
+                            return false;
+                        }
                     }
                 }
+
+                node.releaseShared();
 
                 nextLeaf();
 
@@ -4865,6 +4844,84 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
         }
 
         return id;
+    }
+
+    /**
+     * Examines the current internal node position, and compacts the key if necessary.
+     *
+     * @return false if compaction should stop
+     */
+    private boolean compactInternalNode(long highestNodeId, CursorFrame frame) throws IOException {
+        Node node = frame.acquireShared();
+        if (node.mSplit != null) {
+            mTree.finishSplitShared(frame, node);
+        }
+        boolean result;
+        if (!node.isInternal() || frame.mNodePos >= node.highestInternalPos()) {
+            result = true;
+        } else {
+            result = compactFragmentedEntry(frame, node, true, highestNodeId) != null;
+        }
+        node.releaseShared();
+        return result;
+    }
+
+    /**
+     * Scans through a fragmented key or value and moves content out of the compaction zone.
+     * The frame's node position must not be negative.
+     *
+     * @param frame leaf held shared, not split, released if an exception is thrown
+     * @param isKey true to examine the key instead of the value
+     * @return null if compaction should stop (node latch will have been released too)
+     */
+    private Node compactFragmentedEntry(final CursorFrame frame, Node node, boolean isKey,
+                                        long highestNodeId)
+        throws IOException
+    {
+        int pLen = pageSize(node.mPage);
+        long pos = 0;
+        while (true) {
+            int result;
+            try {
+                result = BTreeValue.compactCheck(frame, isKey, pos, highestNodeId);
+            } catch (Throwable e) {
+                node.releaseShared();
+                throw e;
+            }
+
+            if (result < -1) {
+                return node;
+            }
+
+            if (result > -1) {
+                if (result > 0) {
+                    // Skip over inline content.
+                    pos = result;
+                    continue;
+                }
+
+                // Can pass null and still force the node to be dirtied because
+                // the node position isn't negative.
+                CommitLock.Shared shared = prepareStoreUpgrade(frame, null);
+
+                try {
+                    BTreeValue.touch(frame, isKey, pos);
+                } finally {
+                    shared.release();
+                }
+
+                node = frame.mNode;
+                node.downgrade();
+
+                if (node.id() > highestNodeId) {
+                    // Abort compaction.
+                    node.releaseShared();
+                    return null;
+                }
+            }
+
+            pos += pLen;
+        }
     }
 
     /**

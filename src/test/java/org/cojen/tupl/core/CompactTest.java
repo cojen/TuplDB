@@ -21,6 +21,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 
+import java.util.Arrays;
 import java.util.Random;
 
 import org.junit.*;
@@ -144,28 +145,28 @@ public class CompactTest {
 
     @Test
     public void largeValues1() throws Exception {
-        largeValues(512, 1000, 4000, 4000);
+        largeValues(false, 512, 1000, 4000, 4000);
     }
 
     @Test
     public void largeValues2() throws Exception {
-        largeValues(16384, 100, 10000, 50000);
+        largeValues(false, 16384, 100, 10000, 50000);
     }
 
     @Test
     public void largeValues3() throws Exception {
-        largeValues(65536, 100, 70000, 90000);
+        largeValues(false, 65536, 100, 70000, 90000);
     }
 
     @Test
     public void largeValues4() throws Exception {
-        largeValues(512, 100, 30000, 50000);
+        largeValues(false, 512, 100, 30000, 50000);
     }
 
     @Test
     public void largeValues5() throws Exception {
         // Include a large sparse value too.
-        largeValues(512, 100, 30000, 50000, () -> {
+        largeValues(false, 512, 100, 30000, 50000, () -> {
             Index ix = openTestIndex();
             ValueAccessor accessor = ix.newAccessor(null, "sparse".getBytes());
             accessor.valueLength(100_000);
@@ -173,15 +174,35 @@ public class CompactTest {
         });
     }
 
-    private void largeValues(final int pageSize, final int count,
-                             final int min, final int max)
-        throws Exception
-    {
-        largeValues(pageSize, count, min, max, null);
+    @Test
+    public void largeKeys1() throws Exception {
+        largeValues(true, 512, 1000, 4000, 4000);
     }
 
-    private void largeValues(final int pageSize, final int count,
-                             final int min, final int max,
+    @Test
+    public void largeKeys2() throws Exception {
+        largeValues(true, 16384, 100, 10000, 50000);
+    }
+
+    @Test
+    public void largeKeys3() throws Exception {
+        largeValues(true, 65536, 100, 70000, 90000);
+    }
+
+    @Test
+    public void largeKeys4() throws Exception {
+        largeValues(true, 512, 100, 30000, 50000);
+    }
+
+    private void largeValues(final boolean forKey, final int pageSize,
+                             final int count, final int min, final int max)
+        throws Exception
+    {
+        largeValues(forKey, pageSize, count, min, max, null);
+    }
+
+    private void largeValues(final boolean forKey, final int pageSize,
+                             final int count, final int min, final int max,
                              final Callback prepare)
         throws Exception
     {
@@ -199,16 +220,27 @@ public class CompactTest {
 
         for (int i=0; i<count; i++) {
             int k = rnd1.nextInt();
-            byte[] key = ("key" + k).getBytes();
-            byte[] value = randomStr(rnd2, min, max);
+            byte[] key, value;
+            if (forKey) {
+                key = randomStr(rnd1, min, max);
+                value = ("value" + k).getBytes();
+            } else {
+                key = ("key" + k).getBytes();
+                value = randomStr(rnd2, min, max);
+            }
             ix.store(Transaction.BOGUS, key, value);
         }
 
         rnd1 = new Random(seed);
         for (int i=0; i<count; i++) {
             int k = rnd1.nextInt();
+            byte[] key;
+            if (forKey) {
+                key = randomStr(rnd1, min, max);
+            } else {
+                key = ("key" + k).getBytes();
+            }
             if (i % 2 != 0) {
-                byte[] key = ("key" + k).getBytes();
                 ix.delete(Transaction.BOGUS, key);
             }
         }
@@ -240,11 +272,20 @@ public class CompactTest {
         rnd2 = new Random(seed);
         for (int i=0; i<count; i++) {
             int k = rnd1.nextInt();
-            byte[] v = randomStr(rnd2, min, max);
-            if (i % 2 == 0) {
-                byte[] key = ("key" + k).getBytes();
-                byte[] value = ix.load(Transaction.BOGUS, key);
-                fastAssertArrayEquals(v, value);
+            if (forKey) {
+                byte[] key = randomStr(rnd1, min, max);
+                if (i % 2 == 0) {
+                    byte[] v = ("value" + k).getBytes();
+                    byte[] value = ix.load(Transaction.BOGUS, key);
+                    fastAssertArrayEquals(v, value);
+                }
+            } else {
+                byte[] v = randomStr(rnd2, min, max);
+                if (i % 2 == 0) {
+                    byte[] key = ("key" + k).getBytes();
+                    byte[] value = ix.load(Transaction.BOGUS, key);
+                    fastAssertArrayEquals(v, value);
+                }
             }
         }
 
@@ -264,13 +305,84 @@ public class CompactTest {
         rnd2 = new Random(seed);
         for (int i=0; i<count; i++) {
             int k = rnd1.nextInt();
-            byte[] v = randomStr(rnd2, min, max);
-            if (i % 2 == 0) {
-                byte[] key = ("key" + k).getBytes();
-                byte[] value = ix.load(Transaction.BOGUS, key);
-                fastAssertArrayEquals(v, value);
+            if (forKey) {
+                byte[] key = randomStr(rnd1, min, max);
+                if (i % 2 == 0) {
+                    byte[] v = ("value" + k).getBytes();
+                    byte[] value = ix.load(Transaction.BOGUS, key);
+                    fastAssertArrayEquals(v, value);
+                }
+            } else {
+                byte[] v = randomStr(rnd2, min, max);
+                if (i % 2 == 0) {
+                    byte[] key = ("key" + k).getBytes();
+                    byte[] value = ix.load(Transaction.BOGUS, key);
+                    fastAssertArrayEquals(v, value);
+                }
             }
         }
+    }
+
+    @Test
+    public void largeInternalKeys() throws Exception {
+        // Test with large keys that start with the same long prefix, defeating suffix
+        // compression.
+
+        final int count = 1000;
+        final int min = 4000;
+        final int max = 4000;
+
+        final byte[] prefix = new byte[1000];
+        Arrays.fill(prefix, (byte) 0x55);
+
+        mDb = newTempDatabase(getClass(),
+                              decorate(new DatabaseConfig()
+                                       .pageSize(512)
+                                       .minCacheSize(10_000_000)
+                                       .durabilityMode(DurabilityMode.NO_FLUSH)));
+        
+        final Index ix = openTestIndex();
+        final int seed = 1234;
+
+        var rnd1 = new Random(seed);
+        var rnd2 = new Random(seed);
+
+        for (int i=0; i<count; i++) {
+            int k = rnd1.nextInt();
+            byte[] key = randomStr(rnd1, prefix, min, max);
+            byte[] value = ("value" + k).getBytes();
+            ix.store(Transaction.BOGUS, key, value);
+        }
+
+        mDb.verify(null);
+
+        rnd1 = new Random(seed);
+        for (int i=0; i<count; i++) {
+            int k = rnd1.nextInt();
+            byte[] key = randomStr(rnd1, prefix, min, max);
+            if (i % 2 != 0) {
+                ix.delete(Transaction.BOGUS, key);
+            }
+        }
+
+        Database.Stats stats1 = mDb.stats();
+
+        mDb.compactFile(null, 0.9);
+
+        Database.Stats stats2 = mDb.stats();
+
+        try {
+            assertTrue(stats2.freePages < stats1.freePages);
+            assertTrue(stats2.totalPages < stats1.totalPages);
+        } catch (AssertionError e) {
+            // Can fail if delayed by concurrent test load. Retry.
+            mDb.compactFile(null, 0.9);
+            stats2 = mDb.stats();
+            assertTrue(stats2.freePages < stats1.freePages);
+            assertTrue(stats2.totalPages < stats1.totalPages);
+        }
+
+        assertTrue(mDb.verify(null));
     }
 
     @Test
@@ -694,6 +806,11 @@ public class CompactTest {
         assertTrue(mDb.verify(null));
 
         mDb.close();
+
+        // Verify that this doesn't fail after database is closed.
+        Database.Stats stats = mDb.stats();
+        assertEquals(0, stats.cachePages);
+        assertEquals(0, stats.dirtyPages);
     }
 
     private static void assertEqualStats(Database.Stats stats1, Database.Stats stats2) {
