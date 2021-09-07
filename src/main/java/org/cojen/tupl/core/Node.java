@@ -4216,45 +4216,9 @@ final class Node extends Clutch implements DatabaseAccess {
      *
      * @param childPos non-zero two-based position of the right child
      */
-    void deleteRightChildRef(int childPos) throws IOException {
-        deleteChildRef(childPos);
-
-        // Fix affected cursors.
-        for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
-            int framePos = frame.mNodePos;
-            if (framePos >= childPos) {
-                frame.mNodePos = framePos - 2;
-            }
-            frame = frame.mPrevCousin;
-        }
-    }
-
-    /**
-     * Delete a parent reference to a left child which merged right.
-     *
-     * @param childPos two-based position of the left child
-     */
-    void deleteLeftChildRef(int childPos) throws IOException {
-        deleteChildRef(childPos);
-
-        // Fix affected cursors.
-        for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
-            int framePos = frame.mNodePos;
-            if (framePos > childPos) {
-                frame.mNodePos = framePos - 2;
-            }
-            frame = frame.mPrevCousin;
-        }
-    }
-
-    /**
-     * Delete a parent reference to child, but doesn't fix any affected cursors.
-     *
-     * @param childPos two-based position
-     */
-    private void deleteChildRef(int childPos) throws IOException {
+    void deleteRightChildRef(final int childPos) throws IOException {
         final var page = mPage;
-        int keyPos = childPos == 0 ? 0 : (childPos - 2);
+        int keyPos = childPos - 2;
         int searchVecStart = searchVecStart();
 
         int entryLoc = p_ushortGetLE(page, searchVecStart + keyPos);
@@ -4272,28 +4236,70 @@ final class Node extends Clutch implements DatabaseAccess {
         garbage(garbage() + keyLen);
 
         // Rescale for long ids as encoded in page.
-        childPos <<= 2;
+        int childLoc = childPos << 2;
 
         int searchVecEnd = searchVecEnd();
 
         // Remove search vector entry (2 bytes) and remove child id entry
         // (8 bytes). Determine which shift operations minimize movement.
-        if (childPos < (3 * (searchVecEnd - searchVecStart) + keyPos + 8) >> 1) {
+        if (childLoc < (3 * (searchVecEnd - searchVecStart) + keyPos + 8) >> 1) {
             // Shift child ids right by 8, shift search vector right by 10.
             p_copy(page, searchVecStart + keyPos + 2,
                    page, searchVecStart + keyPos + (2 + 8),
-                   searchVecEnd - searchVecStart - keyPos + childPos);
+                   searchVecEnd - searchVecStart - keyPos + childLoc);
             p_copy(page, searchVecStart, page, searchVecStart += 10, keyPos);
             searchVecEnd(searchVecEnd + 8);
         } else {
             // Shift child ids left by 8, shift search vector right by 2.
-            p_copy(page, searchVecEnd + childPos + (2 + 8),
-                   page, searchVecEnd + childPos + 2,
-                   ((searchVecEnd - searchVecStart) << 2) + 8 - childPos);
+            p_copy(page, searchVecEnd + childLoc + (2 + 8),
+                   page, searchVecEnd + childLoc + 2,
+                   ((searchVecEnd - searchVecStart) << 2) + 8 - childLoc);
             p_copy(page, searchVecStart, page, searchVecStart += 2, keyPos);
         }
 
         searchVecStart(searchVecStart);
+
+        // Fix affected cursors.
+        for (CursorFrame frame = mLastCursorFrame; frame != null; ) {
+            int framePos = frame.mNodePos;
+            if (framePos >= childPos) {
+                frame.mNodePos = framePos - 2;
+            }
+            frame = frame.mPrevCousin;
+        }
+    }
+
+    /**
+     * Delete a parent reference to the lowest child which was deleted. No cursors or threads
+     * can be active in the tree except for one at the lowest position.
+     *
+     * This method only should be called when deleting the entire tree, because parent keys
+     * aren't moved downwards. Fragmented keys are always deleted.
+     */
+    void deleteLowestChildRef() throws IOException {
+        final var page = mPage;
+        final int searchVecStart = searchVecStart();
+
+        final int entryLoc = p_ushortGetLE(page, searchVecStart);
+        final int keyLen = keyLengthAtLoc(page, entryLoc);
+
+        // Unlike deleteRightChildRef, always delete fragmented keys. This method isn't called
+        // by anything which moves keys downwards.
+        if ((p_byteGet(page, entryLoc) & 0xc0) == 0xc0) {
+            getDatabase().deleteFragments(page, entryLoc + 2, keyLen - 2);
+        }
+
+        // Increment garbage by the size of the encoded entry.
+        garbage(garbage() + keyLen);
+
+        final int searchVecEnd = searchVecEnd();
+
+        p_copy(page, searchVecStart + 2,
+               page, searchVecStart + (2 + 8),
+               searchVecEnd - searchVecStart);
+
+        searchVecStart(searchVecStart + (2 + 8));
+        searchVecEnd(searchVecEnd + 8);
     }
 
     /**

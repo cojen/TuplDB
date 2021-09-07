@@ -3988,6 +3988,8 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
                 if (node.hasKeys()) {
                     break;
                 }
+
+                node.releaseExclusive();
             } finally {
                 shared.release();
             }
@@ -4031,7 +4033,7 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
         Node parentNode = parentFrame.acquireExclusive();
 
         if (parentNode.hasKeys()) {
-            parentNode.deleteLeftChildRef(0);
+            parentNode.deleteLowestChildRef();
         } else {
             if (!deleteLowestNode(parentFrame, parentNode)) {
                 db.finishDeleteNode(node);

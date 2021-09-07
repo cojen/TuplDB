@@ -1600,8 +1600,6 @@ class BTree extends Tree implements View, Index {
 
     /**
      * Caller must have exclusively latched the tree root node instance and the lone child node.
-     *
-     * @param child must not be a leaf node
      */
     final void rootDelete(Node child) throws IOException {
         // Allocate stuff early in case of out of memory, and while root is latched. Note that
