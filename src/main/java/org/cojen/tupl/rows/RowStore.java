@@ -48,10 +48,12 @@ import org.cojen.tupl.View;
 import org.cojen.tupl.core.CoreDatabase;
 import org.cojen.tupl.core.ScanVisitor;
 
+import org.cojen.tupl.util.Runner;
+
 import static org.cojen.tupl.rows.RowUtils.*;
 
 /**
- * 
+ * Main class for managing row persistence via tables.
  *
  * @author Brian S O'Neill
  */
@@ -395,6 +397,15 @@ public class RowStore {
      * secondary indexes associated with the table and perform actions to build or drop them.
      */
     public void notifySchema(long indexId) {
+        // Must launch from a separate thread because locks are held by this thread until the
+        // transaction finishes.
+        Runner.start(() -> doNotifySchema(indexId));
+    }
+
+    private void doNotifySchema(long indexId) {
+        // FIXME: This doesn't work if the table isn't open. Should the table class be
+        // synthesized?
+
         List<AbstractTable<?>> tables = mTableCache.findValues(null, (list, table) -> {
             if (table.supportsSecondaries()) {
                 if (table.mSource.id() == indexId) {
@@ -407,12 +418,14 @@ public class RowStore {
             return list;
         });
 
-        if (tables != null) try {
-            for (var table : tables) {
-                examineSecondaries(table);
+        if (tables != null) {
+            try {
+                for (var table : tables) {
+                    examineSecondaries(table);
+                }
+            } catch (Throwable e) {
+                RowStore.this.uncaught(e);
             }
-        } catch (Throwable e) {
-            RowStore.this.uncaught(e);
         }
     }
 

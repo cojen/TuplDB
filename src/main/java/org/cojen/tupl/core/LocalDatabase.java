@@ -3987,7 +3987,7 @@ final class LocalDatabase extends CoreDatabase {
                 callback.run();
 
                 if (localTxn.mRedo != null) {
-                    localTxn.mContext.redoNotifiySchema(localTxn.mRedo, primaryIndexId);
+                    localTxn.mContext.redoNotifySchema(localTxn.mRedo, primaryIndexId);
                 }
 
                 localTxn.commit();
