@@ -43,14 +43,14 @@ import static org.cojen.tupl.rows.RowUtils.*;
  * 
  *
  * @author Brian S O'Neill
- * @see IndexManager
+ * @see TableManager
  */
 public class IndexTriggerMaker<R> {
     private final Class<R> mRowType;
     private final Class<? extends R> mRowClass;
     private final RowGen mPrimaryGen;
 
-    // To be filled in by caller (IndexManager).
+    // To be filled in by caller (TableManager).
     final byte[][] mSecondaryDescriptors;
     final SecondaryInfo[] mSecondaryInfos;
     final Index[] mSecondaryIndexes;
@@ -67,9 +67,12 @@ public class IndexTriggerMaker<R> {
     //  ROW_FULL     - the full row can be used
     private static final int ROW_NONE = 0, ROW_KEY_ONLY = 1, ROW_FULL = 2;
 
+    /**
+     * @param rowType can pass null if only makeBackfill is to be called
+     */
     IndexTriggerMaker(Class<R> rowType, RowInfo primaryInfo, int numIndexes) {
         mRowType = rowType;
-        mRowClass = RowMaker.find(rowType);
+        mRowClass = rowType == null ? null : RowMaker.find(rowType);
         mPrimaryGen = primaryInfo.rowGen();
 
         mSecondaryDescriptors = new byte[numIndexes][];
@@ -99,9 +102,7 @@ public class IndexTriggerMaker<R> {
     /**
      * @param which which secondary index to make a backfill for 
      */
-    IndexBackfill<R> makeBackfill(IndexManager<R> manager, RowStore rs, AbstractTable<R> table,
-                                  int which)
-    {
+    IndexBackfill<R> makeBackfill(RowStore rs, Index primaryIndex, int which) {
         SecondaryInfo secondaryInfo = mSecondaryInfos[which];
         Index secondaryIndex = mSecondaryIndexes[which];
 
@@ -139,13 +140,13 @@ public class IndexTriggerMaker<R> {
         // Now define the constructor.
 
         MethodType ctorMethodType = MethodType.methodType
-            (void.class, IndexManager.class, RowStore.class, AbstractTable.class,
+            (void.class, RowStore.class, Index.class,
              Index.class, byte[].class, String.class);
 
         mm = cm.addConstructor(ctorMethodType);
         boolean autoload = numValues != 0;
-        mm.invokeSuperConstructor(mm.param(0), mm.param(1), mm.param(2), autoload,
-                                  mm.param(3), mm.param(4), mm.param(5));
+        mm.invokeSuperConstructor(mm.param(0), mm.param(1), autoload,
+                                  mm.param(2), mm.param(3), mm.param(4));
 
         var lookup = cm.finishHidden();
 
@@ -155,7 +156,7 @@ public class IndexTriggerMaker<R> {
         try {
             var ctor = lookup.findConstructor(lookup.lookupClass(), ctorMethodType);
             return (IndexBackfill<R>) ctor.invoke
-                (manager, rs, table, secondaryIndex, secondaryDesc, secondaryStr);
+                (rs, primaryIndex, secondaryIndex, secondaryDesc, secondaryStr);
         } catch (Throwable e) {
             throw rethrow(e);
         }

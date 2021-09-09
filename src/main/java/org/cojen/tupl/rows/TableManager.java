@@ -23,6 +23,7 @@ import java.lang.ref.WeakReference;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.TreeMap;
 
 import java.util.concurrent.TimeUnit;
@@ -30,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Index;
+import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
 
@@ -38,32 +40,78 @@ import org.cojen.tupl.util.Worker;
 import static org.cojen.tupl.rows.RowUtils.*;
 
 /**
- * Generates secondary indexes and alternate keys.
+ * 
  *
  * @author Brian S O'Neill
  */
-class IndexManager<R> {
+public class TableManager<R> {
+    final Index mPrimaryIndex;
+
+    final WeakCache<Class<R>, AbstractTable<R>> mTables;
+
     private final TreeMap<byte[], WeakReference<SecondaryInfo>> mIndexInfos;
 
     private TreeMap<byte[], IndexBackfill<R>> mIndexBackfills;
 
     private WeakReference<Worker> mWorkerRef;
 
-    IndexManager() {
+    TableManager(Index primaryIndex) {
+        mPrimaryIndex = primaryIndex;
+        mTables = new WeakCache<>();
         mIndexInfos = new TreeMap<>(Arrays::compareUnsigned);
+    }
+
+    Table<R> asTable(RowStore rs, Index ix, Class<R> type) throws IOException {
+        var table = (AbstractTable<R>) mTables.get(type);
+
+        if (table != null) {
+            return table;
+        }
+
+        synchronized (mTables) {
+            table = (AbstractTable<R>) mTables.get(type);
+            if (table == null) {
+                table = rs.makeTable(this, ix, type);
+                mTables.put(type, table);
+                // Must be called after the table is added to the cache.
+                rs.examineSecondaries(this);
+            }
+            return table;
+        }
     }
 
     /**
      * Update the set of indexes, based on what is found in the given View. If anything
-     * changed, a new trigger is installed on the table. Caller is expected to hold a lock
+     * changed, a new trigger is installed on all tables. Caller is expected to hold a lock
      * which prevents concurrent calls to this method, which isn't thread-safe.
      *
      * @param rs used to open secondary indexes
      * @param txn holds the lock
      * @param secondaries maps index descriptor to index id and state
      */
-    void update(AbstractTable<R> table, RowStore rs,
-                Transaction txn, View secondaries, Class<R> rowType)
+    void update(RowStore rs, Transaction txn, View secondaries) throws IOException {
+        List<AbstractTable<R>> tables = mTables.copyValues();
+        if (tables != null) {
+            for (var table : tables) {
+                Class<R> rowType = table.rowType();
+                RowInfo primaryInfo = RowInfo.find(rowType);
+                update(table, rowType, primaryInfo, rs, txn, secondaries);
+            }
+            return;
+        }
+
+        // FIXME: Need to decode primaryInfo. table and rowType is null.
+        System.out.println("no table for: " + mPrimaryIndex);
+        new Exception().printStackTrace(System.out);
+    }
+
+    /**
+     * @param table can be null if no table instances exist
+     * @param rowType can be null if table is null
+     * @param primaryInfo required
+     */
+    private void update(AbstractTable<R> table, Class<R> rowType, RowInfo primaryInfo,
+                        RowStore rs, Transaction txn, View secondaries)
         throws IOException
     {
         int size = 0;
@@ -101,8 +149,6 @@ class IndexManager<R> {
 
         ArrayList<IndexBackfill> newBackfills = null;
 
-        RowInfo primaryInfo = RowInfo.find(rowType);
-
         var maker = new IndexTriggerMaker<R>(rowType, primaryInfo, size);
 
         try (Cursor c = secondaries.newCursor(txn)) {
@@ -139,7 +185,7 @@ class IndexManager<R> {
                     IndexBackfill<R> backfill = mIndexBackfills.get(desc);
 
                     if (backfill == null) {
-                        backfill = maker.makeBackfill(this, rs, table, i);
+                        backfill = maker.makeBackfill(rs, mPrimaryIndex, i);
                         mIndexBackfills.put(desc, backfill);
                         if (newBackfills == null) {
                             newBackfills = new ArrayList<>();
@@ -156,7 +202,9 @@ class IndexManager<R> {
             mIndexBackfills = null;
         }
 
-        table.setTrigger(maker.makeTrigger(rs, table.mSource.id()));
+        if (table != null && table.supportsSecondaries()) {
+            table.setTrigger(maker.makeTrigger(rs, mPrimaryIndex.id()));
+        }
 
         // Can only safely start new backfills after the new trigger has been installed.
 

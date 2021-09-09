@@ -31,8 +31,13 @@ import org.cojen.tupl.UnmodifiableViewException;
  * @author Brian S O'Neill
  */
 public abstract class AbstractTableView<R> extends AbstractTable<R> {
-    protected AbstractTableView(Index source) {
-        super(source, false);
+    protected AbstractTableView(TableManager<R> manager, Index source) {
+        super(manager, source);
+    }
+
+    @Override
+    boolean supportsSecondaries() {
+        return false;
     }
 
     @Override

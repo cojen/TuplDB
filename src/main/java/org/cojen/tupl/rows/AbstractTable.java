@@ -48,6 +48,9 @@ import org.cojen.tupl.io.Utils;
  * @author Brian S O'Neill
  */
 public abstract class AbstractTable<R> implements Table<R> {
+    // Need a strong reference to this to prevent premature GC.
+    private final TableManager<R> mTableManager;
+
     protected final Index mSource;
 
     // MethodHandle signature: RowDecoderEncoder filtered(Object... args)
@@ -65,21 +68,14 @@ public abstract class AbstractTable<R> implements Table<R> {
         }
     }
 
-    private final IndexManager<R> mIndexManager;
-
-    /**
-     * @param triggers pass true to support triggers
-     */
-    protected AbstractTable(Index source, boolean triggers) {
+    protected AbstractTable(TableManager<R> manager, Index source) {
+        mTableManager = manager;
         mSource = Objects.requireNonNull(source);
         mFilterFactoryCache = new WeakCache<>();
-        if (triggers) {
+        if (supportsSecondaries()) {
             Trigger<R> trigger = new Trigger<>();
             trigger.mMode = Trigger.SKIP;
             cTriggerHandle.setRelease(this, trigger);
-            mIndexManager = new IndexManager<>();
-        } else {
-            mIndexManager = null;
         }
     }
 
@@ -229,21 +225,8 @@ public abstract class AbstractTable<R> implements Table<R> {
      */
     protected abstract MethodHandle filteredFactory(String str, RowFilter filter);
 
-    /**
-     * Update the secondary indexes, if any. Caller is expected to hold a lock which prevents
-     * concurrent calls to this method, which isn't thread-safe.
-     *
-     * @param rs used to open tables for indexes
-     * @param txn holds the lock
-     * @param secondaries maps index descriptor to index id and state
-     * @throws NullPointerException if unsupported
-     */
-    void examineSecondaries(RowStore rs, Transaction txn, View secondaries) throws IOException {
-        mIndexManager.update(this, rs, txn, secondaries, rowType());
-    }
-
     boolean supportsSecondaries() {
-        return mIndexManager != null;
+        return true;
     }
 
     /**

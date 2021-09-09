@@ -21,7 +21,6 @@ import java.io.IOException;
 
 import java.lang.ref.WeakReference;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -85,7 +84,7 @@ public class RowStore {
      */
     private final Index mSchemata;
 
-    private final WeakCache<Pair<Index, Class<?>>, AbstractTable<?>> mTableCache;
+    private final WeakCache<Index, TableManager<?>> mTableManagers;
 
     // Extended key for referencing secondary indexes.
     private static final int K_SECONDARY = 1;
@@ -117,7 +116,7 @@ public class RowStore {
         mSelfRef = new WeakReference<>(this);
         mDatabase = db;
         mSchemata = schemata;
-        mTableCache = new WeakCache<>();
+        mTableManagers = new WeakCache<>();
 
         registerToUpdateSchemata();
 
@@ -165,27 +164,38 @@ public class RowStore {
         }
     }
 
-    /**
-     * @param secondary pass true to support secondary indexes and alternate keys
-     */
-    @SuppressWarnings("unchecked")
-    public <R> Table<R> asTable(Index ix, Class<R> type, boolean secondaries) throws IOException {
-        final var key = new Pair<Index, Class<?>>(ix, type);
+    private TableManager<?> tableManager(Index ix) {
+        var manager = (TableManager<?>) mTableManagers.get(ix);
 
-        AbstractTable table = mTableCache.get(key);
-        if (table != null) {
-            return table;
-        }
-
-        synchronized (mTableCache) {
-            table = mTableCache.get(key);
-            if (table != null) {
-                return table;
+        if (manager == null) {
+            synchronized (mTableManagers) {
+                manager = (TableManager<?>) mTableManagers.get(ix);
+                if (manager == null) {
+                    manager = new TableManager<>(ix);
+                    mTableManagers.put(ix, manager);
+                }
             }
         }
 
+        return manager;
+    }
+
+    @SuppressWarnings("unchecked")
+    public <R> Table<R> asTable(Index ix, Class<R> type) throws IOException {
+        return ((TableManager<R>) tableManager(ix)).asTable(this, ix, type);
+    }
+
+    /**
+     * Called by TableManager via asTable.
+     */
+    @SuppressWarnings("unchecked")
+    <R> AbstractTable<R> makeTable(TableManager<R> manager, Index ix, Class<R> type)
+        throws IOException
+    {
         // Throws an exception if type is malformed.
         RowInfo info = RowInfo.find(type);
+
+        AbstractTable<R> table;
 
         // Can use NO_FLUSH because transaction will be only used for reading data.
         Transaction txn = mSchemata.newTransaction(DurabilityMode.NO_FLUSH);
@@ -206,22 +216,11 @@ public class RowStore {
                 // FIXME: Also check that alt key and secondary definitions haven't changed.
             }
 
-            synchronized (mTableCache) {
-                table = mTableCache.get(key);
-                if (table != null) {
-                    return table;
-                }
-            }
-
             try {
-                var mh = new TableMaker(this, type, info.rowGen(), ix.id(), secondaries).finish();
-                table = (AbstractTable) mh.invoke(ix);
+                var mh = new TableMaker(this, type, info.rowGen(), ix.id()).finish();
+                table = (AbstractTable) mh.invoke(manager, ix);
             } catch (Throwable e) {
                 throw rethrow(e);
-            }
-
-            synchronized (mTableCache) {
-                mTableCache.put(key, table);
             }
         } finally {
             txn.reset();
@@ -229,13 +228,11 @@ public class RowStore {
 
         // Attempt to eagerly update schema metadata and secondary indexes.
         try {
-            // Pass false for notify because examineSecondaries will be called below.
+            // Pass false for notify because examineSecondaries will be invoked by caller.
             schemaVersion(info, ix.id(), false);
         } catch (IOException e) {
             // Ignore and try again when storing rows or when the leadership changes.
         }
-
-        examineSecondaries(table);
 
         return table;
     }
@@ -304,13 +301,15 @@ public class RowStore {
         indexRowInfo.alternateKeys = Collections.emptyNavigableSet();
         indexRowInfo.secondaryIndexes = Collections.emptyNavigableSet();
 
+        var manager = (TableManager<R>) tableManager(ix);
+
         AbstractTable table;
 
         try {
             var maker = new TableMaker
                 (this, rowType, rowInfo.rowGen(), indexRowInfo.rowGen(), descriptor, ix.id());
             var mh = maker.finish();
-            table = (AbstractTable) mh.invoke(ix);
+            table = (AbstractTable) mh.invoke(manager, ix);
         } catch (Throwable e) {
             throw rethrow(e);
         }
@@ -375,9 +374,15 @@ public class RowStore {
      */
     @SuppressWarnings("unchecked")
     private void updateSchemata() {
-        for (Pair<Index, Class<?>> keyPair : mTableCache.copyKeys(Pair[]::new)) {
+        List<TableManager<?>> managers = mTableManagers.copyValues();
+
+        if (managers != null) {
             try {
-                schemaVersion(RowInfo.find(keyPair.b), keyPair.a.id(), true);
+                for (var manager : managers) {
+                    for (Class<?> type : manager.mTables.copyKeys(Class[]::new)) {
+                        schemaVersion(RowInfo.find(type), manager.mPrimaryIndex.id(), true);
+                    }
+                }
             } catch (IOException e) {
                 // Ignore and try again when storing rows or when the leadership changes.
             } catch (Throwable e) {
@@ -403,38 +408,20 @@ public class RowStore {
     }
 
     private void doNotifySchema(long indexId) {
-        // FIXME: This doesn't work if the table isn't open. Should the table class be
-        // synthesized?
-
-        List<AbstractTable<?>> tables = mTableCache.findValues(null, (list, table) -> {
-            if (table.supportsSecondaries()) {
-                if (table.mSource.id() == indexId) {
-                    if (list == null) {
-                        list = new ArrayList<>();
-                    }
-                    list.add(table);
-                }
-            }
-            return list;
-        });
-
-        if (tables != null) {
-            try {
-                for (var table : tables) {
-                    examineSecondaries(table);
-                }
-            } catch (Throwable e) {
-                RowStore.this.uncaught(e);
-            }
+        try {
+            Index ix = mDatabase.indexById(indexId);
+            examineSecondaries(tableManager(ix));
+        } catch (Throwable e) {
+            uncaught(e);
+            return;
         }
     }
 
-    private void examineSecondaries(AbstractTable<?> table) throws IOException {
-        if (!table.supportsSecondaries()) {
-            return;
-        }
-
-        long indexId = table.mSource.id();
+    /**
+     * Also called from TableManager.asTable.
+     */
+    <R> void examineSecondaries(TableManager<R> manager) throws IOException {
+        long indexId = manager.mPrimaryIndex.id();
 
         // Can use NO_FLUSH because transaction will be only used for reading data.
         Transaction txn = mDatabase.newTransaction(DurabilityMode.NO_FLUSH);
@@ -446,17 +433,17 @@ public class RowStore {
 
             txn.lockMode(LockMode.READ_COMMITTED);
 
-            table.examineSecondaries(this, txn, viewExtended(indexId, K_SECONDARY));
+            manager.update(this, txn, viewExtended(indexId, K_SECONDARY));
         } finally {
             txn.reset();
         }
     }
 
     /**
-     * Called by IndexManager when an index backfill has finished.
+     * Called by IndexBackfill when an index backfill has finished.
      */
     void activateSecondaryIndex(IndexBackfill backfill, boolean success) throws IOException {
-        long indexId = backfill.mTable.mSource.id();
+        long indexId = backfill.mPrimaryIndex.id();
         long secondaryId = backfill.mSecondaryIndex.id();
 
         boolean activated = false;
@@ -484,7 +471,7 @@ public class RowStore {
                 }
             }
 
-            backfill.mTable.examineSecondaries(this, txn, secondariesView);
+            tableManager(backfill.mPrimaryIndex).update(this, txn, secondariesView);
 
             txn.commit();
         } finally {
@@ -909,8 +896,6 @@ public class RowStore {
     }
 
     /**
-     * Decodes and caches an existing RowInfo by schemaVersion.
-     *
      * @param currentData can be null if not the current schema
      * @return null if not found
      */
@@ -924,8 +909,6 @@ public class RowStore {
     }
 
     /**
-     * Decodes and caches an existing RowInfo by schemaVersion.
-     *
      * @param currentData if null, then alternateKeys and secondaryIndexes won't be decoded
      * @param primaryData if null, then null is returned
      * @return null only if primaryData is null

@@ -59,7 +59,6 @@ public class TableMaker {
     private final Class<?> mRowClass;
     private final byte[] mSecondaryDescriptor;
     private final long mIndexId;
-    private final boolean mTriggers;
     private final ClassMaker mClassMaker;
 
     /**
@@ -67,10 +66,9 @@ public class TableMaker {
      *
      * @param store generated class is pinned to this specific instance
      * @param rowGen describes row encoding
-     * @param triggers pass true to support triggers
      */
-    TableMaker(RowStore store, Class<?> type, RowGen rowGen, long indexId, boolean triggers) {
-        this(store, type, rowGen, rowGen, null, indexId, triggers);
+    TableMaker(RowStore store, Class<?> type, RowGen rowGen, long indexId) {
+        this(store, type, rowGen, rowGen, null, indexId);
     }
 
     /**
@@ -84,17 +82,6 @@ public class TableMaker {
     TableMaker(RowStore store, Class<?> type, RowGen rowGen, RowGen codecGen,
                byte[] secondaryDesc, long indexId)
     {
-        this(store, type, rowGen, codecGen, secondaryDesc, indexId, false);
-    }
-
-    /**
-     * @param codecGen same as rowGen for primary table, different for secondary index view
-     * @param store generated class is pinned to this specific instance
-     * @param triggers pass true to support triggers
-     */
-    private TableMaker(RowStore store, Class<?> type, RowGen rowGen, RowGen codecGen,
-                       byte[] secondaryDesc, long indexId, boolean triggers)
-    {
         mStore = store;
         mRowType = type;
         mRowGen = rowGen;
@@ -103,7 +90,6 @@ public class TableMaker {
         mRowClass = RowMaker.find(type);
         mSecondaryDescriptor = secondaryDesc;
         mIndexId = indexId;
-        mTriggers = triggers;
 
         String suffix = "Table";
         Class baseClass;
@@ -121,7 +107,8 @@ public class TableMaker {
     }
 
     /**
-     * @return a constructor which accepts an Index and returns an AbstractTable implementation
+     * @return a constructor which accepts a (TableManager, Index) and returns an AbstractTable
+     * implementation
      */
     MethodHandle finish() {
         {
@@ -130,12 +117,8 @@ public class TableMaker {
         }
 
         {
-            MethodMaker mm = mClassMaker.addConstructor(Index.class);
-            if (isPrimaryTable()) {
-                mm.invokeSuperConstructor(mm.param(0), mTriggers);
-            } else {
-                mm.invokeSuperConstructor(mm.param(0));
-            }
+            MethodMaker mm = mClassMaker.addConstructor(TableManager.class, Index.class);
+            mm.invokeSuperConstructor(mm.param(0), mm.param(1));
         }
 
         // Add the simple rowType method.
@@ -223,8 +206,9 @@ public class TableMaker {
 
         try {
             var lookup = mClassMaker.finishLookup();
-            return lookup.findConstructor(lookup.lookupClass(),
-                                          MethodType.methodType(void.class, Index.class));
+            return lookup.findConstructor
+                (lookup.lookupClass(),
+                 MethodType.methodType(void.class, TableManager.class, Index.class));
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }
@@ -232,6 +216,10 @@ public class TableMaker {
 
     private boolean isPrimaryTable() {
         return mRowGen == mCodecGen;
+    }
+
+    private boolean supportsTriggers() {
+        return isPrimaryTable();
     }
 
     /**
@@ -746,7 +734,7 @@ public class TableMaker {
 
         final Variable valueVar;
 
-        if (variant != "delete" || !mTriggers) {
+        if (variant != "delete" || !supportsTriggers()) {
             valueVar = source.invoke(variant, txnVar, keyVar);
         } else {
             var triggerVar = mm.var(Trigger.class);
@@ -812,7 +800,7 @@ public class TableMaker {
 
         Variable resultVar = null;
 
-        if (!mTriggers) {
+        if (!supportsTriggers()) {
             resultVar = source.invoke(variant, txnVar, keyVar, valueVar);
         } else {
             Label cont = mm.label();
@@ -994,7 +982,7 @@ public class TableMaker {
             final Variable triggerLockVar;
             final Label triggerStart;
 
-            if (!mTriggers) {
+            if (!supportsTriggers()) {
                 triggerLockVar = null;
                 triggerStart = null;
             } else {
@@ -1052,7 +1040,7 @@ public class TableMaker {
         // of the current schema version.
 
         var indy = mm.var(TableMaker.class).indy
-            ("indyDoUpdate", mStore.ref(), mRowType, mIndexId, mTriggers);
+            ("indyDoUpdate", mStore.ref(), mRowType, mIndexId, supportsTriggers());
         indy.invoke(null, "doUpdate", null, mm.this_(), rowVar, mergeVar, cursorVar);
         mm.return_(true);
 

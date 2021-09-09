@@ -138,7 +138,7 @@ class BTree extends Tree implements View, Index {
 
     @Override
     public <R> Table<R> asTable(Class<R> type) throws IOException {
-        return mDatabase.rowStore().asTable(this, type, true);
+        return mDatabase.rowStore().asTable(this, type);
     }
 
     @Override

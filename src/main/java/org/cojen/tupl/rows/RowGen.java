@@ -49,6 +49,7 @@ class RowGen {
     }
 
     /**
+     * @param rowType defines the ClassLoader to use (can be null)
      * @param suffix appended to class name
      */
     public ClassMaker beginClassMaker(Class<?> who, Class<?> rowType, String suffix) {
@@ -56,6 +57,7 @@ class RowGen {
     }
 
     /**
+     * @param rowType defines the ClassLoader to use (can be null)
      * @param subPackage optional
      * @param suffix appended to class name
      */
@@ -66,6 +68,7 @@ class RowGen {
     }
 
     /**
+     * @param rowType defines the ClassLoader to use (can be null)
      * @param info used for defining the class name
      * @param subPackage optional
      * @param suffix appended to class name

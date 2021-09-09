@@ -22,11 +22,15 @@ import java.lang.invoke.VarHandle;
 import java.lang.ref.WeakReference;
 import java.lang.ref.ReferenceQueue;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import java.util.function.BiFunction;
 import java.util.function.IntFunction;
 
 /**
- * Simple cache of weakly referenced values.
+ * Simple cache of weakly referenced values. The keys must not strongly reference the values,
+ * or else they won't get GC'd.
  *
  * @author Brian S O'Neill
  */
@@ -141,6 +145,19 @@ class WeakCache<K, V> extends ReferenceQueue<Object> {
         }
 
         return keys;
+    }
+
+    /**
+     * @return null if no values
+     */
+    List<V> copyValues() {
+        return findValues(null, (list, value) -> {
+            if (list == null) {
+                list = new ArrayList<>();
+            }
+            list.add(value);
+            return list;
+        });
     }
 
     /**
