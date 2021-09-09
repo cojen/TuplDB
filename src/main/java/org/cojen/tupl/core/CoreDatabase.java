@@ -43,7 +43,7 @@ public abstract class CoreDatabase implements Database {
      * set of secondaries has changed. Finally, the transaction is committed.
      *
      * @param txn is committed as a side effect; will be switched to SYNC mode if replicated
-     * @param primaryIndexId index id in the notification op
+     * @param primaryIndexId index id in the notification op; pass 0 to disable notification
      * @param ids each array slot is filled in with a new identifier
      * @param callback invoked after the ids are filled in, with the commit lock held
      * @throws NullPointerException if any parameter is null
