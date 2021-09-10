@@ -350,6 +350,8 @@ public class ColumnInfo implements Cloneable {
 
     @Override
     public String toString() {
-        return (typeCode != -1 && isDescending()) ? ('-' + name) : name;
+        String typeName = type == null ? null : type.getSimpleName();
+        return ((typeCode != -1 && isDescending()) ? ('-' + name) : name) +
+            '(' + typeName + ',' + typeCode + ')';
     }
 }

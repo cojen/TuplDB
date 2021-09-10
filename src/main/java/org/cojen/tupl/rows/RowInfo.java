@@ -162,25 +162,6 @@ class RowInfo extends ColumnSet {
         return gen;
     }
 
-    boolean alternateKeysMatch(RowInfo other) {
-        return matches(alternateKeys, other.alternateKeys);
-    }
-
-    boolean secondaryIndexesMatch(RowInfo other) {
-        return matches(secondaryIndexes, other.secondaryIndexes);
-    }
-
-    static boolean matches(NavigableSet<ColumnSet> a, NavigableSet<ColumnSet> b) {
-        var ia = a.iterator();
-        var ib = b.iterator();
-        while (ia.hasNext()) {
-            if (!ib.hasNext() || !ia.next().matches(ib.next())) {
-                return false;
-            }
-        }
-        return !ib.hasNext();
-    }
-
     @Override
     public String toString() {
         return "name: " + name + ", " + super.toString() +

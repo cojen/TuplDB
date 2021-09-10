@@ -29,10 +29,10 @@ import java.util.Map;
 class ColumnSetComparator implements Comparator<ColumnSet> {
     static final ColumnSetComparator THE = new ColumnSetComparator(false);
 
-    private final boolean unspecifiedIsEqual;
+    private final boolean mUnspecifiedIsEqual;
 
     ColumnSetComparator(boolean unspecifiedIsEqual) {
-        this.unspecifiedIsEqual = unspecifiedIsEqual;
+        mUnspecifiedIsEqual = unspecifiedIsEqual;
     }
 
     @Override
@@ -66,7 +66,7 @@ class ColumnSetComparator implements Comparator<ColumnSet> {
                 return compare;
             }
 
-            if (unspecifiedIsEqual && ainfo.typeCode == -1 || binfo.typeCode == -1) {
+            if (mUnspecifiedIsEqual && ainfo.typeCode == -1 || binfo.typeCode == -1) {
                 return 0;
             }
 

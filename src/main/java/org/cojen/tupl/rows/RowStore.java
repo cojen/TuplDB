@@ -28,6 +28,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.NavigableMap;
+import java.util.NavigableSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
@@ -207,14 +209,10 @@ public class RowStore {
         try {
             txn.lockMode(LockMode.REPEATABLE_READ);
 
-            // With a txn lock held, check if the primary key definition has changed.
+            // With a txn lock held, check if the schema has changed incompatibly.
             RowInfo currentInfo = decodeExisting(txn, null, ix.id());
             if (currentInfo != null) {
-                if (!info.keyColumns.equals(currentInfo.keyColumns)) {
-                    // FIXME: Better exception.
-                    throw new IllegalStateException("Cannot alter primary key: " + type.getName());
-                }
-                // FIXME: Also check that alt key and secondary definitions haven't changed.
+                checkSchema(type.getName(), currentInfo, info);
             }
 
             try {
@@ -236,6 +234,117 @@ public class RowStore {
         }
 
         return table;
+    }
+
+    /**
+     * Checks if the the schema has changed incompatibly.
+     *
+     * @return true if schema is exactly the same; false if changed compatibly
+     * @throws IllegalStateException if incompatible change is detected
+     */
+    private static <R> boolean checkSchema(String typeName, RowInfo oldInfo, RowInfo newInfo) {
+        if (oldInfo.matches(newInfo)
+            && matches(oldInfo.alternateKeys, newInfo.alternateKeys)
+            && matches(oldInfo.secondaryIndexes, newInfo.secondaryIndexes))
+        {
+            return true;
+        }
+
+        if (!oldInfo.keyColumns.equals(newInfo.keyColumns)) {
+            // FIXME: Better exception.
+            throw new IllegalStateException("Cannot alter primary key: " + typeName);
+        }
+
+        // Checks for alternate keys and secondary indexes is much more strict. Any change to
+        // a column used by one is considered incompatible.
+
+        checkIndexes(typeName, "alternate keys",
+                     oldInfo.alternateKeys, newInfo.alternateKeys);
+
+        checkIndexes(typeName, "secondary indexes",
+                     oldInfo.secondaryIndexes, newInfo.secondaryIndexes);
+
+        return false;
+    }
+
+    /**
+     * Checks if the set of indexes has changed incompatibly.
+     */
+    private static <R> void checkIndexes(String typeName, String which,
+                                         NavigableSet<ColumnSet> oldSet,
+                                         NavigableSet<ColumnSet> newSet)
+    {
+        // Quick check.
+        if (oldSet.isEmpty() || newSet.isEmpty() || matches(oldSet, newSet)) {
+            return;
+        }
+
+        // Create mappings keyed by index descriptor, which isn't the most efficient approach,
+        // but it matches how secondaries are persisted. So it's safe and correct. The type
+        // descriptor prefix is fake, but that's okay. This isn't actually persisted.
+
+        var encoder = new Encoder(64);
+        NavigableMap<byte[], ColumnSet> oldMap = indexMap('_', encoder, oldSet);
+        NavigableMap<byte[], ColumnSet> newMap = indexMap('_', encoder, newSet);
+
+        Iterator<Map.Entry<byte[], ColumnSet>> oldIt = oldMap.entrySet().iterator();
+        Iterator<Map.Entry<byte[], ColumnSet>> newIt = newMap.entrySet().iterator();
+
+        Map.Entry<byte[], ColumnSet> oldEntry = null, newEntry = null;
+
+        while (true) {
+            if (oldEntry == null) {
+                if (!oldIt.hasNext()) {
+                    break;
+                }
+                oldEntry = oldIt.next();
+            }
+            if (newEntry == null) {
+                if (!newIt.hasNext()) {
+                    break;
+                }
+                newEntry = newIt.next();
+            }
+
+            int cmp = Arrays.compareUnsigned(oldEntry.getKey(), newEntry.getKey());
+
+            if (cmp == 0) {
+                // Same descriptor, so check if the index has changed.
+                if (!oldEntry.getValue().matches(newEntry.getValue())) {
+                    // FIXME: Better exception.
+                    throw new IllegalStateException("Cannot alter " + which + ": " + typeName);
+                }
+                oldEntry = null;
+                newEntry = null;
+            } else if (cmp < 0) {
+                // This index will be dropped, so not an incompatibility.
+                oldEntry = null;
+            } else {
+                // This index will be added, so not an incompatibility.
+                newEntry = null;
+            }
+        }
+    }
+
+    private static boolean matches(NavigableSet<ColumnSet> a, NavigableSet<ColumnSet> b) {
+        var ia = a.iterator();
+        var ib = b.iterator();
+        while (ia.hasNext()) {
+            if (!ib.hasNext() || !ia.next().matches(ib.next())) {
+                return false;
+            }
+        }
+        return !ib.hasNext();
+    }
+
+    private static NavigableMap<byte[], ColumnSet> indexMap(char type, Encoder encoder,
+                                                            NavigableSet<ColumnSet> set)
+    {
+        var map = new TreeMap<byte[], ColumnSet>(Arrays::compareUnsigned);
+        for (ColumnSet cs : set) {
+            map.put(EncodedRowInfo.encodeDescriptor(type, encoder, cs), cs);
+        }
+        return map;
     }
 
     public <R> Table<R> alternateKeyTable(AbstractTable<R> primaryTable, String... columns)
@@ -613,26 +722,14 @@ public class RowStore {
             current.find(key(indexId));
 
             if (current.value() != null) {
-                // Check if the currently defined schema matches.
-
+                // Check if the schema has changed.
                 schemaVersion = decodeIntLE(current.value(), 0);
                 RowInfo currentInfo = decodeExisting
                     (txn, info.name, indexId, current.value(), schemaVersion);
-
-                if (info.matches(currentInfo)
-                    && info.alternateKeysMatch(currentInfo)
-                    && info.secondaryIndexesMatch(currentInfo))
-                {
-                    // Completely matches.
+                if (checkSchema(info.name, currentInfo, info)) {
+                    // Exactly the same, so don't create a new version.
                     return schemaVersion;
                 }
-
-                if (!info.keyColumns.equals(currentInfo.keyColumns)) {
-                    // FIXME: Better exception.
-                    throw new IllegalStateException("Cannot alter primary key: " + info.name);
-                }
-
-                // FIXME: Also check that alt key and secondary definitions haven't changed.
             }
 
             // Find an existing schemaVersion or create a new one.
@@ -915,7 +1012,7 @@ public class RowStore {
     /**
      * Decode the existing RowInfo for the current schema version.
      *
-     * @param typeName can be null if unknown
+     * @param typeName pass null to decode the current type name
      * @return null if not found
      */
     RowInfo decodeExisting(Transaction txn, String typeName, long indexId) throws IOException {
@@ -929,7 +1026,7 @@ public class RowStore {
     /**
      * Decode the existing RowInfo for the given schema version.
      *
-     * @param typeName can be null if unknown
+     * @param typeName pass null to decode the current type name
      * @param currentData can be null if not the current schema
      * @return null if not found
      */
