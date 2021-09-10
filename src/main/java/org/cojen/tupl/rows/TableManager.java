@@ -211,7 +211,11 @@ public class TableManager<R> {
         if (newBackfills != null && !newBackfills.isEmpty()) {
             Worker worker;
             if (mWorkerRef == null || (worker = mWorkerRef.get()) == null) {
-                worker = Worker.make(Integer.MAX_VALUE, 1, TimeUnit.SECONDS, null);
+                worker = Worker.make(Integer.MAX_VALUE, 10, TimeUnit.SECONDS, r -> {
+                    Thread t = new Thread(r);
+                    t.setDaemon(true);
+                    return t;
+                });
                 mWorkerRef = new WeakReference<>(worker);
             }
             for (var backfill : newBackfills) {
