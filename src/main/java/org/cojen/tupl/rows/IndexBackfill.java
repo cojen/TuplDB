@@ -100,7 +100,7 @@ public abstract class IndexBackfill<R> extends Worker.Task implements Closeable 
             success = doRun();
 
             if (listener != null) {
-                String message = (success ? "Finsished" : "Stopped") + " backfill for %1$s";
+                String message = (success ? "Finished" : "Stopped") + " backfill for %1$s";
                 listener.notify(EventType.TABLE_INDEX_BACKFILL_INFO, message, mSecondaryStr);
             }
         } catch (Throwable e) {
