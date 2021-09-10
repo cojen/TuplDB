@@ -73,6 +73,8 @@ public class RowStore {
 
        (indexId, 0, K_SECONDARY, descriptor) -> indexId, state
 
+       (indexId, 0, K_TYPE_NAME) -> current type name (UTF-8)
+
        (0L, indexId, taskType) -> ...  workflow task against an index
 
        The schemaVersion is limited to 2^31, and the hash is encoded with bit 31 set,
@@ -88,6 +90,9 @@ public class RowStore {
 
     // Extended key for referencing secondary indexes.
     private static final int K_SECONDARY = 1;
+
+    // Extended key to store the fully qualified type name.
+    private static final int K_TYPE_NAME = 2;
 
     /*
       FIXME: notes
@@ -398,7 +403,8 @@ public class RowStore {
      * secondary indexes associated with the table and perform actions to build or drop them.
      */
     public void notifySchema(long indexId) {
-        // FIXME: If there's an exception, then the redo op isn't processed again.
+        // FIXME: If there's an exception, then the redo op isn't processed again. Define a
+        // workflow task perhaps?
 
         // Must launch from a separate thread because locks are held by this thread until the
         // transaction finishes.
@@ -689,6 +695,19 @@ public class RowStore {
             encodeIntLE(encoded.currentData, 0, schemaVersion);
             current.store(encoded.currentData);
 
+            // Store the type name, which is usually the same as the class name. In case the
+            // table isn't currently open, this name can be used for reporting background
+            // status updates. Although the index name could be used, it's not required to be
+            // the same as the class name.
+            View nameView = viewExtended(indexId, K_TYPE_NAME);
+            try (Cursor c = nameView.newCursor(txn)) {
+                c.find(EMPTY_BYTES);
+                byte[] nameBytes = encodeStringUTF(info.name);
+                if (!Arrays.equals(nameBytes, c.value())) {
+                    c.store(nameBytes);
+                }
+            }
+
             // Start with the full set of secondary descriptors and later prune it down to
             // those that need to be created.
             var secondaries = encoded.secondaries;
@@ -896,7 +915,7 @@ public class RowStore {
     /**
      * Decode the existing RowInfo for the current schema version.
      *
-     * @param typeName can be null if unknown or not needed
+     * @param typeName can be null if unknown
      * @return null if not found
      */
     RowInfo decodeExisting(Transaction txn, String typeName, long indexId) throws IOException {
@@ -910,6 +929,7 @@ public class RowStore {
     /**
      * Decode the existing RowInfo for the given schema version.
      *
+     * @param typeName can be null if unknown
      * @param currentData can be null if not the current schema
      * @return null if not found
      */
@@ -918,6 +938,16 @@ public class RowStore {
         throws IOException
     {
         byte[] primaryData = mSchemata.load(txn, key(indexId, schemaVersion));
+
+        if (typeName == null) {
+            byte[] currentName = viewExtended(indexId, K_TYPE_NAME).load(txn, EMPTY_BYTES);
+            if (currentName == null) {
+                typeName = String.valueOf(indexId);
+            } else {
+                typeName = decodeStringUTF(currentName, 0, currentName.length);
+            }
+        }
+
         return decodeExisting(typeName, currentData, primaryData);
     }
 

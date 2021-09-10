@@ -98,9 +98,7 @@ public class TableManager<R> {
                 update(table, rowType, primaryInfo, rs, txn, secondaries);
             }
         } else {
-            // FIXME: Make sure that name is a valid class name. Replace some chars.
-            String name = mPrimaryIndex.nameString();
-            RowInfo primaryInfo = rs.decodeExisting(txn, name, mPrimaryIndex.id());
+            RowInfo primaryInfo = rs.decodeExisting(txn, null, mPrimaryIndex.id());
             if (primaryInfo != null) {
                 update(null, null, primaryInfo, rs, txn, secondaries);
             }
