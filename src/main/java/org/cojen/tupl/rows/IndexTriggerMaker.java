@@ -733,15 +733,17 @@ public class IndexTriggerMaker<R> {
                 return mm.finish();
             }
 
-            if (schemaVersion == 0) {
-                // When the schema version is zero, the primary value is empty.
-                throw new RuntimeException("FIXME: handle schemaVersion 0");
-            }
-
             RowInfo primaryInfo;
-            var secondaryIndexes = new Index[secondaryIndexIds.length];
+            Index[] secondaryIndexes;
             try {
-                primaryInfo = store.rowInfo(rowType, indexId, schemaVersion);
+                if (schemaVersion == 0) {
+                    // When the schema version is zero, the primary value is empty. Since the
+                    // primary key never changes, can lookup the canonical RowInfo instance.
+                    primaryInfo = RowInfo.find(rowType);
+                } else {
+                    primaryInfo = store.rowInfo(rowType, indexId, schemaVersion);
+                }
+                secondaryIndexes = new Index[secondaryIndexIds.length];
                 for (int i=0; i<secondaryIndexIds.length; i++) {
                     secondaryIndexes[i] = store.mDatabase.indexById(secondaryIndexIds[i]);
                 }
@@ -799,7 +801,8 @@ public class IndexTriggerMaker<R> {
         var keyVar = mm.param(2);
         var oldValueVar = mm.param(3);
 
-        findColumns(mm, keyVar, oldValueVar, schemaVersion < 128 ? 1 : 4, ROW_KEY_ONLY);
+        int valueOffset = schemaVersion == 0 ? 0 : (schemaVersion < 128 ? 1 : 4);
+        findColumns(mm, keyVar, oldValueVar, valueOffset, ROW_KEY_ONLY);
 
         // FIXME: As an optimization, when encoding complex columns (non-primitive), check if
         // prior secondary indexes have a matching codec and copy from them.
