@@ -49,6 +49,7 @@ class RowGen {
     }
 
     /**
+     * @param who the class which is making a class (can be null)
      * @param rowType defines the ClassLoader to use (can be null)
      * @param suffix appended to class name
      */
@@ -57,8 +58,9 @@ class RowGen {
     }
 
     /**
+     * @param who the class which is making a class (can be null)
      * @param rowType defines the ClassLoader to use (can be null)
-     * @param subPackage optional
+     * @param subPackage optional (can be null)
      * @param suffix appended to class name
      */
     public ClassMaker beginClassMaker(Class<?> who, Class<?> rowType,
@@ -68,16 +70,19 @@ class RowGen {
     }
 
     /**
+     * @param who the class which is making a class (can be null)
      * @param rowType defines the ClassLoader to use (can be null)
-     * @param info used for defining the class name
-     * @param subPackage optional
+     * @param info used for defining the class name (can be null)
+     * @param subPackage optional (can be null)
      * @param suffix appended to class name
      */
     public static ClassMaker beginClassMaker(Class<?> who, Class<?> rowType, RowInfo info,
                                              String subPackage, String suffix)
     {
         String name;
-        {
+        if (info == null || info.name == null) {
+            name = null;
+        } else {
             int ix = info.name.lastIndexOf('.');
             if (ix > 0) {
                 if (subPackage == null) {
@@ -93,7 +98,9 @@ class RowGen {
             }
         }
 
-        ClassMaker cm = ClassMaker.begin(name, rowType.getClassLoader(), MAKER_KEY);
+        ClassLoader loader = rowType == null ? null : rowType.getClassLoader();
+
+        ClassMaker cm = ClassMaker.begin(name, loader, MAKER_KEY);
 
         if (who != null) {
             cm.sourceFile(who.getSimpleName());

@@ -102,7 +102,7 @@ public class IndexTriggerMaker<R> {
     /**
      * @param which which secondary index to make a backfill for 
      */
-    IndexBackfill<R> makeBackfill(RowStore rs, Index primaryIndex, int which) {
+    IndexBackfill<R> makeBackfill(RowStore rs, TableManager manager, int which) {
         SecondaryInfo secondaryInfo = mSecondaryInfos[which];
         Index secondaryIndex = mSecondaryIndexes[which];
 
@@ -140,7 +140,7 @@ public class IndexTriggerMaker<R> {
         // Now define the constructor.
 
         MethodType ctorMethodType = MethodType.methodType
-            (void.class, RowStore.class, Index.class,
+            (void.class, RowStore.class, TableManager.class,
              Index.class, byte[].class, String.class);
 
         mm = cm.addConstructor(ctorMethodType);
@@ -156,7 +156,7 @@ public class IndexTriggerMaker<R> {
         try {
             var ctor = lookup.findConstructor(lookup.lookupClass(), ctorMethodType);
             return (IndexBackfill<R>) ctor.invoke
-                (rs, primaryIndex, secondaryIndex, secondaryDesc, secondaryStr);
+                (rs, manager, secondaryIndex, secondaryDesc, secondaryStr);
         } catch (Throwable e) {
             throw rethrow(e);
         }

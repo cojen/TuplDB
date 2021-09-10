@@ -97,12 +97,14 @@ public class TableManager<R> {
                 RowInfo primaryInfo = RowInfo.find(rowType);
                 update(table, rowType, primaryInfo, rs, txn, secondaries);
             }
-            return;
+        } else {
+            // FIXME: Make sure that name is a valid class name. Replace some chars.
+            String name = mPrimaryIndex.nameString();
+            RowInfo primaryInfo = rs.decodeExisting(txn, name, mPrimaryIndex.id());
+            if (primaryInfo != null) {
+                update(null, null, primaryInfo, rs, txn, secondaries);
+            }
         }
-
-        // FIXME: Need to decode primaryInfo. table and rowType is null.
-        System.out.println("no table for: " + mPrimaryIndex);
-        new Exception().printStackTrace(System.out);
     }
 
     /**
@@ -185,7 +187,7 @@ public class TableManager<R> {
                     IndexBackfill<R> backfill = mIndexBackfills.get(desc);
 
                     if (backfill == null) {
-                        backfill = maker.makeBackfill(rs, mPrimaryIndex, i);
+                        backfill = maker.makeBackfill(rs, this, i);
                         mIndexBackfills.put(desc, backfill);
                         if (newBackfills == null) {
                             newBackfills = new ArrayList<>();

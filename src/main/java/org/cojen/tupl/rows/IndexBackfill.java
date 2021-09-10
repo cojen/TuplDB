@@ -45,8 +45,8 @@ import org.cojen.tupl.util.Worker;
  * @author Brian S O'Neill
  */
 public abstract class IndexBackfill<R> extends Worker.Task implements Closeable {
+    final TableManager mManager;
     final RowStore mRowStore;
-    final Index mPrimaryIndex;
     final boolean mAutoload;
     final Index mSecondaryIndex;
     final byte[] mSecondaryDescriptor;
@@ -69,12 +69,12 @@ public abstract class IndexBackfill<R> extends Worker.Task implements Closeable 
      * needed to create secondary index entries
      * @param secondaryStr name of secondary index
      */
-    protected IndexBackfill(RowStore rs, Index primaryIndex, boolean autoload,
+    protected IndexBackfill(RowStore rs, TableManager manager, boolean autoload,
                             Index secondaryIndex, byte[] secondaryDesc, String secondaryStr)
         throws IOException
     {
         mRowStore = rs;
-        mPrimaryIndex = primaryIndex;
+        mManager = manager;
         mAutoload = autoload;
         mSecondaryIndex = secondaryIndex;
         mSecondaryDescriptor = secondaryDesc;
@@ -137,7 +137,7 @@ public abstract class IndexBackfill<R> extends Worker.Task implements Closeable 
         txn.lockTimeout(-1, null);
         txn.durabilityMode(DurabilityMode.NO_REDO);
 
-        try (Cursor c = mPrimaryIndex.newCursor(txn)) {
+        try (Cursor c = mManager.mPrimaryIndex.newCursor(txn)) {
             c.autoload(mAutoload);
             c.first();
             int length = 0;

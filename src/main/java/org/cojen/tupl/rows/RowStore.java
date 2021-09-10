@@ -203,15 +203,11 @@ public class RowStore {
             txn.lockMode(LockMode.REPEATABLE_READ);
 
             // With a txn lock held, check if the primary key definition has changed.
-            byte[] value = mSchemata.load(txn, key(ix.id()));
-
-            if (value != null) {
-                int schemaVersion = decodeIntLE(value, 0);
-                String name = type.getName();
-                RowInfo currentInfo = decodeExisting(txn, name, ix.id(), value, schemaVersion);
+            RowInfo currentInfo = decodeExisting(txn, null, ix.id());
+            if (currentInfo != null) {
                 if (!info.keyColumns.equals(currentInfo.keyColumns)) {
                     // FIXME: Better exception.
-                    throw new IllegalStateException("Cannot alter primary key: " + name);
+                    throw new IllegalStateException("Cannot alter primary key: " + type.getName());
                 }
                 // FIXME: Also check that alt key and secondary definitions haven't changed.
             }
@@ -402,6 +398,8 @@ public class RowStore {
      * secondary indexes associated with the table and perform actions to build or drop them.
      */
     public void notifySchema(long indexId) {
+        // FIXME: If there's an exception, then the redo op isn't processed again.
+
         // Must launch from a separate thread because locks are held by this thread until the
         // transaction finishes.
         Runner.start(() -> doNotifySchema(indexId));
@@ -443,7 +441,7 @@ public class RowStore {
      * Called by IndexBackfill when an index backfill has finished.
      */
     void activateSecondaryIndex(IndexBackfill backfill, boolean success) throws IOException {
-        long indexId = backfill.mPrimaryIndex.id();
+        long indexId = backfill.mManager.mPrimaryIndex.id();
         long secondaryId = backfill.mSecondaryIndex.id();
 
         boolean activated = false;
@@ -471,7 +469,7 @@ public class RowStore {
                 }
             }
 
-            tableManager(backfill.mPrimaryIndex).update(this, txn, secondariesView);
+            backfill.mManager.update(this, txn, secondariesView);
 
             txn.commit();
         } finally {
@@ -896,11 +894,26 @@ public class RowStore {
     }
 
     /**
+     * Decode the existing RowInfo for the current schema version.
+     *
+     * @param typeName can be null if unknown or not needed
+     * @return null if not found
+     */
+    RowInfo decodeExisting(Transaction txn, String typeName, long indexId) throws IOException {
+        byte[] currentData = mSchemata.load(txn, key(indexId));
+        if (currentData == null) {
+            return null;
+        }
+        return decodeExisting(txn, typeName, indexId, currentData, decodeIntLE(currentData, 0));
+    }
+
+    /**
+     * Decode the existing RowInfo for the given schema version.
+     *
      * @param currentData can be null if not the current schema
      * @return null if not found
      */
-    private RowInfo decodeExisting(Transaction txn,
-                                   String typeName, long indexId,
+    private RowInfo decodeExisting(Transaction txn, String typeName, long indexId,
                                    byte[] currentData, int schemaVersion)
         throws IOException
     {
