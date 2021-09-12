@@ -218,7 +218,11 @@ public class TableManager<R> {
                 });
                 mWorkerRef = new WeakReference<>(worker);
             }
+
             for (var backfill : newBackfills) {
+                // The backfill must also be installed as a listener before it starts.
+                rs.mDatabase.addRedoListener(backfill);
+
                 worker.enqueue(backfill);
             }
         }

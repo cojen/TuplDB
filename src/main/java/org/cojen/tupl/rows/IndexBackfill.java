@@ -35,6 +35,9 @@ import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Sorter;
 import org.cojen.tupl.Transaction;
 
+import org.cojen.tupl.core.CoreDatabase;
+import org.cojen.tupl.core.RedoListener;
+
 import org.cojen.tupl.util.Runner;
 import org.cojen.tupl.util.Worker;
 
@@ -44,7 +47,7 @@ import org.cojen.tupl.util.Worker;
  *
  * @author Brian S O'Neill
  */
-public abstract class IndexBackfill<R> extends Worker.Task implements Closeable {
+public abstract class IndexBackfill<R> extends Worker.Task implements RedoListener, Closeable {
     final TableManager mManager;
     final RowStore mRowStore;
     final boolean mAutoload;
@@ -258,6 +261,21 @@ public abstract class IndexBackfill<R> extends Worker.Task implements Closeable 
     }
 
     /**
+     * Defined by RedoListener, and is used to observe deletes against the secondary index,
+     * triggered by the incoming replication stream.
+     */
+    @Override
+    public final void store(Transaction txn, Index ix, byte[] key, byte[] value) {
+        if (value == null && ix == mSecondaryIndex) {
+            try {
+                deleted(txn, key);
+            } catch (Throwable e) {
+                error("Uncaught exception during backfill of %1$s: %2$s", e);
+            }
+        }
+    }
+
+    /**
      * Called by a trigger to indicate that it's actively using this backfill.
      */
     public synchronized void used() {
@@ -294,7 +312,9 @@ public abstract class IndexBackfill<R> extends Worker.Task implements Closeable 
             return;
         }
 
-        Database db = mRowStore.mDatabase;
+        CoreDatabase db = mRowStore.mDatabase;
+
+        db.removeRedoListener(this);
 
         Runner.start(() -> {
             Runnable deleteTask = null;
