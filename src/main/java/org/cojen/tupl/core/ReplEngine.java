@@ -20,12 +20,17 @@ package org.cojen.tupl.core;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
+import java.lang.invoke.MutableCallSite;
+import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 
 import java.lang.ref.SoftReference;
 
 import java.util.Arrays;
+
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
@@ -67,6 +72,10 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
 
     private static final VarHandle cDecodeExceptionHandle;
 
+    private static final MutableCallSite cStoreListenerCallSite;
+    private static final MethodHandle cStoreListenerHandle;
+    private static int cStoreListenerActiveCount;
+
     static {
         try {
             cDecodeExceptionHandle =
@@ -75,6 +84,18 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         } catch (Throwable e) {
             throw rethrow(e);
         }
+
+        cStoreListenerCallSite = new MutableCallSite(emptyStoreListener());
+        cStoreListenerHandle = cStoreListenerCallSite.dynamicInvoker();
+    }
+
+    private static MethodType storeListenerType() {
+        return MethodType.methodType(void.class, ReplEngine.class,
+                                     Transaction.class, Index.class, byte[].class, byte[].class);
+    }
+
+    private static MethodHandle emptyStoreListener() {
+        return MethodHandles.empty(storeListenerType());
     }
 
     final StreamReplicator mRepl;
@@ -104,6 +125,8 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     private ReplDecoder mDecoder;
 
     private volatile Throwable mDecodeException;
+
+    private volatile CopyOnWriteArrayList<RedoListener> mRedoListeners;
 
     /**
      * @param txns recovered transactions; can be null; cleared as a side-effect; keyed by
@@ -209,6 +232,94 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         }
 
         return decoder;
+    }
+
+    public boolean addRedoListener(RedoListener listener) {
+        mDecodeLatch.acquireExclusive();
+        try {
+            if (mRedoListeners == null) {
+                activateRedoStoreListener();
+                mRedoListeners = new CopyOnWriteArrayList<>();
+            }
+            if (!mRedoListeners.addIfAbsent(listener)) {
+                return false;
+            }
+            // Wait for all workers to finish before returning, avoiding race conditions that
+            // might lead to dropped operations.
+            if (mWorkerGroup != null) {
+                // Can only call mWorkerGroup when mDecodeLatch is held.
+                mWorkerGroup.join(false);
+            }
+            return true;
+        } finally {
+            mDecodeLatch.releaseExclusive();
+        }
+    }
+
+    public boolean removeRedoListener(RedoListener listener) {
+        mDecodeLatch.acquireExclusive();
+        try {
+            if (mRedoListeners == null || !mRedoListeners.remove(listener)) {
+                return false;
+            }
+            if (mRedoListeners.isEmpty()) {
+                deactivateRedoStoreListener();
+                mRedoListeners = null;
+            }
+            return true;
+        } finally {
+            mDecodeLatch.releaseExclusive();
+        }
+    }
+
+    private static synchronized void activateRedoStoreListener() {
+        if (cStoreListenerActiveCount == 0) {
+            MethodHandle mh;
+            try {
+                mh = MethodHandles.lookup().findStatic
+                    (ReplEngine.class, "doRedoListenerStore", storeListenerType());
+            } catch (Throwable e) {
+                throw rethrow(e);
+            }
+            cStoreListenerCallSite.setTarget(mh);
+            MutableCallSite.syncAll(new MutableCallSite[] {cStoreListenerCallSite});
+        }
+
+        cStoreListenerActiveCount++;
+    }
+
+    private static synchronized void deactivateRedoStoreListener() {
+        if (cStoreListenerActiveCount > 1) {
+            cStoreListenerActiveCount--;
+        } else {
+            cStoreListenerCallSite.setTarget(emptyStoreListener());
+            cStoreListenerActiveCount = 0;
+        }
+    }
+
+    private static void redoListenerStore(ReplEngine repl,
+                                          Transaction txn, Index ix, byte[] key, byte[] value)
+    {
+        try {
+            cStoreListenerHandle.invokeExact(repl, txn, ix, key, value);
+        } catch (Throwable e) {
+            Utils.rethrow(e);
+        }
+    }
+
+    private static void doRedoListenerStore(ReplEngine repl,
+                                            Transaction txn, Index ix, byte[] key, byte[] value)
+    {
+        CopyOnWriteArrayList<RedoListener> listeners = repl.mRedoListeners;
+        if (listeners != null) {
+            listeners.forEach(listener -> {
+                try {
+                    listener.store(txn, ix, key, value);
+                } catch (Throwable e) {
+                    uncaught(e);
+                }
+            });
+        }
     }
 
     @Override
@@ -672,11 +783,13 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         while (ix != null) {
             try {
                 ix.store(txn, key, value);
-                return;
+                break;
             } catch (Throwable e) {
                 ix = reopenIndex(e, indexId);
             }
         }
+
+        redoListenerStore(this, txn, ix, key, value);
     }
 
     @Override
@@ -756,6 +869,8 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
                         tc = reopenCursor(e, ce);
                     }
                 } while (tc != null);
+
+                redoListenerStore(ReplEngine.this, txn, tc.mTree, key, value);
             }
         });
 

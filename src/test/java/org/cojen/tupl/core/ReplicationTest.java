@@ -1449,6 +1449,98 @@ public class ReplicationTest {
         fastAssertArrayEquals("world".getBytes(), replicaIx.load(null, "hello".getBytes()));
     }
 
+    @Test
+    public void redoListener() throws Exception {
+        Index leaderIx = mLeader.openIndex("test");
+        fence();
+        Index replicaIx = mReplica.openIndex("test");
+
+        class Listener implements RedoListener {
+            volatile boolean gotIt;
+            DurabilityMode mode;
+            Index ix;
+            byte[] key, value;
+
+            @Override
+            public synchronized void store(Transaction txn, Index ix, byte[] key, byte[] value) {
+                this.mode = txn.durabilityMode();
+                this.ix = ix;
+                this.key = key;
+                this.value = value;
+                gotIt = true;
+                notifyAll();
+            }
+
+            synchronized void waitForIt() throws InterruptedException {
+                while (!gotIt) {
+                    wait();
+                }
+                gotIt = false;
+            }
+        }
+
+        var listener1 = new Listener();
+
+        assertTrue(((CoreDatabase) mReplica).addRedoListener(listener1));
+        assertFalse(((CoreDatabase) mReplica).addRedoListener(listener1));
+
+        leaderIx.store(null, "hello".getBytes(), "world".getBytes());
+
+        listener1.waitForIt();
+        assertEquals(DurabilityMode.NO_REDO, listener1.mode);
+        assertEquals(replicaIx, listener1.ix);
+        fastAssertArrayEquals("hello".getBytes(), listener1.key);
+        fastAssertArrayEquals("world".getBytes(), listener1.value);
+
+        try (Cursor c = leaderIx.newCursor(null)) {
+            c.register();
+            c.findNearby("hello2".getBytes());
+            c.store("world2".getBytes());
+        }
+
+        listener1.waitForIt();
+        assertEquals(DurabilityMode.NO_REDO, listener1.mode);
+        assertEquals(replicaIx, listener1.ix);
+        fastAssertArrayEquals("hello2".getBytes(), listener1.key);
+        fastAssertArrayEquals("world2".getBytes(), listener1.value);
+
+        var listener2 = new Listener();
+
+        assertTrue(((CoreDatabase) mReplica).addRedoListener(listener2));
+
+        leaderIx.store(null, "hello3".getBytes(), "world3".getBytes());
+
+        for (Listener l : new Listener[] {listener1, listener2}) {
+            l.waitForIt();
+            assertEquals(DurabilityMode.NO_REDO, l.mode);
+            assertEquals(replicaIx, l.ix);
+            fastAssertArrayEquals("hello3".getBytes(), l.key);
+            fastAssertArrayEquals("world3".getBytes(), l.value);
+        }
+
+        assertTrue(((CoreDatabase) mReplica).removeRedoListener(listener1));
+        assertFalse(((CoreDatabase) mReplica).removeRedoListener(listener1));
+
+        leaderIx.store(null, "hello4".getBytes(), "world4".getBytes());
+        listener2.waitForIt();
+        fastAssertArrayEquals("hello4".getBytes(), listener2.key);
+        fastAssertArrayEquals("world4".getBytes(), listener2.value);
+        assertFalse(listener1.gotIt);
+
+        assertTrue(((CoreDatabase) mReplica).removeRedoListener(listener2));
+
+        leaderIx.store(null, "hello5".getBytes(), "world5".getBytes());
+        fence();
+        assertFalse(listener1.gotIt);
+        assertFalse(listener2.gotIt);
+
+        assertTrue(((CoreDatabase) mReplica).addRedoListener(listener1));
+        leaderIx.store(null, "hello6".getBytes(), "world6".getBytes());
+        listener1.waitForIt();
+        fastAssertArrayEquals("hello6".getBytes(), listener1.key);
+        fastAssertArrayEquals("world6".getBytes(), listener1.value);
+    }
+
     /**
      * Writes a fence to the leader and waits for the replica to catch up.
      */

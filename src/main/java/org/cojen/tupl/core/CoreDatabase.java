@@ -52,6 +52,20 @@ public abstract class CoreDatabase implements Database {
                                                 long[] ids, Runnable callback)
         throws IOException;
 
+    /**
+     * Add a listener which observes incoming replication operations.
+     *
+     * @return false if replication isn't enabled or if the listener was already added
+     */
+    public abstract boolean addRedoListener(RedoListener listener);
+
+    /**
+     * Remove a listener which was added earlier.
+     *
+     * @return false if the listener wasn't found
+     */
+    public abstract boolean removeRedoListener(RedoListener listener);
+
     public abstract boolean isInTrash(Transaction txn, long treeId) throws IOException;
 
     abstract boolean isDirectPageAccess();

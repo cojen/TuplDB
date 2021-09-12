@@ -4019,6 +4019,22 @@ final class LocalDatabase extends CoreDatabase {
         return name.length == 0 && !mRegistryKeyMap.exists(txn, newKey(RK_INDEX_NAME, name));
     }
 
+    @Override
+    public boolean addRedoListener(RedoListener listener) {
+        if (mRedoWriter instanceof ReplWriter) {
+            return ((ReplWriter) mRedoWriter).mEngine.addRedoListener(listener);
+        }
+        return false;
+    }
+
+    @Override
+    public boolean removeRedoListener(RedoListener listener) {
+        if (mRedoWriter instanceof ReplWriter) {
+            return ((ReplWriter) mRedoWriter).mEngine.removeRedoListener(listener);
+        }
+        return false;
+    }
+
     private static byte[] newKey(byte type, byte[] payload) {
         var key = new byte[1 + payload.length];
         key[0] = type;
