@@ -266,9 +266,13 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
      */
     @Override
     public final void store(Transaction txn, Index ix, byte[] key, byte[] value) {
-        if (value == null && ix == mSecondaryIndex) {
+        if (ix == mSecondaryIndex) {
             try {
-                deleted(txn, key);
+                if (value == null) {
+                    deleted(txn, key);
+                } else {
+                    inserted(txn, key, value);
+                }
             } catch (Throwable e) {
                 error("Uncaught exception during backfill of %1$s: %2$s", e);
             }
@@ -354,6 +358,17 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
                 }
             }
         }
+    }
+
+    /**
+     * Called by a trigger when an entry is inserted into the secondary index. It's expected
+     * that the transaction holds a lock on the secondary key within the secondary index.
+     *
+     * @param txn not null
+     */
+    public void inserted(Transaction txn, byte[] secondaryKey, byte[] secondaryValue)
+        throws IOException
+    {
     }
 
     /**

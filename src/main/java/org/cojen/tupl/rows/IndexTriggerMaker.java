@@ -664,6 +664,11 @@ public class IndexTriggerMaker<R> {
                 mm.new_(UniqueConstraintException.class, "Alternate key").throw_();
                 pass.here();
             }
+
+            if (mBackfills[i] != null) {
+                mm.field("backfill" + i).invoke
+                    ("inserted", txnVar, secondaryKeyVar, secondaryValueVar);
+            }
         }
     }
 
@@ -975,6 +980,11 @@ public class IndexTriggerMaker<R> {
                 result.ifTrue(pass);
                 mm.new_(UniqueConstraintException.class, "Alternate key").throw_();
                 pass.here();
+            }
+
+            if (mBackfills[i] != null) {
+                mm.field("backfill" + i).invoke
+                    ("inserted", txnVar, secondaryKeyVar, secondaryValueVar);
             }
 
             cont.here();
