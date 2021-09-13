@@ -427,7 +427,7 @@ final class UndoLog implements DatabaseAccess {
      */
     void pushUnextend(long savepoint, long indexId, byte[] key, long length) throws IOException {
         if (setActiveIndexIdAndKey(indexId, key) && savepoint < mLength) discardCheck: {
-            // Check if op isn't necessary because it's action will be superceded by another.
+            // Check if op isn't necessary because it's action will be superseded by another.
 
             long unlen;
 

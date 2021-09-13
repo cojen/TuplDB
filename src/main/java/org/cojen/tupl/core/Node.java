@@ -2088,7 +2088,7 @@ final class Node extends Clutch implements DatabaseAccess {
     /**
      * Copies existing entry to undo log prior to it being updated. Fragmented values are added
      * to the trash and the fragmented bit is cleared. Caller must hold commit lock and
-     * exlusive latch on node.
+     * exclusive latch on node.
      *
      * @param pos position as provided by binarySearch; must be positive
      */

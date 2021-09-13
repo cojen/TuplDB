@@ -58,7 +58,7 @@ public enum Role {
      */
     RESTORING((byte) 5);
 
-    byte mCode;
+    final byte mCode;
 
     private Role(byte code) {
         mCode = code;

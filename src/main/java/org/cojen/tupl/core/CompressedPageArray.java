@@ -263,7 +263,7 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
             launcher.mBasicMode = true;
             launcher.dataPageArray(snapArray);
             launcher.minCacheSize(0);
-            launcher.maxCacheSize(100 * snapArray.pageSize());
+            launcher.maxCacheSize(100L * snapArray.pageSize());
             launcher.readOnly(true);
             launcher.directPageAccess(mDatabase.isDirectPageAccess());
             launcher.encrypt(mDatabase.dataCrypto());

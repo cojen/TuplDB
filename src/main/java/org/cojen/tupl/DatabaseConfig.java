@@ -345,7 +345,7 @@ public class DatabaseConfig implements Cloneable {
      * changes. Default is the number of available processors. If a negative number is
      * provided, the actual number applied is {@code (-num * availableProcessors)}. When the
      * local member is the leader, these threads are used for background processing of
-     * transactions which wren't committed with {@code SYNC} durability.
+     * transactions which weren't committed with {@code SYNC} durability.
      *
      * <p>If replication isn't enabled, this option controls the number of threads used to
      * recover transactions from the redo log during startup.

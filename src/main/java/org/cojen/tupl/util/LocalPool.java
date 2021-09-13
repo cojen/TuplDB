@@ -90,10 +90,11 @@ public final class LocalPool<B> {
         if (entry != null && entry.tryAcquireExclusive()) {
             return entry;
         }
-        return accessSlow(entry);
+        return accessSlow();
     }
 
-    private Entry<B> accessSlow(TheEntry<B> entry) {
+    private Entry<B> accessSlow() {
+        TheEntry<B> entry;
         doAccess: {
             TheEntry<B>[] allEntries = mAllEntries;
             int numEntries = (int) cNumEntriesHandle.getOpaque(this);
