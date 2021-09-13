@@ -1,7 +1,7 @@
 Changelog
 =========
 
-v1.5.3.2
+v1.5.3.2 (2021-09-13)
 --------
 * Fix storage leaks caused by fragmented keys.
 * Fix NPE when obtaining stats on a closed database.
