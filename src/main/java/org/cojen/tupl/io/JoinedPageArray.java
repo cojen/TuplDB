@@ -22,7 +22,6 @@ import java.io.IOException;
 
 import java.nio.ByteBuffer;
 
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 import org.cojen.tupl.util.Runner;

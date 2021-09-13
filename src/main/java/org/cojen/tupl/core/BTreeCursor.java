@@ -2778,7 +2778,7 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
                     result = txn.doLockShared(mTree.mId, key, keyHash);
                     if (result != LockResult.ACQUIRED) {
                         // Not expected. If the transaction already owned the lock, then
-                        // the tryLockLoad call earler would have returned true.
+                        // the tryLockLoad call earlier would have returned true.
                         return result;
                     }
                     result = LockResult.UNOWNED;
@@ -2855,7 +2855,7 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
                             locker = txn;
                         } else {
                             // Not expected. If the transaction already owned the lock, then
-                            // the tryLockLoad call earler would have returned true.
+                            // the tryLockLoad call earlier would have returned true.
                             locker = null;
                         }
                     } else {

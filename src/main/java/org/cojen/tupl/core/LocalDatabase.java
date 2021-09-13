@@ -3736,7 +3736,7 @@ final class LocalDatabase extends CoreDatabase {
     private BTree newBTreeInstance(long id, byte[] idBytes, byte[] name, Node root) {
         BTree tree;
         if (mRedoWriter instanceof ReplWriter) {
-            // Always need an explcit transaction when using auto-commit, to ensure that
+            // Always need an explicit transaction when using auto-commit, to ensure that
             // rollback is possible.
             tree = new BTree.Repl(this, id, idBytes, root);
         } else {

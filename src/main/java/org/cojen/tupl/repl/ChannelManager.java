@@ -17,9 +17,6 @@
 
 package org.cojen.tupl.repl;
 
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
-
 import java.io.Closeable;
 import java.io.InputStream;
 import java.io.InterruptedIOException;
@@ -1377,7 +1374,6 @@ final class ChannelManager {
                     }
                     position += prefix.length;
                     prefix = null;
-                    fullLen = len;
                 } else {
                     int max = (1 << 24) - ((8 * 5) + 1);
                     if (!writeData(op, prevTerm, term, position, highestPosition, commitPosition,
@@ -1388,8 +1384,8 @@ final class ChannelManager {
                     position += max;
                     off += max;
                     len -= max;
-                    fullLen = len;
                 }
+                fullLen = len;
             }
 
             acquireExclusive();

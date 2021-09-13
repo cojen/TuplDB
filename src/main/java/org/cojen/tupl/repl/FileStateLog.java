@@ -244,7 +244,7 @@ final class FileStateLog extends Latch implements StateLog {
             for (String name : fileNames) {
                 Matcher m = p.matcher(name);
                 if (m.matches()) {
-                    Long term = Long.valueOf(m.group(1));
+                    long term = Long.parseLong(m.group(1));
                     if (term <= 0) {
                         throw new IOException("Illegal term: " + term);
                     }

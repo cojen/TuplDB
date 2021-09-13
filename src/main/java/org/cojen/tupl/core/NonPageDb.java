@@ -33,7 +33,6 @@ import java.util.zip.Checksum;
 import org.cojen.tupl.Crypto;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DatabaseFullException;
-import org.cojen.tupl.Snapshot;
 
 /**
  * PageDb implementation which doesn't actually store anything into a file or page array.

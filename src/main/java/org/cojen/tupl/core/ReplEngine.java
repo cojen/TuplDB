@@ -25,7 +25,6 @@ import java.lang.invoke.VarHandle;
 
 import java.lang.ref.SoftReference;
 
-import java.util.Arrays;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 

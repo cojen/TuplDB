@@ -429,7 +429,6 @@ abstract class AbstractFileIO extends FileIO {
                             } else {
                                 mapping.write(mpos, tail, mavail);
                             }
-                            pos += mavail;
                         } else {
                             if (mavail > length) {
                                 mavail = length;
@@ -440,8 +439,8 @@ abstract class AbstractFileIO extends FileIO {
                                 mapping.write(mpos, buf, offset, mavail);
                             }
                             length -= mavail;
-                            pos += mavail;
                         }
+                        pos += mavail;
                     }
                 }
 

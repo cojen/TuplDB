@@ -318,7 +318,7 @@ final class SnapshotPageArray extends PageArray {
                 var launcher = new Launcher();
                 int pageSize = pageSize();
                 launcher.pageSize(pageSize);
-                launcher.minCacheSize(pageSize * Math.max(100, numCopiers * 16));
+                launcher.minCacheSize(pageSize * Math.max(100L, numCopiers * 16L));
                 if (nodeCache != null) {
                     launcher.directPageAccess(nodeCache.isDirectPageAccess());
                 }

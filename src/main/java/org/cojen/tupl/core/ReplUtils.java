@@ -150,10 +150,10 @@ final class ReplUtils extends Utils {
 
                 long received = mRestore.received();
                 double percent = 100.0 * (received / (double) mLength);
-                long progess = received - mLastReceived;
+                long progress = received - mLastReceived;
 
                 if (mLastTimeMillis != Long.MIN_VALUE) {
-                    double rate = (1000.0 * (progess / (double) (now - mLastTimeMillis)));
+                    double rate = (1000.0 * (progress / (double) (now - mLastTimeMillis)));
                     String format = "Receiving snapshot: %1$1.3f%%";
                     if (rate == 0) {
                         mListener.notify(EventType.REPLICATION_RESTORE, format, percent);
