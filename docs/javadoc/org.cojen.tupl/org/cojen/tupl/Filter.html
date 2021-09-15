@@ -82,7 +82,7 @@ loadScripts(document, 'script');</script>
 <dd>This is a functional interface and can therefore be used as the assignment target for a lambda expression or method reference.</dd>
 </dl>
 <hr>
-<div class="type-signature"><span class="annotations"><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/FunctionalInterface.html" title="class or interface in java.lang" class="external-link">@FunctionalInterface</a>
+<div class="type-signature"><span class="annotations"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/FunctionalInterface.html" title="class or interface in java.lang" class="external-link">@FunctionalInterface</a>
 </span><span class="modifiers">public interface </span><span class="element-name type-name-label">Filter</span><span class="extends-implements">
 extends <a href="Transformer.html" title="interface in org.cojen.tupl">Transformer</a></span></div>
 <div class="block">View transformer which filters out entries which don't belong. Implementations only need to
@@ -151,11 +151,11 @@ extends <a href="Transformer.html" title="interface in org.cojen.tupl">Transform
 <h3>isAllowed</h3>
 <div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">isAllowed</span><wbr><span class="parameters">(byte[]&nbsp;key,
  byte[]&nbsp;value)</span>
-           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+           throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Return true if the given key and value are not to be filtered out.</div>
 <dl class="notes">
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -165,7 +165,7 @@ extends <a href="Transformer.html" title="interface in org.cojen.tupl">Transform
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">byte[]</span>&nbsp;<span class="element-name">transformValue</span><wbr><span class="parameters">(byte[]&nbsp;value,
  byte[]&nbsp;key,
  byte[]&nbsp;tkey)</span>
-                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Calls the <a href="#isAllowed(byte%5B%5D,byte%5B%5D)"><code>isAllowed</code></a> method.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
@@ -177,7 +177,7 @@ extends <a href="Transformer.html" title="interface in org.cojen.tupl">Transform
 <dt>Returns:</dt>
 <dd>transformed value or null to discard entry</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -187,7 +187,7 @@ extends <a href="Transformer.html" title="interface in org.cojen.tupl">Transform
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">byte[]</span>&nbsp;<span class="element-name">inverseTransformValue</span><wbr><span class="parameters">(byte[]&nbsp;tvalue,
  byte[]&nbsp;key,
  byte[]&nbsp;tkey)</span>
-                              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a>,
+                              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a>,
 <a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></span></div>
 <div class="block">Calls the <a href="#isAllowed(byte%5B%5D,byte%5B%5D)"><code>isAllowed</code></a> method.</div>
 <dl class="notes">
@@ -201,7 +201,7 @@ extends <a href="Transformer.html" title="interface in org.cojen.tupl">Transform
 <dd>inverse transformed value, or null to delete the value</dd>
 <dt>Throws:</dt>
 <dd><code><a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></code> - if inverse transformation of given value is not supported</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>

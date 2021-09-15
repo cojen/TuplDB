@@ -75,7 +75,7 @@ loadScripts(document, 'script');</script>
 <section class="class-description" id="class-description">
 <dl class="notes">
 <dt>All Superinterfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></code>, <code><a href="Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a></code>, <code><a href="Replicator.Writer.html" title="interface in org.cojen.tupl.repl">Replicator.Writer</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></code>, <code><a href="Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a></code>, <code><a href="Replicator.Writer.html" title="interface in org.cojen.tupl.repl">Replicator.Writer</a></code></dd>
 </dl>
 <dl class="notes">
 <dt>Enclosing interface:</dt>
@@ -149,7 +149,7 @@ extends <a href="Replicator.Writer.html" title="interface in org.cojen.tupl.repl
 <section class="detail" id="writeMessage(byte[])">
 <h3>writeMessage</h3>
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">writeMessage</span><wbr><span class="parameters">(byte[]&nbsp;message)</span>
-                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Write a single message to the log. Equivalent to: <code>writeMessage(message, 0,
  message.length, true)</code></div>
 <dl class="notes">
@@ -157,7 +157,7 @@ extends <a href="Replicator.Writer.html" title="interface in org.cojen.tupl.repl
 <dd>1 if successful, -1 if fully deactivated, or 0 if should write any remaining
  messages and then close the writer</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -167,7 +167,7 @@ extends <a href="Replicator.Writer.html" title="interface in org.cojen.tupl.repl
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">writeMessage</span><wbr><span class="parameters">(byte[]&nbsp;message,
  int&nbsp;offset,
  int&nbsp;length)</span>
-                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+                  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Write a single message to the log. Equivalent to: <code>writeMessage(message,
  offset, length, true)</code></div>
 <dl class="notes">
@@ -175,7 +175,7 @@ extends <a href="Replicator.Writer.html" title="interface in org.cojen.tupl.repl
 <dd>1 if successful, -1 if fully deactivated, or 0 if should write any remaining
  messages and then close the writer</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -186,7 +186,7 @@ extends <a href="Replicator.Writer.html" title="interface in org.cojen.tupl.repl
  int&nbsp;offset,
  int&nbsp;length,
  boolean&nbsp;finished)</span>
-          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+          throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Write a single message to the log, as part of an atomic batch. When read back, all
  messages in the batch are still separate from each other. Pass false to the finished
  parameter for all messages in the batch except the last one. To work correctly, no
@@ -198,7 +198,7 @@ extends <a href="Replicator.Writer.html" title="interface in org.cojen.tupl.repl
 <dd>1 if successful, -1 if fully deactivated, or 0 if should write any remaining
  messages and then close the writer</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
