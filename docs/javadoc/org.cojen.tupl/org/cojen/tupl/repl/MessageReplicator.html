@@ -75,7 +75,7 @@ loadScripts(document, 'script');</script>
 <section class="class-description" id="class-description">
 <dl class="notes">
 <dt>All Superinterfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></code>, <code><a href="Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></code>, <code><a href="Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></code></dd>
 </dl>
 <hr>
 <div class="type-signature"><span class="modifiers">public interface </span><span class="element-name type-name-label">MessageReplicator</span><span class="extends-implements">
@@ -157,8 +157,8 @@ extends <a href="Replicator.html" title="interface in org.cojen.tupl.repl">Repli
 </div>
 </div>
 <div class="inherited-list">
-<h3 id="methods-inherited-from-class-java.io.Closeable">Methods inherited from interface&nbsp;java.io.<a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></h3>
-<code><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/Closeable.html#close()" title="class or interface in java.io" class="external-link">close</a></code></div>
+<h3 id="methods-inherited-from-class-java.io.Closeable">Methods inherited from interface&nbsp;java.io.<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></h3>
+<code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/Closeable.html#close()" title="class or interface in java.io" class="external-link">close</a></code></div>
 <div class="inherited-list">
 <h3 id="methods-inherited-from-class-org.cojen.tupl.repl.Replicator">Methods inherited from interface&nbsp;org.cojen.tupl.repl.<a href="Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></h3>
 <code><a href="Replicator.html#commitPosition()">commitPosition</a>, <a href="Replicator.html#compact(long)">compact</a>, <a href="Replicator.html#connect(java.net.SocketAddress)">connect</a>, <a href="Replicator.html#encoding()">encoding</a>, <a href="Replicator.html#failover()">failover</a>, <a href="Replicator.html#isReadable(long)">isReadable</a>, <a href="Replicator.html#localAddress()">localAddress</a>, <a href="Replicator.html#localMemberId()">localMemberId</a>, <a href="Replicator.html#localRole()">localRole</a>, <a href="Replicator.html#requestSnapshot(java.util.Map)">requestSnapshot</a>, <a href="Replicator.html#restore(java.util.Map)">restore</a>, <a href="Replicator.html#snapshotRequestAcceptor(java.util.function.Consumer)">snapshotRequestAcceptor</a>, <a href="Replicator.html#socketAcceptor(java.util.function.Consumer)">socketAcceptor</a>, <a href="Replicator.html#start()">start</a>, <a href="Replicator.html#sync()">sync</a>, <a href="Replicator.html#syncCommit(long,long)">syncCommit</a></code></div>
@@ -177,12 +177,12 @@ extends <a href="Replicator.html" title="interface in org.cojen.tupl.repl">Repli
 <section class="detail" id="open(org.cojen.tupl.repl.ReplicatorConfig)">
 <h3>open</h3>
 <div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="return-type"><a href="MessageReplicator.html" title="interface in org.cojen.tupl.repl">MessageReplicator</a></span>&nbsp;<span class="element-name">open</span><wbr><span class="parameters">(<a href="ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a>&nbsp;config)</span>
-                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Open a MessageReplicator instance, creating it if necessary. Be sure to call the <a href="Replicator.html#start()"><code>start</code></a> method too.</div>
 <dl class="notes">
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if misconfigured</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if misconfigured</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -228,7 +228,7 @@ extends <a href="Replicator.html" title="interface in org.cojen.tupl.repl">Repli
 <dt>Returns:</dt>
 <dd>writer or null if not the leader</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if an existing writer for the current term already exists</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if an existing writer for the current term already exists</dd>
 </dl>
 </section>
 </li>
@@ -250,7 +250,7 @@ extends <a href="Replicator.html" title="interface in org.cojen.tupl.repl">Repli
 <dt>Returns:</dt>
 <dd>writer or null if not the leader</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if an existing writer for the current term already exists</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if an existing writer for the current term already exists</dd>
 </dl>
 </section>
 </li>
