@@ -26,6 +26,7 @@ import java.util.zip.Checksum;
 import org.cojen.tupl.Crypto;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.EventListener;
+import org.cojen.tupl.Index;
 import org.cojen.tupl.Transaction;
 
 /**
@@ -65,6 +66,19 @@ public abstract class CoreDatabase implements Database {
      * @return false if the listener wasn't found
      */
     public abstract boolean removeRedoListener(RedoListener listener);
+
+    /**
+     * Invoke the given callback with the redo lock held, which ensures that no incoming
+     * replication operations are being processed.
+     */
+    public abstract void withRedoLock(Runnable callback);
+
+    /**
+     * Atomically swaps the root nodes of two trees.
+     */
+    public void rootSwap(Index a, Index b) throws IOException {
+        ((Tree) a).rootSwap((Tree) b);
+    }
 
     public abstract boolean isInTrash(Transaction txn, long treeId) throws IOException;
 

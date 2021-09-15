@@ -4035,6 +4035,15 @@ final class LocalDatabase extends CoreDatabase {
         return false;
     }
 
+    @Override
+    public void withRedoLock(Runnable callback) {
+        if (mRedoWriter instanceof ReplWriter) {
+            ((ReplWriter) mRedoWriter).mEngine.withRedoLock(callback);
+        } else {
+            callback.run();
+        }
+    }
+
     private static byte[] newKey(byte type, byte[] payload) {
         var key = new byte[1 + payload.length];
         key[0] = type;

@@ -21,7 +21,8 @@ import java.io.Closeable;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
-import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.Cursor;
@@ -61,11 +62,11 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
     // Track secondary index entries which are concurrently deleted.
     private volatile Index mDeleted;
 
-    // Highest secondary key which has been backfilled.
-    private volatile byte[] mBackfillProgress;
+    // Set of triggers that are using this backfill. When null, the backfill is closed.
+    private Set<Trigger<R>> mTriggers;
 
-    // Count of triggers that are using this backfill. When negative, the backfill is closed.
-    private int mUsed;
+    // The new secondary index as built by the sorter.
+    private volatile Index mNewSecondaryIndex;
 
     /**
      * @param autoload pass true to autoload values from the primary index because they're
@@ -86,6 +87,8 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
         Database db = mRowStore.mDatabase;
         mSorter = db.newSorter();
         mDeleted = db.newTemporaryIndex();
+
+        mTriggers = new HashSet<>();
     }
 
     @Override
@@ -171,9 +174,9 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
             return false;
         }
 
-        Scanner scanner;
+        Index newIndex;
         try {
-            scanner = sorter.finishScan();
+            newIndex = sorter.finish();
         } catch (InterruptedIOException e) {
             if (mSorter != null) {
                 throw e;
@@ -181,37 +184,63 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
             return false;
         }
 
-        Index deleted = mDeleted;
-        if (deleted == null) {
-            return false;
-        }
+        Index deleted;
+        synchronized (this) {
+            deleted = mDeleted;
+            if (deleted == null) {
+                return false;
+            }
 
-        try (scanner) {
-            txn.lockMode(LockMode.UPGRADABLE_READ);
+            // Lock all triggers to prevent concurrent modifications and assign
+            // mNewSecondaryIndex to change their behavior now that the backfill is finishing.
 
-            try (Cursor secondaryCursor = mSecondaryIndex.newCursor(txn)) {
-                secondaryCursor.autoload(false);
+            for (Trigger<R> trigger : mTriggers) {
+                trigger.acquireExclusive();
+            }
 
-                // Note that deletedCursor doesn't need to acquire locks. The lock on the
-                // secondary index entry suffices and prevents deadlocks.
-                try (Cursor deletedCursor = deleted.newCursor(Transaction.BOGUS)) {
-                    deletedCursor.autoload(false);
+            mRowStore.mDatabase.withRedoLock(() -> {
+                mNewSecondaryIndex = newIndex;
+            });
 
-                    for (byte[] key; (key = scanner.key()) != null; scanner.step()) {
-                        secondaryCursor.findNearby(key); // must find and lock first
-                        deletedCursor.findNearby(key);
-                        if (secondaryCursor.value() == null && deletedCursor.value() == null) {
-                            secondaryCursor.commit(scanner.value());
-                        }
-                        txn.commit();
-                        mBackfillProgress = key;
-                        deletedCursor.delete();
-                    }
-                }
+            for (Trigger<R> trigger : mTriggers) {
+                trigger.releaseExclusive();
             }
         }
 
+        txn.lockMode(LockMode.UPGRADABLE_READ);
+
+        try (Cursor secondaryCursor = mSecondaryIndex.newCursor(txn);
+             // Note that deletedCursor doesn't need to acquire locks. The lock on the original
+             // secondary index entry suffices.
+             Cursor deletedCursor = deleted.newCursor(Transaction.BOGUS))
+        {
+            secondaryCursor.first();
+            for (byte[] key; (key = secondaryCursor.key()) != null; secondaryCursor.next()) {
+                deletedCursor.findNearby(key);
+                if (deletedCursor.value() == null) {
+                    newIndex.store(txn, key, secondaryCursor.value());
+                } else {
+                    deletedCursor.delete();
+                }
+                secondaryCursor.commit(null);
+            }
+        }
+
+        // Swap the fully populated new secondary index with the original, which is now
+        // empty. As a side-effect, the contents of the new secondary index which was temporary
+        // are now associated with a real index, and the original secondary is associated with
+        // the temporary index.
+        mRowStore.mDatabase.rootSwap(newIndex, mSecondaryIndex);        
+
         try {
+            // Eagerly delete temporary index.
+            mRowStore.mDatabase.deleteIndex(newIndex).run();
+        } catch (Exception e) {
+            // Ignore.
+        }
+
+        try {
+            // Eagerly delete temporary index.
             mRowStore.mDatabase.deleteIndex(deleted).run();
         } catch (Exception e) {
             // Ignore.
@@ -238,11 +267,9 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
 
         sorter.addBatch(secondaryBatch, 0, length >> 1);
 
-        synchronized (this) {
-            if (mSorter != null) {
-                // Still in use.
-                return true;
-            }
+        if (mSorter != null) {
+            // Still in use.
+            return true;
         }
 
         // Closed. Clean up the mess.
@@ -257,7 +284,7 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
 
     @Override
     public void close() {
-        unused(true);
+        unused(null, true);
     }
 
     /**
@@ -282,34 +309,37 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
     /**
      * Called by a trigger to indicate that it's actively using this backfill.
      */
-    public synchronized void used() {
-        if (mUsed < 0) {
+    public synchronized void used(Trigger<R> trigger) {
+        if (mTriggers == null) {
             throw new IllegalStateException("Closed");
         }
-        mUsed++;
+        mTriggers.add(trigger);
     }
 
     /**
      * Called by a trigger to indicate that it's done using this backfill.
      */
-    public void unused() {
-        unused(false);
+    public void unused(Trigger<R> trigger) {
+        unused(trigger, false);
     }
 
-    private void unused(boolean close) {
+    private void unused(Trigger<R> trigger, boolean close) {
         Sorter sorter;
         Index deleted;
 
         synchronized (this) {
-            if (mUsed < 0 || (!close && --mUsed > 0)) {
+            if (mTriggers == null) {
                 return;
             }
-            mUsed = -1;
+            mTriggers.remove(trigger);
+            if (!close && !mTriggers.isEmpty()) {
+                return;
+            }
+            mTriggers = null;
             sorter = mSorter;
             mSorter = null;
             deleted = mDeleted;
             mDeleted = null;
-            mBackfillProgress = null;
         }
 
         if (sorter == null && deleted == null) {
@@ -349,13 +379,25 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
     public void deleted(Transaction txn, byte[] secondaryKey) throws IOException {
         Index deleted = mDeleted;
         if (deleted != null) {
-            byte[] progress = mBackfillProgress;
-            if (progress == null || Arrays.compareUnsigned(secondaryKey, progress) > 0) {
-                try {
+            try {
+                Index newIndex = mNewSecondaryIndex;
+                if (newIndex == null) {
                     deleted.store(txn, secondaryKey, RowUtils.EMPTY_BYTES);
-                } catch (ClosedIndexException e) {
-                    // Ignore and assume that there was a race condition and mDeleted is now null.
+                } else {
+                    // At this point, the backfill is in the finishing phase.
+
+                    // At this point, the other two indexes are used for tracking modifications
+                    // which must be applied into the new index, but because the delete
+                    // supersedes them, also delete the corresponding tracking entries. Note
+                    // that the caller just deleted from mSecondaryIndex, so there's no reason
+                    // to delete it again.
+                    deleted.delete(txn, secondaryKey);
+
+                    // Delete from the newly built "true" secondary index.
+                    newIndex.delete(txn, secondaryKey);
                 }
+            } catch (ClosedIndexException e) {
+                // Assume that there was a race condition and the backfill now is closed.
             }
         }
     }
@@ -369,6 +411,32 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
     public void inserted(Transaction txn, byte[] secondaryKey, byte[] secondaryValue)
         throws IOException
     {
+        Index newIndex = mNewSecondaryIndex;
+        Index deleted = mDeleted;
+        if (newIndex != null && deleted != null) {
+            // At this point, the backfill is in the finishing phase.
+
+            txn.enter();
+            try {
+                // The other two indexes are used for tracking modifications which must be
+                // applied into the new index, but because the insert supersedes them, delete
+                // the corresponding entries. Note that the caller just inserted into
+                // mSecondaryIndex, and the delete undoes it. It would be more efficient to not
+                // insert in the first place, but this is simpler, and backfills are infrequent.
+                mSecondaryIndex.delete(txn, secondaryKey);
+                deleted.delete(txn, secondaryKey);
+
+                // Insert into the newly built "true" secondary index.
+                newIndex.store(txn, secondaryKey, secondaryValue);
+
+                txn.commit();
+            } catch (ClosedIndexException e) {
+                // Assume that there was a race condition and the backfill now is closed. The
+                // scoped transaction allows the mSecondaryIndex delete to be rolled back.
+            } finally {
+                txn.exit();
+            }
+        }
     }
 
     /**

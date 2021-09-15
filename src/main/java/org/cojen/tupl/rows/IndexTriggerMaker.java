@@ -54,7 +54,7 @@ public class IndexTriggerMaker<R> {
     final byte[][] mSecondaryDescriptors;
     final SecondaryInfo[] mSecondaryInfos;
     final Index[] mSecondaryIndexes;
-    final IndexBackfill[] mBackfills;
+    final IndexBackfill<R>[] mBackfills;
 
     // Map for all the columns needed by all of the secondary indexes.
     private Map<String, ColumnSource> mColumnSources;
@@ -70,6 +70,7 @@ public class IndexTriggerMaker<R> {
     /**
      * @param rowType can pass null if only makeBackfill is to be called
      */
+    @SuppressWarnings("unchecked")
     IndexTriggerMaker(Class<R> rowType, RowInfo primaryInfo, int numIndexes) {
         mRowType = rowType;
         mRowClass = rowType == null ? null : RowMaker.find(rowType);
@@ -221,7 +222,7 @@ public class IndexTriggerMaker<R> {
             MethodMaker mm = mClassMaker.addMethod(null, "notifyDisabled").protected_();
             for (int i=0; i<mBackfills.length; i++) {
                 if (mBackfills[i] != null) {
-                    mm.field("backfill" + i).invoke("unused");
+                    mm.field("backfill" + i).invoke("unused", mm.this_());
                 }
             }
         }
@@ -242,9 +243,9 @@ public class IndexTriggerMaker<R> {
         }
 
         if (hasBackfills) {
-            for (IndexBackfill b : mBackfills) {
+            for (IndexBackfill<R> b : mBackfills) {
                 if (b != null) {
-                    b.used();
+                    b.used(trigger);
                 }
             }
         }

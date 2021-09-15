@@ -1621,6 +1621,44 @@ class BTree extends Tree implements View, Index {
         mRoot.rootDelete(this, child, stub);
     }
 
+    /**
+     * Atomically swaps the root node of this tree with another.
+     */
+    @Override
+    final void rootSwap(Tree other) throws IOException {
+        rootSwap((BTree) other);
+    }
+
+    private void rootSwap(BTree other) throws IOException {
+        CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
+        try {
+            final Node aRoot = mRoot;
+            final Node bRoot = other.mRoot;
+
+            aRoot.acquireExclusive();
+            try {
+                markDirty(aRoot);
+                bRoot.acquireExclusive();
+                try {
+                    other.markDirty(bRoot);
+                    aRoot.rootSwap(bRoot);
+                } finally {
+                    bRoot.releaseExclusive();
+                }
+            } finally {
+                aRoot.releaseExclusive();
+            }
+
+            final Node aTail = mStubTail;
+            final Node bTail = other.mStubTail;
+
+            mStubTail = bTail;
+            other.mStubTail = aTail;
+        } finally {
+            shared.release();
+        }
+    }
+
     final LocalTransaction check(Transaction txn) throws IllegalArgumentException {
         if (txn instanceof LocalTransaction) {
             var local = (LocalTransaction) txn;

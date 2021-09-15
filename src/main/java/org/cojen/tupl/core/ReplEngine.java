@@ -270,6 +270,19 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         }
     }
 
+    public void withRedoLock(Runnable callback) {
+        mDecodeLatch.acquireExclusive();
+        try {
+            if (mWorkerGroup != null) {
+                // Can only call mWorkerGroup when mDecodeLatch is held.
+                mWorkerGroup.join(false);
+            }
+            callback.run();
+        } finally {
+            mDecodeLatch.releaseExclusive();
+        }
+    }
+
     private static synchronized void activateRedoStoreListener() {
         if (cStoreListenerActiveCount == 0) {
             MethodHandle mh;

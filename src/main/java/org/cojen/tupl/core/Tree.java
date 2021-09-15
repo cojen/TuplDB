@@ -117,6 +117,11 @@ abstract class Tree implements Index {
      */
     abstract void rename(byte[] newName, long redoTxnId) throws IOException;
 
+    /**
+     * Atomically swaps the root node of this tree with another.
+     */
+    abstract void rootSwap(Tree other) throws IOException;
+
     @Override
     public final void drop() throws IOException {
         drop(true).run();

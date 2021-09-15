@@ -4435,6 +4435,21 @@ final class Node extends Clutch implements DatabaseAccess {
         }
     }
 
+    /**
+     * Atomically swaps the contents of this root node with another. Both must be latched
+     * exclusively.
+     */
+    void rootSwap(Node other) {
+        int pageSize = pageSize(mPage);
+        var tempPage = new byte[pageSize];
+        p_copyToArray(mPage, 0, tempPage, 0, pageSize);
+        p_copy(other.mPage, 0, mPage, 0, pageSize);
+        p_copyFromArray(tempPage, 0, other.mPage, 0, pageSize);
+
+        readFields();
+        other.readFields();
+    }
+
     private static final int SMALL_KEY_LIMIT = 128;
 
     /**
