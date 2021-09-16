@@ -21,6 +21,7 @@ import java.io.IOException;
 
 import java.lang.ref.WeakReference;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -736,12 +737,41 @@ public class RowStore {
     }
 
     private void doDeleteSchema(byte[] indexKey) throws IOException {
+        List<Runnable> deleteTasks = null;
+
         try (Cursor c = mSchemata.viewPrefix(indexKey, 0).newCursor(Transaction.BOGUS)) {
             c.autoload(false);
-            for (c.first(); c.key() != null; c.next()) {
-                // FIXME: If K_SECONDARY, delete the indexes.
+            byte[] key;
+            for (c.first(); (key = c.key()) != null; c.next()) {
+                if (key.length >= (8 + 4 + 4)
+                    && decodeIntBE(key, 8) == 0 && decodeIntBE(key, 8 + 4) == K_SECONDARY)
+                {
+                    // Delete a secondary index.
+                    c.load(); // autoload is false, so load the value now
+                    byte[] value = c.value();
+                    if (value != null && value.length >= 8) {
+                        Index secondaryIndex = mDatabase.indexById(decodeLongLE(c.value(), 0));
+                        if (secondaryIndex != null) {
+                            Runnable task = mDatabase.deleteIndex(secondaryIndex);
+                            if (deleteTasks == null) {
+                                deleteTasks = new ArrayList<>();
+                            }
+                            deleteTasks.add(task);
+                        }
+                    }
+                }
+
                 c.delete();
             }
+        }
+
+        if (deleteTasks != null) {
+            var tasks = deleteTasks;
+            Runner.start(() -> {
+                for (Runnable task : tasks) {
+                    task.run();
+                }
+            });
         }
     }
 
