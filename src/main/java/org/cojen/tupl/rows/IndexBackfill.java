@@ -93,7 +93,18 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
 
     @Override
     public void run() {
-        EventListener listener = mRowStore.mDatabase.eventListener();
+        EventListener listener;
+        checkNotify: {
+            try {
+                if (mManager.mPrimaryIndex.isEmpty()) {
+                    // No need to notify if index is empty because there isn't really a backfill.
+                    listener = null;
+                    break checkNotify;
+                }
+            } catch (IOException e) {
+            }
+            listener = mRowStore.mDatabase.eventListener();
+        }
 
         if (listener != null) {
             listener.notify(EventType.TABLE_INDEX_BACKFILL_INFO,
@@ -105,9 +116,9 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
         try {
             success = doRun();
 
-            if (listener != null) {
-                String message = (success ? "Finished" : "Stopped") + " backfill for %1$s";
-                listener.notify(EventType.TABLE_INDEX_BACKFILL_INFO, message, mSecondaryStr);
+            if (!success && listener != null) {
+                listener.notify(EventType.TABLE_INDEX_BACKFILL_INFO,
+                                "Stopped backfill for %1$s", mSecondaryStr);
             }
         } catch (Throwable e) {
             error("Unable to backfill %1$s: %2$s", e);
@@ -115,6 +126,11 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
 
         try {
             mRowStore.activateSecondaryIndex(this, success);
+
+            if (success && listener != null) {
+                listener.notify(EventType.TABLE_INDEX_BACKFILL_INFO,
+                                "Finished backfill for %1$s", mSecondaryStr);
+            }
         } catch (Throwable e) {
             error("Unable to activate %1$s: %2$s", e);
         }

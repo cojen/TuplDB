@@ -76,8 +76,17 @@ public class TableManager<R> {
                 // Must be called after the table is added to the cache.
                 rs.examineSecondaries(this);
             }
-            return table;
         }
+
+        Worker worker;
+        if (mWorkerRef != null && (worker = mWorkerRef.get()) != null) {
+            if (ix.isEmpty()) {
+                // Backfill of nothing is fast, so wait for it before returning Table to caller.
+                worker.join(false);
+            }
+        }
+
+        return table;
     }
 
     /**
