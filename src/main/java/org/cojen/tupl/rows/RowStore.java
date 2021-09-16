@@ -359,12 +359,39 @@ public class RowStore {
         return indexTable(primaryTable, false, columns);
     }
 
-    @SuppressWarnings("unchecked")
     private <R> Table<R> indexTable(AbstractTable<R> primaryTable, boolean alt, String... columns)
         throws IOException
     {
-        // FIXME: Cache it, normalize descriptor key.
+        Object key = ArrayKey.make(alt, columns);
+        WeakCache<Object, AbstractTable<R>> indexTables = primaryTable.mTableManager.indexTables();
 
+        AbstractTable<R> table = indexTables.get(key);
+
+        if (table == null) {
+            synchronized (indexTables) {
+                table = indexTables.get(key);
+                if (table == null) {
+                    table = makeIndexTable(indexTables, primaryTable, alt, columns);
+                    if (table != null) {
+                        indexTables.put(key, table);
+                    }
+                }
+            }
+        }
+
+        return table;
+    }
+
+    /**
+     * @param indexTables check and store in this cache, which is synchronized by the caller
+     * @return null if not found
+     */
+    @SuppressWarnings("unchecked")
+    private <R> AbstractTable<R> makeIndexTable(WeakCache<Object, AbstractTable<R>> indexTables,
+                                                AbstractTable<R> primaryTable,
+                                                boolean alt, String... columns)
+        throws IOException
+    {
         Class<R> rowType = primaryTable.rowType();
         RowInfo rowInfo = RowInfo.find(rowType);
         ColumnSet cs = rowInfo.examineIndex(null, columns, alt);
@@ -391,7 +418,10 @@ public class RowStore {
                     if (!descriptorMatches(search, c.key())) {
                         continue;
                     }
-                    // FIXME: return null if not active
+                    if (c.value()[8] != 'A') {
+                        // Not active.
+                        return null;
+                    }
                     indexId = decodeLongLE(c.value(), 0);
                     indexRowInfo = indexRowInfo(RowInfo.find(rowType), c.key());
                     descriptor = c.key();
@@ -399,6 +429,14 @@ public class RowStore {
                 }
             }
             return null;
+        }
+
+        Object key = ArrayKey.make(descriptor);
+
+        AbstractTable<R> table = indexTables.get(key);
+
+        if (table != null) {
+            return table;
         }
 
         Index ix = mDatabase.indexById(indexId);
@@ -413,16 +451,16 @@ public class RowStore {
 
         var manager = (TableManager<R>) tableManager(ix);
 
-        AbstractTable table;
-
         try {
             var maker = new TableMaker
                 (this, rowType, rowInfo.rowGen(), indexRowInfo.rowGen(), descriptor, ix.id());
             var mh = maker.finish();
-            table = (AbstractTable) mh.invoke(manager, ix);
+            table = (AbstractTable<R>) mh.invoke(manager, ix);
         } catch (Throwable e) {
             throw rethrow(e);
         }
+
+        indexTables.put(key, table);
 
         return table;
     }

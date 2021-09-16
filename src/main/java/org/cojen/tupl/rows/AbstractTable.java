@@ -49,7 +49,7 @@ import org.cojen.tupl.io.Utils;
  */
 public abstract class AbstractTable<R> implements Table<R> {
     // Need a strong reference to this to prevent premature GC.
-    private final TableManager<R> mTableManager;
+    final TableManager<R> mTableManager;
 
     protected final Index mSource;
 
