@@ -416,7 +416,13 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
         if (newIndex != null && deleted != null) {
             // At this point, the backfill is in the finishing phase.
 
-            txn.enter();
+            if (txn.isBogus()) {
+                // Need a transaction that supports rollback.
+                txn = mRowStore.mDatabase.newTransaction(DurabilityMode.NO_REDO);
+                txn.lockTimeout(-1, null);
+            } else {
+                txn.enter();
+            }
             try {
                 // The other two indexes are used for tracking modifications which must be
                 // applied into the new index, but because the insert supersedes them, delete
