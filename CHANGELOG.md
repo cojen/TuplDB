@@ -1,6 +1,11 @@
 Changelog
 =========
 
+v1.5.3.3
+--------
+* Ensure that index passed to verification observer is unmodifiable when called from an
+  unmodifiable index.
+
 v1.5.3.2 (2021-09-13)
 --------
 * Fix storage leaks caused by fragmented keys.

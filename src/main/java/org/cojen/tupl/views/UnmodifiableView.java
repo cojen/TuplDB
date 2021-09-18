@@ -296,10 +296,50 @@ public final class UnmodifiableView implements Index {
 
     @Override
     public boolean verify(VerificationObserver observer) throws IOException {
-        if (mSource instanceof Index) {
-            return ((Index) mSource).verify(observer);
+        if (!(mSource instanceof Index)) {
+            return true;
         }
-        return true;
+
+        VerificationObserver obs = null;
+
+        if (observer != null) {
+            obs = new VerificationObserver() {
+                @Override
+                public boolean indexBegin(Index index, int height) {
+                    return observer.indexBegin(wrap(index), height);
+                }
+
+                @Override
+                public boolean indexComplete(Index index, boolean passed, String message) {
+                    return observer.indexComplete(wrap(index), passed, message);
+                }
+                    
+                @Override
+                public boolean indexNodePassed(long id, int level,
+                                               int entryCount, int freeBytes,int largeValueCount)
+                {
+                    return observer.indexNodePassed
+                        (id, level, entryCount, freeBytes, largeValueCount);
+                }
+
+                @Override
+                public boolean indexNodeFailed(long id, int level, String message) {
+                    return observer.indexNodeFailed(id, level, message);
+                }
+
+                private Index wrap(Index index) {
+                    if (index == mSource) {
+                        return UnmodifiableView.this;
+                    }
+                    if (!index.isUnmodifiable()) {
+                        index = new UnmodifiableView(index);
+                    }
+                    return index;
+                }
+            };
+        }
+
+        return ((Index) mSource).verify(obs);
     }
 
     @Override
@@ -309,6 +349,9 @@ public final class UnmodifiableView implements Index {
 
     @Override
     public boolean isClosed() {
+        if (mSource instanceof Index) {
+            return ((Index) mSource).isClosed();
+        }
         return false;
     }
 

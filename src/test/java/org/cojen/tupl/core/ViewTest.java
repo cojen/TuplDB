@@ -557,7 +557,7 @@ public class ViewTest {
     }
 
     /**
-     * @param mode bit 0: flip construction order; 1: sub view; 2: reverse view
+     * @param mode bit 0: reverse view; 1: sub view; 2: flip construction order
      */
     private void unmodifiable(int mode) throws Exception {
         View ix = fill();
@@ -629,6 +629,26 @@ public class ViewTest {
             c.store(key(20));
             fail();
         } catch (UnmodifiableViewException e) {
+        }
+
+        if (view instanceof Index) {
+            assertTrue(((Index) view).verify(null));
+
+            var obs = new VerificationObserver() {
+                @Override
+                public boolean indexBegin(Index index, int height) {
+                    assertTrue(index.isUnmodifiable());
+                    return true;
+                }
+
+                @Override
+                public boolean indexComplete(Index index, boolean passed, String message) {
+                    assertTrue(index.isUnmodifiable());
+                    return true;
+                }
+            };
+
+            assertTrue(((Index) view).verify(obs));
         }
 
         c.reset();
