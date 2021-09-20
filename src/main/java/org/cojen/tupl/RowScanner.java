@@ -21,7 +21,17 @@ import java.io.Closeable;
 import java.io.IOException;
 
 /**
- * 
+ * Support for scanning through all rows in a table. Any exception thrown when acting upon a
+ * scanner automatically closes it.
+ *
+ * <p>RowScanner instances can only be safely used by one thread at a time, and they must be
+ * closed when no longer needed. Instances can be exchanged by threads, as long as a
+ * happens-before relationship is established. Without proper exclusion, multiple threads
+ * interacting with a RowScanner instance may cause database corruption.
+ *
+ * @author Brian S O'Neill
+ * @see Table#newRowScanner Table.newRowScanner
+ * @see RowUpdater
  *
  * @author Brian S O'Neill
  */

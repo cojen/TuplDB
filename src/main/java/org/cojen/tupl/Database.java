@@ -93,23 +93,6 @@ public interface Database extends CauseCloseable, Flushable {
     }
 
     /**
-     * Returns the given named index, returning null if not found.
-     *
-     * @return shared Index instance; null if not found
-     */
-    public abstract Index findIndex(byte[] name) throws IOException;
-
-    /**
-     * Returns the given named index, returning null if not found. Name is UTF-8
-     * encoded.
-     *
-     * @return shared Index instance; null if not found
-     */
-    public default Index findIndex(String name) throws IOException {
-        return findIndex(name.getBytes(StandardCharsets.UTF_8));
-    }
-
-    /**
      * Returns the given named index, creating it if necessary.
      *
      * @return shared Index instance
@@ -124,6 +107,23 @@ public interface Database extends CauseCloseable, Flushable {
      */
     public default Index openIndex(String name) throws IOException {
         return openIndex(name.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * Returns the given named index, returning null if not found.
+     *
+     * @return shared Index instance; null if not found
+     */
+    public abstract Index findIndex(byte[] name) throws IOException;
+
+    /**
+     * Returns the given named index, returning null if not found. Name is UTF-8
+     * encoded.
+     *
+     * @return shared Index instance; null if not found
+     */
+    public default Index findIndex(String name) throws IOException {
+        return findIndex(name.getBytes(StandardCharsets.UTF_8));
     }
 
     /**
@@ -152,6 +152,17 @@ public interface Database extends CauseCloseable, Flushable {
      * Convenience method which returns a {@code Table} that uses the index named by the row
      * type itself.
      *
+     * @return shared {@code Table} instance
+     * @see Index#asTable
+     */
+    public default <R> Table<R> openTable(Class<R> type) throws IOException {
+        return openIndex(type.getName()).asTable(type);
+    }
+
+    /**
+     * Convenience method which returns a {@code Table} that uses the index named by the row
+     * type itself.
+     *
      * @return shared {@code Table} instance; null if not found
      * @see Index#asTable
      */
@@ -160,17 +171,6 @@ public interface Database extends CauseCloseable, Flushable {
         return ix == null ? null : ix.asTable(type);
     }
     
-    /**
-     * Convenience method which returns a {@code Table} that uses the index named by the row
-     * type itself.
-     *
-     * @return shared {@code Table} instance
-     * @see Index#asTable
-     */
-    public default <R> Table<R> openTable(Class<R> type) throws IOException {
-        return openIndex(type.getName()).asTable(type);
-    }
-
     /**
      * Renames the given index to the one given.
      *

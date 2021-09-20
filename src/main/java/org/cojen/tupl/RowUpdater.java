@@ -21,7 +21,17 @@ import java.io.Flushable;
 import java.io.IOException;
 
 /**
- * 
+ * Support for scanning through all rows in a table, updating them along the way. Any exception
+ * thrown when acting upon an updater automatically closes it.
+ *
+ * <p>RowUpdater instances can only be safely used by one thread at a time, and they must be
+ * closed when no longer needed. Instances can be exchanged by threads, as long as a
+ * happens-before relationship is established. Without proper exclusion, multiple threads
+ * interacting with a RowUpdater instance may cause database corruption.
+ *
+ * @author Brian S O'Neill
+ * @see Table#newRowUpdater Table.newRowUpdater
+ * @see RowScanner
  *
  * @author Brian S O'Neill
  */

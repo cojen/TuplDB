@@ -23,6 +23,7 @@ import java.lang.annotation.*;
  * Annotation which indicates that a column value can be null.
  *
  * @author Brian S O'Neill
+ * @see Table
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)

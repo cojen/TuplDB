@@ -81,7 +81,9 @@ public interface View {
     }
 
     /**
-     * Returns a new updater over this view. When providing a transaction which acquires locks
+     * Returns a new updater over this view.
+     *
+     * <p>When providing a transaction which acquires locks
      * (or the transaction is null), upgradable locks are acquired for each entry visited by
      * the updater. If the transaction lock mode is non-repeatable, any lock acquisitions for
      * entries which are stepped over are released when moving to the next entry. Updates with

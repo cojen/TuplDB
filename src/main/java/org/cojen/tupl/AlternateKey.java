@@ -20,15 +20,29 @@ package org.cojen.tupl;
 import java.lang.annotation.*;
 
 /**
- * 
+ * Annotation which defines an alternate set of columns that uniquely identify a row instance.
+ * Row definitions aren't required to have any {@code @AlternateKey} annotations.
+ *
+ * <p>An alternate key is essentially the same as a {@link SecondaryIndex secondary index},
+ * except with a uniqueness constraint applied. Attempting to insert a row with a conflicting
+ * alternate key causes a {@link UniqueConstraintException} to be thrown.
  *
  * @author Brian S O'Neill
+ * @see Table
+ * @see SecondaryIndex
+ * @see PrimaryKey
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 @Repeatable(AlternateKey.Set.class)
 public @interface AlternateKey {
+    /**
+     * The set of column names within alternate key, whose ordering affects the natural
+     * ordering of the rows within the alternate key index. Column names can be optionally
+     * prefixed with a '+' or '-' character to indicate ascending or descending order. By
+     * default, column order is ascending.
+     */
     String[] value();
 
     /**

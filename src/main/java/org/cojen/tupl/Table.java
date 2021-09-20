@@ -20,11 +20,62 @@ package org.cojen.tupl;
 import java.io.IOException;
 
 /**
- * 
+ * Defines a relational collection of persistent rows. A row is defined by an interface
+ * consisting of accessor/mutator methods corresponding to each column:
+ *
+ * <pre>
+ * &#64;PrimaryKey("id")
+ * public interface MyRow {
+ *     long id();
+ *     void id(long id);
+ *
+ *     String name();
+ *     void name(String str);
+ *
+ *     String message();
+ *     void message(String str);
+ * }
+ * </pre>
+ * Supported column types:
+ * <ul>
+ * <li>Simple objects — {@code String}, {@code BigInteger}, and {@code BigDecimal}
+ * <li>Primitives — {@code int}, {@code double}, etc
+ * <li>Boxed primitives — {@code Integer}, {@code Double}, etc
+ * <li>Primitive arrays — {@code int[]}, {@code double[]}, etc
+ * </ul>
+ *
+ * By default, object columns cannot be set to null, and attempting to do so causes an {@code
+ * IllegalArgumentException} to be thrown. The column definition must be annotated with {@link
+ * Nullable @Nullable} to support nulls.
+ *
+ * <p>The actual row implementation class is generated at runtime, and the standard {@code
+ * equals}, {@code hashCode}, {@code toString}, and {@code clone} methods are automatically
+ * generated as well. If the row interface declares a {@code clone} method which returns the
+ * exact row type, then the row can be cloned without requiring an explicit cast. Note that any
+ * default methods defined in the row interface are never overridden by the generated class.
+ *
+ * <p>Scans over the rows of the table can be reduced by a filter, described by this syntax:
+ *
+ * <blockquote><pre>{@code
+ * RowFilter    = AndFilter { "||" AndFilter }
+ * AndFilter    = EntityFilter { "&&" EntityFilter }
+ * EntityFilter = ColumnFilter | ParenFilter
+ * ParenFilter  = [ "!" ] "(" RowFilter ")"
+ * ColumnFilter = ColumnName RelOp ( ArgRef | ColumnName )
+ *              | ColumnName "in" ArgRef
+ * RelOp        = "==" | "!=" | "<" | ">=" | ">" | "<="
+ * ColumnName   = string
+ * ArgRef       = "?" [ uint ]
+ * }</pre></blockquote>
  *
  * @author Brian S O'Neill
+ * @see Database#openTable Database.openTable
+ * @see PrimaryKey
  */
 public interface Table<R> {
+    /**
+     * Returns the interface which defines the rows of this table.
+     */
     public Class<R> rowType();
 
     /**
@@ -37,18 +88,68 @@ public interface Table<R> {
      */
     public void reset(R row);
 
+    /**
+     * Returns a new scanner for all rows of this table.
+     *
+     * @param txn optional transaction for the scanner to use; pass null for auto-commit mode
+     * @return a new scanner positioned at the first row in the table
+     * @throws IllegalStateException if transaction belongs to another database instance
+     */
     public RowScanner<R> newRowScanner(Transaction txn) throws IOException;
 
+    /**
+     * Returns a new scanner for a subset of rows of this table, as specified by the filter
+     * expression.
+     *
+     * @param txn optional transaction for the scanner to use; pass null for auto-commit mode
+     * @return a new scanner positioned at the first row in the table
+     * @throws IllegalStateException if transaction belongs to another database instance
+     */
     public RowScanner<R> newRowScanner(Transaction txn, String filter, Object... args)
         throws IOException;
 
+    /**
+     * Returns a new updater for all rows of this table.
+     *
+     * <p>When providing a transaction which acquires locks (or the transaction is null),
+     * upgradable locks are acquired for each row visited by the updater. If the transaction
+     * lock mode is non-repeatable, any lock acquisitions for rows which are stepped over are
+     * released when moving to the next row. Updates with a null transaction are auto-committed
+     * and become visible to other transactions as the updater moves along.
+     *
+     * @param txn optional transaction for the updater to use; pass null for auto-commit mode
+     * @return a new updater positioned at the first row in the table
+     * @throws IllegalStateException if transaction belongs to another database instance
+     */
     public RowUpdater<R> newRowUpdater(Transaction txn) throws IOException;
 
+    /**
+     * Returns a new updater for a subset of rows of this table, as specified by the filter
+     * expression.
+     *
+     * <p>When providing a transaction which acquires locks (or the transaction is null),
+     * upgradable locks are acquired for each row visited by the updater. If the transaction
+     * lock mode is non-repeatable, any lock acquisitions for rows which are stepped over are
+     * released when moving to the next row. Updates with a null transaction are auto-committed
+     * and become visible to other transactions as the updater moves along.
+     *
+     * @param txn optional transaction for the updater to use; pass null for auto-commit mode
+     * @return a new updater positioned at the first row in the table
+     * @throws IllegalStateException if transaction belongs to another database instance
+     */
     public RowUpdater<R> newRowUpdater(Transaction txn, String filter, Object... args)
         throws IOException;
 
+    /**
+     * Returns a new transaction which is compatible with this table. If the provided durability
+     * mode is null, a default mode is selected.
+     */
     public Transaction newTransaction(DurabilityMode durabilityMode);
 
+    /**
+     * Non-transactionally determines if the table has nothing in it. A return value of true
+     * guarantees that the table is empty, but false negatives are possible.
+     */
     public boolean isEmpty() throws IOException;
 
     /**
@@ -187,21 +288,6 @@ public interface Table<R> {
      */
     public Table<R> secondaryIndexTable(String... columns) throws IOException;
 
-    /**
-     * Returns a view which is filtered by the given expression and arguments.
-     *
-     * <blockquote><pre>{@code
-     * RowFilter    = AndFilter { "|" AndFilter }
-     * AndFilter    = EntityFilter { "&" EntityFilter }
-     * EntityFilter = ColumnFilter | ParenFilter
-     * ParenFilter  = [ "!" ] "(" Filter ")"
-     * ColumnFilter = ColumnName RelOp ( ArgRef | ColumnName )
-     *              | ColumnName "in" ArgRef
-     * RelOp        = "==" | "!=" | "<" | ">=" | ">" | "<="
-     * ColumnName   = string
-     * ArgRef       = "?" [ uint ]
-     * }</pre></blockquote>
-     */
     // FIXME: A filtered view is too restrictive. It prevents RowUpdater from making changes to
     // rows when the change is part of the filter. Add this feature later. Initially support
     // passing a filter and args to the newScanner and newUpdater methods. Evolve the filter

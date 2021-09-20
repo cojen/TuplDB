@@ -20,9 +20,12 @@ package org.cojen.tupl;
 import java.lang.annotation.*;
 
 /**
- * 
+ * Annotation which indicates that a primitive column type be treated as an unsigned type. This
+ * affects the natural ordering of the column and its presentation by the row's {@code
+ * toString} method.
  *
  * @author Brian S O'Neill
+ * @see Table
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)

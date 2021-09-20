@@ -18,7 +18,7 @@
 package org.cojen.tupl;
 
 /**
- * 
+ * Thrown when attempting to read a row column which doesn't have anything assigned to it.
  *
  * @author Brian S O'Neill
  */

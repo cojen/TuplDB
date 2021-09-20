@@ -34,7 +34,7 @@ public class Parser {
       RowFilter    = AndFilter { "||" AndFilter }
       AndFilter    = EntityFilter { "&&" EntityFilter }
       EntityFilter = ColumnFilter | ParenFilter
-      ParenFilter  = [ "!" ] "(" Filter ")"
+      ParenFilter  = [ "!" ] "(" RowFilter ")"
       ColumnFilter = ColumnName RelOp ( ArgRef | ColumnName )
                    | ColumnName "in" ArgRef
       RelOp        = "==" | "!=" | "<" | ">=" | ">" | "<="

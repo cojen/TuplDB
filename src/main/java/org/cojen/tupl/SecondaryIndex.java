@@ -20,15 +20,25 @@ package org.cojen.tupl;
 import java.lang.annotation.*;
 
 /**
- * 
+ * Annotation which a defines secondary search index within a table. Row definitions aren't
+ * required to have any {@code @SecondaryIndex} annotations.
  *
  * @author Brian S O'Neill
+ * @see Table
+ * @see PrimaryKey
+ * @see AlternateKey
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 @Repeatable(SecondaryIndex.Set.class)
 public @interface SecondaryIndex {
+    /**
+     * The set of column names within secondary index, whose ordering affects the natural
+     * ordering of the rows within the secondary index. Column names can be optionally prefixed
+     * with a '+' or '-' character to indicate ascending or descending order. By default,
+     * column order is ascending.
+     */
     String[] value();
 
     /**

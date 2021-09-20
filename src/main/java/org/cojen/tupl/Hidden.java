@@ -23,6 +23,7 @@ import java.lang.annotation.*;
  * Annotation which hides a column from a row's generated {@code toString} method.
  *
  * @author Brian S O'Neill
+ * @see Table
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
