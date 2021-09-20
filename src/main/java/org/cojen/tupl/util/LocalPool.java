@@ -145,6 +145,9 @@ public final class LocalPool<B> {
         }
     }
 
+    /**
+     * Entry within a {@link LocalPool}.
+     */
     public static interface Entry<B> {
         /**
          * Return the pooled instance, which is locked exclusively.
