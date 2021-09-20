@@ -93,23 +93,6 @@ public interface Database extends CauseCloseable, Flushable {
     }
 
     /**
-     * Returns the given named index, returning null if not found.
-     *
-     * @return shared Index instance; null if not found
-     */
-    public abstract Index findIndex(byte[] name) throws IOException;
-
-    /**
-     * Returns the given named index, returning null if not found. Name is UTF-8
-     * encoded.
-     *
-     * @return shared Index instance; null if not found
-     */
-    public default Index findIndex(String name) throws IOException {
-        return findIndex(name.getBytes(StandardCharsets.UTF_8));
-    }
-
-    /**
      * Returns the given named index, creating it if necessary.
      *
      * @return shared Index instance
@@ -124,6 +107,23 @@ public interface Database extends CauseCloseable, Flushable {
      */
     public default Index openIndex(String name) throws IOException {
         return openIndex(name.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * Returns the given named index, returning null if not found.
+     *
+     * @return shared Index instance; null if not found
+     */
+    public abstract Index findIndex(byte[] name) throws IOException;
+
+    /**
+     * Returns the given named index, returning null if not found. Name is UTF-8
+     * encoded.
+     *
+     * @return shared Index instance; null if not found
+     */
+    public default Index findIndex(String name) throws IOException {
+        return findIndex(name.getBytes(StandardCharsets.UTF_8));
     }
 
     /**
