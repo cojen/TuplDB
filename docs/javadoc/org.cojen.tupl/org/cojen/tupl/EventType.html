@@ -231,6 +231,14 @@ loadScripts(document, 'script');</script>
 </div>
 <div class="col-first even-row-color"><code><a href="#SHUTDOWN_CLEAN" class="member-name-link">SHUTDOWN_CLEAN</a></code></div>
 <div class="col-last even-row-color">&nbsp;</div>
+<div class="col-first odd-row-color"><code><a href="#TABLE_INDEX_BACKFILL_ERROR" class="member-name-link">TABLE_INDEX_BACKFILL_ERROR</a></code></div>
+<div class="col-last odd-row-color">
+<div class="block">Error regarding a backfill task on a new secondary index or alternate key.</div>
+</div>
+<div class="col-first even-row-color"><code><a href="#TABLE_INDEX_BACKFILL_INFO" class="member-name-link">TABLE_INDEX_BACKFILL_INFO</a></code></div>
+<div class="col-last even-row-color">
+<div class="block">Information regarding a backfill task on a new secondary index or alternate key.</div>
+</div>
 </div>
 </section>
 </li>
@@ -446,6 +454,20 @@ the order they are declared.</div>
 <h3>REPLICATION_PANIC</h3>
 <div class="member-signature"><span class="modifiers">public static final</span>&nbsp;<span class="return-type"><a href="EventType.html" title="enum class in org.cojen.tupl">EventType</a></span>&nbsp;<span class="element-name">REPLICATION_PANIC</span></div>
 <div class="block">Unhandled in the replication system, and the database must be shutdown.</div>
+</section>
+</li>
+<li>
+<section class="detail" id="TABLE_INDEX_BACKFILL_INFO">
+<h3>TABLE_INDEX_BACKFILL_INFO</h3>
+<div class="member-signature"><span class="modifiers">public static final</span>&nbsp;<span class="return-type"><a href="EventType.html" title="enum class in org.cojen.tupl">EventType</a></span>&nbsp;<span class="element-name">TABLE_INDEX_BACKFILL_INFO</span></div>
+<div class="block">Information regarding a backfill task on a new secondary index or alternate key.</div>
+</section>
+</li>
+<li>
+<section class="detail" id="TABLE_INDEX_BACKFILL_ERROR">
+<h3>TABLE_INDEX_BACKFILL_ERROR</h3>
+<div class="member-signature"><span class="modifiers">public static final</span>&nbsp;<span class="return-type"><a href="EventType.html" title="enum class in org.cojen.tupl">EventType</a></span>&nbsp;<span class="element-name">TABLE_INDEX_BACKFILL_ERROR</span></div>
+<div class="block">Error regarding a backfill task on a new secondary index or alternate key.</div>
 </section>
 </li>
 <li>

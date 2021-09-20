@@ -438,7 +438,9 @@ loadScripts(document, 'script');</script>
 <h3>newUpdater</h3>
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="Updater.html" title="interface in org.cojen.tupl">Updater</a></span>&nbsp;<span class="element-name">newUpdater</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</span>
                     throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Returns a new updater over this view. When providing a transaction which acquires locks
+<div class="block">Returns a new updater over this view.
+
+ <p>When providing a transaction which acquires locks
  (or the transaction is null), upgradable locks are acquired for each entry visited by
  the updater. If the transaction lock mode is non-repeatable, any lock acquisitions for
  entries which are stepped over are released when moving to the next entry. Updates with

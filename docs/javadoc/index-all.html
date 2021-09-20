@@ -144,6 +144,14 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Allocate native memory.</div>
 </dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/AlternateKey.html" class="type-name-link" title="annotation interface in org.cojen.tupl">AlternateKey</a> - Annotation Interface in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
+<dd>
+<div class="block">Annotation which defines an alternate set of columns that uniquely identify a row instance.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#alternateKeyTable(java.lang.String...)" class="member-name-link">alternateKeyTable(String...)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
+<dd>
+<div class="block">Returns a direct view of an alternate key, in the form of an unmodifiable table.</div>
+</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/Index.html#analyze(byte%5B%5D,byte%5B%5D)" class="member-name-link">analyze(byte[], byte[])</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a></dt>
 <dd>
 <div class="block">Estimates the size of this index with a single random probe.</div>
@@ -160,6 +168,10 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/Ordering.html#ASCENDING" class="member-name-link">ASCENDING</a> - Enum constant in enum class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Ordering.html" title="enum class in org.cojen.tupl">Ordering</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Index.html#asTable(java.lang.Class)" class="member-name-link">asTable(Class&lt;R&gt;)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a></dt>
+<dd>
+<div class="block">Returns a <code>Table</code> instance which stores rows in this index.</div>
+</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/Transaction.html#attach(java.lang.Object)" class="member-name-link">attach(Object)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
 <dd>
 <div class="block">Attach an arbitrary object to this transaction instance, for tracking it.</div>
@@ -418,6 +430,8 @@ loadScripts(document, 'script');</script>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/io/PageCompressor.html#close()" class="member-name-link">close()</a> - Method in interface org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/PageCompressor.html" title="interface in org.cojen.tupl.io">PageCompressor</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.Accessor.html#close()" class="member-name-link">close()</a> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/RowScanner.html#close()" class="member-name-link">close()</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/RowScanner.html" title="interface in org.cojen.tupl">RowScanner</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/Scanner.html#close()" class="member-name-link">close()</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a></dt>
 <dd>&nbsp;</dd>
@@ -905,6 +919,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Deletes the value for the current entry, leaving the position unchanged.</div>
 </dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/RowUpdater.html#delete()" class="member-name-link">delete()</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/RowUpdater.html" title="interface in org.cojen.tupl">RowUpdater</a></dt>
+<dd>
+<div class="block">Delete the current row and then step to the next row.</div>
+</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/io/Utils.html#delete(java.nio.Buffer)" class="member-name-link">delete(Buffer)</a> - Static method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/Utils.html" title="class in org.cojen.tupl.io">Utils</a></dt>
 <dd>
 <div class="block">Attempt to delete the given direct or mapped byte buffer.</div>
@@ -916,6 +934,14 @@ loadScripts(document, 'script');</script>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/View.html#delete(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">delete(Transaction, byte[])</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
 <dd>
 <div class="block">Unconditionally removes the entry associated with the given key.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#delete(org.cojen.tupl.Transaction,R)" class="member-name-link">delete(Transaction, R)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
+<dd>
+<div class="block">Unconditionally removes an existing row by a primary or alternate key.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/RowUpdater.html#delete(R)" class="member-name-link">delete(R)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/RowUpdater.html" title="interface in org.cojen.tupl">RowUpdater</a></dt>
+<dd>
+<div class="block">Delete the current row and then step to the next row.</div>
 </dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/Database.html#deleteIndex(org.cojen.tupl.Index)" class="member-name-link">deleteIndex(Index)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
@@ -1187,6 +1213,11 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Unconditionally associates a value with the given key, returning the previous value.</div>
 </dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#exchange(org.cojen.tupl.Transaction,R)" class="member-name-link">exchange(Transaction, R)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
+<dd>
+<div class="block">Unconditionally stores the given row, potentially replacing a corresponding row which
+ already exists.</div>
+</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/util/Latch.html#EXCLUSIVE" class="member-name-link">EXCLUSIVE</a> - Static variable in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/Latch.html" title="class in org.cojen.tupl.util">Latch</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/util/Runner.html#execute(java.lang.Runnable)" class="member-name-link">execute(Runnable)</a> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/Runner.html" title="class in org.cojen.tupl.util">Runner</a></dt>
@@ -1194,6 +1225,10 @@ loadScripts(document, 'script');</script>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/View.html#exists(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">exists(Transaction, byte[])</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
 <dd>
 <div class="block">Checks if an entry for the given key exists.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#exists(org.cojen.tupl.Transaction,R)" class="member-name-link">exists(Transaction, R)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
+<dd>
+<div class="block">Checks if a row exists by searching against a primary or alternate key.</div>
 </dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/Transaction.html#exit()" class="member-name-link">exit()</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
 <dd>
@@ -1309,6 +1344,11 @@ loadScripts(document, 'script');</script>
 <div class="block">Optimized version of the regular <a href="org.cojen.tupl/org/cojen/tupl/Cursor.html#findLt(byte%5B%5D)"><code>findLt</code></a> method, which can perform fewer
  search steps if the given key is in close proximity to the current one.</div>
 </dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Database.html#findTable(java.lang.Class)" class="member-name-link">findTable(Class&lt;R&gt;)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
+<dd>
+<div class="block">Convenience method which returns a <code>Table</code> that uses the index named by the row
+ type itself.</div>
+</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/Sorter.html#finish()" class="member-name-link">finish()</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Sorter.html" title="interface in org.cojen.tupl">Sorter</a></dt>
 <dd>
 <div class="block">Finish sorting the entries, and return a temporary index with the results.</div>
@@ -1346,6 +1386,11 @@ loadScripts(document, 'script');</script>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/Database.html#flush()" class="member-name-link">flush()</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
 <div class="block">Flushes all committed transactions, but not durably.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/RowUpdater.html#flush()" class="member-name-link">flush()</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/RowUpdater.html" title="interface in org.cojen.tupl">RowUpdater</a></dt>
+<dd>
+<div class="block">Ensures that any queued update operations are applied; flushing is automatically
+ performed when the updater is closed.</div>
 </dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/Transaction.html#flush()" class="member-name-link">flush()</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
 <dd>
@@ -1421,6 +1466,10 @@ loadScripts(document, 'script');</script>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/VerificationObserver.html#height" class="member-name-link">height</a> - Variable in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/VerificationObserver.html" title="class in org.cojen.tupl">VerificationObserver</a></dt>
 <dd>
 <div class="block">Index height; is zero for empty indexes.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Hidden.html" class="type-name-link" title="annotation interface in org.cojen.tupl">Hidden</a> - Annotation Interface in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
+<dd>
+<div class="block">Annotation which hides a column from a row's generated <code>toString</code> method.</div>
 </dd>
 </dl>
 <h2 class="title" id="I:I">I</h2>
@@ -1565,6 +1614,10 @@ loadScripts(document, 'script');</script>
 <div class="block">Associates a value with the given key, unless a corresponding value already
  exists.</div>
 </dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#insert(org.cojen.tupl.Transaction,R)" class="member-name-link">insert(Transaction, R)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
+<dd>
+<div class="block">Stores the given row when a corresponding row doesn't exist.</div>
+</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/util/Worker.html#interrupt()" class="member-name-link">interrupt()</a> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/Worker.html" title="class in org.cojen.tupl.util">Worker</a></dt>
 <dd>
 <div class="block">Interrupt the worker thread, if it exists.</div>
@@ -1660,6 +1713,10 @@ loadScripts(document, 'script');</script>
 <dd>&nbsp;</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html#isEmpty()" class="member-name-link">isEmpty()</a> - Method in class org.cojen.tupl.io.<a href="org.cojen.tupl/org/cojen/tupl/io/StripedPageArray.html" title="class in org.cojen.tupl.io">StripedPageArray</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#isEmpty()" class="member-name-link">isEmpty()</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
+<dd>
+<div class="block">Non-transactionally determines if the table has nothing in it.</div>
+</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html#isEmpty()" class="member-name-link">isEmpty()</a> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>
 <dd>
 <div class="block">Returns true if no waiters are enqueued.</div>
@@ -1902,6 +1959,10 @@ loadScripts(document, 'script');</script>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/View.html#load(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">load(Transaction, byte[])</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
 <dd>
 <div class="block">Returns a copy of the value for the given key, or null if no matching entry exists.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#load(org.cojen.tupl.Transaction,R)" class="member-name-link">load(Transaction, R)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
+<dd>
+<div class="block">Fully loads the row by a primary or alternate key.</div>
 </dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/Combiner.html#loadDifference(org.cojen.tupl.Transaction,byte%5B%5D,org.cojen.tupl.View,org.cojen.tupl.View)" class="member-name-link">loadDifference(Transaction, byte[], View, View)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Combiner.html" title="interface in org.cojen.tupl">Combiner</a></dt>
 <dd>
@@ -2157,6 +2218,11 @@ loadScripts(document, 'script');</script>
 <div class="block">If replication is enabled, specify the maximum number of threads to process incoming
  changes.</div>
 </dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#merge(org.cojen.tupl.Transaction,R)" class="member-name-link">merge(Transaction, R)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
+<dd>
+<div class="block">Updates an existing row with the modified columns of the given row, and then loads the
+ result back into the given row.</div>
+</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/repl/MessageReplicator.html" class="type-name-link" title="interface in org.cojen.tupl.repl">MessageReplicator</a> - Interface in <a href="org.cojen.tupl/org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
 <dd>
 <div class="block">Message-oriented replication interface, which is a bit easier to use than <a href="org.cojen.tupl/org/cojen/tupl/repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl"><code>StreamReplicator</code></a>.</div>
@@ -2228,6 +2294,28 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Returns a new reader which accesses data starting from the given position.</div>
 </dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#newRow()" class="member-name-link">newRow()</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
+<dd>
+<div class="block">Returns a new row instance with unset columns.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#newRowScanner(org.cojen.tupl.Transaction)" class="member-name-link">newRowScanner(Transaction)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
+<dd>
+<div class="block">Returns a new scanner for all rows of this table.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#newRowScanner(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">newRowScanner(Transaction, String, Object...)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
+<dd>
+<div class="block">Returns a new scanner for a subset of rows of this table, as specified by the filter
+ expression.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#newRowUpdater(org.cojen.tupl.Transaction)" class="member-name-link">newRowUpdater(Transaction)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
+<dd>
+<div class="block">Returns a new updater for all rows of this table.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#newRowUpdater(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">newRowUpdater(Transaction, String, Object...)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
+<dd>
+<div class="block">Returns a new updater for a subset of rows of this table, as specified by the filter
+ expression.</div>
+</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/View.html#newScanner(org.cojen.tupl.Transaction)" class="member-name-link">newScanner(Transaction)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
 <dd>
 <div class="block">Returns a new scanner over this view.</div>
@@ -2253,6 +2341,10 @@ loadScripts(document, 'script');</script>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/Database.html#newTransaction(org.cojen.tupl.DurabilityMode)" class="member-name-link">newTransaction(DurabilityMode)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
 <div class="block">Returns a new Transaction with the given durability mode.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#newTransaction(org.cojen.tupl.DurabilityMode)" class="member-name-link">newTransaction(DurabilityMode)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
+<dd>
+<div class="block">Returns a new transaction which is compatible with this table.</div>
 </dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/View.html#newTransaction(org.cojen.tupl.DurabilityMode)" class="member-name-link">newTransaction(DurabilityMode)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
 <dd>
@@ -2364,6 +2456,10 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/EventListener.html#notify(org.cojen.tupl.EventType,java.lang.String,java.lang.Object...)" class="member-name-link">notify(EventType, String, Object...)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Nullable.html" class="type-name-link" title="annotation interface in org.cojen.tupl">Nullable</a> - Annotation Interface in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
+<dd>
+<div class="block">Annotation which indicates that a column value can be null.</div>
+</dd>
 </dl>
 <h2 class="title" id="I:O">O</h2>
 <dl class="index">
@@ -2424,6 +2520,11 @@ loadScripts(document, 'script');</script>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/io/OpenOption.html" class="type-name-link" title="enum class in org.cojen.tupl.io">OpenOption</a> - Enum Class in <a href="org.cojen.tupl/org/cojen/tupl/io/package-summary.html">org.cojen.tupl.io</a></dt>
 <dd>
 <div class="block">Open options for <a href="org.cojen.tupl/org/cojen/tupl/io/FilePageArray.html" title="class in org.cojen.tupl.io"><code>FilePageArray</code></a>.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Database.html#openTable(java.lang.Class)" class="member-name-link">openTable(Class&lt;R&gt;)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
+<dd>
+<div class="block">Convenience method which returns a <code>Table</code> that uses the index named by the row
+ type itself.</div>
 </dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/repl/SnapshotReceiver.html#options()" class="member-name-link">options()</a> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/SnapshotReceiver.html" title="interface in org.cojen.tupl.repl">SnapshotReceiver</a></dt>
 <dd>
@@ -2645,6 +2746,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Moves to the Cursor to the previous available entry, but only when
  greater than the given limit key.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/PrimaryKey.html" class="type-name-link" title="annotation interface in org.cojen.tupl">PrimaryKey</a> - Annotation Interface in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
+<dd>
+<div class="block">Annotation which defines the set of columns that uniquely identify a row instance.</div>
 </dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/EventListener.html#printTo(java.io.PrintStream)" class="member-name-link">printTo(PrintStream)</a> - Static method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/EventListener.html" title="interface in org.cojen.tupl">EventListener</a></dt>
 <dd>
@@ -2926,6 +3031,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Associates a value with the given key, but only if a corresponding value already exists.</div>
 </dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#replace(org.cojen.tupl.Transaction,R)" class="member-name-link">replace(Transaction, R)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
+<dd>
+<div class="block">Stores the given row when a corresponding row already exists.</div>
+</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#replicate(org.cojen.tupl.repl.ReplicatorConfig)" class="member-name-link">replicate(ReplicatorConfig)</a> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
 <dd>
 <div class="block">Enable replication using the given configuration.</div>
@@ -3019,6 +3128,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Reset the transaction due to the given cause.</div>
 </dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#reset(R)" class="member-name-link">reset(R)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
+<dd>
+<div class="block">Resets the state of the given row such that all columns are unset.</div>
+</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html#restore(java.util.Map)" class="member-name-link">restore(Map&lt;String, String&gt;)</a> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html" title="interface in org.cojen.tupl.repl">Replicator</a></dt>
 <dd>
 <div class="block">Start by receiving a <a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.html#requestSnapshot(java.util.Map)">snapshot</a> from another group member,
@@ -3062,6 +3175,22 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Round the stats to whole numbers into a new object.</div>
 </dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/RowScanner.html#row()" class="member-name-link">row()</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/RowScanner.html" title="interface in org.cojen.tupl">RowScanner</a></dt>
+<dd>
+<div class="block">Returns a reference to the current row, which is null if the scanner is closed.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/RowScanner.html" class="type-name-link" title="interface in org.cojen.tupl">RowScanner</a>&lt;<a href="org.cojen.tupl/org/cojen/tupl/RowScanner.html" title="type parameter in RowScanner">R</a>&gt; - Interface in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
+<dd>
+<div class="block">Support for scanning through all rows in a table.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#rowType()" class="member-name-link">rowType()</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
+<dd>
+<div class="block">Returns the interface which defines the rows of this table.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/RowUpdater.html" class="type-name-link" title="interface in org.cojen.tupl">RowUpdater</a>&lt;<a href="org.cojen.tupl/org/cojen/tupl/RowUpdater.html" title="type parameter in RowUpdater">R</a>&gt; - Interface in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
+<dd>
+<div class="block">Support for scanning through all rows in a table, updating them along the way.</div>
+</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/util/Worker.Task.html#run()" class="member-name-link">run()</a> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/Worker.Task.html" title="class in org.cojen.tupl.util">Worker.Task</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/util/Runner.html" class="type-name-link" title="class in org.cojen.tupl.util">Runner</a> - Class in <a href="org.cojen.tupl/org/cojen/tupl/util/package-summary.html">org.cojen.tupl.util</a></dt>
@@ -3082,6 +3211,14 @@ loadScripts(document, 'script');</script>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/Combiner.html#second()" class="member-name-link">second()</a> - Static method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Combiner.html" title="interface in org.cojen.tupl">Combiner</a></dt>
 <dd>
 <div class="block">Returns a Combiner that chooses the second value and discards the first value.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/SecondaryIndex.html" class="type-name-link" title="annotation interface in org.cojen.tupl">SecondaryIndex</a> - Annotation Interface in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
+<dd>
+<div class="block">Annotation which a defines secondary search index within a table.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#secondaryIndexTable(java.lang.String...)" class="member-name-link">secondaryIndexTable(String...)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
+<dd>
+<div class="block">Returns a direct view of a secondary index, in the form of an unmodifiable table.</div>
 </dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html#secretKey()" class="member-name-link">secretKey()</a> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></dt>
 <dd>
@@ -3200,9 +3337,17 @@ loadScripts(document, 'script');</script>
 <dd>&nbsp;</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/Index.Stats.html#%3Cinit%3E(double,double,double,double,double)" class="member-name-link">Stats(double, double, double, double, double)</a> - Constructor for class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/RowScanner.html#step()" class="member-name-link">step()</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/RowScanner.html" title="interface in org.cojen.tupl">RowScanner</a></dt>
+<dd>
+<div class="block">Step to the next row.</div>
+</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/Scanner.html#step()" class="member-name-link">step()</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a></dt>
 <dd>
 <div class="block">Step to the next entry.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/RowScanner.html#step(R)" class="member-name-link">step(R)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/RowScanner.html" title="interface in org.cojen.tupl">RowScanner</a></dt>
+<dd>
+<div class="block">Step to the next row.</div>
 </dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/Cursor.html#store(byte%5B%5D)" class="member-name-link">store(byte[])</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
 <dd>
@@ -3212,6 +3357,11 @@ loadScripts(document, 'script');</script>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/View.html#store(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)" class="member-name-link">store(Transaction, byte[], byte[])</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
 <dd>
 <div class="block">Unconditionally associates a value with the given key.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#store(org.cojen.tupl.Transaction,R)" class="member-name-link">store(Transaction, R)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
+<dd>
+<div class="block">Unconditionally stores the given row, potentially replacing a corresponding row which
+ already exists.</div>
 </dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/repl/StreamReplicator.html" class="type-name-link" title="interface in org.cojen.tupl.repl">StreamReplicator</a> - Interface in <a href="org.cojen.tupl/org/cojen/tupl/repl/package-summary.html">org.cojen.tupl.repl</a></dt>
 <dd>
@@ -3305,6 +3455,22 @@ loadScripts(document, 'script');</script>
 </dl>
 <h2 class="title" id="I:T">T</h2>
 <dl class="index">
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html" class="type-name-link" title="interface in org.cojen.tupl">Table</a>&lt;<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="type parameter in Table">R</a>&gt; - Interface in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
+<dd>
+<div class="block">Defines a relational collection of persistent rows.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/EventType.Category.html#TABLE" class="member-name-link">TABLE</a> - Enum constant in enum class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/EventType.Category.html" title="enum class in org.cojen.tupl">EventType.Category</a></dt>
+<dd>
+<div class="block">Event category for table tasks performed by background threads.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/EventType.html#TABLE_INDEX_BACKFILL_ERROR" class="member-name-link">TABLE_INDEX_BACKFILL_ERROR</a> - Enum constant in enum class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/EventType.html" title="enum class in org.cojen.tupl">EventType</a></dt>
+<dd>
+<div class="block">Error regarding a backfill task on a new secondary index or alternate key.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/EventType.html#TABLE_INDEX_BACKFILL_INFO" class="member-name-link">TABLE_INDEX_BACKFILL_INFO</a> - Enum constant in enum class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/EventType.html" title="enum class in org.cojen.tupl">EventType</a></dt>
+<dd>
+<div class="block">Information regarding a backfill task on a new secondary index or alternate key.</div>
+</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/util/Worker.Task.html#%3Cinit%3E()" class="member-name-link">Task()</a> - Constructor for class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/Worker.Task.html" title="class in org.cojen.tupl.util">Worker.Task</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.Accessor.html#term()" class="member-name-link">term()</a> - Method in interface org.cojen.tupl.repl.<a href="org.cojen.tupl/org/cojen/tupl/repl/Replicator.Accessor.html" title="interface in org.cojen.tupl.repl">Replicator.Accessor</a></dt>
@@ -3503,6 +3669,14 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Called to write or apply an idempotent undo operation.</div>
 </dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/UniqueConstraintException.html" class="type-name-link" title="class in org.cojen.tupl">UniqueConstraintException</a> - Exception in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
+<dd>
+<div class="block">Thrown when a row store operation would create a conflicting key.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/UniqueConstraintException.html#%3Cinit%3E()" class="member-name-link">UniqueConstraintException()</a> - Constructor for exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/UniqueConstraintException.html" title="class in org.cojen.tupl">UniqueConstraintException</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/UniqueConstraintException.html#%3Cinit%3E(java.lang.String)" class="member-name-link">UniqueConstraintException(String)</a> - Constructor for exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/UniqueConstraintException.html" title="class in org.cojen.tupl">UniqueConstraintException</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/ConfirmationTimeoutException.html#unit()" class="member-name-link">unit()</a> - Method in exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/ConfirmationTimeoutException.html" title="class in org.cojen.tupl">ConfirmationTimeoutException</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/LockTimeoutException.html#unit()" class="member-name-link">unit()</a> - Method in exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/LockTimeoutException.html" title="class in org.cojen.tupl">LockTimeoutException</a></dt>
@@ -3573,8 +3747,22 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Utility for accessing the unsupported Unsafe class.</div>
 </dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/UnsetColumnException.html" class="type-name-link" title="class in org.cojen.tupl">UnsetColumnException</a> - Exception in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
+<dd>
+<div class="block">Thrown when attempting to read a row column which doesn't have anything assigned to it.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/UnsetColumnException.html#%3Cinit%3E(java.lang.String)" class="member-name-link">UnsetColumnException(String)</a> - Constructor for exception org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/UnsetColumnException.html" title="class in org.cojen.tupl">UnsetColumnException</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Unsigned.html" class="type-name-link" title="annotation interface in org.cojen.tupl">Unsigned</a> - Annotation Interface in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
+<dd>
+<div class="block">Annotation which indicates that a primitive column type be treated as an unsigned type.</div>
+</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/Ordering.html#UNSPECIFIED" class="member-name-link">UNSPECIFIED</a> - Enum constant in enum class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Ordering.html" title="enum class in org.cojen.tupl">Ordering</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/RowUpdater.html#update()" class="member-name-link">update()</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/RowUpdater.html" title="interface in org.cojen.tupl">RowUpdater</a></dt>
+<dd>
+<div class="block">Update the current row and then step to the next row.</div>
+</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/Updater.html#update(byte%5B%5D)" class="member-name-link">update(byte[])</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Updater.html" title="interface in org.cojen.tupl">Updater</a></dt>
 <dd>
 <div class="block">Update the current value and then step to the next entry.</div>
@@ -3588,6 +3776,15 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Associates a value with the given key, but only if the given old value matches the
  existing value.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#update(org.cojen.tupl.Transaction,R)" class="member-name-link">update(Transaction, R)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
+<dd>
+<div class="block">Updates an existing row with the modified columns of the given row, but the resulting
+ row isn't loaded back.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/RowUpdater.html#update(R)" class="member-name-link">update(R)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/RowUpdater.html" title="interface in org.cojen.tupl">RowUpdater</a></dt>
+<dd>
+<div class="block">Update the current row and then step to the next row.</div>
 </dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/Updater.html#updateAll(org.cojen.tupl.EntryFunction)" class="member-name-link">updateAll(EntryFunction)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Updater.html" title="interface in org.cojen.tupl">Updater</a></dt>
 <dd>
@@ -3653,13 +3850,28 @@ loadScripts(document, 'script');</script>
 </dl>
 <h2 class="title" id="I:V">V</h2>
 <dl class="index">
+<dt><a href="org.cojen.tupl/org/cojen/tupl/AlternateKey.html#value()" class="member-name-link">value()</a> - Element in annotation interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/AlternateKey.html" title="annotation interface in org.cojen.tupl">AlternateKey</a></dt>
+<dd>
+<div class="block">The set of column names within alternate key, whose ordering affects the natural
+ ordering of the rows within the alternate key index.</div>
+</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/Cursor.html#value()" class="member-name-link">value()</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
 <dd>
 <div class="block">Returns an uncopied reference to the current value, which might be null or <a href="org.cojen.tupl/org/cojen/tupl/Cursor.html#NOT_LOADED"><code>Cursor.NOT_LOADED</code></a>.</div>
 </dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/PrimaryKey.html#value()" class="member-name-link">value()</a> - Element in annotation interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/PrimaryKey.html" title="annotation interface in org.cojen.tupl">PrimaryKey</a></dt>
+<dd>
+<div class="block">The set of column names within primary key, whose ordering affects the natural ordering
+ of the rows within the table.</div>
+</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/Scanner.html#value()" class="member-name-link">value()</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a></dt>
 <dd>
 <div class="block">Returns an uncopied reference to the current value, which might be null or <a href="org.cojen.tupl/org/cojen/tupl/Cursor.html#NOT_LOADED"><code>Cursor.NOT_LOADED</code></a>.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/SecondaryIndex.html#value()" class="member-name-link">value()</a> - Element in annotation interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/SecondaryIndex.html" title="annotation interface in org.cojen.tupl">SecondaryIndex</a></dt>
+<dd>
+<div class="block">The set of column names within secondary index, whose ordering affects the natural
+ ordering of the rows within the secondary index.</div>
 </dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/ValueAccessor.html" class="type-name-link" title="interface in org.cojen.tupl">ValueAccessor</a> - Interface in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>

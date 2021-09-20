@@ -105,9 +105,14 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color">
 <div class="block">Returns a new Transaction with the given durability mode.</div>
 </div>
-<div class="col-first even-row-color"><code>default <a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#newTransaction(org.cojen.tupl.DurabilityMode)" class="member-name-link">newTransaction</a><wbr>(<a href="../DurabilityMode.html" title="enum class in org.cojen.tupl">DurabilityMode</a>&nbsp;durabilityMode)</code></div>
+<div class="col-first even-row-color"><code><a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#newTransaction(org.cojen.tupl.DurabilityMode)" class="member-name-link">newTransaction</a><wbr>(<a href="../DurabilityMode.html" title="enum class in org.cojen.tupl">DurabilityMode</a>&nbsp;durabilityMode)</code></div>
 <div class="col-last even-row-color">
+<div class="block">Returns a new transaction which is compatible with this table.</div>
+</div>
+<div class="col-first odd-row-color"><code>default <a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#newTransaction(org.cojen.tupl.DurabilityMode)" class="member-name-link">newTransaction</a><wbr>(<a href="../DurabilityMode.html" title="enum class in org.cojen.tupl">DurabilityMode</a>&nbsp;durabilityMode)</code></div>
+<div class="col-last odd-row-color">
 <div class="block">Returns a new transaction which is compatible with this view.</div>
 </div>
 </div>
@@ -116,20 +121,33 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color"><code>default boolean</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#delete(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">delete</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- byte[]&nbsp;key)</code></div>
+<div class="col-first even-row-color"><code>boolean</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#delete(org.cojen.tupl.Transaction,R)" class="member-name-link">delete</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="../Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
 <div class="col-last even-row-color">
+<div class="block">Unconditionally removes an existing row by a primary or alternate key.</div>
+</div>
+<div class="col-first odd-row-color"><code>default boolean</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#delete(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">delete</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ byte[]&nbsp;key)</code></div>
+<div class="col-last odd-row-color">
 <div class="block">Unconditionally removes the entry associated with the given key.</div>
 </div>
-<div class="col-first odd-row-color"><code>long</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">Index.</span><code><a href="../Index.html#evict(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D,org.cojen.tupl.Filter,boolean)" class="member-name-link">evict</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first even-row-color"><code>long</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Index.</span><code><a href="../Index.html#evict(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D,org.cojen.tupl.Filter,boolean)" class="member-name-link">evict</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;lowKey,
  byte[]&nbsp;highKey,
  <a href="../Filter.html" title="interface in org.cojen.tupl">Filter</a>&nbsp;evictionFilter,
  boolean&nbsp;autoload)</code></div>
-<div class="col-last odd-row-color">
+<div class="col-last even-row-color">
 <div class="block">Select a few entries, and delete them from the index.</div>
+</div>
+<div class="col-first odd-row-color"><code><a href="../Table.html" title="type parameter in Table">R</a></code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#exchange(org.cojen.tupl.Transaction,R)" class="member-name-link">exchange</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="../Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Unconditionally stores the given row, potentially replacing a corresponding row which
+ already exists.</div>
 </div>
 <div class="col-first even-row-color"><code>default byte[]</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#exchange(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)" class="member-name-link">exchange</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
@@ -138,11 +156,23 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color">
 <div class="block">Unconditionally associates a value with the given key, returning the previous value.</div>
 </div>
-<div class="col-first odd-row-color"><code>default boolean</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#exists(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">exists</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- byte[]&nbsp;key)</code></div>
+<div class="col-first odd-row-color"><code>boolean</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#exists(org.cojen.tupl.Transaction,R)" class="member-name-link">exists</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="../Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
 <div class="col-last odd-row-color">
+<div class="block">Checks if a row exists by searching against a primary or alternate key.</div>
+</div>
+<div class="col-first even-row-color"><code>default boolean</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#exists(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">exists</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ byte[]&nbsp;key)</code></div>
+<div class="col-last even-row-color">
 <div class="block">Checks if an entry for the given key exists.</div>
+</div>
+<div class="col-first odd-row-color"><code>boolean</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#insert(org.cojen.tupl.Transaction,R)" class="member-name-link">insert</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="../Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Stores the given row when a corresponding row doesn't exist.</div>
 </div>
 <div class="col-first even-row-color"><code>default boolean</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#insert(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)" class="member-name-link">insert</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
@@ -157,64 +187,77 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color">
 <div class="block">Link to a transaction, which can be null for auto-commit mode.</div>
 </div>
-<div class="col-first even-row-color"><code>default byte[]</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#load(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">load</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- byte[]&nbsp;key)</code></div>
+<div class="col-first even-row-color"><code>boolean</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#load(org.cojen.tupl.Transaction,R)" class="member-name-link">load</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="../Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
 <div class="col-last even-row-color">
-<div class="block">Returns a copy of the value for the given key, or null if no matching entry exists.</div>
+<div class="block">Fully loads the row by a primary or alternate key.</div>
 </div>
 <div class="col-first odd-row-color"><code>default byte[]</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">Combiner.</span><code><a href="../Combiner.html#loadDifference(org.cojen.tupl.Transaction,byte%5B%5D,org.cojen.tupl.View,org.cojen.tupl.View)" class="member-name-link">loadDifference</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-second odd-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#load(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">load</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ byte[]&nbsp;key)</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Returns a copy of the value for the given key, or null if no matching entry exists.</div>
+</div>
+<div class="col-first even-row-color"><code>default byte[]</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Combiner.</span><code><a href="../Combiner.html#loadDifference(org.cojen.tupl.Transaction,byte%5B%5D,org.cojen.tupl.View,org.cojen.tupl.View)" class="member-name-link">loadDifference</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;key,
  <a href="../View.html" title="interface in org.cojen.tupl">View</a>&nbsp;first,
  <a href="../View.html" title="interface in org.cojen.tupl">View</a>&nbsp;second)</code></div>
-<div class="col-last odd-row-color">
+<div class="col-last even-row-color">
 <div class="block">If <a href="../Combiner.html#requireValues()"><code>requireValues</code></a> always returns false, consider overriding this
  method and implement a more efficient load for two views in a difference.</div>
 </div>
-<div class="col-first even-row-color"><code>default byte[]</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">Combiner.</span><code><a href="../Combiner.html#loadIntersection(org.cojen.tupl.Transaction,byte%5B%5D,org.cojen.tupl.View,org.cojen.tupl.View)" class="member-name-link">loadIntersection</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first odd-row-color"><code>default byte[]</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Combiner.</span><code><a href="../Combiner.html#loadIntersection(org.cojen.tupl.Transaction,byte%5B%5D,org.cojen.tupl.View,org.cojen.tupl.View)" class="member-name-link">loadIntersection</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;key,
  <a href="../View.html" title="interface in org.cojen.tupl">View</a>&nbsp;first,
  <a href="../View.html" title="interface in org.cojen.tupl">View</a>&nbsp;second)</code></div>
-<div class="col-last even-row-color">
+<div class="col-last odd-row-color">
 <div class="block">If <a href="../Combiner.html#requireValues()"><code>requireValues</code></a> always returns false, consider overriding this
  method and implement a more efficient load for two views in an intersection.</div>
 </div>
-<div class="col-first odd-row-color"><code>default byte[]</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">Combiner.</span><code><a href="../Combiner.html#loadUnion(org.cojen.tupl.Transaction,byte%5B%5D,org.cojen.tupl.View,org.cojen.tupl.View)" class="member-name-link">loadUnion</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first even-row-color"><code>default byte[]</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Combiner.</span><code><a href="../Combiner.html#loadUnion(org.cojen.tupl.Transaction,byte%5B%5D,org.cojen.tupl.View,org.cojen.tupl.View)" class="member-name-link">loadUnion</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;key,
  <a href="../View.html" title="interface in org.cojen.tupl">View</a>&nbsp;first,
  <a href="../View.html" title="interface in org.cojen.tupl">View</a>&nbsp;second)</code></div>
-<div class="col-last odd-row-color">
+<div class="col-last even-row-color">
 <div class="block">If <a href="../Combiner.html#requireValues()"><code>requireValues</code></a> always returns false, consider overriding this
  method and implement a more efficient load for two views in a union.</div>
 </div>
-<div class="col-first even-row-color"><code><a href="../LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#lockCheck(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">lockCheck</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- byte[]&nbsp;key)</code></div>
-<div class="col-last even-row-color">
-<div class="block">Checks the lock ownership for the given key.</div>
-</div>
 <div class="col-first odd-row-color"><code><a href="../LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#lockExclusive(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">lockExclusive</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-second odd-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#lockCheck(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">lockCheck</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;key)</code></div>
 <div class="col-last odd-row-color">
+<div class="block">Checks the lock ownership for the given key.</div>
+</div>
+<div class="col-first even-row-color"><code><a href="../LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#lockExclusive(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">lockExclusive</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ byte[]&nbsp;key)</code></div>
+<div class="col-last even-row-color">
 <div class="block">Explicitly acquire an exclusive lock for the given key, denying any additional
  locks.</div>
 </div>
-<div class="col-first even-row-color"><code><a href="../LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#lockShared(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">lockShared</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- byte[]&nbsp;key)</code></div>
-<div class="col-last even-row-color">
-<div class="block">Explicitly acquire a shared lock for the given key, denying exclusive locks.</div>
-</div>
 <div class="col-first odd-row-color"><code><a href="../LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#lockUpgradable(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">lockUpgradable</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-second odd-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#lockShared(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">lockShared</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;key)</code></div>
 <div class="col-last odd-row-color">
+<div class="block">Explicitly acquire a shared lock for the given key, denying exclusive locks.</div>
+</div>
+<div class="col-first even-row-color"><code><a href="../LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#lockUpgradable(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">lockUpgradable</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ byte[]&nbsp;key)</code></div>
+<div class="col-last even-row-color">
 <div class="block">Explicitly acquire an upgradable lock for the given key, denying exclusive and
  additional upgradable locks.</div>
+</div>
+<div class="col-first odd-row-color"><code>boolean</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#merge(org.cojen.tupl.Transaction,R)" class="member-name-link">merge</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="../Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Updates an existing row with the modified columns of the given row, and then loads the
+ result back into the given row.</div>
 </div>
 <div class="col-first even-row-color"><code>default <a href="../Cursor.html" title="interface in org.cojen.tupl">Cursor</a></code></div>
 <div class="col-second even-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#newAccessor(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">newAccessor</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
@@ -226,6 +269,32 @@ loadScripts(document, 'script');</script>
 <div class="col-first odd-row-color"><code><a href="../Cursor.html" title="interface in org.cojen.tupl">Cursor</a></code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#newCursor(org.cojen.tupl.Transaction)" class="member-name-link">newCursor</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-first even-row-color"><code><a href="../RowScanner.html" title="interface in org.cojen.tupl">RowScanner</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#newRowScanner(org.cojen.tupl.Transaction)" class="member-name-link">newRowScanner</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
+<div class="col-last even-row-color">
+<div class="block">Returns a new scanner for all rows of this table.</div>
+</div>
+<div class="col-first odd-row-color"><code><a href="../RowScanner.html" title="interface in org.cojen.tupl">RowScanner</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#newRowScanner(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">newRowScanner</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;filter,
+ <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Returns a new scanner for a subset of rows of this table, as specified by the filter
+ expression.</div>
+</div>
+<div class="col-first even-row-color"><code><a href="../RowUpdater.html" title="interface in org.cojen.tupl">RowUpdater</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#newRowUpdater(org.cojen.tupl.Transaction)" class="member-name-link">newRowUpdater</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
+<div class="col-last even-row-color">
+<div class="block">Returns a new updater for all rows of this table.</div>
+</div>
+<div class="col-first odd-row-color"><code><a href="../RowUpdater.html" title="interface in org.cojen.tupl">RowUpdater</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#newRowUpdater(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">newRowUpdater</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;filter,
+ <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Returns a new updater for a subset of rows of this table, as specified by the filter
+ expression.</div>
+</div>
 <div class="col-first even-row-color"><code>default <a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a></code></div>
 <div class="col-second even-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#newScanner(org.cojen.tupl.Transaction)" class="member-name-link">newScanner</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
 <div class="col-last even-row-color">
@@ -244,12 +313,25 @@ loadScripts(document, 'script');</script>
 <div class="block">Removes the entry associated with the given key, but only if the given value
  matches.</div>
 </div>
-<div class="col-first odd-row-color"><code>default boolean</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#replace(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)" class="member-name-link">replace</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first odd-row-color"><code>boolean</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#replace(org.cojen.tupl.Transaction,R)" class="member-name-link">replace</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="../Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Stores the given row when a corresponding row already exists.</div>
+</div>
+<div class="col-first even-row-color"><code>default boolean</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#replace(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)" class="member-name-link">replace</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;key,
  byte[]&nbsp;value)</code></div>
-<div class="col-last odd-row-color">
+<div class="col-last even-row-color">
 <div class="block">Associates a value with the given key, but only if a corresponding value already exists.</div>
+</div>
+<div class="col-first odd-row-color"><code>void</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#store(org.cojen.tupl.Transaction,R)" class="member-name-link">store</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="../Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Unconditionally stores the given row, potentially replacing a corresponding row which
+ already exists.</div>
 </div>
 <div class="col-first even-row-color"><code>default void</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#store(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)" class="member-name-link">store</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
@@ -288,20 +370,27 @@ loadScripts(document, 'script');</script>
 <div class="block">Explicitly acquire an upgradable lock for the given key, denying exclusive and
  additional upgradable locks.</div>
 </div>
-<div class="col-first odd-row-color"><code>default boolean</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#update(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)" class="member-name-link">update</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first odd-row-color"><code>boolean</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#update(org.cojen.tupl.Transaction,R)" class="member-name-link">update</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="../Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Updates an existing row with the modified columns of the given row, but the resulting
+ row isn't loaded back.</div>
+</div>
+<div class="col-first even-row-color"><code>default boolean</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#update(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)" class="member-name-link">update</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;key,
  byte[]&nbsp;value)</code></div>
-<div class="col-last odd-row-color">
+<div class="col-last even-row-color">
 <div class="block">Associates a value with the given key, but only if the given value differs from the
  existing value.</div>
 </div>
-<div class="col-first even-row-color"><code>default boolean</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#update(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D,byte%5B%5D)" class="member-name-link">update</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first odd-row-color"><code>default boolean</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#update(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D,byte%5B%5D)" class="member-name-link">update</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;key,
  byte[]&nbsp;oldValue,
  byte[]&nbsp;newValue)</code></div>
-<div class="col-last even-row-color">
+<div class="col-last odd-row-color">
 <div class="block">Associates a value with the given key, but only if the given old value matches the
  existing value.</div>
 </div>
