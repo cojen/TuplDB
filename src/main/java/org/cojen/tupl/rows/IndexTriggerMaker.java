@@ -781,7 +781,7 @@ public class IndexTriggerMaker<R> {
     private MethodHandle makeDeleteMethod(MethodType mt, int schemaVersion,
                                           IndexBackfill[] backfills)
     {
-        mClassMaker = mPrimaryGen.beginClassMaker(IndexTriggerMaker.class, mRowType, "Trigger");
+        mClassMaker = mPrimaryGen.beginClassMaker(IndexTriggerMaker.class, mRowType, "TriggerDel");
         mClassMaker.final_();
 
         MethodType ctorMethodType;
@@ -876,7 +876,7 @@ public class IndexTriggerMaker<R> {
         Map<String, ColumnSource> newColumnSources = cloneColumnSources();
 
         var bitMap = new Variable[numBitMapWords(oldColumnSources)];
-        var masks = new long[bitMap.length];
+        var allMasks = new long[mSecondaryIndexes.length][];
         var skipIndex = new boolean[mSecondaryIndexes.length];
 
         boolean isUpdate = variant == "update";
@@ -887,10 +887,13 @@ public class IndexTriggerMaker<R> {
         for (int i=0; i<mSecondaryInfos.length; i++) {
             RowInfo secondaryInfo = mSecondaryInfos[i];
 
+            var masks = new long[bitMap.length];
             if (!bitMask(oldColumnSources, secondaryInfo, masks)) {
                 skipIndex[i] = true;
                 continue;
             }
+
+            allMasks[i] = masks;
 
             if (!isUpdate) {
                 continue;
@@ -924,6 +927,17 @@ public class IndexTriggerMaker<R> {
 
         diffColumns(mm, bitMap, oldColumnSources, newColumnSources, oldValueVar, newValueVar);
 
+        // Need to prepare columns needed by performJitDecode.
+        for (int i=0; i<mSecondaryInfos.length; i++) {
+            if (skipIndex[i]) {
+                continue;
+            }
+            RowGen secondaryGen = mSecondaryInfos[i].rowGen();
+            for (Map.Entry<String, ColumnCodec> e : secondaryGen.keyCodecMap().entrySet()) {
+                oldColumnSources.get(e.getKey()).prepareJitDecode(mm, ROW_KEY_ONLY, e.getValue());
+            }
+        }
+
         // FIXME: As an optimization, when encoding complex columns (non-primitive), check if
         // prior secondary indexes have a matching codec and copy from them.
 
@@ -934,6 +948,7 @@ public class IndexTriggerMaker<R> {
 
             Label modified = mm.label();
 
+            long[] masks = allMasks[i];
             for (int j=0; j<bitMap.length; j++) {
                 bitMap[j].and(masks[j]).ifNe(0L, modified);
             }
@@ -949,6 +964,12 @@ public class IndexTriggerMaker<R> {
             Field ixField = mm.field("ix" + i);
 
             {
+                // Perform "just-in-time" decoding for some or all of the columns that make up
+                // the key to delete.
+                for (Map.Entry<String, ColumnCodec> e : secondaryGen.keyCodecMap().entrySet()) {
+                    oldColumnSources.get(e.getKey()).performJitDecode(mm);
+                }
+
                 ColumnCodec[] secondaryKeyCodecs = ColumnCodec.bind(secondaryGen.keyCodecs(), mm);
 
                 var secondaryKeyVar = encodeColumns
@@ -1041,7 +1062,7 @@ public class IndexTriggerMaker<R> {
                 minSize += codec.minSize();
                 codec.encodePrepare();
                 // Note that prepareColumn only does anything for the "update" variant.
-                source.prepareColumn(mm, mPrimaryGen, rowMode == ROW_FULL ? rowVar : null);
+                source.prepareColumn(mm, mPrimaryGen, rowVar, rowMode);
             }
         }
 
@@ -1123,6 +1144,12 @@ public class IndexTriggerMaker<R> {
         // Fully decoded column. Is set when the column cannot be directly copied from the
         // source, and it needed a transformation step. Or when decoding is cheap.
         Variable mDecodedVar;
+
+        // Variable which indicates that mDecodedVar is assigned. Isn't used when mDecodedVar
+        // was assigned before the first call to accessColumn. If is the same is mDecodedVar,
+        // then a null check at runtime is used to detect if the column has been decoded yet.
+        // Otherwise, mJitDecodedVar is a boolean. (jit == just-in-time)
+        Variable mJitDecodedVar;
 
         // Set as a side-effect of calling requiresColumnCheck.
         Checked mChecked;
@@ -1227,7 +1254,7 @@ public class IndexTriggerMaker<R> {
         void setDecodedVar(Variable var) {
             mDecodedVar = var;
             // Won't need column check when it got decoded anyhow. If it initialized some extra
-            // varaibles, they'll be dead stores, so assume that the compiler eliminates them.
+            // variables, they'll be dead stores, so assume that the compiler eliminates them.
             mChecked = null;
         }
 
@@ -1239,7 +1266,7 @@ public class IndexTriggerMaker<R> {
          * @throws IllegalStateException if column check is required but location of encoded
          * column is unknown
          */
-        void prepareColumn(MethodMaker mm, RowGen primaryGen, Variable rowVar) {
+        void prepareColumn(MethodMaker mm, RowGen primaryGen, Variable rowVar, int rowMode) {
             Checked checked = mChecked;
 
             if (checked == null) {
@@ -1271,7 +1298,7 @@ public class IndexTriggerMaker<R> {
                 checked.mCheckVar.set(true);
             }
 
-            if (rowVar != null) {
+            if (rowVar != null && rowMode == ROW_FULL) {
                 String columnName = mCodec.mInfo.name;
                 int columnNum = primaryGen.columnNumbers().get(columnName);
                 String stateField = primaryGen.stateField(columnNum);
@@ -1287,6 +1314,70 @@ public class IndexTriggerMaker<R> {
             var offsetVar = mStartVar.get();
             mCodec.bind(mm).decode(checked.mColumnVar, mSrcVar, offsetVar, null);
             
+            cont.here();
+        }
+
+        /**
+         * Prepare a column for "just-in-time" decoding, which decodes from the binary form to
+         * the object form when first required by an index. This defines the necessary extra
+         * variables and initializes them to be definitely assigned.
+         *
+         * In general, this method is used for columns which:
+         *
+         *  - are a component of a secondary index key to be deleted
+         *  - aren't in the primary row object
+         *  - have a different encoding format than the primary row
+         *  - aren't primitive types (primitive types are eagerly decoded)
+         */
+        void prepareJitDecode(MethodMaker mm, int rowMode, ColumnCodec dstCodec) {
+            if (mDecodedVar == null && !shouldCopyBytes(dstCodec) &&
+                (rowMode == ROW_NONE || (rowMode == ROW_KEY_ONLY && !mFromKey)))
+            {
+                mDecodedVar = mm.var(mCodec.mInfo.type);
+
+                if (mCodec.mInfo.isPrimitive()) {
+                    mJitDecodedVar = mm.var(boolean.class).set(false);
+                    if (mCodec.mInfo.plainTypeCode() == ColumnInfo.TYPE_BOOLEAN) {
+                        mDecodedVar.set(false);
+                    } else {
+                        mDecodedVar.set(0);
+                    }
+                } else if (mCodec.mInfo.isNullable()) {
+                    mJitDecodedVar = mm.var(boolean.class).set(false);
+                    mDecodedVar.set(null);
+                } else {
+                    // Can use null to indicate that column hasn't been decoded yet.
+                    mJitDecodedVar = mDecodedVar;
+                    mDecodedVar.set(null);
+                }
+            }
+        }
+
+        /**
+         * Use in conjunction with prepareJitDecode to decode a column when first needed at
+         * runtime. Subsequent requests for the same column don't need to decode it again.
+         */
+        void performJitDecode(MethodMaker mm) {
+            if (mJitDecodedVar == null) {
+                return;
+            }
+
+            Label cont = mm.label();
+
+            if (mJitDecodedVar != mDecodedVar) {
+                mJitDecodedVar.ifTrue(cont);
+            } else {
+                mDecodedVar.ifNe(null, cont);
+            }
+
+            // The decode method modifies the offset, so operate against a copy.
+            var offsetVar = mStartVar.get();
+            mCodec.bind(mm).decode(mDecodedVar, mSrcVar, offsetVar, mEndVar);
+
+            if (mJitDecodedVar != mDecodedVar) {
+                mJitDecodedVar.set(true);
+            }
+
             cont.here();
         }
 
@@ -1312,6 +1403,7 @@ public class IndexTriggerMaker<R> {
             mStartVar = null;
             mEndVar = null;
             mDecodedVar = null;
+            mJitDecodedVar = null;
         }
 
         /**
