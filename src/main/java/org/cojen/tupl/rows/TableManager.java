@@ -141,42 +141,27 @@ public class TableManager<R> {
                         RowStore rs, Transaction txn, View secondaries)
         throws IOException
     {
-        int size = 0;
-
-        hasChanges: {
-            try (Cursor c = secondaries.newCursor(txn)) {
-                for (c.first(); c.key() != null; c.next()) {
-                    if (didSecondaryChange(c)) {
-                        // Finish calculating the size and break out.
-                        do {
-                            size++;
-                            c.next();
-                        } while (c.key() != null);
-                        break hasChanges;
-                    }
-                    size++;
-                }
+        int numIndexes = 0;
+        try (Cursor c = secondaries.newCursor(txn)) {
+            c.autoload(false);
+            for (c.first(); c.key() != null; c.next()) {
+                numIndexes++;
             }
+        }
 
-            if (size == mIndexInfos.size()) {
-                // Nothing changed.
-                return;
-            }
-
-            // Remove stale entries.
-            var it = mIndexInfos.keySet().iterator();
-            while (it.hasNext()) {
-                byte[] desc = it.next();
-                if (!secondaries.exists(txn, desc)) {
-                    it.remove();
-                    removeIndexBackfill(desc);
-                }
+        // Remove stale entries.
+        var it = mIndexInfos.keySet().iterator();
+        while (it.hasNext()) {
+            byte[] desc = it.next();
+            if (!secondaries.exists(txn, desc)) {
+                it.remove();
+                removeIndexBackfill(desc);
             }
         }
 
         ArrayList<IndexBackfill> newBackfills = null;
 
-        var maker = new IndexTriggerMaker<R>(rowType, primaryInfo, size);
+        var maker = new IndexTriggerMaker<R>(rowType, primaryInfo, numIndexes);
 
         try (Cursor c = secondaries.newCursor(txn)) {
             int i = 0;
@@ -253,26 +238,6 @@ public class TableManager<R> {
                 worker.enqueue(backfill);
             }
         }
-    }
-
-    /**
-     * @param c cursor over the secondaries view
-     * @return true if a secondary index was added or its state changed
-     */
-    private boolean didSecondaryChange(Cursor c) {
-        byte[] desc = c.key();
-        if (!mIndexInfos.containsKey(desc)) {
-            return true;
-        }
-
-        byte state = c.value()[8];
-
-        IndexBackfill<R> backfill = mIndexBackfills == null ? null : mIndexBackfills.get(desc);
-
-        // If there's no backfill in progress, but the state is "backfill", then return true to
-        // start the backfill. If there is (or was) a backfill, but the state isn't "backfill",
-        // then return true to stop the backfill or just rebuild the trigger after it finished.
-        return (backfill == null) == (state == 'B');
     }
 
     private void removeIndexBackfill(byte[] desc) {

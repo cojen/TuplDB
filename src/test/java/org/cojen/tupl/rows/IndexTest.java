@@ -18,13 +18,21 @@
 package org.cojen.tupl.rows;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
+
+import java.util.HashSet;
+import java.util.Random;
 
 import java.util.concurrent.TimeUnit;
 
 import org.junit.*;
 import static org.junit.Assert.*;
 
+import org.cojen.maker.ClassMaker;
+
 import org.cojen.tupl.*;
+
+import static org.cojen.tupl.rows.RowTestUtils.*;
 
 /**
  * 
@@ -365,17 +373,174 @@ public class IndexTest {
         scanExpect(ix2, "TestRow{id=1, name=name1, num=0}", "TestRow{id=5, name=name5, num=55}");
     }
 
-    private static void dump(Table<TestRow> table) throws Exception {
-        RowScanner<TestRow> s = table.newRowScanner(null);
-        for (TestRow row = s.row(); s.row() != null; row = s.step(row)) {
+    @Test
+    @SuppressWarnings("unchecked")
+    public void basicBackfill() throws Exception {
+        var config = new DatabaseConfig();
+        //config.eventListener(EventListener.printTo(System.out));
+        Database db = Database.open(config);
+
+        final String typeName = IndexTest.class.getName() + "BasicBackfill";
+
+        final Object[] spec = {
+            long.class, "+id",
+            String.class, "name",
+            BigInteger.class, "num?"
+        };
+
+        Class t1 = newRowType(typeName, spec);
+        var accessors1 = access(spec, t1);
+        var setters1 = accessors1[1];
+        var table1 = db.openIndex("test").asTable(t1);
+
+        // Fill 'er up.
+
+        final int fillAmount = 10_000;
+
+        final long seed = new Random().nextLong();
+        var rnd = new Random(seed);
+
+        var uniqueNames = new HashSet<String>();
+
+        for (int i=0; i<fillAmount; i++) {
+            var row = table1.newRow();
+            setters1[0].invoke(row, i); // id
+
+            var name = (String) randomValue(rnd, spec, 1);
+            uniqueNames.add(name);
+            setters1[1].invoke(row, name); // name
+
+            setters1[2].invoke(row, randomValue(rnd, spec, 2)); // num
+
+            table1.store(null, row);
+        }
+
+        // Define the table again, with an alt key and secondary index. Note that alt key
+        // collisions are likely, but this shouldn't stop the backfill. Which rows exist in the
+        // alt key index is undefined, but with the current implementation, the survivors are
+        // the ones with the highest corresponding primary key.
+
+        ClassMaker cm = newRowTypeMaker(typeName, spec);
+        addAlternateKey(cm, "name");
+        addSecondaryIndex(cm, "-num");
+        Class t2 = cm.finish();
+        var accessors2 = access(spec, t2);
+        var setters2 = accessors2[1];
+        var table2 = db.openIndex("test").asTable(t2);
+
+        Table nameTable = null, numTable = null;
+        for (int i=0; i<1000; i++) {
+            nameTable = table2.alternateKeyTable("name");
+            numTable = table2.secondaryIndexTable("num");
+            if (nameTable != null && numTable != null) {
+                break;
+            }
+            // Wait for backfill to finish.
+            TestUtils.sleep(100);
+        }
+
+        assertNotNull(nameTable);
+        assertNotNull(numTable);
+
+        assertEquals(uniqueNames.size(), count(nameTable));
+        assertEquals(fillAmount, count(numTable));
+
+        verifyIndex(table2, nameTable, fillAmount - uniqueNames.size());
+        verifyIndex(nameTable, table2, 0);
+
+        verifyIndex(table2, numTable, 0);
+        verifyIndex(numTable, table2, 0);
+
+        // Acting on either table instance should affect the indexes in the same way.
+
+        {
+            var row = table1.newRow();
+            setters1[0].invoke(row, fillAmount); // id
+            setters1[1].invoke(row, uniqueNames.iterator().next()); // name
+            setters1[2].invoke(row, BigInteger.ZERO); // num
+            try {
+                table1.store(null, row);
+                fail();
+            } catch (UniqueConstraintException e) {
+            }
+        }
+
+        {
+            var row = table2.newRow();
+            setters2[0].invoke(row, fillAmount); // id
+            setters2[1].invoke(row, uniqueNames.iterator().next()); // name
+            setters2[2].invoke(row, BigInteger.ZERO); // num
+            try {
+                table2.store(null, row);
+                fail();
+            } catch (UniqueConstraintException e) {
+            }
+        }
+
+        {
+            var row = table1.newRow();
+            setters1[0].invoke(row, 1); // id
+            assertTrue(table1.delete(null, row));
+        }
+
+        assertEquals(uniqueNames.size() - 1, count(nameTable));
+        assertEquals(fillAmount - 1, count(numTable));
+
+        {
+            var row = table2.newRow();
+            setters2[0].invoke(row, 2); // id
+            assertTrue(table2.delete(null, row));
+        }
+
+        assertEquals(uniqueNames.size() - 2, count(nameTable));
+        assertEquals(fillAmount - 2, count(numTable));
+
+        verifyIndex(table2, nameTable, fillAmount - uniqueNames.size());
+        verifyIndex(nameTable, table2, 0);
+
+        verifyIndex(table2, numTable, 0);
+        verifyIndex(numTable, table2, 0);
+    }
+
+    private static <R> void verifyIndex(Table<R> a, Table<R> b, int expectMissing)
+        throws Exception
+    {
+        RowScanner<R> s = a.newRowScanner(null);
+
+        for (R ra = s.row(); s.row() != null; ra = s.step(ra)) {
+            R rb = a.cloneRow(ra);
+            assertTrue(b.load(null, rb));
+            a.load(null, rb);
+            if (!ra.equals(rb)) {
+                if (--expectMissing < 0) {
+                    assertEquals(ra, rb);
+                }
+            }
+        }
+
+        assertEquals(0, expectMissing);
+    }
+
+    private static <R> long count(Table<R> table) throws Exception {
+        long count = 0;
+        RowScanner<R> s = table.newRowScanner(null);
+        for (R row = s.row(); s.row() != null; row = s.step(row)) {
+            count++;
+        }
+        return count;
+    }
+
+    private static <R> void dump(Table<R> table) throws Exception {
+        RowScanner<R> s = table.newRowScanner(null);
+        for (R row = s.row(); s.row() != null; row = s.step(row)) {
             System.out.println(row);
         }
     }
 
-    private static void scanExpect(Table<TestRow> table, String... expectRows) throws Exception {
+    private static <R> void scanExpect(Table<R> table, String... expectRows) throws Exception {
         int pos = 0;
-        RowScanner<TestRow> s = table.newRowScanner(null);
-        for (TestRow row = s.row(); s.row() != null; row = s.step(row)) {
+        RowScanner<R> s = table.newRowScanner(null);
+        for (R row = s.row(); s.row() != null; row = s.step(row)) {
             String expectRow = expectRows[pos++];
             assertTrue(row.toString().contains(expectRow));
         }

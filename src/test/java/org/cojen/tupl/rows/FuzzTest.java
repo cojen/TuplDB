@@ -417,8 +417,7 @@ public class FuzzTest {
             }
         }
 
-        AnnotationMaker am = cm.addAnnotation(PrimaryKey.class, true);
-        am.put("value", pkNames);
+        RowTestUtils.addPrimaryKey(cm, pkNames);
 
         return cm.finish();
     }

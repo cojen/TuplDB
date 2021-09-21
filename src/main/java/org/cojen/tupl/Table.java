@@ -84,6 +84,11 @@ public interface Table<R> {
     public R newRow();
 
     /**
+     * Returns a new row instance with the exact copy of the given row.
+     */
+    public R cloneRow(R row);
+
+    /**
      * Resets the state of the given row such that all columns are unset.
      */
     public void reset(R row);

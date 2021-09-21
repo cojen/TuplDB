@@ -231,9 +231,18 @@ public class RowMaker {
             rowObject.field(name).ifNe(other.field(name), notEqual);
         }
 
-        // Compare column fields.
+        // Compare column fields, except those that are unset.
+
+        Map<String, Integer> columnNumbers = rowGen.columnNumbers();
         for (ColumnInfo info : rowInfo.allColumns.values()) {
             String name = info.name;
+
+            // Only need to check one of the objects to see if the column is unset, because all
+            // states are known to be identical at this point.
+            Label unset = mm.label();
+            int num = columnNumbers.get(name);
+            rowObject.field(rowGen.stateField(num)).and(RowGen.stateFieldMask(num)).ifEq(0, unset);
+
             Field field = rowObject.field(name);
             Field otherField = other.field(name);
             if (info.type.isPrimitive()) {
@@ -242,6 +251,8 @@ public class RowMaker {
                 String method = info.isArray() ? "deepEquals" : "equals";
                 mm.var(Objects.class).invoke(method, field, otherField).ifFalse(notEqual);
             }
+
+            unset.here();
         }
 
         mm.return_(true);

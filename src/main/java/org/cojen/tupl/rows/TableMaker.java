@@ -132,6 +132,14 @@ public class TableMaker {
             mm.return_(mm.this_().invoke(mRowType, "newRow", null));
         }
 
+        // Add the cloneRow method and its bridge.
+        {
+            MethodMaker mm = mClassMaker.addMethod(mRowType, "cloneRow", Object.class).public_();
+            mm.return_(mm.param(0).cast(mRowClass).invoke("clone"));
+            mm = mClassMaker.addMethod(Object.class, "cloneRow", Object.class).public_().bridge();
+            mm.return_(mm.this_().invoke(mRowType, "cloneRow", null, mm.param(0)));
+        }
+
         // Add the reset method.
         addResetMethod();
 

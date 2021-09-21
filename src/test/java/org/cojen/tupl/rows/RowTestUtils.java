@@ -31,8 +31,10 @@ import org.cojen.maker.AnnotationMaker;
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.MethodMaker;
 
+import org.cojen.tupl.AlternateKey;
 import org.cojen.tupl.Nullable;
 import org.cojen.tupl.PrimaryKey;
+import org.cojen.tupl.SecondaryIndex;
 
 /**
  * 
@@ -53,16 +55,70 @@ public class RowTestUtils {
     }
 
     /**
+    /**
+     * Define a new row type interface. Specification consists of alternating Class and name
+     * pairs. A name suffix of '?' indicates that it's Nullable. A name prefix of '+' or '-'
+     * indicates that it's part of the primary key.
+
      * @param rowTypeName can be null to assign automatically
      */
-    public static ClassMaker newRowTypeMaker(String rowTypeName) {
+    public static ClassMaker newRowTypeMaker(String rowTypeName, Object... spec) {
+        if ((spec.length & 1) != 0) {
+            throw new IllegalArgumentException("Odd spec length");
+        }
+
         ClassMaker cm;
         if (rowTypeName == null) {
             cm = ClassMaker.begin(newRowTypeName());
         } else {
             cm = ClassMaker.beginExternal(rowTypeName);
         }
-        return cm.public_().interface_();
+
+        cm.public_().interface_();
+
+        if (spec.length > 0) {
+            var pkNames = new ArrayList<String>();
+
+            for (int i=0; i<spec.length; i+=2) {
+                var type = (Class) spec[i];
+                var name = (String) spec[i + 1];
+
+                boolean nullable = false;
+
+                if (name.endsWith("?")) {
+                    nullable = true;
+                    name = name.substring(0, name.length() - 1);
+                }
+
+                if (name.startsWith("+") || name.startsWith("-")) {
+                    pkNames.add(name);
+                    name = name.substring(1);
+                }
+
+                MethodMaker mm = cm.addMethod(type, name).public_().abstract_();
+                if (nullable) {
+                    mm.addAnnotation(Nullable.class, true);
+                }
+
+                cm.addMethod(void.class, name, type).public_().abstract_();
+            }
+
+            addPrimaryKey(cm, pkNames.toArray(new String[pkNames.size()]));
+        }
+
+        return cm;
+    }
+
+    public static void addPrimaryKey(ClassMaker cm, String... spec) {
+        cm.addAnnotation(PrimaryKey.class, true).put("value", spec);
+    }
+
+    public static void addAlternateKey(ClassMaker cm, String... spec) {
+        cm.addAnnotation(AlternateKey.class, true).put("value", spec);
+    }
+
+    public static void addSecondaryIndex(ClassMaker cm, String... spec) {
+        cm.addAnnotation(SecondaryIndex.class, true).put("value", spec);
     }
 
     /**
@@ -73,42 +129,7 @@ public class RowTestUtils {
      * @param rowTypeName can be null to assign automatically
      */
     public static Class<?> newRowType(String rowTypeName, Object... spec) {
-        if ((spec.length & 1) != 0) {
-            throw new IllegalArgumentException("Odd spec length");
-        }
-
-        ClassMaker cm = newRowTypeMaker(rowTypeName);
-
-        var pkNames = new ArrayList<String>();
-
-        for (int i=0; i<spec.length; i+=2) {
-            var type = (Class) spec[i];
-            var name = (String) spec[i + 1];
-
-            boolean nullable = false;
-
-            if (name.endsWith("?")) {
-                nullable = true;
-                name = name.substring(0, name.length() - 1);
-            }
-
-            if (name.startsWith("+") || name.startsWith("-")) {
-                pkNames.add(name);
-                name = name.substring(1);
-            }
-
-            MethodMaker mm = cm.addMethod(type, name).public_().abstract_();
-            if (nullable) {
-                mm.addAnnotation(Nullable.class, true);
-            }
-
-            cm.addMethod(void.class, name, type).public_().abstract_();
-        }
-
-        AnnotationMaker am = cm.addAnnotation(PrimaryKey.class, true);
-        am.put("value", pkNames.toArray());
-
-        return cm.finish();
+        return newRowTypeMaker(rowTypeName, spec).finish();
     }
 
     /**
