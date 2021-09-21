@@ -84,7 +84,7 @@ public interface Table<R> {
     public R newRow();
 
     /**
-     * Returns a new row instance with the exact copy of the given row.
+     * Returns a new row instance with an exact copy of the given row.
      */
     public R cloneRow(R row);
 

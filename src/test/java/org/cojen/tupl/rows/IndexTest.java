@@ -397,7 +397,7 @@ public class IndexTest {
 
         final int fillAmount = 10_000;
 
-        final long seed = new Random().nextLong();
+        final long seed = 8675309;
         var rnd = new Random(seed);
 
         var uniqueNames = new HashSet<String>();
@@ -511,7 +511,9 @@ public class IndexTest {
             R rb = a.cloneRow(ra);
             assertTrue(b.load(null, rb));
             a.load(null, rb);
-            if (!ra.equals(rb)) {
+            if (ra.equals(rb)) {
+                assertEquals(ra.hashCode(), rb.hashCode());
+            } else {
                 if (--expectMissing < 0) {
                     assertEquals(ra, rb);
                 }

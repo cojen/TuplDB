@@ -165,6 +165,7 @@ public class RowMaker {
 
     private static void addHashCode(MethodMaker mm, Class<?> rowType, Variable rowObject) {
         RowInfo rowInfo = RowInfo.find(rowType);
+        RowGen rowGen = rowInfo.rowGen();
 
         // Start with an initially complex hash, in case all the columns are reset.
         final var hash = mm.var(int.class).set(rowInfo.name.hashCode());
@@ -175,10 +176,18 @@ public class RowMaker {
             hash.set(hash.mul(31).add(rowObject.field(stateField)));
         }
 
-        // Hash in column fields.
+        // Hash in column fields, except those that are unset.
+
+        Map<String, Integer> columnNumbers = rowGen.columnNumbers();
         for (ColumnInfo info : rowInfo.allColumns.values()) {
+            String name = info.name;
+
+            Label unset = mm.label();
+            int num = columnNumbers.get(name);
+            rowObject.field(rowGen.stateField(num)).and(RowGen.stateFieldMask(num)).ifEq(0, unset);
+
             hash.set(hash.mul(31));
-            Field field = rowObject.field(info.name);
+            Field field = rowObject.field(name);
 
             Class invoker;
             String method = "hashCode";
@@ -195,6 +204,8 @@ public class RowMaker {
             }
 
             hash.inc(mm.var(invoker).invoke(method, field));
+
+            unset.here();
         }
 
         mm.return_(hash);
