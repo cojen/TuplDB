@@ -1333,22 +1333,13 @@ public class IndexTriggerMaker<R> {
             if (mDecodedVar == null && !shouldCopyBytes(dstCodec) &&
                 (rowMode == ROW_NONE || (rowMode == ROW_KEY_ONLY && !mFromKey)))
             {
-                mDecodedVar = mm.var(mCodec.mInfo.type);
+                mDecodedVar = mm.var(mCodec.mInfo.type).clear();
 
-                if (mCodec.mInfo.isPrimitive()) {
+                if (mCodec.mInfo.isPrimitive() || mCodec.mInfo.isNullable()) {
                     mJitDecodedVar = mm.var(boolean.class).set(false);
-                    if (mCodec.mInfo.plainTypeCode() == ColumnInfo.TYPE_BOOLEAN) {
-                        mDecodedVar.set(false);
-                    } else {
-                        mDecodedVar.set(0);
-                    }
-                } else if (mCodec.mInfo.isNullable()) {
-                    mJitDecodedVar = mm.var(boolean.class).set(false);
-                    mDecodedVar.set(null);
                 } else {
                     // Can use null to indicate that column hasn't been decoded yet.
                     mJitDecodedVar = mDecodedVar;
-                    mDecodedVar.set(null);
                 }
             }
         }
