@@ -242,6 +242,14 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
             }
         }
 
+        try (Cursor deletedCursor = deleted.newCursor(txn)) {
+            deletedCursor.first();
+            for (byte[] key; (key = deletedCursor.key()) != null; deletedCursor.next()) {
+                newIndex.store(txn, key, null);
+                deletedCursor.commit(null);
+            }
+        }
+
         // Swap the fully populated new secondary index with the original, which is now
         // empty. As a side-effect, the contents of the new secondary index which was temporary
         // are now associated with a real index, and the original secondary is associated with

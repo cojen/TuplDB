@@ -39,9 +39,9 @@ import static org.cojen.tupl.rows.RowTestUtils.*;
  *
  * @author Brian S O'Neill
  */
-public class IndexTest {
+public class IndexingTest {
     public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(IndexTest.class.getName());
+        org.junit.runner.JUnitCore.main(IndexingTest.class.getName());
     }
 
     @Test
@@ -380,7 +380,7 @@ public class IndexTest {
         //config.eventListener(EventListener.printTo(System.out));
         Database db = Database.open(config);
 
-        final String typeName = IndexTest.class.getName() + "BasicBackfill";
+        final String typeName = IndexingTest.class.getName() + "BasicBackfill";
 
         final Object[] spec = {
             long.class, "+id",
@@ -500,6 +500,97 @@ public class IndexTest {
 
         verifyIndex(table2, numTable, 0);
         verifyIndex(numTable, table2, 0);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void concurrentBackfill() throws Exception {
+        var config = new DatabaseConfig();
+        //config.eventListener(EventListener.printTo(System.out));
+        Database db = Database.open(config);
+
+        final String typeName = IndexingTest.class.getName() + "ConcurrentBackfill";
+
+        final Object[] spec = {
+            long.class, "+id",
+            String.class, "name"
+        };
+
+        Class t1 = newRowType(typeName, spec);
+        var accessors1 = access(spec, t1);
+        var setters1 = accessors1[1];
+        var table1 = db.openIndex("test").asTable(t1);
+
+        // Fill 'er up.
+
+        final int fillAmount = 100;
+
+        final long seed = 9035768;
+        var rnd = new Random(seed);
+
+        for (int i=0; i<fillAmount; i++) {
+            var row = table1.newRow();
+            setters1[0].invoke(row, i); // id
+            setters1[1].invoke(row, "" + randomValue(rnd, spec, 1) + i); // name
+            table1.store(null, row);
+        }
+
+        // Define the table again, with a secondary index added. Hold a lock on one row to
+        // stall the backfill.
+
+        Transaction txn1 = db.newTransaction();
+        var lockedRow = table1.newRow();
+        setters1[0].invoke(lockedRow, fillAmount / 2); // id
+        assertTrue(table1.delete(txn1, lockedRow));
+
+        ClassMaker cm = newRowTypeMaker(typeName, spec);
+        addSecondaryIndex(cm, "name");
+        Class t2 = cm.finish();
+        var accessors2 = access(spec, t2);
+        var setters2 = accessors2[1];
+        var table2 = db.openIndex("test").asTable(t2);
+
+        TestUtils.sleep(1000);
+        assertNull(table2.secondaryIndexTable("name"));
+
+        // As the backfill is running, make some index changes that need to be tracked and
+        // applied properly before the backfill finishes.
+
+        // low
+        {
+            var row = table1.newRow();
+            setters1[0].invoke(row, 0); // id
+            setters1[1].invoke(row, "name0"); // name
+            table1.store(null, row);
+        }
+
+        // high
+        {
+            var row = table1.newRow();
+            setters1[0].invoke(row, fillAmount - 1); // id
+            setters1[1].invoke(row, "name" + (fillAmount - 1)); // name
+            table1.store(null, row);
+        }
+
+        // Rollback and release the lock.
+        txn1.reset();
+
+        Table nameTable = null;
+        for (int i=0; i<1000; i++) {
+            nameTable = table2.secondaryIndexTable("name");
+            if (nameTable != null) {
+                break;
+            }
+            // Wait for backfill to finish.
+            TestUtils.sleep(100);
+        }
+
+        assertNotNull(nameTable);
+
+        assertEquals(fillAmount, count(nameTable));
+
+        verifyIndex(table2, nameTable, 0);
+        verifyIndex(nameTable, table2, 0);
     }
 
     private static <R> void verifyIndex(Table<R> a, Table<R> b, int expectMissing)
