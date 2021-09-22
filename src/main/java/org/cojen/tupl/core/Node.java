@@ -4440,14 +4440,23 @@ final class Node extends Clutch implements DatabaseAccess {
      * exclusively.
      */
     void rootSwap(Node other) {
+        // Need to copy the quick access fields into the page so that they can be read back
+        // correctly below. Not needed for direct page access, which doesn't have these fields.
+        /*P*/ // [
+        prepareWrite();
+        other.prepareWrite();
+        /*P*/ // ]
+
         int pageSize = pageSize(mPage);
         var tempPage = new byte[pageSize];
         p_copyToArray(mPage, 0, tempPage, 0, pageSize);
         p_copy(other.mPage, 0, mPage, 0, pageSize);
         p_copyFromArray(tempPage, 0, other.mPage, 0, pageSize);
 
+        /*P*/ // [
         readFields();
         other.readFields();
+        /*P*/ // ]
     }
 
     private static final int SMALL_KEY_LIMIT = 128;
