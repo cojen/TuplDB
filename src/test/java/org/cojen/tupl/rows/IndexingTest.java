@@ -557,11 +557,13 @@ public class IndexingTest {
         // applied properly before the backfill finishes.
 
         // low
+        Transaction txn2;
         {
+            txn2 = db.newTransaction();
             var row = table1.newRow();
             setters1[0].invoke(row, 0); // id
             setters1[1].invoke(row, "name0"); // name
-            table1.store(null, row);
+            table1.store(txn2, row);
         }
 
         // high
@@ -574,6 +576,19 @@ public class IndexingTest {
 
         // Rollback and release the lock.
         txn1.reset();
+
+        // At this point, backfill is expected to get stuck finishing the new index, because
+        // txn2 hasn't finished. Make another change for the backfill to handle.
+        TestUtils.sleep(1000);
+        {
+            var row = table1.newRow();
+            setters1[0].invoke(row, fillAmount - 1); // id
+            setters1[1].invoke(row, "name-xxx"); // name
+            table1.store(null, row);
+        }
+
+        // Commit and release the lock.
+        txn2.commit();
 
         Table nameTable = null;
         for (int i=0; i<1000; i++) {

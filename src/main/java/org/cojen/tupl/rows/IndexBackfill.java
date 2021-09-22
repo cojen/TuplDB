@@ -66,7 +66,7 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
     private Set<Trigger<R>> mTriggers;
 
     // The new secondary index as built by the sorter.
-    private volatile Index mNewSecondaryIndex;
+    private Index mNewSecondaryIndex;
 
     /**
      * @param autoload pass true to autoload values from the primary index because they're
@@ -207,28 +207,21 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
                 return false;
             }
 
-            // Lock all triggers to prevent concurrent modifications and assign
-            // mNewSecondaryIndex to change their behavior now that the backfill is finishing.
+            // Lock all triggers to prevent concurrent modifications, and change their behavior
+            // now that backfill is finishing.
 
-            for (Trigger<R> trigger : mTriggers) {
-                trigger.acquireExclusive();
-            }
-
-            mRowStore.mDatabase.withRedoLock(() -> {
+            withTriggerLock(() -> {
                 mNewSecondaryIndex = newIndex;
             });
-
-            for (Trigger<R> trigger : mTriggers) {
-                trigger.releaseExclusive();
-            }
         }
 
         txn.lockMode(LockMode.UPGRADABLE_READ);
 
         // At this point, no threads should be inserting new entries into mSecondaryIndex, but
-        // entries might be deleted. For those that are deleted, this means that the tracked
-        // entry has been superseded, and the real entry was stored into newIndex. Likewise,
-        // no threads should be inserting into mDeleted, but they might be deleted too.
+        // entries might be deleted from it. For those that are deleted, this indicates that
+        // the tracked entry has been superseded, and the real entry was stored into newIndex.
+        // Likewise, no threads should be inserting into mDeleted, but entries might be deleted
+        // from it as well.
 
         try (Cursor secondaryCursor = mSecondaryIndex.newCursor(txn);
              // Note that deletedCursor doesn't need to acquire locks. The lock on the original
@@ -270,7 +263,17 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
         // empty. As a side-effect, the contents of the new secondary index which was temporary
         // are now associated with a real index, and the original secondary is associated with
         // the temporary index.
-        mRowStore.mDatabase.rootSwap(newIndex, mSecondaryIndex);
+        withTriggerLock(() -> {
+            try {
+                mRowStore.mDatabase.rootSwap(newIndex, mSecondaryIndex);
+            } catch (IOException e) {
+                throw RowUtils.rethrow(e);
+            }
+
+            // Backfill is finished, so stop tracking changes.
+            mDeleted = null;
+            mNewSecondaryIndex = null;
+        });
 
         try {
             // Eagerly delete the temporary index.
@@ -287,6 +290,30 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
         }
 
         return true;
+    }
+
+    /**
+     * Runs the given callback with the trigger lock held exclusively.
+     */
+    private void withTriggerLock(Runnable r) {
+        for (Trigger<R> trigger : mTriggers) {
+            trigger.acquireExclusive();
+        }
+
+        Throwable ex = null;
+        try {
+            mRowStore.mDatabase.withRedoLock(r);
+        } catch (Throwable e) {
+            ex = e;
+        }
+
+        for (Trigger<R> trigger : mTriggers) {
+            trigger.releaseExclusive();
+        }
+
+        if (ex != null) {
+            throw RowUtils.rethrow(ex);
+        }
     }
 
     /**
@@ -423,7 +450,7 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
     public void deleted(Transaction txn, byte[] secondaryKey) throws IOException {
         Index deleted = mDeleted;
         if (deleted == null) {
-            // Nothing to track.
+            // Backfill is finished.
             return;
         }
 
@@ -440,11 +467,8 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
                 // from mSecondaryIndex, so there's no reason to delete it again.
                 deleted.delete(txn, secondaryKey);
 
-                // Delete from the newly built "true" secondary index.
+                // Delete from what will become the real secondary index.
                 newIndex.delete(txn, secondaryKey);
-
-                // After the newIndex and mSecondaryIndex roots are swapped,the above delete
-                // from newIndex deletes from mSecondaryIndex, and is thus redundant.
             }
         } catch (ClosedIndexException e) {
             // Assume that there was a race condition and the backfill now is closed.
@@ -463,7 +487,7 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
         Index newIndex = mNewSecondaryIndex;
         Index deleted = mDeleted;
         if (newIndex == null || deleted == null) {
-            // Nothing to track.
+            // Backfill is finished.
             return;
         }
 
@@ -486,13 +510,8 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
             mSecondaryIndex.delete(txn, secondaryKey); // lock first to avoid deadlock
             deleted.delete(txn, secondaryKey);
 
-            // Insert into the newly built "true" secondary index.
+            // Insert into what will become the real secondary index.
             newIndex.store(txn, secondaryKey, secondaryValue);
-
-            // After the newIndex and mSecondaryIndex roots are swapped, the above delete from
-            // mSecondaryIndex actually deletes against newIndex, which isn't expected to have
-            // any effect. The newIndex should be empty and will be deleted. The above store
-            // into newIndex actually stores into mSecondaryIndex, and is thus redundant.
 
             txn.commit();
         } catch (ClosedIndexException e) {
