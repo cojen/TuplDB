@@ -487,7 +487,7 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
         Index newIndex = mNewSecondaryIndex;
         Index deleted = mDeleted;
         if (newIndex == null || deleted == null) {
-            // Backfill is finished.
+            // Backfill hasn't reached the finishing phase or is finished.
             return;
         }
 
