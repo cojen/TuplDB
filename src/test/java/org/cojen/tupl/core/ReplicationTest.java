@@ -23,7 +23,6 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Random;
 
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import java.util.concurrent.atomic.AtomicReference;
@@ -72,10 +71,7 @@ public class ReplicationTest {
         config = decorate(config);
 
         mLeader = newTempDatabase(getClass(), config);
-
-        var latch = new CountDownLatch(1);
-        mLeader.uponLeader(() -> latch.countDown(), null);
-        assertTrue(latch.await(10, TimeUnit.SECONDS));
+        waitToBecomeLeader(mLeader, 10);
 
         config.customHandlers(Map.of("TestHandler", mReplicaHandler));
         config.prepareHandlers(Map.of("TestHandler", mReplicaHandler));

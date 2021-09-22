@@ -15,7 +15,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.core;
+package org.cojen.tupl;
 
 import java.io.InputStream;
 import java.io.InterruptedIOException;
@@ -27,8 +27,8 @@ import java.io.OutputStream;
  *
  * @author Brian S O'Neill
  */
-class NonReplicator extends SocketReplicator {
-    NonReplicator() throws IOException {
+public class NonReplicator extends SocketReplicator {
+    public NonReplicator() throws IOException {
         asReplica();
     }
 

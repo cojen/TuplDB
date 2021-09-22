@@ -15,7 +15,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.core;
+package org.cojen.tupl;
 
 import java.io.InputStream;
 import java.io.InterruptedIOException;
@@ -40,6 +40,8 @@ import java.util.function.LongConsumer;
 
 import org.cojen.tupl.TestUtils;
 
+import org.cojen.tupl.io.Utils;
+
 import org.cojen.tupl.util.Runner;
 
 import org.cojen.tupl.repl.StreamReplicator;
@@ -52,7 +54,7 @@ import org.cojen.tupl.repl.Role;
  *
  * @author Brian S O'Neill
  */
-class SocketReplicator implements StreamReplicator {
+public class SocketReplicator implements StreamReplicator {
     private final ServerSocket mServerSocket;
     private final String mReplicaHost;
     private final int mReplicaPort;
@@ -480,7 +482,7 @@ class SocketReplicator implements StreamReplicator {
         setPosition(mPos + delta);
     }
 
-    synchronized void setPosition(long position) {
+    public synchronized void setPosition(long position) {
         mPos = position;
         notifyAll();
 

@@ -32,6 +32,8 @@ import org.cojen.maker.ClassMaker;
 
 import org.cojen.tupl.*;
 
+import static org.cojen.tupl.TestUtils.*;
+
 import static org.cojen.tupl.rows.RowTestUtils.*;
 
 /**
@@ -436,7 +438,7 @@ public class IndexingTest {
                 break;
             }
             // Wait for backfill to finish.
-            TestUtils.sleep(100);
+            sleep(100);
         }
 
         assertNotNull(nameTable);
@@ -550,7 +552,7 @@ public class IndexingTest {
         var setters2 = accessors2[1];
         var table2 = db.openIndex("test").asTable(t2);
 
-        TestUtils.sleep(1000);
+        sleep(1000);
         assertNull(table2.secondaryIndexTable("name"));
 
         // As the backfill is running, make some index changes that need to be tracked and
@@ -579,7 +581,7 @@ public class IndexingTest {
 
         // At this point, backfill is expected to get stuck finishing the new index, because
         // txn2 hasn't finished. Make another change for the backfill to handle.
-        TestUtils.sleep(1000);
+        sleep(1000);
         {
             var row = table1.newRow();
             setters1[0].invoke(row, fillAmount - 1); // id
@@ -597,7 +599,7 @@ public class IndexingTest {
                 break;
             }
             // Wait for backfill to finish.
-            TestUtils.sleep(100);
+            sleep(100);
         }
 
         assertNotNull(nameTable);
@@ -606,6 +608,128 @@ public class IndexingTest {
 
         verifyIndex(table2, nameTable, 0);
         verifyIndex(nameTable, table2, 0);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void replicaBackfill() throws Exception {
+        var replicaRepl = new SocketReplicator(null, 0);
+        var leaderRepl = new SocketReplicator("localhost", replicaRepl.getPort());
+
+        var config = new DatabaseConfig().directPageAccess(false).replicate(leaderRepl);
+        //config.eventListener(EventListener.printTo(System.out));
+
+        var leaderDb = newTempDatabase(getClass(), config);
+        waitToBecomeLeader(leaderDb, 10);
+
+        config.replicate(replicaRepl);
+        var replicaDb = newTempDatabase(getClass(), config);
+
+        final String typeName = IndexingTest.class.getName() + "ReplicaBackfill";
+
+        final Object[] spec = {
+            long.class, "+id",
+            BigDecimal.class, "num"
+        };
+
+        Class t1 = newRowType(typeName, spec);
+        var accessors1 = access(spec, t1);
+        var setters1 = accessors1[1];
+        var table1 = leaderDb.openIndex("test").asTable(t1);
+
+        // Fill 'er up.
+
+        final int fillAmount = 10_000;
+
+        final long seed = 8675309;
+        var rnd = new Random(seed);
+
+        var uniqueNames = new HashSet<String>();
+
+        for (int i=0; i<fillAmount; i++) {
+            var row = table1.newRow();
+            setters1[0].invoke(row, i); // id
+            setters1[1].invoke(row, randomValue(rnd, spec, 1)); // num
+            table1.store(null, row);
+        }
+
+        // Define the table again, with a secondary index added.
+
+        ClassMaker cm = newRowTypeMaker(typeName, spec);
+        addSecondaryIndex(cm, "num");
+        Class t2 = cm.finish();
+        var accessors2 = access(spec, t2);
+        var setters2 = accessors2[1];
+        var table2 = leaderDb.openIndex("test").asTable(t2);
+
+        Table numTable = null;
+        for (int i=0; i<1000; i++) {
+            numTable = table2.secondaryIndexTable("num");
+            if (numTable != null) {
+                break;
+            }
+            // Wait for backfill to finish.
+            sleep(100);
+        }
+
+        assertNotNull(numTable);
+
+        fence(leaderRepl, replicaRepl);
+
+        Table replicaTable = replicaDb.openIndex("test").asTable(t1);
+
+        Table replicaNumTable = null;
+        for (int i=0; i<1000; i++) {
+            replicaNumTable = replicaTable.secondaryIndexTable("num");
+            if (replicaNumTable != null) {
+                break;
+            }
+            // Wait for backfill to finish.
+            sleep(100);
+        }
+
+        assertNotNull(replicaNumTable);
+
+        assertEquals(fillAmount, count(numTable));
+        verifyIndex(table2, numTable, 0);
+        verifyIndex(numTable, table2, 0);
+
+        assertEquals(fillAmount, count(replicaNumTable));
+        verifyIndex(replicaTable, replicaNumTable, 0);
+        verifyIndex(replicaNumTable, replicaTable, 0);
+
+        // Acting on either leader table instance should affect the indexes in the same way.
+
+        {
+            var row = table1.newRow();
+            setters1[0].invoke(row, 1); // id
+            setters1[1].invoke(row, new BigDecimal("6739083340380621870")); // num
+            table1.store(null, row);
+        }
+
+        {
+            var row = table2.newRow();
+            setters2[0].invoke(row, 2); // id
+            setters2[1].invoke(row, new BigDecimal("3609827348865711141")); // num
+            table2.store(null, row);
+        }
+
+        {
+            var row = table2.newRow();
+            setters2[0].invoke(row, fillAmount); // id
+            setters2[1].invoke(row, new BigDecimal("4943524186873198773")); // num
+            table2.store(null, row);
+        }
+
+        assertEquals(fillAmount + 1, count(numTable));
+        verifyIndex(table2, numTable, 0);
+        verifyIndex(numTable, table2, 0);
+
+        fence(leaderRepl, replicaRepl);
+
+        assertEquals(fillAmount + 1, count(replicaNumTable));
+        verifyIndex(replicaTable, replicaNumTable, 0);
+        verifyIndex(replicaNumTable, replicaTable, 0);
     }
 
     private static <R> void verifyIndex(Table<R> a, Table<R> b, int expectMissing)
@@ -653,6 +777,17 @@ public class IndexingTest {
             assertTrue(row.toString().contains(expectRow));
         }
         assertEquals(expectRows.length, pos);
+    }
+
+    /**
+     * Writes a fence to the leader and waits for the replica to catch up.
+     */
+    private static void fence(SocketReplicator leaderRepl, SocketReplicator replicaRepl)
+        throws Exception
+    {
+        byte[] message = ("fence:" + System.nanoTime()).getBytes();
+        leaderRepl.writeControl(message);
+        replicaRepl.waitForControl(message);
     }
 
     @PrimaryKey("id")

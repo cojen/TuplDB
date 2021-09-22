@@ -20,6 +20,7 @@ package org.cojen.tupl;
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.cojen.tupl.core.Utils;
@@ -67,6 +68,12 @@ public class TestUtils {
         if (!Arrays.equals(expected, actual)) {
             org.junit.Assert.assertArrayEquals(expected, actual);
         }
+    }
+
+    public static void waitToBecomeLeader(Database db, int seconds) throws InterruptedException {
+        var latch = new CountDownLatch(1);
+        db.uponLeader(() -> latch.countDown(), null);
+        org.junit.Assert.assertTrue(latch.await(seconds, TimeUnit.SECONDS));
     }
 
     public static enum OpenMode {NORMAL, DIRECT, DIRECT_MAPPED};
