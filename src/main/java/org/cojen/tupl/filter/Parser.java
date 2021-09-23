@@ -371,7 +371,7 @@ public class Parser {
         } else if (c < 0) {
             return -1;
         } else {
-            if (c == ')' || Character.isWhitespace(c)) {
+            if (c == ')' || c == '|' || c == '&' || Character.isWhitespace(c)) {
                 mPos--;
                 return -1;
             }
