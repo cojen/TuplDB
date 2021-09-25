@@ -25,22 +25,22 @@ import org.cojen.tupl.rows.ColumnInfo;
  * @author Brian S O'Neill
  */
 public final class ColumnToColumnFilter extends ColumnFilter {
-    private final ColumnInfo mMatchColumn;
+    private final ColumnInfo mOtherColumn;
     private final ColumnInfo mCommon;
 
     /**
      * @param common only needs to have a type and typeCode assigned
      */
-    ColumnToColumnFilter(ColumnInfo column, int op, ColumnInfo match, ColumnInfo common) {
-        super(hash(column, op, match), column, op);
-        mMatchColumn = match;
+    ColumnToColumnFilter(ColumnInfo column, int op, ColumnInfo other, ColumnInfo common) {
+        super(hash(column, op, other), column, op);
+        mOtherColumn = other;
         mCommon = common;
     }
 
-    private static int hash(ColumnInfo column, int op, ColumnInfo match) {
+    private static int hash(ColumnInfo column, int op, ColumnInfo other) {
         int hash = column.hashCode();
         hash = hash * 31 + op;
-        hash = hash * 31 + match.hashCode();
+        hash = hash * 31 + other.hashCode();
         return hash;
     }
 
@@ -50,12 +50,42 @@ public final class ColumnToColumnFilter extends ColumnFilter {
     }
 
     @Override
-    public ColumnToColumnFilter not() {
-        return new ColumnToColumnFilter(mColumn, flipOperator(mOperator), mMatchColumn, mCommon);
+    public int isMatch(RowFilter filter) {
+        if (filter == this) {
+            return 1; // equal
+        }
+        if (filter instanceof ColumnToColumnFilter) {
+            var other = (ColumnToColumnFilter) filter;
+            if (mColumn.equals(other.mColumn) && mOtherColumn.equals(other.mOtherColumn)) {
+                if (mOperator == other.mOperator) {
+                    return 1; // equal
+                } else if (mOperator == flipOperator(other.mOperator)) {
+                    return -1; // inverse is equal
+                }
+            }
+        }
+        return 0; // doesn't match
     }
 
-    public ColumnInfo matchColumn() {
-        return mMatchColumn;
+    @Override
+    public int matchHashCode() {
+        int hash = mMatchHashCode;
+        if (hash == 0) {
+            hash = mColumn.hashCode();
+            hash = hash * 31 + (mOperator & ~1); // exclude the bit used to flip the operator
+            hash = hash * 31 + mOtherColumn.hashCode();
+            mMatchHashCode = hash;
+        }
+        return hash;
+    }
+
+    @Override
+    public ColumnToColumnFilter not() {
+        return new ColumnToColumnFilter(mColumn, flipOperator(mOperator), mOtherColumn, mCommon);
+    }
+
+    public ColumnInfo otherColumn() {
+        return mOtherColumn;
     }
 
     /**
@@ -74,7 +104,7 @@ public final class ColumnToColumnFilter extends ColumnFilter {
         if (obj instanceof ColumnToColumnFilter) {
             var other = (ColumnToColumnFilter) obj;
             return mColumn.equals(other.mColumn) && mOperator == other.mOperator
-                && mMatchColumn.equals(other.mMatchColumn);
+                && mOtherColumn.equals(other.mOtherColumn);
         }
         return false;
     }
@@ -82,6 +112,6 @@ public final class ColumnToColumnFilter extends ColumnFilter {
     @Override
     void appendTo(StringBuilder b) {
         super.appendTo(b);
-        b.append(mMatchColumn.name());
+        b.append(mOtherColumn.name());
     }
 }

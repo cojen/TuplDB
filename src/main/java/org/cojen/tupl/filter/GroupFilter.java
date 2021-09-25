@@ -27,6 +27,12 @@ import java.util.Arrays;
 public abstract class GroupFilter extends RowFilter {
     final RowFilter[] mSubFilters;
 
+    int mMatchHashCode;
+
+    private MatchSet mMatchSet;
+
+    boolean mReduced;
+
     GroupFilter(int hash, RowFilter... subFilters) {
         super(hash);
         mSubFilters = subFilters;
@@ -39,13 +45,9 @@ public abstract class GroupFilter extends RowFilter {
         }
         if (obj instanceof GroupFilter) {
             var other = (GroupFilter) obj;
-            return Arrays.equals(mSubFilters, other.mSubFilters) && opChar() == other.opChar();
+            return opChar() == other.opChar() && Arrays.equals(mSubFilters, other.mSubFilters);
         }
         return false;
-    }
-
-    public RowFilter[] subFilters() {
-        return mSubFilters;
     }
 
     @Override
@@ -66,13 +68,355 @@ public abstract class GroupFilter extends RowFilter {
         }
     }
 
+    public final RowFilter[] subFilters() {
+        return mSubFilters;
+    }
+
     abstract char opChar();
 
-    RowFilter[] subNot() {
+    RowFilter newInstance(RowFilter... subFilters) {
+        return newInstance(subFilters, 0, subFilters.length);
+    }
+
+    abstract RowFilter newInstance(RowFilter[] subFilters, int off, int len);
+
+    /**
+     * Returns a new instance with the operator flipped: "or" <==> "and"
+     */
+    abstract RowFilter newFlippedInstance(RowFilter... subFilters);
+
+    abstract RowFilter emptyInstance();
+
+    abstract RowFilter emptyFlippedInstance();
+
+    final RowFilter[] subNot() {
         RowFilter[] subFilters = mSubFilters.clone();
         for (int i=0; i<subFilters.length; i++) {
             subFilters[i] = subFilters[i].not();
         }
         return subFilters;
+    }
+
+    final MatchSet matchSet() {
+        MatchSet set = mMatchSet;
+        if (set == null) {
+            mMatchSet = set = new MatchSet(this);
+        }
+        return set;
+    }
+
+    @Override
+    public final int isSubMatch(RowFilter filter) {
+        int result = isMatch(filter);
+        if (result == 0) {
+            MatchSet set = matchSet();
+            result = set.hasMatch(filter);
+            if (result == 0 && filter instanceof GroupFilter) {
+                var group = (GroupFilter) filter;
+                for (RowFilter sub : group.mSubFilters) {
+                    int subResult = set.hasMatch(sub);
+                    if (subResult == 0) {
+                        return 0;
+                    }
+                    if (result == 0) {
+                        result = subResult;
+                    } else if (result != subResult) {
+                        return 0;
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
+    @Override
+    public final int matchHashCode() {
+        int hash = mMatchHashCode;
+        if (hash == 0) {
+            hash = 0;
+            for (RowFilter sub : mSubFilters) {
+                hash += sub.matchHashCode();
+            }
+            mMatchHashCode = hash;
+        }
+        return hash;
+    }
+
+    @Override
+    public final RowFilter reduce() {
+        if (mReduced) {
+            return this;
+        }
+
+        /*
+          Reduce the group filter by eliminating redundant sub-filters. The following
+          transformations are applied:
+
+          Absorption:
+            A || (A && B) => A
+            A && (A || B) => A
+
+          Idempotence: (this is a special form of absorption when B is missing)
+            A || A => A
+            A && A => A
+
+          Negative absorption:
+            A || (!A && B) => A || B
+            A && (!A || B) => A && B
+
+          Complementation: (this is a special form of negative absorption when B is missing)
+            A || !A => true
+            A && !A => false
+
+          Elimination:
+            (A && B) || (A && !B) => A
+            (A || B) && (A || !B) => A
+
+         */
+
+        RowFilter[] subFilters = mSubFilters;
+        int numRemoved = 0;
+
+        boolean anyEliminations;
+        do {
+            anyEliminations = false;
+
+            loopi: for (int i=0; i<subFilters.length; i++) {
+                RowFilter sub = subFilters[i];
+
+                if (sub == null) {
+                    continue loopi;
+                }
+
+                RowFilter subReduced = sub.reduce();
+                if (sub != subReduced) {
+                    sub = subReduced;
+                    if (subFilters == mSubFilters) {
+                        subFilters = subFilters.clone();
+                    }
+                    subFilters[i] = sub;
+                }
+
+                loopj: for (int j=0; j<subFilters.length; j++) {
+                    if (i == j) {
+                        // Skip self matchings.
+                        continue loopj;
+                    }
+
+                    RowFilter check = subFilters[j];
+                    if (check == null) {
+                        // Skip removed empty instances.
+                        continue loopj;
+                    }
+
+                    int result = sub.isSubMatch(check);
+                    if (result == 0) {
+                        // Doesn't match, but try elimination. Otherwise, keep the sub-filter.
+                        if (sub.getClass() == check.getClass() && sub instanceof GroupFilter) {
+                            var groupSub = (GroupFilter) sub;
+                            RowFilter resultSub = groupSub.eliminate((GroupFilter) check);
+                            if (resultSub != sub) {
+                                // Elimination.
+                                anyEliminations = true;
+                                if (subFilters == mSubFilters) {
+                                    subFilters = subFilters.clone();
+                                }
+                                subFilters[i] = resultSub;
+                            }
+                        }
+                        continue loopj;
+                    }
+
+                    if (result > 0) {
+                        // Absorption or idempotence. Replace with null, which is treated as an
+                        // empty instance. It will get removed later.
+                        numRemoved++;
+                        if (subFilters == mSubFilters) {
+                            subFilters = subFilters.clone();
+                        }
+                        subFilters[i] = null;
+                        continue loopi;
+                    }
+
+                    // Negative absorption. Remove one sub-filter from the sub-group.
+
+                    if (!(sub instanceof GroupFilter)) {
+                        // Complementation, actually.
+                        return emptyFlippedInstance();
+                    }
+
+                    var groupSub = (GroupFilter) sub;
+                    RowFilter[] subSubFilters = groupSub.mSubFilters;
+                    RowFilter[] newSubSubFilters = new RowFilter[subSubFilters.length - 1];
+
+                    newSub: {
+                        int k = 0;
+                        for (RowFilter subSub : subSubFilters) {
+                            if (subSub.isMatch(check) >= 0) {
+                                if (k >= newSubSubFilters.length) {
+                                    break newSub;
+                                }
+                                newSubSubFilters[k++] = subSub;
+                            }
+                        }
+                        sub = groupSub.newInstance(newSubSubFilters);
+                        if (subFilters == mSubFilters) {
+                            subFilters = subFilters.clone();
+                        }
+                        subFilters[i] = sub;
+                    }
+                }
+            }
+        } while (anyEliminations);
+
+        if (numRemoved > 0) {
+            int newLength = subFilters.length - numRemoved;
+
+            if (newLength <= 1) {
+                if (newLength == 0) {
+                    return emptyInstance();
+                }
+                for (RowFilter sub : subFilters) {
+                    if (sub != null) {
+                        return sub;
+                    }
+                }
+            }
+
+            var newSubFilters = new RowFilter[newLength];
+            for (int i=0, j=0; i<subFilters.length; i++) {
+                RowFilter sub = subFilters[i];
+                if (sub != null) {
+                    newSubFilters[j++] = sub;
+                }
+            }
+
+            subFilters = newSubFilters;
+        } else if (subFilters == mSubFilters) {
+            mReduced = true;
+            return this;
+        }
+
+        RowFilter reduced = newInstance(subFilters);
+
+        if (reduced instanceof GroupFilter) {
+            ((GroupFilter) reduced).mReduced = true;
+        }
+
+        return reduced;
+    }
+
+    @Override
+    public final RowFilter dnf() {
+        RowFilter filter = this;
+        while (true) {
+            filter = filter.reduce();
+            if (filter.isDnf()) {
+                return filter;
+            }
+            if (!(filter instanceof GroupFilter)) {
+                return filter.dnf();
+            }
+            filter = ((GroupFilter) filter).distribute(true);
+        }
+    }
+
+    @Override
+    public final RowFilter cnf() {
+        RowFilter filter = this;
+        while (true) {
+            filter = filter.reduce();
+            if (filter.isCnf()) {
+                return filter;
+            }
+            if (!(filter instanceof GroupFilter)) {
+                return filter.cnf();
+            }
+            filter = ((GroupFilter) filter).distribute(false);
+        }
+    }
+
+    /**
+     * Applies the distribute law to this filter such it becomes flattened into disjunctive or
+     * conjunctive normal form.
+     *
+     * @param dnf true if called by dnf method, false if called by cnf method
+     */
+    private RowFilter distribute(boolean dnf) {
+        RowFilter[] subFilters = mSubFilters;
+
+        long count = 1;
+        for (RowFilter sub : subFilters) {
+            if (sub instanceof GroupFilter) {
+                count *= ((GroupFilter) sub).mSubFilters.length;
+                // TODO: tune the count threshold
+                if (count > 1000 && subFilters.length > 2) {
+                    int mid = subFilters.length >> 1;
+                    RowFilter left = newInstance(subFilters, 0, mid);
+                    RowFilter right = newInstance(subFilters, mid, subFilters.length - mid);
+                    if (dnf) {
+                        left = left.dnf();
+                        right = right.dnf();
+                    } else {
+                        left = left.cnf();
+                        right = right.cnf();
+                    }
+                    return newInstance(left, right);
+                }
+                if (count > Integer.MAX_VALUE) {
+                    throw new ComplexFilterException();
+                }
+            }
+        }
+
+        var newSubFilters = new RowFilter[(int) count];
+
+        for (int i=0; i<newSubFilters.length; i++) {
+            var newGroupSubFilters = new RowFilter[subFilters.length];
+
+            for (int select=i, j=0; j<newGroupSubFilters.length; j++) {
+                RowFilter sub = subFilters[j];
+                if (sub instanceof GroupFilter) {
+                    var group = (GroupFilter) sub;
+                    int num = group.mSubFilters.length;
+                    int subSelect = select / num;
+                    newGroupSubFilters[j] = group.mSubFilters[select - subSelect * num];
+                    select = subSelect;
+                } else {
+                    newGroupSubFilters[j] = sub;
+                }
+            }
+
+            newSubFilters[i] = newInstance(newGroupSubFilters).reduce();
+        }
+
+        return newFlippedInstance(newSubFilters);
+    }
+
+    /**
+     * @return this if nothing was eliminated
+     */
+    private RowFilter eliminate(GroupFilter other) {
+        RowFilter[] newSubFilters = null;
+        int newSubFiltersSize = 0;
+
+        for (int i=0; i<mSubFilters.length; i++) {
+            RowFilter sub = mSubFilters[i];
+            if (other.isSubMatch(sub) < 0) {
+                // Eliminate the sub-filter.
+                if (newSubFilters == null) {
+                    newSubFilters = new RowFilter[mSubFilters.length];
+                    System.arraycopy(mSubFilters, 0, newSubFilters, 0, i);
+                    newSubFiltersSize = i;
+                }
+            } else {
+                // Keep the sub-filter.
+                if (newSubFilters != null) {
+                    newSubFilters[newSubFiltersSize++] = sub;
+                }
+            }
+        }
+
+        return newSubFilters == null ? this : newInstance(newSubFilters, 0, newSubFiltersSize);
     }
 }

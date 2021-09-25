@@ -47,10 +47,42 @@ public abstract class ColumnFilter extends RowFilter {
     final ColumnInfo mColumn;
     final int mOperator;
 
+    int mMatchHashCode;
+
     ColumnFilter(int hash, ColumnInfo column, int op) {
         super(hash);
         mColumn = column;
         mOperator = op;
+    }
+
+    @Override
+    public RowFilter reduce() {
+        return this;
+    }
+
+    @Override
+    public boolean isDnf() {
+        return true;
+    }
+
+    @Override
+    public ColumnFilter dnf() {
+        return this;
+    }
+
+    @Override
+    public boolean isCnf() {
+        return true;
+    }
+
+    @Override
+    public ColumnFilter cnf() {
+        return this;
+    }
+
+    @Override
+    public int isSubMatch(RowFilter filter) {
+        return isMatch(filter);
     }
 
     public ColumnInfo column() {

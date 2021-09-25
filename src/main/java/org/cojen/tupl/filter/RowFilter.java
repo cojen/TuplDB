@@ -32,6 +32,55 @@ public abstract class RowFilter {
 
     public abstract void accept(Visitor visitor);
 
+    /**
+     * Apply partial or full reduction of the filter.
+     */
+    public abstract RowFilter reduce();
+
+    /**
+     * @return true if this filter is in disjunctive normal form
+     */
+    public abstract boolean isDnf();
+
+    /**
+     * Returns this filter in disjunctive normal form.
+     */
+    public abstract RowFilter dnf();
+
+    /**
+     * @return true if this filter is in conjunctive normal form
+     */
+    public abstract boolean isCnf();
+
+    /**
+     * Returns this filter in conjunctive normal form.
+     */
+    public abstract RowFilter cnf();
+
+    /**
+     * Checks if the given filter (or its inverse) matches this one. If the filter consists of
+     * a commutative group of sub-filters, then exact order isn't required for a match.
+     *
+     * @return 0 if doesn't match, 1 if equal match, or -1 if inverse equally matches
+     */
+    public abstract int isMatch(RowFilter filter);
+
+    /**
+     * Checks if the given filter (or its inverse) matches this one, or if the given filter
+     * matches against a sub-filter of this one.
+     *
+     * @return 0 if doesn't match, 1 if equal match, or -1 if inverse equally matches
+     */
+    public abstract int isSubMatch(RowFilter filter);
+
+    /**
+     * Returns a hash code for use with the isMatch method.
+     */
+    public abstract int matchHashCode();
+
+    /**
+     * Returns the inverse of this filter.
+     */
     public abstract RowFilter not();
 
     @Override

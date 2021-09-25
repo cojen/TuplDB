@@ -412,6 +412,11 @@ public class RowFilterMaker<R> {
 
             RowFilter[] subFilters = filter.subFilters();
 
+            if (subFilters.length == 0) {
+                mMaker.goto_(originalFail);
+                return;
+            }
+
             mFail = mMaker.label();
             subFilters[0].accept(this);
             mFail.here();
@@ -439,6 +444,11 @@ public class RowFilterMaker<R> {
             final Label originalPass = mPass;
 
             RowFilter[] subFilters = filter.subFilters();
+
+            if (subFilters.length == 0) {
+                mMaker.goto_(originalPass);
+                return;
+            }
 
             mPass = mMaker.label();
             subFilters[0].accept(this);
@@ -499,7 +509,7 @@ public class RowFilterMaker<R> {
         public void visit(ColumnToColumnFilter filter) {
             ColumnInfo aColInfo = filter.column();
             int op = filter.operator();
-            ColumnInfo bColInfo = filter.matchColumn();
+            ColumnInfo bColInfo = filter.otherColumn();
 
             Integer aColNum = columnNumberFor(aColInfo.name);
             Integer bColNum = columnNumberFor(bColInfo.name);

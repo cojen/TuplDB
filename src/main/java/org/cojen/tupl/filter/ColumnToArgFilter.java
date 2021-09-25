@@ -45,6 +45,36 @@ public class ColumnToArgFilter extends ColumnFilter {
     }
 
     @Override
+    public int isMatch(RowFilter filter) {
+        if (filter == this) {
+            return 1; // equal
+        }
+        if (filter instanceof ColumnToArgFilter) {
+            var other = (ColumnToArgFilter) filter;
+            if (mArgNum == other.mArgNum && mColumn.equals(other.mColumn)) {
+                if (mOperator == other.mOperator) {
+                    return 1; // equal
+                } else if (mOperator == flipOperator(other.mOperator)) {
+                    return -1; // inverse is equal
+                }
+            }
+        }
+        return 0; // doesn't match
+    }
+
+    @Override
+    public int matchHashCode() {
+        int hash = mMatchHashCode;
+        if (hash == 0) {
+            hash = mColumn.hashCode();
+            hash = hash * 31 + (mOperator & ~1); // exclude the bit used to flip the operator
+            hash = hash * 31 + mArgNum;
+            mMatchHashCode = hash;
+        }
+        return hash;
+    }
+
+    @Override
     public ColumnToArgFilter not() {
         return new ColumnToArgFilter(mColumn, flipOperator(mOperator), mArgNum);
     }
