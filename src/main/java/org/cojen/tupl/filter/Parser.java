@@ -320,7 +320,7 @@ public class Parser {
         mPos--;
         switch (c) {
         case -1:
-        case '?':
+        case '?': case '!':
         case '(': case ')':
         case ' ': case '\r': case '\n': case '\t': case '\0':
             return;
