@@ -571,4 +571,46 @@ public class FilteringTest {
         String x();
         void x(String x);
     }
+
+    @Test
+    public void nonFilter() throws Exception {
+        // Test a "true" filter which returns everything, and with a "false" filter which
+        // returns nothing.
+
+        Database db = Database.open(new DatabaseConfig());
+        Table<MyRow> table = db.openTable(MyRow.class);
+
+        for (int i=0; i<3; i++) {
+            MyRow row = table.newRow();
+            row.id(i);
+            row.name("name" + i);
+            table.insert(null, row);
+        }
+
+        // This filter expression always returns true.
+        var scanner = table.newRowScanner(null, "name >= ?0 || name < ?0");
+        int count = 0;
+        for (MyRow row = scanner.row(); row != null; row = scanner.step(row)) {
+            assertEquals(count, row.id());
+            count++;
+        }
+        assertEquals(3, count);
+        
+        // This filter expression always returns false.
+        scanner = table.newRowScanner(null, "name >= ?0 && name < ?0");
+        count = 0;
+        for (MyRow row = scanner.row(); row != null; row = scanner.step(row)) {
+            count++;
+        }
+        assertEquals(0, count);
+    }
+
+    @PrimaryKey("id")
+    public interface MyRow {
+        int id();
+        void id(int id);
+
+        String name();
+        void name(String str);
+    }
 }
