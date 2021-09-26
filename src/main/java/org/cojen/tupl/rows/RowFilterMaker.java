@@ -133,7 +133,7 @@ public class RowFilterMaker<R> {
             public void visit(ColumnToArgFilter filter) {
                 int argNum = filter.argument();
                 if (mAdded.add(argNum)) {
-                    int colNum = columnNumberFor(filter.column().name());
+                    int colNum = columnNumberFor(filter.column().name);
                     boolean in = filter.isIn(filter.operator());
                     Variable argVar = mFilterCtorMaker.param(0).aget(argNum);
                     codecFor(colNum).filterPrepare(in, argVar, argNum);

@@ -127,7 +127,7 @@ public abstract class ColumnFilter extends RowFilter {
      * - MIN_VALUE if not reducible
      * - MAX_VALUE if complementation (entire group goes away)
      * - operator if idempotence
-     * - ~operator if eliminatation
+     * - ~operator if elimination
      */
     int reduceOperatorForAnd(ColumnFilter other) {
         if (!isReducible(other)) {
@@ -301,7 +301,7 @@ public abstract class ColumnFilter extends RowFilter {
 
     @Override
     void appendTo(StringBuilder b) {
-        b.append(mColumn.name()).append(' ');
+        b.append(mColumn.name).append(' ');
 
         String opStr;
         switch (mOperator) {

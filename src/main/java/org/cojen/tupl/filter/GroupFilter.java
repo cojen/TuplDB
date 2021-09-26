@@ -175,7 +175,7 @@ public abstract class GroupFilter extends RowFilter {
             (A || B) && (A || !B) => A
 
           Operator reduction is also applied, which can result in complementation, idempotence,
-          or eliminatation. The eliminatation case occurs when two operators combine into a
+          or elimination. The elimination case occurs when two operators combine into a
           different one. A full reduction pass is required, for performing compound reduction.
 
          */

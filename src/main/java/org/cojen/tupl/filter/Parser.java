@@ -274,7 +274,7 @@ public class Parser {
             ColumnInfo common = ConvertUtils.commonType(column, match, op);
 
             if (common == null) {
-                throw error("Cannot compare '" + column.name() + "' to '" + match.name() + "' " +
+                throw error("Cannot compare '" + column.name + "' to '" + match.name + "' " +
                             "due to type mismatch", startPos);
             }
 

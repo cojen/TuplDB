@@ -99,17 +99,13 @@ public class ColumnInfo implements Cloneable {
         TYPE_NULLABLE    = 0b010_00000,
         TYPE_ARRAY       = 0b001_00000;
 
-    String name;
-    Class<?> type;
-    int typeCode;
+    public String name;
+    public Class<?> type;
+    public int typeCode;
 
     Method accessor, mutator;
 
     boolean hidden;
-
-    public String name() {
-        return name;
-    }
 
     public int plainTypeCode() {
         return plainTypeCode(typeCode);
@@ -183,7 +179,7 @@ public class ColumnInfo implements Cloneable {
     /**
      * Assigns the type by examining the typeCode.
      */
-    void assignType() {
+    public void assignType() {
         if (!isArray()) {
             this.type = isNullable() ? boxedType() : unboxedType();
         } else {

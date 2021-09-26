@@ -125,6 +125,6 @@ public final class ColumnToColumnFilter extends ColumnFilter {
     @Override
     void appendTo(StringBuilder b) {
         super.appendTo(b);
-        b.append(mOtherColumn.name());
+        b.append(mOtherColumn.name);
     }
 }

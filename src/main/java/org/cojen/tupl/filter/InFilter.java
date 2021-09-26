@@ -44,7 +44,7 @@ public final class InFilter extends ColumnToArgFilter {
             b.append('!').append('(');
         }
 
-        b.append(mColumn.name()).append(' ').append("in").append(' ').append('?').append(mArgNum);
+        b.append(mColumn.name).append(' ').append("in").append(' ').append('?').append(mArgNum);
 
         if (mOperator == OP_NOT_IN) {
             b.append(')');
