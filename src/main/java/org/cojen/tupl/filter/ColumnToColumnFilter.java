@@ -110,6 +110,19 @@ public final class ColumnToColumnFilter extends ColumnFilter {
     }
 
     @Override
+    boolean equalRhs(ColumnFilter other) {
+        if (other instanceof ColumnToColumnFilter) {
+            return mOtherColumn.equals(((ColumnToColumnFilter) other).mOtherColumn);
+        }
+        return false;
+    }
+
+    @Override
+    ColumnToColumnFilter withOperator(int op) {
+        return new ColumnToColumnFilter(mColumn, op, mOtherColumn, mCommon);
+    }
+
+    @Override
     void appendTo(StringBuilder b) {
         super.appendTo(b);
         b.append(mOtherColumn.name());

@@ -97,6 +97,19 @@ public class ColumnToArgFilter extends ColumnFilter {
     }
 
     @Override
+    boolean equalRhs(ColumnFilter other) {
+        if (other instanceof ColumnToArgFilter) {
+            return mArgNum == ((ColumnToArgFilter) other).mArgNum;
+        }
+        return false;
+    }
+
+    @Override
+    ColumnToArgFilter withOperator(int op) {
+        return new ColumnToArgFilter(mColumn, op, mArgNum);
+    }
+
+    @Override
     void appendTo(StringBuilder b) {
         super.appendTo(b);
         b.append('?').append(mArgNum);

@@ -89,6 +89,8 @@ public abstract class GroupFilter extends RowFilter {
 
     abstract RowFilter emptyFlippedInstance();
 
+    abstract int reduceOperator(ColumnFilter a, ColumnFilter b);
+
     final RowFilter[] subNot() {
         RowFilter[] subFilters = mSubFilters.clone();
         for (int i=0; i<subFilters.length; i++) {
@@ -172,6 +174,10 @@ public abstract class GroupFilter extends RowFilter {
             (A && B) || (A && !B) => A
             (A || B) && (A || !B) => A
 
+          Operator reduction is also applied, which can result in complementation, idempotence,
+          or eliminatation. The eliminatation case occurs when two operators combine into a
+          different one. A full reduction pass is required, for performing compound reduction.
+
          */
 
         RowFilter[] subFilters = mSubFilters;
@@ -211,7 +217,7 @@ public abstract class GroupFilter extends RowFilter {
 
                     int result = sub.isSubMatch(check);
                     if (result == 0) {
-                        // Doesn't match, but try elimination. Otherwise, keep the sub-filter.
+                        // Doesn't match, but try elimination.
                         if (sub.getClass() == check.getClass() && sub instanceof GroupFilter) {
                             var groupSub = (GroupFilter) sub;
                             RowFilter resultSub = groupSub.eliminate((GroupFilter) check);
@@ -222,8 +228,40 @@ public abstract class GroupFilter extends RowFilter {
                                     subFilters = subFilters.clone();
                                 }
                                 subFilters[i] = resultSub;
+                                continue loopj;
                             }
                         }
+
+                        // Try operator reduction.
+                        if (j > i // check is commutative, so only needs to be checked once 
+                            && sub.getClass() == check.getClass() && sub instanceof ColumnFilter)
+                        {
+                            var columnSub = (ColumnFilter) sub;
+                            int op = reduceOperator(columnSub, ((ColumnFilter) check));
+                            if (op != Integer.MIN_VALUE) {
+                                if (op == Integer.MAX_VALUE) {
+                                    // Complementation.
+                                    return emptyFlippedInstance();
+                                }
+                                if (subFilters == mSubFilters) {
+                                    subFilters = subFilters.clone();
+                                }
+                                if (op < 0) {
+                                    // Perform compound reduction.
+                                    anyEliminations = true;
+                                    op = ~op;
+                                }
+                                if (op != columnSub.operator()) {
+                                    columnSub = columnSub.withOperator(op);
+                                }
+                                numRemoved++;
+                                subFilters[i] = null;
+                                subFilters[j] = columnSub;
+                                continue loopi;
+                            }
+                        }
+
+                        // Keep the sub-filter.
                         continue loopj;
                     }
 

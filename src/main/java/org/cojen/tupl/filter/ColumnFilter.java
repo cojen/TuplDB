@@ -121,6 +121,184 @@ public abstract class ColumnFilter extends RowFilter {
         return op >= OP_IN;
     }
 
+    /**
+     * Returns:
+     *
+     * - MIN_VALUE if not reducible
+     * - MAX_VALUE if complementation (entire group goes away)
+     * - operator if idempotence
+     * - ~operator if eliminatation
+     */
+    int reduceOperatorForAnd(ColumnFilter other) {
+        if (!isReducible(other)) {
+            return Integer.MIN_VALUE;
+        }
+
+        int otherOp = other.mOperator;
+
+        switch (mOperator) {
+        case OP_EQ:
+            switch (otherOp) {
+            case OP_EQ: return OP_EQ;
+            case OP_NE: return Integer.MAX_VALUE;
+            case OP_LT: return Integer.MAX_VALUE;
+            case OP_GE: return OP_EQ;
+            case OP_GT: return Integer.MAX_VALUE;
+            case OP_LE: return OP_EQ;
+            }
+            break;
+
+        case OP_NE:
+            switch (otherOp) {
+            case OP_EQ: return Integer.MAX_VALUE;
+            case OP_NE: return OP_NE;
+            case OP_LT: return OP_LT;
+            case OP_GE: return ~OP_GT;
+            case OP_GT: return OP_GT;
+            case OP_LE: return ~OP_LT;
+            }
+            break;
+
+        case OP_LT:
+            switch (otherOp) {
+            case OP_EQ: return Integer.MAX_VALUE;
+            case OP_NE: return OP_LT;
+            case OP_LT: return OP_LT;
+            case OP_GE: return Integer.MAX_VALUE;
+            case OP_GT: return Integer.MAX_VALUE;
+            case OP_LE: return OP_LT;
+            }
+            break;
+
+        case OP_GE:
+            switch (otherOp) {
+            case OP_EQ: return OP_EQ;
+            case OP_NE: return ~OP_GT;
+            case OP_LT: return Integer.MAX_VALUE;
+            case OP_GE: return OP_GE;
+            case OP_GT: return OP_GT;
+            case OP_LE: return ~OP_EQ;
+            }
+            break;
+
+        case OP_GT:
+            switch (otherOp) {
+            case OP_EQ: return Integer.MAX_VALUE;
+            case OP_NE: return OP_GT;
+            case OP_LT: return Integer.MAX_VALUE;
+            case OP_GE: return OP_GT;
+            case OP_GT: return OP_GT;
+            case OP_LE: return Integer.MAX_VALUE;
+            }
+            break;
+
+        case OP_LE:
+            switch (otherOp) {
+            case OP_EQ: return OP_EQ;
+            case OP_NE: return ~OP_LT;
+            case OP_LT: return OP_LT;
+            case OP_GE: return ~OP_EQ;
+            case OP_GT: return Integer.MAX_VALUE;
+            case OP_LE: return OP_LE;
+            }
+            break;
+        }
+
+        return Integer.MIN_VALUE;
+    }
+
+    int reduceOperatorForOr(ColumnFilter other) {
+        if (!isReducible(other)) {
+            return Integer.MIN_VALUE;
+        }
+
+        int otherOp = other.mOperator;
+
+        switch (mOperator) {
+        case OP_EQ:
+            switch (otherOp) {
+            case OP_EQ: return OP_EQ;
+            case OP_NE: return Integer.MAX_VALUE;
+            case OP_LT: return ~OP_LE;
+            case OP_GE: return OP_GE;
+            case OP_GT: return ~OP_GE;
+            case OP_LE: return OP_LE;
+            }
+            break;
+
+        case OP_NE:
+            switch (otherOp) {
+            case OP_EQ: return Integer.MAX_VALUE;
+            case OP_NE: return OP_NE;
+            case OP_LT: return OP_NE;
+            case OP_GE: return Integer.MAX_VALUE;
+            case OP_GT: return OP_NE;
+            case OP_LE: return Integer.MAX_VALUE;
+            }
+            break;
+
+        case OP_LT:
+            switch (otherOp) {
+            case OP_EQ: return ~OP_LE;
+            case OP_NE: return OP_NE;
+            case OP_LT: return OP_LT;
+            case OP_GE: return Integer.MAX_VALUE;
+            case OP_GT: return ~OP_NE;
+            case OP_LE: return OP_LE;
+            }
+            break;
+
+        case OP_GE:
+            switch (otherOp) {
+            case OP_EQ: return OP_GE;
+            case OP_NE: return Integer.MAX_VALUE;
+            case OP_LT: return Integer.MAX_VALUE;
+            case OP_GE: return OP_GE;
+            case OP_GT: return OP_GE;
+            case OP_LE: return Integer.MAX_VALUE;
+            }
+            break;
+
+        case OP_GT:
+            switch (otherOp) {
+            case OP_EQ: return ~OP_GE;
+            case OP_NE: return OP_NE;
+            case OP_LT: return ~OP_NE;
+            case OP_GE: return OP_GE;
+            case OP_GT: return OP_GT;
+            case OP_LE: return Integer.MAX_VALUE;
+            }
+            break;
+
+        case OP_LE:
+            switch (otherOp) {
+            case OP_EQ: return OP_LE;
+            case OP_NE: return Integer.MAX_VALUE;
+            case OP_LT: return OP_LE;
+            case OP_GE: return Integer.MAX_VALUE;
+            case OP_GT: return Integer.MAX_VALUE;
+            case OP_LE: return OP_LE;
+            }
+            break;
+        }
+
+        return Integer.MIN_VALUE;
+    }
+
+    private boolean isReducible(ColumnFilter other) {
+        return mColumn.equals(other.mColumn) && equalRhs(other);
+    }
+
+    /**
+     * Equal right-hand-side.
+     */
+    abstract boolean equalRhs(ColumnFilter other);
+
+    /**
+     * Returns a new instance with a different operator.
+     */
+    abstract ColumnFilter withOperator(int op);
+
     @Override
     void appendTo(StringBuilder b) {
         b.append(mColumn.name()).append(' ');

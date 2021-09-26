@@ -173,4 +173,9 @@ public final class OrFilter extends GroupFilter {
     RowFilter emptyFlippedInstance() {
         return AndFilter.TRUE;
     }
+
+    @Override
+    int reduceOperator(ColumnFilter a, ColumnFilter b) {
+        return a.reduceOperatorForOr(b);
+    }
 }
