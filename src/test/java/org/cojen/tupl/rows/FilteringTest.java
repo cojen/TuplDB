@@ -21,6 +21,8 @@ import java.lang.reflect.Method;
 
 import java.util.*;
 
+import java.util.concurrent.TimeUnit;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -577,7 +579,7 @@ public class FilteringTest {
         // Test a "true" filter which returns everything, and with a "false" filter which
         // returns nothing.
 
-        Database db = Database.open(new DatabaseConfig());
+        Database db = Database.open(new DatabaseConfig().lockTimeout(10, TimeUnit.MILLISECONDS));
         Table<MyRow> table = db.openTable(MyRow.class);
 
         for (int i=0; i<3; i++) {
@@ -595,7 +597,7 @@ public class FilteringTest {
             count++;
         }
         assertEquals(3, count);
-        
+
         // This filter expression always returns false.
         scanner = table.newRowScanner(null, "name >= ?0 && name < ?0");
         count = 0;
@@ -603,6 +605,24 @@ public class FilteringTest {
             count++;
         }
         assertEquals(0, count);
+
+        // Even when everything is filtered out, lock acquisition must still occur.
+
+        Transaction txn;
+        {
+            txn = db.newTransaction();
+            var row = table.newRow();
+            row.id(1);
+            table.delete(txn, row);
+        }
+
+        try {
+            table.newRowScanner(null, "name >= ?0 && name < ?0");
+            fail();
+        } catch (LockTimeoutException e) {
+        }
+
+        txn.reset();
     }
 
     @PrimaryKey("id")
