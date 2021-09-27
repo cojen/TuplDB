@@ -36,14 +36,19 @@ public class ReductionTest {
         org.junit.runner.JUnitCore.main(ReductionTest.class.getName());
     }
 
-    @Test
-    public void operatorReduction() throws Exception {
+    private static HashMap<String, ColumnInfo> newColMap() {
         var colMap = new HashMap<String, ColumnInfo>();
         var info = new ColumnInfo();
         info.name = "a";
         info.typeCode = ColumnInfo.TYPE_UTF8;
         info.assignType();
         colMap.put(info.name, info);
+        return colMap;
+    }
+
+    @Test
+    public void operatorReduction() throws Exception {
+        var colMap = newColMap();
 
         String[] ops = {"&&", "||"};
         String[] relOps = {"==", "!=", "<", ">=", ">", "<="};
@@ -79,6 +84,97 @@ public class ReductionTest {
                     }
                 }
             }
+        }
+    }
+
+    @Test
+    public void operatorReductionMatrix() throws Exception {
+        int handled = 0;
+
+        for (int op1 = OP_EQ; op1 <= OP_GT; op1++) {
+            for (int op2 = OP_EQ; op2 <= OP_GT; op2++) {
+                int result = reduceOperatorForAnd(op1, op2);
+                assertNotEquals(Integer.MIN_VALUE, result);
+
+                int result2 = reduceOperatorForOr(flipOperator(op1), flipOperator(op2));
+                result2 = flipOperator(result2);
+                if (result2 == Integer.MAX_VALUE - 1) {
+                    assertEquals(Integer.MAX_VALUE, result);
+                } else {
+                    assertEquals(result, result2);
+                }
+
+                if (op1 == op2) {
+                    assertEquals(op1, result);
+                    handled++;
+                } else if (op1 == flipOperator(op2)) {
+                    assertEquals(Integer.MAX_VALUE, result);
+                    handled++;
+                } else if (hasEqualComponent(op1)) {
+                    if (hasEqualComponent(op2)) {
+                        if (descendingOperator(op1) == op2) {
+                            assertEquals(~OP_EQ, result);
+                            handled++;
+                        } else {
+                            assertTrue(op1 == OP_EQ || op2 == OP_EQ);
+                            handled++;
+                        }
+                    } else {
+                        if (op1 == OP_EQ) {
+                            assertEquals(Integer.MAX_VALUE, result);
+                            handled++;
+                        } else if (op2 == OP_NE) {
+                            assertEquals(result, ~removeEqualComponent(op1));
+                            handled++;
+                        } else {
+                            assertEquals(result, removeEqualComponent(op1));
+                            handled++;
+                        }
+                    }
+                } else {
+                    if (hasEqualComponent(op2)) {
+                        if (op2 == OP_EQ) {
+                            assertEquals(Integer.MAX_VALUE, result);
+                            handled++;
+                        } else if (op1 == OP_NE) {
+                            assertEquals(result, ~removeEqualComponent(op2));
+                            handled++;
+                        } else {
+                            assertEquals(result, removeEqualComponent(op2));
+                            handled++;
+                        }
+                    } else {
+                        if (descendingOperator(op1) == op2) {
+                            assertEquals(Integer.MAX_VALUE, result);
+                            handled++;
+                        } else {
+                            assertTrue(op1 == OP_NE || op2 == OP_NE);
+                            handled++;
+                        }
+                    }
+                }
+            }
+        }
+
+        assertEquals(36, handled);
+    }
+
+    @Test
+    public void partialReduction() throws Exception {
+        // The reduce method isn't guaranteed to be complete, but a call to dnf or cnf can help
+        // the reduction along.
+
+        String filterStr = "((a > ?1 && a > ?2) || (a > ?3)) && (a > ?1 && a > ?2)";
+        RowFilter filter = new Parser(newColMap(), filterStr).parse().reduce();
+
+        assertEquals(5, filter.numTerms());
+        assertFalse(filter.isDnf());
+        assertFalse(filter.isCnf());
+
+        for (int i=0; i<2; i++) {
+            RowFilter reduced = i == 0 ? filter.dnf() : filter.cnf();
+            assertEquals(2, reduced.numTerms());
+            assertEquals("a > ?1 && a > ?2", reduced.toString());
         }
     }
 

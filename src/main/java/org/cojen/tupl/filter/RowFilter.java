@@ -32,6 +32,8 @@ public abstract class RowFilter {
 
     public abstract void accept(Visitor visitor);
 
+    public abstract int numTerms();
+
     /**
      * Apply partial or full reduction of the filter.
      */

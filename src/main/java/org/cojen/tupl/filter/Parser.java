@@ -37,7 +37,7 @@ public class Parser {
       ParenFilter  = [ "!" ] "(" RowFilter ")"
       ColumnFilter = ColumnName RelOp ( ArgRef | ColumnName )
                    | ColumnName "in" ArgRef
-      RelOp        = "==" | "!=" | "<" | ">=" | ">" | "<="
+      RelOp        = "==" | "!=" | ">=" | "<" | "<=" | ">"
       ColumnName   = string
       ArgRef       = "?" [ uint ]
      */

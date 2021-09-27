@@ -130,10 +130,10 @@ class CompareUtils {
             // Assume both variables are Comparable.
             var result = colVar.invoke("compareTo", argVar);
             switch (op) {
-            case ColumnFilter.OP_LT: result.ifLt(0, pass); break;
             case ColumnFilter.OP_GE: result.ifGe(0, pass); break;
-            case ColumnFilter.OP_GT: result.ifGt(0, pass); break;
+            case ColumnFilter.OP_LT: result.ifLt(0, pass); break;
             case ColumnFilter.OP_LE: result.ifLe(0, pass); break;
+            case ColumnFilter.OP_GT: result.ifGt(0, pass); break;
             default: throw new AssertionError();
             }
         }
@@ -264,10 +264,10 @@ class CompareUtils {
         switch (op) {
         case ColumnFilter.OP_EQ: colVar.ifEq(argVar, pass); break;
         case ColumnFilter.OP_NE: colVar.ifNe(argVar, pass); break;
-        case ColumnFilter.OP_LT: colVar.ifLt(argVar, pass); break;
         case ColumnFilter.OP_GE: colVar.ifGe(argVar, pass); break;
-        case ColumnFilter.OP_GT: colVar.ifGt(argVar, pass); break;
+        case ColumnFilter.OP_LT: colVar.ifLt(argVar, pass); break;
         case ColumnFilter.OP_LE: colVar.ifLe(argVar, pass); break;
+        case ColumnFilter.OP_GT: colVar.ifGt(argVar, pass); break;
         default: throw new AssertionError();
         }
 
@@ -384,10 +384,10 @@ class CompareUtils {
         switch (op) {
         case ColumnFilter.OP_EQ: return fail; // null == !null? false
         case ColumnFilter.OP_NE: return pass; // null != !null? true
-        case ColumnFilter.OP_LT: return fail; // null <  !null? false
         case ColumnFilter.OP_GE: return pass; // null >= !null? true
-        case ColumnFilter.OP_GT: return pass; // null >  !null? true
+        case ColumnFilter.OP_LT: return fail; // null <  !null? false
         case ColumnFilter.OP_LE: return fail; // null <= !null? false
+        case ColumnFilter.OP_GT: return pass; // null >  !null? true
         default: throw new AssertionError();
         }
     }
@@ -405,10 +405,10 @@ class CompareUtils {
         switch (op) {
         case ColumnFilter.OP_EQ: return fail; // !null == null? false
         case ColumnFilter.OP_NE: return pass; // !null != null? true
-        case ColumnFilter.OP_LT: return pass; // !null <  null? true
         case ColumnFilter.OP_GE: return fail; // !null >= null? false
-        case ColumnFilter.OP_GT: return fail; // !null >  null? false
+        case ColumnFilter.OP_LT: return pass; // !null <  null? true
         case ColumnFilter.OP_LE: return pass; // !null <= null? true
+        case ColumnFilter.OP_GT: return fail; // !null >  null? false
 
         // Treat a null "in" array as if it was empty.
         case ColumnFilter.OP_IN: return fail;
@@ -430,10 +430,10 @@ class CompareUtils {
         switch (op) {
         case ColumnFilter.OP_EQ: return pass; // null == null? true
         case ColumnFilter.OP_NE: return fail; // null != null? false
-        case ColumnFilter.OP_LT: return fail; // null <  null? false
         case ColumnFilter.OP_GE: return pass; // null >= null? true
-        case ColumnFilter.OP_GT: return fail; // null >  null? false
+        case ColumnFilter.OP_LT: return fail; // null <  null? false
         case ColumnFilter.OP_LE: return pass; // null <= null? true
+        case ColumnFilter.OP_GT: return fail; // null >  null? false
 
         // Treat a null "in" array as if it was empty.
         case ColumnFilter.OP_IN: return fail;
@@ -474,10 +474,10 @@ class CompareUtils {
             }
             var resultVar = arraysVar.invoke(method, a, aFrom, aTo, b, bFrom, bTo);
             switch (op) {
-            case ColumnFilter.OP_LT: resultVar.ifLt(0, pass); break;
             case ColumnFilter.OP_GE: resultVar.ifGe(0, pass); break;
-            case ColumnFilter.OP_GT: resultVar.ifGt(0, pass); break;
+            case ColumnFilter.OP_LT: resultVar.ifLt(0, pass); break;
             case ColumnFilter.OP_LE: resultVar.ifLe(0, pass); break;
+            case ColumnFilter.OP_GT: resultVar.ifGt(0, pass); break;
             default: throw new AssertionError();
             }
         }

@@ -25,7 +25,7 @@ import org.cojen.tupl.rows.ColumnInfo;
  * @author Brian S O'Neill
  */
 public abstract class ColumnFilter extends RowFilter {
-    public static final int OP_EQ = 0, OP_NE = 1, OP_LT = 2, OP_GE = 3, OP_GT = 4, OP_LE = 5;
+    public static final int OP_EQ = 0, OP_NE = 1, OP_GE = 2, OP_LT = 3, OP_LE = 4, OP_GT = 5;
 
     // Used by InFilter.
     public static final int OP_IN = 6, OP_NOT_IN = 7;
@@ -36,10 +36,23 @@ public abstract class ColumnFilter extends RowFilter {
 
     public static int descendingOperator(int op) {
         switch (op) {
-        case OP_LT: return OP_GT;
         case OP_GE: return OP_LE;
-        case OP_GT: return OP_LT;
+        case OP_LT: return OP_GT;
         case OP_LE: return OP_GE;
+        case OP_GT: return OP_LT;
+        default: return op;
+        }
+    }
+
+    public static boolean hasEqualComponent(int op) {
+        return (op & 1) == 0;
+    }
+
+    public static int removeEqualComponent(int op) {
+        switch (op) {
+        case OP_EQ: return OP_NE;
+        case OP_GE: return OP_GT;
+        case OP_LE: return OP_LT;
         default: return op;
         }
     }
@@ -53,6 +66,11 @@ public abstract class ColumnFilter extends RowFilter {
         super(hash);
         mColumn = column;
         mOperator = op;
+    }
+
+    @Override
+    public int numTerms() {
+        return 1;
     }
 
     @Override
@@ -133,73 +151,74 @@ public abstract class ColumnFilter extends RowFilter {
         if (!isReducible(other)) {
             return Integer.MIN_VALUE;
         }
+        return reduceOperatorForAnd(mOperator, other.mOperator);
+    }
 
-        int otherOp = other.mOperator;
-
-        switch (mOperator) {
+    static int reduceOperatorForAnd(int op1, int op2) {
+        switch (op1) {
         case OP_EQ:
-            switch (otherOp) {
+            switch (op2) {
             case OP_EQ: return OP_EQ;
             case OP_NE: return Integer.MAX_VALUE;
-            case OP_LT: return Integer.MAX_VALUE;
             case OP_GE: return OP_EQ;
-            case OP_GT: return Integer.MAX_VALUE;
+            case OP_LT: return Integer.MAX_VALUE;
             case OP_LE: return OP_EQ;
+            case OP_GT: return Integer.MAX_VALUE;
             }
             break;
 
         case OP_NE:
-            switch (otherOp) {
+            switch (op2) {
             case OP_EQ: return Integer.MAX_VALUE;
             case OP_NE: return OP_NE;
-            case OP_LT: return OP_LT;
             case OP_GE: return ~OP_GT;
-            case OP_GT: return OP_GT;
-            case OP_LE: return ~OP_LT;
-            }
-            break;
-
-        case OP_LT:
-            switch (otherOp) {
-            case OP_EQ: return Integer.MAX_VALUE;
-            case OP_NE: return OP_LT;
             case OP_LT: return OP_LT;
-            case OP_GE: return Integer.MAX_VALUE;
-            case OP_GT: return Integer.MAX_VALUE;
-            case OP_LE: return OP_LT;
+            case OP_LE: return ~OP_LT;
+            case OP_GT: return OP_GT;
             }
             break;
 
         case OP_GE:
-            switch (otherOp) {
+            switch (op2) {
             case OP_EQ: return OP_EQ;
             case OP_NE: return ~OP_GT;
-            case OP_LT: return Integer.MAX_VALUE;
             case OP_GE: return OP_GE;
-            case OP_GT: return OP_GT;
+            case OP_LT: return Integer.MAX_VALUE;
             case OP_LE: return ~OP_EQ;
+            case OP_GT: return OP_GT;
             }
             break;
 
-        case OP_GT:
-            switch (otherOp) {
+        case OP_LT:
+            switch (op2) {
             case OP_EQ: return Integer.MAX_VALUE;
-            case OP_NE: return OP_GT;
-            case OP_LT: return Integer.MAX_VALUE;
-            case OP_GE: return OP_GT;
-            case OP_GT: return OP_GT;
-            case OP_LE: return Integer.MAX_VALUE;
+            case OP_NE: return OP_LT;
+            case OP_GE: return Integer.MAX_VALUE;
+            case OP_LT: return OP_LT;
+            case OP_LE: return OP_LT;
+            case OP_GT: return Integer.MAX_VALUE;
             }
             break;
 
         case OP_LE:
-            switch (otherOp) {
+            switch (op2) {
             case OP_EQ: return OP_EQ;
             case OP_NE: return ~OP_LT;
-            case OP_LT: return OP_LT;
             case OP_GE: return ~OP_EQ;
-            case OP_GT: return Integer.MAX_VALUE;
+            case OP_LT: return OP_LT;
             case OP_LE: return OP_LE;
+            case OP_GT: return Integer.MAX_VALUE;
+            }
+            break;
+
+        case OP_GT:
+            switch (op2) {
+            case OP_EQ: return Integer.MAX_VALUE;
+            case OP_NE: return OP_GT;
+            case OP_GE: return OP_GT;
+            case OP_LT: return Integer.MAX_VALUE;
+            case OP_LE: return Integer.MAX_VALUE;
+            case OP_GT: return OP_GT;
             }
             break;
         }
@@ -211,73 +230,74 @@ public abstract class ColumnFilter extends RowFilter {
         if (!isReducible(other)) {
             return Integer.MIN_VALUE;
         }
+        return reduceOperatorForOr(mOperator, other.mOperator);
+    }
 
-        int otherOp = other.mOperator;
-
-        switch (mOperator) {
+    static int reduceOperatorForOr(int op1, int op2) {
+        switch (op1) {
         case OP_EQ:
-            switch (otherOp) {
+            switch (op2) {
             case OP_EQ: return OP_EQ;
             case OP_NE: return Integer.MAX_VALUE;
-            case OP_LT: return ~OP_LE;
             case OP_GE: return OP_GE;
-            case OP_GT: return ~OP_GE;
+            case OP_LT: return ~OP_LE;
             case OP_LE: return OP_LE;
+            case OP_GT: return ~OP_GE;
             }
             break;
 
         case OP_NE:
-            switch (otherOp) {
+            switch (op2) {
             case OP_EQ: return Integer.MAX_VALUE;
             case OP_NE: return OP_NE;
+            case OP_GE: return Integer.MAX_VALUE;
             case OP_LT: return OP_NE;
-            case OP_GE: return Integer.MAX_VALUE;
-            case OP_GT: return OP_NE;
             case OP_LE: return Integer.MAX_VALUE;
-            }
-            break;
-
-        case OP_LT:
-            switch (otherOp) {
-            case OP_EQ: return ~OP_LE;
-            case OP_NE: return OP_NE;
-            case OP_LT: return OP_LT;
-            case OP_GE: return Integer.MAX_VALUE;
-            case OP_GT: return ~OP_NE;
-            case OP_LE: return OP_LE;
+            case OP_GT: return OP_NE;
             }
             break;
 
         case OP_GE:
-            switch (otherOp) {
+            switch (op2) {
             case OP_EQ: return OP_GE;
             case OP_NE: return Integer.MAX_VALUE;
-            case OP_LT: return Integer.MAX_VALUE;
             case OP_GE: return OP_GE;
-            case OP_GT: return OP_GE;
+            case OP_LT: return Integer.MAX_VALUE;
             case OP_LE: return Integer.MAX_VALUE;
+            case OP_GT: return OP_GE;
             }
             break;
 
-        case OP_GT:
-            switch (otherOp) {
-            case OP_EQ: return ~OP_GE;
+        case OP_LT:
+            switch (op2) {
+            case OP_EQ: return ~OP_LE;
             case OP_NE: return OP_NE;
-            case OP_LT: return ~OP_NE;
-            case OP_GE: return OP_GE;
-            case OP_GT: return OP_GT;
-            case OP_LE: return Integer.MAX_VALUE;
+            case OP_GE: return Integer.MAX_VALUE;
+            case OP_LT: return OP_LT;
+            case OP_LE: return OP_LE;
+            case OP_GT: return ~OP_NE;
             }
             break;
 
         case OP_LE:
-            switch (otherOp) {
+            switch (op2) {
             case OP_EQ: return OP_LE;
             case OP_NE: return Integer.MAX_VALUE;
-            case OP_LT: return OP_LE;
             case OP_GE: return Integer.MAX_VALUE;
-            case OP_GT: return Integer.MAX_VALUE;
+            case OP_LT: return OP_LE;
             case OP_LE: return OP_LE;
+            case OP_GT: return Integer.MAX_VALUE;
+            }
+            break;
+
+        case OP_GT:
+            switch (op2) {
+            case OP_EQ: return ~OP_GE;
+            case OP_NE: return OP_NE;
+            case OP_GE: return OP_GE;
+            case OP_LT: return ~OP_NE;
+            case OP_LE: return Integer.MAX_VALUE;
+            case OP_GT: return OP_GT;
             }
             break;
         }
@@ -307,10 +327,10 @@ public abstract class ColumnFilter extends RowFilter {
         switch (mOperator) {
         case OP_EQ: opStr = "=="; break;
         case OP_NE: opStr = "!="; break;
-        case OP_LT: opStr = "<";  break;
         case OP_GE: opStr = ">="; break;
-        case OP_GT: opStr = ">";  break;
+        case OP_LT: opStr = "<";  break;
         case OP_LE: opStr = "<="; break;
+        case OP_GT: opStr = ">";  break;
         default:    opStr = "?";  break;
         }
 

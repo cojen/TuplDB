@@ -84,6 +84,15 @@ public abstract class GroupFilter extends RowFilter {
         }
     }
 
+    @Override
+    public int numTerms() {
+        int num = 0;
+        for (RowFilter sub : mSubFilters) {
+            num += sub.numTerms();
+        }
+        return num;
+    }
+
     public final RowFilter[] subFilters() {
         return mSubFilters;
     }
