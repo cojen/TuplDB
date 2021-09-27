@@ -25,6 +25,22 @@ import java.util.Arrays;
  * @author Brian S O'Neill
  */
 public abstract class GroupFilter extends RowFilter {
+    private static final long DISTRIBUTE_LIMIT;
+
+    static {
+        // Limit the number of steps to perform when reducing via dnf/cnf. The reduce
+        // operation time complexity is approximately O(n^2), so compare to sqrt.
+        double limit = 10e6;
+        String prop = System.getProperty("org.cojen.tupl.filter.DistributeLimit");
+        if (prop != null) {
+            try {
+                limit = Double.parseDouble(prop);
+            } catch (NumberFormatException e) {
+            }
+        }
+        DISTRIBUTE_LIMIT = (long) Math.sqrt(limit);
+    }
+
     final RowFilter[] mSubFilters;
 
     int mMatchHashCode;
@@ -387,6 +403,7 @@ public abstract class GroupFilter extends RowFilter {
         for (RowFilter sub : subFilters) {
             if (sub instanceof GroupFilter) {
                 count *= ((GroupFilter) sub).mSubFilters.length;
+
                 // TODO: tune the count threshold
                 if (count > 1000 && subFilters.length > 2) {
                     int mid = subFilters.length >> 1;
@@ -401,7 +418,8 @@ public abstract class GroupFilter extends RowFilter {
                     }
                     return newInstance(left, right);
                 }
-                if (count > Integer.MAX_VALUE) {
+
+                if (count > DISTRIBUTE_LIMIT) {
                     throw new ComplexFilterException();
                 }
             }
