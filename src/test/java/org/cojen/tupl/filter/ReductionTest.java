@@ -77,10 +77,6 @@ public class ReductionTest {
                         boolean result2 = eval(reduced, 2, 1);
                         assertEquals(result1, result2);
                     }
-
-                    System.out.println("---");
-                    System.out.println(filter);
-                    System.out.println(reduced);
                 }
             }
         }
