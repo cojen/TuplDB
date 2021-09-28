@@ -17,10 +17,22 @@
 
 package org.cojen.tupl.filter;
 
+import java.math.BigInteger;
+
 /**
  * Thrown when dnf/cnf transformation isn't possible. The filter expression is too complex.
  *
  * @author Brian S O'Neill
  */
 public class ComplexFilterException extends IllegalStateException {
+    public final BigInteger numTerms;
+
+    ComplexFilterException(BigInteger numTerms) {
+        this.numTerms = numTerms;
+    }
+
+    @Override
+    public String getMessage() {
+        return numTerms + " (" + numTerms.multiply(numTerms) + ')';
+    }
 }

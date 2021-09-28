@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.filter;
 
+import java.math.BigInteger;
+
 import java.util.Arrays;
 
 /**
@@ -26,6 +28,7 @@ import java.util.Arrays;
  */
 public abstract class GroupFilter extends RowFilter {
     private static final long DISTRIBUTE_LIMIT;
+    private static final int SPLIT_LIMIT;
 
     static {
         // Limit the number of steps to perform when reducing via dnf/cnf. The reduce
@@ -39,6 +42,7 @@ public abstract class GroupFilter extends RowFilter {
             }
         }
         DISTRIBUTE_LIMIT = (long) Math.sqrt(limit);
+        SPLIT_LIMIT = (int) Math.min(1000L, DISTRIBUTE_LIMIT);
     }
 
     final RowFilter[] mSubFilters;
@@ -221,6 +225,9 @@ public abstract class GroupFilter extends RowFilter {
 
                 RowFilter subReduced = sub.reduce();
                 if (sub != subReduced) {
+                    if (subReduced == emptyFlippedInstance()) {
+                        return subReduced;
+                    }
                     sub = subReduced;
                     if (subFilters == mSubFilters) {
                         subFilters = subFilters.clone();
@@ -248,6 +255,9 @@ public abstract class GroupFilter extends RowFilter {
                             RowFilter resultSub = groupSub.eliminate((GroupFilter) check);
                             if (resultSub != sub) {
                                 // Elimination.
+                                if (resultSub == emptyFlippedInstance()) {
+                                    return resultSub;
+                                }
                                 anyEliminations = true;
                                 if (subFilters == mSubFilters) {
                                     subFilters = subFilters.clone();
@@ -412,24 +422,14 @@ public abstract class GroupFilter extends RowFilter {
         for (RowFilter sub : subFilters) {
             if (sub instanceof GroupFilter) {
                 count *= ((GroupFilter) sub).mSubFilters.length;
-
-                // TODO: tune the count threshold
-                if (count > 1000 && subFilters.length > 2) {
-                    int mid = subFilters.length >> 1;
-                    RowFilter left = newInstance(subFilters, 0, mid);
-                    RowFilter right = newInstance(subFilters, mid, subFilters.length - mid);
-                    if (dnf) {
-                        left = left.dnf();
-                        right = right.dnf();
-                    } else {
-                        left = left.cnf();
-                        right = right.cnf();
+                if (count > SPLIT_LIMIT && subFilters.length > 2) {
+                    RowFilter filter = trySplitDistribute(dnf);
+                    if (filter != null) {
+                        return filter;
                     }
-                    return newInstance(left, right);
                 }
-
                 if (count > DISTRIBUTE_LIMIT) {
-                    throw new ComplexFilterException();
+                    throw complex();
                 }
             }
         }
@@ -456,6 +456,50 @@ public abstract class GroupFilter extends RowFilter {
         }
 
         return newFlippedInstance(newSubFilters);
+    }
+
+    /**
+     * @return null if no change
+     */
+    private RowFilter trySplitDistribute(boolean dnf) {
+        int mid = mSubFilters.length >> 1;
+        RowFilter filter = splitDistribute(dnf, mid);
+        if (!equals(filter)) {
+            return filter;
+        }
+        for (int pos = 1; pos < mSubFilters.length; pos++) {
+            if (pos != mid) {
+                filter = splitDistribute(dnf, pos);
+                if (!equals(filter)) {
+                    return filter;
+                }
+            }
+        }
+        return null;
+    }
+
+    private RowFilter splitDistribute(boolean dnf, int pos) {
+        RowFilter left = newInstance(mSubFilters, 0, pos);
+        RowFilter right = newInstance(mSubFilters, pos, mSubFilters.length - pos);
+        if (dnf) {
+            left = left.dnf();
+            right = right.dnf();
+        } else {
+            left = left.cnf();
+            right = right.cnf();
+        }
+        return newInstance(left, right);
+    }
+
+    private ComplexFilterException complex() {
+        var numTerms = BigInteger.ONE;
+        for (RowFilter sub : mSubFilters) {
+            if (sub instanceof GroupFilter) {
+                numTerms = numTerms.multiply
+                    (BigInteger.valueOf(((GroupFilter) sub).mSubFilters.length));
+            }
+        }
+        return new ComplexFilterException(numTerms);
     }
 
     /**
