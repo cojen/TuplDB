@@ -19,6 +19,9 @@ package org.cojen.tupl.filter;
 
 import org.cojen.tupl.rows.ColumnInfo;
 
+import static java.lang.Integer.MIN_VALUE;
+import static java.lang.Integer.MAX_VALUE;
+
 /**
  * 
  *
@@ -149,165 +152,53 @@ public abstract class ColumnFilter extends RowFilter {
      */
     int reduceOperatorForAnd(ColumnFilter other) {
         if (!isReducible(other)) {
-            return Integer.MIN_VALUE;
+            return MIN_VALUE;
         }
         return reduceOperatorForAnd(mOperator, other.mOperator);
     }
 
     static int reduceOperatorForAnd(int op1, int op2) {
-        switch (op1) {
-        case OP_EQ:
-            switch (op2) {
-            case OP_EQ: return OP_EQ;
-            case OP_NE: return Integer.MAX_VALUE;
-            case OP_GE: return OP_EQ;
-            case OP_LT: return Integer.MAX_VALUE;
-            case OP_LE: return OP_EQ;
-            case OP_GT: return Integer.MAX_VALUE;
-            }
-            break;
-
-        case OP_NE:
-            switch (op2) {
-            case OP_EQ: return Integer.MAX_VALUE;
-            case OP_NE: return OP_NE;
-            case OP_GE: return ~OP_GT;
-            case OP_LT: return OP_LT;
-            case OP_LE: return ~OP_LT;
-            case OP_GT: return OP_GT;
-            }
-            break;
-
-        case OP_GE:
-            switch (op2) {
-            case OP_EQ: return OP_EQ;
-            case OP_NE: return ~OP_GT;
-            case OP_GE: return OP_GE;
-            case OP_LT: return Integer.MAX_VALUE;
-            case OP_LE: return ~OP_EQ;
-            case OP_GT: return OP_GT;
-            }
-            break;
-
-        case OP_LT:
-            switch (op2) {
-            case OP_EQ: return Integer.MAX_VALUE;
-            case OP_NE: return OP_LT;
-            case OP_GE: return Integer.MAX_VALUE;
-            case OP_LT: return OP_LT;
-            case OP_LE: return OP_LT;
-            case OP_GT: return Integer.MAX_VALUE;
-            }
-            break;
-
-        case OP_LE:
-            switch (op2) {
-            case OP_EQ: return OP_EQ;
-            case OP_NE: return ~OP_LT;
-            case OP_GE: return ~OP_EQ;
-            case OP_LT: return OP_LT;
-            case OP_LE: return OP_LE;
-            case OP_GT: return Integer.MAX_VALUE;
-            }
-            break;
-
-        case OP_GT:
-            switch (op2) {
-            case OP_EQ: return Integer.MAX_VALUE;
-            case OP_NE: return OP_GT;
-            case OP_GE: return OP_GT;
-            case OP_LT: return Integer.MAX_VALUE;
-            case OP_LE: return Integer.MAX_VALUE;
-            case OP_GT: return OP_GT;
-            }
-            break;
+        if (op1 < OP_IN && op2 < OP_IN) {
+            return REDUCE_AND[op1 * 6 + op2];
         }
-
-        return Integer.MIN_VALUE;
+        return MIN_VALUE;
     }
 
     int reduceOperatorForOr(ColumnFilter other) {
         if (!isReducible(other)) {
-            return Integer.MIN_VALUE;
+            return MIN_VALUE;
         }
         return reduceOperatorForOr(mOperator, other.mOperator);
     }
 
     static int reduceOperatorForOr(int op1, int op2) {
-        switch (op1) {
-        case OP_EQ:
-            switch (op2) {
-            case OP_EQ: return OP_EQ;
-            case OP_NE: return Integer.MAX_VALUE;
-            case OP_GE: return OP_GE;
-            case OP_LT: return ~OP_LE;
-            case OP_LE: return OP_LE;
-            case OP_GT: return ~OP_GE;
-            }
-            break;
-
-        case OP_NE:
-            switch (op2) {
-            case OP_EQ: return Integer.MAX_VALUE;
-            case OP_NE: return OP_NE;
-            case OP_GE: return Integer.MAX_VALUE;
-            case OP_LT: return OP_NE;
-            case OP_LE: return Integer.MAX_VALUE;
-            case OP_GT: return OP_NE;
-            }
-            break;
-
-        case OP_GE:
-            switch (op2) {
-            case OP_EQ: return OP_GE;
-            case OP_NE: return Integer.MAX_VALUE;
-            case OP_GE: return OP_GE;
-            case OP_LT: return Integer.MAX_VALUE;
-            case OP_LE: return Integer.MAX_VALUE;
-            case OP_GT: return OP_GE;
-            }
-            break;
-
-        case OP_LT:
-            switch (op2) {
-            case OP_EQ: return ~OP_LE;
-            case OP_NE: return OP_NE;
-            case OP_GE: return Integer.MAX_VALUE;
-            case OP_LT: return OP_LT;
-            case OP_LE: return OP_LE;
-            case OP_GT: return ~OP_NE;
-            }
-            break;
-
-        case OP_LE:
-            switch (op2) {
-            case OP_EQ: return OP_LE;
-            case OP_NE: return Integer.MAX_VALUE;
-            case OP_GE: return Integer.MAX_VALUE;
-            case OP_LT: return OP_LE;
-            case OP_LE: return OP_LE;
-            case OP_GT: return Integer.MAX_VALUE;
-            }
-            break;
-
-        case OP_GT:
-            switch (op2) {
-            case OP_EQ: return ~OP_GE;
-            case OP_NE: return OP_NE;
-            case OP_GE: return OP_GE;
-            case OP_LT: return ~OP_NE;
-            case OP_LE: return Integer.MAX_VALUE;
-            case OP_GT: return OP_GT;
-            }
-            break;
+        if (op1 < OP_IN && op2 < OP_IN) {
+            return REDUCE_OR[op1 * 6 + op2];
         }
-
-        return Integer.MIN_VALUE;
+        return MIN_VALUE;
     }
 
     private boolean isReducible(ColumnFilter other) {
         return mColumn.equals(other.mColumn) && equalRhs(other);
     }
+
+    private static final int[] REDUCE_AND = {
+         OP_EQ,     MAX_VALUE,  OP_EQ,     MAX_VALUE,  OP_EQ,     MAX_VALUE, 
+         MAX_VALUE,  OP_NE,    ~OP_GT,     OP_LT,     ~OP_LT,     OP_GT, 
+         OP_EQ,     ~OP_GT,     OP_GE,     MAX_VALUE, ~OP_EQ,     OP_GT, 
+         MAX_VALUE,  OP_LT,     MAX_VALUE, OP_LT,      OP_LT,     MAX_VALUE, 
+         OP_EQ,     ~OP_LT,    ~OP_EQ,     OP_LT,      OP_LE,     MAX_VALUE, 
+         MAX_VALUE,  OP_GT,     OP_GT,     MAX_VALUE, MAX_VALUE,  OP_GT, 
+    };
+
+    private static final int[] REDUCE_OR = {
+         OP_EQ,     MAX_VALUE, OP_GE,     ~OP_LE,     OP_LE,     ~OP_GE, 
+         MAX_VALUE, OP_NE,     MAX_VALUE,  OP_NE,     MAX_VALUE,  OP_NE, 
+         OP_GE,     MAX_VALUE, OP_GE,      MAX_VALUE, MAX_VALUE,  OP_GE, 
+        ~OP_LE,     OP_NE,     MAX_VALUE,  OP_LT,     OP_LE,     ~OP_NE, 
+         OP_LE,     MAX_VALUE, MAX_VALUE,  OP_LE,     OP_LE,      MAX_VALUE, 
+        ~OP_GE,     OP_NE,     OP_GE,     ~OP_NE,     MAX_VALUE,  OP_GT,
+    };
 
     /**
      * Equal right-hand-side.
