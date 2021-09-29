@@ -128,6 +128,28 @@ final class MatchSet {
         return 1;
     }
 
+    /**
+     * Returns 1 if the given set is exacly equal to this one.
+     *
+     * @param exclude don't consider this filter, which is must exist in this set, and the
+     * inverse must exist in the other set
+     * @return 0 if doesn't match or 1 if equal match
+     */
+    int equalMatches(MatchSet other, RowFilter exclude) {
+        if (mSize != other.mSize) {
+            return 0;
+        }
+        Entry[] entries = mEntries;
+        for (int i=0; i<entries.length; i++) {
+            for (Entry e = entries[i]; e != null; e = e.mNext) {
+                if (!e.mFilter.equals(exclude) && other.hasEqualMatch(e.mFilter) == 0) {
+                    return 0;
+                }
+            }
+        }
+        return other.hasMatch(exclude) < 0 ? 1 : 0;
+    }
+
     private static class Entry {
         final RowFilter mFilter;
         final int mMatchHash;

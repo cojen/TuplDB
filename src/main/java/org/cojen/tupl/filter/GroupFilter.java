@@ -27,22 +27,22 @@ import java.util.Arrays;
  * @author Brian S O'Neill
  */
 public abstract class GroupFilter extends RowFilter {
-    private static final long DISTRIBUTE_LIMIT;
+    private static final long REDUCE_LIMIT;
     private static final int SPLIT_LIMIT;
 
     static {
         // Limit the number of steps to perform when reducing via dnf/cnf. The reduce
         // operation time complexity is approximately O(n^2), so compare to sqrt.
         double limit = 10e6;
-        String prop = System.getProperty("org.cojen.tupl.filter.DistributeLimit");
+        String prop = System.getProperty("org.cojen.tupl.filter.ReduceLimit");
         if (prop != null) {
             try {
                 limit = Double.parseDouble(prop);
             } catch (NumberFormatException e) {
             }
         }
-        DISTRIBUTE_LIMIT = (long) Math.sqrt(limit);
-        SPLIT_LIMIT = (int) Math.min(1000L, DISTRIBUTE_LIMIT);
+        REDUCE_LIMIT = (long) Math.sqrt(limit);
+        SPLIT_LIMIT = (int) Math.min(1000L, REDUCE_LIMIT);
     }
 
     final RowFilter[] mSubFilters;
@@ -210,11 +210,18 @@ public abstract class GroupFilter extends RowFilter {
          */
 
         RowFilter[] subFilters = mSubFilters;
+
+        if (subFilters.length > REDUCE_LIMIT) {
+            // Too complex, might take forever to compute teh result.
+            return this;
+        }
+
         int numRemoved = 0;
 
-        boolean anyEliminations;
+        boolean repeat;
         do {
-            anyEliminations = false;
+            // Is set to true when compound reduction is a possibility.
+            repeat = false;
 
             loopi: for (int i=0; i<subFilters.length; i++) {
                 RowFilter sub = subFilters[i];
@@ -229,10 +236,30 @@ public abstract class GroupFilter extends RowFilter {
                         return subReduced;
                     }
                     sub = subReduced;
-                    if (subFilters == mSubFilters) {
-                        subFilters = subFilters.clone();
+                    if (sub.getClass() != getClass()) {
+                        if (subFilters == mSubFilters) {
+                            subFilters = subFilters.clone();
+                        }
+                        subFilters[i] = sub;
+                    } else {
+                        // Must flatten the sub-filter in.
+                        var subSubFilters = ((GroupFilter) sub).mSubFilters;
+                        var newSubFilters = new RowFilter
+                            [subFilters.length - 1 + subSubFilters.length];
+                        System.arraycopy(subFilters, 0, newSubFilters, 0, i);
+                        System.arraycopy(subSubFilters, 0, newSubFilters, i, subSubFilters.length);
+                        System.arraycopy(subFilters, i + 1, newSubFilters,
+                                         i + subSubFilters.length, subFilters.length - i - 1);
+                        subFilters = newSubFilters;
+                        repeat = true;
+                        if (i >= subFilters.length) {
+                            break loopi;
+                        }
+                        sub = subFilters[i];
+                        if (sub == null) {
+                            continue loopi;
+                        }
                     }
-                    subFilters[i] = sub;
                 }
 
                 loopj: for (int j=0; j<subFilters.length; j++) {
@@ -258,7 +285,7 @@ public abstract class GroupFilter extends RowFilter {
                                 if (resultSub == emptyFlippedInstance()) {
                                     return resultSub;
                                 }
-                                anyEliminations = true;
+                                repeat = true;
                                 if (subFilters == mSubFilters) {
                                     subFilters = subFilters.clone();
                                 }
@@ -282,8 +309,7 @@ public abstract class GroupFilter extends RowFilter {
                                     subFilters = subFilters.clone();
                                 }
                                 if (op < 0) {
-                                    // Perform compound reduction.
-                                    anyEliminations = true;
+                                    repeat = true;
                                     op = ~op;
                                 }
                                 if (op != columnSub.operator()) {
@@ -311,7 +337,7 @@ public abstract class GroupFilter extends RowFilter {
                         continue loopi;
                     }
 
-                    // Negative absorption. Remove one sub-filter from the sub-group.
+                    // Negative absorption. Remove one or more sub-filters from the sub-group.
 
                     if (!(sub instanceof GroupFilter)) {
                         // Complementation, actually.
@@ -332,7 +358,7 @@ public abstract class GroupFilter extends RowFilter {
                                 newSubSubFilters[k++] = subSub;
                             }
                         }
-                        sub = groupSub.newInstance(newSubSubFilters);
+                        sub = groupSub.newInstance(newSubSubFilters, 0, k);
                         if (subFilters == mSubFilters) {
                             subFilters = subFilters.clone();
                         }
@@ -340,7 +366,7 @@ public abstract class GroupFilter extends RowFilter {
                     }
                 }
             }
-        } while (anyEliminations);
+        } while (repeat);
 
         if (numRemoved > 0) {
             int newLength = subFilters.length - numRemoved;
@@ -428,7 +454,7 @@ public abstract class GroupFilter extends RowFilter {
                         return filter;
                     }
                 }
-                if (count > DISTRIBUTE_LIMIT) {
+                if (count > REDUCE_LIMIT) {
                     throw complex();
                 }
             }
@@ -511,7 +537,7 @@ public abstract class GroupFilter extends RowFilter {
 
         for (int i=0; i<mSubFilters.length; i++) {
             RowFilter sub = mSubFilters[i];
-            if (other.isSubMatch(sub) < 0) {
+            if (other.isSubMatch(sub) < 0 && matchSet().equalMatches(other.matchSet(), sub) != 0) {
                 // Eliminate the sub-filter.
                 if (newSubFilters == null) {
                     newSubFilters = new RowFilter[mSubFilters.length];

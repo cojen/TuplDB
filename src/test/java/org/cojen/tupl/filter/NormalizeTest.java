@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.filter;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -45,13 +46,15 @@ public class NormalizeTest {
         org.junit.runner.JUnitCore.main(NormalizeTest.class.getName());
     }
 
-    private static Map<String, ColumnInfo> newColMap() {
+    private static Map<String, ColumnInfo> newColMap(int num) {
         var colMap = new HashMap<String, ColumnInfo>();
-        var info = new ColumnInfo();
-        info.name = "a";
-        info.typeCode = ColumnInfo.TYPE_UTF8;
-        info.assignType();
-        colMap.put(info.name, info);
+        for (int i=0; i<num; i++) {
+            var info = new ColumnInfo();
+            info.name = String.valueOf((char) ('a' + i));
+            info.typeCode = ColumnInfo.TYPE_UTF8;
+            info.assignType();
+            colMap.put(info.name, info);
+        }
         return colMap;
     }
 
@@ -60,7 +63,7 @@ public class NormalizeTest {
         // Generates complex filters and verifies that normalization completes or fails with a
         // ComplexFilterException.
 
-        Map<String, ColumnInfo> colMap = newColMap();
+        Map<String, ColumnInfo> colMap = newColMap(1);
 
         ExecutorService exec = Executors.newWorkStealingPool(4);
 
@@ -72,7 +75,7 @@ public class NormalizeTest {
         int started = 0;
 
         for (int i=0; i<2000; i++) {
-            RowFilter filter = randomFilter(rnd, colMap.get("a"), 100, 10, 6);
+            RowFilter filter = randomFilter(rnd, colMap, 100, 10, 6, OP_NOT_IN);
 
             if (i < 1000) {
                 // The interesting cases are generated after 1000.
@@ -115,12 +118,58 @@ public class NormalizeTest {
         assertTrue(passed.get() > failed.get());
     }
 
-    static RowFilter randomFilter(Random rnd, ColumnInfo column, int numArgs,
-                                  int width, int height)
+    @Test
+    public void verify() throws Exception {
+        Map<String, ColumnInfo> colMap = newColMap(4);
+        final var rnd = new Random(159274);
+
+        int numFilters = 1000;
+        int numResults = 100;
+        int dnfDiff = 0;
+        int cnfDiff = 0;
+
+        for (int i=0; i<numFilters; i++) {
+            RowFilter filter = randomFilter(rnd, colMap, 4, 4, 4, OP_IN - 1);
+
+            RowFilter dnf = filter.dnf();
+            if (!dnf.equals(filter)) {
+                dnfDiff++;
+            }
+
+            RowFilter cnf = filter.cnf();
+            if (!cnf.equals(filter)) {
+                cnfDiff++;
+            }
+
+            boolean[] results1 = eval(filter, 4, new Random(472951), numResults);
+
+            boolean[] results2 = eval(dnf, 4, new Random(472951), numResults);
+            assertTrue(Arrays.equals(results1, results2));
+
+            boolean[] results3 = eval(cnf, 4, new Random(472951), numResults);
+            assertTrue(Arrays.equals(results1, results3));
+        }
+
+        assertTrue(dnfDiff > (numFilters / 2));
+        assertTrue(cnfDiff > (numFilters / 2));
+    }
+
+    static RowFilter randomFilter(Random rnd, Map<String, ColumnInfo> colMap, int numArgs,
+                                  int width, int height, int maxOp)
     {
         if (height <= 1) {
-            int op = rnd.nextInt(OP_NOT_IN + 1);
+            int op = rnd.nextInt(maxOp + 1);
             int arg = rnd.nextInt(numArgs);
+
+            ColumnInfo column;
+            {
+                var it = colMap.values().iterator();
+                int num = Math.min(arg, colMap.size() - 1);
+                do {
+                    column = it.next();
+                } while (--num >= 0);
+            }
+
             if (op < OP_IN) {
                 return new ColumnToArgFilter(column, op, arg);
             } else {
@@ -136,7 +185,7 @@ public class NormalizeTest {
         var subFilters = new RowFilter[1 + rnd.nextInt(width)];
 
         for (int i=0; i<subFilters.length; i++) {
-            subFilters[i] = randomFilter(rnd, column, numArgs, width, height);
+            subFilters[i] = randomFilter(rnd, colMap, numArgs, width, height, maxOp);
         }
 
         if (rnd.nextBoolean()) {
@@ -144,5 +193,83 @@ public class NormalizeTest {
         } else {
             return OrFilter.flatten(subFilters, 0, subFilters.length);
         }
+    }
+
+    private boolean[] eval(RowFilter filter, int numArgs, Random rnd, int numResults) {
+        var colValues = new int[numArgs];
+        var argValues = new int[numArgs];
+
+        var results = new boolean[numResults];
+
+        for (int i=0; i<numResults; i++) {
+            for (int j=0; j<colValues.length; j++) {
+                colValues[j] = rnd.nextInt(2) - 1;
+            }
+            for (int j=0; j<argValues.length; j++) {
+                argValues[j] = rnd.nextInt(2) - 1;
+            }
+            results[i] = eval(filter, colValues, argValues);
+        }
+
+        return results;
+    }
+
+    private static boolean eval(RowFilter filter, int[] colValues, int[] argValues) {
+        var visitor = new Visitor() {
+            Boolean result;
+
+            @Override
+            public void visit(OrFilter filter) {
+                RowFilter[] subFilters = filter.subFilters();
+                if (subFilters.length == 0) {
+                    assertEquals(OrFilter.FALSE, filter);
+                    result = false;
+                } else {
+                    subFilters[0].accept(this);
+                    boolean r = result;
+                    for (int i=0; i<subFilters.length; i++) {
+                        subFilters[i].accept(this);
+                        r |= result;
+                    }
+                    result = r;
+                }
+            }
+
+            @Override
+            public void visit(AndFilter filter) {
+                RowFilter[] subFilters = filter.subFilters();
+                if (subFilters.length == 0) {
+                    assertEquals(AndFilter.TRUE, filter);
+                    result = true;
+                } else {
+                    subFilters[0].accept(this);
+                    boolean r = result;
+                    for (int i=0; i<subFilters.length; i++) {
+                        subFilters[i].accept(this);
+                        r &= result;
+                    }
+                    result = r;
+                }
+            }
+
+            @Override
+            public void visit(ColumnToArgFilter filter) {
+                int colValue = colValues[filter.column().name.charAt(0) - 'a'];
+                int argValue = argValues[filter.argument()];
+
+                switch (filter.operator()) {
+                case OP_EQ: result = colValue == argValue; break;
+                case OP_NE: result = colValue != argValue; break;
+                case OP_LT: result = colValue < argValue; break;
+                case OP_GE: result = colValue >= argValue; break;
+                case OP_GT: result = colValue > argValue; break;
+                case OP_LE: result = colValue <= argValue; break;
+                }
+            }
+        };
+
+        filter.accept(visitor);
+
+        return visitor.result;
     }
 }
