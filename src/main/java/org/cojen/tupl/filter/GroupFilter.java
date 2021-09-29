@@ -212,7 +212,7 @@ public abstract class GroupFilter extends RowFilter {
         RowFilter[] subFilters = mSubFilters;
 
         if (subFilters.length > REDUCE_LIMIT) {
-            // Too complex, might take forever to compute teh result.
+            // Too complex, might take forever to compute the result.
             return this;
         }
 
@@ -436,8 +436,8 @@ public abstract class GroupFilter extends RowFilter {
     }
 
     /**
-     * Applies the distribute law to this filter such it becomes flattened into disjunctive or
-     * conjunctive normal form.
+     * Applies the distributive law to this filter such it becomes flattened into disjunctive
+     * or conjunctive normal form.
      *
      * @param dnf true if called by dnf method, false if called by cnf method
      */
