@@ -186,7 +186,7 @@ public class ReductionTest {
             public void visit(OrFilter filter) {
                 RowFilter[] subFilters = filter.subFilters();
                 if (subFilters.length == 0) {
-                    assertEquals(OrFilter.FALSE, filter);
+                    assertEquals(FalseFilter.THE, filter);
                     result = false;
                 } else {
                     subFilters[0].accept(this);
@@ -203,7 +203,7 @@ public class ReductionTest {
             public void visit(AndFilter filter) {
                 RowFilter[] subFilters = filter.subFilters();
                 if (subFilters.length == 0) {
-                    assertEquals(AndFilter.TRUE, filter);
+                    assertEquals(TrueFilter.THE, filter);
                     result = true;
                 } else {
                     subFilters[0].accept(this);

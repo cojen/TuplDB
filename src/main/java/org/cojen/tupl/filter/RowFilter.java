@@ -85,6 +85,16 @@ public abstract class RowFilter {
      */
     public abstract RowFilter not();
 
+    public RowFilter or(RowFilter filter) {
+        RowFilter[] subFilters = {this, filter};
+        return OrFilter.flatten(subFilters, 0, subFilters.length);
+    }
+
+    public RowFilter and(RowFilter filter) {
+        RowFilter[] subFilters = {this, filter};
+        return AndFilter.flatten(subFilters, 0, subFilters.length);
+    }
+
     @Override
     public final int hashCode() {
         return mHash;

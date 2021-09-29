@@ -24,17 +24,7 @@ import java.util.Arrays;
  *
  * @author Brian S O'Neill
  */
-public final class OrFilter extends GroupFilter {
-    /**
-     * An empty 'or' filter always evaluates to false.
-     */
-    static final OrFilter FALSE;
-
-    static {
-        FALSE = new OrFilter();
-        FALSE.mReduced = true;
-    }
-
+public class OrFilter extends GroupFilter {
     /**
      * Combines the given filters together into a flattened OrFilter or just one RowFilter.
      * This operation isn't recursive -- it only applies one round of flattening.
@@ -45,7 +35,7 @@ public final class OrFilter extends GroupFilter {
         }
 
         if (len == 0) {
-            return FALSE;
+            return FalseFilter.THE;
         }
 
         int count = 0;
@@ -66,7 +56,7 @@ public final class OrFilter extends GroupFilter {
         }
 
         if (count == 0) {
-           return FALSE;
+            return FalseFilter.THE;
         }
 
         var newSubFilters = new RowFilter[count];
@@ -166,12 +156,12 @@ public final class OrFilter extends GroupFilter {
 
     @Override
     RowFilter emptyInstance() {
-        return FALSE;
+        return FalseFilter.THE;
     }
 
     @Override
     RowFilter emptyFlippedInstance() {
-        return AndFilter.TRUE;
+        return TrueFilter.THE;
     }
 
     @Override

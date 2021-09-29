@@ -24,17 +24,7 @@ import java.util.Arrays;
  *
  * @author Brian S O'Neill
  */
-public final class AndFilter extends GroupFilter {
-    /**
-     * An empty 'and' filter always evaluates to true.
-     */
-    static final AndFilter TRUE;
-
-    static {
-        TRUE = new AndFilter();
-        TRUE.mReduced = true;
-    }
-
+public class AndFilter extends GroupFilter {
     /**
      * Combines the given filters together into a flattened AndFilter or just one RowFilter.
      * This operation isn't recursive -- it only applies one round of flattening.
@@ -45,7 +35,7 @@ public final class AndFilter extends GroupFilter {
         }
 
         if (len == 0) {
-            return TRUE;
+            return TrueFilter.THE;
         }
 
         int count = 0;
@@ -66,7 +56,7 @@ public final class AndFilter extends GroupFilter {
         }
 
         if (count == 0) {
-           return TRUE;
+            return TrueFilter.THE;
         }
 
         var newSubFilters = new RowFilter[count];
@@ -166,12 +156,12 @@ public final class AndFilter extends GroupFilter {
 
     @Override
     RowFilter emptyInstance() {
-        return TRUE;
+        return TrueFilter.THE;
     }
 
     @Override
     RowFilter emptyFlippedInstance() {
-        return OrFilter.FALSE;
+        return FalseFilter.THE;
     }
 
     @Override
