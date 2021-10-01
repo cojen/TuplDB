@@ -19,6 +19,10 @@ package org.cojen.tupl.filter;
 
 import java.util.Arrays;
 
+import org.cojen.tupl.rows.ColumnInfo;
+
+import static org.cojen.tupl.filter.ColumnFilter.*;
+
 /**
  * 
  *
@@ -137,6 +141,99 @@ public class AndFilter extends GroupFilter {
     @Override
     public OrFilter not() {
         return new OrFilter(subNot());
+    }
+
+    @Override
+    public RowFilter[] rangeExtract(boolean reverse, ColumnInfo... keyColumns) {
+        if (!mReduced) {
+            return reduce().rangeExtract(reverse, keyColumns);
+        }
+
+        RowFilter[] subFilters = mSubFilters;
+
+        RowFilter[] lowSubs = null, highSubs = null;
+
+        keys: for (int k = 0; k < keyColumns.length; k++) {
+            String keyName = keyColumns[k].name;
+
+            for (int match = 0; match <= 2; match++) {
+                for (int s = 0; s < subFilters.length; s++) {
+                    RowFilter sub = subFilters[s];
+
+                    if (!(sub instanceof ColumnToArgFilter)) {
+                        continue;
+                    }
+
+                    var term = (ColumnToArgFilter) sub;
+                    if (!keyName.equals(term.mColumn.name)) {
+                        continue;
+                    }
+
+                    int op = term.mOperator;
+
+                    if (match == 0) {
+                        if (op == OP_EQ) {
+                            if (lowSubs == null) lowSubs = new RowFilter[keyColumns.length];
+                            if (highSubs == null) highSubs = new RowFilter[keyColumns.length];
+                            lowSubs[k] = sub;
+                            highSubs[k] = sub;
+                            subFilters = removeSub(subFilters, s);
+                            continue keys;
+                        }
+                    } else if ((match == 1 && !reverse) || (match != 1 && reverse)) {
+                        if (op == OP_GT || op == OP_GE) {
+                            if (lowSubs == null) lowSubs = new RowFilter[keyColumns.length];
+                            if (lowSubs[k] == null) {
+                                lowSubs[k] = sub;
+                                subFilters = removeSub(subFilters, s);
+                            }
+                        }
+                    } else {
+                        if (op == OP_LT || op == OP_LE) {
+                            if (highSubs == null) highSubs = new RowFilter[keyColumns.length];
+                            if (highSubs[k] == null) {
+                                highSubs[k] = sub;
+                                subFilters = removeSub(subFilters, s);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Either a range match against the key column or none, so can't continue.
+            break keys;
+        }
+
+        RowFilter lowRange = combineRange(lowSubs);
+        RowFilter highRange = combineRange(highSubs);
+
+        RowFilter remaining = this;
+
+        if (subFilters != mSubFilters) {
+            remaining = flatten(subFilters, 0, subFilters.length);
+            if (remaining == TrueFilter.THE) {
+                remaining = null;
+            }
+        }
+
+        return new RowFilter[] {remaining, lowRange, highRange};
+    }
+
+    private RowFilter[] removeSub(RowFilter[] subFilters, int s) {
+        if (subFilters == mSubFilters) {
+            subFilters = mSubFilters.clone();
+        }
+        subFilters[s] = TrueFilter.THE;
+        return subFilters;
+    }
+
+    private static RowFilter combineRange(RowFilter[] subs) {
+        if (subs == null) {
+            return null;
+        }
+        int len;
+        for (len = 0; len < subs.length && subs[len] != null; len++);
+        return flatten(subs, 0, len);
     }
 
     @Override

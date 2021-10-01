@@ -607,6 +607,7 @@ public class FilteringTest {
         assertEquals(0, count);
 
         // Even when everything is filtered out, lock acquisition must still occur.
+        // FIXME: Revise this. I don't think this is a requirement.
 
         Transaction txn;
         {

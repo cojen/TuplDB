@@ -79,6 +79,27 @@ public class ColumnToArgFilter extends ColumnFilter {
         return new ColumnToArgFilter(mColumn, flipOperator(mOperator), mArgNum);
     }
 
+    @Override
+    public RowFilter[] rangeExtract(boolean reverse, ColumnInfo... keyColumns) {
+        RowFilter remaining, low, high;
+
+        match: {
+            if (keyColumns[0].equals(mColumn)) {
+                remaining = null;
+                switch (mOperator) {
+                case OP_EQ:             low = this; high = this; break match;
+                case OP_GT: case OP_GE: low = this; high = null; break match;
+                case OP_LT: case OP_LE: low = null; high = this; break match;
+                }
+            }
+            remaining = this;
+            low = null;
+            high = null;
+        }
+
+        return new RowFilter[] {remaining, low, high};
+    }
+
     public int argument() {
         return mArgNum;
     }

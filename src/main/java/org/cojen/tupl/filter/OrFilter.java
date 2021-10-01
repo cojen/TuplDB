@@ -19,6 +19,8 @@ package org.cojen.tupl.filter;
 
 import java.util.Arrays;
 
+import org.cojen.tupl.rows.ColumnInfo;
+
 /**
  * 
  *
@@ -137,6 +139,48 @@ public class OrFilter extends GroupFilter {
     @Override
     public AndFilter not() {
         return new AndFilter(subNot());
+    }
+
+    @Override
+    public RowFilter[][] multiRangeExtract(boolean reverse, ColumnInfo... keyColumns) {
+        RowFilter[] subFilters = mSubFilters;
+
+        if (subFilters.length <= 1) {
+            return super.multiRangeExtract(reverse, keyColumns);
+        }
+
+        RowFilter[][] ranges = null;
+        RowFilter exclude = null;
+
+        for (int i=0; i<subFilters.length; i++) {
+            RowFilter sub = subFilters[i];
+
+            if (exclude != null) {
+                sub = sub.and(exclude.not()).dnf();
+            }
+
+            // Assuming this OrFilter has been properly constructed, the range won't be null.
+            RowFilter[] range = sub.rangeExtract(reverse, keyColumns);
+
+            if (sub.equals(range[0])) {
+                // Full scan.
+                return super.multiRangeExtract(reverse, keyColumns);
+            }
+
+            if (ranges == null) {
+                ranges = new RowFilter[subFilters.length][];
+            }
+
+            ranges[i] = range;
+
+            if (exclude == null) {
+                exclude = sub;
+            } else {
+                exclude = exclude.or(sub);
+            }
+        }
+
+        return ranges;
     }
 
     @Override

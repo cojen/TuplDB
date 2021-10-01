@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.filter;
 
+import org.cojen.tupl.rows.ColumnInfo;
+
 /**
  * An empty 'or' filter always evaluates to false.
  *
@@ -42,5 +44,10 @@ final class FalseFilter extends OrFilter {
     @Override
     public FalseFilter and(RowFilter filter) {
         return this;
+    }
+
+    @Override
+    public RowFilter[] rangeExtract(boolean reverse, ColumnInfo... keyColumns) {
+        return null;
     }
 }
