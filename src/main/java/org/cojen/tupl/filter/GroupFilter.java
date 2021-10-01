@@ -27,7 +27,7 @@ import java.util.Arrays;
  * @author Brian S O'Neill
  */
 public abstract class GroupFilter extends RowFilter {
-    private static final long REDUCE_LIMIT;
+    private static final long REDUCE_LIMIT, REDUCE_LIMIT_SQRT;
     private static final int SPLIT_LIMIT;
 
     static {
@@ -41,8 +41,9 @@ public abstract class GroupFilter extends RowFilter {
             } catch (NumberFormatException e) {
             }
         }
-        REDUCE_LIMIT = (long) Math.sqrt(limit);
-        SPLIT_LIMIT = (int) Math.min(1000L, REDUCE_LIMIT);
+        REDUCE_LIMIT = (long) limit;
+        REDUCE_LIMIT_SQRT = (long) Math.sqrt(limit);
+        SPLIT_LIMIT = (int) Math.min(1000L, REDUCE_LIMIT_SQRT);
     }
 
     final RowFilter[] mSubFilters;
@@ -173,6 +174,10 @@ public abstract class GroupFilter extends RowFilter {
         return hash;
     }
 
+    // Used to track cumulative work performed by the reduce method. When exceeded, a
+    // ComplexFilterException is thrown.
+    static final ThreadLocal<long[]> cReduceLimit = new ThreadLocal<>();
+
     @Override
     public final RowFilter reduce() {
         if (mReduced) {
@@ -211,9 +216,19 @@ public abstract class GroupFilter extends RowFilter {
 
         RowFilter[] subFilters = mSubFilters;
 
-        if (subFilters.length > REDUCE_LIMIT) {
+        if (subFilters.length > REDUCE_LIMIT_SQRT) {
             // Too complex, might take forever to compute the result.
             return this;
+        }
+
+        long[] limitRef = cReduceLimit.get();
+        if (limitRef != null) {
+            long limit = limitRef[0];
+            limit += subFilters.length * subFilters.length;
+            if (limit > REDUCE_LIMIT) {
+                throw new ComplexFilterException(null, limit);
+            }
+            limitRef[0] = limit;
         }
 
         int numRemoved = 0;
@@ -454,7 +469,7 @@ public abstract class GroupFilter extends RowFilter {
                         return filter;
                     }
                 }
-                if (count > REDUCE_LIMIT) {
+                if (count > REDUCE_LIMIT_SQRT) {
                     throw complex();
                 }
             }
@@ -525,7 +540,7 @@ public abstract class GroupFilter extends RowFilter {
                     (BigInteger.valueOf(((GroupFilter) sub).mSubFilters.length));
             }
         }
-        return new ComplexFilterException(numTerms);
+        return new ComplexFilterException(numTerms, 0);
     }
 
     /**

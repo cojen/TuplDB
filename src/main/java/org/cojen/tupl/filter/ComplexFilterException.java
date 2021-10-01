@@ -25,14 +25,26 @@ import java.math.BigInteger;
  * @author Brian S O'Neill
  */
 public class ComplexFilterException extends IllegalStateException {
-    public final BigInteger numTerms;
+    final BigInteger mNumTerms;
+    final long mLimit;
 
-    ComplexFilterException(BigInteger numTerms) {
-        this.numTerms = numTerms;
+    /**
+     * @param numTerms pass null to report the limit param; else report numTerms squared
+     * @param limit limit to report; ignored if numTerms isn't null
+     */
+    ComplexFilterException(BigInteger numTerms, long limit) {
+        mNumTerms = numTerms;
+        mLimit = limit;
     }
 
     @Override
     public String getMessage() {
-        return numTerms + " (" + numTerms.multiply(numTerms) + ')';
+        var bob = new StringBuilder("limit: ");
+        if (mNumTerms == null) {
+            bob.append(mLimit);
+        } else {
+            bob.append(mNumTerms.multiply(mNumTerms));
+        }
+        return bob.toString();
     }
 }

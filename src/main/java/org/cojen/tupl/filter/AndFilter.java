@@ -200,7 +200,7 @@ public class AndFilter extends GroupFilter {
                 }
             }
 
-            // Either a range match against the key column or none, so can't continue.
+            // Is either a range match against the key column or none, so can't continue.
             break keys;
         }
 

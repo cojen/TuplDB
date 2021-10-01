@@ -149,38 +149,44 @@ public class OrFilter extends GroupFilter {
             return super.multiRangeExtract(reverse, keyColumns);
         }
 
-        RowFilter[][] ranges = null;
-        RowFilter exclude = null;
+        GroupFilter.cReduceLimit.set(new long[1]);
 
-        for (int i=0; i<subFilters.length; i++) {
-            RowFilter sub = subFilters[i];
+        try {
+            RowFilter[][] ranges = null;
+            RowFilter exclude = null;
 
-            if (exclude != null) {
-                sub = sub.and(exclude.not()).dnf();
+            for (int i=0; i<subFilters.length; i++) {
+                RowFilter sub = subFilters[i];
+
+                if (exclude != null) {
+                    sub = sub.and(exclude.not()).dnf();
+                }
+
+                // Assuming this OrFilter has been properly constructed, the range won't be null.
+                RowFilter[] range = sub.rangeExtract(reverse, keyColumns);
+
+                if (sub.equals(range[0])) {
+                    // Full scan.
+                    return super.multiRangeExtract(reverse, keyColumns);
+                }
+
+                if (ranges == null) {
+                    ranges = new RowFilter[subFilters.length][];
+                }
+
+                ranges[i] = range;
+
+                if (exclude == null) {
+                    exclude = sub;
+                } else {
+                    exclude = exclude.or(sub);
+                }
             }
 
-            // Assuming this OrFilter has been properly constructed, the range won't be null.
-            RowFilter[] range = sub.rangeExtract(reverse, keyColumns);
-
-            if (sub.equals(range[0])) {
-                // Full scan.
-                return super.multiRangeExtract(reverse, keyColumns);
-            }
-
-            if (ranges == null) {
-                ranges = new RowFilter[subFilters.length][];
-            }
-
-            ranges[i] = range;
-
-            if (exclude == null) {
-                exclude = sub;
-            } else {
-                exclude = exclude.or(sub);
-            }
+            return ranges;
+        } finally {
+            GroupFilter.cReduceLimit.remove();
         }
-
-        return ranges;
     }
 
     @Override

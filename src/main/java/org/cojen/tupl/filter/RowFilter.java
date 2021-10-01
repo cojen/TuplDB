@@ -48,6 +48,8 @@ public abstract class RowFilter {
 
     /**
      * Returns this filter in disjunctive normal form.
+     *
+     * @throws ComplexFilterException if cannot be quickly transformed
      */
     public abstract RowFilter dnf();
 
@@ -58,6 +60,8 @@ public abstract class RowFilter {
 
     /**
      * Returns this filter in conjunctive normal form.
+     *
+     * @throws ComplexFilterException if cannot be quickly transformed
      */
     public abstract RowFilter cnf();
 
@@ -142,6 +146,7 @@ public abstract class RowFilter {
      * @param reverse pass true if scan is to be performed in reverse order; note that the
      * returned ranges are never swapped
      * @param keyColumns must provide at least one
+     * @throws ComplexFilterException if cannot be quickly reduced; call rangeExtract instead
      */
     public RowFilter[][] multiRangeExtract(boolean reverse, ColumnInfo... keyColumns) {
         RowFilter[] range = rangeExtract(reverse, keyColumns);
