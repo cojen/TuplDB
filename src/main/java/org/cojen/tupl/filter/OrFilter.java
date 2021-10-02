@@ -143,50 +143,76 @@ public class OrFilter extends GroupFilter {
 
     @Override
     public RowFilter[][] multiRangeExtract(boolean reverse, ColumnInfo... keyColumns) {
-        RowFilter[] subFilters = mSubFilters;
-
-        if (subFilters.length <= 1) {
+        if (mSubFilters.length <= 1) {
             return super.multiRangeExtract(reverse, keyColumns);
         }
-
         GroupFilter.cReduceLimit.set(new long[1]);
-
         try {
-            RowFilter[][] ranges = null;
-            RowFilter exclude = null;
-
-            for (int i=0; i<subFilters.length; i++) {
-                RowFilter sub = subFilters[i];
-
-                if (exclude != null) {
-                    sub = sub.and(exclude.not()).dnf();
-                }
-
-                // Assuming this OrFilter has been properly constructed, the range won't be null.
-                RowFilter[] range = sub.rangeExtract(reverse, keyColumns);
-
-                if (sub.equals(range[0])) {
-                    // Full scan.
-                    return super.multiRangeExtract(reverse, keyColumns);
-                }
-
-                if (ranges == null) {
-                    ranges = new RowFilter[subFilters.length][];
-                }
-
-                ranges[i] = range;
-
-                if (exclude == null) {
-                    exclude = sub;
-                } else {
-                    exclude = exclude.or(sub);
-                }
-            }
-
-            return ranges;
+            return doMultiRangeExtract(reverse, keyColumns);
         } finally {
             GroupFilter.cReduceLimit.remove();
         }
+    }
+
+    private RowFilter[][] doMultiRangeExtract(boolean reverse, ColumnInfo... keyColumns) {
+        RowFilter[] subFilters = mSubFilters;
+
+        RowFilter[] rangeFilters = null;
+        RowFilter[][] ranges = null;
+        int numRanges = 0;
+
+        outer: for (int i=0; i<subFilters.length; i++) {
+            RowFilter sub = subFilters[i];
+
+            // Assuming this OrFilter has been properly constructed, the range won't be null.
+            RowFilter[] range = sub.rangeExtract(reverse, keyColumns);
+
+            if (sub.equals(range[0])) {
+                // Full scan.
+                return super.multiRangeExtract(reverse, keyColumns);
+            }
+
+            if (numRanges == 0) {
+                rangeFilters = new RowFilter[subFilters.length];
+                ranges = new RowFilter[subFilters.length][];
+                rangeFilters[0] = sub;
+                ranges[0] = range;
+                numRanges++;
+                continue outer;
+            }
+
+            // Check if the range can merge with another one. Check against the low range, or
+            // the high range if a reverse scan is to be performed.
+
+            for (int j=0; j<numRanges; j++) {
+                int which = reverse ? 2 : 1;
+                RowFilter check = ranges[j][which];
+                if (check.isSubMatch(range[which]) > 0 || range[which].isSubMatch(check) > 0) {
+                    RowFilter mergedFilter = sub.or(rangeFilters[j]).cnf();
+                    RowFilter[] mergedRange = mergedFilter.rangeExtract(reverse, keyColumns);
+                    rangeFilters[j] = mergedFilter;
+                    ranges[j] = mergedRange;
+                    continue outer;
+                }
+            }
+
+            rangeFilters[numRanges] = sub;
+            ranges[numRanges] = range;
+            numRanges++;
+        }
+
+        // Modify the range filters to be disjoint and rebuild the ranges.
+
+        for (int i=1; i<numRanges; i++) {
+            rangeFilters[i] = rangeFilters[i].and(rangeFilters[i - 1].not()).reduce();
+            ranges[i] = rangeFilters[i].rangeExtract(reverse, keyColumns);
+        }
+
+        if (numRanges < ranges.length) {
+            ranges = Arrays.copyOfRange(ranges, 0, numRanges);
+        }
+
+        return ranges;
     }
 
     @Override

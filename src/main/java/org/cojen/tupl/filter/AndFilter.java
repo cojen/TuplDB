@@ -151,7 +151,7 @@ public class AndFilter extends GroupFilter {
 
         RowFilter[] subFilters = mSubFilters;
 
-        RowFilter[] lowSubs = null, highSubs = null;
+        ColumnToArgFilter[] lowTerms = null, highTerms = null;
 
         keys: for (int k = 0; k < keyColumns.length; k++) {
             String keyName = keyColumns[k].name;
@@ -173,26 +173,34 @@ public class AndFilter extends GroupFilter {
 
                     if (match == 0) {
                         if (op == OP_EQ) {
-                            if (lowSubs == null) lowSubs = new RowFilter[keyColumns.length];
-                            if (highSubs == null) highSubs = new RowFilter[keyColumns.length];
-                            lowSubs[k] = sub;
-                            highSubs[k] = sub;
+                            if (lowTerms == null) {
+                                lowTerms = new ColumnToArgFilter[keyColumns.length];
+                            }
+                            if (highTerms == null) {
+                                highTerms = new ColumnToArgFilter[keyColumns.length];
+                            }
+                            lowTerms[k] = term;
+                            highTerms[k] = term;
                             subFilters = removeSub(subFilters, s);
                             continue keys;
                         }
                     } else if ((match == 1 && !reverse) || (match != 1 && reverse)) {
                         if (op == OP_GT || op == OP_GE) {
-                            if (lowSubs == null) lowSubs = new RowFilter[keyColumns.length];
-                            if (lowSubs[k] == null) {
-                                lowSubs[k] = sub;
+                            if (lowTerms == null) {
+                                lowTerms = new ColumnToArgFilter[keyColumns.length];
+                            }
+                            if (lowTerms[k] == null) {
+                                lowTerms[k] = term;
                                 subFilters = removeSub(subFilters, s);
                             }
                         }
                     } else {
                         if (op == OP_LT || op == OP_LE) {
-                            if (highSubs == null) highSubs = new RowFilter[keyColumns.length];
-                            if (highSubs[k] == null) {
-                                highSubs[k] = sub;
+                            if (highTerms == null) {
+                                highTerms = new ColumnToArgFilter[keyColumns.length];
+                            }
+                            if (highTerms[k] == null) {
+                                highTerms[k] = term;
                                 subFilters = removeSub(subFilters, s);
                             }
                         }
@@ -204,8 +212,8 @@ public class AndFilter extends GroupFilter {
             break keys;
         }
 
-        RowFilter lowRange = combineRange(lowSubs);
-        RowFilter highRange = combineRange(highSubs);
+        RowFilter lowRange = combineRange(lowTerms, OP_GE);
+        RowFilter highRange = combineRange(highTerms, OP_LE);
 
         RowFilter remaining = this;
 
@@ -227,13 +235,28 @@ public class AndFilter extends GroupFilter {
         return subFilters;
     }
 
-    private static RowFilter combineRange(RowFilter[] subs) {
-        if (subs == null) {
+    /**
+     * @param lastOp if the last operator is ==, replace it with lastOp if the key is partially
+     * specified
+     */
+    private static RowFilter combineRange(ColumnToArgFilter[] terms, int lastOp) {
+        if (terms == null) {
             return null;
         }
-        int len;
-        for (len = 0; len < subs.length && subs[len] != null; len++);
-        return flatten(subs, 0, len);
+
+        int len = 0;
+        while (true) {
+            if (terms[len] == null) {
+                if (terms[len - 1].operator() == OP_EQ) {
+                    terms[len - 1] = terms[len - 1].withOperator(lastOp);
+                }
+                break;
+            } else if (++len >= terms.length) {
+                break;
+            }
+        }
+
+        return flatten(terms, 0, len);
     }
 
     @Override

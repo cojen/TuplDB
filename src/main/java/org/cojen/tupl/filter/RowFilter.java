@@ -122,6 +122,10 @@ public abstract class RowFilter {
      * multiple key columns are used, they are combined as an 'and' filter. The number of terms
      * never exceeds the number of key columns provided.
      *
+     * <p>The last operator of the low range is one of {==, >=, >}, and the last operator of
+     * the high range is one of {==, <=, <}. All prior operators (if any) are always ==.
+     * The last operator is == only if the key is fully specified.
+     *
      * @param reverse pass true if scan is to be performed in reverse order; note that the
      * returned ranges are never swapped
      * @param keyColumns must provide at least one
