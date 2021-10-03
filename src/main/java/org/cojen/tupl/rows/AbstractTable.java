@@ -53,8 +53,7 @@ public abstract class AbstractTable<R> implements Table<R> {
 
     protected final Index mSource;
 
-    // MethodHandle signature: RowDecoderEncoder filtered(Object... args)
-    private final WeakCache<String, MethodHandle> mFilterFactoryCache;
+    private final WeakCache<String, ScanControllerFactory<R>> mFilterFactoryCache;
 
     private Trigger<R> mTrigger;
     private static final VarHandle cTriggerHandle;
@@ -91,11 +90,11 @@ public abstract class AbstractTable<R> implements Table<R> {
         return newRowScanner(txn, filtered(filter, args));
     }
 
-    private RowScanner<R> newRowScanner(Transaction txn, RowDecoderEncoder<R> decoder)
+    private RowScanner<R> newRowScanner(Transaction txn, ScanController<R> controller)
         throws IOException
     {
-        var scanner = new BasicRowScanner<>(mSource.newCursor(txn), decoder);
-        scanner.init();
+        var scanner = new BasicRowScanner<>(mSource, controller);
+        scanner.init(txn);
         return scanner;
     }
 
@@ -111,7 +110,7 @@ public abstract class AbstractTable<R> implements Table<R> {
         return newRowUpdater(txn, filtered(filter, args));
     }
 
-    protected RowUpdater<R> newRowUpdater(Transaction txn, RowDecoderEncoder<R> encoder)
+    protected RowUpdater<R> newRowUpdater(Transaction txn, ScanController<R> controller)
         throws IOException
     {
         AbstractTable<R> table = mTrigger != null ? this : null;
@@ -119,35 +118,25 @@ public abstract class AbstractTable<R> implements Table<R> {
         BasicRowUpdater<R> updater;
         if (txn == null) {
             txn = mSource.newTransaction(null);
-            Cursor c = mSource.newCursor(txn);
-            try {
-                updater = new AutoCommitRowUpdater<>(mSource, c, encoder, table);
-            } catch (Throwable e) {
-                try {
-                    txn.exit();
-                } catch (Throwable e2) {
-                    Utils.suppress(e, e2);
-                }
-                throw e;
-            }
+            updater = new AutoCommitRowUpdater<>(mSource, controller, table);
         } else {
-            Cursor c = mSource.newCursor(txn);
             switch (txn.lockMode()) {
             default:
-                updater = new BasicRowUpdater<>(mSource, c, encoder, table);
+                updater = new BasicRowUpdater<>(mSource, controller, table);
                 break;
             case REPEATABLE_READ:
-                updater = new UpgradableRowUpdater<>(mSource, c, encoder, table);
+                updater = new UpgradableRowUpdater<>(mSource, controller, table);
                 break;
             case READ_COMMITTED:
             case READ_UNCOMMITTED:
                 txn.enter();
-                updater = new NonRepeatableRowUpdater<>(mSource, c, encoder, table);
+                updater = new NonRepeatableRowUpdater<>(mSource, controller, table);
                 break;
             }
         }
 
-        updater.init();
+        updater.init(txn);
+
         return updater;
     }
 
@@ -180,25 +169,25 @@ public abstract class AbstractTable<R> implements Table<R> {
         return rs == null ? null : rs.secondaryIndexTable(this, columns);
     }
 
-    private RowDecoderEncoder<R> filtered(String filter, Object... args) throws IOException {
-        try {
-            MethodHandle factory = mFilterFactoryCache.get(filter);
-            if (factory == null) {
-                factory = findFilterFactory(filter);
-            }
-            return (RowDecoderEncoder<R>) factory.invokeExact(args);
-        } catch (IOException e) {
-            throw e;
-        } catch (Throwable e) {
-            throw Utils.rethrow(e);
-        }
+    private ScanController<R> filtered(String filter, Object... args) throws IOException {
+        return scanControllerFactory(filter).newScanController(args);
     }
 
-    private MethodHandle findFilterFactory(String filter) {
+    private ScanControllerFactory<R> scanControllerFactory(String filter) {
+        ScanControllerFactory<R> factory = mFilterFactoryCache.get(filter);
+        if (factory == null) {
+            factory = findScanControllerFactory(filter);
+        }
+        return factory;
+    }
+
+    private ScanControllerFactory<R> findScanControllerFactory(String filter) {
         synchronized (mFilterFactoryCache) {
-            MethodHandle factory = mFilterFactoryCache.get(filter);
+            ScanControllerFactory<R> factory = mFilterFactoryCache.get(filter);
             if (factory == null) {
-                RowFilter rf = parse(rowType(), filter);
+                RowFilter rf = parse(rowType(), filter).reduce();
+                // FIXME: Special handling if FalseFilter or TrueFilter.
+                // Use viewLt(EMPTY_BYTES) for the FalseFilter.
                 String canonical = rf.toString();
                 factory = mFilterFactoryCache.get(canonical);
                 if (factory == null) {
@@ -216,14 +205,12 @@ public abstract class AbstractTable<R> implements Table<R> {
     /**
      * Returns a singleton instance.
      */
-    protected abstract RowDecoderEncoder<R> unfiltered();
+    protected abstract FullScanController<R> unfiltered();
 
     /**
      * Returns a new factory instance, which is cached by the caller.
-     *
-     * MethodHandle signature: RowDecoderEncoder filtered(Object... args)
      */
-    protected abstract MethodHandle filteredFactory(String str, RowFilter filter);
+    protected abstract ScanControllerFactory<R> filteredFactory(String str, RowFilter filter);
 
     boolean supportsSecondaries() {
         return true;
@@ -262,6 +249,6 @@ public abstract class AbstractTable<R> implements Table<R> {
     }
 
     static RowFilter parse(Class<?> rowType, String filter) {
-        return new Parser(RowInfo.find(rowType).allColumns, filter).parse().reduce();
+        return new Parser(RowInfo.find(rowType).allColumns, filter).parse();
     }
 }

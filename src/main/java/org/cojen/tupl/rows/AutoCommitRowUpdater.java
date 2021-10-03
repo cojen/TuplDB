@@ -31,13 +31,10 @@ import org.cojen.tupl.View;
  */
 class AutoCommitRowUpdater<R> extends NonRepeatableRowUpdater<R> {
     /**
-     * @param cursor linked transaction must not be null
      * @param table only should be provided if table supports triggers
      */
-    AutoCommitRowUpdater(View view, Cursor cursor, RowDecoderEncoder<R> decoder,
-                         AbstractTable<R> table)
-    {
-        super(view, cursor, decoder, table);
+    AutoCommitRowUpdater(View view, ScanController<R> controller, AbstractTable<R> table) {
+        super(view, controller, table);
     }
 
     @Override

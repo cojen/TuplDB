@@ -110,19 +110,19 @@ public class RowFilterMaker<R> {
         // Generate a sub-package with an increasing number to facilitate unloading.
         long filterNum = (long) cFilterNumHandle.getAndAdd(1L);
         mFilterMaker = mRowGen.beginClassMaker(getClass(), rowType, "f" + filterNum, "Filter")
-            .final_().extend(base).implement(RowDecoderEncoder.class);
+            .final_().extend(base).implement(ScanControllerFactory.class);
 
         mFilterCtorMaker = mFilterMaker.addConstructor(Object[].class).varargs().private_();
         mFilterCtorMaker.invokeSuperConstructor();
 
         mKeyCodecs = ColumnCodec.bind(mRowGen.keyCodecs(), mFilterCtorMaker);
         mValueCodecs = ColumnCodec.bind(mRowGen.valueCodecs(), mFilterCtorMaker);
+
+        // Need a constructor for the factory singleton instance.
+        mFilterMaker.addConstructor().private_();
     }
 
-    /**
-     * Returns a factory method.
-     */
-    public MethodHandle finish() {
+    public ScanControllerFactory<R> finish() {
         // Finish the filter class...
 
         // Define the fields to hold the filter arguments.
@@ -150,28 +150,30 @@ public class RowFilterMaker<R> {
             mm.super_().invoke("markAllClean", mm.param(0));
         }
 
-        // Factory instances are weakly cached by AbstractTable, and so this can cause the
-        // generated classes to get lost. They will eventually be GC'd, but this takes longer.
-        // To prevent a pile up of duplicate classes, maintain a strong reference to the
-        // factory. As long as the filter class exists, the factory exists, and so the cache
-        // entry exists.
-        mFilterMaker.addField(Object.class, "factory").private_().static_();
+        // Define a singleton instance which serves as the factory.
+        {
+            mFilterMaker.addField(mFilterMaker, "factory").private_().static_().final_();
+            MethodMaker mm = mFilterMaker.addClinit();
+            var instance = mm.var(mFilterMaker).invoke(mFilterMaker, ".new", new Object[0]);
+            mm.field("factory").set(instance);
+        }
+
+        // Define the factory method.
+        {
+            MethodMaker mm = mFilterMaker.addMethod
+                (ScanController.class, "newScanController", Object[].class).public_().varargs();
+            mm.return_(mm.new_(mFilterMaker, mm.param(0)));
+        }
 
         MethodHandles.Lookup filterLookup = mFilterMaker.finishLookup();
         Class<?> filterClass = filterLookup.lookupClass();
 
-        MethodHandle factory;
         try {
-            var mt = MethodType.methodType(RowDecoderEncoder.class, Object[].class);
-            factory = filterLookup.findConstructor(filterClass, mt.changeReturnType(void.class));
-            factory = factory.asType(mt);
-
-            filterLookup.findStaticVarHandle(filterClass, "factory", Object.class).set(factory);
+            var vh = filterLookup.findStaticVarHandle(filterClass, "factory", filterClass);
+            return (ScanControllerFactory<R>) vh.get();
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
-
-        return factory;
     }
 
     private Integer columnNumberFor(String colName) {

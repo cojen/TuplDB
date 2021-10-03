@@ -86,7 +86,7 @@ public abstract class AbstractTableView<R> extends AbstractTable<R> {
     }
 
     @Override
-    protected RowUpdater<R> newRowUpdater(Transaction txn, RowDecoderEncoder<R> encoder)
+    protected RowUpdater<R> newRowUpdater(Transaction txn, ScanController<R> controller)
         throws IOException
     {
         throw new UnmodifiableViewException();

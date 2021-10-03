@@ -24,7 +24,9 @@ import java.util.Objects;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.RowScanner;
+import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnpositionedCursorException;
+import org.cojen.tupl.View;
 
 /**
  * 
@@ -32,20 +34,28 @@ import org.cojen.tupl.UnpositionedCursorException;
  * @author Brian S O'Neill
  */
 class BasicRowScanner<R> implements RowScanner<R> {
-    final Cursor mCursor;
-    final RowDecoderEncoder<R> mDecoder;
+    final View mView;
+    final ScanController<R> mController;
+
+    // FIXME: Support moving to the next batch. Must be done in advance, to merge bounds.
+    Cursor mCursor;
+    RowDecoderEncoder<R> mDecoder;
+
     R mRow;
 
-    BasicRowScanner(Cursor cursor, RowDecoderEncoder<R> decoder) {
-        mCursor = cursor;
-        mDecoder = decoder;
+    BasicRowScanner(View view, ScanController<R> controller) {
+        mView = view;
+        mController = controller;
     }
 
     /**
      * Must be called after construction.
      */
-    final void init() throws IOException {
-        Cursor c = mCursor;
+    final void init(Transaction txn) throws IOException {
+        Cursor c = mController.newCursor(mView, txn);
+        mCursor = c;
+        mDecoder = mController.decoder();
+
         LockResult result = toFirst(c);
         while (true) {
             byte[] key = c.key();

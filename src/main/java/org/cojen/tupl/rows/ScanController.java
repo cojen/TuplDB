@@ -20,41 +20,42 @@ package org.cojen.tupl.rows;
 import java.io.IOException;
 
 import org.cojen.tupl.Cursor;
-import org.cojen.tupl.LockMode;
-import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
 
 /**
- * Updater which uses the {@link LockMode#UPGRADABLE_READ} mode.
+ * 
  *
  * @author Brian S O'Neill
+ * @see ScanControllerFactory
  */
-class UpgradableRowUpdater<R> extends BasicRowUpdater<R> {
-    LockMode mOriginalMode;
+public interface ScanController<R> {
+    /**
+     * Returns a new cursor for the current scan batch.
+     */
+    Cursor newCursor(View view, Transaction txn) throws IOException;
 
     /**
-     * @param table only should be provided if table supports triggers
+     * Returns the decoder for the current scan batch.
      */
-    UpgradableRowUpdater(View view, ScanController<R> controller, AbstractTable<R> table) {
-        super(view, controller, table);
-    }
+    RowDecoderEncoder<R> decoder();
 
-    @Override
-    protected LockResult toFirst(Cursor c) throws IOException {
-        Transaction txn = c.link();
-        mOriginalMode = txn.lockMode();
-        txn.lockMode(LockMode.UPGRADABLE_READ);
-        return super.toFirst(c);
-    }
+    /**
+     * Move to the next batch, returning false if none.
+     */
+    boolean next();
 
-    @Override
-    protected void finished() throws IOException {
-        LockMode original = mOriginalMode;
-        if (original != null) {
-            mOriginalMode = null;
-            mCursor.link().lockMode(original);
-        }
-        super.finished();
-    }
+    /**
+     * Returns the low bounding range, or null if unbounded.
+     */
+    byte[] lowBound();
+
+    boolean lowInclusive();
+
+    /**
+     * Returns the high boundint range, or null if unbounded.
+     */
+    byte[] highBound();
+
+    boolean highInclusive();
 }

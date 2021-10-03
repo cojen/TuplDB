@@ -41,20 +41,15 @@ import org.cojen.tupl.core.CommitLock;
  * @author Brian S O'Neill
  */
 class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
-    final View mView;
     final AbstractTable<R> mTriggerTable;
 
     private TreeSet<byte[]> mKeysToSkip;
 
     /**
-     * @param cursor linked transaction must not be null
      * @param table only should be provided if table supports triggers
      */
-    BasicRowUpdater(View view, Cursor cursor, RowDecoderEncoder<R> decoder,
-                    AbstractTable<R> table)
-    {
-        super(cursor, decoder);
-        mView = view;
+    BasicRowUpdater(View view, ScanController<R> controller, AbstractTable<R> table) {
+        super(view, controller);
         mTriggerTable = table;
     }
 

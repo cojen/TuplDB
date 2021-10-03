@@ -1441,13 +1441,13 @@ public class TableMaker {
     }
 
     /**
-     * Defines a method which returns a singleton RowDecoderEncoder instance.
+     * Defines a method which returns a singleton FullScanController instance.
      */
     private void addUnfilteredMethod() {
-        MethodMaker mm = mClassMaker.addMethod(RowDecoderEncoder.class, "unfiltered").protected_();
+        MethodMaker mm = mClassMaker.addMethod(FullScanController.class, "unfiltered").protected_();
         var condy = mm.var(TableMaker.class).condy
             ("condyDefineUnfiltered", mRowType, mRowClass, mSecondaryDescriptor);
-        mm.return_(condy.invoke(RowDecoderEncoder.class, "unfiltered"));
+        mm.return_(condy.invoke(FullScanController.class, "unfiltered"));
     }
 
     /**
@@ -1467,7 +1467,7 @@ public class TableMaker {
 
         ClassMaker cm = RowGen.beginClassMaker
             (TableMaker.class, rowType, rowInfo, null, "Unfiltered")
-            .implement(RowDecoderEncoder.class).public_();
+            .extend(FullScanController.class).public_();
 
         // Subclassed by filter implementations.
         cm.addConstructor().protected_();
@@ -1529,7 +1529,8 @@ public class TableMaker {
 
     private void addFilteredFactoryMethod() {
         MethodMaker mm = mClassMaker.addMethod
-            (MethodHandle.class, "filteredFactory", String.class, RowFilter.class).protected_();
+            (ScanControllerFactory.class, "filteredFactory", String.class, RowFilter.class)
+            .protected_();
 
         Object secondaryDesc = null;
 

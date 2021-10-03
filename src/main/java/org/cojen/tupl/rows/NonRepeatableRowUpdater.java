@@ -33,13 +33,10 @@ class NonRepeatableRowUpdater<R> extends BasicRowUpdater<R> {
     LockResult mLockResult;
 
     /**
-     * @param cursor linked transaction must not be null; is exited when finished
      * @param table only should be provided if table supports triggers
      */
-    NonRepeatableRowUpdater(View view, Cursor cursor, RowDecoderEncoder<R> decoder,
-                            AbstractTable<R> table)
-    {
-        super(view, cursor, decoder, table);
+    NonRepeatableRowUpdater(View view, ScanController<R> controller, AbstractTable<R> table) {
+        super(view, controller, table);
     }
 
     @Override
