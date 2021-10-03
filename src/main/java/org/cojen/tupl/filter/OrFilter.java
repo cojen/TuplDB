@@ -142,19 +142,23 @@ public class OrFilter extends GroupFilter {
     }
 
     @Override
-    public RowFilter[][] multiRangeExtract(boolean reverse, ColumnInfo... keyColumns) {
+    public RowFilter[][] multiRangeExtract(boolean disjoint,
+                                           boolean reverse, ColumnInfo... keyColumns)
+    {
         if (mSubFilters.length <= 1) {
-            return super.multiRangeExtract(reverse, keyColumns);
+            return super.multiRangeExtract(disjoint, reverse, keyColumns);
         }
         GroupFilter.cReduceLimit.set(new long[1]);
         try {
-            return doMultiRangeExtract(reverse, keyColumns);
+            return doMultiRangeExtract(disjoint, reverse, keyColumns);
         } finally {
             GroupFilter.cReduceLimit.remove();
         }
     }
 
-    private RowFilter[][] doMultiRangeExtract(boolean reverse, ColumnInfo... keyColumns) {
+    private RowFilter[][] doMultiRangeExtract(boolean disjoint,
+                                              boolean reverse, ColumnInfo... keyColumns)
+    {
         RowFilter[] subFilters = mSubFilters;
 
         RowFilter[] rangeFilters = null;
@@ -169,7 +173,7 @@ public class OrFilter extends GroupFilter {
 
             if (sub.equals(range[0])) {
                 // Full scan.
-                return super.multiRangeExtract(reverse, keyColumns);
+                return super.multiRangeExtract(disjoint, reverse, keyColumns);
             }
 
             if (numRanges == 0) {
@@ -201,11 +205,12 @@ public class OrFilter extends GroupFilter {
             numRanges++;
         }
 
-        // Modify the range filters to be disjoint and rebuild the ranges.
-
-        for (int i=1; i<numRanges; i++) {
-            rangeFilters[i] = rangeFilters[i].and(rangeFilters[i - 1].not()).reduce();
-            ranges[i] = rangeFilters[i].rangeExtract(reverse, keyColumns);
+        if (disjoint) {
+            // Modify the range filters to be disjoint and rebuild the ranges.
+            for (int i=1; i<numRanges; i++) {
+                rangeFilters[i] = rangeFilters[i].and(rangeFilters[i - 1].not()).reduce();
+                ranges[i] = rangeFilters[i].rangeExtract(reverse, keyColumns);
+            }
         }
 
         if (numRanges < ranges.length) {

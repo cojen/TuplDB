@@ -135,9 +135,9 @@ public abstract class RowFilter {
     }
 
     /**
-     * Given a set of columns corresponding to the primary key of an index, extract disjoint
-     * ranges for performing an efficient index scan against this filter. For best
-     * results, this method should be called on a disjunctive normal form filter.
+     * Given a set of columns corresponding to the primary key of an index, extract ranges for
+     * performing an efficient index scan against this filter. For best results, this method
+     * should be called on a disjunctive normal form filter.
      *
      * <p>For each range, a separate scan must be performed, and they can be stitched together
      * as one. The order of the ranges doesn't match the natural order of the index, and it
@@ -147,12 +147,15 @@ public abstract class RowFilter {
      * all. Otherwise, an array of array is returned, where each range is described by the
      * {@see #rangeExtract} method.
      *
+     * @param disjoint pass true to extract disjoint ranges
      * @param reverse pass true if scan is to be performed in reverse order; note that the
      * returned ranges are never swapped
      * @param keyColumns must provide at least one
      * @throws ComplexFilterException if cannot be quickly reduced; call rangeExtract instead
      */
-    public RowFilter[][] multiRangeExtract(boolean reverse, ColumnInfo... keyColumns) {
+    public RowFilter[][] multiRangeExtract(boolean disjoint,
+                                           boolean reverse, ColumnInfo... keyColumns)
+    {
         RowFilter[] range = rangeExtract(reverse, keyColumns);
         return range == null ? null : new RowFilter[][] {range};
     }
