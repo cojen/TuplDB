@@ -168,7 +168,6 @@ public class OrFilter extends GroupFilter {
         outer: for (int i=0; i<subFilters.length; i++) {
             RowFilter sub = subFilters[i];
 
-            // Assuming this OrFilter has been properly constructed, the range won't be null.
             RowFilter[] range = sub.rangeExtract(reverse, keyColumns);
 
             if (sub.equals(range[0])) {

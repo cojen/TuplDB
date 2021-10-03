@@ -45,9 +45,4 @@ final class FalseFilter extends OrFilter {
     public FalseFilter and(RowFilter filter) {
         return this;
     }
-
-    @Override
-    public RowFilter[] rangeExtract(boolean reverse, ColumnInfo... keyColumns) {
-        return null;
-    }
 }

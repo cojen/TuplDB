@@ -106,9 +106,6 @@ public abstract class RowFilter {
      * range for performing an efficient index scan against this filter. For best results, this
      * method should be called on a conjunctive normal form filter.
      *
-     * <p>If null is returned, then everything has been filtered out, and no scan is needed at
-     * all. Otherwise, an array of three filters is returned:
-     *
      * <ul>
      * <li>The remaining filter that must be applied, or null if none
      * <li>A range low filter, or null if open
@@ -143,8 +140,7 @@ public abstract class RowFilter {
      * as one. The order of the ranges doesn't match the natural order of the index, and it
      * cannot be known until actual argument values are specified.
      *
-     * <p>If null is returned, then everything has been filtered out, and no scan is needed at
-     * all. Otherwise, an array of array is returned, where each range is described by the
+     * <p>An array of arrays is returned, where each range is described by the
      * {@see #rangeExtract} method.
      *
      * @param disjoint pass true to extract disjoint ranges
