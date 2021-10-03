@@ -46,6 +46,11 @@ public class IndexingTest {
         org.junit.runner.JUnitCore.main(IndexingTest.class.getName());
     }
 
+    @After
+    public void teardown() throws Exception {
+        deleteTempDatabases(getClass());
+    }
+
     @Test
     public void basic() throws Exception {
         Database db = Database.open(new DatabaseConfig().lockTimeout(100, TimeUnit.MILLISECONDS));
