@@ -43,19 +43,29 @@ public interface ScanController<R> {
     /**
      * Move to the next batch, returning false if none.
      */
-    boolean next();
+    default boolean next() {
+        return false;
+    }
 
     /**
      * Returns the low bounding range, or null if unbounded.
      */
-    byte[] lowBound();
+    default byte[] lowBound() {
+        return null;
+    }
 
-    boolean lowInclusive();
+    default boolean lowInclusive() {
+        return true;
+    }
 
     /**
-     * Returns the high boundint range, or null if unbounded.
+     * Returns the high bounding range, or null if unbounded.
      */
-    byte[] highBound();
+    default byte[] highBound() {
+        return null;
+    }
 
-    boolean highInclusive();
+    default boolean highInclusive() {
+        return false;
+    }
 }

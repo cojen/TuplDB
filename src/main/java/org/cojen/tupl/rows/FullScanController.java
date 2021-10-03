@@ -38,29 +38,4 @@ public abstract class FullScanController<R> implements ScanController<R>, RowDec
     public RowDecoderEncoder<R> decoder() {
         return this;
     }
-
-    @Override
-    public boolean next() {
-        return false;
-    }
-
-    @Override
-    public byte[] lowBound() {
-        return null;
-    }
-
-    @Override
-    public boolean lowInclusive() {
-        return false;
-    }
-
-    @Override
-    public byte[] highBound() {
-        return null;
-    }
-
-    @Override
-    public boolean highInclusive() {
-        return false;
-    }
 }

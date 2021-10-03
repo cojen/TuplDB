@@ -154,8 +154,7 @@ public class RowFilterMaker<R> {
         {
             mFilterMaker.addField(mFilterMaker, "factory").private_().static_().final_();
             MethodMaker mm = mFilterMaker.addClinit();
-            var instance = mm.var(mFilterMaker).invoke(mFilterMaker, ".new", new Object[0]);
-            mm.field("factory").set(instance);
+            mm.field("factory").set(mm.new_(mFilterMaker));
         }
 
         // Define the factory method.
