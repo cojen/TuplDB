@@ -25,6 +25,7 @@ import java.lang.invoke.VarHandle;
 
 import java.lang.ref.WeakReference;
 
+import java.util.HashMap;
 import java.util.Objects;
 
 import org.cojen.tupl.Cursor;
@@ -37,10 +38,14 @@ import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
 
+import org.cojen.tupl.filter.FalseFilter;
 import org.cojen.tupl.filter.Parser;
 import org.cojen.tupl.filter.RowFilter;
+import org.cojen.tupl.filter.TrueFilter;
 
 import org.cojen.tupl.io.Utils;
+
+import org.cojen.tupl.util.Latch;
 
 /**
  * Base class for all generated table classes.
@@ -54,6 +59,8 @@ public abstract class AbstractTable<R> implements Table<R> {
     protected final Index mSource;
 
     private final WeakCache<String, ScanControllerFactory<R>> mFilterFactoryCache;
+
+    private HashMap<String, Latch> mFilterLatchMap;
 
     private Trigger<R> mTrigger;
     private static final VarHandle cTriggerHandle;
@@ -179,34 +186,78 @@ public abstract class AbstractTable<R> implements Table<R> {
         return factory;
     }
 
-    private ScanControllerFactory<R> findScanControllerFactory(String filter) {
-        synchronized (mFilterFactoryCache) {
-            ScanControllerFactory<R> factory = mFilterFactoryCache.get(filter);
-            if (factory == null) {
-                RowFilter rf = parse(rowType(), filter).reduce();
-                // FIXME: Special handling if FalseFilter or TrueFilter.
-                // Use viewLt(EMPTY_BYTES) for the FalseFilter.
-                String canonical = rf.toString();
-                factory = mFilterFactoryCache.get(canonical);
-                if (factory == null) {
-                    factory = newFilteredFactory(canonical, rf);
-                    if (!filter.equals(canonical)) {
-                        mFilterFactoryCache.put(canonical, factory);
-                    }
+    private ScanControllerFactory<R> findScanControllerFactory(final String filter) {
+        Latch latch;
+        while (true) {
+            check: synchronized (mFilterFactoryCache) {
+                ScanControllerFactory<R> factory = mFilterFactoryCache.get(filter);
+                if (factory != null) {
+                    return factory;
                 }
+                if (mFilterLatchMap == null) {
+                    mFilterLatchMap = new HashMap<>();
+                } else if ((latch = mFilterLatchMap.get(filter)) != null) {
+                    // Wait for the latch outside the synchronized block.
+                    break check;
+                }
+                latch = new Latch(Latch.EXCLUSIVE);
+                mFilterLatchMap.put(filter, latch);
+                // Break out of the loop and do the work.
+                break;
+            }
+            // Wait for another thread to do the work and try again.
+            latch.acquireShared();
+        }
+
+        ScanControllerFactory<R> factory;
+        Throwable ex = null;
+
+        try {
+            RowFilter rf = parse(rowType(), filter).reduce();
+            if (rf instanceof TrueFilter) {
+                SingleScanController<R> unfiltered = unfiltered();
+                factory = (Object... args) -> unfiltered;
+            } else if (rf instanceof FalseFilter) {
+                factory = EmptyScanController.factory();
+            } else {
+                String canonical = rf.toString();
+                if (!canonical.equals(filter)) {
+                    factory = findScanControllerFactory(canonical);
+                } else {
+                    factory = newFilteredFactory(rf, canonical);
+                }
+            }
+        } catch (Throwable e) {
+            factory = null;
+            ex = e;
+        }
+
+        synchronized (mFilterFactoryCache) {
+            if (factory != null) {
                 mFilterFactoryCache.put(filter, factory);
             }
-            return factory;
+            mFilterLatchMap.remove(filter, latch);
+            if (mFilterLatchMap.isEmpty()) {
+                mFilterLatchMap = null;
+            }
         }
+
+        latch.releaseExclusive();
+
+        if (ex != null) {
+            throw Utils.rethrow(ex);
+        }
+
+        return factory;
     }
 
     @SuppressWarnings("unchecked")
-    private ScanControllerFactory<R> newFilteredFactory(String str, RowFilter filter) {
+    private ScanControllerFactory<R> newFilteredFactory(RowFilter filter, String filterStr) {
         Class unfilteredClass = unfiltered().getClass();
 
         return new FilteredScanMaker<R>
             (rowStoreRef(), getClass(), unfilteredClass, rowType(),
-             secondaryDescriptor(), mSource.id(), str, filter).finish();
+             secondaryDescriptor(), mSource.id(), filterStr, filter).finish();
     }
 
     protected abstract WeakReference<RowStore> rowStoreRef();

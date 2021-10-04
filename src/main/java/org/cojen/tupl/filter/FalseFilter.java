@@ -24,7 +24,7 @@ import org.cojen.tupl.rows.ColumnInfo;
  *
  * @author Brian S O'Neill
  */
-final class FalseFilter extends OrFilter {
+public final class FalseFilter extends OrFilter {
     static final FalseFilter THE = new FalseFilter();
 
     private FalseFilter() {

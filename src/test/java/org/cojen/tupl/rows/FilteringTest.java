@@ -606,8 +606,7 @@ public class FilteringTest {
         }
         assertEquals(0, count);
 
-        // Even when everything is filtered out, lock acquisition must still occur.
-        // FIXME: Revise this. I don't think this is a requirement.
+        // When everything is filtered out, no lock acquisition should occur.
 
         Transaction txn;
         {
@@ -617,11 +616,7 @@ public class FilteringTest {
             table.delete(txn, row);
         }
 
-        try {
-            table.newRowScanner(null, "name >= ?0 && name < ?0");
-            fail();
-        } catch (LockTimeoutException e) {
-        }
+        table.newRowScanner(null, "name >= ?0 && name < ?0");
 
         txn.reset();
     }

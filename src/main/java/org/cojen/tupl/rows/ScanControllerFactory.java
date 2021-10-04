@@ -26,6 +26,7 @@ import org.cojen.tupl.View;
  *
  * @author Brian S O'Neill
  */
+@FunctionalInterface
 public interface ScanControllerFactory<R> {
     ScanController<R> newScanController(Object... args) throws IOException;
 }
