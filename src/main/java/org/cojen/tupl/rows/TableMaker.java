@@ -1441,13 +1441,14 @@ public class TableMaker {
     }
 
     /**
-     * Defines a method which returns a singleton FullScanController instance.
+     * Defines a method which returns a singleton SingleScanController instance.
      */
     private void addUnfilteredMethod() {
-        MethodMaker mm = mClassMaker.addMethod(FullScanController.class, "unfiltered").protected_();
+        MethodMaker mm = mClassMaker.addMethod
+            (SingleScanController.class, "unfiltered").protected_();
         var condy = mm.var(TableMaker.class).condy
             ("condyDefineUnfiltered", mRowType, mRowClass, mSecondaryDescriptor);
-        mm.return_(condy.invoke(FullScanController.class, "unfiltered"));
+        mm.return_(condy.invoke(SingleScanController.class, "unfiltered"));
     }
 
     /**
@@ -1467,7 +1468,7 @@ public class TableMaker {
 
         ClassMaker cm = RowGen.beginClassMaker
             (TableMaker.class, rowType, rowInfo, null, "Unfiltered")
-            .extend(FullScanController.class).public_();
+            .extend(SingleScanController.class).public_();
 
         // Subclassed by filter implementations.
         cm.addConstructor().protected_();

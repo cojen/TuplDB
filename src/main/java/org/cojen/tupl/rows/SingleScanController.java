@@ -24,11 +24,11 @@ import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
 
 /**
- * Only supports one scan batch and has no bounds.
+ * Only supports one scan batch.
  *
  * @author Brian S O'Neill
  */
-public abstract class FullScanController<R> implements ScanController<R>, RowDecoderEncoder<R> {
+public abstract class SingleScanController<R> implements ScanController<R>, RowDecoderEncoder<R> {
     @Override
     public Cursor newCursor(View view, Transaction txn) throws IOException {
         return view.newCursor(txn);

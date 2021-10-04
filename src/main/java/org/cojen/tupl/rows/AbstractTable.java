@@ -205,7 +205,7 @@ public abstract class AbstractTable<R> implements Table<R> {
     /**
      * Returns a singleton instance.
      */
-    protected abstract FullScanController<R> unfiltered();
+    protected abstract SingleScanController<R> unfiltered();
 
     /**
      * Returns a new factory instance, which is cached by the caller.
