@@ -1,7 +1,7 @@
 Changelog
 =========
 
-v1.5.3.3
+v1.5.3.3 (2021-10-03)
 --------
 * Ensure that index passed to verification observer is unmodifiable when called from an
   unmodifiable index.
