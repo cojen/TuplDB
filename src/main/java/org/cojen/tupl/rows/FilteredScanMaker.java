@@ -48,11 +48,11 @@ import org.cojen.tupl.filter.Visitor;
 import org.cojen.tupl.io.Utils;
 
 /**
- * Makes RowDecoderEncoder classes which are instantiated by a factory.
+ * Makes ScanControllerFactory classes which perform basic filtering.
  *
  * @author Brian S O'Neill
  */
-public class RowFilterMaker<R> {
+public class FilteredScanMaker<R> {
     private static long cFilterNum;
     private static final VarHandle cFilterNumHandle;
 
@@ -60,7 +60,7 @@ public class RowFilterMaker<R> {
         try {
             cFilterNumHandle =
                 MethodHandles.lookup().findStaticVarHandle
-                (RowFilterMaker.class, "cFilterNum", long.class);
+                (FilteredScanMaker.class, "cFilterNum", long.class);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
@@ -85,10 +85,10 @@ public class RowFilterMaker<R> {
      * @param unfiltered defines the encode methods; the decode method will be overridden
      * @param secondaryDesc pass null for primary table
      */
-    public RowFilterMaker(WeakReference<RowStore> storeRef, Class<?> tableClass,
-                          Class<? extends SingleScanController<R>> unfiltered,
-                          Class<R> rowType, byte[] secondaryDesc,
-                          long indexId, String filterStr, RowFilter filter)
+    public FilteredScanMaker(WeakReference<RowStore> storeRef, Class<?> tableClass,
+                             Class<? extends SingleScanController<R>> unfiltered,
+                             Class<R> rowType, byte[] secondaryDesc,
+                             long indexId, String filterStr, RowFilter filter)
     {
         mStoreRef = storeRef;
         mTableClass = tableClass;
@@ -192,7 +192,7 @@ public class RowFilterMaker<R> {
         if (mIsPrimaryTable) {
             // The decode method is implemented using indy, to support multiple schema versions.
 
-            var indy = mm.var(RowFilterMaker.class).indy
+            var indy = mm.var(FilteredScanMaker.class).indy
                 ("indyDecodeRow", mStoreRef, mTableClass, mRowType, mIndexId, mFilterStr, mFilter);
 
             var valueVar = mm.param(1);

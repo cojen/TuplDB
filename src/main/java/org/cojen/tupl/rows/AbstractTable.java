@@ -204,7 +204,7 @@ public abstract class AbstractTable<R> implements Table<R> {
     private ScanControllerFactory<R> newFilteredFactory(String str, RowFilter filter) {
         Class unfilteredClass = unfiltered().getClass();
 
-        return new RowFilterMaker<R>
+        return new FilteredScanMaker<R>
             (rowStoreRef(), getClass(), unfilteredClass, rowType(),
              secondaryDescriptor(), mSource.id(), str, filter).finish();
     }
