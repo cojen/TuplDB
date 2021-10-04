@@ -82,11 +82,11 @@ public class RowFilterMaker<R> {
 
     /**
      * @param storeRef is passed along to the generated code
-     * @param base defines the encode methods; the decode method will be overridden
+     * @param unfiltered defines the encode methods; the decode method will be overridden
      * @param secondaryDesc pass null for primary table
      */
     public RowFilterMaker(WeakReference<RowStore> storeRef, Class<?> tableClass,
-                          Class<? extends RowDecoderEncoder<R>> base,
+                          Class<? extends SingleScanController<R>> unfiltered,
                           Class<R> rowType, byte[] secondaryDesc,
                           long indexId, String filterStr, RowFilter filter)
     {
@@ -110,7 +110,7 @@ public class RowFilterMaker<R> {
         // Generate a sub-package with an increasing number to facilitate unloading.
         long filterNum = (long) cFilterNumHandle.getAndAdd(1L);
         mFilterMaker = mRowGen.beginClassMaker(getClass(), rowType, "f" + filterNum, "Filter")
-            .final_().extend(base).implement(ScanControllerFactory.class);
+            .final_().extend(unfiltered).implement(ScanControllerFactory.class);
 
         mFilterCtorMaker = mFilterMaker.addConstructor(Object[].class).varargs().private_();
         mFilterCtorMaker.invokeSuperConstructor();

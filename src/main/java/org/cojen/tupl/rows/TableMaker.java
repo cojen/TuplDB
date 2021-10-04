@@ -112,11 +112,6 @@ public class TableMaker {
      */
     MethodHandle finish() {
         {
-            mClassMaker.addField(WeakReference.class, "storeRef").private_().static_().final_();
-            mClassMaker.addClinit().field("storeRef").setExact(mStore.ref());
-        }
-
-        {
             MethodMaker mm = mClassMaker.addConstructor(TableManager.class, Index.class);
             mm.invokeSuperConstructor(mm.param(0), mm.param(1));
         }
@@ -203,14 +198,15 @@ public class TableMaker {
             addUpdateMethod("merge", true);
 
             // TODO: define update, merge, and remove methods that accept a match row
-
-            addTableViewMethod("alternateKeyTable");
-            addTableViewMethod("secondaryIndexTable");
         }
+
+        addRowStoreRefMethod();
 
         addUnfilteredMethod();
 
-        addFilteredFactoryMethod();
+        if (!isPrimaryTable()) {
+            addSecondaryDescriptorMethod();
+        }
 
         try {
             var lookup = mClassMaker.finishLookup();
@@ -1433,11 +1429,14 @@ public class TableMaker {
         return rowVar.field(mRowGen.stateField(columnNum));
     }
 
-    private void addTableViewMethod(String variant) {
-        MethodMaker mm = mClassMaker.addMethod(Table.class, variant, String[].class);
-        mm.varargs().public_();
-        // Call inherited method.
-        mm.return_(mm.invoke(variant, mm.field("storeRef"), mm.param(0)));
+    private void addRowStoreRefMethod() {
+        MethodMaker mm = mClassMaker.addMethod(WeakReference.class, "rowStoreRef").protected_();
+        mm.return_(mm.var(WeakReference.class).setExact(mStore.ref()));
+    }
+
+    private void addSecondaryDescriptorMethod() {
+        MethodMaker mm = mClassMaker.addMethod(byte[].class, "secondaryDescriptor").protected_();
+        mm.return_(mm.var(byte[].class).setExact(mSecondaryDescriptor));
     }
 
     /**
@@ -1526,23 +1525,5 @@ public class TableMaker {
         var clazz = cm.finish();
 
         return lookup.findConstructor(clazz, MethodType.methodType(void.class)).invoke();
-    }
-
-    private void addFilteredFactoryMethod() {
-        MethodMaker mm = mClassMaker.addMethod
-            (ScanControllerFactory.class, "filteredFactory", String.class, RowFilter.class)
-            .protected_();
-
-        Object secondaryDesc = null;
-
-        if (mSecondaryDescriptor != null) {
-            secondaryDesc = mm.var(byte[].class).setExact(mSecondaryDescriptor);
-        }
-
-        var maker = mm.new_(RowFilterMaker.class, mm.field("storeRef"),
-                            mm.class_(), mm.invoke("unfiltered").invoke("getClass"),
-                            mRowType, secondaryDesc, mIndexId, mm.param(0), mm.param(1));
-
-        mm.return_(maker.invoke("finish"));
     }
 }

@@ -54,6 +54,9 @@ public interface ScanController<R> {
         return null;
     }
 
+    /**
+     * Returns true by default.
+     */
     default boolean lowInclusive() {
         return true;
     }
@@ -65,6 +68,9 @@ public interface ScanController<R> {
         return null;
     }
 
+    /**
+     * Returns false by default.
+     */
     default boolean highInclusive() {
         return false;
     }

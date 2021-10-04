@@ -155,17 +155,15 @@ public abstract class AbstractTable<R> implements Table<R> {
         return mSource.isEmpty();
     }
 
-    protected Table<R> alternateKeyTable(WeakReference<RowStore> storeRef, String... columns)
-        throws IOException
-    {
-        var rs = storeRef.get();
+    @Override
+    public Table<R> alternateKeyTable(String... columns) throws IOException {
+        var rs = rowStoreRef().get();
         return rs == null ? null : rs.alternateKeyTable(this, columns);
     }
 
-    protected Table<R> secondaryIndexTable(WeakReference<RowStore> storeRef, String... columns)
-        throws IOException
-    {
-        var rs = storeRef.get();
+    @Override
+    public Table<R> secondaryIndexTable(String... columns) throws IOException {
+        var rs = rowStoreRef().get();
         return rs == null ? null : rs.secondaryIndexTable(this, columns);
     }
 
@@ -191,7 +189,7 @@ public abstract class AbstractTable<R> implements Table<R> {
                 String canonical = rf.toString();
                 factory = mFilterFactoryCache.get(canonical);
                 if (factory == null) {
-                    factory = filteredFactory(canonical, rf);
+                    factory = newFilteredFactory(canonical, rf);
                     if (!filter.equals(canonical)) {
                         mFilterFactoryCache.put(canonical, factory);
                     }
@@ -202,15 +200,28 @@ public abstract class AbstractTable<R> implements Table<R> {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    private ScanControllerFactory<R> newFilteredFactory(String str, RowFilter filter) {
+        Class unfilteredClass = unfiltered().getClass();
+
+        return new RowFilterMaker<R>
+            (rowStoreRef(), getClass(), unfilteredClass, rowType(),
+             secondaryDescriptor(), mSource.id(), str, filter).finish();
+    }
+
+    protected abstract WeakReference<RowStore> rowStoreRef();
+
     /**
      * Returns a singleton instance.
      */
     protected abstract SingleScanController<R> unfiltered();
 
     /**
-     * Returns a new factory instance, which is cached by the caller.
+     * Override if this table implements a secondary index.
      */
-    protected abstract ScanControllerFactory<R> filteredFactory(String str, RowFilter filter);
+    protected byte[] secondaryDescriptor() {
+        return null;
+    }
 
     boolean supportsSecondaries() {
         return true;
