@@ -37,7 +37,6 @@ class BasicRowScanner<R> implements RowScanner<R> {
     final View mView;
     final ScanController<R> mController;
 
-    // FIXME: Support moving to the next batch. Must be done in advance, to merge bounds.
     Cursor mCursor;
     RowDecoderEncoder<R> mDecoder;
 
@@ -52,31 +51,38 @@ class BasicRowScanner<R> implements RowScanner<R> {
      * Must be called after construction.
      */
     final void init(Transaction txn) throws IOException {
-        Cursor c = mController.newCursor(mView, txn);
-        mCursor = c;
-        mDecoder = mController.decoder();
+        outer: while (true) {
+            mDecoder = mController.decoder();
 
-        LockResult result = toFirst(c);
-        while (true) {
-            byte[] key = c.key();
-            if (key == null) {
-                break;
-            }
-            try {
-                R decoded = mDecoder.decodeRow(key, c, null);
-                if (decoded != null) {
-                    mRow = decoded;
-                    return;
+            Cursor c = mController.newCursor(mView, txn);
+            mCursor = c;
+
+            LockResult result = toFirst(c);
+            while (true) {
+                byte[] key = c.key();
+                if (key == null) {
+                    if (!mController.next()) {
+                        break outer;
+                    }
+                    continue outer;
                 }
-            } catch (Throwable e) {
-                throw RowUtils.fail(this, e);
+                try {
+                    R decoded = mDecoder.decodeRow(key, c, null);
+                    if (decoded != null) {
+                        mRow = decoded;
+                        return;
+                    }
+                } catch (Throwable e) {
+                    throw RowUtils.fail(this, e);
+                }
+                if (result == LockResult.ACQUIRED) {
+                    c.link().unlock();
+                    unlocked();
+                }
+                result = toNext(c);
             }
-            if (result == LockResult.ACQUIRED) {
-                c.link().unlock();
-                unlocked();
-            }
-            result = toNext(c);
         }
+
         finished();
     }
 
@@ -99,11 +105,17 @@ class BasicRowScanner<R> implements RowScanner<R> {
     protected final R doStep(R row) throws IOException {
         Cursor c = mCursor;
         try {
-            while (true) {
+            outer: while (true) {
                 LockResult result = toNext(c);
-                byte[] key = c.key();
-                if (key == null) {
-                    break;
+                byte[] key;
+                while ((key = c.key()) == null) {
+                    if (!mController.next()) {
+                        break outer;
+                    }
+                    mDecoder = mController.decoder();
+                    Transaction txn = c.link();
+                    mCursor = c = mController.newCursor(mView, txn);
+                    toFirst(c);
                 }
                 R decoded = decodeRow(key, c, row);
                 if (decoded != null) {
@@ -119,6 +131,7 @@ class BasicRowScanner<R> implements RowScanner<R> {
         } catch (Throwable e) {
             throw RowUtils.fail(this, e);
         }
+
         finished();
         return null;
     }
