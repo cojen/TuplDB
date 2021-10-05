@@ -87,9 +87,23 @@ public class ColumnToArgFilter extends ColumnFilter {
             if (keyColumns[0].equals(mColumn)) {
                 remaining = null;
                 switch (mOperator) {
-                case OP_EQ:             low = this; high = this; break match;
-                case OP_GT: case OP_GE: low = this; high = null; break match;
-                case OP_LT: case OP_LE: low = null; high = this; break match;
+                case OP_EQ:
+                    if (keyColumns.length == 1) {
+                        low = this;
+                        high = this;
+                    } else {
+                        low = this.withOperator(OP_GE);
+                        high = this.withOperator(OP_LE);
+                    }
+                    break match;
+                case OP_GT: case OP_GE:
+                    low = this;
+                    high = null;
+                    break match;
+                case OP_LT: case OP_LE:
+                    low = null;
+                    high = this;
+                    break match;
                 }
             }
             remaining = this;
