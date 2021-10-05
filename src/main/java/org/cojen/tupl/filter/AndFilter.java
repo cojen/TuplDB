@@ -236,24 +236,18 @@ public class AndFilter extends GroupFilter {
     }
 
     /**
-     * @param lastOp if the last operator is ==, replace it with lastOp if the key is partially
-     * specified
+     * @param lastOp if the last operator is ==, replace it with lastOp
      */
     private static RowFilter combineRange(ColumnToArgFilter[] terms, int lastOp) {
         if (terms == null) {
             return null;
         }
 
-        int len = 0;
-        while (true) {
-            if (terms[len] == null) {
-                if (terms[len - 1].operator() == OP_EQ) {
-                    terms[len - 1] = terms[len - 1].withOperator(lastOp);
-                }
-                break;
-            } else if (++len >= terms.length) {
-                break;
-            }
+        int len;
+        for (len = 0; len < terms.length && terms[len] != null; len++);
+
+        if (terms[len - 1].operator() == OP_EQ) {
+            terms[len - 1] = terms[len - 1].withOperator(lastOp);
         }
 
         return flatten(terms, 0, len);

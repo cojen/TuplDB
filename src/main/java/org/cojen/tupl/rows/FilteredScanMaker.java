@@ -289,7 +289,7 @@ public class FilteredScanMaker<R> {
         boolean increment = false;
         if (low) {
             switch (lastOp) {
-            case ColumnToArgFilter.OP_EQ: case ColumnToArgFilter.OP_GE:
+            case ColumnToArgFilter.OP_GE:
                 inclusive = true;
                 break;
             case ColumnToArgFilter.OP_GT:
@@ -304,9 +304,6 @@ public class FilteredScanMaker<R> {
             }
         } else {
             switch (lastOp) {
-            case ColumnToArgFilter.OP_EQ:
-                inclusive = true;
-                break;
             case ColumnToArgFilter.OP_LT:
                 inclusive = false;
                 break;
