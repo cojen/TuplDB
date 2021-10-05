@@ -162,12 +162,14 @@ public class FilteredScanMaker<R> {
             MethodMaker newCursorMaker = mFilterMaker.addMethod
                 (Cursor.class, "newCursor", View.class, Transaction.class).public_();
 
+            var argVarMap = new HashMap<ColumnArg, Variable>();
+
             if (mLowBound != null) {
-                encodeBound(mLowBound, true, newCursorMaker);
+                encodeBound(argVarMap, mLowBound, true, newCursorMaker);
             }
 
             if (mHighBound != null) {
-                encodeBound(mHighBound, false, newCursorMaker);
+                encodeBound(argVarMap, mHighBound, false, newCursorMaker);
             }
 
             // The view var should have been modified by the encodeBound method.
@@ -221,32 +223,67 @@ public class FilteredScanMaker<R> {
     }
 
     /**
+     * Simple hashtable key.
+     */
+    private static class ColumnArg {
+        ColumnInfo column;
+        int argument;
+
+        @Override
+        public int hashCode() {
+            return column.hashCode() * 31 + argument;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            var other = (ColumnArg) obj;
+            return argument == other.argument && column.equals(other.column);
+        }
+    }
+
+    /**
      * Adds code to the constructor, defines fields, and overrides ScanController methods.
      */
-    private void encodeBound(RowFilter bound, boolean low, MethodMaker newCursorMaker) {
-        var argVarMap = new HashMap<String, Variable>(8);
+    private void encodeBound(Map<ColumnArg, Variable> argVarMap,
+                             RowFilter bound, boolean low, MethodMaker newCursorMaker)
+    {
+        ColumnCodec[] codecs = mRowGen.keyCodecs();
+        var argVars = new Variable[codecs.length];
 
         var visitor = new Visitor() {
             int lastOp = -1;
+            int pos = 0;
 
             @Override
             public void visit(ColumnToArgFilter filter) {
                 lastOp = filter.operator();
+
                 ColumnInfo column = filter.column();
-                String name = column.name;
-                if (!argVarMap.containsKey(name)) {
-                    Variable argVar = mFilterCtorMaker.param(0).aget(filter.argument());
+                int argument = filter.argument();
+
+                var key = new ColumnArg();
+                key.column = column;
+                key.argument = argument;
+
+                Variable argVar = argVarMap.get(key);
+
+                if (argVar == null) {
+                    argVar = mFilterCtorMaker.param(0).aget(filter.argument());
                     argVar = ConvertCallSite.make(mFilterCtorMaker, column.type, argVar);
-                    argVarMap.put(name, argVar);
+                    argVarMap.put(key, argVar);
                 }
+
+                argVars[pos++] = argVar;
             }
         };
 
         bound.accept(visitor);
-        int lastOp = visitor.lastOp;
 
-        ColumnCodec[] codecs = mRowGen.keyCodecs();
-        int numArgs = argVarMap.size();
+        int lastOp = visitor.lastOp;
+        int numArgs = visitor.pos;
 
         boolean inclusive;
         boolean increment = false;
@@ -302,9 +339,8 @@ public class FilteredScanMaker<R> {
         // Generate code which determines the additional runtime length.
 
         Variable totalVar = null;
-        for (ColumnCodec codec : codecs) {
-            var argVar = argVarMap.get(codec.mInfo.name);
-            totalVar = codec.encodeSize(argVar, totalVar);
+        for (int i=0; i<codecs.length; i++) {
+            totalVar = codecs[i].encodeSize(argVars[i], totalVar);
         }
 
         // Generate code which allocates the destination byte array.
@@ -323,9 +359,7 @@ public class FilteredScanMaker<R> {
 
         var offsetVar = mFilterCtorMaker.var(int.class).set(0);
         for (int i=0; i<codecs.length; i++) {
-            ColumnCodec codec = codecs[i];
-            var argVar = argVarMap.get(codec.mInfo.name);
-            codec.encode(argVar, dstVar, offsetVar);
+            codecs[i].encode(argVars[i], dstVar, offsetVar);
         }
 
         String fieldName = low ? "low" : "high";
