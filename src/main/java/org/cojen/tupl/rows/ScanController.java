@@ -30,6 +30,8 @@ import org.cojen.tupl.View;
  * @see ScanControllerFactory
  */
 public interface ScanController<R> {
+    static final byte[] EMPTY = new byte[0];
+
     /**
      * Returns a new cursor for the current scan batch.
      */
@@ -48,8 +50,10 @@ public interface ScanController<R> {
     }
 
     /**
-     * Returns the low bounding range, or null if unbounded.
+     * Returns the low bounding range, or null if unbounded, or EMPTY if low bound is so high
+     * that the scan results are empty.
      */
+    // FIXME: Be sure that MultiScanController checks for EMPTY result.
     default byte[] lowBound() {
         return null;
     }

@@ -26,7 +26,9 @@ import java.lang.invoke.VarHandle;
 import java.lang.ref.WeakReference;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.TreeMap;
 
 import java.util.function.IntFunction;
@@ -36,7 +38,10 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DatabaseException;
+import org.cojen.tupl.Transaction;
+import org.cojen.tupl.View;
 
 import org.cojen.tupl.filter.AndFilter;
 import org.cojen.tupl.filter.ColumnToArgFilter;
@@ -72,8 +77,8 @@ public class FilteredScanMaker<R> {
     private final RowGen mRowGen;
     private final boolean mIsPrimaryTable;
     private final long mIndexId;
+    private final RowFilter mFilter, mLowBound, mHighBound;
     private final String mFilterStr;
-    private final RowFilter mFilter;
     private final ClassMaker mFilterMaker;
     private final MethodMaker mFilterCtorMaker;
 
@@ -81,31 +86,40 @@ public class FilteredScanMaker<R> {
     private final ColumnCodec[] mKeyCodecs, mValueCodecs;
 
     /**
+     * Three RowFilter objects are passed in, which correspond to results of the
+     * RowFilter.rangeExtract method. If all filters are null, then nothing is filtered at all,
+     * and this class shouldn't be used.
+     *
+     * <p>The low/high bound filters operate only against the key column codecs, and so they
+     * don't need to handle schema versions. The remainder filter must handle schema versions,
+     * and it maintains a weak reference to the RowFilter object, as a minor optimization. If
+     * the RowFilter goes away, the filterStr is needed to create it again.
+     *
      * @param storeRef is passed along to the generated code
      * @param unfiltered defines the encode methods; the decode method will be overridden
-     * @param secondaryDesc pass null for primary table
+     * @param filter the filter to apply to all rows which are in bounds, or null if none
+     * @param filterStr the canonical string for the filter param, or null if none
+     * @param lowBound pass null for open bound
+     * @param highBound pass null for open bound
      */
     public FilteredScanMaker(WeakReference<RowStore> storeRef, Class<?> tableClass,
                              Class<? extends SingleScanController<R>> unfiltered,
-                             Class<R> rowType, byte[] secondaryDesc,
-                             long indexId, String filterStr, RowFilter filter)
+                             Class<R> rowType, RowInfo rowInfo, long indexId,
+                             RowFilter filter, String filterStr,
+                             RowFilter lowBound, RowFilter highBound)
     {
         mStoreRef = storeRef;
         mTableClass = tableClass;
         mRowType = rowType;
 
-        RowInfo rowInfo = RowInfo.find(rowType);
-        if (secondaryDesc == null) {
-            mRowGen = rowInfo.rowGen();
-            mIsPrimaryTable = true;
-        } else {
-            mRowGen = RowStore.indexRowInfo(rowInfo, secondaryDesc).rowGen();
-            mIsPrimaryTable = false;
-        }
+        mRowGen = rowInfo.rowGen();
+        mIsPrimaryTable = RowInfo.find(rowType) == rowInfo;
 
         mIndexId = indexId;
-        mFilterStr = filterStr;
         mFilter = filter;
+        mLowBound = lowBound;
+        mHighBound = highBound;
+        mFilterStr = filterStr;
 
         // Generate a sub-package with an increasing number to facilitate unloading.
         long filterNum = (long) cFilterNumHandle.getAndAdd(1L);
@@ -126,20 +140,42 @@ public class FilteredScanMaker<R> {
         // Finish the filter class...
 
         // Define the fields to hold the filter arguments.
-        mFilter.accept(new Visitor() {
-            private final HashSet<Integer> mAdded = new HashSet<>();
+        if (mFilter != null) {
+            mFilter.accept(new Visitor() {
+                private final HashSet<Integer> mAdded = new HashSet<>();
 
-            @Override
-            public void visit(ColumnToArgFilter filter) {
-                int argNum = filter.argument();
-                if (mAdded.add(argNum)) {
-                    int colNum = columnNumberFor(filter.column().name);
-                    boolean in = filter.isIn(filter.operator());
-                    Variable argVar = mFilterCtorMaker.param(0).aget(argNum);
-                    codecFor(colNum).filterPrepare(in, argVar, argNum);
+                @Override
+                public void visit(ColumnToArgFilter filter) {
+                    int argNum = filter.argument();
+                    if (mAdded.add(argNum)) {
+                        int colNum = columnNumberFor(filter.column().name);
+                        boolean in = filter.isIn(filter.operator());
+                        Variable argVar = mFilterCtorMaker.param(0).aget(argNum);
+                        codecFor(colNum).filterPrepare(in, argVar, argNum);
+                    }
                 }
+            });
+        }
+
+        if (mLowBound != null || mHighBound != null) {
+            // Override the ScanController.newCursor method.
+            MethodMaker newCursorMaker = mFilterMaker.addMethod
+                (Cursor.class, "newCursor", View.class, Transaction.class).public_();
+
+            if (mLowBound != null) {
+                encodeBound(mLowBound, true, newCursorMaker);
             }
-        });
+
+            if (mHighBound != null) {
+                encodeBound(mHighBound, false, newCursorMaker);
+            }
+
+            // The view var should have been modified by the encodeBound method.
+            var viewVar = newCursorMaker.param(0);
+            var txnVar = newCursorMaker.param(1);
+
+            newCursorMaker.return_(viewVar.invoke("newCursor", txnVar));
+        }
 
         addDecodeRowMethod();
 
@@ -184,7 +220,185 @@ public class FilteredScanMaker<R> {
         return colNum < codecs.length ? codecs[colNum] : mValueCodecs[colNum - codecs.length];
     }
 
+    /**
+     * Adds code to the constructor, defines fields, and overrides ScanController methods.
+     */
+    private void encodeBound(RowFilter bound, boolean low, MethodMaker newCursorMaker) {
+        var argVarMap = new HashMap<String, Variable>(8);
+
+        var visitor = new Visitor() {
+            int lastOp = -1;
+
+            @Override
+            public void visit(ColumnToArgFilter filter) {
+                lastOp = filter.operator();
+                ColumnInfo column = filter.column();
+                String name = column.name;
+                if (!argVarMap.containsKey(name)) {
+                    Variable argVar = mFilterCtorMaker.param(0).aget(filter.argument());
+                    argVar = ConvertCallSite.make(mFilterCtorMaker, column.type, argVar);
+                    argVarMap.put(name, argVar);
+                }
+            }
+        };
+
+        bound.accept(visitor);
+        int lastOp = visitor.lastOp;
+
+        ColumnCodec[] codecs = mRowGen.keyCodecs();
+        int numArgs = argVarMap.size();
+
+        boolean inclusive;
+        boolean increment = false;
+        if (low) {
+            switch (lastOp) {
+            case ColumnToArgFilter.OP_EQ: case ColumnToArgFilter.OP_GE:
+                inclusive = true;
+                break;
+            case ColumnToArgFilter.OP_GT:
+                if (numArgs == codecs.length) {
+                    inclusive = false;
+                } else {
+                    inclusive = true;
+                    increment = true;
+                }
+                break;
+            default: throw new AssertionError();
+            }
+        } else {
+            switch (lastOp) {
+            case ColumnToArgFilter.OP_EQ:
+                inclusive = true;
+                break;
+            case ColumnToArgFilter.OP_LT:
+                inclusive = false;
+                break;
+            case ColumnToArgFilter.OP_LE:
+                if (numArgs == codecs.length) {
+                    inclusive = true;
+                } else {
+                    inclusive = false;
+                    increment = true;
+                }
+                break;
+            default: throw new AssertionError();
+            }
+        }
+
+        var boundCodecs = new ColumnCodec[numArgs];
+
+        // Determine the minimum byte array size and prepare the encoders.
+
+        int minSize = 0;
+        for (int i=0; i<numArgs; i++) {
+            ColumnCodec codec = codecs[i].bind(mFilterCtorMaker);
+            boundCodecs[i] = codec;
+            minSize += codec.minSize();
+            codec.encodePrepare();
+        }
+
+        codecs = boundCodecs;
+
+        // Generate code which determines the additional runtime length.
+
+        Variable totalVar = null;
+        for (ColumnCodec codec : codecs) {
+            var argVar = argVarMap.get(codec.mInfo.name);
+            totalVar = codec.encodeSize(argVar, totalVar);
+        }
+
+        // Generate code which allocates the destination byte array.
+
+        Variable dstVar;
+        if (totalVar == null) {
+            dstVar = mFilterCtorMaker.new_(byte[].class, minSize);
+        } else {
+            if (minSize != 0) {
+                totalVar = totalVar.add(minSize);
+            }
+            dstVar = mFilterCtorMaker.new_(byte[].class, totalVar);
+        }
+
+        // Generate code which fills in the byte array.
+
+        var offsetVar = mFilterCtorMaker.var(int.class).set(0);
+        for (int i=0; i<codecs.length; i++) {
+            ColumnCodec codec = codecs[i];
+            var argVar = argVarMap.get(codec.mInfo.name);
+            codec.encode(argVar, dstVar, offsetVar);
+        }
+
+        String fieldName = low ? "low" : "high";
+        mFilterMaker.addField(dstVar, fieldName).private_().final_();
+
+        if (increment) {
+            var overflowedVar = mFilterCtorMaker.var(RowUtils.class)
+                .invoke("increment", dstVar, 0, dstVar.alength());
+            Label noOverflow = mFilterCtorMaker.label();
+            overflowedVar.ifTrue(noOverflow);
+            if (low) {
+                dstVar.set(mFilterCtorMaker.var(ScanController.class).field("EMPTY"));
+            } else {
+                dstVar.set(null);
+            }
+            noOverflow.here();
+        }
+
+        mFilterCtorMaker.field(fieldName).set(dstVar);
+
+        {
+            MethodMaker mm = mFilterMaker.addMethod(byte[].class, fieldName + "Bound").public_();
+            mm.return_(mm.field(fieldName));
+        }
+
+        String viewMethod;
+        if (low) {
+            if (inclusive) {
+                viewMethod = "viewGe";
+            } else {
+                viewMethod = "viewGt";
+                // Only override if it differs from the default.
+                MethodMaker mm = mFilterMaker.addMethod(boolean.class, "lowInclusive").public_();
+                mm.return_(false);
+            }
+        } else {
+            if (inclusive) {
+                viewMethod = "viewLe";
+                // Only override if it differs from the default.
+                MethodMaker mm = mFilterMaker.addMethod(boolean.class, "highInclusive").public_();
+                mm.return_(true);
+            } else {
+                viewMethod = "viewLt";
+            }
+        }
+
+        var viewVar = newCursorMaker.param(0);
+        var boundVar = newCursorMaker.field(fieldName);
+
+        Label cont = null;
+        if (increment && low) {
+            cont = newCursorMaker.label();
+            Label normal = newCursorMaker.label();
+            var emptyVar = newCursorMaker.var(ScanController.class).field("EMPTY"); 
+            boundVar.ifNe(emptyVar, normal);
+            viewVar.set(viewVar.invoke("viewLt", emptyVar));
+            newCursorMaker.goto_(cont);
+            normal.here();
+        }
+
+        viewVar.set(viewVar.invoke(viewMethod, boundVar));
+
+        if (cont != null) {
+            cont.here();
+        }
+    }
+
     private void addDecodeRowMethod() {
+        if (mFilter == null) {
+            // No remainder filter, so rely on inherited method.
+            return;
+        }
+
         // Specified by RowDecoderEncoder.
         MethodMaker mm = mFilterMaker.addMethod
             (Object.class, "decodeRow", byte[].class, byte[].class, Object.class).public_();
@@ -193,7 +407,7 @@ public class FilteredScanMaker<R> {
             // The decode method is implemented using indy, to support multiple schema versions.
 
             var indy = mm.var(FilteredScanMaker.class).indy
-                ("indyDecodeRow", mStoreRef, mTableClass, mRowType, mIndexId, mFilterStr, mFilter);
+                ("indyDecodeRow", mStoreRef, mTableClass, mRowType, mIndexId, mFilter, mFilterStr);
 
             var valueVar = mm.param(1);
             var schemaVersion = TableMaker.decodeSchemaVersion(mm, valueVar);
@@ -213,10 +427,10 @@ public class FilteredScanMaker<R> {
     public static CallSite indyDecodeRow(MethodHandles.Lookup lookup, String name, MethodType mt,
                                          WeakReference<RowStore> storeRef,
                                          Class<?> tableClass, Class<?> rowType, long indexId,
-                                         String filterStr, RowFilter filter)
+                                         RowFilter filter, String filterStr)
     {
         var dm = new DecodeMaker
-            (lookup, mt, storeRef, tableClass, rowType, indexId, filterStr, filter);
+            (lookup, mt, storeRef, tableClass, rowType, indexId, filter, filterStr);
         return new SwitchCallSite(lookup, mt, dm);
     }
 
@@ -235,7 +449,7 @@ public class FilteredScanMaker<R> {
         DecodeMaker(MethodHandles.Lookup lookup, MethodType mt,
                     WeakReference<RowStore> storeRef, Class<?> tableClass,
                     Class<?> rowType, long indexId,
-                    String filterStr, RowFilter filter)
+                    RowFilter filter, String filterStr)
         {
             mLookup = lookup;
             mMethodType = mt.dropParameterTypes(0, 1);

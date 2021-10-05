@@ -38,6 +38,7 @@ import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
 
+import org.cojen.tupl.filter.ComplexFilterException;
 import org.cojen.tupl.filter.FalseFilter;
 import org.cojen.tupl.filter.Parser;
 import org.cojen.tupl.filter.RowFilter;
@@ -214,17 +215,43 @@ public abstract class AbstractTable<R> implements Table<R> {
 
         try {
             RowFilter rf = parse(rowType(), filter).reduce();
-            if (rf instanceof TrueFilter) {
+
+            if (rf instanceof FalseFilter) {
+                factory = EmptyScanController.factory();
+            } else if (rf instanceof TrueFilter) {
                 SingleScanController<R> unfiltered = unfiltered();
                 factory = (Object... args) -> unfiltered;
-            } else if (rf instanceof FalseFilter) {
-                factory = EmptyScanController.factory();
             } else {
                 String canonical = rf.toString();
                 if (!canonical.equals(filter)) {
                     factory = findScanControllerFactory(canonical);
                 } else {
-                    factory = newFilteredFactory(rf, canonical);
+                    RowInfo rowInfo = RowInfo.find(rowType());
+
+                    byte[] secondaryDesc = secondaryDescriptor();
+                    if (secondaryDesc != null) {
+                        rowInfo = RowStore.indexRowInfo(rowInfo, secondaryDesc);
+                    }
+
+                    RowFilter[][] ranges = multiRangeExtract(rowInfo, rf);
+
+                    RowFilter[] range;
+                    if (ranges.length > 1) {
+                        // FIXME: Try to create canonical ScanControllerFactory instances for
+                        // each range by combining the range components together.
+                        throw new Error("FIXME: multiRangeExtract");
+                    } else {
+                        range = ranges[0];
+                    }
+
+                    RowFilter remainder = range[0];
+                    RowFilter lowBound = range[1];
+                    RowFilter highBound = range[2];
+
+                    String remainderStr = remainder == null ? null : remainder.toString();
+
+                    factory = newFilteredFactory
+                        (rowInfo, remainder, remainderStr, lowBound, highBound);
                 }
             }
         } catch (Throwable e) {
@@ -252,12 +279,31 @@ public abstract class AbstractTable<R> implements Table<R> {
     }
 
     @SuppressWarnings("unchecked")
-    private ScanControllerFactory<R> newFilteredFactory(RowFilter filter, String filterStr) {
+    private ScanControllerFactory<R> newFilteredFactory(RowInfo rowInfo,
+                                                        RowFilter filter, String filterStr,
+                                                        RowFilter lowBound, RowFilter highBound)
+    {
         Class unfilteredClass = unfiltered().getClass();
 
         return new FilteredScanMaker<R>
-            (rowStoreRef(), getClass(), unfilteredClass, rowType(),
-             secondaryDescriptor(), mSource.id(), filterStr, filter).finish();
+            (rowStoreRef(), getClass(), unfilteredClass, rowType(), rowInfo,
+             mSource.id(), filter, filterStr, lowBound, highBound).finish();
+    }
+
+    private RowFilter[][] multiRangeExtract(RowInfo rowInfo, RowFilter rf) {
+        var keyColumns = rowInfo.keyColumns.values().toArray(ColumnInfo[]::new);
+
+        try {
+            return rf.dnf().multiRangeExtract(false, false, keyColumns);
+        } catch (ComplexFilterException e) {
+            // FIXME: log the exception?
+            try {
+                return new RowFilter[][] {rf.cnf().rangeExtract(false, keyColumns)};
+            } catch (ComplexFilterException e2) {
+                // FIXME: log the exception?
+                return new RowFilter[][] {new RowFilter[] {rf, null, null}};
+            }
+        }
     }
 
     protected abstract WeakReference<RowStore> rowStoreRef();
