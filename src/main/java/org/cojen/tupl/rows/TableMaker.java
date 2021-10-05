@@ -1469,8 +1469,14 @@ public class TableMaker {
             (TableMaker.class, rowType, rowInfo, null, "Unfiltered")
             .extend(SingleScanController.class).public_();
 
-        // Subclassed by filter implementations.
-        cm.addConstructor().protected_();
+        // Constructor is protected, for use by filter implementation subclasses.
+        MethodType ctorType;
+        {
+            ctorType = MethodType.methodType
+                (void.class, byte[].class, boolean.class, byte[].class, boolean.class);
+            MethodMaker mm = cm.addConstructor(ctorType).protected_();
+            mm.invokeSuperConstructor(mm.param(0), mm.param(1), mm.param(2), mm.param(3));
+        }
 
         {
             // Specified by RowDecoderEncoder.
@@ -1524,6 +1530,6 @@ public class TableMaker {
 
         var clazz = cm.finish();
 
-        return lookup.findConstructor(clazz, MethodType.methodType(void.class)).invoke();
+        return lookup.findConstructor(clazz, ctorType).invoke(null, false, null, false);
     }
 }

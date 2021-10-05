@@ -17,10 +17,6 @@
 
 package org.cojen.tupl.rows;
 
-import java.io.IOException;
-
-import org.cojen.tupl.View;
-
 /**
  * 
  *
@@ -28,5 +24,5 @@ import org.cojen.tupl.View;
  */
 @FunctionalInterface
 public interface ScanControllerFactory<R> {
-    ScanController<R> newScanController(Object... args) throws IOException;
+    ScanController<R> newScanController(Object... args);
 }

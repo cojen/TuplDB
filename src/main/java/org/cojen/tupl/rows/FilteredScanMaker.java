@@ -127,13 +127,12 @@ public class FilteredScanMaker<R> {
             .final_().extend(unfiltered).implement(ScanControllerFactory.class);
 
         mFilterCtorMaker = mFilterMaker.addConstructor(Object[].class).varargs().private_();
-        mFilterCtorMaker.invokeSuperConstructor();
 
         mKeyCodecs = ColumnCodec.bind(mRowGen.keyCodecs(), mFilterCtorMaker);
         mValueCodecs = ColumnCodec.bind(mRowGen.valueCodecs(), mFilterCtorMaker);
 
         // Need a constructor for the factory singleton instance.
-        mFilterMaker.addConstructor().private_();
+        mFilterMaker.addConstructor().private_().invokeSuperConstructor(null, false, null, false);
     }
 
     public ScanControllerFactory<R> finish() {
@@ -157,27 +156,19 @@ public class FilteredScanMaker<R> {
             });
         }
 
+        var ctorParams = new Object[] {null, false, null, false};
+
         if (mLowBound != null || mHighBound != null) {
-            // Override the ScanController.newCursor method.
-            MethodMaker newCursorMaker = mFilterMaker.addMethod
-                (Cursor.class, "newCursor", View.class, Transaction.class).public_();
-
             var argVarMap = new HashMap<ColumnArg, Variable>();
-
             if (mLowBound != null) {
-                encodeBound(argVarMap, mLowBound, true, newCursorMaker);
+                encodeBound(argVarMap, ctorParams, mLowBound, true);
             }
-
             if (mHighBound != null) {
-                encodeBound(argVarMap, mHighBound, false, newCursorMaker);
+                encodeBound(argVarMap, ctorParams, mHighBound, false);
             }
-
-            // The view var should have been modified by the encodeBound method.
-            var viewVar = newCursorMaker.param(0);
-            var txnVar = newCursorMaker.param(1);
-
-            newCursorMaker.return_(viewVar.invoke("newCursor", txnVar));
         }
+
+        mFilterCtorMaker.invokeSuperConstructor(ctorParams);
 
         addDecodeRowMethod();
 
@@ -245,10 +236,10 @@ public class FilteredScanMaker<R> {
     }
 
     /**
-     * Adds code to the constructor, defines fields, and overrides ScanController methods.
+     * Adds code to the constructor.
      */
-    private void encodeBound(Map<ColumnArg, Variable> argVarMap,
-                             RowFilter bound, boolean low, MethodMaker newCursorMaker)
+    private void encodeBound(Map<ColumnArg, Variable> argVarMap, Object[] ctorParams,
+                             RowFilter bound, boolean low)
     {
         ColumnCodec[] codecs = mRowGen.keyCodecs();
         var argVars = new Variable[codecs.length];
@@ -359,9 +350,6 @@ public class FilteredScanMaker<R> {
             codecs[i].encode(argVars[i], dstVar, offsetVar);
         }
 
-        String fieldName = low ? "low" : "high";
-        mFilterMaker.addField(dstVar, fieldName).private_().final_();
-
         if (increment) {
             var overflowedVar = mFilterCtorMaker.var(RowUtils.class)
                 .invoke("increment", dstVar, 0, dstVar.alength());
@@ -375,53 +363,9 @@ public class FilteredScanMaker<R> {
             noOverflow.here();
         }
 
-        mFilterCtorMaker.field(fieldName).set(dstVar);
-
-        {
-            MethodMaker mm = mFilterMaker.addMethod(byte[].class, fieldName + "Bound").public_();
-            mm.return_(mm.field(fieldName));
-        }
-
-        String viewMethod;
-        if (low) {
-            if (inclusive) {
-                viewMethod = "viewGe";
-            } else {
-                viewMethod = "viewGt";
-                // Only override if it differs from the default.
-                MethodMaker mm = mFilterMaker.addMethod(boolean.class, "lowInclusive").public_();
-                mm.return_(false);
-            }
-        } else {
-            if (inclusive) {
-                viewMethod = "viewLe";
-                // Only override if it differs from the default.
-                MethodMaker mm = mFilterMaker.addMethod(boolean.class, "highInclusive").public_();
-                mm.return_(true);
-            } else {
-                viewMethod = "viewLt";
-            }
-        }
-
-        var viewVar = newCursorMaker.param(0);
-        var boundVar = newCursorMaker.field(fieldName);
-
-        Label cont = null;
-        if (increment && low) {
-            cont = newCursorMaker.label();
-            Label normal = newCursorMaker.label();
-            var emptyVar = newCursorMaker.var(ScanController.class).field("EMPTY"); 
-            boundVar.ifNe(emptyVar, normal);
-            viewVar.set(viewVar.invoke("viewLt", emptyVar));
-            newCursorMaker.goto_(cont);
-            normal.here();
-        }
-
-        viewVar.set(viewVar.invoke(viewMethod, boundVar));
-
-        if (cont != null) {
-            cont.here();
-        }
+        int ctorParamOffset = low ? 0 : 2;
+        ctorParams[ctorParamOffset++] = dstVar;
+        ctorParams[ctorParamOffset] = inclusive;
     }
 
     private void addDecodeRowMethod() {

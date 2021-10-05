@@ -45,37 +45,20 @@ public interface ScanController<R> {
     /**
      * Move to the next batch, returning false if none.
      */
-    default boolean next() {
-        return false;
-    }
+    boolean next();
 
     /**
      * Returns the low bounding range, or null if unbounded, or EMPTY if low bound is so high
      * that the scan results are empty.
      */
-    // FIXME: Be sure that MultiScanController checks for EMPTY result.
-    default byte[] lowBound() {
-        return null;
-    }
+    byte[] lowBound();
 
-    /**
-     * Returns true by default.
-     */
-    default boolean lowInclusive() {
-        return true;
-    }
+    boolean lowInclusive();
 
     /**
      * Returns the high bounding range, or null if unbounded.
      */
-    default byte[] highBound() {
-        return null;
-    }
+    byte[] highBound();
 
-    /**
-     * Returns false by default.
-     */
-    default boolean highInclusive() {
-        return false;
-    }
+    boolean highInclusive();
 }

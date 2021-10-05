@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.filter;
 
+import java.util.Objects;
+
 import org.cojen.tupl.rows.ColumnInfo;
 
 /**
@@ -92,11 +94,13 @@ public abstract class RowFilter {
     public abstract RowFilter not();
 
     public RowFilter or(RowFilter filter) {
+        Objects.requireNonNull(filter);
         RowFilter[] subFilters = {this, filter};
         return OrFilter.flatten(subFilters, 0, subFilters.length);
     }
 
     public RowFilter and(RowFilter filter) {
+        Objects.requireNonNull(filter);
         RowFilter[] subFilters = {this, filter};
         return AndFilter.flatten(subFilters, 0, subFilters.length);
     }

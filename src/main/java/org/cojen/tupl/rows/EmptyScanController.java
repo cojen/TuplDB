@@ -36,14 +36,13 @@ final class EmptyScanController extends SingleScanController implements ScanCont
         return THE;
     }
 
-    @Override
-    public ScanController newScanController(Object... args) {
-        return THE;
+    private EmptyScanController() {
+        super(EMPTY, false, null, false);
     }
 
     @Override
-    public Cursor newCursor(View view, Transaction txn) throws IOException {
-        return view.viewLt(RowUtils.EMPTY_BYTES).newCursor(txn);
+    public ScanController newScanController(Object... args) {
+        return THE;
     }
 
     @Override

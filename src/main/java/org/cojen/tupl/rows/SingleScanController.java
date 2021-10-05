@@ -29,13 +29,65 @@ import org.cojen.tupl.View;
  * @author Brian S O'Neill
  */
 public abstract class SingleScanController<R> implements ScanController<R>, RowDecoderEncoder<R> {
+    private final byte[] mLowBound, mHighBound;
+    private final boolean mLowInclusive, mHighInclusive;
+
+    protected SingleScanController(byte[] lowBound, boolean lowInclusive,
+                                   byte[] highBound, boolean highInclusive)
+    {
+        mLowBound = lowBound;
+        mLowInclusive = lowInclusive;
+        mHighBound = highBound;
+        mHighInclusive = highInclusive;
+    }
+
     @Override
-    public Cursor newCursor(View view, Transaction txn) throws IOException {
+    public final Cursor newCursor(View view, Transaction txn) throws IOException {
+        applyBounds: {
+            byte[] low = mLowBound;
+            if (low != null) {
+                if (low == EMPTY) {
+                    view = view.viewLt(low);
+                    break applyBounds;
+                }
+                view = mLowInclusive ? view.viewGe(low) : view.viewGt(low);
+            }
+            byte[] high = mHighBound;
+            if (high != null) {
+                view = mHighInclusive ? view.viewLe(high) : view.viewLt(high);
+            }
+        }
+
         return view.newCursor(txn);
     }
 
     @Override
     public RowDecoderEncoder<R> decoder() {
         return this;
+    }
+
+    @Override
+    public final boolean next() {
+        return false;
+    }
+
+    @Override
+    public final byte[] lowBound() {
+        return mLowBound;
+    }
+
+    @Override
+    public final boolean lowInclusive() {
+        return mLowInclusive;
+    }
+
+    @Override
+    public final byte[] highBound() {
+        return mHighBound;
+    }
+
+    @Override
+    public final boolean highInclusive() {
+        return mHighInclusive;
     }
 }

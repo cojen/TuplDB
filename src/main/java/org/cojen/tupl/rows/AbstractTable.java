@@ -175,7 +175,7 @@ public abstract class AbstractTable<R> implements Table<R> {
         return rs == null ? null : rs.secondaryIndexTable(this, columns);
     }
 
-    private ScanController<R> filtered(String filter, Object... args) throws IOException {
+    private ScanController<R> filtered(String filter, Object... args) {
         return scanControllerFactory(filter).newScanController(args);
     }
 
