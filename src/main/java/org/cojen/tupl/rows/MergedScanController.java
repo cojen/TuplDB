@@ -25,6 +25,7 @@ import java.util.Arrays;
  * 
  *
  * @author Brian S O'Neill
+ * @see MultiScanController
  */
 final class MergedScanController<R> extends SingleScanController<R> {
     /**
@@ -71,31 +72,70 @@ final class MergedScanController<R> extends SingleScanController<R> {
             highInclusive = low.highInclusive();
         }
 
+        // Start in mode 1 (both ranges) if the lower bound of both is the same.
+        int mode = low.compareLow(high) == 0 ? 1 : 0;
+
         return new MergedScanController<R>
-            (lowLow, low.lowInclusive(), highBound, highInclusive, low, high);
+            (lowLow, low.lowInclusive(), highBound, highInclusive, low, high, mode);
     }
 
     private final ScanController<R> mLow, mHigh;
     private final RowDecoderEncoder<R> mLowDecoder, mHighDecoder;
 
+    /* modes:
+       0: in low range only (can transition to mode 1, 2 or 3)
+       1: in both ranges (can transition to mode 2 or 3)
+       2: in low range only, past the high range
+       3: in high range only, past the low range
+     */
+    private int mMode;
+
     private MergedScanController(byte[] lowBound, boolean lowInclusive,
                                  byte[] highBound, boolean highInclusive,
-                                 ScanController<R> low, ScanController<R> high)
+                                 ScanController<R> low, ScanController<R> high,
+                                 int mode)
     {
         super(lowBound, lowInclusive, highBound, highInclusive);
         mLow = low;
         mHigh = high;
         mLowDecoder = low.decoder();
         mHighDecoder = high.decoder();
+        mMode = mode;
     }
 
     @Override
     public R decodeRow(byte[] key, byte[] value, R row) throws IOException {
-        R decoded;
-        if (!mLow.inBounds(key) || (decoded = mLowDecoder.decodeRow(key, value, row)) == null) {
-            decoded = mHigh.inBounds(key) ? mHighDecoder.decodeRow(key, value, row) : null;
+        if (mMode == 2) {
+            return mLowDecoder.decodeRow(key, value, row);
         }
-        return decoded;
+
+        if (mMode != 3) {
+            // Modes 0 and 1...
+            if (mLow.isTooHigh(key)) {
+                // Fallthrough to mode 3.
+                mMode = 3;
+            } else {
+                R decoded = mLowDecoder.decodeRow(key, value, row);
+                if (decoded != null) {
+                    return decoded;
+                }
+                if (mMode == 0) {
+                    if (mHigh.isTooLow(key)) {
+                        return null;
+                    }
+                    // Fallthrough to mode 1.
+                    mMode = 1;
+                }
+                // Mode 1.
+                if (mHigh.isTooHigh(key)) {
+                    // Transaction to mode 2, but the row was already rejected.
+                    mMode = 2;
+                    return null;
+                }
+            }
+        }
+
+        return mHighDecoder.decodeRow(key, value, row);
     }
 
     @Override

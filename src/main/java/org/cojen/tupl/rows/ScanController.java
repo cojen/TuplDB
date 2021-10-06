@@ -66,16 +66,20 @@ public interface ScanController<R> {
 
     boolean highInclusive();
 
-    default boolean inBounds(byte[] key) {
+    /**
+     * Returns true if the given key is lower than the low bounding range.
+     */
+    default boolean isTooLow(byte[] key) {
         int cmp = Arrays.compareUnsigned(key, lowBound());
-        if (cmp < 0 || (cmp == 0 && !lowInclusive())) {
-            return false;
-        }
-        cmp = Arrays.compareUnsigned(key, highBound());
-        if (cmp > 0 || (cmp == 0 && !highInclusive())) {
-            return false;
-        }
-        return true;
+        return cmp < 0 || (cmp == 0 && !lowInclusive());
+    }
+
+    /**
+     * Returns true if the given key is higher than the high bounding range.
+     */
+    default boolean isTooHigh(byte[] key) {
+        int cmp = Arrays.compareUnsigned(key, highBound());
+        return cmp > 0 || (cmp == 0 && !highInclusive());
     }
 
     /**
