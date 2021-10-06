@@ -176,18 +176,25 @@ public abstract class AbstractTable<R> implements Table<R> {
     }
 
     private ScanController<R> filtered(String filter, Object... args) {
-        return scanControllerFactory(filter).newScanController(args);
+        return filteredFactory(filter).newScanController(args);
     }
 
-    private ScanControllerFactory<R> scanControllerFactory(String filter) {
+    private ScanControllerFactory<R> filteredFactory(String filter) {
         ScanControllerFactory<R> factory = mFilterFactoryCache.get(filter);
         if (factory == null) {
-            factory = findScanControllerFactory(filter);
+            factory = findFilteredFactory(filter);
         }
         return factory;
     }
 
-    private ScanControllerFactory<R> findScanControllerFactory(final String filter) {
+    private ScanControllerFactory<R> findFilteredFactory(final String filter) {
+        return findFilteredFactory(filter, null, null, null);
+    }
+
+    @SuppressWarnings("unchecked")
+    private ScanControllerFactory<R> findFilteredFactory
+        (final String filter, RowInfo rowInfo, RowFilter rf, RowFilter[] range)
+    {
         Latch latch;
         while (true) {
             check: synchronized (mFilterFactoryCache) {
@@ -213,47 +220,55 @@ public abstract class AbstractTable<R> implements Table<R> {
         ScanControllerFactory<R> factory;
         Throwable ex = null;
 
-        try {
-            RowFilter rf = parse(rowType(), filter).reduce();
+        obtain: try {
+            if (rf == null) {
+                rf = parse(rowType(), filter).reduce();
+            }
 
             if (rf instanceof FalseFilter) {
                 factory = EmptyScanController.factory();
-            } else if (rf instanceof TrueFilter) {
+                break obtain;
+            }
+
+            if (rf instanceof TrueFilter) {
                 SingleScanController<R> unfiltered = unfiltered();
                 factory = (Object... args) -> unfiltered;
-            } else {
-                String canonical = rf.toString();
-                if (!canonical.equals(filter)) {
-                    factory = findScanControllerFactory(canonical);
-                } else {
-                    RowInfo rowInfo = RowInfo.find(rowType());
+                break obtain;
+            }
 
-                    byte[] secondaryDesc = secondaryDescriptor();
-                    if (secondaryDesc != null) {
-                        rowInfo = RowStore.indexRowInfo(rowInfo, secondaryDesc);
-                    }
+            String canonical = rf.toString();
+            if (!canonical.equals(filter)) {
+                factory = findFilteredFactory(canonical);
+                break obtain;
+            }
 
-                    RowFilter[][] ranges = multiRangeExtract(rowInfo, rf);
-
-                    RowFilter[] range;
-                    if (ranges.length > 1) {
-                        // FIXME: Try to create canonical ScanControllerFactory instances for
-                        // each range by combining the range components together.
-                        throw new Error("FIXME: multiRangeExtract");
-                    } else {
-                        range = ranges[0];
-                    }
-
-                    RowFilter remainder = range[0];
-                    RowFilter lowBound = range[1];
-                    RowFilter highBound = range[2];
-
-                    String remainderStr = remainder == null ? null : remainder.toString();
-
-                    factory = newFilteredFactory
-                        (rowInfo, remainder, remainderStr, lowBound, highBound);
+            if (rowInfo == null) {
+                rowInfo = RowInfo.find(rowType());
+                byte[] secondaryDesc = secondaryDescriptor();
+                if (secondaryDesc != null) {
+                    rowInfo = RowStore.indexRowInfo(rowInfo, secondaryDesc);
                 }
             }
+
+            if (range == null) {
+                RowFilter[][] ranges = multiRangeExtract(rowInfo, rf);
+
+                if (ranges.length > 1) {
+                    var rangeFactories = new ScanControllerFactory[ranges.length];
+                    for (int i=0; i<ranges.length; i++) {
+                        // Merge the range components together to find sharable factories.
+                        RowFilter merged = merge(ranges[i]);
+                        rangeFactories[i] = findFilteredFactory
+                            (merged.toString(), rowInfo, merged, ranges[i]);
+                    }
+                    factory = new MultiScanControllerFactory(rangeFactories);
+                    break obtain;
+                }
+
+                range = ranges[0];
+            }
+
+            factory = newFilteredFactory(rowInfo, range);
         } catch (Throwable e) {
             factory = null;
             ex = e;
@@ -278,16 +293,27 @@ public abstract class AbstractTable<R> implements Table<R> {
         return factory;
     }
 
+    private static RowFilter merge(RowFilter[] range) {
+        return and(and(range[1], range[2]), range[0]);
+    }
+
+    private static RowFilter and(RowFilter a, RowFilter b) {
+        return a == null ? b : (b == null ? a : a.and(b));
+    }
+
     @SuppressWarnings("unchecked")
-    private ScanControllerFactory<R> newFilteredFactory(RowInfo rowInfo,
-                                                        RowFilter filter, String filterStr,
-                                                        RowFilter lowBound, RowFilter highBound)
-    {
+    private ScanControllerFactory<R> newFilteredFactory(RowInfo rowInfo, RowFilter[] range) {
         Class unfilteredClass = unfiltered().getClass();
+
+        RowFilter remainder = range[0];
+        RowFilter lowBound = range[1];
+        RowFilter highBound = range[2];
+
+        String remainderStr = remainder == null ? null : remainder.toString();
 
         return new FilteredScanMaker<R>
             (rowStoreRef(), getClass(), unfilteredClass, rowType(), rowInfo,
-             mSource.id(), filter, filterStr, lowBound, highBound).finish();
+             mSource.id(), remainder, remainderStr, lowBound, highBound).finish();
     }
 
     private RowFilter[][] multiRangeExtract(RowInfo rowInfo, RowFilter rf) {

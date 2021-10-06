@@ -19,6 +19,8 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
+import java.util.Arrays;
+
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
@@ -31,6 +33,8 @@ import org.cojen.tupl.View;
  */
 public interface ScanController<R> {
     static final byte[] EMPTY = new byte[0];
+
+    boolean isSingleBatch();
 
     /**
      * Returns a new cursor for the current scan batch.
@@ -61,4 +65,61 @@ public interface ScanController<R> {
     byte[] highBound();
 
     boolean highInclusive();
+
+    default boolean inBounds(byte[] key) {
+        int cmp = Arrays.compareUnsigned(key, lowBound());
+        if (cmp < 0 || (cmp == 0 && !lowInclusive())) {
+            return false;
+        }
+        cmp = Arrays.compareUnsigned(key, highBound());
+        if (cmp > 0 || (cmp == 0 && !highInclusive())) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Compare the low bound of this controller to another. Returns -1 is this lower bound is
+     * lower than the other lower bound, etc.
+     *
+     * @return -1, 0, or 1
+     */
+    default int compareLow(ScanController other) {
+        byte[] thisLow = this.lowBound();
+        byte[] otherLow = other.lowBound();
+
+        int cmp = Arrays.compareUnsigned(thisLow, otherLow);
+
+        if (cmp == 0 && thisLow != null) {
+            cmp = -Boolean.compare(this.lowInclusive(), other.lowInclusive());
+        }
+
+        return cmp;
+    }
+
+    /**
+     * Compare the high bound of this controller to another. Returns -1 is this higher bound is
+     * lower than the other higher bound, etc.
+     *
+     * @return -1, 0, or 1
+     */
+    default int compareHigh(ScanController other) {
+        byte[] thisHigh = this.highBound();
+        byte[] otherHigh = other.highBound();
+
+        int cmp;
+
+        if (thisHigh == null) {
+            cmp = otherHigh == null ? 0 : 1;
+        } else if (otherHigh == null) {
+            cmp = -1;
+        } else {
+            cmp = Arrays.compareUnsigned(thisHigh, otherHigh);
+            if (cmp == 0) {
+                cmp = Boolean.compare(this.highInclusive(), other.highInclusive());
+            }
+        }
+
+        return cmp;
+    }
 }

@@ -42,6 +42,11 @@ public abstract class SingleScanController<R> implements ScanController<R>, RowD
     }
 
     @Override
+    public final boolean isSingleBatch() {
+        return true;
+    }
+
+    @Override
     public final Cursor newCursor(View view, Transaction txn) throws IOException {
         applyBounds: {
             byte[] low = mLowBound;
