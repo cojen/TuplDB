@@ -6010,9 +6010,8 @@ final class LocalDatabase extends CoreDatabase {
                 }
 
                 // Thresholds not met for a full checkpoint, but fully sync the redo log
-                // for durability.
+                // for durability. Don't reset mLastCheckpointStartNanos.
                 flush(2); // flush and sync metadata
-                mLastCheckpointDurationNanos = 0;
                 return;
             }
 
@@ -6051,6 +6050,7 @@ final class LocalDatabase extends CoreDatabase {
 
             if (!full) {
                 // No need for full checkpoint, but fully sync the redo log for durability.
+                // Do reset mLastCheckpointStartNanos because thresholds were met.
                 flush(2); // flush and sync metadata
                 mLastCheckpointDurationNanos = 0;
                 return;

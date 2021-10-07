@@ -1,6 +1,10 @@
 Changelog
 =========
 
+v1.5.3.4
+--------
+* Don't reset checkpoint duration stat when thresholds aren't met.
+
 v1.5.3.3 (2021-10-03)
 --------
 * Ensure that index passed to verification observer is unmodifiable when called from an
