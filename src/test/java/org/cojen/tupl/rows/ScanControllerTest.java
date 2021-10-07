@@ -17,8 +17,13 @@
 
 package org.cojen.tupl.rows;
 
+import java.util.HashSet;
+import java.util.Random;
+
 import org.junit.*;
 import static org.junit.Assert.*;
+
+import org.cojen.tupl.*;
 
 /**
  * 
@@ -148,5 +153,91 @@ public class ScanControllerTest {
         public byte[] encodeValue(Object row) {
             throw new UnsupportedOperationException();
         }
+    }
+
+    @Test
+    public void mergedScans() throws Exception {
+        Database db = Database.open(new DatabaseConfig());
+        Table<MyRow> table = db.openTable(MyRow.class);
+        Table<MyRow> altKey = table.alternateKeyTable("a", "b");
+
+        int id = 0;
+        for (int a=0; a<10; a++) {
+            for (int b=0; b<10; b++) {
+                var row = table.newRow();
+                row.id(id++);
+                row.a(a);
+                row.b(b);
+                table.insert(null, row);
+            }
+        }
+
+        var rnd = new Random(0xcafebabe);
+
+        var bob = new StringBuilder(64);
+        for (int i=0; i<64; i++) {
+            bob.append("(a ").append(op(">=", "> ", i, 0))
+                .append(" ? && a ").append(op("< ", "<=", i, 1))
+                .append(" ? && b ").append(op("==", "!=", i, 2))
+                .append(" ?) || (a ").append(op(">=", "> ", i, 3))
+                .append(" ? && a ").append(op("< ", "<=", i, 4))
+                .append(" ? && b ").append(op("==", "!=", i, 5))
+                .append(" ?)");
+
+            String filter = bob.toString();
+            bob.setLength(0);
+
+            int total = 0;
+            for (int j=0; j<10; j++) {
+                total += mergedScans(rnd, table, altKey, filter);
+            }
+            assertTrue(total > 0);
+        }
+    }
+
+    private int mergedScans(Random rnd, Table<MyRow> table, Table<MyRow> altKey, String filter)
+        throws Exception
+    {
+        var args = new Object[6];
+        for (int i=0; i<args.length; i++) {
+            args[i] = rnd.nextInt(10);
+        }
+
+        var expect = new HashSet<MyRow>();
+
+        {
+            var scanner = table.newRowScanner(null, filter, args);
+            for (var row = scanner.row(); row != null; row = scanner.step()) {
+                assertTrue(expect.add(row));
+            }
+        }
+
+        var scanner = (BasicRowScanner<MyRow>) altKey.newRowScanner(null, filter, args);
+        var contoller = (MultiScanController<MyRow>) scanner.mController;
+
+        var actual = new HashSet<MyRow>();
+
+        for (var row = scanner.row(); row != null; row = scanner.step()) {
+            assertTrue(actual.add(row));
+        }
+
+        assertEquals(expect, actual);
+
+        return actual.size();
+    }
+
+    private static String op(String a, String b, int i, int shift) {
+        return ((i >> shift) & 1) == 0 ? a : b;
+    }
+
+    @PrimaryKey("id")
+    @AlternateKey({"a", "b"})
+    public interface MyRow {
+        int id();
+        void id(int id);
+        int a();
+        void a(int a);
+        int b();
+        void b(int b);
     }
 }
