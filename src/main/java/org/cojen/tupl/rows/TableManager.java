@@ -161,7 +161,10 @@ public class TableManager<R> {
 
         ArrayList<IndexBackfill> newBackfills = null;
 
-        var maker = new IndexTriggerMaker<R>(rowType, primaryInfo, numIndexes);
+        IndexTriggerMaker<R> maker = null;
+        if (numIndexes > 0) {
+            maker = new IndexTriggerMaker<R>(rowType, primaryInfo, numIndexes);
+        }
 
         try (Cursor c = secondaries.newCursor(txn)) {
             int i = 0;
@@ -215,7 +218,11 @@ public class TableManager<R> {
         }
 
         if (table != null && table.supportsSecondaries()) {
-            table.setTrigger(maker.makeTrigger(rs, mPrimaryIndex.id()));
+            Trigger<R> trigger = null;
+            if (maker != null) {
+                trigger = maker.makeTrigger(rs, mPrimaryIndex.id());
+            }
+            table.setTrigger(trigger);
         }
 
         // Can only safely start new backfills after the new trigger has been installed.
