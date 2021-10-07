@@ -56,7 +56,8 @@ public class BigDecimalColumnTest {
         table.store(null, row1);
 
         Rec row2 = table.newRow();
-        row2.id(new BigDecimal("1.000"));
+        var bd2 = new BigDecimal("1.000");
+        row2.id(bd2);
         row2.value1(new BigDecimal("0.0"));
         row2.value2(new BigDecimal("-1.00"));
         table.store(null, row2);
@@ -67,7 +68,7 @@ public class BigDecimalColumnTest {
         row3.value2(new BigDecimal("-1.0000000000000001"));
         table.store(null, row3);
 
-        expect(Set.of(row1, row2), table.newRowScanner(null, "id == ?", 1));
+        expect(Set.of(row1, row2), table.newRowScanner(null, "id >= ? && id <= ?", 1, bd2));
         expect(Set.of(row1, row2), table.newRowScanner(null, "value1 == ?", 0.0));
         expect(Set.of(row1, row2), table.newRowScanner(null, "value2 == ?", -1));
 
