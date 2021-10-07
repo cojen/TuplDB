@@ -205,7 +205,11 @@ public class FilteredScanMaker<R> {
     }
 
     private Integer columnNumberFor(String colName) {
-        return mRowGen.columnNumbers().get(colName);
+        Integer num = mRowGen.columnNumbers().get(colName);
+        if (num == null) {
+            throw new IllegalStateException("Column is unavailable for filtering: " + colName);
+        }
+        return num;
     }
 
     private ColumnCodec codecFor(int colNum) {
