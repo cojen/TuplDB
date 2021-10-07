@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.rows;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Random;
 
@@ -159,16 +160,23 @@ public class ScanControllerTest {
     public void mergedScans() throws Exception {
         Database db = Database.open(new DatabaseConfig());
         Table<MyRow> table = db.openTable(MyRow.class);
-        Table<MyRow> altKey = table.alternateKeyTable("a", "b");
+        Table<MyRow2> table2 = db.openTable(MyRow2.class);
 
-        int id = 0;
         for (int a=0; a<10; a++) {
             for (int b=0; b<10; b++) {
-                var row = table.newRow();
-                row.id(id++);
-                row.a(a);
-                row.b(b);
-                table.insert(null, row);
+                {
+                    var row = table.newRow();
+                    row.a(a);
+                    row.b(b);
+                    table.insert(null, row);
+                }
+                {
+                    var row = table2.newRow();
+                    row.id(a * 1000 + b);
+                    row.a(a);
+                    row.b(b);
+                    table2.insert(null, row);
+                }
             }
         }
 
@@ -189,13 +197,13 @@ public class ScanControllerTest {
 
             int total = 0;
             for (int j=0; j<10; j++) {
-                total += mergedScans(rnd, table, altKey, filter);
+                total += mergedScans(rnd, table, table2, filter);
             }
             assertTrue(total > 0);
         }
     }
 
-    private int mergedScans(Random rnd, Table<MyRow> table, Table<MyRow> altKey, String filter)
+    private int mergedScans(Random rnd, Table<MyRow> table, Table<MyRow2> table2, String filter)
         throws Exception
     {
         var args = new Object[6];
@@ -203,16 +211,16 @@ public class ScanControllerTest {
             args[i] = rnd.nextInt(10);
         }
 
-        var expect = new HashSet<MyRow>();
+        var expect = new HashMap<Integer, MyRow2>();
 
         {
-            var scanner = table.newRowScanner(null, filter, args);
+            var scanner = table2.newRowScanner(null, filter, args);
             for (var row = scanner.row(); row != null; row = scanner.step()) {
-                assertTrue(expect.add(row));
+                assertNull(expect.put(row.id(), row));
             }
         }
 
-        var scanner = (BasicRowScanner<MyRow>) altKey.newRowScanner(null, filter, args);
+        var scanner = (BasicRowScanner<MyRow>) table.newRowScanner(null, filter, args);
         var contoller = (MultiScanController<MyRow>) scanner.mController;
 
         var actual = new HashSet<MyRow>();
@@ -221,7 +229,13 @@ public class ScanControllerTest {
             assertTrue(actual.add(row));
         }
 
-        assertEquals(expect, actual);
+        assertEquals(expect.size(), actual.size());
+
+        for (MyRow row : actual) {
+            assertNotNull(expect.remove(row.a() * 1000 + row.b()));
+        }
+
+        assertTrue(expect.isEmpty());
 
         return actual.size();
     }
@@ -230,9 +244,16 @@ public class ScanControllerTest {
         return ((i >> shift) & 1) == 0 ? a : b;
     }
 
-    @PrimaryKey("id")
-    @AlternateKey({"a", "b"})
+    @PrimaryKey({"a", "b"})
     public interface MyRow {
+        int a();
+        void a(int a);
+        int b();
+        void b(int b);
+    }
+
+    @PrimaryKey("id")
+    public interface MyRow2 {
         int id();
         void id(int id);
         int a();
