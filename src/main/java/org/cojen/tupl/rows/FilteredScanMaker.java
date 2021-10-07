@@ -789,7 +789,7 @@ public class FilteredScanMaker<R> {
                 located[0].located(srcVar, mMaker.var(int.class).set(startOffset));
             }
 
-            if (colNum <= highestNum) {
+            if (colNum < highestNum) {
                 LocatedColumn col = located[colNum];
                 if (col.isDecoded(quick)) {
                     return col;
