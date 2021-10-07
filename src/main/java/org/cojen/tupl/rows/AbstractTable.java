@@ -30,6 +30,8 @@ import java.util.Objects;
 
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DurabilityMode;
+import org.cojen.tupl.EventListener;
+import org.cojen.tupl.EventType;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.RowScanner;
@@ -322,12 +324,23 @@ public abstract class AbstractTable<R> implements Table<R> {
         try {
             return rf.dnf().multiRangeExtract(false, false, keyColumns);
         } catch (ComplexFilterException e) {
-            // FIXME: log the exception?
+            complex(rf, e);
             try {
                 return new RowFilter[][] {rf.cnf().rangeExtract(false, keyColumns)};
             } catch (ComplexFilterException e2) {
-                // FIXME: log the exception?
                 return new RowFilter[][] {new RowFilter[] {rf, null, null}};
+            }
+        }
+    }
+
+    private void complex(RowFilter rf, ComplexFilterException e) {
+        RowStore rs = rowStoreRef().get();
+        if (rs != null) {
+            EventListener listener = rs.mDatabase.eventListener();
+            if (listener != null) {
+                listener.notify(EventType.TABLE_COMPLEX_FILTER,
+                                "Complex filter: %1$s \"%2$s\" %3$s",
+                                rowType().getName(), rf.toString(), e.getMessage());
             }
         }
     }
