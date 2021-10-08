@@ -36,7 +36,9 @@ import java.io.IOException;
  *     void message(String str);
  * }
  * </pre>
- * Supported column types:
+ * <b>Note: The {@code Table} feature is experimental and is under heavy development.</b>
+ *
+ * <p>Supported column types:
  * <ul>
  * <li>Simple objects — {@code String}, {@code BigInteger}, and {@code BigDecimal}
  * <li>Primitives — {@code int}, {@code double}, etc
