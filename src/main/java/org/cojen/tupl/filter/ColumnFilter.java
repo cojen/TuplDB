@@ -106,6 +106,11 @@ public abstract class ColumnFilter extends RowFilter {
         return isMatch(filter);
     }
 
+    @Override
+    public ColumnFilter sort() {
+        return this;
+    }
+
     public ColumnInfo column() {
         return mColumn;
     }

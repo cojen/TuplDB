@@ -127,6 +127,22 @@ public class ColumnToArgFilter extends ColumnFilter {
     }
 
     @Override
+    public int compareTo(RowFilter filter) {
+        if (!(filter instanceof ColumnToArgFilter)) {
+            return super.compareTo(filter);
+        }
+        var other = (ColumnToArgFilter) filter;
+        int cmp = mColumn.name.compareTo(other.mColumn.name);
+        if (cmp == 0) {
+            cmp = Integer.compare(mOperator, other.mOperator);
+            if (cmp == 0) {
+                cmp = Integer.compare(mArgNum, other.mArgNum);
+            }
+        }
+        return cmp;
+    }
+
+    @Override
     boolean equalRhs(ColumnFilter other) {
         if (other instanceof ColumnToArgFilter) {
             return mArgNum == ((ColumnToArgFilter) other).mArgNum;

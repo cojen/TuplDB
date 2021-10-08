@@ -17,12 +17,16 @@
 
 package org.cojen.tupl.filter;
 
+import java.util.Arrays;
 import java.util.Map;
+import java.util.Random;
 
 import org.junit.*;
 import static org.junit.Assert.*;
 
 import org.cojen.tupl.rows.ColumnInfo;
+
+import static org.cojen.tupl.filter.ColumnFilter.*;
 
 /**
  * 
@@ -35,7 +39,7 @@ public class RangeExtractTest {
     }
 
     @Test
-    public void mix() throws Throwable {
+    public void mix() throws Exception {
         Map<String, ColumnInfo> colMap = NormalizeTest.newColMap(2);
 
         RowFilter f0 = new Parser(colMap, "a==?&&(b>?||b>?)&&(b>?||b>?)&&(b>?||b>?)").parse();
@@ -95,6 +99,64 @@ public class RangeExtractTest {
         });
     }
 
+    @Test
+    public void random() throws Exception {
+        Map<String, ColumnInfo> colMap = NormalizeTest.newColMap(4);
+        var columns = colMap.values().toArray(ColumnInfo[]::new);
+
+        final var rnd = new Random(5916309638498201512L);
+
+        int numFilters = 10000;
+        int numResults = 1000;
+
+        for (int i=0; i<numFilters; i++) {
+            RowFilter filter = NormalizeTest.randomFilter(rnd, colMap, 4, 4, 4, OP_IN - 1);
+            RowFilter dnf = filter.dnf();
+
+            RowFilter[][] ranges = dnf.multiRangeExtract(false, false, columns);
+
+            if (ranges.length == 1) {
+                RowFilter[] range = ranges[0];
+                if (range[1] == null && range[2] == null) {
+                    // Full scan or FalseFilter.
+                    continue;
+                }
+            }
+
+            RowFilter combined = FalseFilter.THE;
+
+            for (RowFilter[] range : ranges) {
+                RowFilter rangeCombined;
+                rangeCombined = range[0] != null ? range[0] : TrueFilter.THE;
+                if (range[1] != null) {
+                    rangeCombined = rangeCombined.and(range[1]);
+                }
+                if (range[2] != null) {
+                    rangeCombined = rangeCombined.and(range[2]);
+                }
+                combined = combined.or(rangeCombined);
+            }
+
+            combined = combined.dnf().sort();
+
+            if (dnf.sort().equals(combined)) {
+                continue;
+            }
+
+            // When the combined filter doesn't match the original dnf filter, it's generally
+            // because the combined filter has applied even more reductions. Evaluate the
+            // filters against random data to help verify that they're equivalent.
+
+            boolean[] results1 = NormalizeTest.eval
+                (filter, 4, new Random(3551161645581228324L), numResults);
+
+            boolean[] results2 = NormalizeTest.eval
+                (combined, 4, new Random(3551161645581228324L), numResults);
+
+            assertTrue(Arrays.equals(results1, results2));
+        }
+    }
+
     private static void check(RowFilter[] range, String[] expect) {
         assertEquals(expect.length, range.length);
         for (int i=0; i<expect.length; i++) {
@@ -105,7 +167,7 @@ public class RangeExtractTest {
     private static void check(RowFilter[][] ranges, String[][] expectedRanges) {
         assertEquals(expectedRanges.length, ranges.length);
         for (int i=0; i<expectedRanges.length; i++) {
-            //System.out.println(java.util.Arrays.toString(ranges[i]));
+            //System.out.println(Arrays.toString(ranges[i]));
             check(ranges[i], expectedRanges[i]);
         }
     }

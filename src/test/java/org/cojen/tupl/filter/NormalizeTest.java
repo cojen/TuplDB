@@ -195,7 +195,7 @@ public class NormalizeTest {
         }
     }
 
-    private boolean[] eval(RowFilter filter, int numArgs, Random rnd, int numResults) {
+    static boolean[] eval(RowFilter filter, int numArgs, Random rnd, int numResults) {
         var colValues = new int[numArgs];
         var argValues = new int[numArgs];
 
@@ -214,7 +214,7 @@ public class NormalizeTest {
         return results;
     }
 
-    private static boolean eval(RowFilter filter, int[] colValues, int[] argValues) {
+    static boolean eval(RowFilter filter, int[] colValues, int[] argValues) {
         var visitor = new Visitor() {
             Boolean result;
 

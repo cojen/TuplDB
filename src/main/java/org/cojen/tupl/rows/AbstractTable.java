@@ -268,6 +268,13 @@ public abstract class AbstractTable<R> implements Table<R> {
                 }
 
                 range = ranges[0];
+
+                if (range[1] == null && range[2] == null) {
+                    // Full scan, so just use the original reduced filter. It's possible that
+                    // the dnf/cnf form is reduced even further, but when doing a full scan,
+                    // let the user define the order in which the filter terms are examined.
+                    range[0] = rf;
+                }
             }
 
             factory = newFilteredFactory(rowInfo, range);

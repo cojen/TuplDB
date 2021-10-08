@@ -72,6 +72,31 @@ public abstract class GroupFilter extends RowFilter {
     }
 
     @Override
+    public int compareTo(RowFilter filter) {
+        if (filter instanceof GroupFilter) {
+            var other = (GroupFilter) filter;
+            if (opChar() == other.opChar()) {
+                return Arrays.compare(mSubFilters, other.mSubFilters);
+            }
+        }
+        return super.compareTo(filter);
+    }
+
+    @Override
+    public RowFilter sort() {
+        RowFilter[] subFilters = mSubFilters;
+        if (subFilters.length == 0) {
+            return this;
+        }
+        subFilters = subFilters.clone();
+        for (int i=0; i<subFilters.length; i++) {
+            subFilters[i] = subFilters[i].sort();
+        }
+        Arrays.sort(subFilters);
+        return newInstance(subFilters);
+    }
+
+    @Override
     void appendTo(StringBuilder b) {
         char opChar = opChar();
         for (int i=0; i<mSubFilters.length; i++) {

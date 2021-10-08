@@ -250,32 +250,32 @@ public class AndFilter extends GroupFilter {
     }
 
     @Override
-    char opChar() {
+    final char opChar() {
         return '&';
     }
 
     @Override
-    RowFilter newInstance(RowFilter[] subFilters, int off, int len) {
+    final RowFilter newInstance(RowFilter[] subFilters, int off, int len) {
         return AndFilter.flatten(subFilters, off, len);
     }
 
     @Override
-    RowFilter newFlippedInstance(RowFilter... subFilters) {
+    final RowFilter newFlippedInstance(RowFilter... subFilters) {
         return OrFilter.flatten(subFilters, 0, subFilters.length);
     }
 
     @Override
-    RowFilter emptyInstance() {
+    final RowFilter emptyInstance() {
         return TrueFilter.THE;
     }
 
     @Override
-    RowFilter emptyFlippedInstance() {
+    final RowFilter emptyFlippedInstance() {
         return FalseFilter.THE;
     }
 
     @Override
-    int reduceOperator(ColumnFilter a, ColumnFilter b) {
+    final int reduceOperator(ColumnFilter a, ColumnFilter b) {
         return a.reduceOperatorForAnd(b);
     }
 }

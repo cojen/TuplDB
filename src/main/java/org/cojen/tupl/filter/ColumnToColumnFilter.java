@@ -110,6 +110,22 @@ public final class ColumnToColumnFilter extends ColumnFilter {
     }
 
     @Override
+    public int compareTo(RowFilter filter) {
+        if (!(filter instanceof ColumnToColumnFilter)) {
+            return super.compareTo(filter);
+        }
+        var other = (ColumnToColumnFilter) filter;
+        int cmp = mColumn.name.compareTo(other.mColumn.name);
+        if (cmp == 0) {
+            cmp = Integer.compare(mOperator, other.mOperator);
+            if (cmp == 0) {
+                cmp = mOtherColumn.name.compareTo(other.mOtherColumn.name);
+            }
+        }
+        return cmp;
+    }
+
+    @Override
     boolean equalRhs(ColumnFilter other) {
         if (other instanceof ColumnToColumnFilter) {
             return mOtherColumn.equals(((ColumnToColumnFilter) other).mOtherColumn);

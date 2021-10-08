@@ -190,6 +190,9 @@ public class OrFilter extends GroupFilter {
             for (int j=0; j<numRanges; j++) {
                 int which = reverse ? 2 : 1;
                 RowFilter check = ranges[j][which];
+                if (check == null || range[which] == null) {
+                    continue;
+                }
                 if (check.isSubMatch(range[which]) > 0 || range[which].isSubMatch(check) > 0) {
                     RowFilter mergedFilter = sub.or(rangeFilters[j]).cnf();
                     RowFilter[] mergedRange = mergedFilter.rangeExtract(keyColumns);
@@ -220,32 +223,32 @@ public class OrFilter extends GroupFilter {
     }
 
     @Override
-    char opChar() {
+    final char opChar() {
         return '|';
     }
 
     @Override
-    RowFilter newInstance(RowFilter[] subFilters, int off, int len) {
+    final RowFilter newInstance(RowFilter[] subFilters, int off, int len) {
         return OrFilter.flatten(subFilters, off, len);
     }
 
     @Override
-    RowFilter newFlippedInstance(RowFilter... subFilters) {
+    final RowFilter newFlippedInstance(RowFilter... subFilters) {
         return AndFilter.flatten(subFilters, 0, subFilters.length);
     }
 
     @Override
-    RowFilter emptyInstance() {
+    final RowFilter emptyInstance() {
         return FalseFilter.THE;
     }
 
     @Override
-    RowFilter emptyFlippedInstance() {
+    final RowFilter emptyFlippedInstance() {
         return TrueFilter.THE;
     }
 
     @Override
-    int reduceOperator(ColumnFilter a, ColumnFilter b) {
+    final int reduceOperator(ColumnFilter a, ColumnFilter b) {
         return a.reduceOperatorForOr(b);
     }
 }

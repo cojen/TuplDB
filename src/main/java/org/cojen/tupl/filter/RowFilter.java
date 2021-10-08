@@ -27,7 +27,7 @@ import org.cojen.tupl.rows.ColumnInfo;
  * @author Brian S O'Neill
  * @see Parser
  */
-public abstract class RowFilter {
+public abstract class RowFilter implements Comparable<RowFilter> {
     private final int mHash;
 
     RowFilter(int hash) {
@@ -106,6 +106,11 @@ public abstract class RowFilter {
     }
 
     /**
+     * Returns this filter with a canonical sort order, for performing equivalence comparisons.
+     */
+    public abstract RowFilter sort();
+
+    /**
      * Given a set of columns corresponding to the primary key of an index, extract a suitable
      * range for performing an efficient index scan against this filter. For best results, this
      * method should be called on a conjunctive normal form filter.
@@ -170,4 +175,9 @@ public abstract class RowFilter {
     }
 
     abstract void appendTo(StringBuilder b);
+
+    @Override
+    public int compareTo(RowFilter filter) {
+        return getClass().getName().compareTo(filter.getClass().getName());
+    }
 }
