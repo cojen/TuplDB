@@ -292,13 +292,7 @@ public abstract class GroupFilter extends RowFilter {
                                          i + subSubFilters.length, subFilters.length - i - 1);
                         subFilters = newSubFilters;
                         repeat = true;
-                        if (i >= subFilters.length) {
-                            break loopi;
-                        }
                         sub = subFilters[i];
-                        if (sub == null) {
-                            continue loopi;
-                        }
                     }
                 }
 
