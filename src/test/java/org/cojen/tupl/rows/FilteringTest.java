@@ -629,4 +629,53 @@ public class FilteringTest {
         String name();
         void name(String str);
     }
+
+    @Test
+    public void columnToColumn() throws Exception {
+        // Basic column to column filtering.
+
+        Database db = Database.open(new DatabaseConfig());
+        Table<MyRow2> table = db.openTable(MyRow2.class);
+
+        for (int i=0; i<10; i++) {
+            MyRow2 row = table.newRow();
+            row.id(i);
+            row.name1("name" + i);
+            row.name2("name" + (i & ~1));
+            table.insert(null, row);
+        }
+
+        var scanner = table.newRowScanner(null, "name1 == name2");
+        int count = 0;
+        for (MyRow2 row = scanner.row(); row != null; row = scanner.step(row)) {
+            assertEquals(row.name1(), row.name2());
+            assertTrue((row.id() & 1) == 0);
+            assertEquals("name" + row.id(), row.name1());
+            count++;
+        }
+        assertEquals(5, count);
+
+        scanner = table.newRowScanner(null, "name1 != name2 && id >= ? && name1 != name2", 6);
+        count = 0;
+        for (MyRow2 row = scanner.row(); row != null; row = scanner.step(row)) {
+            assertNotEquals(row.name1(), row.name2());
+            assertTrue((row.id() & 1) != 0);
+            assertEquals("name" + row.id(), row.name1());
+            assertTrue(row.id() >= 6);
+            count++;
+        }
+        assertEquals(2, count);
+    }
+
+    @PrimaryKey("id")
+    public interface MyRow2 {
+        int id();
+        void id(int id);
+
+        String name1();
+        void name1(String str);
+
+        String name2();
+        void name2(String str);
+    }
 }
