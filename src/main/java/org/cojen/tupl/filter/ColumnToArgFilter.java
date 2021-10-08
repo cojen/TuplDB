@@ -80,7 +80,7 @@ public class ColumnToArgFilter extends ColumnFilter {
     }
 
     @Override
-    public RowFilter[] rangeExtract(boolean reverse, ColumnInfo... keyColumns) {
+    public RowFilter[] rangeExtract(ColumnInfo... keyColumns) {
         RowFilter remaining, low, high;
 
         match: {

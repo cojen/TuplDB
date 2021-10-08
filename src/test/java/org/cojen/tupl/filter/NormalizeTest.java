@@ -46,7 +46,7 @@ public class NormalizeTest {
         org.junit.runner.JUnitCore.main(NormalizeTest.class.getName());
     }
 
-    private static Map<String, ColumnInfo> newColMap(int num) {
+    static Map<String, ColumnInfo> newColMap(int num) {
         var colMap = new HashMap<String, ColumnInfo>();
         for (int i=0; i<num; i++) {
             var info = new ColumnInfo();

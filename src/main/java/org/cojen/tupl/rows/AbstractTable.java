@@ -326,7 +326,7 @@ public abstract class AbstractTable<R> implements Table<R> {
         } catch (ComplexFilterException e) {
             complex(rf, e);
             try {
-                return new RowFilter[][] {rf.cnf().rangeExtract(false, keyColumns)};
+                return new RowFilter[][] {rf.cnf().rangeExtract(keyColumns)};
             } catch (ComplexFilterException e2) {
                 return new RowFilter[][] {new RowFilter[] {rf, null, null}};
             }

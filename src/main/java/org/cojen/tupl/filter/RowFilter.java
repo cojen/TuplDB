@@ -126,11 +126,9 @@ public abstract class RowFilter {
      * <p>The last operator of the low range is >= or >, and the last operator of the high
      * range is <= or <. All prior operators (if any) are always ==.
      *
-     * @param reverse pass true if scan is to be performed in reverse order; note that the
-     * returned ranges are never swapped
      * @param keyColumns must provide at least one
      */
-    public RowFilter[] rangeExtract(boolean reverse, ColumnInfo... keyColumns) {
+    public RowFilter[] rangeExtract(ColumnInfo... keyColumns) {
         return new RowFilter[] {this, null, null};
     }
 
@@ -155,7 +153,7 @@ public abstract class RowFilter {
     public RowFilter[][] multiRangeExtract(boolean disjoint,
                                            boolean reverse, ColumnInfo... keyColumns)
     {
-        RowFilter[] range = rangeExtract(reverse, keyColumns);
+        RowFilter[] range = rangeExtract(keyColumns);
         return range == null ? null : new RowFilter[][] {range};
     }
 

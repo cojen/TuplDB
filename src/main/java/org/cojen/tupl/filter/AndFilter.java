@@ -144,9 +144,9 @@ public class AndFilter extends GroupFilter {
     }
 
     @Override
-    public RowFilter[] rangeExtract(boolean reverse, ColumnInfo... keyColumns) {
+    public RowFilter[] rangeExtract(ColumnInfo... keyColumns) {
         if (!mReduced) {
-            return reduce().rangeExtract(reverse, keyColumns);
+            return reduce().rangeExtract(keyColumns);
         }
 
         RowFilter[] subFilters = mSubFilters;
@@ -156,7 +156,7 @@ public class AndFilter extends GroupFilter {
         keys: for (int k = 0; k < keyColumns.length; k++) {
             String keyName = keyColumns[k].name;
 
-            for (int match = 0; match <= 2; match++) {
+            for (int match = 0; match <= 1; match++) {
                 for (int s = 0; s < subFilters.length; s++) {
                     RowFilter sub = subFilters[s];
 
@@ -184,25 +184,21 @@ public class AndFilter extends GroupFilter {
                             subFilters = removeSub(subFilters, s);
                             continue keys;
                         }
-                    } else if ((match == 1 && !reverse) || (match != 1 && reverse)) {
-                        if (op == OP_GT || op == OP_GE) {
-                            if (lowTerms == null) {
-                                lowTerms = new ColumnToArgFilter[keyColumns.length];
-                            }
-                            if (lowTerms[k] == null) {
-                                lowTerms[k] = term;
-                                subFilters = removeSub(subFilters, s);
-                            }
+                    } else if (op == OP_GT || op == OP_GE) {
+                        if (lowTerms == null) {
+                            lowTerms = new ColumnToArgFilter[keyColumns.length];
                         }
-                    } else {
-                        if (op == OP_LT || op == OP_LE) {
-                            if (highTerms == null) {
-                                highTerms = new ColumnToArgFilter[keyColumns.length];
-                            }
-                            if (highTerms[k] == null) {
-                                highTerms[k] = term;
-                                subFilters = removeSub(subFilters, s);
-                            }
+                        if (lowTerms[k] == null) {
+                            lowTerms[k] = term;
+                            subFilters = removeSub(subFilters, s);
+                        }
+                    } else if (op == OP_LT || op == OP_LE) {
+                        if (highTerms == null) {
+                            highTerms = new ColumnToArgFilter[keyColumns.length];
+                        }
+                        if (highTerms[k] == null) {
+                            highTerms[k] = term;
+                            subFilters = removeSub(subFilters, s);
                         }
                     }
                 }

@@ -168,7 +168,7 @@ public class OrFilter extends GroupFilter {
         outer: for (int i=0; i<subFilters.length; i++) {
             RowFilter sub = subFilters[i];
 
-            RowFilter[] range = sub.rangeExtract(reverse, keyColumns);
+            RowFilter[] range = sub.rangeExtract(keyColumns);
 
             if (sub.equals(range[0])) {
                 // Full scan.
@@ -192,7 +192,7 @@ public class OrFilter extends GroupFilter {
                 RowFilter check = ranges[j][which];
                 if (check.isSubMatch(range[which]) > 0 || range[which].isSubMatch(check) > 0) {
                     RowFilter mergedFilter = sub.or(rangeFilters[j]).cnf();
-                    RowFilter[] mergedRange = mergedFilter.rangeExtract(reverse, keyColumns);
+                    RowFilter[] mergedRange = mergedFilter.rangeExtract(keyColumns);
                     rangeFilters[j] = mergedFilter;
                     ranges[j] = mergedRange;
                     continue outer;
@@ -208,7 +208,7 @@ public class OrFilter extends GroupFilter {
             // Modify the range filters to be disjoint and rebuild the ranges.
             for (int i=1; i<numRanges; i++) {
                 rangeFilters[i] = rangeFilters[i].and(rangeFilters[i - 1].not()).reduce();
-                ranges[i] = rangeFilters[i].rangeExtract(reverse, keyColumns);
+                ranges[i] = rangeFilters[i].rangeExtract(keyColumns);
             }
         }
 
