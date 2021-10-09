@@ -36,6 +36,9 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
 import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Database;
@@ -195,9 +198,14 @@ public class RowStore {
 
     /**
      * Called by TableManager via asTable.
+     *
+     * @param doubleCheck invoked with schema lock held, to double check before making the table
+     * @param consumer called with lock held, to accept the newly made table
      */
     @SuppressWarnings("unchecked")
-    <R> AbstractTable<R> makeTable(TableManager<R> manager, Index ix, Class<R> type)
+    <R> AbstractTable<R> makeTable(TableManager<R> manager, Index ix, Class<R> type,
+                                   Supplier<AbstractTable<R>> doubleCheck,
+                                   Consumer<AbstractTable<R>> consumer)
         throws IOException
     {
         // Throws an exception if type is malformed.
@@ -210,8 +218,15 @@ public class RowStore {
         try {
             txn.lockMode(LockMode.REPEATABLE_READ);
 
-            // With a txn lock held, check if the schema has changed incompatibly.
+            // Acquire the lock, but don't check for schema changes just yet.
             RowInfo currentInfo = decodeExisting(txn, null, ix.id());
+
+            if (doubleCheck != null && (table = doubleCheck.get()) != null) {
+                // Found the table, so just use that.
+                return table;
+            }
+
+            // With a txn lock held, check if the schema has changed incompatibly.
             if (currentInfo != null) {
                 checkSchema(type.getName(), currentInfo, info);
             }
@@ -221,6 +236,10 @@ public class RowStore {
                 table = (AbstractTable) mh.invoke(manager, ix);
             } catch (Throwable e) {
                 throw rethrow(e);
+            }
+
+            if (consumer != null) {
+                consumer.accept(table);
             }
         } finally {
             txn.reset();
@@ -562,6 +581,7 @@ public class RowStore {
     private void doNotifySchema(long indexId) {
         try {
             Index ix = mDatabase.indexById(indexId);
+            // FIXME: Sometimes ix is null even when database claims to still be open.
             examineSecondaries(tableManager(ix));
         } catch (Throwable e) {
             uncaught(e);

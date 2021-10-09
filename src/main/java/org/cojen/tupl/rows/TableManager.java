@@ -64,21 +64,20 @@ public class TableManager<R> {
     }
 
     Table<R> asTable(RowStore rs, Index ix, Class<R> type) throws IOException {
-        var table = (AbstractTable<R>) mTables.get(type);
+        var table = tryFindTable(type);
 
         if (table != null) {
             return table;
         }
 
-        synchronized (mTables) {
-            table = (AbstractTable<R>) mTables.get(type);
-            if (table == null) {
-                table = rs.makeTable(this, ix, type);
-                mTables.put(type, table);
-                // Must be called after the table is added to the cache.
-                rs.examineSecondaries(this);
+        table = rs.makeTable(this, ix, type, () -> tryFindTable(type), t -> {
+            synchronized (mTables) {
+                mTables.put(type, t);
             }
-        }
+        });
+
+        // Must be called after the table is added to the cache. No harm if called redundantly.
+        rs.examineSecondaries(this);
 
         Worker worker;
         if (mWorkerRef != null && (worker = mWorkerRef.get()) != null) {
@@ -88,6 +87,16 @@ public class TableManager<R> {
             }
         }
 
+        return table;
+    }
+
+    private AbstractTable<R> tryFindTable(Class<R> type) {
+        var table = mTables.get(type);
+        if (table == null) {
+            synchronized (mTables) {
+                table = mTables.get(type);
+            }
+        }
         return table;
     }
 
