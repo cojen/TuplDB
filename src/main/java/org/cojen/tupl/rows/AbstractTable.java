@@ -153,13 +153,21 @@ public abstract class AbstractTable<R> implements Table<R> {
     }
 
     @Override
-    public Stream<R> newStream(Transaction txn) throws IOException {
-        return RowSpliterator.newStream(newRowScanner(txn));
+    public Stream<R> newStream(Transaction txn) {
+        try {
+            return RowSpliterator.newStream(newRowScanner(txn));
+        } catch (IOException e) {
+            throw Utils.rethrow(e);
+        }
     }
 
     @Override
-    public Stream<R> newStream(Transaction txn, String filter, Object... args) throws IOException {
-        return RowSpliterator.newStream(newRowScanner(txn, filter, args));
+    public Stream<R> newStream(Transaction txn, String filter, Object... args) {
+        try {
+            return RowSpliterator.newStream(newRowScanner(txn, filter, args));
+        } catch (IOException e) {
+            throw Utils.rethrow(e);
+        }
     }
 
     @Override

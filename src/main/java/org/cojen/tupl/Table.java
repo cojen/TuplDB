@@ -158,7 +158,7 @@ public interface Table<R> {
      * @return a new stream positioned at the first row in the table
      * @throws IllegalStateException if transaction belongs to another database instance
      */
-    public Stream<R> newStream(Transaction txn) throws IOException;
+    public Stream<R> newStream(Transaction txn);
 
     /**
      * Returns a new stream for a subset of rows of this table, as specified by the filter
@@ -170,7 +170,7 @@ public interface Table<R> {
      * @return a new stream positioned at the first row in the table accepted by the filter
      * @throws IllegalStateException if transaction belongs to another database instance
      */
-    public Stream<R> newStream(Transaction txn, String filter, Object... args) throws IOException;
+    public Stream<R> newStream(Transaction txn, String filter, Object... args);
 
     /**
      * Returns a new transaction which is compatible with this table. If the provided durability
