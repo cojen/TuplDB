@@ -204,9 +204,11 @@ class RowInfo extends ColumnSet {
             lookup: {
                 if (type != void.class) {
                     if (params.length == 0) {
-                        if (name.equals("clone") ||
-                            name.equals("hashCode") || name.equals("toString"))
-                        {
+                        if (name.equals("hashCode") || name.equals("toString")) {
+                            // Inherited non-final method declared in Object.
+                            continue;
+                        }
+                        if (name.equals("clone") && type.isAssignableFrom(rowType)) {
                             // Inherited non-final method declared in Object.
                             continue;
                         }
@@ -220,6 +222,11 @@ class RowInfo extends ColumnSet {
                         }
                         info.accessor = method;
                         break lookup;
+                    } else if (params.length == 1) {
+                        if (name.equals("equals") && params[0] == Object.class) {
+                            // Inherited non-final method declared in Object.
+                            continue;
+                        }
                     }
                 } else {
                     if (params.length == 1) {
