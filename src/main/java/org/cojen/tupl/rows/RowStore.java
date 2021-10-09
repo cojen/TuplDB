@@ -581,7 +581,6 @@ public class RowStore {
     private void doNotifySchema(long indexId) {
         try {
             Index ix = mDatabase.indexById(indexId);
-            // FIXME: Sometimes ix is null even when database claims to still be open.
             examineSecondaries(tableManager(ix));
         } catch (Throwable e) {
             uncaught(e);

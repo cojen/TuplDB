@@ -456,7 +456,15 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
 
     @Override
     public boolean notifySchema(long indexId) throws IOException {
+        // Wait for work to complete, preventing race conditions whereby a thread acting upon
+        // the notification runs before the index appears to have been created.
+        if (mWorkerGroup != null) {
+            // Assume that mDecodeLatch is held exclusively.
+            mWorkerGroup.join(false);
+        }
+
         mDatabase.rowStore().notifySchema(indexId);
+
         return true;
     }
 
