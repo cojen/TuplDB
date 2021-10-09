@@ -28,6 +28,8 @@ import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.Objects;
 
+import java.util.stream.Stream;
+
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.EventListener;
@@ -148,6 +150,16 @@ public abstract class AbstractTable<R> implements Table<R> {
         updater.init(txn);
 
         return updater;
+    }
+
+    @Override
+    public Stream<R> newStream(Transaction txn) throws IOException {
+        return RowSpliterator.newStream(newRowScanner(txn));
+    }
+
+    @Override
+    public Stream<R> newStream(Transaction txn, String filter, Object... args) throws IOException {
+        return RowSpliterator.newStream(newRowScanner(txn, filter, args));
     }
 
     @Override

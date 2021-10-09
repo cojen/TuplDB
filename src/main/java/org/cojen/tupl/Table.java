@@ -19,6 +19,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.stream.Stream;
+
 /**
  * Defines a relational collection of persistent rows. A row is defined by an interface
  * consisting of accessor/mutator methods corresponding to each column:
@@ -109,7 +111,7 @@ public interface Table<R> {
      * expression.
      *
      * @param txn optional transaction for the scanner to use; pass null for auto-commit mode
-     * @return a new scanner positioned at the first row in the table
+     * @return a new scanner positioned at the first row in the table accepted by the filter
      * @throws IllegalStateException if transaction belongs to another database instance
      */
     public RowScanner<R> newRowScanner(Transaction txn, String filter, Object... args)
@@ -141,11 +143,34 @@ public interface Table<R> {
      * and become visible to other transactions as the updater moves along.
      *
      * @param txn optional transaction for the updater to use; pass null for auto-commit mode
-     * @return a new updater positioned at the first row in the table
+     * @return a new updater positioned at the first row in the table accepted by the filter
      * @throws IllegalStateException if transaction belongs to another database instance
      */
     public RowUpdater<R> newRowUpdater(Transaction txn, String filter, Object... args)
         throws IOException;
+
+    /**
+     * Returns a new stream for all rows of this table. The stream must be explicitly closed
+     * when no longer used, or else it must be used with a try-with-resources statement. If an
+     * underlying {@code IOException} is generated, it's thrown as-if it was unchecked.
+     *
+     * @param txn optional transaction for the stream to use; pass null for auto-commit mode
+     * @return a new stream positioned at the first row in the table
+     * @throws IllegalStateException if transaction belongs to another database instance
+     */
+    public Stream<R> newStream(Transaction txn) throws IOException;
+
+    /**
+     * Returns a new stream for a subset of rows of this table, as specified by the filter
+     * expression. The stream must be explicitly closed when no longer used, or else it must be
+     * used with a try-with-resources statement. If an underlying {@code IOException} is
+     * generated, it's thrown as-if it was unchecked.
+     *
+     * @param txn optional transaction for the stream to use; pass null for auto-commit mode
+     * @return a new stream positioned at the first row in the table accepted by the filter
+     * @throws IllegalStateException if transaction belongs to another database instance
+     */
+    public Stream<R> newStream(Transaction txn, String filter, Object... args) throws IOException;
 
     /**
      * Returns a new transaction which is compatible with this table. If the provided durability
