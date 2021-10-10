@@ -30,11 +30,8 @@ import org.cojen.tupl.View;
  * @author Brian S O'Neill
  */
 class AutoCommitRowUpdater<R> extends NonRepeatableRowUpdater<R> {
-    /**
-     * @param table only should be provided if table supports triggers
-     */
-    AutoCommitRowUpdater(View view, ScanController<R> controller, AbstractTable<R> table) {
-        super(view, controller, table);
+    AutoCommitRowUpdater(AbstractTable<R> table, ScanController<R> controller) {
+        super(table, controller);
     }
 
     @Override

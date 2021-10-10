@@ -33,11 +33,8 @@ import org.cojen.tupl.View;
 class UpgradableRowUpdater<R> extends BasicRowUpdater<R> {
     LockMode mOriginalMode;
 
-    /**
-     * @param table only should be provided if table supports triggers
-     */
-    UpgradableRowUpdater(View view, ScanController<R> controller, AbstractTable<R> table) {
-        super(view, controller, table);
+    UpgradableRowUpdater(AbstractTable<R> table, ScanController<R> controller) {
+        super(table, controller);
     }
 
     @Override

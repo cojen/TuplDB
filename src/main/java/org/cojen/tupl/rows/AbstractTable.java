@@ -92,12 +92,12 @@ public abstract class AbstractTable<R> implements Table<R> {
     }
 
     @Override
-    public RowScanner<R> newRowScanner(Transaction txn) throws IOException {
+    public final RowScanner<R> newRowScanner(Transaction txn) throws IOException {
         return newRowScanner(txn, unfiltered());
     }
 
     @Override
-    public RowScanner<R> newRowScanner(Transaction txn, String filter, Object... args)
+    public final RowScanner<R> newRowScanner(Transaction txn, String filter, Object... args)
         throws IOException
     {
         return newRowScanner(txn, filtered(filter, args));
@@ -106,18 +106,18 @@ public abstract class AbstractTable<R> implements Table<R> {
     private RowScanner<R> newRowScanner(Transaction txn, ScanController<R> controller)
         throws IOException
     {
-        var scanner = new BasicRowScanner<>(mSource, controller);
+        var scanner = new BasicRowScanner<>(this, controller);
         scanner.init(txn);
         return scanner;
     }
 
     @Override
-    public RowUpdater<R> newRowUpdater(Transaction txn) throws IOException {
+    public final RowUpdater<R> newRowUpdater(Transaction txn) throws IOException {
         return newRowUpdater(txn, unfiltered());
     }
 
     @Override
-    public RowUpdater<R> newRowUpdater(Transaction txn, String filter, Object... args)
+    public final RowUpdater<R> newRowUpdater(Transaction txn, String filter, Object... args)
         throws IOException
     {
         return newRowUpdater(txn, filtered(filter, args));
@@ -126,24 +126,22 @@ public abstract class AbstractTable<R> implements Table<R> {
     protected RowUpdater<R> newRowUpdater(Transaction txn, ScanController<R> controller)
         throws IOException
     {
-        AbstractTable<R> table = mTrigger != null ? this : null;
-
         BasicRowUpdater<R> updater;
         if (txn == null) {
             txn = mSource.newTransaction(null);
-            updater = new AutoCommitRowUpdater<>(mSource, controller, table);
+            updater = new AutoCommitRowUpdater<>(this, controller);
         } else {
             switch (txn.lockMode()) {
             default:
-                updater = new BasicRowUpdater<>(mSource, controller, table);
+                updater = new BasicRowUpdater<>(this, controller);
                 break;
             case REPEATABLE_READ:
-                updater = new UpgradableRowUpdater<>(mSource, controller, table);
+                updater = new UpgradableRowUpdater<>(this, controller);
                 break;
             case READ_COMMITTED:
             case READ_UNCOMMITTED:
                 txn.enter();
-                updater = new NonRepeatableRowUpdater<>(mSource, controller, table);
+                updater = new NonRepeatableRowUpdater<>(this, controller);
                 break;
             }
         }
@@ -154,7 +152,7 @@ public abstract class AbstractTable<R> implements Table<R> {
     }
 
     @Override
-    public Stream<R> newStream(Transaction txn) {
+    public final Stream<R> newStream(Transaction txn) {
         try {
             return RowSpliterator.newStream(newRowScanner(txn));
         } catch (IOException e) {
@@ -163,7 +161,7 @@ public abstract class AbstractTable<R> implements Table<R> {
     }
 
     @Override
-    public Stream<R> newStream(Transaction txn, String filter, Object... args) {
+    public final Stream<R> newStream(Transaction txn, String filter, Object... args) {
         try {
             return RowSpliterator.newStream(newRowScanner(txn, filter, args));
         } catch (IOException e) {
@@ -172,12 +170,12 @@ public abstract class AbstractTable<R> implements Table<R> {
     }
 
     @Override
-    public String toString() {
+    public final String toString() {
         return mSource.toString();
     }
 
     @Override
-    public Transaction newTransaction(DurabilityMode durabilityMode) {
+    public final Transaction newTransaction(DurabilityMode durabilityMode) {
         return mSource.newTransaction(durabilityMode);
     }
 
@@ -407,7 +405,7 @@ public abstract class AbstractTable<R> implements Table<R> {
      * @param trigger can pass null to remove the trigger
      * @throws UnsupportedOperationException if triggers aren't supported by this table
      */
-    void setTrigger(Trigger<R> trigger) {
+    final void setTrigger(Trigger<R> trigger) {
         if (mTrigger == null) {
             throw new UnsupportedOperationException();
         }
@@ -421,11 +419,18 @@ public abstract class AbstractTable<R> implements Table<R> {
     }
 
     /**
+     * Returns the trigger quickly, which is null if triggers aren't supported.
+     */
+    final Trigger<R> getTrigger() {
+        return mTrigger;
+    }
+
+    /**
      * Returns the current trigger, which must be held shared during the operation. As soon as
      * acquired, check if the trigger is disabled. This method must be public because it's
      * sometimes accessed from generated code which isn't a subclass of AbstractTable.
      */
-    public Trigger<R> trigger() {
+    public final Trigger<R> trigger() {
         return (Trigger<R>) cTriggerHandle.getOpaque(this);
     }
 

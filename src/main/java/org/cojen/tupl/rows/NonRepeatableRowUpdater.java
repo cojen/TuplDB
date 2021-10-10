@@ -32,11 +32,8 @@ import org.cojen.tupl.View;
 class NonRepeatableRowUpdater<R> extends BasicRowUpdater<R> {
     LockResult mLockResult;
 
-    /**
-     * @param table only should be provided if table supports triggers
-     */
-    NonRepeatableRowUpdater(View view, ScanController<R> controller, AbstractTable<R> table) {
-        super(view, controller, table);
+    NonRepeatableRowUpdater(AbstractTable<R> table, ScanController<R> controller) {
+        super(table, controller);
     }
 
     @Override

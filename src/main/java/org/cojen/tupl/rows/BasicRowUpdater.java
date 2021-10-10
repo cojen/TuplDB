@@ -41,16 +41,10 @@ import org.cojen.tupl.core.CommitLock;
  * @author Brian S O'Neill
  */
 class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
-    final AbstractTable<R> mTriggerTable;
-
     private TreeSet<byte[]> mKeysToSkip;
 
-    /**
-     * @param table only should be provided if table supports triggers
-     */
-    BasicRowUpdater(View view, ScanController<R> controller, AbstractTable<R> table) {
-        super(view, controller);
-        mTriggerTable = table;
+    BasicRowUpdater(AbstractTable<R> table, ScanController<R> controller) {
+        super(table, controller);
     }
 
     @Override
@@ -96,10 +90,10 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
 
     private R doDeleteAndStep(R row) throws IOException {
         doDelete: try {
-            if (mTriggerTable == null) {
+            Trigger<R> trigger = mTable.getTrigger();
+            if (trigger == null) {
                 doDelete();
             } else while (true) {
-                Trigger<R> trigger = mTriggerTable.trigger();
                 CommitLock.Shared shared = trigger.acquireShared();
                 try {
                     int mode = trigger.mode();
@@ -114,6 +108,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
                 } finally {
                     shared.release();
                 }
+                trigger = mTable.trigger();
             }
         } catch (UnpositionedCursorException e) {
             finished();
@@ -148,13 +143,13 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
         if (key == null || (cmp = c.compareKeyTo(key)) == 0) {
             // Key didn't change.
 
-            if (mTriggerTable == null) {
+            Trigger<R> trigger = mTable.getTrigger();
+            if (trigger == null) {
                 storeValue(c, value);
                 return;
             }
 
             while (true) {
-                Trigger<R> trigger = mTriggerTable.trigger();
                 CommitLock.Shared shared = trigger.acquireShared();
                 try {
                     int mode = trigger.mode();
@@ -169,6 +164,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
                 } finally {
                     shared.release();
                 }
+                trigger = mTable.trigger();
             }
         }
 
@@ -189,19 +185,21 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
             }
         }
 
-        Transaction txn = ViewUtils.enterScope(mView, c.link());
+        View source = mTable.mSource;
+
+        Transaction txn = ViewUtils.enterScope(source, c.link());
         doUpdate: try {
-            if (!mView.insert(txn, key, value)) {
+            if (!source.insert(txn, key, value)) {
                 if (cmp < 0) {
                     mKeysToSkip.remove(key);
                 }
                 throw new UniqueConstraintException("Primary key");
             }
 
-            if (mTriggerTable == null) {
+            Trigger<R> trigger = mTable.getTrigger();
+            if (trigger == null) {
                 c.commit(null);
             } else while (true) {
-                Trigger<R> trigger = mTriggerTable.trigger();
                 CommitLock.Shared shared = trigger.acquireShared();
                 try {
                     int mode = trigger.mode();
@@ -218,6 +216,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
                 } finally {
                     shared.release();
                 }
+                trigger = mTable.trigger();
             }
         } finally {
             txn.exit();
@@ -239,7 +238,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
     protected void storeValue(Trigger<R> trigger, R row, Cursor c, byte[] value)
         throws IOException
     {
-        Transaction txn = ViewUtils.enterScope(mView, c.link());
+        Transaction txn = ViewUtils.enterScope(mTable.mSource, c.link());
         try {
             byte[] oldValue = c.value();
             c.store(value);
@@ -266,7 +265,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
 
     protected void doDelete(Trigger<R> trigger, R row) throws IOException {
         Cursor c = mCursor;
-        Transaction txn = ViewUtils.enterScope(mView, c.link());
+        Transaction txn = ViewUtils.enterScope(mTable.mSource, c.link());
         try {
             byte[] oldValue = c.value();
             if (oldValue != null) {

@@ -34,7 +34,7 @@ import org.cojen.tupl.View;
  * @author Brian S O'Neill
  */
 class BasicRowScanner<R> implements RowScanner<R> {
-    final View mView;
+    final AbstractTable<R> mTable;
     final ScanController<R> mController;
 
     Cursor mCursor;
@@ -42,8 +42,8 @@ class BasicRowScanner<R> implements RowScanner<R> {
 
     R mRow;
 
-    BasicRowScanner(View view, ScanController<R> controller) {
-        mView = view;
+    BasicRowScanner(AbstractTable<R> table, ScanController<R> controller) {
+        mTable = table;
         mController = controller;
     }
 
@@ -54,7 +54,7 @@ class BasicRowScanner<R> implements RowScanner<R> {
         outer: while (true) {
             mDecoder = mController.decoder();
 
-            Cursor c = mController.newCursor(mView, txn);
+            Cursor c = mController.newCursor(mTable.mSource, txn);
             mCursor = c;
 
             LockResult result = toFirst(c);
@@ -114,7 +114,7 @@ class BasicRowScanner<R> implements RowScanner<R> {
                     }
                     mDecoder = mController.decoder();
                     Transaction txn = c.link();
-                    mCursor = c = mController.newCursor(mView, txn);
+                    mCursor = c = mController.newCursor(mTable.mSource, txn);
                     toFirst(c);
                 }
                 R decoded = decodeRow(key, c, row);
