@@ -31,6 +31,7 @@ import java.util.Objects;
 import java.util.stream.Stream;
 
 import org.cojen.tupl.Cursor;
+import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventType;
@@ -187,14 +188,20 @@ public abstract class AbstractTable<R> implements Table<R> {
 
     @Override
     public Table<R> viewAlternateKey(String... columns) throws IOException {
-        var rs = rowStoreRef().get();
-        return rs == null ? null : rs.alternateKeyTable(this, columns);
+        return viewIndexTable(true, columns);
     }
 
     @Override
     public Table<R> viewSecondaryIndex(String... columns) throws IOException {
+        return viewIndexTable(false, columns);
+    }
+
+    private Table<R> viewIndexTable(boolean alt, String... columns) throws IOException {
         var rs = rowStoreRef().get();
-        return rs == null ? null : rs.secondaryIndexTable(this, columns);
+        if (rs == null) {
+            throw new DatabaseException("Closed");
+        }
+        return rs.indexTable(this, alt, columns);
     }
 
     private ScanController<R> filtered(String filter, Object... args) {

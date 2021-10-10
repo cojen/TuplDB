@@ -307,7 +307,8 @@ public interface Table<R> {
      * rows of the table only contain the columns that are provided by the alternate key.
      *
      * @param columns column specifications for the alternate key
-     * @return alternate key as a table, or null if not found
+     * @return alternate key as a table
+     * @throws IllegalStateException if alternate key wasn't found
      */
     public Table<R> viewAlternateKey(String... columns) throws IOException;
 
@@ -316,7 +317,8 @@ public interface Table<R> {
      * rows of the table only contain the columns that are provided by the secondary index.
      *
      * @param columns column specifications for the secondary index
-     * @return secondary index as a table, or null if not found
+     * @return secondary index as a table
+     * @throws IllegalStateException if secondary index wasn't found
      */
     public Table<R> viewSecondaryIndex(String... columns) throws IOException;
 

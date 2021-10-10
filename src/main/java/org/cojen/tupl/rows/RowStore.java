@@ -367,19 +367,10 @@ public class RowStore {
         return map;
     }
 
-    public <R> Table<R> alternateKeyTable(AbstractTable<R> primaryTable, String... columns)
-        throws IOException
-    {
-        return indexTable(primaryTable, true, columns);
-    }
-
-    public <R> Table<R> secondaryIndexTable(AbstractTable<R> primaryTable, String... columns)
-        throws IOException
-    {
-        return indexTable(primaryTable, false, columns);
-    }
-
-    private <R> Table<R> indexTable(AbstractTable<R> primaryTable, boolean alt, String... columns)
+    /**
+     * @throws IllegalStateException if not found
+     */
+    public <R> Table<R> indexTable(AbstractTable<R> primaryTable, boolean alt, String... columns)
         throws IOException
     {
         Object key = ArrayKey.make(alt, columns);
@@ -392,9 +383,12 @@ public class RowStore {
                 table = indexTables.get(key);
                 if (table == null) {
                     table = makeIndexTable(indexTables, primaryTable, alt, columns);
-                    if (table != null) {
-                        indexTables.put(key, table);
+                    if (table == null) {
+                        throw new IllegalStateException
+                            ((alt ? "Alternate key" : "Secondary index") + " not found: " +
+                             Arrays.toString(columns));
                     }
+                    indexTables.put(key, table);
                 }
             }
         }
@@ -404,7 +398,7 @@ public class RowStore {
 
     /**
      * @param indexTables check and store in this cache, which is synchronized by the caller
-     * @return null if not found
+     * @throws IllegalStateException if not found
      */
     @SuppressWarnings("unchecked")
     private <R> AbstractTable<R> makeIndexTable(WeakCache<Object, AbstractTable<R>> indexTables,
@@ -417,7 +411,9 @@ public class RowStore {
         ColumnSet cs = rowInfo.examineIndex(null, columns, alt);
 
         if (cs == null) {
-            return null;
+            throw new IllegalStateException
+                ((alt ? "Alternate key" : "Secondary index") + " not found: " +
+                 Arrays.toString(columns));
         }
 
         var encoder = new Encoder(columns.length * 16);
