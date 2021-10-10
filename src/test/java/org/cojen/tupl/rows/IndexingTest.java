@@ -437,8 +437,11 @@ public class IndexingTest {
 
         Table nameTable = null, numTable = null;
         for (int i=0; i<1000; i++) {
-            nameTable = table2.viewAlternateKey("name");
-            numTable = table2.viewSecondaryIndex("num");
+            try {
+                nameTable = table2.viewAlternateKey("name");
+                numTable = table2.viewSecondaryIndex("num");
+            } catch (IllegalStateException e) {
+            }
             if (nameTable != null && numTable != null) {
                 break;
             }
@@ -558,7 +561,12 @@ public class IndexingTest {
         var table2 = db.openIndex("test").asTable(t2);
 
         sleep(1000);
-        assertNull(table2.viewSecondaryIndex("name"));
+        try {
+            table2.viewSecondaryIndex("name");
+            fail();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().contains("not found"));
+        }
 
         // As the backfill is running, make some index changes that need to be tracked and
         // applied properly before the backfill finishes.
@@ -599,7 +607,10 @@ public class IndexingTest {
 
         Table nameTable = null;
         for (int i=0; i<1000; i++) {
-            nameTable = table2.viewSecondaryIndex("name");
+            try {
+                nameTable = table2.viewSecondaryIndex("name");
+            } catch (IllegalStateException e) {
+            }
             if (nameTable != null) {
                 break;
             }
@@ -669,7 +680,10 @@ public class IndexingTest {
 
         Table numTable = null;
         for (int i=0; i<1000; i++) {
-            numTable = table2.viewSecondaryIndex("num");
+            try {
+                numTable = table2.viewSecondaryIndex("num");
+            } catch (IllegalStateException e) {
+            }
             if (numTable != null) {
                 break;
             }
