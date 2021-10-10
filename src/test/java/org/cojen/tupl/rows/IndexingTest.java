@@ -56,12 +56,12 @@ public class IndexingTest {
         Database db = Database.open(new DatabaseConfig().lockTimeout(100, TimeUnit.MILLISECONDS));
         Table<TestRow> table = db.openTable(TestRow.class);
 
-        Table<TestRow> alt = table.alternateKey("path");
-        Table<TestRow> ix1 = table.secondaryIndex("name");
-        Table<TestRow> ix2 = table.secondaryIndex("num", "name");
+        Table<TestRow> alt = table.viewAlternateKey("path");
+        Table<TestRow> ix1 = table.viewSecondaryIndex("name");
+        Table<TestRow> ix2 = table.viewSecondaryIndex("num", "name");
 
-        assertNull(ix1.alternateKey("path"));
-        assertNull(ix1.secondaryIndex("name"));
+        assertNull(ix1.viewAlternateKey("path"));
+        assertNull(ix1.viewSecondaryIndex("name"));
 
         {
             TestRow row = table.newRow();
@@ -437,8 +437,8 @@ public class IndexingTest {
 
         Table nameTable = null, numTable = null;
         for (int i=0; i<1000; i++) {
-            nameTable = table2.alternateKey("name");
-            numTable = table2.secondaryIndex("num");
+            nameTable = table2.viewAlternateKey("name");
+            numTable = table2.viewSecondaryIndex("num");
             if (nameTable != null && numTable != null) {
                 break;
             }
@@ -558,7 +558,7 @@ public class IndexingTest {
         var table2 = db.openIndex("test").asTable(t2);
 
         sleep(1000);
-        assertNull(table2.secondaryIndex("name"));
+        assertNull(table2.viewSecondaryIndex("name"));
 
         // As the backfill is running, make some index changes that need to be tracked and
         // applied properly before the backfill finishes.
@@ -599,7 +599,7 @@ public class IndexingTest {
 
         Table nameTable = null;
         for (int i=0; i<1000; i++) {
-            nameTable = table2.secondaryIndex("name");
+            nameTable = table2.viewSecondaryIndex("name");
             if (nameTable != null) {
                 break;
             }
@@ -669,7 +669,7 @@ public class IndexingTest {
 
         Table numTable = null;
         for (int i=0; i<1000; i++) {
-            numTable = table2.secondaryIndex("num");
+            numTable = table2.viewSecondaryIndex("num");
             if (numTable != null) {
                 break;
             }
@@ -685,7 +685,7 @@ public class IndexingTest {
 
         Table replicaNumTable = null;
         for (int i=0; i<1000; i++) {
-            replicaNumTable = replicaTable.secondaryIndex("num");
+            replicaNumTable = replicaTable.viewSecondaryIndex("num");
             if (replicaNumTable != null) {
                 break;
             }

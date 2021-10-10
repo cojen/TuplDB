@@ -144,10 +144,6 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Allocate native memory.</div>
 </dd>
-<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#alternateKey(java.lang.String...)" class="member-name-link">alternateKey(String...)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
-<dd>
-<div class="block">Returns a direct view of an alternate key, in the form of an unmodifiable table.</div>
-</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/AlternateKey.html" class="type-name-link" title="annotation interface in org.cojen.tupl">AlternateKey</a> - Annotation Interface in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
 <div class="block">Annotation which defines an alternate set of columns that uniquely identify a row instance.</div>
@@ -3225,10 +3221,6 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Returns a Combiner that chooses the second value and discards the first value.</div>
 </dd>
-<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#secondaryIndex(java.lang.String...)" class="member-name-link">secondaryIndex(String...)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
-<dd>
-<div class="block">Returns a direct view of a secondary index, in the form of an unmodifiable table.</div>
-</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/SecondaryIndex.html" class="type-name-link" title="annotation interface in org.cojen.tupl">SecondaryIndex</a> - Annotation Interface in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
 <div class="block">Annotation which a defines secondary search index within a table.</div>
@@ -4033,6 +4025,10 @@ the order they are declared.</div>
 <dd>
 <div class="block">Mapping of keys to values, in no particular order.</div>
 </dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#viewAlternateKey(java.lang.String...)" class="member-name-link">viewAlternateKey(String...)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
+<dd>
+<div class="block">Returns a direct view of an alternate key, in the form of an unmodifiable table.</div>
+</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/ViewConstraintException.html" class="type-name-link" title="class in org.cojen.tupl">ViewConstraintException</a> - Exception in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
 <div class="block">Thrown when attempting to perform an illegal view alteration.</div>
@@ -4086,6 +4082,10 @@ the order they are declared.</div>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/View.html#viewReverse()" class="member-name-link">viewReverse()</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
 <dd>
 <div class="block">Returns a view, backed by this one, whose natural order is reversed.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#viewSecondaryIndex(java.lang.String...)" class="member-name-link">viewSecondaryIndex(String...)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
+<dd>
+<div class="block">Returns a direct view of a secondary index, in the form of an unmodifiable table.</div>
 </dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/View.html#viewTransformed(org.cojen.tupl.Transformer)" class="member-name-link">viewTransformed(Transformer)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
 <dd>

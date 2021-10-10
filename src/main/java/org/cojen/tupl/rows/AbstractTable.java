@@ -186,13 +186,13 @@ public abstract class AbstractTable<R> implements Table<R> {
     }
 
     @Override
-    public Table<R> alternateKey(String... columns) throws IOException {
+    public Table<R> viewAlternateKey(String... columns) throws IOException {
         var rs = rowStoreRef().get();
         return rs == null ? null : rs.alternateKeyTable(this, columns);
     }
 
     @Override
-    public Table<R> secondaryIndex(String... columns) throws IOException {
+    public Table<R> viewSecondaryIndex(String... columns) throws IOException {
         var rs = rowStoreRef().get();
         return rs == null ? null : rs.secondaryIndexTable(this, columns);
     }

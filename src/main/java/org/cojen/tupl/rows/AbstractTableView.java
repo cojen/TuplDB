@@ -26,7 +26,7 @@ import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnmodifiableViewException;
 
 /**
- * Base class for the tables returned by alternateKeyTable and secondaryIndexTable.
+ * Base class for the tables returned by viewAlternateKey and viewSecondaryIndex.
  *
  * @author Brian S O'Neill
  */
@@ -76,12 +76,12 @@ public abstract class AbstractTableView<R> extends AbstractTable<R> {
     }
 
     @Override
-    public Table<R> alternateKey(String... columns) throws IOException {
+    public Table<R> viewAlternateKey(String... columns) throws IOException {
         return null;
     }
 
     @Override
-    public Table<R> secondaryIndex(String... columns) throws IOException {
+    public Table<R> viewSecondaryIndex(String... columns) throws IOException {
         return null;
     }
 
