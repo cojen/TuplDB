@@ -76,12 +76,12 @@ public abstract class AbstractTableView<R> extends AbstractTable<R> {
     }
 
     @Override
-    public Table<R> alternateKeyTable(String... columns) throws IOException {
+    public Table<R> alternateKey(String... columns) throws IOException {
         return null;
     }
 
     @Override
-    public Table<R> secondaryIndexTable(String... columns) throws IOException {
+    public Table<R> secondaryIndex(String... columns) throws IOException {
         return null;
     }
 

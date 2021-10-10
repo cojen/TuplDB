@@ -309,7 +309,7 @@ public interface Table<R> {
      * @param columns column specifications for the alternate key
      * @return alternate key as a table, or null if not found
      */
-    public Table<R> alternateKeyTable(String... columns) throws IOException;
+    public Table<R> alternateKey(String... columns) throws IOException;
 
     /**
      * Returns a direct view of a secondary index, in the form of an unmodifiable table. The
@@ -318,7 +318,7 @@ public interface Table<R> {
      * @param columns column specifications for the secondary index
      * @return secondary index as a table, or null if not found
      */
-    public Table<R> secondaryIndexTable(String... columns) throws IOException;
+    public Table<R> secondaryIndex(String... columns) throws IOException;
 
     // FIXME: A filtered view is too restrictive. It prevents RowUpdater from making changes to
     // rows when the change is part of the filter. Add this feature later. Initially support
