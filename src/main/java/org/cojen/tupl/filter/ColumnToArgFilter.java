@@ -75,11 +75,6 @@ public class ColumnToArgFilter extends ColumnFilter {
     }
 
     @Override
-    public ColumnToArgFilter not() {
-        return new ColumnToArgFilter(mColumn, flipOperator(mOperator), mArgNum);
-    }
-
-    @Override
     public RowFilter[] rangeExtract(ColumnInfo... keyColumns) {
         RowFilter remaining, low, high;
 

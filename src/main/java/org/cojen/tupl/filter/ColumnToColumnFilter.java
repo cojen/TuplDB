@@ -79,11 +79,6 @@ public final class ColumnToColumnFilter extends ColumnFilter {
         return hash;
     }
 
-    @Override
-    public ColumnToColumnFilter not() {
-        return new ColumnToColumnFilter(mColumn, flipOperator(mOperator), mOtherColumn, mCommon);
-    }
-
     public ColumnInfo otherColumn() {
         return mOtherColumn;
     }

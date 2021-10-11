@@ -107,6 +107,11 @@ public abstract class ColumnFilter extends RowFilter {
     }
 
     @Override
+    public ColumnFilter not() {
+        return withOperator(flipOperator(mOperator));
+    }
+
+    @Override
     public ColumnFilter sort() {
         return this;
     }
