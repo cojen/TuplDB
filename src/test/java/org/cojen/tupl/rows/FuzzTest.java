@@ -260,8 +260,8 @@ public class FuzzTest {
         updater.close();
     }
 
-    private static void truncateAndClose(Index ix, Table rv) throws Exception {
-        var updater = rv.newRowUpdater(null);
+    private static void truncateAndClose(Index ix, Table table) throws Exception {
+        var updater = table.newRowUpdater(null);
         while (updater.row() != null) {
             updater.delete();
         }
@@ -370,16 +370,52 @@ public class FuzzTest {
      * Verifies that the given filter matches only the given row, corresponding to the last
      * invocation of filterAll.
      */
-    private static void filterAllMatch(Table rv, String filter, Object[] args, Object row)
+    private static void filterAllMatch(Table table, String filter, Object[] args, Object row)
         throws Exception
     {
-        RowScanner scanner = rv.newRowScanner(null, filter, args);
+        RowScanner scanner = table.newRowScanner(null, filter, args);
+
         Object matchRow = scanner.row();
         assertNotNull(matchRow);
-        assertEquals(row, matchRow);
+
+        while (!row.equals(matchRow)) {
+            if (!fuzzyEquals(row, matchRow)) {
+                assertEquals(row, matchRow);
+            }
+            matchRow = scanner.step();
+            assertNotNull(matchRow);
+        }
+
         Object nextRow = scanner.step();
-        assertNull(nextRow);
+
+        if (nextRow != null && !fuzzyEquals(matchRow, nextRow)) {
+            assertNull(nextRow);
+        }
+
         scanner.close();
+    }
+
+    private static boolean fuzzyEquals(Object r1, Object r2) throws Exception {
+        // Searches against BigDecimal columns can yield more than one result if the column
+        // values only differ by scale.
+        Method[] methods = r1.getClass().getMethods();
+        for (Method m : methods) {
+            if (m.getName().length() == 1 && m.getParameters().length == 0) {
+                Object v1 = m.invoke(r1);
+                Object v2 = m.invoke(r2);
+                if (m.getReturnType() == BigDecimal.class) {
+                    var bd1 = (BigDecimal) v1;
+                    var bd2 = (BigDecimal) v2;
+                    if (bd1.compareTo(bd2) != 0) {
+                        return false;
+                    }
+                } else if (!Objects.deepEquals(v1, v2)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     /**

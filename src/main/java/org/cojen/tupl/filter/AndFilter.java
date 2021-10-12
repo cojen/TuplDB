@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.filter;
 
+import java.math.BigDecimal;
+
 import java.util.Arrays;
 
 import org.cojen.tupl.rows.ColumnInfo;
@@ -179,10 +181,14 @@ public class AndFilter extends GroupFilter {
                             if (highTerms == null) {
                                 highTerms = new ColumnToArgFilter[keyColumns.length];
                             }
-                            lowTerms[k] = term;
-                            highTerms[k] = term;
-                            subFilters = removeSub(subFilters, s);
-                            continue keys;
+                            if (term.mColumn.type != BigDecimal.class) {
+                                lowTerms[k] = term;
+                                highTerms[k] = term;
+                                subFilters = removeSub(subFilters, s);
+                                continue keys;
+                            }
+                            lowTerms[k] = term.withOperator(OP_GE);
+                            highTerms[k] = term.withOperatorPlusUlp(OP_LT);
                         }
                     } else if (op == OP_GT || op == OP_GE) {
                         if (lowTerms == null) {

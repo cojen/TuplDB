@@ -697,6 +697,18 @@ public class RowUtils extends Utils {
         return bits;
     }
 
+    /**
+     * Adds one to an unsigned integer, represented as a byte array.
+     *
+     * @param overflow returned instead if overflowed
+     */
+    public static byte[] increment(byte[] value, byte[] overflow) {
+        if (!increment(value, 0, value.length)) {
+            return overflow;
+        }
+        return value;
+    }
+
     public static IllegalArgumentException nullColumnException(String name) {
         return new IllegalArgumentException("Cannot be null: " + name);
     }

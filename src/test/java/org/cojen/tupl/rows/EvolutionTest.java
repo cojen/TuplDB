@@ -945,7 +945,7 @@ public class EvolutionTest {
             var row = table.newRow();
             setKey.invoke(row, 4);
             table.load(null, row);
-            assertEquals(new BigDecimal("0.0"), getA.invoke(row));
+            assertEquals(BigDecimal.ZERO, getA.invoke(row));
             assertEquals(null, getB.invoke(row));
             assertEquals(new BigDecimal("-10"), getC.invoke(row));
             assertEquals(new BigDecimal("-400"), getD.invoke(row));
@@ -974,7 +974,7 @@ public class EvolutionTest {
                 assertEquals(new BigDecimal("-123.456"), getE.invoke(row));
                 break;
             case 4:
-                assertEquals(new BigDecimal("0.0"), getA.invoke(row));
+                assertEquals(BigDecimal.ZERO, getA.invoke(row));
                 assertEquals(null, getB.invoke(row));
                 assertEquals(new BigDecimal("-10"), getC.invoke(row));
                 assertEquals(new BigDecimal("-400"), getD.invoke(row));
@@ -999,7 +999,7 @@ public class EvolutionTest {
                 assertEquals(new BigDecimal("-123.456"), getE.invoke(row));
                 break;
             case 4:
-                assertEquals(new BigDecimal("0.0"), getA.invoke(row));
+                assertEquals(BigDecimal.ZERO, getA.invoke(row));
                 assertEquals(null, getB.invoke(row));
                 assertEquals(new BigDecimal("-10"), getC.invoke(row));
                 assertEquals(new BigDecimal("-400"), getD.invoke(row));
@@ -1059,7 +1059,7 @@ public class EvolutionTest {
                 assertEquals(BigDecimal.ZERO, getE.invoke(row));
                 break;
             case 4:
-                assertEquals(new BigDecimal("0.0"), getA.invoke(row));
+                assertEquals(BigDecimal.ZERO, getA.invoke(row));
                 assertEquals(null, getB.invoke(row));
                 assertEquals(new BigDecimal("-10"), getC.invoke(row));
                 assertEquals(new BigDecimal("-400"), getD.invoke(row));

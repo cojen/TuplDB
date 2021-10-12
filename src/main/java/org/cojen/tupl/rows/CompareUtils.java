@@ -117,9 +117,7 @@ class CompareUtils {
                 // BigDecimal.equals is too strict and would lead to much confusion. For
                 // example, 0 isn't considered equal to 0.0. Note that Float.equals is
                 // similarly fuzzy with respect to how it compares NaN values.
-                // FIXME: When searching against a BigDecimal key, must use a range for
-                // consistency. That code won't go here, however.
-                var result = colVar.invoke("compareTo", argVar);
+                var result = mm.var(BigDecimalUtils.class).invoke("matches", colVar, argVar);
                 if (op == ColumnFilter.OP_EQ) {
                     result.ifEq(0, pass);
                 } else {

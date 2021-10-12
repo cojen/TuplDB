@@ -249,12 +249,12 @@ public class FilteredScanMaker<R> {
         var argVars = new Variable[codecs.length];
 
         var visitor = new Visitor() {
-            int lastOp = -1;
+            ColumnToArgFilter last = null;
             int pos = 0;
 
             @Override
             public void visit(ColumnToArgFilter filter) {
-                lastOp = filter.operator();
+                last = filter;
 
                 ColumnInfo column = filter.column();
                 int argument = filter.argument();
@@ -271,17 +271,28 @@ public class FilteredScanMaker<R> {
                     argVarMap.put(key, argVar);
                 }
 
+                if (filter.plusUlp()) {
+                    argVar = argVar.get();
+                    Label cont = mFilterCtorMaker.label();
+                    argVar.ifEq(null, cont);
+                    String op = !column.isDescending() ? "add" : "subtract";
+                    argVar.set(argVar.invoke(op, argVar.invoke("ulp")));
+                    cont.here();
+                }
+
                 argVars[pos++] = argVar;
             }
         };
 
         bound.accept(visitor);
 
-        int lastOp = visitor.lastOp;
+        ColumnToArgFilter last = visitor.last;
+        int lastOp = last.operator();
         int numArgs = visitor.pos;
 
         boolean inclusive;
         boolean increment = false;
+
         if (low) {
             switch (lastOp) {
             case ColumnToArgFilter.OP_GE:
@@ -337,7 +348,7 @@ public class FilteredScanMaker<R> {
 
         // Generate code which allocates the destination byte array.
 
-        Variable dstVar;
+        final Variable dstVar;
         if (totalVar == null) {
             dstVar = mFilterCtorMaker.new_(byte[].class, minSize);
         } else {
@@ -354,17 +365,22 @@ public class FilteredScanMaker<R> {
             codecs[i].encode(argVars[i], dstVar, offsetVar);
         }
 
-        if (increment) {
-            var overflowedVar = mFilterCtorMaker.var(RowUtils.class)
-                .invoke("increment", dstVar, 0, dstVar.alength());
-            Label noOverflow = mFilterCtorMaker.label();
-            overflowedVar.ifTrue(noOverflow);
+        var rowUtilsVar = mFilterCtorMaker.var(RowUtils.class);
+
+        if (last.plusUlp()) {
+            assert !low;
+            assert !inclusive;
+            assert !increment;
+            Label cont = mFilterCtorMaker.label();
+            argVars[numArgs - 1].ifNe(null, cont);
+            dstVar.set(rowUtilsVar.invoke("increment", dstVar, null));
+            cont.here();
+        } else if (increment) {
+            Object overflow = null;
             if (low) {
-                dstVar.set(mFilterCtorMaker.var(ScanController.class).field("EMPTY"));
-            } else {
-                dstVar.set(null);
+                overflow = mFilterCtorMaker.var(ScanController.class).field("EMPTY");
             }
-            noOverflow.here();
+            dstVar.set(rowUtilsVar.invoke("increment", dstVar, overflow));
         }
 
         int ctorParamOffset = low ? 0 : 2;

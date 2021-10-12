@@ -728,9 +728,11 @@ public class Converter {
                 dstVar.set(bd.field("ZERO"));
                 break;
             case TYPE_BYTE: case TYPE_SHORT: case TYPE_INT: case TYPE_LONG:
+                dstVar.set(bd.invoke("valueOf", srcVar));
+                break;
             case TYPE_FLOAT: case TYPE_DOUBLE:
                 Label tryStart = mm.label().here();
-                dstVar.set(bd.invoke("valueOf", srcVar));
+                dstVar.set(mm.var(BigDecimalUtils.class).invoke("toBigDecimal", srcVar));
                 mm.catch_(tryStart, NumberFormatException.class, exVar -> {
                     setDefault(mm, dstInfo, dstVar);
                     mm.goto_(end);

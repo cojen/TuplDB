@@ -320,4 +320,45 @@ public class BigDecimalUtils extends RowUtils {
 
         return srcOffset;
     }
+
+    /**
+     * Does a more accurate conversion by not adding more scale than exists.
+     *
+     * @throws NumberFormatException if given value is NaN or infinite
+     */
+    public static BigDecimal toBigDecimal(double d) {
+        if (d == 0) {
+            return BigDecimal.ZERO;
+        } else if (d == 1) {
+            return BigDecimal.ONE;
+        }
+
+        String str = String.valueOf(d);
+        if (str.endsWith(".0")) {
+            str = str.substring(0, str.length() - 2);
+        } else {
+            int ix = str.indexOf(".0E");
+            if (ix > 0) {
+                str = str.substring(0, ix) + str.substring(ix + 2);
+            }
+        }
+
+        return new BigDecimal(str);
+    }
+
+    /**
+     * Compares a column to an argument search. If both compare the same but the column has a
+     * lower scale, then the column is considered lower. Note that this comparison isn't
+     * symmetrical.
+     *
+     * @param col non-null
+     * @param arg non-null
+     */
+    public static int matches(BigDecimal col, BigDecimal arg) {
+        int cmp = col.compareTo(arg);
+        if (cmp == 0 && col.scale() < arg.scale()) {
+            cmp = -1;
+        }
+        return cmp;
+    }
 }

@@ -455,27 +455,33 @@ public class ConvertCallSite extends MutableCallSite {
     private static Variable toBigDecimal(MethodMaker mm, Class fromType, Variable from) {
         Variable numVar;
 
-        if (fromType == String.class) {
-            return mm.new_(BigDecimal.class, from.cast(String.class));
-        } else if (fromType == Integer.class) {
-            numVar = from.cast(Integer.class);
-        } else if (fromType == Long.class) {
-            numVar = from.cast(Long.class);
-        } else if (fromType == Double.class) {
-            numVar = from.cast(Double.class);
-        } else if (fromType == Float.class) {
-            numVar = from.cast(Float.class);
-        } else if (fromType == Byte.class) {
-            numVar = from.cast(Byte.class);
-        } else if (fromType == Short.class) {
-            numVar = from.cast(Short.class);
-        } else if (fromType == BigInteger.class) {
-            return mm.new_(BigDecimal.class, from.cast(BigInteger.class));
-        } else {
-            return null;
+        standard: {
+            if (fromType == String.class) {
+                return mm.new_(BigDecimal.class, from.cast(String.class));
+            } else if (fromType == Integer.class) {
+                numVar = from.cast(Integer.class);
+            } else if (fromType == Long.class) {
+                numVar = from.cast(Long.class);
+            } else if (fromType == Double.class) {
+                numVar = from.cast(Double.class);
+                break standard;
+            } else if (fromType == Float.class) {
+                numVar = from.cast(Float.class);
+                break standard;
+            } else if (fromType == Byte.class) {
+                numVar = from.cast(Byte.class);
+            } else if (fromType == Short.class) {
+                numVar = from.cast(Short.class);
+            } else if (fromType == BigInteger.class) {
+                return mm.new_(BigDecimal.class, from.cast(BigInteger.class));
+            } else {
+                return null;
+            }
+
+            return mm.var(BigDecimal.class).invoke("valueOf", numVar);
         }
 
-        return mm.var(BigDecimal.class).invoke("valueOf", numVar);
+        return mm.var(BigDecimalUtils.class).invoke("toBigDecimal", numVar);
     }
 
     private static Variable toArray(MethodMaker mm, Class toType, Class fromType, Variable from) {
