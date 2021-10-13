@@ -28,16 +28,10 @@ import org.cojen.tupl.rows.ColumnInfo;
  */
 public class ColumnToArgFilter extends ColumnFilter {
     final int mArgNum;
-    final boolean mPlusUlp;
 
     ColumnToArgFilter(ColumnInfo column, int op, int arg) {
-        this(column, op, arg, false);
-    }
-
-    private ColumnToArgFilter(ColumnInfo column, int op, int arg, boolean plusUlp) {
         super(hash(column, op, arg), column, op);
         mArgNum = arg;
-        mPlusUlp = plusUlp;
     }
 
     private static int hash(ColumnInfo column, int op, int arg) {
@@ -59,9 +53,7 @@ public class ColumnToArgFilter extends ColumnFilter {
         }
         if (filter instanceof ColumnToArgFilter) {
             var other = (ColumnToArgFilter) filter;
-            if (mArgNum == other.mArgNum && mColumn.equals(other.mColumn)
-                && mPlusUlp == other.mPlusUlp)
-            {
+            if (mArgNum == other.mArgNum && mColumn.equals(other.mColumn)) {
                 if (mOperator == other.mOperator) {
                     return 1; // equal
                 } else if (mOperator == flipOperator(other.mOperator)) {
@@ -86,7 +78,7 @@ public class ColumnToArgFilter extends ColumnFilter {
 
     @Override
     public RowFilter[] rangeExtract(ColumnInfo... keyColumns) {
-        RowFilter remaining, low, high;
+        ColumnToArgFilter remaining, low, high;
 
         match: {
             if (keyColumns[0].equals(mColumn)) {
@@ -98,8 +90,8 @@ public class ColumnToArgFilter extends ColumnFilter {
                         high = this.withOperator(OP_LE);
                     } else {
                         remaining = this;
-                        low = this.withOperator(OP_GE);
-                        high = this.withOperatorPlusUlp(OP_LT);
+                        low = this;
+                        high = this;
                     }
                     break match;
                 case OP_GT: case OP_GE:
@@ -117,19 +109,32 @@ public class ColumnToArgFilter extends ColumnFilter {
             high = null;
         }
 
+        if (mColumn.isDescending()) {
+            var newLow = descending(high);
+            high = descending(low);
+            low = newLow;
+        }
+
         return new RowFilter[] {remaining, low, high};
+    }
+
+    static ColumnToArgFilter descending(ColumnToArgFilter filter) {
+        if (filter != null) {
+            int op;
+            switch (filter.mOperator) {
+            case OP_GE: op = OP_LE; break;
+            case OP_LT: op = OP_GT; break;
+            case OP_LE: op = OP_GE; break;
+            case OP_GT: op = OP_LT; break;
+            default: return filter;
+            }
+            filter = filter.withOperator(op);
+        }
+        return filter;
     }
 
     public int argument() {
         return mArgNum;
-    }
-
-    /**
-     * When true, filter evaluator must add one ulp to the argument before making a comparison.
-     * This is only expected for BigDecimal columns, when part of a high range bound.
-     */
-    public boolean plusUlp() {
-        return mPlusUlp;
     }
 
     @Override
@@ -140,7 +145,7 @@ public class ColumnToArgFilter extends ColumnFilter {
         if (obj instanceof ColumnToArgFilter) {
             var other = (ColumnToArgFilter) obj;
             return mColumn.equals(other.mColumn) && mOperator == other.mOperator
-                && mArgNum == other.mArgNum && mPlusUlp == other.mPlusUlp;
+                && mArgNum == other.mArgNum;
         }
         return false;
     }
@@ -170,20 +175,13 @@ public class ColumnToArgFilter extends ColumnFilter {
     }
 
     @Override
-    ColumnToArgFilter withOperator(int op) {
-        return new ColumnToArgFilter(mColumn, op, mArgNum, mPlusUlp);
-    }
-
-    ColumnToArgFilter withOperatorPlusUlp(int op) {
-        return new ColumnToArgFilter(mColumn, op, mArgNum, true);
+    public ColumnToArgFilter withOperator(int op) {
+        return new ColumnToArgFilter(mColumn, op, mArgNum);
     }
 
     @Override
     void appendTo(StringBuilder b) {
         super.appendTo(b);
-        if (mPlusUlp) {
-            b.append('+');
-        }
         b.append('?').append(mArgNum);
     }
 }

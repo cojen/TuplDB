@@ -25,6 +25,8 @@ import java.lang.invoke.VarHandle;
 
 import java.lang.ref.WeakReference;
 
+import java.math.BigDecimal;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -84,6 +86,10 @@ public class FilteredScanMaker<R> {
 
     // Bound to mFilterCtorMaker.
     private final ColumnCodec[] mKeyCodecs, mValueCodecs;
+
+    // Stop the scan when this filter evaluates to false.
+    private String mStopColumn;
+    private int mStopArgument;
 
     /**
      * Three RowFilter objects are passed in, which correspond to results of the
@@ -249,34 +255,57 @@ public class FilteredScanMaker<R> {
         var argVars = new Variable[codecs.length];
 
         var visitor = new Visitor() {
-            ColumnToArgFilter last = null;
-            int pos = 0;
+            ColumnToArgFilter last;
+            int pos;
+            boolean ulp;
 
             @Override
             public void visit(ColumnToArgFilter filter) {
-                last = filter;
-
                 ColumnInfo column = filter.column();
                 int argument = filter.argument();
-
                 var key = new ColumnArg();
                 key.column = column;
                 key.argument = argument;
 
                 Variable argVar = argVarMap.get(key);
 
+                if (filter.operator() == ColumnToArgFilter.OP_EQ
+                    && column.type == BigDecimal.class)
+                {
+                    if (!column.isDescending()) {
+                        if (low) {
+                            filter = filter.withOperator(ColumnToArgFilter.OP_GE);
+                        } else {
+                            mStopColumn = column.name;
+                            mStopArgument = argument;
+                            // Assume that this sub-filter is the last, but use the previous
+                            // last now. As a stop filter, it closes the cursor instead of
+                            // relying on a high bound.
+                            return;
+                        }
+                    } else {
+                        if (low) {
+                            filter = filter.withOperator(ColumnToArgFilter.OP_GT);
+                            ulp = true;
+                        } else {
+                            filter = filter.withOperator(ColumnToArgFilter.OP_LE);
+                        }
+                    }
+                }
+
+                last = filter;
+
                 if (argVar == null) {
-                    argVar = mFilterCtorMaker.param(0).aget(filter.argument());
+                    argVar = mFilterCtorMaker.param(0).aget(argument);
                     argVar = ConvertCallSite.make(mFilterCtorMaker, column.type, argVar);
                     argVarMap.put(key, argVar);
                 }
 
-                if (filter.plusUlp()) {
+                if (ulp) {
                     argVar = argVar.get();
                     Label cont = mFilterCtorMaker.label();
                     argVar.ifEq(null, cont);
-                    String op = !column.isDescending() ? "add" : "subtract";
-                    argVar.set(argVar.invoke(op, argVar.invoke("ulp")));
+                    argVar.set(argVar.invoke("add", argVar.invoke("ulp")));
                     cont.here();
                 }
 
@@ -287,19 +316,24 @@ public class FilteredScanMaker<R> {
         bound.accept(visitor);
 
         ColumnToArgFilter last = visitor.last;
-        int lastOp = last.operator();
+
+        if (last == null) {
+            return;
+        }
+
         int numArgs = visitor.pos;
+        boolean ulp = visitor.ulp;
 
         boolean inclusive;
         boolean increment = false;
 
         if (low) {
-            switch (lastOp) {
-            case ColumnToArgFilter.OP_GE:
+            switch (last.operator()) {
+            case ColumnToArgFilter.OP_GE: case ColumnToArgFilter.OP_EQ:
                 inclusive = true;
                 break;
             case ColumnToArgFilter.OP_GT:
-                if (numArgs == codecs.length) {
+                if (numArgs == codecs.length && !ulp) {
                     inclusive = false;
                 } else {
                     inclusive = true;
@@ -309,11 +343,11 @@ public class FilteredScanMaker<R> {
             default: throw new AssertionError();
             }
         } else {
-            switch (lastOp) {
+            switch (last.operator()) {
             case ColumnToArgFilter.OP_LT:
                 inclusive = false;
                 break;
-            case ColumnToArgFilter.OP_LE:
+            case ColumnToArgFilter.OP_LE: case ColumnToArgFilter.OP_EQ:
                 if (numArgs == codecs.length) {
                     inclusive = true;
                 } else {
@@ -367,20 +401,20 @@ public class FilteredScanMaker<R> {
 
         var rowUtilsVar = mFilterCtorMaker.var(RowUtils.class);
 
-        if (last.plusUlp()) {
-            assert !low;
-            assert !inclusive;
-            assert !increment;
-            Label cont = mFilterCtorMaker.label();
-            argVars[numArgs - 1].ifNe(null, cont);
-            dstVar.set(rowUtilsVar.invoke("increment", dstVar, null));
-            cont.here();
-        } else if (increment) {
+        if (increment) {
             Object overflow = null;
             if (low) {
                 overflow = mFilterCtorMaker.var(ScanController.class).field("EMPTY");
             }
+            Label cont = null;
+            if (ulp) {
+                cont = mFilterCtorMaker.label();
+                argVars[numArgs - 1].ifEq(null, cont);
+            }
             dstVar.set(rowUtilsVar.invoke("increment", dstVar, overflow));
+            if (cont != null) {
+                cont.here();
+            }
         }
 
         int ctorParamOffset = low ? 0 : 2;
@@ -394,26 +428,40 @@ public class FilteredScanMaker<R> {
             return;
         }
 
-        // Specified by RowDecoderEncoder.
-        MethodMaker mm = mFilterMaker.addMethod
-            (Object.class, "decodeRow", byte[].class, byte[].class, Object.class).public_();
+        // Implement/override method as specified by RowDecoderEncoder.
+
+        Object[] params;
+        if (mStopColumn == null) {
+            params = new Object[] {byte[].class, byte[].class, Object.class};
+        } else {
+            params = new Object[] {byte[].class, Cursor.class, Object.class};
+        }
+
+        MethodMaker mm = mFilterMaker.addMethod(Object.class, "decodeRow", params).public_();
 
         if (mIsPrimaryTable) {
             // The decode method is implemented using indy, to support multiple schema versions.
 
             var indy = mm.var(FilteredScanMaker.class).indy
-                ("indyDecodeRow", mStoreRef, mTableClass, mRowType, mIndexId, mFilter, mFilterStr);
+                ("indyDecodeRow", mStoreRef, mTableClass, mRowType, mIndexId,
+                 mFilter, mFilterStr, mStopColumn, mStopArgument);
 
             var valueVar = mm.param(1);
+
+            if (valueVar.classType() == Cursor.class) {
+                valueVar = valueVar.invoke("value");
+            }
+
             var schemaVersion = TableMaker.decodeSchemaVersion(mm, valueVar);
 
-            mm.return_(indy.invoke(Object.class, "decodeRow", null,
-                                   schemaVersion, mm.param(0), valueVar, mm.param(2), mm.this_()));
+            mm.return_(indy.invoke(Object.class, "decodeRow", null, schemaVersion,
+                                   mm.param(0), mm.param(1), mm.param(2), mm.this_()));
         } else {
-            // Decoding secondary index row is simpler because it has no schema version.
+            // Decoding a secondary index row is simpler because it has no schema version.
             Class<?> rowClass = RowMaker.find(mRowType);
             var visitor = new DecodeVisitor
-                (mm, 0, mTableClass, rowClass, mRowGen, null, mm.this_());
+                (mm, 0, mTableClass, rowClass, mRowGen, null, mm.this_(), // decoderVar
+                 mStopColumn, mStopArgument);
             mFilter.accept(visitor);
             visitor.done();
         }
@@ -422,10 +470,12 @@ public class FilteredScanMaker<R> {
     public static CallSite indyDecodeRow(MethodHandles.Lookup lookup, String name, MethodType mt,
                                          WeakReference<RowStore> storeRef,
                                          Class<?> tableClass, Class<?> rowType, long indexId,
-                                         RowFilter filter, String filterStr)
+                                         RowFilter filter, String filterStr,
+                                         String stopColumn, int stopArgument)
     {
         var dm = new DecodeMaker
-            (lookup, mt, storeRef, tableClass, rowType, indexId, filter, filterStr);
+            (lookup, mt, storeRef, tableClass, rowType, indexId,
+             filter, filterStr, stopColumn, stopArgument);
         return new SwitchCallSite(lookup, mt, dm);
     }
 
@@ -437,14 +487,18 @@ public class FilteredScanMaker<R> {
         private final Class<?> mRowType;
         private final long mIndexId;
         private final String mFilterStr;
+        private final String mStopColumn;
+        private final int mStopArgument;
 
-        // The DecodeMaker isn't defined as a lambda function because this field cannot be final.
+        // The DecodeMaker isn't defined as a lambda function because these fields cannot be final.
         private WeakReference<RowFilter> mFilterRef;
+        private WeakReference<RowFilter> mStopFilterRef;
 
         DecodeMaker(MethodHandles.Lookup lookup, MethodType mt,
                     WeakReference<RowStore> storeRef, Class<?> tableClass,
                     Class<?> rowType, long indexId,
-                    RowFilter filter, String filterStr)
+                    RowFilter filter, String filterStr,
+                    String stopColumn, int stopArgument)
         {
             mLookup = lookup;
             mMethodType = mt.dropParameterTypes(0, 1);
@@ -454,6 +508,8 @@ public class FilteredScanMaker<R> {
             mIndexId = indexId;
             mFilterStr = filterStr;
             mFilterRef = new WeakReference<>(filter);
+            mStopColumn = stopColumn;
+            mStopArgument = stopArgument;
         }
 
         /**
@@ -507,7 +563,8 @@ public class FilteredScanMaker<R> {
             int valueOffset = RowUtils.lengthPrefixPF(schemaVersion);
 
             var visitor = new DecodeVisitor
-                (mm, valueOffset, mTableClass, rowClass, rowGen, decoder, null);
+                (mm, valueOffset, mTableClass, rowClass, rowGen, decoder, null,
+                 mStopColumn, mStopArgument);
             filter.accept(visitor);
             visitor.done();
 
@@ -520,12 +577,15 @@ public class FilteredScanMaker<R> {
      */
     private static class DecodeVisitor extends Visitor {
         private final MethodMaker mMaker;
+        private final Variable mValueVar;
         private final int mValueOffset;
         private final Class<?> mTableClass;
         private final Class<?> mRowClass;
         private final RowGen mRowGen;
         private final MethodHandle mDecoder;
         private final Variable mDecoderVar;
+        private final String mStopColumn;
+        private final int mStopArgument;
 
         private final ColumnCodec[] mKeyCodecs, mValueCodecs;
 
@@ -538,14 +598,19 @@ public class FilteredScanMaker<R> {
         private int mHighestLocatedValue;
 
         /**
-         * Supports two forms of methods:
+         * Supports four forms of methods:
          *
          *     R decodeRow(byte[] key, byte[] value, R row, decoder/filter)
+         *     R decodeRow(byte[] key, Cursor c, R row, decoder/filter)
          *     R decodeRow(byte[] key, byte[] value, R row)
+         *     R decodeRow(byte[] key, Cursor c, R row)
          *
-         * When using the first form, a decoder MethodHandle must be provided. When using the
-         * second form, a decoderVar msut be provided.
-
+         * When using the first two forms, a decoder MethodHandle must be provided. When using
+         * the last two forms, a decoderVar must be provided.
+         *
+         * If a stopColumn and stopArgument are provided, then the cursor method form is
+         * required in order for the stop to actually work.
+         *
          * @param mm signature: R decodeRow(byte[] key, byte[] value, R row [, decoder/filter])
          * @param valueOffset offset to skip past the schema version
          * @param tableClass current table implementation class
@@ -556,7 +621,8 @@ public class FilteredScanMaker<R> {
          */
         DecodeVisitor(MethodMaker mm, int valueOffset,
                       Class<?> tableClass, Class<?> rowClass, RowGen rowGen,
-                      MethodHandle decoder, Variable decoderVar)
+                      MethodHandle decoder, Variable decoderVar,
+                      String stopColumn, int stopArgument)
         {
             mMaker = mm;
             mValueOffset = valueOffset;
@@ -564,6 +630,14 @@ public class FilteredScanMaker<R> {
             mRowClass = rowClass;
             mRowGen = rowGen;
             mDecoder = decoder;
+            mStopColumn = stopColumn;
+            mStopArgument = stopArgument;
+
+            var valueVar = mm.param(1);
+            if (valueVar.classType() == Cursor.class) {
+                valueVar = valueVar.invoke("value");
+            }
+            mValueVar = valueVar;
 
             if (decoderVar == null) {
                 if (decoder == null) {
@@ -602,11 +676,10 @@ public class FilteredScanMaker<R> {
 
             // Invoke the schema-specific decoder directly, instead of calling the decodeValue
             // method which redundantly examines the schema version and switches on it.
-            var valueVar = mMaker.param(1); // param(1) is the value byte array
             if (mDecoder != null) {
-                mMaker.invoke(mDecoder, rowVar, valueVar);
+                mMaker.invoke(mDecoder, rowVar, mValueVar);
             } else {
-                mMaker.var(mTableClass).invoke("decodeValue", rowVar, valueVar);
+                mMaker.var(mTableClass).invoke("decodeValue", rowVar, mValueVar);
             }
 
             // Call the generated filter class, which has access to the inherited markAllClean
@@ -684,12 +757,22 @@ public class FilteredScanMaker<R> {
 
         @Override
         public void visit(ColumnToArgFilter filter) {
+            final Label originalFail = mFail;
+
             ColumnInfo colInfo = filter.column();
             int op = filter.operator();
             Variable argObjVar = mDecoderVar; // contains the arg fields prepared earlier
             int argNum = filter.argument();
 
             Integer colNum = columnNumberFor(colInfo.name);
+
+            Label stop = null;
+            if (argNum == mStopArgument && colInfo.name.equals(mStopColumn)
+                && mMaker.param(1).classType() == Cursor.class)
+            {
+                stop = mMaker.label();
+                mFail = stop;
+            }
 
             if (colNum != null) {
                 ColumnCodec codec = codecFor(colNum);
@@ -712,6 +795,15 @@ public class FilteredScanMaker<R> {
                 Converter.setDefault(mMaker, colInfo, columnVar);
                 CompareUtils.compare(mMaker, colInfo, columnVar,
                                      colInfo, argField, op, mPass, mFail);
+            }
+
+            if (stop != null) {
+                stop.here();
+                // Reset the cursor to stop scanning.
+                mMaker.param(1).invoke("reset");
+                mMaker.var(StoppedCursorException.class).field("THE").throw_();
+                //mMaker.goto_(originalFail);
+                mFail = originalFail;
             }
         }
 
@@ -797,7 +889,7 @@ public class FilteredScanMaker<R> {
                     // Value column.
                     colNum -= codecs.length;
                     highestNum = mHighestLocatedValue;
-                    srcVar = mMaker.param(1);
+                    srcVar = mValueVar;
                     codecs = mValueCodecs;
                     if ((located = mLocatedValues) != null) {
                         break init;

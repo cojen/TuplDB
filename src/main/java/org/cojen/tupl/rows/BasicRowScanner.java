@@ -51,7 +51,7 @@ class BasicRowScanner<R> implements RowScanner<R> {
      * Must be called after construction.
      */
     final void init(Transaction txn) throws IOException {
-        outer: while (true) {
+        a: while (true) {
             mDecoder = mController.decoder();
 
             Cursor c = mController.newCursor(mTable.mSource, txn);
@@ -62,9 +62,9 @@ class BasicRowScanner<R> implements RowScanner<R> {
                 byte[] key = c.key();
                 if (key == null) {
                     if (!mController.next()) {
-                        break outer;
+                        break a;
                     }
-                    continue outer;
+                    continue a;
                 }
                 try {
                     R decoded = mDecoder.decodeRow(key, c, null);
@@ -72,6 +72,12 @@ class BasicRowScanner<R> implements RowScanner<R> {
                         mRow = decoded;
                         return;
                     }
+                } catch (StoppedCursorException e) {
+                    if (result == LockResult.ACQUIRED) {
+                        c.link().unlock();
+                        unlocked();
+                    }
+                    continue;
                 } catch (Throwable e) {
                     throw RowUtils.fail(this, e);
                 }
@@ -105,26 +111,37 @@ class BasicRowScanner<R> implements RowScanner<R> {
     protected final R doStep(R row) throws IOException {
         Cursor c = mCursor;
         try {
-            outer: while (true) {
+            a: while (true) {
                 LockResult result = toNext(c);
-                byte[] key;
-                while ((key = c.key()) == null) {
-                    if (!mController.next()) {
-                        break outer;
+                b: while (true) {
+                    byte[] key;
+                    while ((key = c.key()) == null) {
+                        if (!mController.next()) {
+                            break a;
+                        }
+                        mDecoder = mController.decoder();
+                        Transaction txn = c.link();
+                        mCursor = c = mController.newCursor(mTable.mSource, txn);
+                        toFirst(c);
                     }
-                    mDecoder = mController.decoder();
-                    Transaction txn = c.link();
-                    mCursor = c = mController.newCursor(mTable.mSource, txn);
-                    toFirst(c);
-                }
-                R decoded = decodeRow(key, c, row);
-                if (decoded != null) {
-                    mRow = decoded;
-                    return decoded;
-                }
-                if (result == LockResult.ACQUIRED) {
-                    c.link().unlock();
-                    unlocked();
+                    try {
+                        R decoded = decodeRow(key, c, row);
+                        if (decoded != null) {
+                            mRow = decoded;
+                            return decoded;
+                        }
+                    } catch (StoppedCursorException e) {
+                        if (result == LockResult.ACQUIRED) {
+                            c.link().unlock();
+                            unlocked();
+                        }
+                        continue b;
+                    }
+                    if (result == LockResult.ACQUIRED) {
+                        c.link().unlock();
+                        unlocked();
+                    }
+                    continue a;
                 }
             }
         } catch (UnpositionedCursorException e) {

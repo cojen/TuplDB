@@ -153,7 +153,10 @@ public class AndFilter extends GroupFilter {
 
         RowFilter[] subFilters = mSubFilters;
 
-        ColumnToArgFilter[] lowTerms = null, highTerms = null;
+        final var lowTerms = new ColumnToArgFilter[keyColumns.length];
+        final var highTerms = new ColumnToArgFilter[keyColumns.length];
+
+        boolean fuzzy = false;
 
         keys: for (int k = 0; k < keyColumns.length; k++) {
             String keyName = keyColumns[k].name;
@@ -175,36 +178,39 @@ public class AndFilter extends GroupFilter {
 
                     if (match == 0) {
                         if (op == OP_EQ) {
-                            if (lowTerms == null) {
-                                lowTerms = new ColumnToArgFilter[keyColumns.length];
-                            }
-                            if (highTerms == null) {
-                                highTerms = new ColumnToArgFilter[keyColumns.length];
-                            }
+                            lowTerms[k] = term;
+                            highTerms[k] = term;
                             if (term.mColumn.type != BigDecimal.class) {
-                                lowTerms[k] = term;
-                                highTerms[k] = term;
                                 subFilters = removeSub(subFilters, s);
                                 continue keys;
                             }
-                            lowTerms[k] = term.withOperator(OP_GE);
-                            highTerms[k] = term.withOperatorPlusUlp(OP_LT);
+                            // BigDecimal matches on a range of values, so need to double check
+                            // against the original term. Cannot continue after a range match.
+                            fuzzy = true;
                         }
-                    } else if (op == OP_GT || op == OP_GE) {
-                        if (lowTerms == null) {
-                            lowTerms = new ColumnToArgFilter[keyColumns.length];
+                    } else if (!term.mColumn.isDescending()) {
+                        if (op == OP_GT || op == OP_GE) {
+                            if (lowTerms[k] == null) {
+                                lowTerms[k] = term;
+                                subFilters = removeSub(subFilters, s);
+                            }
+                        } else if (op == OP_LT || op == OP_LE) {
+                            if (highTerms[k] == null) {
+                                highTerms[k] = term;
+                                subFilters = removeSub(subFilters, s);
+                            }
                         }
-                        if (lowTerms[k] == null) {
-                            lowTerms[k] = term;
-                            subFilters = removeSub(subFilters, s);
-                        }
-                    } else if (op == OP_LT || op == OP_LE) {
-                        if (highTerms == null) {
-                            highTerms = new ColumnToArgFilter[keyColumns.length];
-                        }
-                        if (highTerms[k] == null) {
-                            highTerms[k] = term;
-                            subFilters = removeSub(subFilters, s);
+                    } else {
+                        if (op == OP_GT || op == OP_GE) {
+                            if (highTerms[k] == null) {
+                                highTerms[k] = ColumnToArgFilter.descending(term);
+                                subFilters = removeSub(subFilters, s);
+                            }
+                        } else if (op == OP_LT || op == OP_LE) {
+                            if (lowTerms[k] == null) {
+                                lowTerms[k] = ColumnToArgFilter.descending(term);
+                                subFilters = removeSub(subFilters, s);
+                            }
                         }
                     }
                 }
@@ -214,8 +220,8 @@ public class AndFilter extends GroupFilter {
             break keys;
         }
 
-        RowFilter lowRange = combineRange(lowTerms, OP_GE);
-        RowFilter highRange = combineRange(highTerms, OP_LE);
+        RowFilter lowRange = combineRange(lowTerms, fuzzy, OP_GE);
+        RowFilter highRange = combineRange(highTerms, fuzzy, OP_LE);
 
         RowFilter remaining = this;
 
@@ -237,18 +243,24 @@ public class AndFilter extends GroupFilter {
         return subFilters;
     }
 
-    /**
-     * @param lastOp if the last operator is ==, replace it with lastOp
-     */
-    private static RowFilter combineRange(ColumnToArgFilter[] terms, int lastOp) {
-        if (terms == null) {
-            return null;
-        }
+    private static int numTerms(ColumnToArgFilter[] terms) {
+        int len;
+        for (len = 0; len < terms.length && terms[len] != null; len++);
+        return len;
+    }
 
+    /**
+     * @param lastOp if !fuzzy and the last operator is ==, replace it with lastOp
+     */
+    private static RowFilter combineRange(ColumnToArgFilter[] terms, boolean fuzzy, int lastOp) {
         int len;
         for (len = 0; len < terms.length && terms[len] != null; len++);
 
-        if (terms[len - 1].operator() == OP_EQ) {
+        if (len == 0) {
+            return null;
+        }
+
+        if (!fuzzy && terms[len - 1].operator() == OP_EQ) {
             terms[len - 1] = terms[len - 1].withOperator(lastOp);
         }
 

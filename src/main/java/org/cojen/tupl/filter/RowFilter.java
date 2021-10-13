@@ -129,7 +129,8 @@ public abstract class RowFilter implements Comparable<RowFilter> {
      * never exceeds the number of key columns provided.
      *
      * <p>The last operator of the low range is >= or >, and the last operator of the high
-     * range is <= or <. All prior operators (if any) are always ==.
+     * range is <= or <. All prior operators (if any) are always ==. For "fuzzy" BigDecimal
+     * matches, the last operator is always ==.
      *
      * @param keyColumns must provide at least one
      */

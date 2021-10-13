@@ -131,7 +131,7 @@ public class ColumnInfo implements Cloneable {
         return isUnsigned(typeCode) && plainTypeCode(typeCode) != TYPE_BOOLEAN;
     }
 
-    boolean isDescending() {
+    public boolean isDescending() {
         return isDescending(typeCode);
     }
 
