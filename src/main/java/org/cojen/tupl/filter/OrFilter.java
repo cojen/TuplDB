@@ -170,7 +170,7 @@ public class OrFilter extends GroupFilter {
 
             RowFilter[] range = sub.rangeExtract(keyColumns);
 
-            if (sub.equals(range[0])) {
+            if (range[1] == null && range[2] == null && sub.equals(range[0])) {
                 // Full scan.
                 return super.multiRangeExtract(disjoint, reverse, keyColumns);
             }

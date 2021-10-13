@@ -128,7 +128,7 @@ final class MergedScanController<R> extends SingleScanController<R> {
                 }
                 // Mode 1.
                 if (mHigh.isTooHigh(key)) {
-                    // Transaction to mode 2, but the row was already rejected.
+                    // Transition to mode 2, but the row was already rejected.
                     mMode = 2;
                     return null;
                 }
