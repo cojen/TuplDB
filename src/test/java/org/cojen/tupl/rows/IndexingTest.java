@@ -699,7 +699,10 @@ public class IndexingTest {
 
         Table replicaNumTable = null;
         for (int i=0; i<1000; i++) {
-            replicaNumTable = replicaTable.viewSecondaryIndex("num");
+            try {
+                replicaNumTable = replicaTable.viewSecondaryIndex("num");
+            } catch (IllegalStateException e) {
+            }
             if (replicaNumTable != null) {
                 break;
             }
