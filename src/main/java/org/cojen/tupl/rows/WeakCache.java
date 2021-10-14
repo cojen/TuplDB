@@ -49,6 +49,15 @@ class WeakCache<K, V> extends ReferenceQueue<Object> {
      * Double check with synchronization.
      */
     public V get(K key) {
+        WeakReference<V> ref = getRef(key);
+        return ref == null ? null : ref.get();
+    }
+
+    /**
+     * Can be called without explicit synchronization, but entries can appear to go missing.
+     * Double check with synchronization.
+     */
+    public WeakReference<V> getRef(K key) {
         Object obj = poll();
         if (obj != null) {
             synchronized (this) {
@@ -59,7 +68,7 @@ class WeakCache<K, V> extends ReferenceQueue<Object> {
         var entries = mEntries;
         for (var e = entries[key.hashCode() & (entries.length - 1)]; e != null; e = e.mNext) {
             if (e.mKey.equals(key)) {
-                return e.get();
+                return e;
             }
         }
 
@@ -67,10 +76,10 @@ class WeakCache<K, V> extends ReferenceQueue<Object> {
     }
 
     /**
-     * @return replaced value, or null if none
+     * @return a new weak reference to the value
      */
     @SuppressWarnings({"unchecked"})
-    public synchronized V put(K key, V value) {
+    public synchronized WeakReference<V> put(K key, V value) {
         Object obj = poll();
         if (obj != null) {
             cleanup(obj);
@@ -92,7 +101,7 @@ class WeakCache<K, V> extends ReferenceQueue<Object> {
                 }
                 VarHandle.storeStoreFence(); // ensure that entry value is safely visible
                 entries[index] = newEntry;
-                return replaced;
+                return newEntry;
             } else {
                 prev = e;
             }
@@ -125,7 +134,7 @@ class WeakCache<K, V> extends ReferenceQueue<Object> {
         entries[index] = newEntry;
         mSize++;
 
-        return null;
+        return newEntry;
     }
 
     @SuppressWarnings({"unchecked"})

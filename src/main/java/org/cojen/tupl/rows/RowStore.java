@@ -536,15 +536,17 @@ public class RowStore {
      * Called when database has become the leader, providing an opportunity to update the
      * schema for all tables currently in use.
      */
-    @SuppressWarnings("unchecked")
     private void updateSchemata() {
         List<TableManager<?>> managers = mTableManagers.copyValues();
 
         if (managers != null) {
             try {
                 for (var manager : managers) {
-                    for (Class<?> type : manager.mTables.copyKeys(Class[]::new)) {
-                        schemaVersion(RowInfo.find(type), manager.mPrimaryIndex.id(), true);
+                    AbstractTable<?> table = manager.mostRecentTable();
+                    if (table != null) {
+                        RowInfo info = RowInfo.find(table.rowType());
+                        long indexId = manager.mPrimaryIndex.id();
+                        schemaVersion(info, indexId, true); // notify = true
                     }
                 }
             } catch (IOException e) {

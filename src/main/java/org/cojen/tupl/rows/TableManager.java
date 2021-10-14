@@ -48,6 +48,7 @@ public class TableManager<R> {
     final Index mPrimaryIndex;
 
     final WeakCache<Class<R>, AbstractTable<R>> mTables;
+    volatile WeakReference<AbstractTable<R>> mMostRecentTable;
 
     private final TreeMap<byte[], WeakReference<SecondaryInfo>> mIndexInfos;
 
@@ -72,7 +73,7 @@ public class TableManager<R> {
 
         table = rs.makeTable(this, ix, type, () -> tryFindTable(type), t -> {
             synchronized (mTables) {
-                mTables.put(type, t);
+                mMostRecentTable = mTables.put(type, t);
             }
         });
 
@@ -91,12 +92,20 @@ public class TableManager<R> {
     }
 
     private AbstractTable<R> tryFindTable(Class<R> type) {
-        var table = mTables.get(type);
-        if (table == null) {
+        WeakReference<AbstractTable<R>> ref = mTables.getRef(type);
+        AbstractTable<R> table;
+
+        if (ref == null || (table = ref.get()) == null) {
             synchronized (mTables) {
-                table = mTables.get(type);
+                ref = mTables.getRef(type);
+                if (ref == null) {
+                    table = null;
+                } else if ((table = ref.get()) != null) {
+                    mMostRecentTable = ref;
+                }
             }
         }
+
         return table;
     }
 
@@ -114,6 +123,30 @@ public class TableManager<R> {
             }
         }
         return indexTables;
+    }
+
+    /**
+     * Returns the most recent table that was accessed from the asTable method. If it becomes
+     * unreferenced, then this method returns null. By design, there's no linked list of recent
+     * tables, as this would create odd race conditions as different tables are GC'd
+     * unpredictably.
+     */
+    AbstractTable<R> mostRecentTable() {
+        WeakReference<AbstractTable<R>> ref = mMostRecentTable;
+
+        if (ref != null) {
+            AbstractTable<R> table = ref.get();
+            if (table != null) {
+                return table;
+            }
+            synchronized (mTables) {
+                if (mMostRecentTable == ref) {
+                    mMostRecentTable = null;
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
