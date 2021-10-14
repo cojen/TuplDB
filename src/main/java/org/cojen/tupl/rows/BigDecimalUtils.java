@@ -91,7 +91,7 @@ public class BigDecimalUtils extends RowUtils {
             break;
         }
 
-        int exponent = precision - bd.scale();
+        long exponent = ((long) precision) - (long) bd.scale();
 
         // 10 bits per digit and 1 extra terminator digit. Digit values 0..999 are encoded as
         // 12..1011. Digit values 0..11 and 1012..1023 are used for terminators.
@@ -135,7 +135,7 @@ public class BigDecimalUtils extends RowUtils {
                 bpos = 1;
             } else {
                 bytes[0] = (byte) ((exponent < 0 ? 0x7e : 1) ^ xor);
-                encodeIntBE(bytes, 1, exponent ^ 0x7fffffff ^ xor);
+                encodeIntBE(bytes, 1, ((int) exponent) ^ 0x7fffffff ^ xor);
                 bpos = 5;
             }
         } else {
@@ -144,7 +144,7 @@ public class BigDecimalUtils extends RowUtils {
                 bpos = 1;
             } else {
                 bytes[0] = (byte) ((exponent < 0 ? 0x81 : 0xfe) ^ xor);
-                encodeIntBE(bytes, 1, exponent ^ 0x80000000 ^ xor);
+                encodeIntBE(bytes, 1, ((int) exponent) ^ 0x80000000 ^ xor);
                 bpos = 5;
             }
         }
