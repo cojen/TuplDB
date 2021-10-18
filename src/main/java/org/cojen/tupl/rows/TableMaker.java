@@ -41,8 +41,6 @@ import org.cojen.tupl.UnmodifiableViewException;
 
 import org.cojen.tupl.filter.RowFilter;
 
-import org.cojen.tupl.core.CommitLock;
-
 import org.cojen.tupl.views.ViewUtils;
 
 /**
@@ -743,7 +741,7 @@ public class TableMaker {
         } else {
             var triggerVar = mm.var(Trigger.class);
             Label skipLabel = mm.label();
-            var triggerLockVar = prepareForTrigger(mm, mm.this_(), triggerVar, skipLabel);
+            prepareForTrigger(mm, mm.this_(), triggerVar, skipLabel);
             Label triggerStart = mm.label().here();
 
             // Trigger requires a non-null transaction.
@@ -765,7 +763,7 @@ public class TableMaker {
             assert variant == "delete";
             valueVar = source.invoke(variant, txnVar, keyVar);
 
-            mm.finally_(triggerStart, () -> triggerLockVar.invoke("release"));
+            mm.finally_(triggerStart, () -> triggerVar.invoke("releaseShared"));
         }
 
         if (variant != "load") {
@@ -811,7 +809,7 @@ public class TableMaker {
 
             var triggerVar = mm.var(Trigger.class);
             Label skipLabel = mm.label();
-            var triggerLockVar = prepareForTrigger(mm, mm.this_(), triggerVar, skipLabel);
+            prepareForTrigger(mm, mm.this_(), triggerVar, skipLabel);
             Label triggerStart = mm.label().here();
 
             // Trigger requires a non-null transaction.
@@ -875,7 +873,7 @@ public class TableMaker {
                 resultVar.set(invokeResultVar);
             }
 
-            mm.finally_(triggerStart, () -> triggerLockVar.invoke("release"));
+            mm.finally_(triggerStart, () -> triggerVar.invoke("releaseShared"));
 
             cont.here();
         }
@@ -983,16 +981,16 @@ public class TableMaker {
                 mm.invoke("checkValueAllDirty", rowVar).ifFalse(cont);
             }
 
-            final Variable triggerLockVar;
+            final Variable triggerVar;
             final Label triggerStart;
 
             if (!supportsTriggers()) {
-                triggerLockVar = null;
+                triggerVar = null;
                 triggerStart = null;
             } else {
-                var triggerVar = mm.var(Trigger.class);
+                triggerVar = mm.var(Trigger.class);
                 Label skipLabel = mm.label();
-                triggerLockVar = prepareForTrigger(mm, mm.this_(), triggerVar, skipLabel);
+                prepareForTrigger(mm, mm.this_(), triggerVar, skipLabel);
                 triggerStart = mm.label().here();
 
                 cursorVar.invoke("find", keyVar);
@@ -1020,7 +1018,7 @@ public class TableMaker {
             cursorVar.invoke("commit", mm.invoke("encodeValue", rowVar));
 
             if (triggerStart != null) {
-                mm.finally_(triggerStart, () -> triggerLockVar.invoke("release"));
+                mm.finally_(triggerStart, () -> triggerVar.invoke("releaseShared"));
             }
 
             markAllClean(rowVar);
@@ -1214,7 +1212,7 @@ public class TableMaker {
         if (triggers) {
             var triggerVar = mm.var(Trigger.class);
             Label skipLabel = mm.label();
-            var triggerLockVar = prepareForTrigger(mm, tableVar, triggerVar, skipLabel);
+            prepareForTrigger(mm, tableVar, triggerVar, skipLabel);
             Label triggerStart = mm.label().here();
 
             cursorVar.invoke("store", newValueVar);
@@ -1229,7 +1227,7 @@ public class TableMaker {
 
             cursorVar.invoke("commit", newValueVar);
 
-            mm.finally_(triggerStart, () -> triggerLockVar.invoke("release"));
+            mm.finally_(triggerStart, () -> triggerVar.invoke("releaseShared"));
 
             cont.here();
         }
@@ -1258,7 +1256,7 @@ public class TableMaker {
         if (triggers) {
             var triggerVar = mm.var(Trigger.class);
             Label skipLabel = mm.label();
-            var triggerLockVar = prepareForTrigger(mm, tableVar, triggerVar, skipLabel);
+            prepareForTrigger(mm, tableVar, triggerVar, skipLabel);
             Label triggerStart = mm.label().here();
 
             cursorVar.invoke("store", newValueVar);
@@ -1273,7 +1271,7 @@ public class TableMaker {
 
             cursorVar.invoke("commit", newValueVar);
 
-            mm.finally_(triggerStart, () -> triggerLockVar.invoke("release"));
+            mm.finally_(triggerStart, () -> triggerVar.invoke("releaseShared"));
 
             cont.here();
         }
@@ -1349,23 +1347,20 @@ public class TableMaker {
      *
      * @param triggerVar type is Trigger and is assigned by the generated code
      * @param skipLabel label to branch when trigger shouldn't run
-     * @return triggerLockVar of type CommitLock.Shared
      */
-    private static Variable prepareForTrigger(MethodMaker mm, Variable tableVar,
-                                              Variable triggerVar, Label skipLabel)
+    private static void prepareForTrigger(MethodMaker mm, Variable tableVar,
+                                          Variable triggerVar, Label skipLabel)
     {
-        var triggerLockVar = mm.var(CommitLock.Shared.class);
         Label acquireTriggerLabel = mm.label().here();
         triggerVar.set(tableVar.invoke("trigger"));
-        triggerLockVar.set(triggerVar.invoke("acquireShared"));
+        triggerVar.invoke("acquireShared");
         var modeVar = triggerVar.invoke("mode");
         modeVar.ifEq(Trigger.SKIP, skipLabel);
         Label activeLabel = mm.label();
         modeVar.ifNe(Trigger.DISABLED, activeLabel);
-        triggerLockVar.invoke("release");
+        triggerVar.invoke("releaseShared");
         mm.goto_(acquireTriggerLabel);
         activeLabel.here();
-        return triggerLockVar;
     }
 
     private void markAllClean(Variable rowVar) {

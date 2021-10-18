@@ -37,7 +37,7 @@ import org.cojen.tupl.util.Parker;
  *
  * @author Brian S O'Neill
  */
-public class CommitLock implements Lock {
+final class CommitLock implements Lock {
     // See: "Using LongAdder to make a Reader-Writer Lock" by Concurrency Freaks, and also
     // "NUMA-Aware Reader Writer Locks".
 

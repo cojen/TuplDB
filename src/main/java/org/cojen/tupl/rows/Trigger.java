@@ -21,7 +21,7 @@ import java.io.IOException;
 
 import org.cojen.tupl.Transaction;
 
-import org.cojen.tupl.core.CommitLock;
+import org.cojen.tupl.util.Clutch;
 
 /**
  * Defines the single main trigger that a table can have. A trigger implementation is expected
@@ -32,11 +32,17 @@ import org.cojen.tupl.core.CommitLock;
  * @author Brian S O'Neill
  * @see AbstractTable#setTrigger
  */
-public class Trigger<R> extends CommitLock {
+public class Trigger<R> extends Clutch {
     public static final int ACTIVE = 0, SKIP = 1, DISABLED = 2;
+
+    private final Clutch.Pack mPack;
 
     // Set by AbstractTable.
     int mMode;
+
+    protected Trigger(Clutch.Pack pack) {
+        mPack = pack;
+    }
 
     /**
      * Called after a row has been stored, but before the row has been marked clean. By
@@ -112,7 +118,7 @@ public class Trigger<R> extends CommitLock {
     /**
      * Disables this trigger and waits. Called by AbstractTable at most once.
      */
-    final void disabled() {
+    final void disable() {
         // Note that mode field can be assigned using "plain" mode because lock acquisition
         // applies a volatile fence.
         mMode = Trigger.DISABLED;
@@ -133,5 +139,10 @@ public class Trigger<R> extends CommitLock {
      * should return quickly or else run any tasks in a separate thread.
      */
     protected void notifyDisabled() {
+    }
+
+    @Override
+    protected Clutch.Pack getPack() {
+        return mPack;
     }
 }

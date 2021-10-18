@@ -33,8 +33,6 @@ import org.cojen.tupl.View;
 
 import org.cojen.tupl.views.ViewUtils;
 
-import org.cojen.tupl.core.CommitLock;
-
 /**
  * 
  *
@@ -94,7 +92,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
             if (trigger == null) {
                 doDelete();
             } else while (true) {
-                CommitLock.Shared shared = trigger.acquireShared();
+                trigger.acquireShared();
                 try {
                     int mode = trigger.mode();
                     if (mode == Trigger.SKIP) {
@@ -106,7 +104,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
                         break doDelete;
                     }
                 } finally {
-                    shared.release();
+                    trigger.releaseShared();
                 }
                 trigger = mTable.trigger();
             }
@@ -150,7 +148,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
             }
 
             while (true) {
-                CommitLock.Shared shared = trigger.acquireShared();
+                trigger.acquireShared();
                 try {
                     int mode = trigger.mode();
                     if (mode == Trigger.SKIP) {
@@ -162,7 +160,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
                         return;
                     }
                 } finally {
-                    shared.release();
+                    trigger.releaseShared();
                 }
                 trigger = mTable.trigger();
             }
@@ -200,7 +198,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
             if (trigger == null) {
                 c.commit(null);
             } else while (true) {
-                CommitLock.Shared shared = trigger.acquireShared();
+                trigger.acquireShared();
                 try {
                     int mode = trigger.mode();
                     if (mode == Trigger.SKIP) {
@@ -214,7 +212,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
                         break doUpdate;
                     }
                 } finally {
-                    shared.release();
+                    trigger.releaseShared();
                 }
                 trigger = mTable.trigger();
             }
