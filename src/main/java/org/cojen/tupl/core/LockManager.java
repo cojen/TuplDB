@@ -45,7 +45,7 @@ import org.cojen.tupl.util.LatchCondition;
  */
 /*P*/
 public final class LockManager {
-    // Parameter passed to LockHT.tryLock. For new Lock instances, value will be stored as-is
+    // Parameter passed to Bucket.tryLock. For new Lock instances, value will be stored as-is
     // into Lock.mLockCount field, which is why the numbers seem a bit weird.
     public static final int TYPE_SHARED = 1, TYPE_UPGRADABLE = 0x80000000, TYPE_EXCLUSIVE = ~0;
 
@@ -54,8 +54,8 @@ public final class LockManager {
     final LockUpgradeRule mDefaultLockUpgradeRule;
     final long mDefaultTimeoutNanos;
 
-    private final LockHT[] mHashTables;
-    private final int mHashTableShift;
+    private final Bucket[] mBuckets;
+    private final int mBucketShift;
 
     private final ThreadLocal<SoftReference<Locker>> mLocalLockerRef;
 
@@ -67,7 +67,7 @@ public final class LockManager {
     }
 
     private LockManager(LocalDatabase db, LockUpgradeRule lockUpgradeRule, long timeoutNanos,
-                        int numHashTables)
+                        int numBuckets)
     {
         mDatabaseRef = db == null ? null : new WeakReference<>(db);
 
@@ -77,12 +77,12 @@ public final class LockManager {
         mDefaultLockUpgradeRule = lockUpgradeRule;
         mDefaultTimeoutNanos = timeoutNanos;
 
-        numHashTables = Utils.roundUpPower2(Math.max(2, numHashTables));
-        mHashTables = new LockHT[numHashTables];
-        for (int i=0; i<numHashTables; i++) {
-            mHashTables[i] = new LockHT();
+        numBuckets = Utils.roundUpPower2(Math.max(2, numBuckets));
+        mBuckets = new Bucket[numBuckets];
+        for (int i=0; i<numBuckets; i++) {
+            mBuckets[i] = new Bucket();
         }
-        mHashTableShift = Integer.numberOfLeadingZeros(numHashTables - 1);
+        mBucketShift = Integer.numberOfLeadingZeros(numBuckets - 1);
 
         mLocalLockerRef = new ThreadLocal<>();
     }
@@ -106,8 +106,8 @@ public final class LockManager {
      */
     public long numLocksHeld() {
         long count = 0;
-        for (LockHT ht : mHashTables) {
-            count += ht.size();
+        for (Bucket bucket : mBuckets) {
+            count += bucket.size();
         }
         return count;
     }
@@ -119,75 +119,75 @@ public final class LockManager {
      * @param locker optional locker
      */
     final boolean isAvailable(Locker locker, long indexId, byte[] key, int hash) {
-        // Note that no LockHT latch is acquired. The current thread is not required to
+        // Note that no Bucket latch is acquired. The current thread is not required to
         // immediately observe the activity of other threads acting upon the same lock. If
         // another thread has just acquired an exclusive lock, it must still acquire the node
         // latch before any changes can be made.
-        return getLockHT(hash).isAvailable(locker, indexId, key, hash);
+        return getBucket(hash).isAvailable(locker, indexId, key, hash);
     }
 
     final LockResult check(Locker locker, long indexId, byte[] key, int hash) {
-        LockHT ht = getLockHT(hash);
-        ht.acquireShared();
+        Bucket bucket = getBucket(hash);
+        bucket.acquireShared();
         try {
-            Lock lock = ht.lockFor(indexId, key, hash);
+            Lock lock = bucket.lockFor(indexId, key, hash);
             return lock == null ? UNOWNED : lock.check(locker);
         } finally {
-            ht.releaseShared();
+            bucket.releaseShared();
         }
     }
 
     final void unlock(Locker locker, Lock lock) {
-        LockHT ht = getLockHT(lock.mHashCode);
-        ht.acquireExclusive();
+        Bucket bucket = getBucket(lock.mHashCode);
+        bucket.acquireExclusive();
         try {
-            lock.unlock(locker, ht);
+            lock.unlock(locker, bucket);
         } catch (Throwable e) {
-            ht.releaseExclusive();
+            bucket.releaseExclusive();
             throw e;
         }
     }
 
     final void doUnlock(Locker locker, Lock lock) {
-        LockHT ht = getLockHT(lock.mHashCode);
-        ht.acquireExclusive();
+        Bucket bucket = getBucket(lock.mHashCode);
+        bucket.acquireExclusive();
         try {
-            lock.doUnlock(locker, ht);
+            lock.doUnlock(locker, bucket);
         } catch (Throwable e) {
-            ht.releaseExclusive();
+            bucket.releaseExclusive();
             throw e;
         }
     }
 
     final void unlockToShared(Locker locker, Lock lock) {
-        LockHT ht = getLockHT(lock.mHashCode);
-        ht.acquireExclusive();
+        Bucket bucket = getBucket(lock.mHashCode);
+        bucket.acquireExclusive();
         try {
-            lock.unlockToShared(locker, ht);
+            lock.unlockToShared(locker, bucket);
         } catch (Throwable e) {
-            ht.releaseExclusive();
+            bucket.releaseExclusive();
             throw e;
         }
     }
 
     final void doUnlockToShared(Locker locker, Lock lock) {
-        LockHT ht = getLockHT(lock.mHashCode);
-        ht.acquireExclusive();
+        Bucket bucket = getBucket(lock.mHashCode);
+        bucket.acquireExclusive();
         try {
-            lock.doUnlockToShared(locker, ht);
+            lock.doUnlockToShared(locker, bucket);
         } catch (Throwable e) {
-            ht.releaseExclusive();
+            bucket.releaseExclusive();
             throw e;
         }
     }
 
     final void doUnlockToUpgradable(Locker locker, Lock lock) {
-        LockHT ht = getLockHT(lock.mHashCode);
-        ht.acquireExclusive();
+        Bucket bucket = getBucket(lock.mHashCode);
+        bucket.acquireExclusive();
         try {
-            lock.doUnlockToUpgradable(locker, ht);
+            lock.doUnlockToUpgradable(locker, bucket);
         } catch (Throwable e) {
-            ht.releaseExclusive();
+            bucket.releaseExclusive();
             throw e;
         }
     }
@@ -196,14 +196,14 @@ public final class LockManager {
      * Take ownership of an upgradable or exclusive lock.
      */
     final void takeLockOwnership(Lock lock, Locker locker) {
-        LockHT ht = getLockHT(lock.mHashCode);
-        ht.acquireExclusive();
+        Bucket bucket = getBucket(lock.mHashCode);
+        bucket.acquireExclusive();
         try {
             if (lock.mLockCount < 0) {
                 lock.mOwner = locker;
             }
         } finally {
-            ht.releaseExclusive();
+            bucket.releaseExclusive();
         }
     }
 
@@ -214,18 +214,18 @@ public final class LockManager {
      * @param frame must be bound to the ghost position
      */
     final void ghosted(long indexId, byte[] key, int hash, GhostFrame frame) {
-        LockHT ht = getLockHT(hash);
-        ht.acquireExclusive();
+        Bucket bucket = getBucket(hash);
+        bucket.acquireExclusive();
         try {
-            ht.lockFor(indexId, key, hash).setGhostFrame(frame);
+            bucket.lockFor(indexId, key, hash).setGhostFrame(frame);
         } finally {
-            ht.releaseExclusive();
+            bucket.releaseExclusive();
         }
     }
 
     final Locker lockSharedLocal(long indexId, byte[] key, int hash) throws LockFailureException {
         Locker locker = localLocker();
-        LockResult result = getLockHT(hash)
+        LockResult result = getBucket(hash)
             .tryLock(TYPE_SHARED, locker, indexId, key, hash, mDefaultTimeoutNanos);
         if (result.isHeld()) {
             return locker;
@@ -243,7 +243,7 @@ public final class LockManager {
         throws LockFailureException
     {
         Locker locker = localLocker();
-        LockResult result = getLockHT(hash)
+        LockResult result = getBucket(hash)
             .tryLock(TYPE_EXCLUSIVE, locker, indexId, key, hash, timeoutNanos);
         if (result.isHeld()) {
             return locker;
@@ -266,8 +266,8 @@ public final class LockManager {
      */
     final void close() {
         var locker = new Locker(null);
-        for (LockHT ht : mHashTables) {
-            ht.close(locker);
+        for (Bucket bucket : mBuckets) {
+            bucket.close(locker);
         }
         if (mDatabaseRef != null) {
             mDatabaseRef.clear();
@@ -278,14 +278,14 @@ public final class LockManager {
         return (int) Hasher.hash(indexId, key);
     }
 
-    LockHT getLockHT(int hash) {
-        return mHashTables[hash >>> mHashTableShift];
+    Bucket getBucket(int hash) {
+        return mBuckets[hash >>> mBucketShift];
     }
 
     /**
      * Simple hashtable of Locks.
      */
-    static final class LockHT extends Latch {
+    static final class Bucket extends Latch {
         private static final float LOAD_FACTOR = 0.75f;
 
         private Lock[] mEntries;
@@ -299,7 +299,7 @@ public final class LockManager {
         // Padding to prevent cache line sharing.
         private long a0, a1, a2;
 
-        LockHT() {
+        Bucket() {
             // Initial capacity of must be a power of 2.
             mEntries = new Lock[16];
             mGrowThreshold = (int) (mEntries.length * LOAD_FACTOR);
@@ -598,9 +598,9 @@ public final class LockManager {
         }
 
         /**
-         * Caller must hold latch and ensure that Lock is in hashtable.
+         * Caller must hold latch and ensure that Lock is in this Bucket.
          *
-         * @throws NullPointerException if lock is not in hashtable
+         * @throws NullPointerException if lock is not in this Bucket
          */
         void remove(Lock lock) {
             Lock[] entries = mEntries;

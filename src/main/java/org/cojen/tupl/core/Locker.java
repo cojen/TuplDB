@@ -136,7 +136,7 @@ class Locker implements DatabaseAccess { // weak access to database
     final LockResult doTryLock(int lockType, long indexId, byte[] key, int hash, long nanosTimeout)
         throws DeadlockException
     {
-        LockResult result = manager().getLockHT(hash)
+        LockResult result = manager().getBucket(hash)
             .tryLock(lockType, this, indexId, key, hash, nanosTimeout);
 
         if (result == LockResult.TIMED_OUT_LOCK) {
@@ -162,7 +162,7 @@ class Locker implements DatabaseAccess { // weak access to database
     final LockResult doLock(int lockType, long indexId, byte[] key, int hash, long nanosTimeout)
         throws LockFailureException
     {
-        LockResult result = manager().getLockHT(hash)
+        LockResult result = manager().getBucket(hash)
             .tryLock(lockType, this, indexId, key, hash, nanosTimeout);
         if (result.isHeld()) {
             return result;
@@ -385,7 +385,7 @@ class Locker implements DatabaseAccess { // weak access to database
     final void doUponLock(int lockType, long indexId, byte[] key, int hash,
                           Executor exec, Consumer<LockResult> cont)
     {
-        manager().getLockHT(hash).uponLock(lockType, this, indexId, key, hash, exec, cont);
+        manager().getBucket(hash).uponLock(lockType, this, indexId, key, hash, exec, cont);
     }
 
     /**
@@ -395,7 +395,7 @@ class Locker implements DatabaseAccess { // weak access to database
      * mKey, and mHashCode fields must be set.
      */
     final void recoverLock(Lock lock) {
-        mManager.getLockHT(lock.mHashCode).recoverLock(this, lock);
+        mManager.getBucket(lock.mHashCode).recoverLock(this, lock);
     }
 
     /**
@@ -415,17 +415,17 @@ class Locker implements DatabaseAccess { // weak access to database
      */
     final Lock doLockSharedNoPush(long indexId, byte[] key) throws LockFailureException {
         int hash = hash(indexId, key);
-        LockManager.LockHT ht = mManager.getLockHT(hash);
+        LockManager.Bucket bucket = mManager.getBucket(hash);
 
         Lock lock;
         LockResult result;
 
-        ht.acquireExclusive();
+        bucket.acquireExclusive();
         try {
-            lock = ht.lockAccess(indexId, key, hash);
-            result = lock.tryLockShared(ht, this, -1);
+            lock = bucket.lockAccess(indexId, key, hash);
+            result = lock.tryLockShared(bucket, this, -1);
         } finally {
-            ht.releaseExclusive();
+            bucket.releaseExclusive();
         }
 
         if (!result.isHeld()) {
@@ -441,17 +441,17 @@ class Locker implements DatabaseAccess { // weak access to database
      */
     final Lock doLockUpgradableNoPush(long indexId, byte[] key) throws LockFailureException {
         int hash = hash(indexId, key);
-        LockManager.LockHT ht = mManager.getLockHT(hash);
+        LockManager.Bucket bucket = mManager.getBucket(hash);
 
         Lock lock;
         LockResult result;
 
-        ht.acquireExclusive();
+        bucket.acquireExclusive();
         try {
-            lock = ht.lockAccess(indexId, key, hash);
-            result = lock.tryLockUpgradable(ht, this, -1);
+            lock = bucket.lockAccess(indexId, key, hash);
+            result = lock.tryLockUpgradable(bucket, this, -1);
         } finally {
-            ht.releaseExclusive();
+            bucket.releaseExclusive();
         }
 
         if (!result.isHeld()) {

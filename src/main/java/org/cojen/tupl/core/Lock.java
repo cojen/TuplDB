@@ -519,10 +519,10 @@ final class Lock {
     /**
      * Called with exclusive latch held, which is released unless an exception is thrown.
      *
-     * @param ht only released if no exception is thrown
+     * @param bucket only released if no exception is thrown
      * @throws IllegalStateException if lock not held or if exclusive lock held
      */
-    void unlock(Locker locker, LockManager.LockHT ht) {
+    void unlock(Locker locker, LockManager.Bucket bucket) {
         if (mOwner == locker) {
             int count = mLockCount;
 
@@ -532,42 +532,42 @@ final class Lock {
                 LatchCondition queueU = mQueueU;
                 if ((mLockCount = count & 0x7fffffff) == 0 && queueU == null && mQueueSX == null) {
                     // Lock is now completely unused.
-                    ht.remove(this);
+                    bucket.remove(this);
                 } else if (queueU != null) {
                     // Signal at most one upgradable lock waiter.
-                    queueU.signal(ht);
+                    queueU.signal(bucket);
                 }
             } else {
                 // Unlocking an exclusive lock.
                 throw unlockFail();
             }
         } else {
-            doUnlockShared(locker, ht);
+            doUnlockShared(locker, bucket);
         }
 
-        ht.releaseExclusive();
+        bucket.releaseExclusive();
     }
 
     /**
      * Called with exclusive latch held, which is released unless an exception is thrown.
      *
-     * @param ht briefly released and re-acquired for deleting a ghost
+     * @param bucket briefly released and re-acquired for deleting a ghost
      * @throws IllegalStateException if lock not held
      */
-    void doUnlock(Locker locker, LockManager.LockHT ht) {
+    void doUnlock(Locker locker, LockManager.Bucket bucket) {
         if (mOwner == locker) {
-            doUnlockOwned(ht);
+            doUnlockOwned(bucket);
         } else {
-            doUnlockShared(locker, ht);
+            doUnlockShared(locker, bucket);
         }
 
-        ht.releaseExclusive();
+        bucket.releaseExclusive();
     }
 
     /**
-     * @param ht briefly released and re-acquired for deleting a ghost
+     * @param bucket briefly released and re-acquired for deleting a ghost
      */
-    private void doUnlockOwned(LockManager.LockHT ht) {
+    private void doUnlockOwned(LockManager.Bucket bucket) {
         int count = mLockCount;
 
         if (count != ~0) {
@@ -576,14 +576,14 @@ final class Lock {
             LatchCondition queueU = mQueueU;
             if ((mLockCount = count & 0x7fffffff) == 0 && queueU == null && mQueueSX == null) {
                 // Lock is now completely unused.
-                ht.remove(this);
+                bucket.remove(this);
             } else if (queueU != null) {
                 // Signal at most one upgradable lock waiter.
-                queueU.signal(ht);
+                queueU.signal(bucket);
             }
         } else {
             // Unlocking an exclusive lock.
-            deleteGhost(ht);
+            deleteGhost(bucket);
             mOwner = null;
             mLockCount = 0;
             // The call to deleteGhost might have released and re-acquired the latch guarding
@@ -592,26 +592,26 @@ final class Lock {
             LatchCondition queueSX = mQueueSX;
             if (queueU != null) {
                 // Signal at most one upgradable lock waiter.
-                queueU.signal(ht);
+                queueU.signal(bucket);
                 if (queueSX == null) {
                     return;
                 }
             } else if (queueSX == null) {
                 // Lock is now completely unused.
-                ht.remove(this);
+                bucket.remove(this);
                 return;
             }
             // Signal at most one shared lock waiter. There aren't any exclusive lock waiters,
             // because they would need to acquire the upgradable lock first, which was held.
-            queueSX.signal(ht);
+            queueSX.signal(bucket);
         }
     }
 
     /**
-     * @param ht never released, even if an exception is thrown
+     * @param bucket never released, even if an exception is thrown
      * @throws IllegalStateException if lock not held
      */
-    private void doUnlockShared(Locker locker, LockManager.LockHT ht) {
+    private void doUnlockShared(Locker locker, LockManager.Bucket bucket) {
         int count = mLockCount;
 
         unlock: {
@@ -646,11 +646,11 @@ final class Lock {
                 // Signal any exclusive lock waiter. Queue shouldn't contain any shared
                 // lock waiters, because no exclusive lock is held. In case there are any,
                 // signal them instead.
-                queueSX.signal(ht);
+                queueSX.signal(bucket);
             }
         } else if (count == 0 && queueSX == null && mQueueU == null) {
             // Lock is now completely unused.
-            ht.remove(this);
+            bucket.remove(this);
         }
     }
 
@@ -880,12 +880,12 @@ final class Lock {
                 // Need a latch to safely check the shared lock owner hashtable.
                 LockManager manager = locker.mManager;
                 if (manager != null) {
-                    LockManager.LockHT ht = manager.getLockHT(mHashCode);
-                    ht.acquireShared();
+                    LockManager.Bucket bucket = manager.getBucket(mHashCode);
+                    bucket.acquireShared();
                     try {
                         return findOwnerAttachment(null, lockType);
                     } finally {
-                        ht.releaseShared();
+                        bucket.releaseShared();
                     }
                 }
             } else {
