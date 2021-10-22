@@ -834,7 +834,7 @@ final class Lock {
     void detectDeadlock(Locker locker, int lockType, long nanosTimeout)
         throws DeadlockException
     {
-        var detector = new DeadlockDetector(locker);
+        var detector = new DeadlockDetector(locker, true);
         if (detector.scan()) {
             Object att = findOwnerAttachment(locker, lockType);
             throw new DeadlockException(nanosTimeout, att,

@@ -18,7 +18,8 @@
 package org.cojen.tupl.core;
 
 import java.util.Collections;
-import java.util.LinkedHashSet;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Set;
 
 import org.cojen.tupl.DeadlockInfo;
@@ -35,29 +36,27 @@ import org.cojen.tupl.Index;
  * @author Brian S O'Neill
  */
 /*P*/
-final class DeadlockDetector {
+final class DeadlockDetector extends HashMap<Locker, Boolean> {
     // Note: This code does not consider proper thread-safety and directly examines the
     // contents of locks and lockers. It never modifies anything, so it is relatively safe and
     // deadlocks are usually detectable. All involved threads had to acquire latches at some
     // point, which implies a memory barrier.
 
     private final Locker mOrigin;
-    private final Set<Locker> mLockers;
-    final Set<Lock> mLocks;
+    private final LinkedHashMap<Lock, Boolean> mLocks;
 
     boolean mGuilty;
 
-    DeadlockDetector(Locker locker) {
+    DeadlockDetector(Locker locker, boolean gatherLocks) {
         mOrigin = locker;
-        mLockers = new LinkedHashSet<>();
-        mLocks = new LinkedHashSet<>();
+        mLocks = gatherLocks ? new LinkedHashMap<>() : null;
     }
 
     /**
      * @param lockType type of lock requested; TYPE_SHARED, TYPE_UPGRADABLE, or TYPE_EXCLUSIVE
      */
     Set<DeadlockInfo> newDeadlockSet(int lockType) {
-        if (mLocks.isEmpty()) {
+        if (mLocks == null || mLocks.isEmpty()) {
             return Collections.emptySet();
         }
 
@@ -66,7 +65,7 @@ final class DeadlockDetector {
         final LockManager manager = mOrigin.mManager;
 
         int i = 0;
-        for (Lock lock : mLocks) {
+        for (Lock lock : mLocks.keySet()) {
             var info = new CoreDeadlockInfo();
             infos[i++] = info;
 
@@ -90,14 +89,14 @@ final class DeadlockDetector {
     }
 
     /**
-     * @return true if deadlock was found
+     * @return true if a deadlock was found
      */
     boolean scan() {
         return scan(mOrigin);
     }
 
     /**
-     * @return true if deadlock was found
+     * @return true if a deadlock was found
      */
     private boolean scan(Locker locker) {
         boolean found = false;
@@ -108,23 +107,23 @@ final class DeadlockDetector {
                 return found;
             }
 
-            mLocks.add(lock);
+            if (mLocks != null) {
+                mLocks.put(lock, Boolean.TRUE);
+            }
 
-            if (mLockers.isEmpty()) {
-                mLockers.add(locker);
-            } else {
+            if (put(locker, Boolean.TRUE) != null) {
                 // Any graph edge flowing into the original locker indicates guilt.
-                mGuilty |= mOrigin == locker;
-                if (!mLockers.add(locker)) {
-                    return true;
+                if (locker == mOrigin) {
+                    mGuilty = true;
                 }
+                return true;
             }
 
             Locker owner = lock.mOwner;
             Object shared = lock.getSharedLocker();
 
-            // If the owner is the locker, then it is trying to upgrade. It's
-            // waiting for another locker to release the shared lock.
+            // If the owner is the locker, then it's trying to upgrade. It's waiting for
+            // another locker to release the shared lock.
             if (owner != null && owner != locker) {
                 if (shared == null) {
                     // Tail call.
