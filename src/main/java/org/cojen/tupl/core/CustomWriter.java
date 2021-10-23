@@ -41,12 +41,9 @@ final class CustomWriter extends HandlerWriter<CustomHandler> implements CustomH
 
     @Override
     public void redo(Transaction txn, byte[] message, long indexId, byte[] key) throws IOException {
-        if (txn instanceof LocalTransaction) {
-            var local = (LocalTransaction) txn;
-            if (local.mDatabase == mDatabase) {
-                local.customRedo(mHandlerId, message, indexId, key);
-                return;
-            }
+        if (txn instanceof LocalTransaction local && local.mDatabase == mDatabase) {
+            local.customRedo(mHandlerId, message, indexId, key);
+            return;
         }
 
         Utils.invalidTransaction(txn);
@@ -54,12 +51,9 @@ final class CustomWriter extends HandlerWriter<CustomHandler> implements CustomH
 
     @Override
     public void undo(Transaction txn, byte[] message) throws IOException {
-        if (txn instanceof LocalTransaction) {
-            var local = (LocalTransaction) txn;
-            if (local.mDatabase == mDatabase) {
-                local.customUndo(mHandlerId, message);
-                return;
-            }
+        if (txn instanceof LocalTransaction local && local.mDatabase == mDatabase) {
+            local.customUndo(mHandlerId, message);
+            return;
         }
 
         Utils.invalidTransaction(txn);

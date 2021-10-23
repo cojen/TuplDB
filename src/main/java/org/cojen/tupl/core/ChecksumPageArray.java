@@ -123,8 +123,8 @@ abstract class ChecksumPageArray extends TransformedPageArray {
         @Override
         public void readPage(long index, byte[] dst, int offset, int length) throws IOException {
             int pageSize = pageSize();
-            if (offset != 0 || length != pageSize()) {
-                byte[] page = new byte[pageSize()];
+            if (offset != 0 || length != pageSize) {
+                byte[] page = new byte[pageSize];
                 readPage(index, page);
                 System.arraycopy(page, 0, dst, offset, length);
             } else {

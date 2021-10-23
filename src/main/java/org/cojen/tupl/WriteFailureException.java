@@ -29,8 +29,8 @@ public class WriteFailureException extends DatabaseException {
      * Wraps the given exception if necessary.
      */
     public static WriteFailureException from(Exception e) {
-        if (e instanceof WriteFailureException) {
-            return (WriteFailureException) e;
+        if (e instanceof WriteFailureException wfe) {
+            return wfe;
         }
         return new WriteFailureException(e);
     }

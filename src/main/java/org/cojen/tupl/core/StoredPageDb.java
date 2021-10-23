@@ -386,8 +386,8 @@ final class StoredPageDb extends PageDb {
 
     @Override
     boolean isCacheOnly() {
-        if (mPageArray.mSource instanceof CompressedPageArray) {
-            return ((CompressedPageArray) mPageArray.mSource).isCacheOnly();
+        if (mPageArray.mSource instanceof CompressedPageArray cpa) {
+            return cpa.isCacheOnly();
         }
         return false;
     }
@@ -741,8 +741,8 @@ final class StoredPageDb extends PageDb {
      * @see SnapshotPageArray#beginSnapshot
      */
     public Snapshot beginSnapshot(LocalDatabase db) throws IOException {
-        if (mPageArray.mSource instanceof CompressedPageArray) {
-            return ((CompressedPageArray) mPageArray.mSource).beginSnapshot();
+        if (mPageArray.mSource instanceof CompressedPageArray cpa) {
+            return cpa.beginSnapshot();
         }
 
         mHeaderLatch.acquireShared();

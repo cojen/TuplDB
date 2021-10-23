@@ -61,20 +61,13 @@ public abstract class GroupFilter extends RowFilter {
 
     @Override
     public final boolean equals(Object obj) {
-        if (obj == this) {
-            return true;
-        }
-        if (obj instanceof GroupFilter) {
-            var other = (GroupFilter) obj;
-            return opChar() == other.opChar() && Arrays.equals(mSubFilters, other.mSubFilters);
-        }
-        return false;
+        return obj == this || obj instanceof GroupFilter other
+            && opChar() == other.opChar() && Arrays.equals(mSubFilters, other.mSubFilters);
     }
 
     @Override
     public int compareTo(RowFilter filter) {
-        if (filter instanceof GroupFilter) {
-            var other = (GroupFilter) filter;
+        if (filter instanceof GroupFilter other) {
             if (opChar() == other.opChar()) {
                 return Arrays.compare(mSubFilters, other.mSubFilters);
             }
@@ -168,8 +161,7 @@ public abstract class GroupFilter extends RowFilter {
         if (result == 0) {
             MatchSet set = matchSet();
             result = set.hasMatch(filter);
-            if (result == 0 && filter instanceof GroupFilter) {
-                var group = (GroupFilter) filter;
+            if (result == 0 && filter instanceof GroupFilter group) {
                 for (RowFilter sub : group.mSubFilters) {
                     int subResult = set.hasMatch(sub);
                     if (subResult == 0) {
@@ -190,7 +182,6 @@ public abstract class GroupFilter extends RowFilter {
     public final int matchHashCode() {
         int hash = mMatchHashCode;
         if (hash == 0) {
-            hash = 0;
             for (RowFilter sub : mSubFilters) {
                 hash += sub.matchHashCode();
             }
@@ -249,7 +240,7 @@ public abstract class GroupFilter extends RowFilter {
         long[] limitRef = cReduceLimit.get();
         if (limitRef != null) {
             long limit = limitRef[0];
-            limit += subFilters.length * subFilters.length;
+            limit += (long) subFilters.length * subFilters.length;
             if (limit > REDUCE_LIMIT) {
                 throw new ComplexFilterException(null, limit);
             }
@@ -373,12 +364,11 @@ public abstract class GroupFilter extends RowFilter {
 
                     // Negative absorption. Remove one or more sub-filters from the sub-group.
 
-                    if (!(sub instanceof GroupFilter)) {
+                    if (!(sub instanceof GroupFilter groupSub)) {
                         // Complementation, actually.
                         return emptyFlippedInstance();
                     }
 
-                    var groupSub = (GroupFilter) sub;
                     RowFilter[] subSubFilters = groupSub.mSubFilters;
                     RowFilter[] newSubSubFilters = new RowFilter[subSubFilters.length - 1];
 
@@ -432,8 +422,8 @@ public abstract class GroupFilter extends RowFilter {
 
         RowFilter reduced = newInstance(subFilters);
 
-        if (reduced instanceof GroupFilter) {
-            ((GroupFilter) reduced).mReduced = true;
+        if (reduced instanceof GroupFilter group) {
+            group.mReduced = true;
         }
 
         return reduced;
@@ -447,10 +437,10 @@ public abstract class GroupFilter extends RowFilter {
             if (filter.isDnf()) {
                 return filter;
             }
-            if (!(filter instanceof GroupFilter)) {
+            if (!(filter instanceof GroupFilter group)) {
                 return filter.dnf();
             }
-            filter = ((GroupFilter) filter).distribute(true);
+            filter = group.distribute(true);
         }
     }
 
@@ -462,10 +452,10 @@ public abstract class GroupFilter extends RowFilter {
             if (filter.isCnf()) {
                 return filter;
             }
-            if (!(filter instanceof GroupFilter)) {
+            if (!(filter instanceof GroupFilter group)) {
                 return filter.cnf();
             }
-            filter = ((GroupFilter) filter).distribute(false);
+            filter = group.distribute(false);
         }
     }
 
@@ -480,8 +470,8 @@ public abstract class GroupFilter extends RowFilter {
 
         long count = 1;
         for (RowFilter sub : subFilters) {
-            if (sub instanceof GroupFilter) {
-                count *= ((GroupFilter) sub).mSubFilters.length;
+            if (sub instanceof GroupFilter group) {
+                count *= group.mSubFilters.length;
                 if (count > SPLIT_LIMIT && subFilters.length > 2) {
                     RowFilter filter = trySplitDistribute(dnf);
                     if (filter != null) {
@@ -501,8 +491,7 @@ public abstract class GroupFilter extends RowFilter {
 
             for (int select=i, j=0; j<newGroupSubFilters.length; j++) {
                 RowFilter sub = subFilters[j];
-                if (sub instanceof GroupFilter) {
-                    var group = (GroupFilter) sub;
+                if (sub instanceof GroupFilter group) {
                     int num = group.mSubFilters.length;
                     int subSelect = select / num;
                     newGroupSubFilters[j] = group.mSubFilters[select - subSelect * num];
@@ -554,9 +543,8 @@ public abstract class GroupFilter extends RowFilter {
     private ComplexFilterException complex() {
         var numTerms = BigInteger.ONE;
         for (RowFilter sub : mSubFilters) {
-            if (sub instanceof GroupFilter) {
-                numTerms = numTerms.multiply
-                    (BigInteger.valueOf(((GroupFilter) sub).mSubFilters.length));
+            if (sub instanceof GroupFilter group) {
+                numTerms = numTerms.multiply(BigInteger.valueOf(group.mSubFilters.length));
             }
         }
         return new ComplexFilterException(numTerms, 0);

@@ -3155,7 +3155,7 @@ final class Node extends Clutch implements DatabaseAccess {
                 }
 
                 // No side-effects if an IOException is thrown here.
-                splitInternal(result, tree, encodedLen, keyPos, newChildPos);
+                splitInternal(result, encodedLen, keyPos, newChildPos);
                 return;
             }
 
@@ -5265,8 +5265,7 @@ final class Node extends Clutch implements DatabaseAccess {
      * to parent
      * @throws IOException if new node could not be allocated; no side-effects
      */
-    private void splitInternal(final InResult result,
-                               final BTree tree, final int encodedLen,
+    private void splitInternal(final InResult result, final int encodedLen,
                                final int keyPos, final int newChildPos)
         throws IOException
     {
@@ -6090,7 +6089,7 @@ final class Node extends Clutch implements DatabaseAccess {
             return "UndoNode{id=" + id() +
                 ", cachedState=" + mCachedState +
                 ", topEntry=" + garbage() +
-                ", lowerNodeId=" + + p_longGetLE(mPage, 4) +
+                ", lowerNodeId=" + p_longGetLE(mPage, 4) +
                 ", latchState=" + super.toString() +
                 '}';
             /*P*/ // [

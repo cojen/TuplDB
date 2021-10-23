@@ -35,11 +35,8 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.Index;
-import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnmodifiableViewException;
-
-import org.cojen.tupl.filter.RowFilter;
 
 import org.cojen.tupl.views.ViewUtils;
 

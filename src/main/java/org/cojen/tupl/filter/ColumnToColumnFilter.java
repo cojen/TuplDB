@@ -54,8 +54,7 @@ public final class ColumnToColumnFilter extends ColumnFilter {
         if (filter == this) {
             return 1; // equal
         }
-        if (filter instanceof ColumnToColumnFilter) {
-            var other = (ColumnToColumnFilter) filter;
+        if (filter instanceof ColumnToColumnFilter other) {
             if (mColumn.equals(other.mColumn) && mOtherColumn.equals(other.mOtherColumn)) {
                 if (mOperator == other.mOperator) {
                     return 1; // equal
@@ -93,23 +92,16 @@ public final class ColumnToColumnFilter extends ColumnFilter {
 
     @Override
     public final boolean equals(Object obj) {
-        if (obj == this) {
-            return true;
-        }
-        if (obj instanceof ColumnToColumnFilter) {
-            var other = (ColumnToColumnFilter) obj;
-            return mColumn.equals(other.mColumn) && mOperator == other.mOperator
-                && mOtherColumn.equals(other.mOtherColumn);
-        }
-        return false;
+        return obj == this || obj instanceof ColumnToColumnFilter other
+            && mColumn.equals(other.mColumn) && mOperator == other.mOperator
+            && mOtherColumn.equals(other.mOtherColumn);
     }
 
     @Override
     public int compareTo(RowFilter filter) {
-        if (!(filter instanceof ColumnToColumnFilter)) {
+        if (!(filter instanceof ColumnToColumnFilter other)) {
             return super.compareTo(filter);
         }
-        var other = (ColumnToColumnFilter) filter;
         int cmp = mColumn.name.compareTo(other.mColumn.name);
         if (cmp == 0) {
             cmp = Integer.compare(mOperator, other.mOperator);
@@ -122,10 +114,7 @@ public final class ColumnToColumnFilter extends ColumnFilter {
 
     @Override
     boolean equalRhs(ColumnFilter other) {
-        if (other instanceof ColumnToColumnFilter) {
-            return mOtherColumn.equals(((ColumnToColumnFilter) other).mOtherColumn);
-        }
-        return false;
+        return other instanceof ColumnToColumnFilter ctcf && mOtherColumn.equals(ctcf.mOtherColumn);
     }
 
     @Override

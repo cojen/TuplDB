@@ -369,8 +369,8 @@ public class Utils {
     /**
      * Attempt to delete the given direct or mapped byte buffer.
      */
-    public static boolean delete(Buffer bb) {
-        return bb instanceof ByteBuffer && delete((ByteBuffer) bb);
+    public static boolean delete(Buffer b) {
+        return b instanceof ByteBuffer bb && delete(bb);
     }
 
     /**
@@ -481,14 +481,14 @@ public class Utils {
             }
         }
 
-        if (cause instanceof RuntimeException) {
-            throw (RuntimeException) cause;
+        if (cause instanceof RuntimeException e) {
+            throw e;
         }
-        if (cause instanceof Error) {
-            throw (Error) cause;
+        if (cause instanceof Error e) {
+            throw e;
         }
-        if (cause instanceof IOException) {
-            throw (IOException) cause;
+        if (cause instanceof IOException e) {
+            throw e;
         }
 
         throw new CorruptDatabaseException(cause);
@@ -563,8 +563,8 @@ public class Utils {
      * @param cause passed to resource if it implements {@link CauseCloseable}
      */
     public static void close(Closeable resource, Throwable cause) throws IOException {
-        if (resource instanceof CauseCloseable) {
-            ((CauseCloseable) resource).close(cause);
+        if (resource instanceof CauseCloseable cc) {
+            cc.close(cause);
         } else {
             resource.close();
         }

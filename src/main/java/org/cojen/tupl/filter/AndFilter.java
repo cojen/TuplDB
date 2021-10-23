@@ -47,8 +47,8 @@ public class AndFilter extends GroupFilter {
         int count = 0;
         for (int i=off; i<off+len; i++) {
             RowFilter sub = subFilters[i];
-            if (sub instanceof AndFilter) {
-                count += ((AndFilter) sub).mSubFilters.length;
+            if (sub instanceof AndFilter af) {
+                count += af.mSubFilters.length;
             } else {
                 count++;
             }
@@ -68,10 +68,9 @@ public class AndFilter extends GroupFilter {
         var newSubFilters = new RowFilter[count];
         for (int i=off, j=0; j<newSubFilters.length; ) {
             RowFilter sub = subFilters[i++];
-            if (sub instanceof AndFilter) {
-                var andSubFilters = ((AndFilter) sub).mSubFilters;
-                for (int k=0; k<andSubFilters.length; k++) {
-                    newSubFilters[j++] = andSubFilters[k];
+            if (sub instanceof AndFilter af) {
+                for (RowFilter andSubFilter : af.mSubFilters) {
+                    newSubFilters[j++] = andSubFilter;
                 }
             } else {
                 newSubFilters[j++] = sub;
@@ -131,11 +130,11 @@ public class AndFilter extends GroupFilter {
         if (equals(filter)) {
             return 1; // equal
         }
-        if (filter instanceof AndFilter) {
-            return matchSet().equalMatches(((AndFilter) filter).matchSet());
+        if (filter instanceof AndFilter af) {
+            return matchSet().equalMatches(af.matchSet());
         }
-        if (filter instanceof OrFilter) {
-            return matchSet().inverseMatches(((OrFilter) filter).matchSet());
+        if (filter instanceof OrFilter of) {
+            return matchSet().inverseMatches(of.matchSet());
         }
         return 0; // doesn't match
     }
@@ -165,11 +164,10 @@ public class AndFilter extends GroupFilter {
                 for (int s = 0; s < subFilters.length; s++) {
                     RowFilter sub = subFilters[s];
 
-                    if (!(sub instanceof ColumnToArgFilter)) {
+                    if (!(sub instanceof ColumnToArgFilter term)) {
                         continue;
                     }
 
-                    var term = (ColumnToArgFilter) sub;
                     if (!keyName.equals(term.mColumn.name)) {
                         continue;
                     }
@@ -184,7 +182,7 @@ public class AndFilter extends GroupFilter {
                                 subFilters = removeSub(subFilters, s);
                                 continue keys;
                             }
-                            // BigDecimal matches on a range of values, so need to double check
+                            // BigDecimal matches on a range of values, so need to double-check
                             // against the original term. Cannot continue after a range match.
                             fuzzy = true;
                         }
@@ -241,12 +239,6 @@ public class AndFilter extends GroupFilter {
         }
         subFilters[s] = TrueFilter.THE;
         return subFilters;
-    }
-
-    private static int numTerms(ColumnToArgFilter[] terms) {
-        int len;
-        for (len = 0; len < terms.length && terms[len] != null; len++);
-        return len;
     }
 
     /**

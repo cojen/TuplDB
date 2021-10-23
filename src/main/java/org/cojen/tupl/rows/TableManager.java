@@ -205,7 +205,7 @@ public class TableManager<R> {
 
         IndexTriggerMaker<R> maker = null;
         if (numIndexes > 0) {
-            maker = new IndexTriggerMaker<R>(rowType, primaryInfo, numIndexes);
+            maker = new IndexTriggerMaker<>(rowType, primaryInfo, numIndexes);
         }
 
         try (Cursor c = secondaries.newCursor(txn)) {

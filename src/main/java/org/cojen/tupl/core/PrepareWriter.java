@@ -45,12 +45,9 @@ final class PrepareWriter extends HandlerWriter<PrepareHandler> implements Prepa
     }
 
     private void prepare(Transaction txn, byte[] message, boolean commit) throws IOException {
-        if (txn instanceof LocalTransaction) {
-            var local = (LocalTransaction) txn;
-            if (local.mDatabase == mDatabase) {
-                local.prepare(mHandlerId, message, commit);
-                return;
-            }
+        if (txn instanceof LocalTransaction local && local.mDatabase == mDatabase) {
+            local.prepare(mHandlerId, message, commit);
+            return;
         }
 
         Utils.invalidTransaction(txn);

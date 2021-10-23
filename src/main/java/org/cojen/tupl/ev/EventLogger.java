@@ -53,8 +53,7 @@ public final class EventLogger implements EventListener {
     @Override
     public void notify(EventType type, String message, Object... args) {
         try {
-            if (mLogger instanceof System.Logger) {
-                var logger = (System.Logger) mLogger;
+            if (mLogger instanceof System.Logger logger) {
                 if (logger.isLoggable(type.level)) {
                     logger.log(type.level, (java.util.ResourceBundle) null,
                                makeMessage(type, message, args), makeThrown(args));
@@ -70,30 +69,15 @@ public final class EventLogger implements EventListener {
     private static void notify(Logger logger,
                                EventType type, String message, Object... args)
     {
-        Level level;
-        switch (type.level) {
-        case ALL:
-            level = Level.ALL;
-            break;
-        case TRACE:
-            level = Level.FINER;
-            break;
-        case DEBUG:
-            level = Level.FINE;
-            break;
-        case INFO:
-            level = Level.INFO;
-            break;
-        case WARNING:
-            level = Level.WARNING;
-            break;
-        case ERROR: default:
-            level = Level.SEVERE;
-            break;
-        case OFF:
-            level = Level.OFF;
-            break;
-        }
+        final Level level = switch (type.level) {
+            case ALL -> Level.ALL;
+            case TRACE -> Level.FINER;
+            case DEBUG -> Level.FINE;
+            case INFO -> Level.INFO;
+            case WARNING -> Level.WARNING;
+            default -> Level.SEVERE;
+            case OFF -> Level.OFF;
+        };
 
         if (logger.isLoggable(level)) {
             var record = new LogRecord(level, makeMessage(type, message, args));
@@ -111,11 +95,11 @@ public final class EventLogger implements EventListener {
     private static Throwable makeThrown(Object... args) {
         Throwable thrown = null;
         for (Object obj : args) {
-            if (obj instanceof Throwable) {
+            if (obj instanceof Throwable t) {
                 if (thrown != null) {
-                    Utils.suppress(thrown, (Throwable) obj);
+                    Utils.suppress(thrown, t);
                 } else {
-                    thrown = (Throwable) obj;
+                    thrown = t;
                 }
             }
         }
@@ -124,13 +108,7 @@ public final class EventLogger implements EventListener {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == this) {
-            return true;
-        }
-        if (obj instanceof EventLogger) {
-            return mLogger.equals(((EventLogger) obj).mLogger);
-        }
-        return false;
+        return obj == this || obj instanceof EventLogger el && mLogger.equals(el.mLogger);
     }
 
     @Override

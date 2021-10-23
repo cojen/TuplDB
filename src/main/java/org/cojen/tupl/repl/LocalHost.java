@@ -65,7 +65,6 @@ class LocalHost {
 
         try {
             Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces();
-            en = NetworkInterface.getNetworkInterfaces();
             while (en.hasMoreElements()) {
                 NetworkInterface n = en.nextElement();
                 if (!n.isLoopback()) {
@@ -74,11 +73,9 @@ class LocalHost {
                 }
             }
         } catch (SocketException e) {
-            if (ni == null) {
-                var u = new UnknownHostException(e.getMessage());
-                u.initCause(e);
-                throw u;
-            }
+            var u = new UnknownHostException(e.getMessage());
+            u.initCause(e);
+            throw u;
         }
 
         if (ni == null) {

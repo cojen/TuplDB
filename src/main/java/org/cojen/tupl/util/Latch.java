@@ -347,8 +347,8 @@ public class Latch {
 
                 if (waiter != null && cWaiterHandle.compareAndSet(first, waiter, null)) {
                     // Fair handoff to waiting thread or continuation.
-                    if (waiter instanceof Thread) {
-                        Parker.unpark((Thread) waiter);
+                    if (waiter instanceof Thread t) {
+                        Parker.unpark(t);
                         return;
                     }
                     try {
@@ -429,7 +429,7 @@ public class Latch {
         return doTryAcquireSharedNanos(nanosTimeout);
     }
 
-    private final boolean doTryAcquireSharedNanos(long nanosTimeout) throws InterruptedException {
+    private boolean doTryAcquireSharedNanos(long nanosTimeout) throws InterruptedException {
         WaitNode first = mLatchFirst;
         if (first == null || first instanceof Shared) {
             int trials = 0;
@@ -697,12 +697,12 @@ public class Latch {
                         WaitNode wnode = node;
                         while ((wnode = wnode.mNext) != null) {
                             Object waiter = wnode.mWaiter;
-                            if (waiter instanceof Thread) {
+                            if (waiter instanceof Thread t) {
                                 if (wnode instanceof Shared) {
-                                    Parker.unpark((Thread) waiter);
+                                    Parker.unpark(t);
                                 } else {
                                     if (state == 0) {
-                                        Parker.unpark((Thread) waiter);
+                                        Parker.unpark(t);
                                     }
                                     // No need to iterate past an exclusive waiter.
                                     break;

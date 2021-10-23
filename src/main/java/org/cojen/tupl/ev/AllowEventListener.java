@@ -43,8 +43,7 @@ public final class AllowEventListener extends FilteredEventListener {
         }
 
         Set<System.Logger.Level> levelSet;
-        if (listener instanceof AllowEventListener) {
-            var allowed = (AllowEventListener) listener;
+        if (listener instanceof AllowEventListener allowed) {
             listener = allowed.mListener;
             categorySet.retainAll(allowed.mCategories);
             levelSet = allowed.mLevels;
@@ -66,8 +65,7 @@ public final class AllowEventListener extends FilteredEventListener {
         }
 
         Set<EventType.Category> categorySet;
-        if (listener instanceof AllowEventListener) {
-            var allowed = (AllowEventListener) listener;
+        if (listener instanceof AllowEventListener allowed) {
             listener = allowed.mListener;
             levelSet.retainAll(allowed.mLevels);
             categorySet = allowed.mCategories;

@@ -91,7 +91,7 @@ abstract class Tree implements Index {
 
     abstract void applyCachePrimer(DataInput din) throws IOException;
 
-    static final void skipCachePrimer(DataInput din) throws IOException {
+    static void skipCachePrimer(DataInput din) throws IOException {
         while (true) {
             int len = din.readUnsignedShort();
             if (len == 0xffff) {

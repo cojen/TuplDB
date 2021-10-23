@@ -1243,10 +1243,7 @@ public class FileTermLogTest {
 
         @Override
         public boolean equals(Object obj) {
-            if (obj instanceof Range) {
-                return ((Range) obj).mStart == mStart && ((Range) obj).mEnd == mEnd;
-            }
-            return false;
+            return obj instanceof Range range && range.mStart == mStart && range.mEnd == mEnd;
         }
 
         @Override

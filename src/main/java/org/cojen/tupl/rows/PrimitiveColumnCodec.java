@@ -242,67 +242,56 @@ final class PrimitiveColumnCodec extends ColumnCodec {
             String methodType;
 
             switch (plain) {
-            case TYPE_BOOLEAN: case TYPE_BYTE: case TYPE_UBYTE: {
-                var byteVar = srcVar.aget(offsetVar);
-                offsetVar.inc(1);
+                case TYPE_BOOLEAN, TYPE_BYTE, TYPE_UBYTE -> {
+                    var byteVar = srcVar.aget(offsetVar);
+                    offsetVar.inc(1);
 
-                if (plain == TYPE_BOOLEAN) {
-                    Label cont = null;
+                    if (plain == TYPE_BOOLEAN) {
+                        Label cont = null;
 
-                    if (!isNullable) {
-                        valueVar = mMaker.var(boolean.class);
-                    } else {
-                        byte n = NULL_BYTE_HIGH;
+                        if (!isNullable) {
+                            valueVar = mMaker.var(boolean.class);
+                        } else {
+                            byte n = NULL_BYTE_HIGH;
+                            if (mInfo.isDescending()) {
+                                n = (byte) ~n;
+                            }
+                            valueVar = mMaker.var(Boolean.class);
+                            Label notNull = mMaker.label();
+                            byteVar.ifNe(n, notNull);
+                            valueVar.set(null);
+                            cont = mMaker.label();
+                            mMaker.goto_(cont);
+                            notNull.here();
+                        }
+
                         if (mInfo.isDescending()) {
-                            n = (byte) ~n;
+                            byteVar = byteVar.com();
                         }
-                        valueVar = mMaker.var(Boolean.class);
-                        Label notNull = mMaker.label();
-                        byteVar.ifNe(n, notNull);
-                        valueVar.set(null);
-                        cont = mMaker.label();
-                        mMaker.goto_(cont);
-                        notNull.here();
-                    }
 
-                    if (mInfo.isDescending()) {
-                        byteVar = byteVar.com();
-                    }
+                        valueVar.set(byteVar.cast(boolean.class));
 
-                    valueVar.set(byteVar.cast(boolean.class));
-
-                    if (cont != null) {
-                        cont.here();
-                    }
-                } else {
-                    if (mLex) {
-                        if (plain == TYPE_BYTE) {
-                            byte mask = (byte) (mInfo.isDescending() ? 0x7f : 0x80);
-                            byteVar = byteVar.xor(mask);
-                        } else if (mInfo.isDescending()) {
-                            byteVar = byteVar.xor((byte) 0xff);
+                        if (cont != null) {
+                            cont.here();
                         }
+                    } else {
+                        if (mLex) {
+                            if (plain == TYPE_BYTE) {
+                                byte mask = (byte) (mInfo.isDescending() ? 0x7f : 0x80);
+                                byteVar = byteVar.xor(mask);
+                            } else if (mInfo.isDescending()) {
+                                byteVar = byteVar.xor((byte) 0xff);
+                            }
+                        }
+                        valueVar = byteVar;
                     }
-                    valueVar = byteVar;
+
+                    break doDecode;
                 }
-
-                break doDecode;
-            }
-
-            case TYPE_SHORT: case TYPE_USHORT: case TYPE_CHAR:
-                methodType = "UnsignedShort";
-                break;
-
-            case TYPE_INT: case TYPE_FLOAT: case TYPE_UINT:
-                methodType = "Int";
-                break;
-
-            case TYPE_LONG: case TYPE_DOUBLE: case TYPE_ULONG:
-                methodType = "Long";
-                break;
-
-            default:
-                throw new AssertionError();
+                case TYPE_SHORT, TYPE_USHORT, TYPE_CHAR -> methodType = "UnsignedShort";
+                case TYPE_INT, TYPE_FLOAT, TYPE_UINT -> methodType = "Int";
+                case TYPE_LONG, TYPE_DOUBLE, TYPE_ULONG -> methodType = "Long";
+                default -> throw new AssertionError();
             }
 
             var rowUtils = mMaker.var(RowUtils.class);
@@ -325,20 +314,13 @@ final class PrimitiveColumnCodec extends ColumnCodec {
                 }
             }
 
-            switch (plain) {
-            case TYPE_SHORT: case TYPE_USHORT:
-                valueVar = valueVar.cast(short.class);
-                break;
-            case TYPE_CHAR:
-                valueVar = valueVar.cast(char.class);
-                break;
-            case TYPE_FLOAT:
-                valueVar = mMaker.var(Float.class).invoke("intBitsToFloat", valueVar);
-                break;
-            case TYPE_DOUBLE:
-                valueVar = mMaker.var(Double.class).invoke("longBitsToDouble", valueVar);
-                break;
-            }
+            valueVar = switch (plain) {
+                case TYPE_SHORT, TYPE_USHORT -> valueVar.cast(short.class);
+                case TYPE_CHAR -> valueVar.cast(char.class);
+                case TYPE_FLOAT -> mMaker.var(Float.class).invoke("intBitsToFloat", valueVar);
+                case TYPE_DOUBLE -> mMaker.var(Double.class).invoke("longBitsToDouble", valueVar);
+                default -> valueVar;
+            };
         }
 
         dstVar.set(valueVar);

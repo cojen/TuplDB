@@ -50,13 +50,8 @@ abstract class ArrayKey {
 
         @Override
         public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj instanceof Bytes) {
-                return Arrays.equals(mArray, ((Bytes) obj).mArray);
-            }
-            return false;
+            return this == obj || obj instanceof Bytes other
+                && Arrays.equals(mArray, other.mArray);
         }
 
         @Override
@@ -79,13 +74,8 @@ abstract class ArrayKey {
 
         @Override
         public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj instanceof Obj) {
-                return Arrays.deepEquals(mArray, ((Obj) obj).mArray);
-            }
-            return false;
+            return this == obj || obj instanceof Obj other
+                && Arrays.deepEquals(mArray, other.mArray);
         }
 
         @Override

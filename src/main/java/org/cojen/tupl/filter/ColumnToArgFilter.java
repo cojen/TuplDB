@@ -51,8 +51,7 @@ public class ColumnToArgFilter extends ColumnFilter {
         if (filter == this) {
             return 1; // equal
         }
-        if (filter instanceof ColumnToArgFilter) {
-            var other = (ColumnToArgFilter) filter;
+        if (filter instanceof ColumnToArgFilter other) {
             if (mArgNum == other.mArgNum && mColumn.equals(other.mColumn)) {
                 if (mOperator == other.mOperator) {
                     return 1; // equal
@@ -139,23 +138,16 @@ public class ColumnToArgFilter extends ColumnFilter {
 
     @Override
     public final boolean equals(Object obj) {
-        if (obj == this) {
-            return true;
-        }
-        if (obj instanceof ColumnToArgFilter) {
-            var other = (ColumnToArgFilter) obj;
-            return mColumn.equals(other.mColumn) && mOperator == other.mOperator
-                && mArgNum == other.mArgNum;
-        }
-        return false;
+        return obj == this || obj instanceof ColumnToArgFilter other
+            && mColumn.equals(other.mColumn) && mOperator == other.mOperator
+            && mArgNum == other.mArgNum;
     }
 
     @Override
     public int compareTo(RowFilter filter) {
-        if (!(filter instanceof ColumnToArgFilter)) {
+        if (!(filter instanceof ColumnToArgFilter other)) {
             return super.compareTo(filter);
         }
-        var other = (ColumnToArgFilter) filter;
         int cmp = mColumn.name.compareTo(other.mColumn.name);
         if (cmp == 0) {
             cmp = Integer.compare(mOperator, other.mOperator);
@@ -168,10 +160,7 @@ public class ColumnToArgFilter extends ColumnFilter {
 
     @Override
     boolean equalRhs(ColumnFilter other) {
-        if (other instanceof ColumnToArgFilter) {
-            return mArgNum == ((ColumnToArgFilter) other).mArgNum;
-        }
-        return false;
+        return other instanceof ColumnToArgFilter ctaf && mArgNum == ctaf.mArgNum;
     }
 
     @Override

@@ -100,7 +100,6 @@ final class MatchSet {
         int hash = filter.matchHashCode();
         Entry[] entries = mEntries;
         for (Entry e = entries[hash & (entries.length - 1)]; e != null; e = e.mNext) {
-            int result;
             if (hash == e.mMatchHash && e.mFilter.equals(filter)) {
                 return 1;
             }
@@ -109,7 +108,7 @@ final class MatchSet {
     }
 
     /**
-     * Returns 1 if the given set is exacly equal to this one.
+     * Returns 1 if the given set is exactly equal to this one.
      *
      * @return 0 if doesn't match or 1 if equal match
      */
@@ -129,9 +128,9 @@ final class MatchSet {
     }
 
     /**
-     * Returns 1 if the given set is exacly equal to this one.
+     * Returns 1 if the given set is exactly equal to this one.
      *
-     * @param exclude don't consider this filter, which is must exist in this set, and the
+     * @param exclude don't consider this filter, which must exist in this set, and the
      * inverse must exist in the other set
      * @return 0 if doesn't match or 1 if equal match
      */

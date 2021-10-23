@@ -45,20 +45,15 @@ public class RemoveMember {
             int i = 0;
             for (; i<args.length; i++) {
                 switch (args[i]) {
-                case "--token":
-                    groupToken = Long.parseLong(args[++i]);
-                    break;
-                case "--connect":
-                    connectAddr = GroupFile.parseSocketAddress(args[++i]);
-                    break;
-                case "--remove":
-                    removeMemberAddr = GroupFile.parseSocketAddress(args[++i]);
-                    if (removeMemberAddr == null) {
-                        removeMemberId = Long.parseLong(args[i]);
+                    case "--token" -> groupToken = Long.parseLong(args[++i]);
+                    case "--connect" -> connectAddr = GroupFile.parseSocketAddress(args[++i]);
+                    case "--remove" -> {
+                        removeMemberAddr = GroupFile.parseSocketAddress(args[++i]);
+                        if (removeMemberAddr == null) {
+                            removeMemberId = Long.parseLong(args[i]);
+                        }
                     }
-                    break;
-                default:
-                    throw new Exception();
+                    default -> throw new Exception();
                 }
             }
 

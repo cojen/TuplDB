@@ -570,8 +570,8 @@ public final class LockManager {
                             e.mLockCount = ~0;
                         }
                         Object ghost = lock.getSharedLocker();
-                        if (ghost instanceof GhostFrame) {
-                            e.setGhostFrame((GhostFrame) ghost);
+                        if (ghost instanceof GhostFrame gf) {
+                            e.setGhostFrame(gf);
                         }
                         return;
                     }

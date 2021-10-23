@@ -429,36 +429,33 @@ public class RowUtils extends Utils {
         while (srcOffset < endOffset) {
             int c = (src[srcOffset++] ^ xorMask) & 0xff;
             switch (c >> 5) {
-            case 0: case 1: case 2: case 3:
-                // 0xxxxxxx
-                chars[charLen++] = (char) (c - 2);
-                break;
-            case 4: case 5:
-                // 10xxxxxx xxxxxxxx
-                c = c & 0x3f;
-                // Multiply by 192, add in remainder, remove offset of 2, and denormalize.
-                chars[charLen++] =
-                    (char) ((c << 7) + (c << 6) + ((src[srcOffset++] ^ xorMask) & 0xff) + 94);
-                break;
-            default:
-                // 110xxxxx xxxxxxxx xxxxxxxx
-
-                c = c & 0x1f;
-                // Multiply by 192, add in remainder...
-                c = (c << 7) + (c << 6) + ((src[srcOffset++] ^ xorMask) & 0xff) - 32;
-                // ...multiply by 192, add in remainder, remove offset of 2, and denormalize.
-                c = (c << 7) + (c << 6) + ((src[srcOffset++] ^ xorMask) & 0xff) + 12382;
-
-                if (c >= 0x10000) {
-                    // Split into surrogate pair.
-                    c -= 0x10000;
-                    chars[charLen++] = (char) (0xd800 | ((c >> 10) & 0x3ff));
-                    chars[charLen++] = (char) (0xdc00 | (c & 0x3ff));
-                } else {
-                    chars[charLen++] = (char) c;
+                case 0, 1, 2, 3 ->
+                        // 0xxxxxxx
+                        chars[charLen++] = (char) (c - 2);
+                case 4, 5 -> {
+                    // 10xxxxxx xxxxxxxx
+                    c = c & 0x3f;
+                    // Multiply by 192, add in remainder, remove offset of 2, and denormalize.
+                    chars[charLen++] =
+                            (char) ((c << 7) + (c << 6) + ((src[srcOffset++] ^ xorMask) & 0xff) + 94);
                 }
+                default -> {
+                    // 110xxxxx xxxxxxxx xxxxxxxx
 
-                break;
+                    c = c & 0x1f;
+                    // Multiply by 192, add in remainder...
+                    c = (c << 7) + (c << 6) + ((src[srcOffset++] ^ xorMask) & 0xff) - 32;
+                    // ...multiply by 192, add in remainder, remove offset of 2, and denormalize.
+                    c = (c << 7) + (c << 6) + ((src[srcOffset++] ^ xorMask) & 0xff) + 12382;
+                    if (c >= 0x10000) {
+                        // Split into surrogate pair.
+                        c -= 0x10000;
+                        chars[charLen++] = (char) (0xd800 | ((c >> 10) & 0x3ff));
+                        chars[charLen++] = (char) (0xdc00 | (c & 0x3ff));
+                    } else {
+                        chars[charLen++] = (char) c;
+                    }
+                }
             }
         }
 

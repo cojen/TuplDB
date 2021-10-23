@@ -87,11 +87,11 @@ public final class Slf4jLogger implements EventListener {
     private static Throwable makeThrown(Object... args) {
         Throwable thrown = null;
         for (Object obj : args) {
-            if (obj instanceof Throwable) {
+            if (obj instanceof Throwable t) {
                 if (thrown != null) {
-                    Utils.suppress(thrown, (Throwable) obj);
+                    Utils.suppress(thrown, t);
                 } else {
-                    thrown = (Throwable) obj;
+                    thrown = t;
                 }
             }
         }
@@ -100,13 +100,7 @@ public final class Slf4jLogger implements EventListener {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == this) {
-            return true;
-        }
-        if (obj instanceof Slf4jLogger) {
-            return mLogger.equals(((Slf4jLogger) obj).mLogger);
-        }
-        return false;
+        return obj == this || obj instanceof Slf4jLogger sl && mLogger.equals(sl.mLogger);
     }
 
     @Override

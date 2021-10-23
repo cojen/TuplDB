@@ -17,8 +17,6 @@
 
 package org.cojen.tupl.filter;
 
-import org.cojen.tupl.rows.ColumnInfo;
-
 /**
  * An empty 'or' filter always evaluates to false.
  *

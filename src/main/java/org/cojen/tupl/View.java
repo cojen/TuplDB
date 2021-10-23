@@ -110,16 +110,14 @@ public interface View {
             }
         } else {
             Cursor c = newCursor(txn);
-            switch (txn.lockMode()) {
-            default:
-                return new CursorSimpleUpdater(c);
-            case REPEATABLE_READ:
-                return new CursorUpgradableUpdater(c);
-            case READ_COMMITTED:
-            case READ_UNCOMMITTED:
-                txn.enter();
-                return new CursorNonRepeatableUpdater(c);
-            }
+            return switch (txn.lockMode()) {
+                default -> new CursorSimpleUpdater(c);
+                case REPEATABLE_READ -> new CursorUpgradableUpdater(c);
+                case READ_COMMITTED, READ_UNCOMMITTED -> {
+                    txn.enter();
+                    yield new CursorNonRepeatableUpdater(c);
+                }
+            };
         }
     }
 

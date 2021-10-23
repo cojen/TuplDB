@@ -156,39 +156,39 @@ abstract class DataIn extends InputStream {
 
         if (v < 0) {
             switch ((v >> 4) & 0x07) {
-            case 0x00: case 0x01: case 0x02: case 0x03:
-                start = require(start, 1);
-                v = (1 << 7)
-                    + (((v & 0x3f) << 8)
-                       | (b[start++] & 0xff));
-                amt = 2;
-                break;
-            case 0x04: case 0x05:
-                start = require(start, 2);
-                v = ((1 << 14) + (1 << 7))
-                    + (((v & 0x1f) << 16)
-                       | ((b[start++] & 0xff) << 8)
-                       | (b[start++] & 0xff));
-                amt = 3;
-                break;
-            case 0x06:
-                start = require(start, 3);
-                v = ((1 << 21) + (1 << 14) + (1 << 7))
-                    + (((v & 0x0f) << 24)
-                       | ((b[start++] & 0xff) << 16)
-                       | ((b[start++] & 0xff) << 8)
-                       | (b[start++] & 0xff));
-                amt = 4;
-                break;
-            default:
-                start = require(start, 4);
-                v = ((1 << 28) + (1 << 21) + (1 << 14) + (1 << 7)) 
-                    + ((b[start++] << 24)
-                       | ((b[start++] & 0xff) << 16)
-                       | ((b[start++] & 0xff) << 8)
-                       | (b[start++] & 0xff));
-                amt = 5;
-                break;
+                case 0x00, 0x01, 0x02, 0x03 -> {
+                    start = require(start, 1);
+                    v = (1 << 7)
+                            + (((v & 0x3f) << 8)
+                            | (b[start++] & 0xff));
+                    amt = 2;
+                }
+                case 0x04, 0x05 -> {
+                    start = require(start, 2);
+                    v = ((1 << 14) + (1 << 7))
+                            + (((v & 0x1f) << 16)
+                            | ((b[start++] & 0xff) << 8)
+                            | (b[start++] & 0xff));
+                    amt = 3;
+                }
+                case 0x06 -> {
+                    start = require(start, 3);
+                    v = ((1 << 21) + (1 << 14) + (1 << 7))
+                            + (((v & 0x0f) << 24)
+                            | ((b[start++] & 0xff) << 16)
+                            | ((b[start++] & 0xff) << 8)
+                            | (b[start++] & 0xff));
+                    amt = 4;
+                }
+                default -> {
+                    start = require(start, 4);
+                    v = ((1 << 28) + (1 << 21) + (1 << 14) + (1 << 7))
+                            + ((b[start++] << 24)
+                            | ((b[start++] & 0xff) << 16)
+                            | ((b[start++] & 0xff) << 8)
+                            | (b[start++] & 0xff));
+                    amt = 5;
+                }
             }
         }
 
@@ -205,7 +205,7 @@ abstract class DataIn extends InputStream {
 
         long v;
         if (d >= 0) {
-            v = (long) d;
+            v = d;
             amt = 1;
         } else {
             switch ((d >> 4) & 0x07) {
@@ -235,68 +235,68 @@ abstract class DataIn extends InputStream {
                 break;
             default:
                 switch (d & 0x0f) {
-                default:
-                    start = require(start, 4);
-                    v = ((1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
-                        + (((d & 0x07L) << 32)
-                           | (((long) (b[start++] & 0xff)) << 24)
-                           | (((long) (b[start++] & 0xff)) << 16)
-                           | (((long) (b[start++] & 0xff)) << 8)
-                           | ((long) (b[start++] & 0xff)));
-                    amt = 5;
-                    break;
-                case 0x08: case 0x09: case 0x0a: case 0x0b:
-                    start = require(start, 5);
-                    v = ((1L << 35)
-                         + (1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
-                        + (((d & 0x03L) << 40)
-                           | (((long) (b[start++] & 0xff)) << 32)
-                           | (((long) (b[start++] & 0xff)) << 24)
-                           | (((long) (b[start++] & 0xff)) << 16)
-                           | (((long) (b[start++] & 0xff)) << 8)
-                           | ((long) (b[start++] & 0xff)));
-                    amt = 6;
-                    break;
-                case 0x0c: case 0x0d:
-                    start = require(start, 6);
-                    v = ((1L << 42) + (1L << 35)
-                         + (1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
-                        + (((d & 0x01L) << 48)
-                           | (((long) (b[start++] & 0xff)) << 40)
-                           | (((long) (b[start++] & 0xff)) << 32)
-                           | (((long) (b[start++] & 0xff)) << 24)
-                           | (((long) (b[start++] & 0xff)) << 16)
-                           | (((long) (b[start++] & 0xff)) << 8)
-                           | ((long) (b[start++] & 0xff)));
-                    amt = 7;
-                    break;
-                case 0x0e:
-                    start = require(start, 7);
-                    v = ((1L << 49) + (1L << 42) + (1L << 35)
-                         + (1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
-                        + ((((long) (b[start++] & 0xff)) << 48)
-                           | (((long) (b[start++] & 0xff)) << 40)
-                           | (((long) (b[start++] & 0xff)) << 32)
-                           | (((long) (b[start++] & 0xff)) << 24)
-                           | (((long) (b[start++] & 0xff)) << 16)
-                           | (((long) (b[start++] & 0xff)) << 8)
-                           | ((long) (b[start++] & 0xff)));
-                    amt = 8;
-                    break;
-                case 0x0f:
-                    start = require(start, 8);
-                    v = ((1L << 56) + (1L << 49) + (1L << 42) + (1L << 35)
-                         + (1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
-                        + ((((long) b[start++]) << 56)
-                           | (((long) (b[start++] & 0xff)) << 48)
-                           | (((long) (b[start++] & 0xff)) << 40)
-                           | (((long) (b[start++] & 0xff)) << 32)
-                           | (((long) (b[start++] & 0xff)) << 24)
-                           | (((long) (b[start++] & 0xff)) << 16)
-                           | (((long) (b[start++] & 0xff)) << 8L)
-                           | ((long) (b[start++] & 0xff)));
-                    amt = 9;
-                    break;
+                    default -> {
+                        start = require(start, 4);
+                        v = ((1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
+                                + (((d & 0x07L) << 32)
+                                | (((long) (b[start++] & 0xff)) << 24)
+                                | (((long) (b[start++] & 0xff)) << 16)
+                                | (((long) (b[start++] & 0xff)) << 8)
+                                | ((long) (b[start++] & 0xff)));
+                        amt = 5;
+                    }
+                    case 0x08, 0x09, 0x0a, 0x0b -> {
+                        start = require(start, 5);
+                        v = ((1L << 35)
+                                + (1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
+                                + (((d & 0x03L) << 40)
+                                | (((long) (b[start++] & 0xff)) << 32)
+                                | (((long) (b[start++] & 0xff)) << 24)
+                                | (((long) (b[start++] & 0xff)) << 16)
+                                | (((long) (b[start++] & 0xff)) << 8)
+                                | ((long) (b[start++] & 0xff)));
+                        amt = 6;
+                    }
+                    case 0x0c, 0x0d -> {
+                        start = require(start, 6);
+                        v = ((1L << 42) + (1L << 35)
+                                + (1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
+                                + (((d & 0x01L) << 48)
+                                | (((long) (b[start++] & 0xff)) << 40)
+                                | (((long) (b[start++] & 0xff)) << 32)
+                                | (((long) (b[start++] & 0xff)) << 24)
+                                | (((long) (b[start++] & 0xff)) << 16)
+                                | (((long) (b[start++] & 0xff)) << 8)
+                                | ((long) (b[start++] & 0xff)));
+                        amt = 7;
+                    }
+                    case 0x0e -> {
+                        start = require(start, 7);
+                        v = ((1L << 49) + (1L << 42) + (1L << 35)
+                                + (1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
+                                + ((((long) (b[start++] & 0xff)) << 48)
+                                | (((long) (b[start++] & 0xff)) << 40)
+                                | (((long) (b[start++] & 0xff)) << 32)
+                                | (((long) (b[start++] & 0xff)) << 24)
+                                | (((long) (b[start++] & 0xff)) << 16)
+                                | (((long) (b[start++] & 0xff)) << 8)
+                                | ((long) (b[start++] & 0xff)));
+                        amt = 8;
+                    }
+                    case 0x0f -> {
+                        start = require(start, 8);
+                        v = ((1L << 56) + (1L << 49) + (1L << 42) + (1L << 35)
+                                + (1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
+                                + ((((long) b[start++]) << 56)
+                                | (((long) (b[start++] & 0xff)) << 48)
+                                | (((long) (b[start++] & 0xff)) << 40)
+                                | (((long) (b[start++] & 0xff)) << 32)
+                                | (((long) (b[start++] & 0xff)) << 24)
+                                | (((long) (b[start++] & 0xff)) << 16)
+                                | (((long) (b[start++] & 0xff)) << 8L)
+                                | ((long) (b[start++] & 0xff)));
+                        amt = 9;
+                    }
                 }
                 break;
             }

@@ -44,26 +44,16 @@ public class ExceptionCallSite extends MutableCallSite {
      */
     static CallSite make(Supplier<Object> generator) {
         Object result = generator.get();
-        if (result instanceof MethodHandle) {
-            return new ConstantCallSite((MethodHandle) result);
-        } else if (result instanceof Failed) {
-            return new ExceptionCallSite(generator, (Failed) result);
+        if (result instanceof MethodHandle mh) {
+            return new ConstantCallSite(mh);
+        } else if (result instanceof Failed f) {
+            return new ExceptionCallSite(generator, f);
         } else {
             throw new IllegalStateException(String.valueOf(result));
         }
     }
 
-    static class Failed {
-        final MethodType mt;
-        final MethodMaker mm;
-        final Throwable ex;
-
-        Failed(MethodType mt, MethodMaker mm, Throwable ex) {
-            this.mt = mt;
-            this.mm = mm;
-            this.ex = ex;
-        }
-    }
+    record Failed(MethodType mt, MethodMaker mm, Throwable ex) { }
 
     private final Supplier<Object> mGenerator;
     private Throwable mException;
@@ -111,10 +101,10 @@ public class ExceptionCallSite extends MutableCallSite {
 
         Object result = mGenerator.get();
 
-        if (result instanceof MethodHandle) {
-            return (MethodHandle) result;
-        } else if (result instanceof Failed) {
-            throw ((Failed) result).ex;
+        if (result instanceof MethodHandle mh) {
+            return mh;
+        } else if (result instanceof Failed f) {
+            throw f.ex;
         } else {
             throw new IllegalStateException(String.valueOf(result));
         }

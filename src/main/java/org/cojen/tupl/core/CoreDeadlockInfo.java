@@ -65,17 +65,11 @@ final class CoreDeadlockInfo implements DeadlockInfo {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj instanceof CoreDeadlockInfo) {
-            var other = (CoreDeadlockInfo) obj;
-            return mIndexId == other.mIndexId
-                && Arrays.equals(mIndexName, other.mIndexName)
-                && Arrays.equals(mKey, other.mKey)
-                && Objects.equals(mAttachment, other.mAttachment);
-        }
-        return false;
+        return this == obj || obj instanceof CoreDeadlockInfo other
+            && mIndexId == other.mIndexId
+            && Arrays.equals(mIndexName, other.mIndexName)
+            && Arrays.equals(mKey, other.mKey)
+            && Objects.equals(mAttachment, other.mAttachment);
     }
 
     @Override

@@ -41,7 +41,6 @@ import java.util.function.Supplier;
 
 import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.Cursor;
-import org.cojen.tupl.Database;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockMode;
@@ -262,7 +261,7 @@ public class RowStore {
      * @return true if schema is exactly the same; false if changed compatibly
      * @throws IllegalStateException if incompatible change is detected
      */
-    private static <R> boolean checkSchema(String typeName, RowInfo oldInfo, RowInfo newInfo) {
+    private static boolean checkSchema(String typeName, RowInfo oldInfo, RowInfo newInfo) {
         if (oldInfo.matches(newInfo)
             && matches(oldInfo.alternateKeys, newInfo.alternateKeys)
             && matches(oldInfo.secondaryIndexes, newInfo.secondaryIndexes))
@@ -290,9 +289,9 @@ public class RowStore {
     /**
      * Checks if the set of indexes has changed incompatibly.
      */
-    private static <R> void checkIndexes(String typeName, String which,
-                                         NavigableSet<ColumnSet> oldSet,
-                                         NavigableSet<ColumnSet> newSet)
+    private static void checkIndexes(String typeName, String which,
+                                     NavigableSet<ColumnSet> oldSet,
+                                     NavigableSet<ColumnSet> newSet)
     {
         // Quick check.
         if (oldSet.isEmpty() || newSet.isEmpty() || matches(oldSet, newSet)) {
@@ -582,7 +581,6 @@ public class RowStore {
             examineSecondaries(tableManager(ix));
         } catch (Throwable e) {
             uncaught(e);
-            return;
         }
     }
 
@@ -745,11 +743,8 @@ public class RowStore {
         int taskType = decodeIntBE(taskKey, 8 + 8);
 
         switch (taskType) {
-        default:
-            throw new CorruptDatabaseException("Unknown task: " + taskType);
-        case TASK_DELETE_SCHEMA:
-            doDeleteSchema(indexKey);
-            break;
+            default -> throw new CorruptDatabaseException("Unknown task: " + taskType);
+            case TASK_DELETE_SCHEMA -> doDeleteSchema(indexKey);
         }
     }
 

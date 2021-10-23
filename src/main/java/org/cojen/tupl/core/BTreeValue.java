@@ -221,26 +221,20 @@ final class BTreeValue {
         final long fLen; // length of fragmented value (when fully reconstructed)
 
         switch ((fHeader >> 2) & 0x03) {
-        default:
-            fLen = p_ushortGetLE(page, loc);
-            break;
-        case 1:
-            fLen = p_intGetLE(page, loc) & 0xffffffffL;
-            break;
-        case 2:
-            fLen = p_uint48GetLE(page, loc);
-            break;
-        case 3:
-            fLen = p_longGetLE(page, loc);
-            if (fLen < 0) {
-                node.releaseExclusive();
-                if (isKey) {
-                    throw new LargeKeyException(fLen);
-                } else {
-                    throw new LargeValueException(fLen);
+            default -> fLen = p_ushortGetLE(page, loc);
+            case 1 -> fLen = p_intGetLE(page, loc) & 0xffffffffL;
+            case 2 -> fLen = p_uint48GetLE(page, loc);
+            case 3 -> {
+                fLen = p_longGetLE(page, loc);
+                if (fLen < 0) {
+                    node.releaseExclusive();
+                    if (isKey) {
+                        throw new LargeKeyException(fLen);
+                    } else {
+                        throw new LargeValueException(fLen);
+                    }
                 }
             }
-            break;
         }
 
         loc = skipFragmentedLengthField(loc, fHeader);
@@ -583,22 +577,16 @@ final class BTreeValue {
             fHeader = p_byteGet(page, loc++);
 
             switch ((fHeader >> 2) & 0x03) {
-            default:
-                fLen = p_ushortGetLE(page, loc);
-                break;
-            case 1:
-                fLen = p_intGetLE(page, loc) & 0xffffffffL;
-                break;
-            case 2:
-                fLen = p_uint48GetLE(page, loc);
-                break;
-            case 3:
-                fLen = p_longGetLE(page, loc);
-                if (fLen < 0) {
-                    node.release(op > OP_READ);
-                    throw new LargeValueException(fLen);
+                default -> fLen = p_ushortGetLE(page, loc);
+                case 1 -> fLen = p_intGetLE(page, loc) & 0xffffffffL;
+                case 2 -> fLen = p_uint48GetLE(page, loc);
+                case 3 -> {
+                    fLen = p_longGetLE(page, loc);
+                    if (fLen < 0) {
+                        node.release(op > OP_READ);
+                        throw new LargeValueException(fLen);
+                    }
                 }
-                break;
             }
 
             loc = skipFragmentedLengthField(loc, fHeader);
@@ -1617,18 +1605,14 @@ final class BTreeValue {
         int fHeader = p_byteGet(page, fHeaderLoc);
 
         switch ((fHeader >> 2) & 0x03) {
-        case 0: // (2 byte length field)
-            p_shortPutLE(page, fHeaderLoc + 1, (int) fLen);
-            break;
-        case 1: // (4 byte length field)
-            p_intPutLE(page, fHeaderLoc + 1, (int) fLen);
-            break;
-        case 2: // (6 byte length field)
-            p_int48PutLE(page, fHeaderLoc + 1, fLen);
-            break;
-        default: // (8 byte length field)
-            p_longPutLE(page, fHeaderLoc + 1, fLen);
-            break;
+            case 0 -> // (2 byte length field)
+                    p_shortPutLE(page, fHeaderLoc + 1, (int) fLen);
+            case 1 -> // (4 byte length field)
+                    p_intPutLE(page, fHeaderLoc + 1, (int) fLen);
+            case 2 -> // (6 byte length field)
+                    p_int48PutLE(page, fHeaderLoc + 1, fLen);
+            default -> // (8 byte length field)
+                    p_longPutLE(page, fHeaderLoc + 1, fLen);
         }
     }
 

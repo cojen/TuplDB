@@ -191,40 +191,40 @@ public class ColumnInfo implements Cloneable {
      * Return the primitive boxed type or the regular type if not primitive.
      */
     Class<?> boxedType() {
-        switch (plainTypeCode()) {
-        case TYPE_BOOLEAN:                 return Boolean.class;
-        case TYPE_BYTE:  case TYPE_UBYTE:  return Byte.class;
-        case TYPE_SHORT: case TYPE_USHORT: return Short.class;
-        case TYPE_INT:   case TYPE_UINT:   return Integer.class;
-        case TYPE_LONG:  case TYPE_ULONG:  return Long.class;
-        case TYPE_FLOAT:                   return Float.class;
-        case TYPE_DOUBLE:                  return Double.class;
-        case TYPE_UTF8:                    return String.class;
-        case TYPE_BIG_INTEGER:             return BigInteger.class;
-        case TYPE_BIG_DECIMAL:             return BigDecimal.class;
-        case TYPE_CHAR:                    return Character.class;
-        default:                           return Object.class;
-        }
+        return switch (plainTypeCode()) {
+            case TYPE_BOOLEAN            -> Boolean.class;
+            case TYPE_BYTE,  TYPE_UBYTE  -> Byte.class;
+            case TYPE_SHORT, TYPE_USHORT -> Short.class;
+            case TYPE_INT,   TYPE_UINT   -> Integer.class;
+            case TYPE_LONG,  TYPE_ULONG  -> Long.class;
+            case TYPE_FLOAT              -> Float.class;
+            case TYPE_DOUBLE             -> Double.class;
+            case TYPE_UTF8               -> String.class;
+            case TYPE_BIG_INTEGER        -> BigInteger.class;
+            case TYPE_BIG_DECIMAL        -> BigDecimal.class;
+            case TYPE_CHAR               -> Character.class;
+            default                      -> Object.class;
+        };
     }
 
     /**
      * Return the primitive unboxed type or the regular type if not primitive.
      */
     Class<?> unboxedType() {
-        switch (plainTypeCode()) {
-        case TYPE_BOOLEAN:                 return boolean.class;
-        case TYPE_BYTE:  case TYPE_UBYTE:  return byte.class;
-        case TYPE_SHORT: case TYPE_USHORT: return short.class;
-        case TYPE_INT:   case TYPE_UINT:   return int.class;
-        case TYPE_LONG:  case TYPE_ULONG:  return long.class;
-        case TYPE_FLOAT:                   return float.class;
-        case TYPE_DOUBLE:                  return double.class;
-        case TYPE_UTF8:                    return String.class;
-        case TYPE_BIG_INTEGER:             return BigInteger.class;
-        case TYPE_BIG_DECIMAL:             return BigDecimal.class;
-        case TYPE_CHAR:                    return char.class;
-        default:                           return Object.class;
-        }
+        return switch (plainTypeCode()) {
+            case TYPE_BOOLEAN            -> boolean.class;
+            case TYPE_BYTE,  TYPE_UBYTE  -> byte.class;
+            case TYPE_SHORT, TYPE_USHORT -> short.class;
+            case TYPE_INT,   TYPE_UINT   -> int.class;
+            case TYPE_LONG,  TYPE_ULONG  -> long.class;
+            case TYPE_FLOAT              -> float.class;
+            case TYPE_DOUBLE             -> double.class;
+            case TYPE_UTF8               -> String.class;
+            case TYPE_BIG_INTEGER        -> BigInteger.class;
+            case TYPE_BIG_DECIMAL        -> BigDecimal.class;
+            case TYPE_CHAR               -> char.class;
+            default                      -> Object.class;
+        };
     }
 
     /**
@@ -253,33 +253,22 @@ public class ColumnInfo implements Cloneable {
             return true;
         }
 
-        switch (thisPlainTypeCode) {
-        case TYPE_SHORT:
-            return otherPlainTypeCode == TYPE_BYTE;
-        case TYPE_INT: case TYPE_FLOAT:
-            switch (otherPlainTypeCode) {
-            case TYPE_BYTE: case TYPE_SHORT: case TYPE_CHAR:
-                return true;
-            default:
-                return false;
-            }
-        case TYPE_LONG:
-            switch (otherPlainTypeCode) {
-            case TYPE_BYTE: case TYPE_SHORT: case TYPE_CHAR: case TYPE_INT:
-                return true;
-            default:
-                return false;
-            }
-        case TYPE_DOUBLE:
-            switch (otherPlainTypeCode) {
-            case TYPE_BYTE: case TYPE_SHORT: case TYPE_CHAR: case TYPE_INT: case TYPE_FLOAT:
-                return true;
-            default:
-                return false;
-            }
-        default:
-            return false;
-        }
+        return switch (thisPlainTypeCode) {
+            case TYPE_SHORT -> otherPlainTypeCode == TYPE_BYTE;
+            case TYPE_INT, TYPE_FLOAT -> switch (otherPlainTypeCode) {
+                case TYPE_BYTE, TYPE_SHORT, TYPE_CHAR -> true;
+                default -> false;
+            };
+            case TYPE_LONG -> switch (otherPlainTypeCode) {
+                case TYPE_BYTE, TYPE_SHORT, TYPE_CHAR, TYPE_INT -> true;
+                default -> false;
+            };
+            case TYPE_DOUBLE -> switch (otherPlainTypeCode) {
+                case TYPE_BYTE, TYPE_SHORT, TYPE_CHAR, TYPE_INT, TYPE_FLOAT -> true;
+                default -> false;
+            };
+            default -> false;
+        };
     }
 
     ColumnInfo copy() {
@@ -334,14 +323,8 @@ public class ColumnInfo implements Cloneable {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj instanceof ColumnInfo) {
-            var other = (ColumnInfo) obj;
-            return typeCode == other.typeCode && name.equals(other.name);
-        }
-        return false;
+        return this == obj || obj instanceof ColumnInfo other
+            && typeCode == other.typeCode && name.equals(other.name);
     }
 
     @Override

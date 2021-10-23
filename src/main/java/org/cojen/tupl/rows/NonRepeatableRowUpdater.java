@@ -22,7 +22,6 @@ import java.io.IOException;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Transaction;
-import org.cojen.tupl.View;
 
 /**
  * Updater which releases acquired locks for rows which are stepped over.

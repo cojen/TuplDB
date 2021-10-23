@@ -76,9 +76,9 @@ final class PendingTxn extends Locker implements Runnable {
         from.mHasState = 0;
         from.mTxnId = 0;
 
-        if (att instanceof CommitCallback) {
+        if (att instanceof CommitCallback callback) {
             try {
-                ((CommitCallback) att).pending(mTxnId);
+                callback.pending(mTxnId);
             } catch (Throwable e) {
                 Utils.uncaught(e);
             }
@@ -179,9 +179,9 @@ final class PendingTxn extends Locker implements Runnable {
     }
 
     private void finished(Object status) {
-        if (mAttachment instanceof CommitCallback) {
+        if (mAttachment instanceof CommitCallback callback) {
             try {
-                ((CommitCallback) mAttachment).finished(mTxnId, status);
+                callback.finished(mTxnId, status);
             } catch (Throwable e) {
                 Utils.uncaught(e);
             }

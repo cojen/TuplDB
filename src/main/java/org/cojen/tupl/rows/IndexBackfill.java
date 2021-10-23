@@ -32,7 +32,6 @@ import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventType;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockMode;
-import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Sorter;
 import org.cojen.tupl.Transaction;
 
@@ -49,7 +48,7 @@ import org.cojen.tupl.util.Worker;
  * @author Brian S O'Neill
  */
 public abstract class IndexBackfill<R> extends Worker.Task implements RedoListener, Closeable {
-    final TableManager mManager;
+    final TableManager<R> mManager;
     final RowStore mRowStore;
     final boolean mAutoload;
     final Index mSecondaryIndex;
@@ -73,7 +72,7 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
      * needed to create secondary index entries
      * @param secondaryStr name of secondary index
      */
-    protected IndexBackfill(RowStore rs, TableManager manager, boolean autoload,
+    protected IndexBackfill(RowStore rs, TableManager<R> manager, boolean autoload,
                             Index secondaryIndex, byte[] secondaryDesc, String secondaryStr)
         throws IOException
     {

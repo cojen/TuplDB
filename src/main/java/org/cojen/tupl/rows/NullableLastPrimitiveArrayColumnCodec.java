@@ -27,18 +27,18 @@ import org.cojen.maker.Variable;
  *
  * @author Brian S O'Neill
  */
-final class NullableLastPrimtiveArrayColumnCodec extends NonNullLastPrimitiveArrayColumnCodec {
+final class NullableLastPrimitiveArrayColumnCodec extends NonNullLastPrimitiveArrayColumnCodec {
     /**
      * @param info non-null
      * @param mm is null for stateless instance
      */
-    NullableLastPrimtiveArrayColumnCodec(ColumnInfo info, MethodMaker mm, boolean lex) {
+    NullableLastPrimitiveArrayColumnCodec(ColumnInfo info, MethodMaker mm, boolean lex) {
         super(info, mm, lex);
     }
 
     @Override
     ColumnCodec bind(MethodMaker mm) {
-        return new NullableLastPrimtiveArrayColumnCodec(mInfo, mm, mLex);
+        return new NullableLastPrimitiveArrayColumnCodec(mInfo, mm, mLex);
     }
 
     @Override

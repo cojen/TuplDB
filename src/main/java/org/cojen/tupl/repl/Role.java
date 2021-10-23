@@ -77,19 +77,13 @@ public enum Role {
     }
 
     static Role decode(byte code) {
-        switch (code) {
-        case 1:
-            return NORMAL;
-        case 2:
-            return STANDBY;
-        case 3:
-            return PROXY;
-        case 4:
-            return OBSERVER;
-        case 5:
-            return RESTORING;
-        default:
-            throw new IllegalArgumentException();
-        }
+        return switch (code) {
+            case 1 -> NORMAL;
+            case 2 -> STANDBY;
+            case 3 -> PROXY;
+            case 4 -> OBSERVER;
+            case 5 -> RESTORING;
+            default -> throw new IllegalArgumentException();
+        };
     }
 }

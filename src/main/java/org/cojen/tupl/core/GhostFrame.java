@@ -151,11 +151,11 @@ class GhostFrame extends CursorFrame {
 
             while (true) {
                 Index ix = db.anyIndexById(lock.mIndexId);
-                if (!(ix instanceof BTree)) {
+                if (!(ix instanceof BTree tree)) {
                     // Assume index was deleted.
                     break;
                 }
-                var c = new BTreeCursor((BTree) ix);
+                var c = new BTreeCursor(tree);
                 if (c.deleteGhost(key)) {
                     break;
                 }

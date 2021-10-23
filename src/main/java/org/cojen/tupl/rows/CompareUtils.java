@@ -128,11 +128,11 @@ class CompareUtils {
             // Assume both variables are Comparable.
             var result = colVar.invoke("compareTo", argVar);
             switch (op) {
-            case ColumnFilter.OP_GE: result.ifGe(0, pass); break;
-            case ColumnFilter.OP_LT: result.ifLt(0, pass); break;
-            case ColumnFilter.OP_LE: result.ifLe(0, pass); break;
-            case ColumnFilter.OP_GT: result.ifGt(0, pass); break;
-            default: throw new AssertionError();
+                case ColumnFilter.OP_GE -> result.ifGe(0, pass);
+                case ColumnFilter.OP_LT -> result.ifLt(0, pass);
+                case ColumnFilter.OP_LE -> result.ifLe(0, pass);
+                case ColumnFilter.OP_GT -> result.ifGt(0, pass);
+                default -> throw new AssertionError();
             }
         }
 
@@ -260,13 +260,13 @@ class CompareUtils {
         }
 
         switch (op) {
-        case ColumnFilter.OP_EQ: colVar.ifEq(argVar, pass); break;
-        case ColumnFilter.OP_NE: colVar.ifNe(argVar, pass); break;
-        case ColumnFilter.OP_GE: colVar.ifGe(argVar, pass); break;
-        case ColumnFilter.OP_LT: colVar.ifLt(argVar, pass); break;
-        case ColumnFilter.OP_LE: colVar.ifLe(argVar, pass); break;
-        case ColumnFilter.OP_GT: colVar.ifGt(argVar, pass); break;
-        default: throw new AssertionError();
+            case ColumnFilter.OP_EQ -> colVar.ifEq(argVar, pass);
+            case ColumnFilter.OP_NE -> colVar.ifNe(argVar, pass);
+            case ColumnFilter.OP_GE -> colVar.ifGe(argVar, pass);
+            case ColumnFilter.OP_LT -> colVar.ifLt(argVar, pass);
+            case ColumnFilter.OP_LE -> colVar.ifLe(argVar, pass);
+            case ColumnFilter.OP_GT -> colVar.ifGt(argVar, pass);
+            default -> throw new AssertionError();
         }
 
         mm.goto_(fail);
@@ -357,15 +357,15 @@ class CompareUtils {
      */
     private static void signMismatch(Variable a, Variable b, int op, Label pass, Label fail) {
         switch (op) {
-        case ColumnFilter.OP_LT: case ColumnFilter.OP_LE: case ColumnFilter.OP_NE:
-            a.ifLt(0, pass);
-            b.ifLt(0, pass);
-            break;
-        case ColumnFilter.OP_GE: case ColumnFilter.OP_GT: case ColumnFilter.OP_EQ:
-            a.ifLt(0, fail);
-            b.ifLt(0, fail);
-            break;
-        default: throw new AssertionError();
+            case ColumnFilter.OP_LT, ColumnFilter.OP_LE, ColumnFilter.OP_NE -> {
+                a.ifLt(0, pass);
+                b.ifLt(0, pass);
+            }
+            case ColumnFilter.OP_GE, ColumnFilter.OP_GT, ColumnFilter.OP_EQ -> {
+                a.ifLt(0, fail);
+                b.ifLt(0, fail);
+            }
+            default -> throw new AssertionError();
         }
     }
 
@@ -379,15 +379,15 @@ class CompareUtils {
      * @return pass or fail
      */
     static Label selectNullColumnToArg(int op, Label pass, Label fail) {
-        switch (op) {
-        case ColumnFilter.OP_EQ: return fail; // null == !null? false
-        case ColumnFilter.OP_NE: return pass; // null != !null? true
-        case ColumnFilter.OP_GE: return pass; // null >= !null? true
-        case ColumnFilter.OP_LT: return fail; // null <  !null? false
-        case ColumnFilter.OP_LE: return fail; // null <= !null? false
-        case ColumnFilter.OP_GT: return pass; // null >  !null? true
-        default: throw new AssertionError();
-        }
+        return switch (op) {
+            case ColumnFilter.OP_EQ -> fail; // null == !null? false
+            case ColumnFilter.OP_NE -> pass; // null != !null? true
+            case ColumnFilter.OP_GE -> pass; // null >= !null? true
+            case ColumnFilter.OP_LT -> fail; // null <  !null? false
+            case ColumnFilter.OP_LE -> fail; // null <= !null? false
+            case ColumnFilter.OP_GT -> pass; // null >  !null? true
+            default -> throw new AssertionError();
+        };
     }
 
     /**
@@ -400,20 +400,19 @@ class CompareUtils {
      * @return pass or fail
      */
     static Label selectColumnToNullArg(int op, Label pass, Label fail) {
-        switch (op) {
-        case ColumnFilter.OP_EQ: return fail; // !null == null? false
-        case ColumnFilter.OP_NE: return pass; // !null != null? true
-        case ColumnFilter.OP_GE: return fail; // !null >= null? false
-        case ColumnFilter.OP_LT: return pass; // !null <  null? true
-        case ColumnFilter.OP_LE: return pass; // !null <= null? true
-        case ColumnFilter.OP_GT: return fail; // !null >  null? false
+        return switch (op) {
+            case ColumnFilter.OP_EQ -> fail; // !null == null? false
+            case ColumnFilter.OP_NE -> pass; // !null != null? true
+            case ColumnFilter.OP_GE -> fail; // !null >= null? false
+            case ColumnFilter.OP_LT -> pass; // !null <  null? true
+            case ColumnFilter.OP_LE -> pass; // !null <= null? true
+            case ColumnFilter.OP_GT -> fail; // !null >  null? false
 
-        // Treat a null "in" array as if it was empty.
-        case ColumnFilter.OP_IN: return fail;
-        case ColumnFilter.OP_NOT_IN: return pass;
-
-        default: throw new AssertionError();
-        }
+            // Treat a null "in" array as if it was empty.
+            case ColumnFilter.OP_IN -> fail;
+            case ColumnFilter.OP_NOT_IN -> pass;
+            default -> throw new AssertionError();
+        };
     }
 
     /**
@@ -425,20 +424,19 @@ class CompareUtils {
      * @return pass or fail
      */
     static Label selectNullColumnToNullArg(int op, Label pass, Label fail) {
-        switch (op) {
-        case ColumnFilter.OP_EQ: return pass; // null == null? true
-        case ColumnFilter.OP_NE: return fail; // null != null? false
-        case ColumnFilter.OP_GE: return pass; // null >= null? true
-        case ColumnFilter.OP_LT: return fail; // null <  null? false
-        case ColumnFilter.OP_LE: return pass; // null <= null? true
-        case ColumnFilter.OP_GT: return fail; // null >  null? false
+        return switch (op) {
+            case ColumnFilter.OP_EQ -> pass; // null == null? true
+            case ColumnFilter.OP_NE -> fail; // null != null? false
+            case ColumnFilter.OP_GE -> pass; // null >= null? true
+            case ColumnFilter.OP_LT -> fail; // null <  null? false
+            case ColumnFilter.OP_LE -> pass; // null <= null? true
+            case ColumnFilter.OP_GT -> fail; // null >  null? false
 
-        // Treat a null "in" array as if it was empty.
-        case ColumnFilter.OP_IN: return fail;
-        case ColumnFilter.OP_NOT_IN: return pass;
-
-        default: throw new AssertionError();
-        }
+            // Treat a null "in" array as if it was empty.
+            case ColumnFilter.OP_IN -> fail;
+            case ColumnFilter.OP_NOT_IN -> pass;
+            default -> throw new AssertionError();
+        };
     }
 
     /**
@@ -456,27 +454,27 @@ class CompareUtils {
         var arraysVar = mm.var(Arrays.class);
 
         switch (op) {
-        case ColumnFilter.OP_EQ: case ColumnFilter.OP_NE: {
-            var resultVar = arraysVar.invoke("equals", a, aFrom, aTo, b, bFrom, bTo);
-            if (op == ColumnFilter.OP_EQ) {
-                resultVar.ifTrue(pass);
-            } else {
-                resultVar.ifFalse(pass);
+            case ColumnFilter.OP_EQ, ColumnFilter.OP_NE -> {
+                var resultVar = arraysVar.invoke("equals", a, aFrom, aTo, b, bFrom, bTo);
+                if (op == ColumnFilter.OP_EQ) {
+                    resultVar.ifTrue(pass);
+                } else {
+                    resultVar.ifFalse(pass);
+                }
             }
-            break;
-        }
-        default:
-            String method = "compare";
-            if (unsigned) {
-                method += "Unsigned";
-            }
-            var resultVar = arraysVar.invoke(method, a, aFrom, aTo, b, bFrom, bTo);
-            switch (op) {
-            case ColumnFilter.OP_GE: resultVar.ifGe(0, pass); break;
-            case ColumnFilter.OP_LT: resultVar.ifLt(0, pass); break;
-            case ColumnFilter.OP_LE: resultVar.ifLe(0, pass); break;
-            case ColumnFilter.OP_GT: resultVar.ifGt(0, pass); break;
-            default: throw new AssertionError();
+            default -> {
+                String method = "compare";
+                if (unsigned) {
+                    method += "Unsigned";
+                }
+                var resultVar = arraysVar.invoke(method, a, aFrom, aTo, b, bFrom, bTo);
+                switch (op) {
+                    case ColumnFilter.OP_GE -> resultVar.ifGe(0, pass);
+                    case ColumnFilter.OP_LT -> resultVar.ifLt(0, pass);
+                    case ColumnFilter.OP_LE -> resultVar.ifLe(0, pass);
+                    case ColumnFilter.OP_GT -> resultVar.ifGt(0, pass);
+                    default -> throw new AssertionError();
+                }
             }
         }
 

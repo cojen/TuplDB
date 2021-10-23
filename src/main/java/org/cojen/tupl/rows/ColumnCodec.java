@@ -126,7 +126,7 @@ abstract class ColumnCodec {
                 // Otherwise, two arrays which share a common prefix would be ordered wrong,
                 // even when all the bits are flipped.
                 if (info.isNullable()) {
-                    return new NullableLastPrimtiveArrayColumnCodec(info, null, lex);
+                    return new NullableLastPrimitiveArrayColumnCodec(info, null, lex);
                 } else {
                     return new NonNullLastPrimitiveArrayColumnCodec(info, null, lex);
                 }

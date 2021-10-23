@@ -28,7 +28,6 @@ import org.cojen.tupl.Transaction;
  * @author Brian S O'Neill
  */
 /*P*/
-@SuppressWarnings("serial")
 abstract class BTreeMerger extends BTreeSeparator {
     /**
      * @param executor used for parallel separation; pass null to use only the starting thread

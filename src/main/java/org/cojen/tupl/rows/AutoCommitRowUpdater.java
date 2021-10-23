@@ -21,7 +21,6 @@ import java.io.IOException;
 
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Transaction;
-import org.cojen.tupl.View;
 
 /**
  * Commits every transactional update, and exits the scope when closed. For any entry stepped

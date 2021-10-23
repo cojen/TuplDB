@@ -30,43 +30,27 @@ final class ErrorCodes {
         VERSION_MISMATCH = 6, NO_CONSENSUS = 7, NO_LEADER = 8, NOT_LEADER = 9;
 
     static String toString(byte errorCode) {
-        switch (errorCode) {
-        default:
-            return "unknown error: " + errorCode;
-        case SUCCESS:
-            return "success";
-        case UNKNOWN_OPERATION:
-            return "unknown operation";
-        case NO_ACCEPTOR:
-            return "no acceptor";
-        case UNKNOWN_MEMBER:
-            return "unknown member";
-        case INVALID_ADDRESS:
-            return "invalid address";
-        case UNCONNECTED_MEMBER:
-            return "unconnected member";
-        case VERSION_MISMATCH:
-            return "group version mismatch";
-        case NO_CONSENSUS:
-            return "no consensus";
-        case NO_LEADER:
-            return "no leader";
-        case NOT_LEADER:
-            return "not leader";
-        }
+        return switch (errorCode) {
+            default -> "unknown error: " + errorCode;
+            case SUCCESS -> "success";
+            case UNKNOWN_OPERATION -> "unknown operation";
+            case NO_ACCEPTOR -> "no acceptor";
+            case UNKNOWN_MEMBER -> "unknown member";
+            case INVALID_ADDRESS -> "invalid address";
+            case UNCONNECTED_MEMBER -> "unconnected member";
+            case VERSION_MISMATCH -> "group version mismatch";
+            case NO_CONSENSUS -> "no consensus";
+            case NO_LEADER -> "no leader";
+            case NOT_LEADER -> "not leader";
+        };
     }
 
     static EventType typeFor(byte errorCode) {
-        switch (errorCode) {
-        default:
-            return EventType.REPLICATION_PANIC;
-        case VERSION_MISMATCH:
-        case NO_CONSENSUS:
-        case NO_LEADER:
-        case NOT_LEADER:
-            return EventType.REPLICATION_WARNING;
-        case SUCCESS:
-            return EventType.REPLICATION_INFO;
-        }
+        return switch (errorCode) {
+            default -> EventType.REPLICATION_PANIC;
+            case VERSION_MISMATCH, NO_CONSENSUS, NO_LEADER, NOT_LEADER
+                -> EventType.REPLICATION_WARNING;
+            case SUCCESS -> EventType.REPLICATION_INFO;
+        };
     }
 }

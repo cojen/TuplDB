@@ -75,8 +75,8 @@ final class MergedScanController<R> extends SingleScanController<R> {
         // Start in mode 1 (both ranges) if the lower bound of both is the same.
         int mode = low.compareLow(high) == 0 ? 1 : 0;
 
-        return new MergedScanController<R>
-            (lowLow, low.lowInclusive(), highBound, highInclusive, low, high, mode);
+        return new MergedScanController<>
+                (lowLow, low.lowInclusive(), highBound, highInclusive, low, high, mode);
     }
 
     private final ScanController<R> mLow, mHigh;

@@ -85,8 +85,8 @@ class GroupJoiner {
 
         SocketAddress bindAddr = null;
 
-        if (listenAddress instanceof InetSocketAddress) {
-            bindAddr = new InetSocketAddress(((InetSocketAddress) listenAddress).getAddress(), 0);
+        if (listenAddress instanceof InetSocketAddress isa) {
+            bindAddr = new InetSocketAddress(isa.getAddress(), 0);
         }
 
         mBindAddress = bindAddr;
@@ -300,8 +300,8 @@ class GroupJoiner {
             int op = cin.read();
             if (op == OP_ADDRESS) {
                 addr = GroupFile.parseSocketAddress(cin.readStr(cin.readIntLE()));
-                if (!(addr instanceof InetSocketAddress)
-                    || ((InetSocketAddress) addr).getAddress().isAnyLocalAddress())
+                if (!(addr instanceof InetSocketAddress isa)
+                    || isa.getAddress().isAnyLocalAddress())
                 {
                     // Invalid address.
                     addr = null;

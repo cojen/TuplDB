@@ -435,8 +435,8 @@ final class SnapshotPageArray extends PageArray {
             Object closed = mClosed;
             if (closed != null) {
                 Throwable cause = null;
-                if (closed instanceof Throwable) {
-                    cause = (Throwable) closed;
+                if (closed instanceof Throwable t) {
+                    cause = t;
                 }
                 if (cause instanceof InterruptedException ||
                     cause instanceof InterruptedIOException)

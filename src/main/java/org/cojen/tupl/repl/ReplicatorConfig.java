@@ -136,8 +136,8 @@ public class ReplicatorConfig implements Cloneable {
         if (addr == null) {
             throw new IllegalArgumentException();
         }
-        if (addr instanceof InetSocketAddress) {
-            if (((InetSocketAddress) addr).getAddress().isAnyLocalAddress()) {
+        if (addr instanceof InetSocketAddress sockAddr) {
+            if (sockAddr.getAddress().isAnyLocalAddress()) {
                 throw new IllegalArgumentException("Wildcard address: " + addr);
             }
         }
@@ -167,8 +167,7 @@ public class ReplicatorConfig implements Cloneable {
         mListenAddress = ss.getLocalSocketAddress();
         mLocalAddress = mListenAddress;
 
-        if (mLocalAddress instanceof InetSocketAddress) {
-            var sockAddr = (InetSocketAddress) mLocalAddress;
+        if (mLocalAddress instanceof InetSocketAddress sockAddr) {
             InetAddress addr = sockAddr.getAddress();
             if (addr.isAnyLocalAddress()) {
                 mLocalAddress = new InetSocketAddress

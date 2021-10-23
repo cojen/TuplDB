@@ -42,8 +42,6 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DatabaseException;
-import org.cojen.tupl.Transaction;
-import org.cojen.tupl.View;
 
 import org.cojen.tupl.filter.AndFilter;
 import org.cojen.tupl.filter.ColumnToArgFilter;

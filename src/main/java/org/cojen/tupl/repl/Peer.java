@@ -234,15 +234,9 @@ final class Peer implements Comparable<Peer> {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == this) {
-            return true;
-        }
-        if (obj instanceof Peer) {
-            var other = (Peer) obj;
-            return mMemberId == other.mMemberId && Objects.equals(mAddress, other.mAddress)
-                && Objects.equals(mRole, other.mRole);
-        }
-        return false;
+        return obj == this || obj instanceof Peer other
+            && mMemberId == other.mMemberId && Objects.equals(mAddress, other.mAddress)
+            && Objects.equals(mRole, other.mRole);
     }
 
     @Override

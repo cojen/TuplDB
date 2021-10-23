@@ -90,9 +90,8 @@ public interface StreamReplicator extends Replicator {
 
         if (listenAddress == null) {
             listenAddress = localAddress;
-            if (listenAddress instanceof InetSocketAddress) {
-                int port = ((InetSocketAddress) listenAddress).getPort();
-                listenAddress = new InetSocketAddress(port);
+            if (listenAddress instanceof InetSocketAddress isa) {
+                listenAddress = new InetSocketAddress(isa.getPort());
             }
         }
 

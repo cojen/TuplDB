@@ -45,8 +45,8 @@ public final class EventPrinter implements EventListener {
                 mOut.println(fullMessage);
 
                 for (Object obj : args) {
-                    if (obj instanceof Throwable) {
-                        ((Throwable) obj).printStackTrace(mOut);
+                    if (obj instanceof Throwable t) {
+                        t.printStackTrace(mOut);
                     }
                 }
             }
@@ -57,13 +57,7 @@ public final class EventPrinter implements EventListener {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == this) {
-            return true;
-        }
-        if (obj instanceof EventPrinter) {
-            return mOut.equals(((EventPrinter) obj).mOut);
-        }
-        return false;
+        return obj == this || obj instanceof EventPrinter ep && mOut.equals(ep.mOut);
     }
 
     @Override

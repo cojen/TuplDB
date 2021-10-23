@@ -216,8 +216,8 @@ public final class LocalTransaction extends Locker implements Transaction {
     private void check(Object borked) throws DatabaseException {
         if (borked == BOGUS) {
             throw new IllegalStateException("Transaction is bogus");
-        } else if (borked instanceof Throwable) {
-            throw new InvalidTransactionException((Throwable) borked);
+        } else if (borked instanceof Throwable t) {
+            throw new InvalidTransactionException(t);
         } else {
             throw new InvalidTransactionException(String.valueOf(borked));
         }
@@ -346,9 +346,9 @@ public final class LocalTransaction extends Locker implements Transaction {
             if (e instanceof UnmodifiableReplicaException) {
                 mUndoLog.uncommit();
                 mContext.uncommitted(mTxnId);
-            } else if (mRedo instanceof ReplWriter) {
+            } else if (mRedo instanceof ReplWriter rw) {
                 PendingTxn pending = preparePending();
-                ((ReplWriter) mRedo).mReplWriter.uponCommit(commitPos, pos -> {
+                rw.mReplWriter.uponCommit(commitPos, pos -> {
                     pending.commitPos(pos);
                     pending.run();
                 });

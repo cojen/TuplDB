@@ -226,8 +226,7 @@ class RowGen {
 
         var infos = new ArrayList<ColumnInfo>(info.valueColumns.values());
 
-        SecondaryInfo sInfo;
-        if (!(info instanceof SecondaryInfo) || !(sInfo = ((SecondaryInfo) info)).isAltKey) {
+        if (!(info instanceof SecondaryInfo sInfo) || !sInfo.isAltKey) {
             // Encode fixed sized columns first (primitives), then nullable primitives, and
             // then the remaining in natural order (lexicographical).
 

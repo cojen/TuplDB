@@ -43,8 +43,8 @@ public class OrFilter extends GroupFilter {
         int count = 0;
         for (int i=off; i<off+len; i++) {
             RowFilter sub = subFilters[i];
-            if (sub instanceof OrFilter) {
-                count += ((OrFilter) sub).mSubFilters.length;
+            if (sub instanceof OrFilter of) {
+                count += of.mSubFilters.length;
             } else {
                 count++;
             }
@@ -64,8 +64,8 @@ public class OrFilter extends GroupFilter {
         var newSubFilters = new RowFilter[count];
         for (int i=off, j=0; j<newSubFilters.length; ) {
             RowFilter sub = subFilters[i++];
-            if (sub instanceof OrFilter) {
-                var orSubFilters = ((OrFilter) sub).mSubFilters;
+            if (sub instanceof OrFilter of) {
+                var orSubFilters = of.mSubFilters;
                 for (int k=0; k<orSubFilters.length; k++) {
                     newSubFilters[j++] = orSubFilters[k];
                 }
@@ -127,11 +127,11 @@ public class OrFilter extends GroupFilter {
         if (equals(filter)) {
             return 1; // equal
         }
-        if (filter instanceof OrFilter) {
-            return matchSet().equalMatches(((OrFilter) filter).matchSet());
+        if (filter instanceof OrFilter of) {
+            return matchSet().equalMatches(of.matchSet());
         }
-        if (filter instanceof AndFilter) {
-            return matchSet().inverseMatches(((AndFilter) filter).matchSet());
+        if (filter instanceof AndFilter af) {
+            return matchSet().inverseMatches(af.matchSet());
         }
         return 0; // doesn't match
     }

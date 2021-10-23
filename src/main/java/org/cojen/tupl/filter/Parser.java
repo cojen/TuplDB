@@ -18,6 +18,7 @@
 package org.cojen.tupl.filter;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -115,8 +116,8 @@ public class Parser {
     }
 
     private static void addToOrFilter(ArrayList<RowFilter> list, RowFilter filter) {
-        if (filter instanceof OrFilter) {
-            addAll(list, (OrFilter) filter);
+        if (filter instanceof OrFilter of) {
+            Collections.addAll(list, of.mSubFilters);
         } else {
             list.add(filter);
         }
@@ -153,16 +154,10 @@ public class Parser {
     }
 
     private static void addToAndFilter(ArrayList<RowFilter> list, RowFilter filter) {
-        if (filter instanceof AndFilter) {
-            addAll(list, (AndFilter) filter);
+        if (filter instanceof AndFilter af) {
+            Collections.addAll(list, af.mSubFilters);
         } else {
             list.add(filter);
-        }
-    }
-
-    private static void addAll(ArrayList<RowFilter> list, GroupFilter group) {
-        for (RowFilter subFilters : group.mSubFilters) {
-            list.add(subFilters);
         }
     }
 
@@ -191,64 +186,65 @@ public class Parser {
 
         int op;
         switch (c) {
-        case '=':
-            c = nextChar();
-            if (c == '=') {
-                op = ColumnFilter.OP_EQ;
-            } else {
-                mPos -= 2;
-                throw error("Equality operator must be specified as '=='");
+            case '=' -> {
+                c = nextChar();
+                if (c == '=') {
+                    op = ColumnFilter.OP_EQ;
+                } else {
+                    mPos -= 2;
+                    throw error("Equality operator must be specified as '=='");
+                }
+                operatorCheck();
             }
-            operatorCheck();
-            break;
-        case '!':
-            c = nextChar();
-            if (c == '=') {
-                op = ColumnFilter.OP_NE;
-            } else {
-                mPos -= 2;
-                throw error("Inequality operator must be specified as '!='");
+            case '!' -> {
+                c = nextChar();
+                if (c == '=') {
+                    op = ColumnFilter.OP_NE;
+                } else {
+                    mPos -= 2;
+                    throw error("Inequality operator must be specified as '!='");
+                }
+                operatorCheck();
             }
-            operatorCheck();
-            break;
-        case '<':
-            c = nextChar();
-            if (c == '=') {
-                op = ColumnFilter.OP_LE;
-            } else {
+            case '<' -> {
+                c = nextChar();
+                if (c == '=') {
+                    op = ColumnFilter.OP_LE;
+                } else {
+                    mPos--;
+                    op = ColumnFilter.OP_LT;
+                }
+                operatorCheck();
+            }
+            case '>' -> {
+                c = nextChar();
+                if (c == '=') {
+                    op = ColumnFilter.OP_GE;
+                } else {
+                    mPos--;
+                    op = ColumnFilter.OP_GT;
+                }
+                operatorCheck();
+            }
+            case 'i' -> {
+                c = nextChar();
+                if (c == 'n') {
+                    op = ColumnFilter.OP_IN;
+                } else {
+                    mPos -= 2;
+                    throw error("Unknown operator");
+                }
+                operatorCheck(true);
+            }
+            case '?' -> {
                 mPos--;
-                op = ColumnFilter.OP_LT;
+                throw error("Relational operator missing");
             }
-            operatorCheck();
-            break;
-        case '>':
-            c = nextChar();
-            if (c == '=') {
-                op = ColumnFilter.OP_GE;
-            } else {
+            case -1 -> throw error("Relational operator expected");
+            default -> {
                 mPos--;
-                op = ColumnFilter.OP_GT;
-            }
-            operatorCheck();
-            break;
-        case 'i':
-            c = nextChar();
-            if (c == 'n') {
-                op = ColumnFilter.OP_IN;
-            } else {
-                mPos -= 2;
                 throw error("Unknown operator");
             }
-            operatorCheck(true);
-            break;
-        case '?':
-            mPos--;
-            throw error("Relational operator missing");
-        case -1:
-            throw error("Relational operator expected");
-        default:
-            mPos--;
-            throw error("Unknown operator");
         }
 
         c = nextCharIgnoreWhitespace();
@@ -268,7 +264,6 @@ public class Parser {
                 throw error("Argument number or '?' expected");
             }
 
-            int startPos2 = mPos;
             ColumnInfo match = parseColumn();
 
             ColumnInfo common = ConvertUtils.commonType(column, match, op);
@@ -402,7 +397,7 @@ public class Parser {
     private int nextChar() {
         String filter = mFilter;
         int pos = mPos;
-        int c = (pos >= filter.length()) ? -1 : mFilter.charAt(pos);
+        int c = (pos >= filter.length()) ? -1 : filter.charAt(pos);
         mPos = pos + 1;
         return c;
     }
@@ -429,7 +424,7 @@ public class Parser {
 
     private IllegalArgumentException error(String message, int pos) {
         if (pos <= 0 || mFilter.length() == 0) {
-            message += " (at start of filter expession)";
+            message += " (at start of filter expression)";
         } else if (pos >= mFilter.length()) {
             message += " (at end of filter expression)";
         } else {

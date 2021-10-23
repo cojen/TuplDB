@@ -475,8 +475,7 @@ public abstract class Clutch extends Latch {
             }
 
             // Try to steal the slot.
-            if (existing instanceof Clutch) {
-                var existingClutch = (Clutch) existing;
+            if (existing instanceof Clutch existingClutch) {
                 if (existingClutch.tryAcquireExclusive()) {
                     // If acquired exclusive, then slot has been potentially freed.
                     existingClutch.releaseExclusive();
@@ -585,8 +584,8 @@ public abstract class Clutch extends Latch {
         private void releaseShared(int slot, int stripe) {
             add(slot, -1, stripe);
             Object entry = cObjectArrayHandle.getVolatile(mSlots, slot);
-            if (entry instanceof Thread && isZero(slot)) {
-                Parker.unpark((Thread) entry);
+            if (entry instanceof Thread t && isZero(slot)) {
+                Parker.unpark(t);
             }
         }
 

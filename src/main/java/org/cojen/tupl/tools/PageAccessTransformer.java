@@ -183,28 +183,31 @@ public class PageAccessTransformer {
                 int tagIndex = typeIndex + 3;
                 if (tagIndex < line.length()) {
                     switch (line.charAt(tagIndex)) {
-                    case '[':
-                        if (mState != STATE_NORMAL) {
-                            throw new IllegalStateException();
+                        case '[' -> {
+                            if (mState != STATE_NORMAL) {
+                                throw new IllegalStateException();
+                            }
+                            if (++tagIndex < line.length() && line.charAt(tagIndex) == '|') {
+                                mState = STATE_ENABLE;
+                            } else {
+                                mState = STATE_DISABLE;
+                            }
+                            return line;
                         }
-                        if (++tagIndex < line.length() && line.charAt(tagIndex) == '|') {
+                        case '|' -> {
+                            if (mState != STATE_DISABLE) {
+                                throw new IllegalStateException();
+                            }
                             mState = STATE_ENABLE;
-                        } else {
-                            mState = STATE_DISABLE;
+                            return line;
                         }
-                        return line;
-                    case '|':
-                        if (mState != STATE_DISABLE) {
-                            throw new IllegalStateException();
+                        case ']' -> {
+                            if (mState == STATE_NORMAL) {
+                                throw new IllegalStateException();
+                            }
+                            mState = STATE_NORMAL;
+                            return line;
                         }
-                        mState = STATE_ENABLE;
-                        return line;
-                    case ']':
-                        if (mState == STATE_NORMAL) {
-                            throw new IllegalStateException();
-                        }
-                        mState = STATE_NORMAL;
-                        return line;
                     }
                 }
 

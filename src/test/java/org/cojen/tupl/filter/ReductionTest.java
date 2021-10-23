@@ -61,8 +61,8 @@ public class ReductionTest {
 
                     assertNotEquals(filter, reduced);
 
-                    if (reduced instanceof GroupFilter) {
-                        assertEquals(0, ((GroupFilter) reduced).subFilters().length);
+                    if (reduced instanceof GroupFilter gf) {
+                        assertEquals(0, gf.subFilters().length);
                     }
 
                     {

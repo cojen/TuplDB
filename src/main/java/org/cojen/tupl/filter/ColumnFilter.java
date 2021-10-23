@@ -38,13 +38,13 @@ public abstract class ColumnFilter extends RowFilter {
     }
 
     public static int descendingOperator(int op) {
-        switch (op) {
-        case OP_GE: return OP_LE;
-        case OP_LT: return OP_GT;
-        case OP_LE: return OP_GE;
-        case OP_GT: return OP_LT;
-        default: return op;
-        }
+        return switch (op) {
+            case OP_GE -> OP_LE;
+            case OP_LT -> OP_GT;
+            case OP_LE -> OP_GE;
+            case OP_GT -> OP_LT;
+            default -> op;
+        };
     }
 
     public static boolean hasEqualComponent(int op) {
@@ -52,12 +52,12 @@ public abstract class ColumnFilter extends RowFilter {
     }
 
     public static int removeEqualComponent(int op) {
-        switch (op) {
-        case OP_EQ: return OP_NE;
-        case OP_GE: return OP_GT;
-        case OP_LE: return OP_LT;
-        default: return op;
-        }
+        return switch (op) {
+            case OP_EQ -> OP_NE;
+            case OP_GE -> OP_GT;
+            case OP_LE -> OP_LT;
+            default -> op;
+        };
     }
 
     final ColumnInfo mColumn;
@@ -224,16 +224,15 @@ public abstract class ColumnFilter extends RowFilter {
     void appendTo(StringBuilder b) {
         b.append(mColumn.name).append(' ');
 
-        String opStr;
-        switch (mOperator) {
-        case OP_EQ: opStr = "=="; break;
-        case OP_NE: opStr = "!="; break;
-        case OP_GE: opStr = ">="; break;
-        case OP_LT: opStr = "<";  break;
-        case OP_LE: opStr = "<="; break;
-        case OP_GT: opStr = ">";  break;
-        default:    opStr = "?";  break;
-        }
+        final String opStr = switch (mOperator) {
+            case OP_EQ -> "==";
+            case OP_NE -> "!=";
+            case OP_GE -> ">=";
+            case OP_LT -> "<";
+            case OP_LE -> "<=";
+            case OP_GT -> ">";
+            default -> "?";
+        };
 
         b.append(opStr).append(' ');
     }

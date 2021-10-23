@@ -31,7 +31,7 @@ import org.cojen.tupl.io.Utils;
 
 /**
  * Utility for sharing a small set of poolable objects (like buffers) which have thread
- * afinity. A thread should only request a single object from the pool to prevent deadlocks.
+ * affinity. A thread should only request a single object from the pool to prevent deadlocks.
  *
  * @author Brian S O'Neill
  */
@@ -105,7 +105,7 @@ public final class LocalPool<B> {
                     if (numEntries >= allEntries.length) {
                         break expand;
                     }
-                    entry = new TheEntry<B>(mSupplier.get());
+                    entry = new TheEntry<>(mSupplier.get());
                     allEntries[numEntries] = entry;
                     mNumEntries = numEntries + 1;
                 }

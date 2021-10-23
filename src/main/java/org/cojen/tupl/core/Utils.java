@@ -292,33 +292,25 @@ public class Utils extends org.cojen.tupl.io.Utils {
     public static long decodeUnsignedVarInt(byte[] b, int offset) {
         int v = b[offset++];
         if (v < 0) {
-            switch ((v >> 4) & 0x07) {
-            case 0x00: case 0x01: case 0x02: case 0x03:
-                v = (1 << 7)
-                    + (((v & 0x3f) << 8)
-                       | (b[offset++] & 0xff));
-                break;
-            case 0x04: case 0x05:
-                v = ((1 << 14) + (1 << 7))
-                    + (((v & 0x1f) << 16)
-                       | ((b[offset++] & 0xff) << 8)
-                       | (b[offset++] & 0xff));
-                break;
-            case 0x06:
-                v = ((1 << 21) + (1 << 14) + (1 << 7))
-                    + (((v & 0x0f) << 24)
-                       | ((b[offset++] & 0xff) << 16)
-                       | ((b[offset++] & 0xff) << 8)
-                       | (b[offset++] & 0xff));
-                break;
-            default:
-                v = ((1 << 28) + (1 << 21) + (1 << 14) + (1 << 7)) 
-                    + ((b[offset++] << 24)
-                       | ((b[offset++] & 0xff) << 16)
-                       | ((b[offset++] & 0xff) << 8)
-                       | (b[offset++] & 0xff));
-                break;
-            }
+            v = switch ((v >> 4) & 0x07) {
+                case 0x00, 0x01, 0x02, 0x03 -> (1 << 7)
+                        + (((v & 0x3f) << 8)
+                           | (b[offset++] & 0xff));
+                case 0x04, 0x05 -> ((1 << 14) + (1 << 7))
+                        + (((v & 0x1f) << 16)
+                           | ((b[offset++] & 0xff) << 8)
+                           | (b[offset++] & 0xff));
+                case 0x06 -> ((1 << 21) + (1 << 14) + (1 << 7))
+                        + (((v & 0x0f) << 24)
+                           | ((b[offset++] & 0xff) << 16)
+                           | ((b[offset++] & 0xff) << 8)
+                           | (b[offset++] & 0xff));
+                default -> ((1 << 28) + (1 << 21) + (1 << 14) + (1 << 7))
+                        + ((b[offset++] << 24)
+                           | ((b[offset++] & 0xff) << 16)
+                           | ((b[offset++] & 0xff) << 8)
+                           | (b[offset++] & 0xff));
+            };
         }
         return (((long) offset) << 32L) | (v & 0xffff_ffffL);
     }
@@ -404,83 +396,62 @@ public class Utils extends org.cojen.tupl.io.Utils {
             offsetRef.set(offset);
             return val;
         }
-        long decoded;
-        switch ((val >> 4) & 0x07) {
-        case 0x00: case 0x01: case 0x02: case 0x03:
-            decoded = (1L << 7) +
-                (((val & 0x3f) << 8)
-                 | (b[offset++] & 0xff));
-            break;
-        case 0x04: case 0x05:
-            decoded = ((1L << 14) + (1L << 7))
-                + (((val & 0x1f) << 16)
-                   | ((b[offset++] & 0xff) << 8)
-                   | (b[offset++] & 0xff));
-            break;
-        case 0x06:
-            decoded = ((1L << 21) + (1L << 14) + (1L << 7))
-                + (((val & 0x0f) << 24)
-                   | ((b[offset++] & 0xff) << 16)
-                   | ((b[offset++] & 0xff) << 8)
-                   | (b[offset++] & 0xff));
-            break;
-        default:
-            switch (val & 0x0f) {
-            default:
-                decoded = ((1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
-                    + (((val & 0x07L) << 32)
-                       | (((long) (b[offset++] & 0xff)) << 24)
-                       | (((long) (b[offset++] & 0xff)) << 16)
-                       | (((long) (b[offset++] & 0xff)) << 8)
-                       | ((long) (b[offset++] & 0xff)));
-                break;
-            case 0x08: case 0x09: case 0x0a: case 0x0b:
-                decoded = ((1L << 35)
-                           + (1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
-                    + (((val & 0x03L) << 40)
-                       | (((long) (b[offset++] & 0xff)) << 32)
-                       | (((long) (b[offset++] & 0xff)) << 24)
-                       | (((long) (b[offset++] & 0xff)) << 16)
-                       | (((long) (b[offset++] & 0xff)) << 8)
-                       | ((long) (b[offset++] & 0xff)));
-                break;
-            case 0x0c: case 0x0d:
-                decoded = ((1L << 42) + (1L << 35)
-                           + (1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
-                    + (((val & 0x01L) << 48)
-                       | (((long) (b[offset++] & 0xff)) << 40)
-                       | (((long) (b[offset++] & 0xff)) << 32)
-                       | (((long) (b[offset++] & 0xff)) << 24)
-                       | (((long) (b[offset++] & 0xff)) << 16)
-                       | (((long) (b[offset++] & 0xff)) << 8)
-                       | ((long) (b[offset++] & 0xff)));
-                break;
-            case 0x0e:
-                decoded = ((1L << 49) + (1L << 42) + (1L << 35)
-                           + (1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
-                    + ((((long) (b[offset++] & 0xff)) << 48)
-                       | (((long) (b[offset++] & 0xff)) << 40)
-                       | (((long) (b[offset++] & 0xff)) << 32)
-                       | (((long) (b[offset++] & 0xff)) << 24)
-                       | (((long) (b[offset++] & 0xff)) << 16)
-                       | (((long) (b[offset++] & 0xff)) << 8)
-                       | ((long) (b[offset++] & 0xff)));
-                break;
-            case 0x0f:
-                decoded = ((1L << 56) + (1L << 49) + (1L << 42) + (1L << 35)
-                           + (1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
-                    + ((((long) b[offset++]) << 56)
-                       | (((long) (b[offset++] & 0xff)) << 48)
-                       | (((long) (b[offset++] & 0xff)) << 40)
-                       | (((long) (b[offset++] & 0xff)) << 32)
-                       | (((long) (b[offset++] & 0xff)) << 24)
-                       | (((long) (b[offset++] & 0xff)) << 16)
-                       | (((long) (b[offset++] & 0xff)) << 8L)
-                       | ((long) (b[offset++] & 0xff)));
-                break;
-            }
-            break;
-        }
+        long decoded = switch ((val >> 4) & 0x07) {
+            case 0x00, 0x01, 0x02, 0x03 -> (1L << 7) + (((val & 0x3f) << 8) | (b[offset++] & 0xff));
+            case 0x04, 0x05 -> ((1L << 14) + (1L << 7))
+                    + (((val & 0x1f) << 16)
+                       | ((b[offset++] & 0xff) << 8)
+                       | (b[offset++] & 0xff));
+            case 0x06 -> ((1L << 21) + (1L << 14) + (1L << 7))
+                    + (((val & 0x0f) << 24)
+                       | ((b[offset++] & 0xff) << 16)
+                       | ((b[offset++] & 0xff) << 8)
+                       | (b[offset++] & 0xff));
+            default -> switch (val & 0x0f) {
+                default -> ((1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
+                        + (((val & 0x07L) << 32)
+                           | (((long) (b[offset++] & 0xff)) << 24)
+                           | (((long) (b[offset++] & 0xff)) << 16)
+                           | (((long) (b[offset++] & 0xff)) << 8)
+                           | ((long) (b[offset++] & 0xff)));
+                case 0x08, 0x09, 0x0a, 0x0b -> ((1L << 35)
+                        + (1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
+                        + (((val & 0x03L) << 40)
+                           | (((long) (b[offset++] & 0xff)) << 32)
+                           | (((long) (b[offset++] & 0xff)) << 24)
+                           | (((long) (b[offset++] & 0xff)) << 16)
+                           | (((long) (b[offset++] & 0xff)) << 8)
+                           | ((long) (b[offset++] & 0xff)));
+                case 0x0c, 0x0d -> ((1L << 42) + (1L << 35)
+                        + (1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
+                        + (((val & 0x01L) << 48)
+                           | (((long) (b[offset++] & 0xff)) << 40)
+                           | (((long) (b[offset++] & 0xff)) << 32)
+                           | (((long) (b[offset++] & 0xff)) << 24)
+                           | (((long) (b[offset++] & 0xff)) << 16)
+                           | (((long) (b[offset++] & 0xff)) << 8)
+                           | ((long) (b[offset++] & 0xff)));
+                case 0x0e -> ((1L << 49) + (1L << 42) + (1L << 35)
+                        + (1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
+                        + ((((long) (b[offset++] & 0xff)) << 48)
+                           | (((long) (b[offset++] & 0xff)) << 40)
+                           | (((long) (b[offset++] & 0xff)) << 32)
+                           | (((long) (b[offset++] & 0xff)) << 24)
+                           | (((long) (b[offset++] & 0xff)) << 16)
+                           | (((long) (b[offset++] & 0xff)) << 8)
+                           | ((long) (b[offset++] & 0xff)));
+                case 0x0f -> ((1L << 56) + (1L << 49) + (1L << 42) + (1L << 35)
+                        + (1L << 28) + (1L << 21) + (1L << 14) + (1L << 7))
+                        + ((((long) b[offset++]) << 56)
+                           | (((long) (b[offset++] & 0xff)) << 48)
+                           | (((long) (b[offset++] & 0xff)) << 40)
+                           | (((long) (b[offset++] & 0xff)) << 32)
+                           | (((long) (b[offset++] & 0xff)) << 24)
+                           | (((long) (b[offset++] & 0xff)) << 16)
+                           | (((long) (b[offset++] & 0xff)) << 8L)
+                           | ((long) (b[offset++] & 0xff)));
+            };
+        };
 
         offsetRef.set(offset);
         return decoded;
@@ -1017,16 +988,13 @@ public class Utils extends org.cojen.tupl.io.Utils {
      * Rethrows if given a recoverable exception.
      */
     static void rethrowIfRecoverable(Throwable e) throws DatabaseException {
-        if (e instanceof DatabaseException) {
-            var de = (DatabaseException) e;
-            if (de.isRecoverable()) {
-                throw de;
-            }
+        if (e instanceof DatabaseException de && de.isRecoverable()) {
+            throw de;
         }
     }
 
     static boolean isRecoverable(Throwable e) {
-        return (e instanceof DatabaseException) && ((DatabaseException) e).isRecoverable();
+        return e instanceof DatabaseException de && de.isRecoverable();
     }
 
     public static void initCause(Throwable e, Throwable cause) {

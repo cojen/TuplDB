@@ -164,600 +164,344 @@ public class Converter {
         case TYPE_BOOLEAN:
             // Note: For numbers, boolean is treated as an int clamped to the range [0, 1].
             switch (srcPlainTypeCode) {
-            case TYPE_BYTE: case TYPE_SHORT: case TYPE_INT: case TYPE_LONG:
-                dstVar.set(srcVar.gt(0));
-                break;
-            case TYPE_UBYTE: case TYPE_USHORT: case TYPE_UINT: case TYPE_ULONG:
-                dstVar.set(srcVar.ne(0));
-                break;
-            case TYPE_FLOAT:
-                dstVar.set(srcVar.ge(1.0f));
-                break;
-            case TYPE_DOUBLE:
-                dstVar.set(srcVar.ge(1.0d));
-                break;
-            case TYPE_BIG_INTEGER:
-                dstVar.set(srcVar.invoke("compareTo",
-                                         mm.var(BigInteger.class).field("ZERO")).gt(0));
-                break;
-            case TYPE_BIG_DECIMAL:
-                dstVar.set(srcVar.invoke("compareTo",
-                                         mm.var(BigDecimal.class).field("ONE")).ge(0));
-                break;
-            case TYPE_CHAR: {
-                var utils = mm.var(Converter.class);
-                if (dstInfo.type.isPrimitive()) {
-                    dstVar.set(utils.invoke("charToBoolean", srcVar));
-                } else {
-                    Boolean default_ = dstInfo.isNullable() ? null : false;
-                    dstVar.set(utils.invoke("charToBoolean", srcVar, default_));
+                case TYPE_BYTE, TYPE_SHORT, TYPE_INT, TYPE_LONG -> dstVar.set(srcVar.gt(0));
+                case TYPE_UBYTE, TYPE_USHORT, TYPE_UINT, TYPE_ULONG -> dstVar.set(srcVar.ne(0));
+                case TYPE_FLOAT -> dstVar.set(srcVar.ge(1.0f));
+                case TYPE_DOUBLE -> dstVar.set(srcVar.ge(1.0d));
+                case TYPE_BIG_INTEGER -> dstVar.set(srcVar.invoke("compareTo",
+                        mm.var(BigInteger.class).field("ZERO")).gt(0));
+                case TYPE_BIG_DECIMAL -> dstVar.set(srcVar.invoke("compareTo",
+                        mm.var(BigDecimal.class).field("ONE")).ge(0));
+                case TYPE_CHAR -> {
+                    var utils = mm.var(Converter.class);
+                    if (dstInfo.type.isPrimitive()) {
+                        dstVar.set(utils.invoke("charToBoolean", srcVar));
+                    } else {
+                        Boolean default_ = dstInfo.isNullable() ? null : false;
+                        dstVar.set(utils.invoke("charToBoolean", srcVar, default_));
+                    }
                 }
-                break;
-            }
-            case TYPE_UTF8: {
-                var utils = mm.var(Converter.class);
-                if (dstInfo.type.isPrimitive()) {
-                    dstVar.set(utils.invoke("stringToBoolean", srcVar));
-                } else {
-                    Boolean default_ = dstInfo.isNullable() ? null : false;
-                    dstVar.set(utils.invoke("stringToBoolean", srcVar, default_));
+                case TYPE_UTF8 -> {
+                    var utils = mm.var(Converter.class);
+                    if (dstInfo.type.isPrimitive()) {
+                        dstVar.set(utils.invoke("stringToBoolean", srcVar));
+                    } else {
+                        Boolean default_ = dstInfo.isNullable() ? null : false;
+                        dstVar.set(utils.invoke("stringToBoolean", srcVar, default_));
+                    }
                 }
-                break;
-            }
-            default:
-                handled = false;
+                default -> handled = false;
             }
             break;
 
         case TYPE_BYTE:
             switch (srcPlainTypeCode) {
-            case TYPE_BOOLEAN:
-                boolToNum(mm, srcVar, dstVar);
-                break;
-            case TYPE_SHORT: case TYPE_INT: case TYPE_LONG:
-                clampSS(mm, srcVar, -128, 127, dstVar);
-                break;
-            case TYPE_UBYTE:
-                clampUS(mm, srcVar, Byte.MAX_VALUE, dstVar);
-                break;
-            case TYPE_USHORT: case TYPE_UINT: case TYPE_ULONG:
-                clampUS_narrow(mm, srcVar, Byte.MAX_VALUE, dstVar);
-                break;
-            case TYPE_CHAR:
-                clampUS_narrow(mm, srcVar.cast(int.class), Byte.MAX_VALUE, dstVar);
-                break;
-            case TYPE_FLOAT: case TYPE_DOUBLE:
-                clampSS(mm, srcVar.cast(int.class), -128, 127, dstVar);
-                break;
-            case TYPE_BIG_INTEGER:
-                clampBigInteger_narrow(mm, srcVar, Byte.MIN_VALUE, Byte.MAX_VALUE,
-                                       dstInfo, dstVar, "byteValue");
-                break;
-            case TYPE_BIG_DECIMAL:
-                clampBigDecimal_narrow(mm, srcVar, Byte.MIN_VALUE, Byte.MAX_VALUE,
-                                       dstInfo, dstVar, "byteValue");
-                break;
-            case TYPE_UTF8:
-                var bd = parseBigDecimal(mm, srcVar, dstInfo, dstVar, end);
-                clampBigDecimal_narrow(mm, bd, Byte.MIN_VALUE, Byte.MAX_VALUE,
-                                       dstInfo, dstVar, "byteValue");
-                break;
-            default:
-                handled = false;
+                case TYPE_BOOLEAN -> boolToNum(mm, srcVar, dstVar);
+                case TYPE_SHORT, TYPE_INT, TYPE_LONG -> clampSS(mm, srcVar, -128, 127, dstVar);
+                case TYPE_UBYTE -> clampUS(mm, srcVar, Byte.MAX_VALUE, dstVar);
+                case TYPE_USHORT, TYPE_UINT, TYPE_ULONG -> clampUS_narrow(mm, srcVar, Byte.MAX_VALUE, dstVar);
+                case TYPE_CHAR -> clampUS_narrow(mm, srcVar.cast(int.class), Byte.MAX_VALUE, dstVar);
+                case TYPE_FLOAT, TYPE_DOUBLE -> clampSS(mm, srcVar.cast(int.class), -128, 127, dstVar);
+                case TYPE_BIG_INTEGER -> clampBigInteger_narrow(mm, srcVar, Byte.MIN_VALUE, Byte.MAX_VALUE,
+                        dstInfo, dstVar, "byteValue");
+                case TYPE_BIG_DECIMAL -> clampBigDecimal_narrow(mm, srcVar, Byte.MIN_VALUE, Byte.MAX_VALUE,
+                        dstInfo, dstVar, "byteValue");
+                case TYPE_UTF8 -> {
+                    var bd = parseBigDecimal(mm, srcVar, dstInfo, dstVar, end);
+                    clampBigDecimal_narrow(mm, bd, Byte.MIN_VALUE, Byte.MAX_VALUE,
+                            dstInfo, dstVar, "byteValue");
+                }
+                default -> handled = false;
             }
             break;
 
         case TYPE_SHORT:
             switch (srcPlainTypeCode) {
-            case TYPE_BOOLEAN:
-                boolToNum(mm, srcVar, dstVar);
-                break;
-            case TYPE_INT: case TYPE_LONG:
-                clampSS(mm, srcVar, -32768, 32767, dstVar);
-                break;
-            case TYPE_UBYTE:
-                dstVar.set(srcVar.cast(int.class).and(0xff).cast(short.class));
-                break;
-            case TYPE_USHORT:
-                clampUS(mm, srcVar, Short.MAX_VALUE, dstVar);
-                break;
-            case TYPE_UINT: case TYPE_ULONG:
-                clampUS_narrow(mm, srcVar, Short.MAX_VALUE, dstVar);
-                break;
-            case TYPE_CHAR:
-                clampUS_narrow(mm, srcVar.cast(int.class), Short.MAX_VALUE, dstVar);
-                break;
-            case TYPE_FLOAT: case TYPE_DOUBLE:
-                clampSS(mm, srcVar.cast(int.class), -32768, 32767, dstVar);
-                break;
-            case TYPE_BIG_INTEGER:
-                clampBigInteger_narrow(mm, srcVar, Short.MIN_VALUE, Short.MAX_VALUE,
-                                       dstInfo, dstVar, "shortValue");
-                break;
-            case TYPE_BIG_DECIMAL:
-                clampBigDecimal_narrow(mm, srcVar, Short.MIN_VALUE, Short.MAX_VALUE,
-                                       dstInfo, dstVar, "shortValue");
-                break;
-            case TYPE_UTF8:
-                var bd = parseBigDecimal(mm, srcVar, dstInfo, dstVar, end);
-                clampBigDecimal_narrow(mm, bd, Short.MIN_VALUE, Short.MAX_VALUE,
-                                       dstInfo, dstVar, "shortValue");
-                break;
-            default:
-                handled = false;
+                case TYPE_BOOLEAN -> boolToNum(mm, srcVar, dstVar);
+                case TYPE_INT, TYPE_LONG -> clampSS(mm, srcVar, -32768, 32767, dstVar);
+                case TYPE_UBYTE -> dstVar.set(srcVar.cast(int.class).and(0xff).cast(short.class));
+                case TYPE_USHORT -> clampUS(mm, srcVar, Short.MAX_VALUE, dstVar);
+                case TYPE_UINT, TYPE_ULONG -> clampUS_narrow(mm, srcVar, Short.MAX_VALUE, dstVar);
+                case TYPE_CHAR -> clampUS_narrow(mm, srcVar.cast(int.class), Short.MAX_VALUE, dstVar);
+                case TYPE_FLOAT, TYPE_DOUBLE -> clampSS(mm, srcVar.cast(int.class), -32768, 32767, dstVar);
+                case TYPE_BIG_INTEGER -> clampBigInteger_narrow(mm, srcVar, Short.MIN_VALUE, Short.MAX_VALUE,
+                        dstInfo, dstVar, "shortValue");
+                case TYPE_BIG_DECIMAL -> clampBigDecimal_narrow(mm, srcVar, Short.MIN_VALUE, Short.MAX_VALUE,
+                        dstInfo, dstVar, "shortValue");
+                case TYPE_UTF8 -> {
+                    var bd = parseBigDecimal(mm, srcVar, dstInfo, dstVar, end);
+                    clampBigDecimal_narrow(mm, bd, Short.MIN_VALUE, Short.MAX_VALUE,
+                            dstInfo, dstVar, "shortValue");
+                }
+                default -> handled = false;
             }
             break;
 
         case TYPE_INT:
             switch (srcPlainTypeCode) {
-            case TYPE_BOOLEAN:
-                boolToNum(mm, srcVar, dstVar);
-                break;
-            case TYPE_LONG:
-                clampSS(mm, srcVar, Integer.MIN_VALUE, Integer.MAX_VALUE, dstVar);
-                break;
-            case TYPE_UBYTE:
-                dstVar.set(srcVar.cast(int.class).and(0xff));
-                break;
-            case TYPE_USHORT: case TYPE_CHAR:
-                dstVar.set(srcVar.cast(int.class).and(0xffff));
-                break;
-            case TYPE_UINT:
-                clampUS(mm, srcVar, Integer.MAX_VALUE, dstVar);
-                break;
-            case TYPE_ULONG:
-                clampUS_narrow(mm, srcVar, Integer.MAX_VALUE, dstVar);
-                break;
-            case TYPE_FLOAT: case TYPE_DOUBLE:
-                dstVar.set(srcVar.cast(int.class));
-                break;
-            case TYPE_BIG_INTEGER:
-                clampBigInteger_narrow(mm, srcVar, Integer.MIN_VALUE, Integer.MAX_VALUE,
-                                       dstInfo, dstVar, "intValue");
-                break;
-            case TYPE_BIG_DECIMAL:
-                clampBigDecimal_narrow(mm, srcVar, Integer.MIN_VALUE, Integer.MAX_VALUE,
-                                       dstInfo, dstVar, "intValue");
-                break;
-            case TYPE_UTF8:
-                var bd = parseBigDecimal(mm, srcVar, dstInfo, dstVar, end);
-                clampBigDecimal_narrow(mm, bd, Integer.MIN_VALUE, Integer.MAX_VALUE,
-                                       dstInfo, dstVar, "intValue");
-                break;
-            default:
-                handled = false;
+                case TYPE_BOOLEAN -> boolToNum(mm, srcVar, dstVar);
+                case TYPE_LONG -> clampSS(mm, srcVar, Integer.MIN_VALUE, Integer.MAX_VALUE, dstVar);
+                case TYPE_UBYTE -> dstVar.set(srcVar.cast(int.class).and(0xff));
+                case TYPE_USHORT, TYPE_CHAR -> dstVar.set(srcVar.cast(int.class).and(0xffff));
+                case TYPE_UINT -> clampUS(mm, srcVar, Integer.MAX_VALUE, dstVar);
+                case TYPE_ULONG -> clampUS_narrow(mm, srcVar, Integer.MAX_VALUE, dstVar);
+                case TYPE_FLOAT, TYPE_DOUBLE -> dstVar.set(srcVar.cast(int.class));
+                case TYPE_BIG_INTEGER -> clampBigInteger_narrow(mm, srcVar, Integer.MIN_VALUE, Integer.MAX_VALUE,
+                        dstInfo, dstVar, "intValue");
+                case TYPE_BIG_DECIMAL -> clampBigDecimal_narrow(mm, srcVar, Integer.MIN_VALUE, Integer.MAX_VALUE,
+                        dstInfo, dstVar, "intValue");
+                case TYPE_UTF8 -> {
+                    var bd = parseBigDecimal(mm, srcVar, dstInfo, dstVar, end);
+                    clampBigDecimal_narrow(mm, bd, Integer.MIN_VALUE, Integer.MAX_VALUE,
+                            dstInfo, dstVar, "intValue");
+                }
+                default -> handled = false;
             }
             break;
 
        case TYPE_LONG:
-            switch (srcPlainTypeCode) {
-            case TYPE_BOOLEAN:
-                boolToNum(mm, srcVar, dstVar);
-                break;
-            case TYPE_UBYTE:
-                dstVar.set(srcVar.cast(long.class).and(0xffL));
-                break;
-            case TYPE_USHORT: case TYPE_CHAR:
-                dstVar.set(srcVar.cast(long.class).and(0xffffL));
-                break;
-            case TYPE_UINT:
-                dstVar.set(srcVar.cast(long.class).and(0xffff_ffffL));
-                break;
-            case TYPE_ULONG:
-                clampUS(mm, srcVar, Long.MAX_VALUE, dstVar);
-                break;
-            case TYPE_FLOAT: case TYPE_DOUBLE:
-                dstVar.set(srcVar.cast(long.class));
-                break;
-            case TYPE_BIG_INTEGER:
-                clampBigInteger_narrow(mm, srcVar, Long.MIN_VALUE, Long.MAX_VALUE,
-                                       dstInfo, dstVar, "longValue");
-                break;
-            case TYPE_BIG_DECIMAL:
-                clampBigDecimal_narrow(mm, srcVar, Long.MIN_VALUE, Long.MAX_VALUE,
-                                       dstInfo, dstVar, "longValue");
-                break;
-            case TYPE_UTF8:
-                var bd = parseBigDecimal(mm, srcVar, dstInfo, dstVar, end);
-                clampBigDecimal_narrow(mm, bd, Long.MIN_VALUE, Long.MAX_VALUE,
-                                       dstInfo, dstVar, "longValue");
-                break;
-            default:
-                handled = false;
-            }
+           switch (srcPlainTypeCode) {
+               case TYPE_BOOLEAN -> boolToNum(mm, srcVar, dstVar);
+               case TYPE_UBYTE -> dstVar.set(srcVar.cast(long.class).and(0xffL));
+               case TYPE_USHORT, TYPE_CHAR -> dstVar.set(srcVar.cast(long.class).and(0xffffL));
+               case TYPE_UINT -> dstVar.set(srcVar.cast(long.class).and(0xffff_ffffL));
+               case TYPE_ULONG -> clampUS(mm, srcVar, Long.MAX_VALUE, dstVar);
+               case TYPE_FLOAT, TYPE_DOUBLE -> dstVar.set(srcVar.cast(long.class));
+               case TYPE_BIG_INTEGER -> clampBigInteger_narrow(mm, srcVar, Long.MIN_VALUE, Long.MAX_VALUE,
+                       dstInfo, dstVar, "longValue");
+               case TYPE_BIG_DECIMAL -> clampBigDecimal_narrow(mm, srcVar, Long.MIN_VALUE, Long.MAX_VALUE,
+                       dstInfo, dstVar, "longValue");
+               case TYPE_UTF8 -> {
+                   var bd = parseBigDecimal(mm, srcVar, dstInfo, dstVar, end);
+                   clampBigDecimal_narrow(mm, bd, Long.MIN_VALUE, Long.MAX_VALUE,
+                           dstInfo, dstVar, "longValue");
+               }
+               default -> handled = false;
+           }
             break;
 
         case TYPE_UBYTE:
             switch (srcPlainTypeCode) {
-            case TYPE_BOOLEAN:
-                boolToNum(mm, srcVar, dstVar);
-                break;
-            case TYPE_BYTE:
-                clampSU(mm, srcVar, dstVar);
-                break;
-            case TYPE_SHORT: case TYPE_INT: case TYPE_LONG:
-                clampSU_narrow(mm, srcVar, 0xff, dstVar);
-                break;
-            case TYPE_USHORT: case TYPE_UINT:
-                clampUU_narrow(mm, srcVar, 0xff, dstVar);
-                break;
-            case TYPE_CHAR:
-                clampUU_narrow(mm, srcVar.cast(int.class), 0xff, dstVar);
-                break;
-            case TYPE_ULONG:
-                clampUU_narrow(mm, srcVar, 0xffL, dstVar);
-                break;
-            case TYPE_FLOAT:
-                clampSU_narrow(mm, srcVar.cast(int.class), 0xff, dstVar);
-                break;
-            case TYPE_DOUBLE:
-                clampSU_narrow(mm, srcVar.cast(long.class), 0xffL, dstVar);
-                break;
-            case TYPE_BIG_INTEGER:
-                clampBigInteger_narrow(mm, srcVar, 0, 0xff, dstInfo, dstVar, "byteValue");
-                break;
-            case TYPE_BIG_DECIMAL:
-                clampBigDecimal_narrow(mm, srcVar, 0, 0xff, dstInfo, dstVar, "byteValue");
-                break;
-            case TYPE_UTF8:
-                var bd = parseBigDecimal(mm, srcVar, dstInfo, dstVar, end);
-                clampBigDecimal_narrow(mm, bd, 0, 0xff, dstInfo, dstVar, "byteValue");
-                break;
-            default:
-                handled = false;
+                case TYPE_BOOLEAN -> boolToNum(mm, srcVar, dstVar);
+                case TYPE_BYTE -> clampSU(mm, srcVar, dstVar);
+                case TYPE_SHORT, TYPE_INT, TYPE_LONG -> clampSU_narrow(mm, srcVar, 0xff, dstVar);
+                case TYPE_USHORT, TYPE_UINT -> clampUU_narrow(mm, srcVar, 0xff, dstVar);
+                case TYPE_CHAR -> clampUU_narrow(mm, srcVar.cast(int.class), 0xff, dstVar);
+                case TYPE_ULONG -> clampUU_narrow(mm, srcVar, 0xffL, dstVar);
+                case TYPE_FLOAT -> clampSU_narrow(mm, srcVar.cast(int.class), 0xff, dstVar);
+                case TYPE_DOUBLE -> clampSU_narrow(mm, srcVar.cast(long.class), 0xffL, dstVar);
+                case TYPE_BIG_INTEGER -> clampBigInteger_narrow(mm, srcVar, 0, 0xff, dstInfo, dstVar, "byteValue");
+                case TYPE_BIG_DECIMAL -> clampBigDecimal_narrow(mm, srcVar, 0, 0xff, dstInfo, dstVar, "byteValue");
+                case TYPE_UTF8 -> {
+                    var bd = parseBigDecimal(mm, srcVar, dstInfo, dstVar, end);
+                    clampBigDecimal_narrow(mm, bd, 0, 0xff, dstInfo, dstVar, "byteValue");
+                }
+                default -> handled = false;
             }
             break;
 
         case TYPE_USHORT:
             switch (srcPlainTypeCode) {
-            case TYPE_BOOLEAN:
-                boolToNum(mm, srcVar, dstVar);
-                break;
-            case TYPE_BYTE: case TYPE_SHORT:
-                clampSU(mm, srcVar, dstVar);
-                break;
-            case TYPE_INT: case TYPE_LONG:
-                clampSU_narrow(mm, srcVar, 0xffff, dstVar);
-                break;
-            case TYPE_UBYTE:
-                dstVar.set(srcVar.cast(int.class).and(0xff).cast(short.class));
-                break;
-            case TYPE_UINT:
-                clampUU_narrow(mm, srcVar, 0xffff, dstVar);
-                break;
-            case TYPE_ULONG:
-                clampUU_narrow(mm, srcVar, 0xffffL, dstVar);
-                break;
-            case TYPE_FLOAT:
-                clampSU_narrow(mm, srcVar.cast(int.class), 0xffff, dstVar);
-                break;
-            case TYPE_DOUBLE:
-                clampSU_narrow(mm, srcVar.cast(long.class), 0xffffL, dstVar);
-                break;
-            case TYPE_CHAR:
-                dstVar.set(srcVar.cast(short.class));
-                break;
-            case TYPE_BIG_INTEGER:
-                clampBigInteger_narrow(mm, srcVar, 0, 0xffff, dstInfo, dstVar, "shortValue");
-                break;
-            case TYPE_BIG_DECIMAL:
-                clampBigDecimal_narrow(mm, srcVar, 0, 0xffff, dstInfo, dstVar, "shortValue");
-                break;
-            case TYPE_UTF8:
-                var bd = parseBigDecimal(mm, srcVar, dstInfo, dstVar, end);
-                clampBigDecimal_narrow(mm, bd, 0, 0xffff, dstInfo, dstVar, "shortValue");
-                break;
-            default:
-                handled = false;
+                case TYPE_BOOLEAN -> boolToNum(mm, srcVar, dstVar);
+                case TYPE_BYTE, TYPE_SHORT -> clampSU(mm, srcVar, dstVar);
+                case TYPE_INT, TYPE_LONG -> clampSU_narrow(mm, srcVar, 0xffff, dstVar);
+                case TYPE_UBYTE -> dstVar.set(srcVar.cast(int.class).and(0xff).cast(short.class));
+                case TYPE_UINT -> clampUU_narrow(mm, srcVar, 0xffff, dstVar);
+                case TYPE_ULONG -> clampUU_narrow(mm, srcVar, 0xffffL, dstVar);
+                case TYPE_FLOAT -> clampSU_narrow(mm, srcVar.cast(int.class), 0xffff, dstVar);
+                case TYPE_DOUBLE -> clampSU_narrow(mm, srcVar.cast(long.class), 0xffffL, dstVar);
+                case TYPE_CHAR -> dstVar.set(srcVar.cast(short.class));
+                case TYPE_BIG_INTEGER -> clampBigInteger_narrow(mm, srcVar, 0, 0xffff, dstInfo, dstVar, "shortValue");
+                case TYPE_BIG_DECIMAL -> clampBigDecimal_narrow(mm, srcVar, 0, 0xffff, dstInfo, dstVar, "shortValue");
+                case TYPE_UTF8 -> {
+                    var bd = parseBigDecimal(mm, srcVar, dstInfo, dstVar, end);
+                    clampBigDecimal_narrow(mm, bd, 0, 0xffff, dstInfo, dstVar, "shortValue");
+                }
+                default -> handled = false;
             }
             break;
 
         case TYPE_UINT:
             switch (srcPlainTypeCode) {
-            case TYPE_BOOLEAN:
-                boolToNum(mm, srcVar, dstVar);
-                break;
-            case TYPE_BYTE: case TYPE_SHORT: case TYPE_INT:
-                clampSU(mm, srcVar, dstVar);
-                break;
-            case TYPE_LONG:
-                clampSU_narrow(mm, srcVar, 0xffff_ffffL, dstVar);
-                break;
-            case TYPE_UBYTE:
-                dstVar.set(srcVar.cast(int.class).and(0xff));
-                break;
-            case TYPE_USHORT: case TYPE_CHAR:
-                dstVar.set(srcVar.cast(int.class).and(0xffff));
-                break;
-            case TYPE_ULONG:
-                clampUU_narrow(mm, srcVar, 0xffff_ffffL, dstVar);
-                break;
-            case TYPE_FLOAT: case TYPE_DOUBLE:
-                clampSU_narrow(mm, srcVar.cast(long.class), 0xffff_ffffL, dstVar);
-                break;
-            case TYPE_BIG_INTEGER:
-                clampBigInteger_narrow(mm, srcVar, 0, 0xffff_ffffL, dstInfo, dstVar, "intValue");
-                break;
-            case TYPE_BIG_DECIMAL:
-                clampBigDecimal_narrow(mm, srcVar, 0, 0xffff_ffffL, dstInfo, dstVar, "intValue");
-                break;
-            case TYPE_UTF8:
-                var bd = parseBigDecimal(mm, srcVar, dstInfo, dstVar, end);
-                clampBigDecimal_narrow(mm, bd, 0, 0xffff_ffffL, dstInfo, dstVar, "intValue");
-                break;
-            default:
-                handled = false;
+                case TYPE_BOOLEAN -> boolToNum(mm, srcVar, dstVar);
+                case TYPE_BYTE, TYPE_SHORT, TYPE_INT -> clampSU(mm, srcVar, dstVar);
+                case TYPE_LONG -> clampSU_narrow(mm, srcVar, 0xffff_ffffL, dstVar);
+                case TYPE_UBYTE -> dstVar.set(srcVar.cast(int.class).and(0xff));
+                case TYPE_USHORT, TYPE_CHAR -> dstVar.set(srcVar.cast(int.class).and(0xffff));
+                case TYPE_ULONG -> clampUU_narrow(mm, srcVar, 0xffff_ffffL, dstVar);
+                case TYPE_FLOAT, TYPE_DOUBLE -> clampSU_narrow(mm, srcVar.cast(long.class), 0xffff_ffffL, dstVar);
+                case TYPE_BIG_INTEGER -> clampBigInteger_narrow(mm, srcVar, 0, 0xffff_ffffL, dstInfo, dstVar, "intValue");
+                case TYPE_BIG_DECIMAL -> clampBigDecimal_narrow(mm, srcVar, 0, 0xffff_ffffL, dstInfo, dstVar, "intValue");
+                case TYPE_UTF8 -> {
+                    var bd = parseBigDecimal(mm, srcVar, dstInfo, dstVar, end);
+                    clampBigDecimal_narrow(mm, bd, 0, 0xffff_ffffL, dstInfo, dstVar, "intValue");
+                }
+                default -> handled = false;
             }
             break; 
 
         case TYPE_ULONG:
             switch (srcPlainTypeCode) {
-            case TYPE_BOOLEAN:
-                boolToNum(mm, srcVar, dstVar);
-                break;
-            case TYPE_BYTE: case TYPE_SHORT: case TYPE_INT: case TYPE_LONG:
-                clampSU(mm, srcVar, dstVar);
-                break;
-            case TYPE_UBYTE:
-                dstVar.set(srcVar.cast(long.class).and(0xff));
-                break;
-            case TYPE_USHORT: case TYPE_CHAR:
-                dstVar.set(srcVar.cast(long.class).and(0xffff));
-                break;
-            case TYPE_UINT:
-                dstVar.set(srcVar.cast(long.class).and(0xffff_ffffL));
-                break;
-            case TYPE_FLOAT: case TYPE_DOUBLE:
-                dstVar.set(mm.var(Converter.class).invoke("doubleToUnsignedLong", srcVar));
-                break;
-            case TYPE_BIG_INTEGER:
-                clampBigIntegerU_narrow(mm, srcVar, dstInfo, dstVar);
-                break;
-            case TYPE_BIG_DECIMAL:
-                clampBigDecimalU_narrow(mm, srcVar, dstInfo, dstVar);
-                break;
-            case TYPE_UTF8:
-                var bd = parseBigDecimal(mm, srcVar, dstInfo, dstVar, end);
-                clampBigDecimalU_narrow(mm, bd, dstInfo, dstVar);
-                break;
-            default:
-                handled = false;
+                case TYPE_BOOLEAN -> boolToNum(mm, srcVar, dstVar);
+                case TYPE_BYTE, TYPE_SHORT, TYPE_INT, TYPE_LONG -> clampSU(mm, srcVar, dstVar);
+                case TYPE_UBYTE -> dstVar.set(srcVar.cast(long.class).and(0xff));
+                case TYPE_USHORT, TYPE_CHAR -> dstVar.set(srcVar.cast(long.class).and(0xffff));
+                case TYPE_UINT -> dstVar.set(srcVar.cast(long.class).and(0xffff_ffffL));
+                case TYPE_FLOAT, TYPE_DOUBLE -> dstVar.set(mm.var(Converter.class).invoke("doubleToUnsignedLong", srcVar));
+                case TYPE_BIG_INTEGER -> clampBigIntegerU_narrow(mm, srcVar, dstInfo, dstVar);
+                case TYPE_BIG_DECIMAL -> clampBigDecimalU_narrow(mm, srcVar, dstInfo, dstVar);
+                case TYPE_UTF8 -> {
+                    var bd = parseBigDecimal(mm, srcVar, dstInfo, dstVar, end);
+                    clampBigDecimalU_narrow(mm, bd, dstInfo, dstVar);
+                }
+                default -> handled = false;
             }
             break; 
 
         case TYPE_FLOAT:
             switch (srcPlainTypeCode) {
-            case TYPE_BOOLEAN:
-                boolToNum(mm, srcVar, dstVar);
-                break;
-            case TYPE_INT: case TYPE_LONG: case TYPE_DOUBLE:
-                dstVar.set(unbox(srcVar).cast(dstVar));
-                break;
-            case TYPE_UBYTE:
-                dstVar.set(srcVar.cast(int.class).and(0xff).cast(dstVar));
-                break;
-            case TYPE_USHORT: case TYPE_CHAR:
-                dstVar.set(srcVar.cast(int.class).and(0xffff).cast(dstVar));
-                break;
-            case TYPE_UINT:
-                dstVar.set(srcVar.cast(long.class).and(0xffff_ffffL).cast(dstVar));
-                break;
-            case TYPE_ULONG:
-                var bd = mm.var(BigDecimal.class);
-                toBigDecimalU(mm, srcVar, bd);
-                dstVar.set(bd.invoke("floatValue"));
-                break;
-            case TYPE_BIG_INTEGER: case TYPE_BIG_DECIMAL:
-                dstVar.set(srcVar.invoke("floatValue"));
-                break;
-            case TYPE_UTF8:
-                parseNumber(mm, "parseFloat", srcVar, dstInfo, dstVar);
-                break;
-            default:
-                handled = false;
+                case TYPE_BOOLEAN -> boolToNum(mm, srcVar, dstVar);
+                case TYPE_INT, TYPE_LONG, TYPE_DOUBLE -> dstVar.set(unbox(srcVar).cast(dstVar));
+                case TYPE_UBYTE -> dstVar.set(srcVar.cast(int.class).and(0xff).cast(dstVar));
+                case TYPE_USHORT, TYPE_CHAR -> dstVar.set(srcVar.cast(int.class).and(0xffff).cast(dstVar));
+                case TYPE_UINT -> dstVar.set(srcVar.cast(long.class).and(0xffff_ffffL).cast(dstVar));
+                case TYPE_ULONG -> {
+                    var bd = mm.var(BigDecimal.class);
+                    toBigDecimalU(mm, srcVar, bd);
+                    dstVar.set(bd.invoke("floatValue"));
+                }
+                case TYPE_BIG_INTEGER, TYPE_BIG_DECIMAL -> dstVar.set(srcVar.invoke("floatValue"));
+                case TYPE_UTF8 -> parseNumber(mm, "parseFloat", srcVar, dstInfo, dstVar);
+                default -> handled = false;
             }
             break;
 
         case TYPE_DOUBLE:
             switch (srcPlainTypeCode) {
-            case TYPE_BOOLEAN:
-                boolToNum(mm, srcVar, dstVar);
-                break;
-            case TYPE_LONG:
-                dstVar.set(unbox(srcVar).cast(dstVar));
-                break;
-            case TYPE_UBYTE:
-                dstVar.set(srcVar.cast(int.class).and(0xff).cast(dstVar));
-                break;
-            case TYPE_USHORT: case TYPE_CHAR:
-                dstVar.set(srcVar.cast(int.class).and(0xffff).cast(dstVar));
-                break;
-            case TYPE_UINT:
-                dstVar.set(srcVar.cast(long.class).and(0xffff_ffffL).cast(dstVar));
-                break;
-            case TYPE_ULONG:
-                var bd = mm.var(BigDecimal.class);
-                toBigDecimalU(mm, srcVar, bd);
-                dstVar.set(bd.invoke("doubleValue"));
-                break;
-            case TYPE_BIG_INTEGER: case TYPE_BIG_DECIMAL:
-                dstVar.set(srcVar.invoke("doubleValue"));
-                break;
-            case TYPE_UTF8:
-                parseNumber(mm, "parseDouble", srcVar, dstInfo, dstVar);
-                break;
-            default:
-                handled = false;
+                case TYPE_BOOLEAN -> boolToNum(mm, srcVar, dstVar);
+                case TYPE_LONG -> dstVar.set(unbox(srcVar).cast(dstVar));
+                case TYPE_UBYTE -> dstVar.set(srcVar.cast(int.class).and(0xff).cast(dstVar));
+                case TYPE_USHORT, TYPE_CHAR -> dstVar.set(srcVar.cast(int.class).and(0xffff).cast(dstVar));
+                case TYPE_UINT -> dstVar.set(srcVar.cast(long.class).and(0xffff_ffffL).cast(dstVar));
+                case TYPE_ULONG -> {
+                    var bd = mm.var(BigDecimal.class);
+                    toBigDecimalU(mm, srcVar, bd);
+                    dstVar.set(bd.invoke("doubleValue"));
+                }
+                case TYPE_BIG_INTEGER, TYPE_BIG_DECIMAL -> dstVar.set(srcVar.invoke("doubleValue"));
+                case TYPE_UTF8 -> parseNumber(mm, "parseDouble", srcVar, dstInfo, dstVar);
+                default -> handled = false;
             }
             break;
 
         case TYPE_CHAR:
             switch (srcPlainTypeCode) {
-            case TYPE_BOOLEAN: {
-                Label L1 = mm.label();
-                srcVar.ifTrue(L1);
-                Label cont = mm.label();
-                dstVar.set('f');
-                mm.goto_(cont);
-                L1.here();
-                dstVar.set('t');
-                cont.here();
-                break;
-            }
-            case TYPE_BYTE: case TYPE_SHORT:
-                clampSU(mm, srcVar, dstVar);
-                break;
-            case TYPE_INT: case TYPE_LONG:
-                clampSU_narrow(mm, srcVar, 0xffff, '\uffff', dstVar);
-                break;
-            case TYPE_UBYTE:
-                dstVar.set(srcVar.cast(int.class).and(0xff).cast(char.class));
-                break;
-            case TYPE_USHORT:
-                dstVar.set(srcVar.cast(char.class));
-                break;
-            case TYPE_UINT:
-                clampUU_narrow(mm, srcVar, 0xffff, '\uffff', dstVar);
-                break;
-            case TYPE_ULONG:
-                clampUU_narrow(mm, srcVar, 0xffffL, '\uffff', dstVar);
-                break;
-            case TYPE_FLOAT:
-                clampSU_narrow(mm, srcVar.cast(int.class), 0xffff, '\uffff', dstVar);
-                break;
-            case TYPE_DOUBLE:
-                clampSU_narrow(mm, srcVar.cast(long.class), 0xffffL, '\uffff', dstVar);
-                break;
-            case TYPE_BIG_INTEGER:
-                clampBigInteger_narrow(mm, srcVar, 0, 0xffff, dstInfo, dstVar, "intValue");
-                break;
-            case TYPE_BIG_DECIMAL:
-                clampBigDecimal_narrow(mm, srcVar, 0, 0xffff, dstInfo, dstVar, "intValue");
-                break;
-            case TYPE_UTF8: {
-                Label L1 = mm.label();
-                srcVar.invoke("isEmpty").ifFalse(L1);
-                setDefault(mm, dstInfo, dstVar);
-                Label cont = mm.label();
-                mm.goto_(cont);
-                L1.here();
-                dstVar.set(srcVar.invoke("charAt", 0));
-                cont.here();
-                break;
-            }
-            default:
-                handled = false;
+                case TYPE_BOOLEAN -> {
+                    Label L1 = mm.label();
+                    srcVar.ifTrue(L1);
+                    Label cont = mm.label();
+                    dstVar.set('f');
+                    mm.goto_(cont);
+                    L1.here();
+                    dstVar.set('t');
+                    cont.here();
+                }
+                case TYPE_BYTE, TYPE_SHORT -> clampSU(mm, srcVar, dstVar);
+                case TYPE_INT, TYPE_LONG -> clampSU_narrow(mm, srcVar, 0xffff, '\uffff', dstVar);
+                case TYPE_UBYTE -> dstVar.set(srcVar.cast(int.class).and(0xff).cast(char.class));
+                case TYPE_USHORT -> dstVar.set(srcVar.cast(char.class));
+                case TYPE_UINT -> clampUU_narrow(mm, srcVar, 0xffff, '\uffff', dstVar);
+                case TYPE_ULONG -> clampUU_narrow(mm, srcVar, 0xffffL, '\uffff', dstVar);
+                case TYPE_FLOAT -> clampSU_narrow(mm, srcVar.cast(int.class), 0xffff, '\uffff', dstVar);
+                case TYPE_DOUBLE -> clampSU_narrow(mm, srcVar.cast(long.class), 0xffffL, '\uffff', dstVar);
+                case TYPE_BIG_INTEGER -> clampBigInteger_narrow(mm, srcVar, 0, 0xffff, dstInfo, dstVar, "intValue");
+                case TYPE_BIG_DECIMAL -> clampBigDecimal_narrow(mm, srcVar, 0, 0xffff, dstInfo, dstVar, "intValue");
+                case TYPE_UTF8 -> {
+                    Label L1 = mm.label();
+                    srcVar.invoke("isEmpty").ifFalse(L1);
+                    setDefault(mm, dstInfo, dstVar);
+                    Label cont = mm.label();
+                    mm.goto_(cont);
+                    L1.here();
+                    dstVar.set(srcVar.invoke("charAt", 0));
+                    cont.here();
+                }
+                default -> handled = false;
             }
             break;
 
         case TYPE_UTF8:
             switch (srcPlainTypeCode) {
-            case TYPE_UBYTE:
-                dstVar.set(mm.var(Integer.class).invoke
-                           ("toUnsignedString", srcVar.cast(int.class).and(0xff)));
-                break;
-            case TYPE_USHORT:
-                dstVar.set(mm.var(Integer.class).invoke
-                           ("toUnsignedString", srcVar.cast(int.class).and(0xffff)));
-                break;
-            case TYPE_UINT: case TYPE_ULONG:
-                dstVar.set(srcVar.invoke("toUnsignedString", srcVar));
-                break;
-            default:
-                dstVar.set(mm.var(String.class).invoke("valueOf", srcVar));
-                break;
+                case TYPE_UBYTE -> dstVar.set(mm.var(Integer.class).invoke
+                        ("toUnsignedString", srcVar.cast(int.class).and(0xff)));
+                case TYPE_USHORT -> dstVar.set(mm.var(Integer.class).invoke
+                        ("toUnsignedString", srcVar.cast(int.class).and(0xffff)));
+                case TYPE_UINT, TYPE_ULONG -> dstVar.set(srcVar.invoke("toUnsignedString", srcVar));
+                default -> dstVar.set(mm.var(String.class).invoke("valueOf", srcVar));
             }
             break;
 
         case TYPE_BIG_INTEGER:
             var bi = mm.var(BigInteger.class);
             switch (srcPlainTypeCode) {
-            case TYPE_BOOLEAN:
-                Label isFalse = mm.label();
-                srcVar.ifFalse(isFalse);
-                dstVar.set(bi.field("ONE"));
-                mm.goto_(end);
-                isFalse.here();
-                dstVar.set(bi.field("ZERO"));
-                break;
-            case TYPE_BYTE: case TYPE_SHORT: case TYPE_INT: case TYPE_LONG:
-                dstVar.set(bi.invoke("valueOf", srcVar));
-                break;
-            case TYPE_UBYTE:
-                dstVar.set(bi.invoke("valueOf", srcVar.cast(long.class).and(0xffL)));
-                break;
-            case TYPE_USHORT: case TYPE_CHAR:
-                dstVar.set(bi.invoke("valueOf", srcVar.cast(long.class).and(0xffffL)));
-                break;
-            case TYPE_UINT:
-                dstVar.set(bi.invoke("valueOf", srcVar.cast(long.class).and(0xffff_ffffL)));
-                break;
-            case TYPE_ULONG:
-                toBigIntegerU(mm, srcVar, dstVar);
-                break;
-            case TYPE_BIG_DECIMAL:
-                dstVar.set(srcVar.invoke("toBigInteger"));
-                break;
-            case TYPE_FLOAT: case TYPE_DOUBLE:
-                Label tryStart = mm.label().here();
-                dstVar.set(mm.var(BigDecimal.class).invoke("valueOf", srcVar)
-                           .invoke("toBigInteger"));
-                mm.catch_(tryStart, NumberFormatException.class, exVar -> {
-                    setDefault(mm, dstInfo, dstVar);
+                case TYPE_BOOLEAN -> {
+                    Label isFalse = mm.label();
+                    srcVar.ifFalse(isFalse);
+                    dstVar.set(bi.field("ONE"));
                     mm.goto_(end);
-                });
-                break;
-            case TYPE_UTF8:
-                var bd = parseBigDecimal(mm, srcVar, dstInfo, dstVar, end);
-                dstVar.set(bd.invoke("toBigInteger"));
-                break;
-            default:
-                handled = false;
+                    isFalse.here();
+                    dstVar.set(bi.field("ZERO"));
+                }
+                case TYPE_BYTE, TYPE_SHORT, TYPE_INT, TYPE_LONG -> dstVar.set(bi.invoke("valueOf", srcVar));
+                case TYPE_UBYTE -> dstVar.set(bi.invoke("valueOf", srcVar.cast(long.class).and(0xffL)));
+                case TYPE_USHORT, TYPE_CHAR -> dstVar.set(bi.invoke("valueOf", srcVar.cast(long.class).and(0xffffL)));
+                case TYPE_UINT -> dstVar.set(bi.invoke("valueOf", srcVar.cast(long.class).and(0xffff_ffffL)));
+                case TYPE_ULONG -> toBigIntegerU(mm, srcVar, dstVar);
+                case TYPE_BIG_DECIMAL -> dstVar.set(srcVar.invoke("toBigInteger"));
+                case TYPE_FLOAT, TYPE_DOUBLE -> {
+                    Label tryStart = mm.label().here();
+                    dstVar.set(mm.var(BigDecimal.class).invoke("valueOf", srcVar)
+                            .invoke("toBigInteger"));
+                    mm.catch_(tryStart, NumberFormatException.class, exVar -> {
+                        setDefault(mm, dstInfo, dstVar);
+                        mm.goto_(end);
+                    });
+                }
+                case TYPE_UTF8 -> {
+                    var bd = parseBigDecimal(mm, srcVar, dstInfo, dstVar, end);
+                    dstVar.set(bd.invoke("toBigInteger"));
+                }
+                default -> handled = false;
             }
             break;
 
         case TYPE_BIG_DECIMAL:
             var bd = mm.var(BigDecimal.class);
             switch (srcPlainTypeCode) {
-            case TYPE_BOOLEAN:
-                Label isFalse = mm.label();
-                srcVar.ifFalse(isFalse);
-                dstVar.set(bd.field("ONE"));
-                mm.goto_(end);
-                isFalse.here();
-                dstVar.set(bd.field("ZERO"));
-                break;
-            case TYPE_BYTE: case TYPE_SHORT: case TYPE_INT: case TYPE_LONG:
-                dstVar.set(bd.invoke("valueOf", srcVar));
-                break;
-            case TYPE_FLOAT: case TYPE_DOUBLE:
-                Label tryStart = mm.label().here();
-                dstVar.set(mm.var(BigDecimalUtils.class).invoke("toBigDecimal", srcVar));
-                mm.catch_(tryStart, NumberFormatException.class, exVar -> {
-                    setDefault(mm, dstInfo, dstVar);
+                case TYPE_BOOLEAN -> {
+                    Label isFalse = mm.label();
+                    srcVar.ifFalse(isFalse);
+                    dstVar.set(bd.field("ONE"));
                     mm.goto_(end);
-                });
-                break;
-            case TYPE_UBYTE:
-                dstVar.set(bd.invoke("valueOf", srcVar.cast(long.class).and(0xffL)));
-                break;
-            case TYPE_USHORT: case TYPE_CHAR:
-                dstVar.set(bd.invoke("valueOf", srcVar.cast(long.class).and(0xffffL)));
-                break;
-            case TYPE_UINT:
-                dstVar.set(bd.invoke("valueOf", srcVar.cast(long.class).and(0xffff_ffffL)));
-                break;
-            case TYPE_ULONG:
-                toBigDecimalU(mm, srcVar, dstVar);
-                break;
-            case TYPE_BIG_INTEGER:
-                dstVar.set(mm.new_(bd, srcVar));
-                break;
-            case TYPE_UTF8:
-                parseBigDecimal(mm, srcVar, dstInfo, dstVar, end);
-                break;
-            default:
-                handled = false;
+                    isFalse.here();
+                    dstVar.set(bd.field("ZERO"));
+                }
+                case TYPE_BYTE, TYPE_SHORT, TYPE_INT, TYPE_LONG -> dstVar.set(bd.invoke("valueOf", srcVar));
+                case TYPE_FLOAT, TYPE_DOUBLE -> {
+                    Label tryStart = mm.label().here();
+                    dstVar.set(mm.var(BigDecimalUtils.class).invoke("toBigDecimal", srcVar));
+                    mm.catch_(tryStart, NumberFormatException.class, exVar -> {
+                        setDefault(mm, dstInfo, dstVar);
+                        mm.goto_(end);
+                    });
+                }
+                case TYPE_UBYTE -> dstVar.set(bd.invoke("valueOf", srcVar.cast(long.class).and(0xffL)));
+                case TYPE_USHORT, TYPE_CHAR -> dstVar.set(bd.invoke("valueOf", srcVar.cast(long.class).and(0xffffL)));
+                case TYPE_UINT -> dstVar.set(bd.invoke("valueOf", srcVar.cast(long.class).and(0xffff_ffffL)));
+                case TYPE_ULONG -> toBigDecimalU(mm, srcVar, dstVar);
+                case TYPE_BIG_INTEGER -> dstVar.set(mm.new_(bd, srcVar));
+                case TYPE_UTF8 -> parseBigDecimal(mm, srcVar, dstInfo, dstVar, end);
+                default -> handled = false;
             }
             break;
 
@@ -782,18 +526,10 @@ public class Converter {
             dstVar.set(mm.new_(dstVar.classType(), 0));
         } else {
             switch (dstInfo.plainTypeCode()) {
-            case TYPE_BOOLEAN:
-                dstVar.set(false);
-                break;
-            case TYPE_UTF8:
-                dstVar.set("");
-                break;
-            case TYPE_BIG_INTEGER: case TYPE_BIG_DECIMAL:
-                dstVar.set(dstVar.field("ZERO"));
-                break;
-            default:
-                dstVar.set(0);
-                break;
+                case TYPE_BOOLEAN -> dstVar.set(false);
+                case TYPE_UTF8 -> dstVar.set("");
+                case TYPE_BIG_INTEGER, TYPE_BIG_DECIMAL -> dstVar.set(dstVar.field("ZERO"));
+                default -> dstVar.set(0);
             }
         }
     }
@@ -1077,18 +813,10 @@ public class Converter {
         srcVar.invoke("compareTo", mm.var(srcVar).setExact(maxObj)).ifLe(0, L2);
 
         switch (dstInfo.plainTypeCode()) {
-        case TYPE_UBYTE: case TYPE_BYTE:
-            dstVar.set((byte) max);
-            break;
-        case TYPE_USHORT: case TYPE_SHORT:
-            dstVar.set((short) max);
-            break;
-        case TYPE_UINT: case TYPE_INT:
-            dstVar.set((int) max);
-            break;
-        default:
-            dstVar.set(max);
-            break;
+            case TYPE_UBYTE, TYPE_BYTE -> dstVar.set((byte) max);
+            case TYPE_USHORT, TYPE_SHORT -> dstVar.set((short) max);
+            case TYPE_UINT, TYPE_INT -> dstVar.set((int) max);
+            default -> dstVar.set(max);
         }
 
         mm.goto_(cont);
@@ -1169,13 +897,11 @@ public class Converter {
     // Called by generated code.
     public static boolean charToBoolean(char c) {
         // Note: For numbers, boolean is treated as an int clamped to the range [0, 1].
-        switch (c) {
-        case 0: case '0': case 'f': case 'F':
-            return false;
-        case 1: case '1': case 't': case 'T':
-            return true;
-        }
-        return c <= 9 || ('1' < c && c <= '9');
+        return switch (c) {
+            case 0, '0', 'f', 'F' -> false;
+            case 1, '1', 't', 'T' -> true;
+            default -> c <= 9 || ('1' < c && c <= '9');
+        };
     }
 
     // Called by generated code.

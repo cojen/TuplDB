@@ -276,8 +276,8 @@ public class LatchCondition {
         WaitNode node = mHead;
         while (node != null) {
             Object waiter = cWaiterHandle.get(node);
-            if (waiter instanceof Thread) {
-                ((Thread) waiter).interrupt();
+            if (waiter instanceof Thread t) {
+                t.interrupt();
             }
             cPrevHandle.set(node, null);
             var next = (WaitNode) cNextHandle.get(node);

@@ -620,8 +620,7 @@ final class Lock {
                 if (sharedObj == locker) {
                     mSharedLockersObj = null;
                     break unlock;
-                } else if (sharedObj instanceof LockerHTEntry[]) {
-                    var entries = (LockerHTEntry[]) sharedObj;
+                } else if (sharedObj instanceof LockerHTEntry[] entries) {
                     if (lockerHTremove(entries, locker)) {
                         if (count == 2) {
                             mSharedLockersObj = lockerHTgetOne(entries);
@@ -796,13 +795,13 @@ final class Lock {
         // ghosts, because the undo actions replaced them.
 
         Object obj = mSharedLockersObj;
-        if (obj instanceof GhostFrame) {
+        if (obj instanceof GhostFrame gf) {
             mSharedLockersObj = null;
             // Note that the LocalDatabase is obtained via a weak reference, but no null check
             // needs to be performed. The LocalDatabase would have to have been closed first,
             // but doing this transfers lock ownership. Ghosts cannot be deleted if the
             // ownership has changed, and this is checked by the caller of this method.
-            ((GhostFrame) obj).action(mOwner.getDatabase(), latch, this);
+            gf.action(mOwner.getDatabase(), latch, this);
         }
     }
 
@@ -871,11 +870,11 @@ final class Lock {
             return null;
         }
 
-        if (sharedObj instanceof Locker) {
-            return ((Locker) sharedObj).attachment();
+        if (sharedObj instanceof Locker held) {
+            return held.attachment();
         }
 
-        if (sharedObj instanceof LockerHTEntry[]) {
+        if (sharedObj instanceof LockerHTEntry[] entries) {
             if (locker != null) {
                 // Need a latch to safely check the shared lock owner hashtable.
                 LockManager manager = locker.mManager;
@@ -889,8 +888,6 @@ final class Lock {
                     }
                 }
             } else {
-                var entries = (LockerHTEntry[]) sharedObj;
-
                 for (int i=entries.length; --i>=0; ) {
                     for (LockerHTEntry e = entries[i]; e != null; e = e.mNext) {
                         owner = e.mOwner;
@@ -918,8 +915,8 @@ final class Lock {
         if (sharedObj == locker) {
             return true;
         }
-        if (sharedObj instanceof LockerHTEntry[]) {
-            return lockerHTcontains((LockerHTEntry[]) sharedObj, locker);
+        if (sharedObj instanceof LockerHTEntry[] entries) {
+            return lockerHTcontains(entries, locker);
         }
         return false;
     }
@@ -935,8 +932,7 @@ final class Lock {
         Object sharedObj = mSharedLockersObj;
         if (sharedObj == null) {
             mSharedLockersObj = locker;
-        } else if (sharedObj instanceof LockerHTEntry[]) {
-            var entries = (LockerHTEntry[]) sharedObj;
+        } else if (sharedObj instanceof LockerHTEntry[] entries) {
             lockerHTadd(entries, newCount & 0x7fffffff, locker);
         } else {
             // Initial capacity of must be a power of 2.

@@ -17,11 +17,6 @@
 
 package org.cojen.tupl.rows;
 
-import java.io.IOException;
-
-import org.cojen.tupl.Transaction;
-import org.cojen.tupl.View;
-
 /**
  * Scan of nothing.
  *

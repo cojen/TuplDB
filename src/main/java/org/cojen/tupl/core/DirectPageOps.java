@@ -284,8 +284,7 @@ public final class DirectPageOps {
     }
 
     static void p_arenaDelete(Object arena) throws IOException {
-        if (arena instanceof Arena) {
-            var a = (Arena) arena;
+        if (arena instanceof Arena a) {
             // Unregister before closing, in case new allocations are allowed in the recycled
             // memory range and then deleted. The delete method would erroneously think the page
             // is still in an arena and do nothing.
@@ -297,9 +296,9 @@ public final class DirectPageOps {
     }
 
     static long p_callocPage(Object arena, int size) {
-        if (arena instanceof Arena) {
+        if (arena instanceof Arena a) {
             // Assume arena allocations are always aligned.
-            final long page = ((Arena) arena).p_calloc(Math.abs(size));
+            final long page = a.p_calloc(Math.abs(size));
             if (page != p_null()) {
                 return page;
             }

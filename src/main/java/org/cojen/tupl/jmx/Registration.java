@@ -76,8 +76,8 @@ public class Registration {
     private static void cleanup() {
         Reference ref;
         while ((ref = queue.poll()) != null) {
-            if (ref instanceof DbBean) {
-                doUnregister(((DbBean) ref).mBase);
+            if (ref instanceof DbBean bean) {
+                doUnregister(bean.mBase);
             }
         }
     }

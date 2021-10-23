@@ -4265,22 +4265,19 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
         // given exception is discarded and a new DatabaseException is thrown.
         mTree.mDatabase.checkClosed(e);
 
-        if (mFrame == null && e instanceof IllegalStateException) {
+        if (mFrame == null && e instanceof IllegalStateException ise) {
             // Exception is caused by cursor state; store is safe.
             if (reset) {
                 reset();
             }
-            throw (IllegalStateException) e;
+            throw ise;
         }
 
-        if (e instanceof DatabaseException) {
-            var de = (DatabaseException) e;
-            if (de.isRecoverable()) {
-                if (reset) {
-                    reset();
-                }
-                throw de;
+        if (e instanceof DatabaseException de && de.isRecoverable()) {
+            if (reset) {
+                reset();
             }
+            throw de;
         }
 
         // Any unexpected exception can corrupt the internal store state. Closing down

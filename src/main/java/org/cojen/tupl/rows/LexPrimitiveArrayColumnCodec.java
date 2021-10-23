@@ -95,8 +95,8 @@ final class LexPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
 
         var newOffsetVar = rowUtils.invoke(methodName, dstVar, offset, srcVar);
 
-        if (offset instanceof Variable) {
-            ((Variable) offset).set(newOffsetVar);
+        if (offset instanceof Variable v) {
+            v.set(newOffsetVar);
         }
     }
 

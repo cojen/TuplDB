@@ -601,11 +601,8 @@ final class FileTermLog extends Latch implements TermLog {
         acquireShared();
         try {
             for (CommitCallback task : mCommitTasks) {
-                if (task instanceof CommitWaiter) {
-                    var cwaiter = (CommitWaiter) task;
-                    if (cwaiter.mWaiter == waiter) {
-                        reached(cwaiter, WAIT_TERM_END);
-                    }
+                if (task instanceof CommitWaiter cwaiter && cwaiter.mWaiter == waiter) {
+                    reached(cwaiter, WAIT_TERM_END);
                 }
             }
         } finally {
@@ -1260,8 +1257,8 @@ final class FileTermLog extends Latch implements TermLog {
         }
 
         if (commitTasks != null) {
-            if (commitTasks instanceof List) {
-                for (var t : (List) commitTasks) {
+            if (commitTasks instanceof List tasks) {
+                for (var t : tasks) {
                     reached((CommitCallback) t, commitPosition);
                 }
             } else {

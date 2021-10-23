@@ -344,20 +344,20 @@ final class ParallelSorter implements Sorter, Node.Supplier {
                     if (state == null) {
                         return;
                     }
-                    if (state instanceof Throwable) {
-                        throw Utils.rethrow((Throwable) state);
+                    if (state instanceof Throwable t) {
+                        throw Utils.rethrow(t);
                     }
                     try {
                         wait();
                     } catch (InterruptedException e) {
                         state = mState;
                         mState = null; // don't let it start
-                        if (state instanceof Thread) {
-                            ((Thread) state).interrupt();
+                        if (state instanceof Thread t) {
+                            t.interrupt();
                         }
                         var ex = new InterruptedIOException();
-                        if (state instanceof Throwable) {
-                            ex.addSuppressed((Throwable) state);
+                        if (state instanceof Throwable t) {
+                            ex.addSuppressed(t);
                         }
                         throw ex;
                     }
@@ -1136,13 +1136,13 @@ final class ParallelSorter implements Sorter, Node.Supplier {
     private void checkState() throws InterruptedIOException {
         if (mState != S_READY) {
             switch (mState) {
-            case S_FINISHING:
-                throw new IllegalStateException("Finish in progress");
-            case S_EXCEPTION:
-                Throwable e = mException;
-                if (e != null) {
-                    Utils.addLocalTrace(e);
-                    throw Utils.rethrow(e);
+                case S_FINISHING -> throw new IllegalStateException("Finish in progress");
+                case S_EXCEPTION -> {
+                    Throwable e = mException;
+                    if (e != null) {
+                        Utils.addLocalTrace(e);
+                        throw Utils.rethrow(e);
+                    }
                 }
             }
             throw new InterruptedIOException("Sorter is reset");

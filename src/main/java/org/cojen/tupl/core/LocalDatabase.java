@@ -986,7 +986,7 @@ final class LocalDatabase extends CoreDatabase {
 
         emptyLingeringTrash(null); // only for non-replicated transactions
 
-        if (!(mRedoWriter instanceof ReplController)) {
+        if (!(mRedoWriter instanceof ReplController controller)) {
             LHashTable.Obj<LocalTransaction> unfinished = launcher.mUnfinished;
             if (unfinished != null) {
                 Runner.start(() -> invokeRecoveryHandler(unfinished, mRedoWriter));
@@ -994,7 +994,6 @@ final class LocalDatabase extends CoreDatabase {
             }
         } else {
             // Start replication and recovery.
-            var controller = (ReplController) mRedoWriter;
 
             if (mEventListener != null) {
                 mEventListener.notify(EventType.RECOVERY_PROGRESS, "Starting replication recovery");
@@ -2120,27 +2119,22 @@ final class LocalDatabase extends CoreDatabase {
             handler = handlers.get(name);
         }
 
-        if (handler instanceof HandlerWriter) {
-            return (HandlerWriter) handler;
+        if (handler instanceof HandlerWriter hw) {
+            return hw;
         }
 
         int handlerId = findOrCreateHandlerId(name, rkNamePrefix, handlers);
 
-        switch (rkNamePrefix) {
-        case RK_CUSTOM_NAME:
-            handler = new CustomWriter(this, handlerId, (CustomHandler) handler);
-            break;
-        case RK_PREPARE_NAME:
-            handler = new PrepareWriter(this, handlerId, (PrepareHandler) handler);
-            break;
-        default:
-            throw new AssertionError();
-        }
+        handler = switch (rkNamePrefix) {
+            case RK_CUSTOM_NAME -> new CustomWriter(this, handlerId, (CustomHandler) handler);
+            case RK_PREPARE_NAME -> new PrepareWriter(this, handlerId, (PrepareHandler) handler);
+            default -> throw new AssertionError();
+        };
 
         synchronized (handlers) {
             Handler existing = handlers.get(name);
-            if (existing instanceof HandlerWriter) {
-                return (HandlerWriter) existing;
+            if (existing instanceof HandlerWriter hw) {
+                return hw;
             }
             handlers.put(name, (H) handler);
         }
@@ -2236,12 +2230,11 @@ final class LocalDatabase extends CoreDatabase {
         String name = findHandlerName(handlerId, rkIdPrefix);
 
         if (name == null) {
-            String type;
-            switch (rkIdPrefix) {
-            case RK_CUSTOM_ID: type = "custom"; break;
-            case RK_PREPARE_ID: type = "prepare"; break;
-            default: type = String.valueOf(rkIdPrefix); break;
-            }
+            String type = switch (rkIdPrefix) {
+                case RK_CUSTOM_ID -> "custom";
+                case RK_PREPARE_ID -> "prepare";
+                default -> String.valueOf(rkIdPrefix);
+            };
 
             throw new CorruptDatabaseException
                 ("Unable to find " + type + " handler name for id " + handlerId);
@@ -2268,8 +2261,8 @@ final class LocalDatabase extends CoreDatabase {
                 // Can probably cheat and not synchronize access, but the behavior is undefined.
                 handler = handlers.get(name);
             }
-            if (handler instanceof HandlerWriter) {
-                return (H) ((HandlerWriter) handler).mRecoveryHandler;
+            if (handler instanceof HandlerWriter hw) {
+                return (H) hw.mRecoveryHandler;
             } else if (handler != null) {
                 return handler;
             }
@@ -2803,8 +2796,8 @@ final class LocalDatabase extends CoreDatabase {
                 return;
             }
 
-            if (mFinished instanceof Throwable) {
-                rethrow((Throwable) mFinished);
+            if (mFinished instanceof Throwable t) {
+                rethrow(t);
             }
         }
     }
@@ -2834,7 +2827,7 @@ final class LocalDatabase extends CoreDatabase {
                 long id = decodeLongBE(all.value(), 0);
 
                 Index index = indexById(id);
-                if (index instanceof Tree && !visitor.apply((Tree) index)) {
+                if (index instanceof Tree tree && !visitor.apply(tree)) {
                     return false;
                 }
             }
@@ -3904,8 +3897,8 @@ final class LocalDatabase extends CoreDatabase {
                 if (ref == null) {
                     break;
                 }
-                if (ref instanceof TreeRef) {
-                    cleanupUnreferencedTree((TreeRef) ref);
+                if (ref instanceof TreeRef treeRef) {
+                    cleanupUnreferencedTree(treeRef);
                 }
             }
         } catch (Exception e) {
@@ -4021,24 +4014,24 @@ final class LocalDatabase extends CoreDatabase {
 
     @Override
     public boolean addRedoListener(RedoListener listener) {
-        if (mRedoWriter instanceof ReplWriter) {
-            return ((ReplWriter) mRedoWriter).mEngine.addRedoListener(listener);
+        if (mRedoWriter instanceof ReplWriter rw) {
+            return rw.mEngine.addRedoListener(listener);
         }
         return false;
     }
 
     @Override
     public boolean removeRedoListener(RedoListener listener) {
-        if (mRedoWriter instanceof ReplWriter) {
-            return ((ReplWriter) mRedoWriter).mEngine.removeRedoListener(listener);
+        if (mRedoWriter instanceof ReplWriter rw) {
+            return rw.mEngine.removeRedoListener(listener);
         }
         return false;
     }
 
     @Override
     public void withRedoLock(Runnable callback) {
-        if (mRedoWriter instanceof ReplWriter) {
-            ((ReplWriter) mRedoWriter).mEngine.withRedoLock(callback);
+        if (mRedoWriter instanceof ReplWriter rw) {
+            rw.mEngine.withRedoLock(callback);
         } else {
             callback.run();
         }
@@ -5430,16 +5423,12 @@ final class LocalDatabase extends CoreDatabase {
     }
 
     static long decodeFullFragmentedValueLength(int header, /*P*/ byte[] fragmented, int off) {
-        switch ((header >> 2) & 0x03) {
-        default:
-            return p_ushortGetLE(fragmented, off);
-        case 1:
-            return p_intGetLE(fragmented, off) & 0xffffffffL;
-        case 2:
-            return p_uint48GetLE(fragmented, off);
-        case 3:
-            return p_longGetLE(fragmented, off);
-        }
+        return switch ((header >> 2) & 0x03) {
+            default -> p_ushortGetLE(fragmented, off);
+            case 1 -> p_intGetLE(fragmented, off) & 0xffffffffL;
+            case 2 -> p_uint48GetLE(fragmented, off);
+            case 3 -> p_longGetLE(fragmented, off);
+        };
     }
 
     /**
@@ -5540,33 +5529,28 @@ final class LocalDatabase extends CoreDatabase {
 
         long vLen;
         switch ((header >> 2) & 0x03) {
-        default:
-            vLen = p_ushortGetLE(fragmented, off);
-            break;
-
-        case 1:
-            vLen = p_intGetLE(fragmented, off);
-            if (vLen < 0) {
-                vLen &= 0xffffffffL;
-                if (stats == null) {
+            default -> vLen = p_ushortGetLE(fragmented, off);
+            case 1 -> {
+                vLen = p_intGetLE(fragmented, off);
+                if (vLen < 0) {
+                    vLen &= 0xffffffffL;
+                    if (stats == null) {
+                        throw new LargeValueException(vLen);
+                    }
+                }
+            }
+            case 2 -> {
+                vLen = p_uint48GetLE(fragmented, off);
+                if (vLen > Integer.MAX_VALUE && stats == null) {
                     throw new LargeValueException(vLen);
                 }
             }
-            break;
-
-        case 2:
-            vLen = p_uint48GetLE(fragmented, off);
-            if (vLen > Integer.MAX_VALUE && stats == null) {
-                throw new LargeValueException(vLen);
+            case 3 -> {
+                vLen = p_longGetLE(fragmented, off);
+                if (vLen < 0 || (vLen > Integer.MAX_VALUE && stats == null)) {
+                    throw new LargeValueException(vLen);
+                }
             }
-            break;
-
-        case 3:
-            vLen = p_longGetLE(fragmented, off);
-            if (vLen < 0 || (vLen > Integer.MAX_VALUE && stats == null)) {
-                throw new LargeValueException(vLen);
-            }
-            break;
         }
 
         {
@@ -5712,20 +5696,12 @@ final class LocalDatabase extends CoreDatabase {
             // Don't need to read the value length when deleting direct pointers.
             vLen = 0;
         } else {
-            switch ((header >> 2) & 0x03) {
-            default:
-                vLen = p_ushortGetLE(fragmented, off);
-                break;
-            case 1:
-                vLen = p_intGetLE(fragmented, off) & 0xffffffffL;
-                break;
-            case 2:
-                vLen = p_uint48GetLE(fragmented, off);
-                break;
-            case 3:
-                vLen = p_longGetLE(fragmented, off);
-                break;
-            }
+            vLen = switch ((header >> 2) & 0x03) {
+                default -> p_ushortGetLE(fragmented, off);
+                case 1 -> p_intGetLE(fragmented, off) & 0xffffffffL;
+                case 2 -> p_uint48GetLE(fragmented, off);
+                case 3 -> p_longGetLE(fragmented, off);
+            };
         }
 
         {

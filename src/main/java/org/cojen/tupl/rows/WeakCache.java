@@ -91,9 +91,8 @@ class WeakCache<K, V> extends ReferenceQueue<Object> {
 
         for (Entry<K, V> e = entries[index], prev = null; e != null; e = e.mNext) {
             if (e.mKey.equals(key)) {
-                V replaced = e.get();
                 e.clear();
-                var newEntry = new Entry<K, V>(key, value, hash, this);
+                var newEntry = new Entry<>(key, value, hash, this);
                 if (prev == null) {
                     newEntry.mNext = e.mNext;
                 } else {
@@ -176,8 +175,8 @@ class WeakCache<K, V> extends ReferenceQueue<Object> {
      */
     synchronized <C> C findValues(C collection, BiFunction<C, V, C> fun) {
         var entries = mEntries;
-        for (int i=0, k=0; i<entries.length; i++) {
-            for (Entry<K, V> e = entries[i]; e != null; e = e.mNext) {
+        for (Entry<K, V> entry : entries) {
+            for (Entry<K, V> e = entry; e != null; e = e.mNext) {
                 V value = e.get();
                 if (value != null) {
                     collection = fun.apply(collection, value);

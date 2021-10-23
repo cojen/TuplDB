@@ -139,11 +139,10 @@ final class DeadlockDetector extends HashMap<Locker, Boolean> {
                 continue outer;
             }
 
-            if (!(shared instanceof Lock.LockerHTEntry[])) {
+            if (!(shared instanceof Lock.LockerHTEntry[] entries)) {
                 return found;
             }
 
-            var entries = (Lock.LockerHTEntry[]) shared;
             for (int i=entries.length; --i>=0; ) {
                 for (Lock.LockerHTEntry e = entries[i]; e != null; ) {
                     Lock.LockerHTEntry next = e.mNext;

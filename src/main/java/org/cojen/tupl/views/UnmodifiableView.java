@@ -73,24 +73,24 @@ public final class UnmodifiableView implements Index {
 
     @Override
     public long id() {
-        if (mSource instanceof Index) {
-            return ((Index) mSource).id();
+        if (mSource instanceof Index ix) {
+            return ix.id();
         }
         return 0;
     }
 
     @Override
     public byte[] name() {
-        if (mSource instanceof Index) {
-            return ((Index) mSource).name();
+        if (mSource instanceof Index ix) {
+            return ix.name();
         }
         return null;
     }
 
     @Override
     public String nameString() {
-        if (mSource instanceof Index) {
-            return ((Index) mSource).nameString();
+        if (mSource instanceof Index ix) {
+            return ix.nameString();
         }
         return null;
     }
@@ -294,15 +294,15 @@ public final class UnmodifiableView implements Index {
 
     @Override
     public Stats analyze(byte[] lowKey, byte[] highKey) throws IOException {
-        if (mSource instanceof Index) {
-            return ((Index) mSource).analyze(lowKey, highKey);
+        if (mSource instanceof Index ix) {
+            return ix.analyze(lowKey, highKey);
         }
         throw new UnsupportedOperationException();
     }
 
     @Override
     public boolean verify(VerificationObserver observer) throws IOException {
-        if (!(mSource instanceof Index)) {
+        if (!(mSource instanceof Index ix)) {
             return true;
         }
 
@@ -345,7 +345,7 @@ public final class UnmodifiableView implements Index {
             };
         }
 
-        return ((Index) mSource).verify(obs);
+        return ix.verify(obs);
     }
 
     @Override
@@ -355,8 +355,8 @@ public final class UnmodifiableView implements Index {
 
     @Override
     public boolean isClosed() {
-        if (mSource instanceof Index) {
-            return ((Index) mSource).isClosed();
+        if (mSource instanceof Index ix) {
+            return ix.isClosed();
         }
         return false;
     }

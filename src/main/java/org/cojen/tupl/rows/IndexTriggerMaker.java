@@ -23,6 +23,7 @@ import java.lang.invoke.MethodType;
 
 import java.lang.ref.WeakReference;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -105,7 +106,7 @@ public class IndexTriggerMaker<R> {
     /**
      * @param which which secondary index to make a backfill for 
      */
-    IndexBackfill<R> makeBackfill(RowStore rs, TableManager manager, int which) {
+    IndexBackfill<R> makeBackfill(RowStore rs, TableManager<R> manager, int which) {
         SecondaryInfo secondaryInfo = mSecondaryInfos[which];
         Index secondaryIndex = mSecondaryIndexes[which];
 
@@ -611,9 +612,7 @@ public class IndexTriggerMaker<R> {
      * @return false if index consists only of primary key columns
      */
     private static boolean bitMask(Map<String, ColumnSource> sources, RowInfo info, long[] masks) {
-        for (int i=0; i<masks.length; i++) {
-            masks[i] = 0;
-        }
+        Arrays.fill(masks, 0);
 
         boolean any = false;
 
@@ -702,7 +701,7 @@ public class IndexTriggerMaker<R> {
             for (int i=0; i<mBackfills.length; i++) {
                 IndexBackfill backfill = mBackfills[i];
                 if (backfill != null) {
-                    backfillRefs[i] = new WeakReference<IndexBackfill>(backfill);
+                    backfillRefs[i] = new WeakReference<>(backfill);
                 }
             }
         }
@@ -787,17 +786,14 @@ public class IndexTriggerMaker<R> {
         mClassMaker.final_();
 
         MethodType ctorMethodType;
-        MethodMaker ctorMaker;
-
         if (backfills == null) {
             ctorMethodType = MethodType.methodType(void.class, Index[].class);
-            ctorMaker = mClassMaker.addConstructor(ctorMethodType);
         } else {
             ctorMethodType = MethodType.methodType
                 (void.class, Index[].class, IndexBackfill.class);
-            ctorMaker = mClassMaker.addConstructor(ctorMethodType);
         }
 
+        MethodMaker ctorMaker = mClassMaker.addConstructor(ctorMethodType);
         ctorMaker.invokeSuperConstructor();
 
         MethodMaker mm = mClassMaker.addMethod("delete", mt);
@@ -1057,8 +1053,7 @@ public class IndexTriggerMaker<R> {
         // Determine the minimum byte array size and prepare the encoders.
 
         int minSize = 0;
-        for (int i=0; i<codecs.length; i++) {
-            ColumnCodec codec = codecs[i];
+        for (ColumnCodec codec : codecs) {
             ColumnSource source = columnSources.get(codec.mInfo.name);
             if (!source.shouldCopyBytes(codec)) {
                 minSize += codec.minSize();
@@ -1071,8 +1066,7 @@ public class IndexTriggerMaker<R> {
         // Generate code which determines the additional runtime length.
 
         Variable totalVar = null;
-        for (int i=0; i<codecs.length; i++) {
-            ColumnCodec codec = codecs[i];
+        for (ColumnCodec codec : codecs) {
             ColumnSource source = columnSources.get(codec.mInfo.name);
             if (!source.shouldCopyBytes(codec)) {
                 totalVar = codec.encodeSize(source.accessColumn(rowVar), totalVar);

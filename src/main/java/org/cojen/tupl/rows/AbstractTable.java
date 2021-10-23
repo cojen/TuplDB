@@ -19,7 +19,6 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
-import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
@@ -30,18 +29,15 @@ import java.util.Objects;
 
 import java.util.stream.Stream;
 
-import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventType;
 import org.cojen.tupl.Index;
-import org.cojen.tupl.LockMode;
 import org.cojen.tupl.RowScanner;
 import org.cojen.tupl.RowUpdater;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
-import org.cojen.tupl.View;
 
 import org.cojen.tupl.filter.ComplexFilterException;
 import org.cojen.tupl.filter.FalseFilter;
@@ -134,19 +130,14 @@ public abstract class AbstractTable<R> implements Table<R> {
             txn = mSource.newTransaction(null);
             updater = new AutoCommitRowUpdater<>(this, controller);
         } else {
-            switch (txn.lockMode()) {
-            default:
-                updater = new BasicRowUpdater<>(this, controller);
-                break;
-            case REPEATABLE_READ:
-                updater = new UpgradableRowUpdater<>(this, controller);
-                break;
-            case READ_COMMITTED:
-            case READ_UNCOMMITTED:
-                txn.enter();
-                updater = new NonRepeatableRowUpdater<>(this, controller);
-                break;
-            }
+            updater = switch (txn.lockMode()) {
+                default -> new BasicRowUpdater<>(this, controller);
+                case REPEATABLE_READ -> new UpgradableRowUpdater<>(this, controller);
+                case READ_COMMITTED, READ_UNCOMMITTED -> {
+                    txn.enter();
+                    yield new NonRepeatableRowUpdater<>(this, controller);
+                }
+            };
         }
 
         updater.init(txn);

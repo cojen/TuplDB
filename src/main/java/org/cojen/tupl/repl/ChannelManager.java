@@ -747,8 +747,8 @@ final class ChannelManager {
             s.setTcpNoDelay(true);
         } catch (IOException e) {
             closeQuietly(s);
-            if (e instanceof JoinException) {
-                throw (JoinException) e;
+            if (e instanceof JoinException je) {
+                throw je;
             }
             return null;
         }

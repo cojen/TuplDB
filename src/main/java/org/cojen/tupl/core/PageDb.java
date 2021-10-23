@@ -85,8 +85,8 @@ abstract class PageDb implements CauseCloseable {
      * @throws UnsupportedOperationException if not stored
      */
     StoredPageDb asStoredPageDb(String operation) {
-        if (this instanceof StoredPageDb) {
-            return (StoredPageDb) this;
+        if (this instanceof StoredPageDb db) {
+            return db;
         }
         throw new UnsupportedOperationException(unsupportedMessage(operation));
     }

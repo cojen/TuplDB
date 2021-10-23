@@ -541,7 +541,7 @@ class Locker implements DatabaseAccess { // weak access to database
         if (tailObj == null) {
             throw new IllegalStateException("No locks held");
         }
-        return (tailObj instanceof Lock) ? ((Lock) tailObj) : (((Block) tailObj).last());
+        return (tailObj instanceof Lock lock) ? lock : (((Block) tailObj).last());
     }
 
     /**
@@ -559,12 +559,12 @@ class Locker implements DatabaseAccess { // weak access to database
         if (tailObj == null) {
             throw new IllegalStateException("No locks held");
         }
-        if (tailObj instanceof Lock) {
+        if (tailObj instanceof Lock lock) {
             ParentScope parent = mParentScope;
             if (parent != null && parent.mTailBlock == tailObj) {
                 throw new IllegalStateException("Cannot cross a scope boundary");
             }
-            mManager.unlock(this, (Lock) tailObj);
+            mManager.unlock(this, lock);
             mTailBlock = null;
         } else {
             Block.unlockLast((Block) tailObj, this);
@@ -586,12 +586,12 @@ class Locker implements DatabaseAccess { // weak access to database
         if (tailObj == null) {
             throw new IllegalStateException("No locks held");
         }
-        if (tailObj instanceof Lock) {
+        if (tailObj instanceof Lock lock) {
             ParentScope parent = mParentScope;
             if (parent != null && parent.mTailBlock == tailObj) {
                 throw new IllegalStateException("Cannot cross a scope boundary");
             }
-            mManager.doUnlock(this, (Lock) tailObj);
+            mManager.doUnlock(this, lock);
             mTailBlock = null;
         } else {
             Block.doUnlockLast((Block) tailObj, this);
@@ -614,12 +614,12 @@ class Locker implements DatabaseAccess { // weak access to database
         if (tailObj == null) {
             throw new IllegalStateException("No locks held");
         }
-        if (tailObj instanceof Lock) {
+        if (tailObj instanceof Lock lock) {
             ParentScope parent = mParentScope;
             if (parent != null && parent.mTailBlock == tailObj) {
                 throw new IllegalStateException("Cannot cross a scope boundary");
             }
-            mManager.unlockToShared(this, (Lock) tailObj);
+            mManager.unlockToShared(this, lock);
         } else {
             Block.unlockLastToShared((Block) tailObj, this);
         }
@@ -640,12 +640,12 @@ class Locker implements DatabaseAccess { // weak access to database
         if (tailObj == null) {
             throw new IllegalStateException("No locks held");
         }
-        if (tailObj instanceof Lock) {
+        if (tailObj instanceof Lock lock) {
             ParentScope parent = mParentScope;
             if (parent != null && parent.mTailBlock == tailObj) {
                 throw new IllegalStateException("Cannot cross a scope boundary");
             }
-            mManager.doUnlockToShared(this, (Lock) tailObj);
+            mManager.doUnlockToShared(this, lock);
         } else {
             Block.doUnlockLastToShared((Block) tailObj, this);
         }
@@ -665,12 +665,12 @@ class Locker implements DatabaseAccess { // weak access to database
         if (tailObj == null) {
             throw new IllegalStateException("No locks held");
         }
-        if (tailObj instanceof Lock) {
+        if (tailObj instanceof Lock lock) {
             ParentScope parent = mParentScope;
             if (parent != null && parent.mTailBlock == tailObj) {
                 throw new IllegalStateException("Cannot cross a scope boundary");
             }
-            mManager.doUnlockToUpgradable(this, (Lock) tailObj);
+            mManager.doUnlockToUpgradable(this, lock);
         } else {
             Block.doUnlockLastToUpgradable((Block) tailObj, this);
         }
@@ -704,8 +704,8 @@ class Locker implements DatabaseAccess { // weak access to database
         parent.mParentScope = mParentScope;
         Object tailObj = mTailBlock;
         parent.mTailBlock = tailObj;
-        if (tailObj instanceof Block) {
-            parent.mTailBlockSize = ((Block) tailObj).mSize;
+        if (tailObj instanceof Block block) {
+            parent.mTailBlockSize = block.mSize;
         }
         mParentScope = parent;
         return parent;
@@ -719,8 +719,8 @@ class Locker implements DatabaseAccess { // weak access to database
         if (tailObj != null) {
             ParentScope parent = mParentScope;
             parent.mTailBlock = tailObj;
-            if (tailObj instanceof Block) {
-                parent.mTailBlockSize = ((Block) tailObj).mSize;
+            if (tailObj instanceof Block block) {
+                parent.mTailBlockSize = block.mSize;
             }
         }
     }
@@ -735,8 +735,8 @@ class Locker implements DatabaseAccess { // weak access to database
         if (parent == null || (parentTailObj = parent.mTailBlock) == null) {
             // Unlock everything.
             Object tailObj = mTailBlock;
-            if (tailObj instanceof Lock) {
-                mManager.doUnlock(this, (Lock) tailObj);
+            if (tailObj instanceof Lock lock) {
+                mManager.doUnlock(this, lock);
                 mTailBlock = null;
             } else {
                 var tail = (Block) tailObj;
@@ -750,8 +750,7 @@ class Locker implements DatabaseAccess { // weak access to database
             }
         } else if (parentTailObj instanceof Lock) {
             Object tailObj = mTailBlock;
-            if (tailObj instanceof Block) {
-                var tail = (Block) tailObj;
+            if (tailObj instanceof Block tail) {
                 while (true) {
                     Block prev = tail.peek();
                     if (prev == null) {
@@ -788,8 +787,7 @@ class Locker implements DatabaseAccess { // weak access to database
 
         while (true) {
             Object tailObj = mTailBlock;
-            if (tailObj instanceof Lock) {
-                var lock = (Lock) tailObj;
+            if (tailObj instanceof Lock lock) {
                 if (!lock.isPrepareLock()) {
                     mManager.doUnlock(this, lock);
                     mTailBlock = null;
@@ -816,8 +814,8 @@ class Locker implements DatabaseAccess { // weak access to database
 
         Object tailObj = mTailBlock;
 
-        if (tailObj instanceof Lock) {
-            if (((Lock) tailObj).isPrepareLock()) {
+        if (tailObj instanceof Lock lock) {
+            if (lock.isPrepareLock()) {
                 // Nothing to do.
                 return;
             }
@@ -852,8 +850,7 @@ class Locker implements DatabaseAccess { // weak access to database
             return;
         }
 
-        if (tailObj instanceof Lock) {
-            var lock = (Lock) tailObj;
+        if (tailObj instanceof Lock lock) {
             if (lock.mLockCount != ~0) {
                 mManager.doUnlock(this, lock);
             } else if (newOwner == this) {
@@ -920,8 +917,8 @@ class Locker implements DatabaseAccess { // weak access to database
         Object tailObj = mTailBlock;
         if (tailObj == null) {
             mTailBlock = lock;
-        } else if (tailObj instanceof Lock) {
-            mTailBlock = new Block((Lock) tailObj, lock);
+        } else if (tailObj instanceof Lock tailLock) {
+            mTailBlock = new Block(tailLock, lock);
         } else {
             ((Block) tailObj).pushLock(this, lock, 0);
         }
@@ -929,11 +926,11 @@ class Locker implements DatabaseAccess { // weak access to database
 
     final void pushUpgrade(Lock lock) {
         Object tailObj = mTailBlock;
-        if (tailObj instanceof Lock) {
+        if (tailObj instanceof Lock tailLock) {
             // Don't push lock upgrade if it applies to the last acquisition
             // within this scope. This is required for unlockLast.
             if (tailObj != lock || mParentScope != null) {
-                var block = new Block((Lock) tailObj, lock);
+                var block = new Block(tailLock, lock);
                 block.secondUpgrade();
                 mTailBlock = block;
             }

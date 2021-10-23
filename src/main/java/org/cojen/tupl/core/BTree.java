@@ -1660,8 +1660,7 @@ class BTree extends Tree implements View, Index {
     }
 
     final LocalTransaction check(Transaction txn) throws IllegalArgumentException {
-        if (txn instanceof LocalTransaction) {
-            var local = (LocalTransaction) txn;
+        if (txn instanceof LocalTransaction local) {
             LocalDatabase txnDb = local.mDatabase;
             if (txnDb == mDatabase || txnDb == null) {
                 return local;

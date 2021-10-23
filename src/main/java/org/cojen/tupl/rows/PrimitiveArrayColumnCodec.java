@@ -45,11 +45,11 @@ abstract class PrimitiveArrayColumnCodec extends BytesColumnCodec {
 
         int typeCode = info.plainTypeCode();
 
-        switch (typeCode) {
-        default: mBitPow = typeCode & 0b111; break;
-        case ColumnInfo.TYPE_FLOAT: mBitPow = 5; break;
-        case ColumnInfo.TYPE_DOUBLE: mBitPow = 6; break;
-        }
+        mBitPow = switch (typeCode) {
+            default -> typeCode & 0b111;
+            case ColumnInfo.TYPE_FLOAT -> 5;
+            case ColumnInfo.TYPE_DOUBLE -> 6;
+        };
     }
 
     @Override
@@ -148,21 +148,19 @@ abstract class PrimitiveArrayColumnCodec extends BytesColumnCodec {
                 utilsVar.invoke("signFlip", valueVar, 0, length);
             }
         } else {
-            String method;
-            switch (mInfo.plainTypeCode()) {
-            case TYPE_BOOLEAN: method = "Boolean"; break;
-            case TYPE_USHORT:  method = "Short"; break;
-            case TYPE_UINT:    method = "Int"; break;
-            case TYPE_ULONG:   method = "Long"; break;
-            case TYPE_SHORT:   method = "Short"; break;
-            case TYPE_INT:     method = "Int"; break;
-            case TYPE_LONG:    method = "Long"; break;
-            case TYPE_FLOAT:   method = "Float"; break;
-            case TYPE_DOUBLE:  method = "Double"; break;
-            case TYPE_CHAR:    method = "Char"; break;
-            default:
-                throw new AssertionError();
-            }
+            String method = switch (mInfo.plainTypeCode()) {
+                case TYPE_BOOLEAN -> "Boolean";
+                case TYPE_USHORT  -> "Short";
+                case TYPE_UINT    -> "Int";
+                case TYPE_ULONG   -> "Long";
+                case TYPE_SHORT   -> "Short";
+                case TYPE_INT     -> "Int";
+                case TYPE_LONG    -> "Long";
+                case TYPE_FLOAT   -> "Float";
+                case TYPE_DOUBLE  -> "Double";
+                case TYPE_CHAR    -> "Char";
+                default -> throw new AssertionError();
+            };
             method = "decode" + method + "Array" + methodSuffix();
             valueVar = utilsVar.invoke(method, srcVar, offset, length);
         }

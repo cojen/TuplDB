@@ -41,8 +41,7 @@ public final class DisallowEventListener extends FilteredEventListener {
         var categorySet = new HashSet<EventType.Category>(Arrays.asList(categories));
 
         Set<System.Logger.Level> levelSet;
-        if (listener instanceof DisallowEventListener) {
-            var disallowed = (DisallowEventListener) listener;
+        if (listener instanceof DisallowEventListener disallowed) {
             listener = disallowed.mListener;
             categorySet.addAll(disallowed.mCategories);
             levelSet = disallowed.mLevels;
@@ -63,8 +62,7 @@ public final class DisallowEventListener extends FilteredEventListener {
         var levelSet = new HashSet<System.Logger.Level>(Arrays.asList(levels));
 
         Set<EventType.Category> categorySet;
-        if (listener instanceof DisallowEventListener) {
-            var disallowed = (DisallowEventListener) listener;
+        if (listener instanceof DisallowEventListener disallowed) {
             listener = disallowed.mListener;
             levelSet.addAll(disallowed.mLevels);
             categorySet = disallowed.mCategories;

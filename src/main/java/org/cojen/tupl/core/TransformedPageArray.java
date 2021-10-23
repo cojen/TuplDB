@@ -42,21 +42,21 @@ abstract class TransformedPageArray extends PageArray {
     }
 
     static PageArray rawSource(PageArray array) {
-        while (array instanceof TransformedPageArray) {
-            array = ((TransformedPageArray) array).mSource;
+        while (array instanceof TransformedPageArray tpa) {
+            array = tpa.mSource;
         }
         return array;
     }
 
     static Supplier<Checksum> checksumFactory(PageArray array) {
         while (true) {
-            if (array instanceof ChecksumPageArray) {
-                return ((ChecksumPageArray) array).mSupplier;
+            if (array instanceof ChecksumPageArray cpa) {
+                return cpa.mSupplier;
             }
-            if (!(array instanceof TransformedPageArray)) {
+            if (!(array instanceof TransformedPageArray tpa)) {
                 return null;
             }
-            array = ((TransformedPageArray) array).mSource;
+            array = tpa.mSource;
         }
     }
 }

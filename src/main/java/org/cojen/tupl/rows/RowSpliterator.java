@@ -35,7 +35,7 @@ import org.cojen.tupl.io.Utils;
  */
 final class RowSpliterator<R> implements Spliterator<R> {
     static <R> Stream<R> newStream(RowScanner<R> scanner) {
-        return StreamSupport.stream(new RowSpliterator<R>(scanner), false).onClose(() -> {
+        return StreamSupport.stream(new RowSpliterator<>(scanner), false).onClose(() -> {
             try {
                 scanner.close();
             } catch (Throwable e) {
