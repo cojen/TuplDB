@@ -79,23 +79,30 @@ class RowGen {
     public static ClassMaker beginClassMaker(Class<?> who, Class<?> rowType, RowInfo info,
                                              String subPackage, String suffix)
     {
-        String name;
-        if (info == null || info.name == null) {
+        final String name;
+
+        String infoName;
+        if (info == null || (infoName = info.name) == null) {
             name = null;
         } else {
-            int ix = info.name.lastIndexOf('.');
-            if (ix > 0) {
-                if (subPackage == null) {
-                    name = info.name + suffix;
-                } else {
-                    String packageName = info.name.substring(0, ix) + '.' + subPackage;
-                    name = packageName + '.' + info.name.substring(ix + 1) + suffix;
+            var bob = new StringBuilder();
+
+            if (subPackage != null) {
+                int ix = info.name.lastIndexOf('.');
+                if (ix > 0) {
+                    bob.append(info.name.substring(0, ix)).append('.');
+                    infoName = info.name.substring(ix + 1);
                 }
-            } else if (subPackage == null) {
-                name = info.name + suffix;
-            } else {
-                name = subPackage + '.' + info.name + suffix;
+                bob.append(subPackage).append('.');
             }
+
+            bob.append(infoName);
+
+            if (suffix != null && !suffix.isEmpty()) {
+                bob.append('-').append(suffix);
+            }
+
+            name = bob.toString();
         }
 
         ClassLoader loader = rowType == null ? null : rowType.getClassLoader();
