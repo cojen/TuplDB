@@ -109,7 +109,7 @@ public class AnalyzeTest {
         assertEquals(keyBytes, average.keyBytes, keyBytes * 0.1);
         assertEquals(valueBytes, average.valueBytes, valueBytes * 0.1);
 
-        // Compare to emperical data.
+        // Compare to empirical data.
         assertEquals(2200000, average.freeBytes, 2200000 * 0.1);
         assertEquals(9080000, average.totalBytes, 9080000 * 0.1);
     }
@@ -128,7 +128,7 @@ public class AnalyzeTest {
         assertEquals(key.length, stats.keyBytes, 0);
         assertEquals(value.length, stats.valueBytes, 0);
 
-        // Compare to emperical data.
+        // Compare to empirical data.
         assertEquals(2242, stats.freeBytes, 0);
 
         // Compare to expected data.

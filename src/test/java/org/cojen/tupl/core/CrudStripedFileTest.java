@@ -20,7 +20,6 @@ package org.cojen.tupl.core;
 import java.io.File;
 
 import org.junit.*;
-import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 

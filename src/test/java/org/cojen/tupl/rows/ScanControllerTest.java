@@ -221,7 +221,7 @@ public class ScanControllerTest {
         }
 
         var scanner = (BasicRowScanner<MyRow>) table.newRowScanner(null, filter, args);
-        var contoller = (MultiScanController<MyRow>) scanner.mController;
+        var controller = (MultiScanController<MyRow>) scanner.mController;
 
         var actual = new HashSet<MyRow>();
 

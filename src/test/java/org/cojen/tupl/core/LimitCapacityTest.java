@@ -151,7 +151,7 @@ public class LimitCapacityTest {
         assertTrue(delta >= minFreed);
         assertEquals(delta, stats.freePages);
 
-        assertEquals(null, ix.load(null, "key".getBytes()));
+        assertNull(ix.load(null, "key".getBytes()));
 
         // Smaller value should work.
         var value = new byte[size / 2];
@@ -182,7 +182,7 @@ public class LimitCapacityTest {
         ix = mDb.openIndex("test");
 
         // Value is still gone.
-        assertEquals(null, ix.load(null, "key".getBytes()));
+        assertNull(ix.load(null, "key".getBytes()));
     }
 
     @Test
@@ -206,6 +206,6 @@ public class LimitCapacityTest {
         ix = mDb.openIndex("test");
 
         // Value is still gone.
-        assertEquals(null, ix.load(null, "key".getBytes()));
+        assertNull(ix.load(null, "key".getBytes()));
     }
 }

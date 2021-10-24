@@ -54,7 +54,7 @@ public class ConvertTest {
             db = reopenTempDatabase(getClass(), db, newConfig);
             fail();
         } catch (DatabaseException e) {
-            assertTrue(e.getMessage().indexOf("redo log files exist") >= 0);
+            assertTrue(e.getMessage().contains("redo log files exist"));
         }
     }
 
@@ -73,7 +73,7 @@ public class ConvertTest {
             db = reopenTempDatabase(getClass(), db, newConfig);
             fail();
         } catch (DatabaseException e) {
-            assertTrue(e.getMessage().indexOf("without complete replication") >= 0);
+            assertTrue(e.getMessage().contains("without complete replication"));
         }
     }
 
@@ -108,7 +108,7 @@ public class ConvertTest {
             db = reopenTempDatabase(getClass(), db, config);
             fail();
         } catch (DatabaseException e) {
-            assertTrue(e.getMessage().indexOf("replicator") >= 0);
+            assertTrue(e.getMessage().contains("replicator"));
         }
     }
 

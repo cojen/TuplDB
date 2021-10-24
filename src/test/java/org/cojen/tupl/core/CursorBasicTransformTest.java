@@ -23,8 +23,6 @@ import java.util.Map;
 import org.cojen.tupl.*;
 import org.cojen.tupl.views.*;
 
-import org.junit.*;
-
 /**
  * Tests that operations against a basic transformed view still work.
  *

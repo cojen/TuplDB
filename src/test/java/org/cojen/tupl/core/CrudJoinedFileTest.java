@@ -22,7 +22,6 @@ import java.io.File;
 import java.util.EnumSet;
 
 import org.junit.*;
-import static org.junit.Assert.*;
 
 import org.cojen.tupl.DatabaseConfig;
 

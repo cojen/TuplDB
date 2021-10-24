@@ -100,18 +100,10 @@ public class CursorTest {
             ix.delete(Transaction.BOGUS, key(1));
 
             switch (i & 3) {
-            default:
-                c.first();
-                break;
-            case 1:
-                c.last();
-                break;
-            case 2:
-                c.next();
-                break;
-            case 3:
-                c.previous();
-                break;
+                default -> c.first();
+                case 1 -> c.last();
+                case 2 -> c.next();
+                case 3 -> c.previous();
             }
 
             assertNull(c.key());
@@ -239,7 +231,7 @@ public class CursorTest {
 
         // If timed out, cursor is at the desired key, but no value is available.
         fastAssertArrayEquals(key(0), c.key());
-        assertTrue(c.value() == Cursor.NOT_LOADED);
+        assertSame(c.value(), Cursor.NOT_LOADED);
 
         c.load();
         fastAssertArrayEquals(value(0), c.value());
@@ -269,7 +261,7 @@ public class CursorTest {
 
         // If timed out, cursor is at the desired key, but no value is available.
         fastAssertArrayEquals(key(0), c.key());
-        assertTrue(c.value() == Cursor.NOT_LOADED);
+        assertSame(c.value(), Cursor.NOT_LOADED);
 
         c.load();
         fastAssertArrayEquals(value(0), c.value());
@@ -311,7 +303,7 @@ public class CursorTest {
 
         // If timed out, cursor is at the desired key, but no value is available.
         fastAssertArrayEquals(key, c.key());
-        assertTrue(c.value() == Cursor.NOT_LOADED);
+        assertSame(c.value(), Cursor.NOT_LOADED);
 
         c.load();
         fastAssertArrayEquals(value(0), c.value());
@@ -389,7 +381,7 @@ public class CursorTest {
 
         // If timed out, cursor is at the desired key, but no value is available.
         fastAssertArrayEquals(key, c.key());
-        assertTrue(c.value() == Cursor.NOT_LOADED);
+        assertSame(c.value(), Cursor.NOT_LOADED);
 
         c.load();
         fastAssertArrayEquals(value(1), c.value());
@@ -468,7 +460,7 @@ public class CursorTest {
 
         // If timed out, cursor is at the desired key, but no value is available.
         fastAssertArrayEquals(key(1), c.key());
-        assertTrue(c.value() == Cursor.NOT_LOADED);
+        assertSame(c.value(), Cursor.NOT_LOADED);
 
         c.load();
         fastAssertArrayEquals(value(1), c.value());
@@ -511,7 +503,7 @@ public class CursorTest {
 
         // If timed out, cursor is at the desired key, but no value is available.
         fastAssertArrayEquals(key(0), c.key());
-        assertTrue(c.value() == Cursor.NOT_LOADED);
+        assertSame(c.value(), Cursor.NOT_LOADED);
 
         c.load();
         fastAssertArrayEquals(value(0), c.value());
@@ -612,7 +604,7 @@ public class CursorTest {
 
         // If timed out, cursor is at the desired key, but no value is available.
         fastAssertArrayEquals(key(1), c.key());
-        assertTrue(c.value() == Cursor.NOT_LOADED);
+        assertSame(c.value(), Cursor.NOT_LOADED);
 
         c.load();
         fastAssertArrayEquals(value(1), c.value());
@@ -771,7 +763,7 @@ public class CursorTest {
 
         // If timed out, cursor is at the desired key, but no value is available.
         fastAssertArrayEquals(key(0), c.key());
-        assertTrue(c.value() == Cursor.NOT_LOADED);
+        assertSame(c.value(), Cursor.NOT_LOADED);
 
         c.load();
         fastAssertArrayEquals(value(0), c.value());
@@ -1013,7 +1005,7 @@ public class CursorTest {
 
         // If timed out, cursor is at the desired key, but no value is available.
         fastAssertArrayEquals(key(0), c.key());
-        assertTrue(c.value() == Cursor.NOT_LOADED);
+        assertSame(c.value(), Cursor.NOT_LOADED);
 
         c.load();
         fastAssertArrayEquals(value(0), c.value());
@@ -1178,7 +1170,7 @@ public class CursorTest {
 
     @Test
     public void randomNotGhost() throws Exception {
-        // Verfies that ghosts are not selected.
+        // Verifies that ghosts are not selected.
 
         View ix = openIndex("test");
         ix.store(Transaction.BOGUS, key(0), value(0));
@@ -1366,14 +1358,14 @@ public class CursorTest {
                     } else {
                         assertArrayEquals(key1, c.key());
                     }
-                    assertTrue(c.value() == Cursor.NOT_LOADED);
+                    assertSame(c.value(), Cursor.NOT_LOADED);
                 } else {
                     c.find(key);
                     assertArrayEquals(key1, c.key());
                     if (ghost) {
                         assertNull(c.value());
                     } else {
-                        assertTrue(c.value() == Cursor.NOT_LOADED);
+                        assertSame(c.value(), Cursor.NOT_LOADED);
                     }
                 }
             } finally {
@@ -1549,7 +1541,7 @@ public class CursorTest {
         Cursor copy = c.copy();
         fastAssertArrayEquals(c.key(), key);
         if (c.value() == Cursor.NOT_LOADED) {
-            assertTrue(copy.value() == Cursor.NOT_LOADED);
+            assertSame(copy.value(), Cursor.NOT_LOADED);
         } else {
             fastAssertArrayEquals(c.value(), copy.value());
         }

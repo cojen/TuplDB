@@ -45,7 +45,7 @@ public class ConvertUtilsTest {
     }
 
     private void numberConversions(int aFlags, int bFlags) throws Exception {
-        // Verifies that the common numberical type has enough bits, but doesn't verify if its
+        // Verifies that the common numerical type has enough bits, but doesn't verify if it's
         // the smallest possible.
 
         NumType[] numTypes = allNumTypes();
@@ -113,9 +113,9 @@ public class ConvertUtilsTest {
             if (cInfo == null) {
                 // Ordered comparison between string and number is ambiguous.
                 assertTrue(aInfo.plainTypeCode() != TYPE_CHAR);
-                assertEquals(null, cInfo2);
+                assertNull(cInfo2);
             } else {
-                assertTrue(aInfo.plainTypeCode() == TYPE_CHAR);
+                assertEquals(TYPE_CHAR, aInfo.plainTypeCode());
                 assertEquals(cInfo.typeCode, cInfo2.typeCode);
 
                 if (isNullable(aInfo.typeCode) || isNullable(bInfo.typeCode)) {
@@ -165,9 +165,9 @@ public class ConvertUtilsTest {
             cInfo2 = ConvertUtils.commonType(bInfo, aInfo, ColumnFilter.OP_GT);
 
             if (cInfo == null) {
-                assertEquals(null, cInfo2);
+                assertNull(cInfo2);
             } else {
-                assertTrue(aInfo.plainTypeCode() == TYPE_BOOLEAN);
+                assertEquals(TYPE_BOOLEAN, aInfo.plainTypeCode());
                 assertEquals(cInfo.typeCode, cInfo2.typeCode);
 
                 if (isNullable(aInfo.typeCode) || isNullable(bInfo.typeCode)) {
@@ -210,23 +210,12 @@ public class ConvertUtilsTest {
         return numTypes;
     }
 
-    static class NumType implements Comparable<NumType> {
-        final int typeCode;
-
-        // Number of bits available.
-        final int positive, negative, fraction, exponent;
-
-        NumType(int typeCode, int positive, int negative, int fraction, int exponent) {
-            this.typeCode = typeCode;
-            this.positive = positive;
-            this.negative = negative;
-            this.fraction = fraction;
-            this.exponent = exponent;
-        }
-
+    record NumType(int typeCode, int positive, int negative, int fraction, int exponent)
+        implements Comparable<NumType>
+    {
         boolean canHold(NumType other) {
             return positive >= other.positive && negative >= other.negative
-                && fraction >= other.fraction && exponent >= other.exponent;
+                    && fraction >= other.fraction && exponent >= other.exponent;
         }
 
         @Override

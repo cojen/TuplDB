@@ -188,8 +188,8 @@ public class BigDecimalUtilsTest {
             } else {
                 offset = BigDecimalUtils.decodeBigDecimalLex(encoded, 0, ref);
             }
-            if (value != null && value.compareTo(BigDecimal.ZERO) == 0) {
-                assertTrue(value.compareTo(ref[0]) == 0);
+            if (value.compareTo(BigDecimal.ZERO) == 0) {
+                assertEquals(0, value.compareTo(ref[0]));
             } else {
                 assertEquals(value, ref[0]);
             }

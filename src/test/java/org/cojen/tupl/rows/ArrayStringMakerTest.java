@@ -45,7 +45,7 @@ public class ArrayStringMakerTest {
             assertEquals("[10, -10, 100]", bob.toString());
 
             MethodHandle mh2 = ArrayStringMaker.make(int[].class, false);
-            assertTrue(mh == mh2);
+            assertSame(mh, mh2);
         }
 
         {

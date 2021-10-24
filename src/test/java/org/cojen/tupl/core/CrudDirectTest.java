@@ -18,7 +18,6 @@
 package org.cojen.tupl.core;
 
 import org.junit.*;
-import static org.junit.Assert.*;
 
 import static org.cojen.tupl.TestUtils.*;
 

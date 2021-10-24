@@ -139,7 +139,7 @@ public class FileTermLogTest {
             assertEquals(position, reader.position());
             int amt = reader.tryReadAny(buf, 0, buf.length);
             if (amt <= 0) {
-                assertTrue(amt == 0);
+                assertEquals(0, amt);
                 break;
             }
             for (int j=0; j<amt; j++) {
@@ -279,7 +279,7 @@ public class FileTermLogTest {
                                      startPosition, info.mHighestPosition, null);
                 fail();
             } catch (Exception e) {
-                assertTrue(e.getMessage().indexOf(low.toString()) >= 0);
+                assertTrue(e.getMessage().contains(low.toString()));
             }
 
             low.delete();
@@ -301,9 +301,9 @@ public class FileTermLogTest {
                                     startPosition, info.mHighestPosition, null);
 
         if (low != null) {
-            assertTrue(!low.exists());
+            assertFalse(low.exists());
         }
-        assertTrue(!high.exists());
+        assertFalse(high.exists());
         assertEquals(firstLen, first.length());
 
         // Verify the data.
@@ -319,7 +319,7 @@ public class FileTermLogTest {
             assertEquals(position, reader.position());
             int amt = reader.tryReadAny(buf, 0, buf.length);
             if (amt <= 0) {
-                assertTrue(amt == 0);
+                assertEquals(0, amt);
                 break;
             }
             for (int j=0; j<amt; j++) {
@@ -353,7 +353,7 @@ public class FileTermLogTest {
             } else {
                 expect = "No segment files";
             }
-            assertTrue(expect, msg.indexOf(expect) >= 0);
+            assertTrue(expect, msg.contains(expect));
         }
     }
 
@@ -1039,7 +1039,7 @@ public class FileTermLogTest {
         assertFalse(writer.write(b) > 0);
         writer.release();
 
-        // Try again with writers that reference deleted segements.
+        // Try again with writers that reference deleted segments.
 
         writer = mLog.openWriter(commitPosition);
         for (int i=0; i<1000; i++) {
@@ -1049,7 +1049,7 @@ public class FileTermLogTest {
 
         // Re-open at the start position.
         writer = mLog.openWriter(commitPosition);
-        // Force segement to be referenced.
+        // Force segment to be referenced.
         writer.write(b);
 
         long commitPosition2 = 4_000_000;
@@ -1150,8 +1150,8 @@ public class FileTermLogTest {
 
     @Test
     public void writeTruncateExtend2() throws Exception {
-        // Truncate and extend ov er complete segments, forcing them to untruncate. Ordinarily,
-        // a a new segment is created in between, but this isn't possible with a zero-length
+        // Truncate and extend over complete segments, forcing them to untruncate. Ordinarily,
+        // a new segment is created in between, but this isn't possible with a zero-length
         // segment in the way.
 
         LogWriter writer = mLog.openWriter(0);

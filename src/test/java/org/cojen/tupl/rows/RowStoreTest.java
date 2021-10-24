@@ -133,7 +133,7 @@ public class RowStoreTest {
 
     private static Map<String, ColumnInfo> randomKeyColumns(int base, Random rnd) {
         var columns = new LinkedHashMap<String, ColumnInfo>();
-        randomColumns(columns, 1 + rnd.nextInt(4), 0, rnd);
+        randomColumns(columns, 1 + rnd.nextInt(4), base, rnd);
         return columns;
     }
 

@@ -27,7 +27,6 @@ import java.util.Random;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.cojen.maker.AnnotationMaker;
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.MethodMaker;
 
@@ -46,7 +45,7 @@ public class RowTestUtils {
     private static final AtomicLong packageNum = new AtomicLong();
 
     public static String newRowTypeName() {
-        // Generate different packages to faciliate class unloading.
+        // Generate different packages to facilitate class unloading.
         return "test.p" + packageNum.getAndIncrement() + ".TestRow";
     }
 

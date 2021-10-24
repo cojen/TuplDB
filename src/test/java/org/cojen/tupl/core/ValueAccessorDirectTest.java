@@ -17,11 +17,7 @@
 
 package org.cojen.tupl.core;
 
-import java.io.IOException;
-
 import java.lang.reflect.Method;
-
-import org.junit.*;
 
 import org.cojen.tupl.*;
 

@@ -166,7 +166,7 @@ public class SnapshotMappedDirectTest extends SnapshotMappedTest {
         assertTrue(restored.verify(null));
 
         ix = restored.findIndex("test");
-        assertTrue(ix != null);
+        assertNotNull(ix);
         
         for (int i=0; i<800_000; i++) {
             fastAssertArrayEquals(value(i), ix.load(null, key(i)));

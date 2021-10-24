@@ -65,10 +65,10 @@ public class AnonymousIndexTest {
         Index ix1 = mDb.indexById(ids[0]);
         Index ix2 = mDb.indexById(ids[1]);
 
-        assertEquals(null, ix1.name());
-        assertEquals(null, ix1.nameString());
-        assertEquals(null, ix2.name());
-        assertEquals(null, ix2.nameString());
+        assertNull(ix1.name());
+        assertNull(ix1.nameString());
+        assertNull(ix2.name());
+        assertNull(ix2.nameString());
         assertEquals(ids[0], ix1.id());
         assertEquals(ids[1], ix2.id());
 
@@ -88,7 +88,7 @@ public class AnonymousIndexTest {
             mDb.renameIndex(ix1, "newName".getBytes());
             fail();
         } catch (IllegalStateException e) {
-            assertTrue(e.getMessage().indexOf("anonymous") >= 0);
+            assertTrue(e.getMessage().contains("anonymous"));
         }
     }
 

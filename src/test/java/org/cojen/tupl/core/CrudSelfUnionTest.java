@@ -20,9 +20,6 @@ package org.cojen.tupl.core;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.junit.*;
-import static org.junit.Assert.*;
-
 import org.cojen.tupl.*;
 
 /**

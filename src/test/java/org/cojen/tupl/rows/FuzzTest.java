@@ -149,7 +149,7 @@ public class FuzzTest {
         var row = table.newRow();
         assertTrue(rowType.isInstance(row));
         var clone = row.getClass().getMethod("clone").invoke(row);
-        assertTrue(row != clone);
+        assertNotSame(row, clone);
         assertEquals(row, clone);
         assertEquals(row.hashCode(), clone.hashCode());
         assertEquals(row.toString(), clone.toString());
@@ -161,63 +161,63 @@ public class FuzzTest {
             table.load(null, row);
             fail();
         } catch (IllegalStateException e) {
-            assertTrue(e.getMessage().indexOf("isn't fully specified") >= 0);
+            assertTrue(e.getMessage().contains("isn't fully specified"));
         }
 
         try {
             table.exists(null, row);
             fail();
         } catch (IllegalStateException e) {
-            assertTrue(e.getMessage().indexOf("isn't fully specified") >= 0);
+            assertTrue(e.getMessage().contains("isn't fully specified"));
         }
 
         try {
             table.delete(null, row);
             fail();
         } catch (IllegalStateException e) {
-            assertTrue(e.getMessage().indexOf("isn't fully specified") >= 0);
+            assertTrue(e.getMessage().contains("isn't fully specified"));
         }
 
         try {
             table.store(null, row);
             fail();
         } catch (IllegalStateException e) {
-            assertTrue(e.getMessage().indexOf("columns are unset") >= 0);
+            assertTrue(e.getMessage().contains("columns are unset"));
         }
 
         try {
             table.exchange(null, row);
             fail();
         } catch (IllegalStateException e) {
-            assertTrue(e.getMessage().indexOf("columns are unset") >= 0);
+            assertTrue(e.getMessage().contains("columns are unset"));
         }
 
         try {
             table.insert(null, row);
             fail();
         } catch (IllegalStateException e) {
-            assertTrue(e.getMessage().indexOf("columns are unset") >= 0);
+            assertTrue(e.getMessage().contains("columns are unset"));
         }
 
         try {
             table.replace(null, row);
             fail();
         } catch (IllegalStateException e) {
-            assertTrue(e.getMessage().indexOf("columns are unset") >= 0);
+            assertTrue(e.getMessage().contains("columns are unset"));
         }
 
         try {
             table.update(null, row);
             fail();
         } catch (IllegalStateException e) {
-            assertTrue(e.getMessage().indexOf("isn't fully specified") >= 0);
+            assertTrue(e.getMessage().contains("isn't fully specified"));
         }
 
         try {
             table.merge(null, row);
             fail();
         } catch (IllegalStateException e) {
-            assertTrue(e.getMessage().indexOf("isn't fully specified") >= 0);
+            assertTrue(e.getMessage().contains("isn't fully specified"));
         }
 
         RowScanner scanner = table.newRowScanner(null);
@@ -239,7 +239,7 @@ public class FuzzTest {
             updater.update();
             fail();
         } catch (IllegalStateException e) {
-            assertTrue(e.getMessage().indexOf("current") >= 0);
+            assertTrue(e.getMessage().contains("current"));
         }
         try {
             updater.update(null);
@@ -250,7 +250,7 @@ public class FuzzTest {
             updater.delete();
             fail();
         } catch (IllegalStateException e) {
-            assertTrue(e.getMessage().indexOf("current") >= 0);
+            assertTrue(e.getMessage().contains("current"));
         }
         try {
             updater.delete(null);
@@ -584,44 +584,43 @@ public class FuzzTest {
     static Type randomType(Random rnd) {
         int code = rnd.nextInt(27);
 
-        final Class clazz;
+        final Class clazz = switch (code) {
+            default -> throw new AssertionError();
 
-        switch (code) {
-        default: throw new AssertionError();
-        case 0: clazz = byte.class; break;
-        case 1: clazz = short.class; break;
-        case 2: clazz = int.class; break;
-        case 3: clazz = long.class; break;
+            case 0 -> byte.class;
+            case 1 -> short.class;
+            case 2 -> int.class;
+            case 3 -> long.class;
 
-        case 4: clazz = Byte.class; break;
-        case 5: clazz = Short.class; break;
-        case 6: clazz = Integer.class; break;
-        case 7: clazz = Long.class; break;
+            case 4 -> Byte.class;
+            case 5 -> Short.class;
+            case 6 -> Integer.class;
+            case 7 -> Long.class;
 
-        case 8: clazz = byte[].class; break;
-        case 9: clazz = short[].class; break;
-        case 10: clazz = int[].class; break;
-        case 11: clazz = long[].class; break;
+            case 8 -> byte[].class;
+            case 9 -> short[].class;
+            case 10 -> int[].class;
+            case 11 -> long[].class;
 
-        case 12: clazz = boolean.class; break;
-        case 13: clazz = float.class; break;
-        case 14: clazz = double.class; break;
-        case 15: clazz = char.class; break;
+            case 12 -> boolean.class;
+            case 13 -> float.class;
+            case 14 -> double.class;
+            case 15 -> char.class;
 
-        case 16: clazz = Boolean.class; break;
-        case 17: clazz = Float.class; break;
-        case 18: clazz = Double.class; break;
-        case 19: clazz = Character.class; break;
+            case 16 -> Boolean.class;
+            case 17 -> Float.class;
+            case 18 -> Double.class;
+            case 19 -> Character.class;
 
-        case 20: clazz = boolean[].class; break;
-        case 21: clazz = float[].class; break;
-        case 22: clazz = double[].class; break;
-        case 23: clazz = char[].class; break;
+            case 20 -> boolean[].class;
+            case 21 -> float[].class;
+            case 22 -> double[].class;
+            case 23 -> char[].class;
 
-        case 24: clazz = String.class; break;
-        case 25: clazz = BigInteger.class; break;
-        case 26: clazz = BigDecimal.class; break;
-        }
+            case 24 -> String.class;
+            case 25 -> BigInteger.class;
+            case 26 -> BigDecimal.class;
+        };
 
         boolean nullable = false;
         if (!clazz.isPrimitive()) {
@@ -636,107 +635,114 @@ public class FuzzTest {
         return new Type(code, clazz, nullable, unsigned);
     }
 
-    static class Type {
-        final int code;
-        final Class clazz;
-        final boolean nullable;
-        final boolean unsigned;
-
-        Type(int code, Class clazz, boolean nullable, boolean unsigned) {
-            this.code = code;
-            this.clazz = clazz;
-            this.nullable = nullable;
-            this.unsigned = unsigned;
-        }
-
+    record Type(int code, Class clazz, boolean nullable, boolean unsigned) {
         Object randomValue(Random rnd) {
             if (nullable && rnd.nextInt(5) == 0) {
                 return null;
             }
 
             switch (code) {
-            default: throw new AssertionError();
-            case 0: case 4: return (byte) rnd.nextInt();
-            case 1: case 5: return (short) rnd.nextInt();
-            case 2: case 6: return rnd.nextInt();
-            case 3: case 7: return rnd.nextLong();
-            case 12: case 16: return rnd.nextBoolean();
-            case 13: case 17: return rnd.nextFloat();
-            case 14: case 18: return rnd.nextDouble();
-            case 15: case 19: return randomChar(rnd);
+                default:
+                    throw new AssertionError();
+                case 0:
+                case 4:
+                    return (byte) rnd.nextInt();
+                case 1:
+                case 5:
+                    return (short) rnd.nextInt();
+                case 2:
+                case 6:
+                    return rnd.nextInt();
+                case 3:
+                case 7:
+                    return rnd.nextLong();
+                case 12:
+                case 16:
+                    return rnd.nextBoolean();
+                case 13:
+                case 17:
+                    return rnd.nextFloat();
+                case 14:
+                case 18:
+                    return rnd.nextDouble();
+                case 15:
+                case 19:
+                    return randomChar(rnd);
 
-            case 8: {
-                var bytes = new byte[rnd.nextInt(20)];
-                rnd.nextBytes(bytes);
-                return bytes;
-            }
-
-            case 9: {
-                var a = new short[rnd.nextInt(20)];
-                for (int i=0; i<a.length; i++) {
-                    a[i] = (short) rnd.nextInt();
+                case 8: {
+                    var bytes = new byte[rnd.nextInt(20)];
+                    rnd.nextBytes(bytes);
+                    return bytes;
                 }
-                return a;
-            }
 
-            case 10: {
-                var a = new int[rnd.nextInt(20)];
-                for (int i=0; i<a.length; i++) {
-                    a[i] = rnd.nextInt();
+                case 9: {
+                    var a = new short[rnd.nextInt(20)];
+                    for (int i = 0; i < a.length; i++) {
+                        a[i] = (short) rnd.nextInt();
+                    }
+                    return a;
                 }
-                return a;
-            }
 
-            case 11: {
-                var a = new long[rnd.nextInt(20)];
-                for (int i=0; i<a.length; i++) {
-                    a[i] = rnd.nextLong();
+                case 10: {
+                    var a = new int[rnd.nextInt(20)];
+                    for (int i = 0; i < a.length; i++) {
+                        a[i] = rnd.nextInt();
+                    }
+                    return a;
                 }
-                return a;
-            }
 
-            case 20: {
-                var a = new boolean[rnd.nextInt(20)];
-                for (int i=0; i<a.length; i++) {
-                    a[i] = rnd.nextBoolean();
+                case 11: {
+                    var a = new long[rnd.nextInt(20)];
+                    for (int i = 0; i < a.length; i++) {
+                        a[i] = rnd.nextLong();
+                    }
+                    return a;
                 }
-                return a;
-            }
 
-            case 21: {
-                var a = new float[rnd.nextInt(20)];
-                for (int i=0; i<a.length; i++) {
-                    a[i] = rnd.nextFloat();
+                case 20: {
+                    var a = new boolean[rnd.nextInt(20)];
+                    for (int i = 0; i < a.length; i++) {
+                        a[i] = rnd.nextBoolean();
+                    }
+                    return a;
                 }
-                return a;
-            }
 
-            case 22: {
-                var a = new double[rnd.nextInt(20)];
-                for (int i=0; i<a.length; i++) {
-                    a[i] = rnd.nextDouble();
+                case 21: {
+                    var a = new float[rnd.nextInt(20)];
+                    for (int i = 0; i < a.length; i++) {
+                        a[i] = rnd.nextFloat();
+                    }
+                    return a;
                 }
-                return a;
-            }
 
-            case 23: {
-                var a = new char[rnd.nextInt(20)];
-                for (int i=0; i<a.length; i++) {
-                    a[i] = (char) rnd.nextInt();
+                case 22: {
+                    var a = new double[rnd.nextInt(20)];
+                    for (int i = 0; i < a.length; i++) {
+                        a[i] = rnd.nextDouble();
+                    }
+                    return a;
                 }
-                return a;
-            }
 
-            case 24: {
-                var chars = new char[rnd.nextInt(20)];
-                for (int i=0; i<chars.length; i++) {
-                    chars[i] = randomChar(rnd);
+                case 23: {
+                    var a = new char[rnd.nextInt(20)];
+                    for (int i = 0; i < a.length; i++) {
+                        a[i] = (char) rnd.nextInt();
+                    }
+                    return a;
                 }
-                return new String(chars);
-            }
 
-            case 25: return RowTestUtils.randomBigInteger(rnd);
-            case 26: return RowTestUtils.randomBigDecimal(rnd);
+                case 24: {
+                    var chars = new char[rnd.nextInt(20)];
+                    for (int i = 0; i < chars.length; i++) {
+                        chars[i] = randomChar(rnd);
+                    }
+                    return new String(chars);
+                }
+
+                case 25:
+                    return RowTestUtils.randomBigInteger(rnd);
+                case 26:
+                    return RowTestUtils.randomBigDecimal(rnd);
 
             }
         }

@@ -660,8 +660,6 @@ public class IndexingTest {
         final long seed = 8675309;
         var rnd = new Random(seed);
 
-        var uniqueNames = new HashSet<String>();
-
         for (int i=0; i<fillAmount; i++) {
             var row = table1.newRow();
             setters1[0].invoke(row, i); // id

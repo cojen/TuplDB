@@ -17,8 +17,6 @@
 
 package org.cojen.tupl.core;
 
-import java.io.IOException;
-
 import org.cojen.tupl.*;
 
 /**

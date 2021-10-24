@@ -17,9 +17,6 @@
 
 package org.cojen.tupl.core;
 
-import java.util.*;
-import java.util.concurrent.TimeUnit;
-
 import org.junit.*;
 import static org.junit.Assert.*;
 

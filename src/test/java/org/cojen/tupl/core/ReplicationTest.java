@@ -355,7 +355,7 @@ public class ReplicationTest {
 
         fence();
 
-        assertEquals(null, rix.load(null, "hello".getBytes()));
+        assertNull(rix.load(null, "hello".getBytes()));
 
         try {
             lix.store(null, "hello".getBytes(), "world".getBytes());

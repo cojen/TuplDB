@@ -27,7 +27,6 @@ import static org.junit.Assert.assertNull;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -35,7 +34,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
 import org.cojen.tupl.*;
@@ -58,7 +56,7 @@ public class EnduranceTest {
     protected Index mIx;
 
     /**
-     * Regression test for a racecondition loading fragmented values into the cache
+     * Regression test for a race condition loading fragmented values into the cache
      */
     @Test
     public void loadFragmented() throws Exception {
@@ -85,7 +83,7 @@ public class EnduranceTest {
             // Use 10k values
             ByteBuffer valueBuffer = ByteBuffer.allocate(10 * 1024);
             for (long i = 0; i < maxRows; i++) {
-                // The key is exactly 8 bytes long and it is the row id.
+                // The key is exactly 8 bytes long, and it is the row id.
                 keyBuffer.clear();
                 keyBuffer.putLong(i);
                 // The first 8 bytes of the value is the row id. The rest of the 10k is 0.
@@ -268,7 +266,7 @@ public class EnduranceTest {
                         }
                     }
                 }
-                return Long.valueOf(tot);
+                return tot;
             };
 
             // Write some initial data.
@@ -483,7 +481,7 @@ public class EnduranceTest {
         void stop();
     }
 
-    abstract class AbstractWorker implements Worker {
+    abstract static class AbstractWorker implements Worker {
         private long mStartTimeMillis;
         private long mEndTimeMillis;
         private volatile boolean mRunning;

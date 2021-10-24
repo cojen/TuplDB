@@ -56,7 +56,7 @@ public class CloseTest {
         ix.close(); // harmless double close
 
         Index ix2 = mDb.openIndex("basic");
-        assertTrue(ix != ix2);
+        assertNotSame(ix, ix2);
 
         try {
             ix.store(null, "hello".getBytes(), "world".getBytes());
@@ -117,7 +117,7 @@ public class CloseTest {
         ix2.close();
 
         Index ix3 = mDb.openIndex("basic");
-        assertTrue(ix2 != ix3);
+        assertNotSame(ix2, ix3);
 
         fastAssertArrayEquals("world".getBytes(), ix3.load(null, "hello".getBytes()));
     }

@@ -38,8 +38,6 @@ import java.util.TreeMap;
 import java.util.function.Consumer;
 import java.util.function.LongConsumer;
 
-import org.cojen.tupl.TestUtils;
-
 import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.util.Runner;

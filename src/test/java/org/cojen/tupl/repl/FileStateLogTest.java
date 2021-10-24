@@ -153,21 +153,19 @@ public class FileStateLogTest {
         mLog.queryTerms(0, 20000, (prevTerm, trm, startPosition) -> {
             countRef[0]++;
             switch ((int) trm) {
-            default:
-                fail("unknown term: " + trm);
-                break;
-            case 10:
-                assertEquals(0, prevTerm);
-                assertEquals(1000, startPosition);
-                break;
-            case 11:
-                assertEquals(10, prevTerm);
-                assertEquals(2000, startPosition);
-                break;
-            case 15:
-                assertEquals(11, prevTerm);
-                assertEquals(3000, startPosition);
-                break;
+                default -> fail("unknown term: " + trm);
+                case 10 -> {
+                    assertEquals(0, prevTerm);
+                    assertEquals(1000, startPosition);
+                }
+                case 11 -> {
+                    assertEquals(10, prevTerm);
+                    assertEquals(2000, startPosition);
+                }
+                case 15 -> {
+                    assertEquals(11, prevTerm);
+                    assertEquals(3000, startPosition);
+                }
             }
         });
 
@@ -827,7 +825,7 @@ public class FileStateLogTest {
         // Define an empty term 2.
         assertTrue(mLog.defineTerm(1, 2, 100));
 
-        // Define term 3, with the expecation that term 1 will be extended.
+        // Define term 3, with the expectation that term 1 will be extended.
         assertTrue(mLog.defineTerm(1, 3, 200));
 
         // Continue with term 1.
@@ -848,7 +846,7 @@ public class FileStateLogTest {
         assertTrue(mLog.defineTerm(3, 4, 400));
         assertTrue(mLog.defineTerm(4, 5, 500));
 
-        // Define term 6, with the expecation that term 3 will be extended.
+        // Define term 6, with the expectation that term 3 will be extended.
         assertTrue(mLog.defineTerm(3, 6, 600));
 
         // Continue with term 3 (note that the write cannot extend past the end)

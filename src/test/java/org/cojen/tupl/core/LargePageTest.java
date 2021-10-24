@@ -49,7 +49,7 @@ public class LargePageTest {
     @Test
     public void deleteLast() throws Exception {
         // When the search vector is at the tail of a leaf node, deleting the last entry
-        // should't cause the search vector start position to overflow. All the magic numbers
+        // shouldn't cause the search vector start position to overflow. All the magic numbers
         // used in this test were determined through experimentation.
 
         var config = newConfig().checkpointRate(-1, null);

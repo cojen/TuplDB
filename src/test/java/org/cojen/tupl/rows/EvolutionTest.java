@@ -25,7 +25,6 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Random;
 import java.util.TreeMap;
 
@@ -487,28 +486,28 @@ public class EvolutionTest {
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
-            default: fail(); break;
-            case 2:
-                assertEquals("NaN", getA.invoke(row));
-                assertEquals("2", getB.invoke(row));
-                assertEquals("str2", getC.invoke(row));
-                assertEquals("200", getD.invoke(row));
-                assertEquals("123.456", getE.invoke(row));
-                break;
-            case 3:
-                assertEquals("Infinity", getA.invoke(row));
-                assertEquals("11", getB.invoke(row));
-                assertEquals("", getC.invoke(row));
-                assertEquals("300", getD.invoke(row));
-                assertEquals("-123.456", getE.invoke(row));
-                break;
-            case 4:
-                assertEquals("0.0", getA.invoke(row));
-                assertEquals(null, getB.invoke(row));
-                assertEquals("str4", getC.invoke(row));
-                assertEquals("-400", getD.invoke(row));
-                assertEquals("999999999999999.1", getE.invoke(row));
-                break;
+                default -> fail();
+                case 2 -> {
+                    assertEquals("NaN", getA.invoke(row));
+                    assertEquals("2", getB.invoke(row));
+                    assertEquals("str2", getC.invoke(row));
+                    assertEquals("200", getD.invoke(row));
+                    assertEquals("123.456", getE.invoke(row));
+                }
+                case 3 -> {
+                    assertEquals("Infinity", getA.invoke(row));
+                    assertEquals("11", getB.invoke(row));
+                    assertEquals("", getC.invoke(row));
+                    assertEquals("300", getD.invoke(row));
+                    assertEquals("-123.456", getE.invoke(row));
+                }
+                case 4 -> {
+                    assertEquals("0.0", getA.invoke(row));
+                    assertEquals(null, getB.invoke(row));
+                    assertEquals("str4", getC.invoke(row));
+                    assertEquals("-400", getD.invoke(row));
+                    assertEquals("999999999999999.1", getE.invoke(row));
+                }
             }
             count++;
         }
@@ -710,28 +709,28 @@ public class EvolutionTest {
         int count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
-            default: fail(); break;
-            case 2:
-                assertEquals(BigInteger.ZERO, getA.invoke(row));
-                assertEquals(new BigInteger("2"), getB.invoke(row));
-                assertEquals(new BigInteger("10"), getC.invoke(row));
-                assertEquals(BigInteger.ZERO, getD.invoke(row));
-                assertEquals(new BigInteger("123"), getE.invoke(row));
-                break;
-            case 3:
-                assertEquals(BigInteger.ZERO, getA.invoke(row));
-                assertEquals(new BigInteger("11"), getB.invoke(row));
-                assertEquals(BigInteger.ZERO, getC.invoke(row));
-                assertEquals(new BigInteger("300"), getD.invoke(row));
-                assertEquals(new BigInteger("-123"), getE.invoke(row));
-                break;
-            case 4:
-                assertEquals(BigInteger.ZERO, getA.invoke(row));
-                assertEquals(null, getB.invoke(row));
-                assertEquals(new BigInteger("-10"), getC.invoke(row));
-                assertEquals(new BigInteger("-400"), getD.invoke(row));
-                assertEquals(new BigInteger("999999999999999"), getE.invoke(row));
-                break;
+                default -> fail();
+                case 2 -> {
+                    assertEquals(BigInteger.ZERO, getA.invoke(row));
+                    assertEquals(new BigInteger("2"), getB.invoke(row));
+                    assertEquals(new BigInteger("10"), getC.invoke(row));
+                    assertEquals(BigInteger.ZERO, getD.invoke(row));
+                    assertEquals(new BigInteger("123"), getE.invoke(row));
+                }
+                case 3 -> {
+                    assertEquals(BigInteger.ZERO, getA.invoke(row));
+                    assertEquals(new BigInteger("11"), getB.invoke(row));
+                    assertEquals(BigInteger.ZERO, getC.invoke(row));
+                    assertEquals(new BigInteger("300"), getD.invoke(row));
+                    assertEquals(new BigInteger("-123"), getE.invoke(row));
+                }
+                case 4 -> {
+                    assertEquals(BigInteger.ZERO, getA.invoke(row));
+                    assertEquals(null, getB.invoke(row));
+                    assertEquals(new BigInteger("-10"), getC.invoke(row));
+                    assertEquals(new BigInteger("-400"), getD.invoke(row));
+                    assertEquals(new BigInteger("999999999999999"), getE.invoke(row));
+                }
             }
             count++;
         }
@@ -990,21 +989,21 @@ public class EvolutionTest {
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
-            default: fail(); break;
-            case 3:
-                assertEquals(BigDecimal.ZERO, getA.invoke(row));
-                assertEquals(new BigDecimal("11"), getB.invoke(row));
-                assertEquals(BigDecimal.ZERO, getC.invoke(row));
-                assertEquals(new BigDecimal("300"), getD.invoke(row));
-                assertEquals(new BigDecimal("-123.456"), getE.invoke(row));
-                break;
-            case 4:
-                assertEquals(BigDecimal.ZERO, getA.invoke(row));
-                assertEquals(null, getB.invoke(row));
-                assertEquals(new BigDecimal("-10"), getC.invoke(row));
-                assertEquals(new BigDecimal("-400"), getD.invoke(row));
-                assertEquals(new BigDecimal("999999999999999.1"), getE.invoke(row));
-                break;
+                default -> fail();
+                case 3 -> {
+                    assertEquals(BigDecimal.ZERO, getA.invoke(row));
+                    assertEquals(new BigDecimal("11"), getB.invoke(row));
+                    assertEquals(BigDecimal.ZERO, getC.invoke(row));
+                    assertEquals(new BigDecimal("300"), getD.invoke(row));
+                    assertEquals(new BigDecimal("-123.456"), getE.invoke(row));
+                }
+                case 4 -> {
+                    assertEquals(BigDecimal.ZERO, getA.invoke(row));
+                    assertEquals(null, getB.invoke(row));
+                    assertEquals(new BigDecimal("-10"), getC.invoke(row));
+                    assertEquals(new BigDecimal("-400"), getD.invoke(row));
+                    assertEquals(new BigDecimal("999999999999999.1"), getE.invoke(row));
+                }
             }
             count++;
         }
@@ -1043,28 +1042,28 @@ public class EvolutionTest {
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
-            default: fail(); break;
-            case 1:
-                assertEquals(new BigDecimal("123.9"), getA.invoke(row));
-                assertEquals(BigDecimal.ONE, getB.invoke(row));
-                assertEquals(new BigDecimal("8888888888888888888"), getC.invoke(row));
-                assertEquals(new BigDecimal("100"), getD.invoke(row));
-                assertEquals(new BigDecimal("0.000"), getE.invoke(row));
-                break;
-            case 2:
-                assertEquals(BigDecimal.ZERO, getA.invoke(row));
-                assertEquals(new BigDecimal("2"), getB.invoke(row));
-                assertEquals(new BigDecimal("10.9"), getC.invoke(row));
-                assertEquals(BigDecimal.ZERO, getD.invoke(row));
-                assertEquals(BigDecimal.ZERO, getE.invoke(row));
-                break;
-            case 4:
-                assertEquals(BigDecimal.ZERO, getA.invoke(row));
-                assertEquals(null, getB.invoke(row));
-                assertEquals(new BigDecimal("-10"), getC.invoke(row));
-                assertEquals(new BigDecimal("-400"), getD.invoke(row));
-                assertEquals(new BigDecimal("999999999999999.1"), getE.invoke(row));
-                break;
+                default -> fail();
+                case 1 -> {
+                    assertEquals(new BigDecimal("123.9"), getA.invoke(row));
+                    assertEquals(BigDecimal.ONE, getB.invoke(row));
+                    assertEquals(new BigDecimal("8888888888888888888"), getC.invoke(row));
+                    assertEquals(new BigDecimal("100"), getD.invoke(row));
+                    assertEquals(new BigDecimal("0.000"), getE.invoke(row));
+                }
+                case 2 -> {
+                    assertEquals(BigDecimal.ZERO, getA.invoke(row));
+                    assertEquals(new BigDecimal("2"), getB.invoke(row));
+                    assertEquals(new BigDecimal("10.9"), getC.invoke(row));
+                    assertEquals(BigDecimal.ZERO, getD.invoke(row));
+                    assertEquals(BigDecimal.ZERO, getE.invoke(row));
+                }
+                case 4 -> {
+                    assertEquals(BigDecimal.ZERO, getA.invoke(row));
+                    assertEquals(null, getB.invoke(row));
+                    assertEquals(new BigDecimal("-10"), getC.invoke(row));
+                    assertEquals(new BigDecimal("-400"), getD.invoke(row));
+                    assertEquals(new BigDecimal("999999999999999.1"), getE.invoke(row));
+                }
             }
             count++;
         }
@@ -1255,21 +1254,21 @@ public class EvolutionTest {
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
-            default: fail(); break;
-            case 2:
-                assertEquals(0, getA.invoke(row));
-                assertEquals(2, getB.invoke(row));
-                assertEquals(10, getC.invoke(row));
-                assertEquals(null, getD.invoke(row));
-                assertEquals(123, getE.invoke(row));
-                break;
-            case 3:
-                assertEquals(Integer.MAX_VALUE, getA.invoke(row));
-                assertEquals(11, getB.invoke(row));
-                assertEquals(0, getC.invoke(row));
-                assertEquals(300, getD.invoke(row));
-                assertEquals(-123, getE.invoke(row));
-                break;
+                default -> fail();
+                case 2 -> {
+                    assertEquals(0, getA.invoke(row));
+                    assertEquals(2, getB.invoke(row));
+                    assertEquals(10, getC.invoke(row));
+                    assertEquals(null, getD.invoke(row));
+                    assertEquals(123, getE.invoke(row));
+                }
+                case 3 -> {
+                    assertEquals(Integer.MAX_VALUE, getA.invoke(row));
+                    assertEquals(11, getB.invoke(row));
+                    assertEquals(0, getC.invoke(row));
+                    assertEquals(300, getD.invoke(row));
+                    assertEquals(-123, getE.invoke(row));
+                }
             }
             count++;
         }
@@ -1474,21 +1473,21 @@ public class EvolutionTest {
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
-            default: fail(); break;
-            case 2:
-                assertEquals(0.0f/0.0f, getA.invoke(row));
-                assertEquals(2f, getB.invoke(row));
-                assertEquals(10.9f, getC.invoke(row));
-                assertEquals(null, getD.invoke(row));
-                assertEquals(123.456f, getE.invoke(row));
-                break;
-            case 3:
-                assertEquals(1.0f/0.0f, getA.invoke(row));
-                assertEquals(11f, getB.invoke(row));
-                assertEquals(0f, getC.invoke(row));
-                assertEquals(300f, getD.invoke(row));
-                assertEquals(-123.456f, getE.invoke(row));
-                break;
+                default -> fail();
+                case 2 -> {
+                    assertEquals(0.0f / 0.0f, getA.invoke(row));
+                    assertEquals(2f, getB.invoke(row));
+                    assertEquals(10.9f, getC.invoke(row));
+                    assertEquals(null, getD.invoke(row));
+                    assertEquals(123.456f, getE.invoke(row));
+                }
+                case 3 -> {
+                    assertEquals(1.0f / 0.0f, getA.invoke(row));
+                    assertEquals(11f, getB.invoke(row));
+                    assertEquals(0f, getC.invoke(row));
+                    assertEquals(300f, getD.invoke(row));
+                    assertEquals(-123.456f, getE.invoke(row));
+                }
             }
             count++;
         }
@@ -1499,21 +1498,21 @@ public class EvolutionTest {
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
-            default: fail(); break;
-            case 2:
-                assertEquals(0.0f/0.0f, getA.invoke(row));
-                assertEquals(2f, getB.invoke(row));
-                assertEquals(10.9f, getC.invoke(row));
-                assertEquals(null, getD.invoke(row));
-                assertEquals(123.456f, getE.invoke(row));
-                break;
-            case 3:
-                assertEquals(1.0f/0.0f, getA.invoke(row));
-                assertEquals(11f, getB.invoke(row));
-                assertEquals(0f, getC.invoke(row));
-                assertEquals(300f, getD.invoke(row));
-                assertEquals(-123.456f, getE.invoke(row));
-                break;
+                default -> fail();
+                case 2 -> {
+                    assertEquals(0.0f / 0.0f, getA.invoke(row));
+                    assertEquals(2f, getB.invoke(row));
+                    assertEquals(10.9f, getC.invoke(row));
+                    assertEquals(null, getD.invoke(row));
+                    assertEquals(123.456f, getE.invoke(row));
+                }
+                case 3 -> {
+                    assertEquals(1.0f / 0.0f, getA.invoke(row));
+                    assertEquals(11f, getB.invoke(row));
+                    assertEquals(0f, getC.invoke(row));
+                    assertEquals(300f, getD.invoke(row));
+                    assertEquals(-123.456f, getE.invoke(row));
+                }
             }
             count++;
         }
@@ -1704,28 +1703,28 @@ public class EvolutionTest {
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
-            default: fail(); break;
-            case 2:
-                assertEquals(false, getA.invoke(row));
-                assertEquals(false, getB.invoke(row));
-                assertEquals(false, getC.invoke(row));
-                assertEquals(false, getD.invoke(row));
-                assertEquals(false, getE.invoke(row));
-                break;
-            case 3:
-                assertEquals(false, getA.invoke(row));
-                assertEquals(false, getB.invoke(row));
-                assertEquals(false, getC.invoke(row));
-                assertEquals(null, getD.invoke(row));
-                assertEquals(false, getE.invoke(row));
-                break;
-            case 4:
-                assertEquals(false, getA.invoke(row));
-                assertEquals(false, getB.invoke(row));
-                assertEquals(false, getC.invoke(row));
-                assertEquals(null, getD.invoke(row));
-                assertEquals(true, getE.invoke(row));
-                break;
+                default -> fail();
+                case 2 -> {
+                    assertEquals(false, getA.invoke(row));
+                    assertEquals(false, getB.invoke(row));
+                    assertEquals(false, getC.invoke(row));
+                    assertEquals(false, getD.invoke(row));
+                    assertEquals(false, getE.invoke(row));
+                }
+                case 3 -> {
+                    assertEquals(false, getA.invoke(row));
+                    assertEquals(false, getB.invoke(row));
+                    assertEquals(false, getC.invoke(row));
+                    assertEquals(null, getD.invoke(row));
+                    assertEquals(false, getE.invoke(row));
+                }
+                case 4 -> {
+                    assertEquals(false, getA.invoke(row));
+                    assertEquals(false, getB.invoke(row));
+                    assertEquals(false, getC.invoke(row));
+                    assertEquals(null, getD.invoke(row));
+                    assertEquals(true, getE.invoke(row));
+                }
             }
             count++;
         }
@@ -1736,21 +1735,21 @@ public class EvolutionTest {
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
-            default: fail(); break;
-            case 3:
-                assertEquals(false, getA.invoke(row));
-                assertEquals(false, getB.invoke(row));
-                assertEquals(false, getC.invoke(row));
-                assertEquals(null, getD.invoke(row));
-                assertEquals(false, getE.invoke(row));
-                break;
-            case 4:
-                assertEquals(false, getA.invoke(row));
-                assertEquals(false, getB.invoke(row));
-                assertEquals(false, getC.invoke(row));
-                assertEquals(null, getD.invoke(row));
-                assertEquals(true, getE.invoke(row));
-                break;
+                default -> fail();
+                case 3 -> {
+                    assertEquals(false, getA.invoke(row));
+                    assertEquals(false, getB.invoke(row));
+                    assertEquals(false, getC.invoke(row));
+                    assertEquals(null, getD.invoke(row));
+                    assertEquals(false, getE.invoke(row));
+                }
+                case 4 -> {
+                    assertEquals(false, getA.invoke(row));
+                    assertEquals(false, getB.invoke(row));
+                    assertEquals(false, getC.invoke(row));
+                    assertEquals(null, getD.invoke(row));
+                    assertEquals(true, getE.invoke(row));
+                }
             }
             count++;
         }
@@ -1761,21 +1760,21 @@ public class EvolutionTest {
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
-            default: fail(); break;
-            case 1:
-                assertEquals(true, getA.invoke(row));
-                assertEquals(true, getB.invoke(row));
-                assertEquals(true, getC.invoke(row));
-                assertEquals(true, getD.invoke(row));
-                assertEquals(true, getE.invoke(row));
-                break;
-            case 4:
-                assertEquals(false, getA.invoke(row));
-                assertEquals(false, getB.invoke(row));
-                assertEquals(false, getC.invoke(row));
-                assertEquals(null, getD.invoke(row));
-                assertEquals(true, getE.invoke(row));
-                break;
+                default -> fail();
+                case 1 -> {
+                    assertEquals(true, getA.invoke(row));
+                    assertEquals(true, getB.invoke(row));
+                    assertEquals(true, getC.invoke(row));
+                    assertEquals(true, getD.invoke(row));
+                    assertEquals(true, getE.invoke(row));
+                }
+                case 4 -> {
+                    assertEquals(false, getA.invoke(row));
+                    assertEquals(false, getB.invoke(row));
+                    assertEquals(false, getC.invoke(row));
+                    assertEquals(null, getD.invoke(row));
+                    assertEquals(true, getE.invoke(row));
+                }
             }
             count++;
         }
@@ -1889,21 +1888,21 @@ public class EvolutionTest {
         int count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
-            default: fail(); break;
-            case 1:
-                assertEquals(0.0, getA.invoke(row));
-                assertEquals("", getB.invoke(row));
-                assertEquals(BigInteger.ZERO, getC.invoke(row));
-                assertEquals(BigDecimal.ZERO, getD.invoke(row));
-                assertEquals(null, getE.invoke(row));
-                break;
-            case 2:
-                assertEquals(1.1, getA.invoke(row));
-                assertEquals("one", getB.invoke(row));
-                assertEquals(BigInteger.ONE, getC.invoke(row));
-                assertEquals(BigDecimal.ZERO, getD.invoke(row));
-                assertEquals(null, getE.invoke(row));
-                break;
+                default -> fail();
+                case 1 -> {
+                    assertEquals(0.0, getA.invoke(row));
+                    assertEquals("", getB.invoke(row));
+                    assertEquals(BigInteger.ZERO, getC.invoke(row));
+                    assertEquals(BigDecimal.ZERO, getD.invoke(row));
+                    assertEquals(null, getE.invoke(row));
+                }
+                case 2 -> {
+                    assertEquals(1.1, getA.invoke(row));
+                    assertEquals("one", getB.invoke(row));
+                    assertEquals(BigInteger.ONE, getC.invoke(row));
+                    assertEquals(BigDecimal.ZERO, getD.invoke(row));
+                    assertEquals(null, getE.invoke(row));
+                }
             }
             count++;
         }

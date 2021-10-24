@@ -85,7 +85,7 @@ public class TriggerTest {
         row.id(2);
         row.value("v2");
         mTable.store(null, row);
-        assertTrue(row == trigger.row);
+        assertSame(row, trigger.row);
         assertNull(trigger.oldValue);
         assertNotNull(trigger.newValue);
 
@@ -94,7 +94,7 @@ public class TriggerTest {
         row.id(1);
         row.value("hello");
         mTable.store(null, row);
-        assertTrue(row == trigger.row);
+        assertSame(row, trigger.row);
         assertNotNull(trigger.oldValue);
         assertNotNull(trigger.newValue);
         assertFalse(Arrays.equals(trigger.oldValue, trigger.newValue));
@@ -124,7 +124,7 @@ public class TriggerTest {
         row.id(2);
         row.value("v2");
         assertNull(mTable.exchange(null, row));
-        assertTrue(row == trigger.row);
+        assertSame(row, trigger.row);
         assertNull(trigger.oldValue);
         assertNotNull(trigger.newValue);
 
@@ -134,7 +134,7 @@ public class TriggerTest {
         row.value("hello");
         TestRow oldRow = mTable.exchange(null, row);
         assertEquals("v1", oldRow.value());
-        assertTrue(row == trigger.row);
+        assertSame(row, trigger.row);
         assertNotNull(trigger.oldValue);
         assertNotNull(trigger.newValue);
         assertFalse(Arrays.equals(trigger.oldValue, trigger.newValue));
@@ -165,7 +165,7 @@ public class TriggerTest {
         row.id(2);
         row.value("v2");
         assertTrue(mTable.insert(null, row));
-        assertTrue(row == trigger.row);
+        assertSame(row, trigger.row);
         assertNull(trigger.oldValue);
         assertNotNull(trigger.newValue);
 
@@ -206,7 +206,7 @@ public class TriggerTest {
         row.id(1);
         row.value("v1-b");
         assertTrue(mTable.replace(null, row));
-        assertTrue(row == trigger.row);
+        assertSame(row, trigger.row);
         assertNotNull(trigger.oldValue);
         assertNotNull(trigger.newValue);
         assertFalse(Arrays.equals(trigger.oldValue, trigger.newValue));
@@ -238,7 +238,7 @@ public class TriggerTest {
         row.extra("extra!");
         row.id(1);
         assertTrue(mTable.delete(null, row));
-        assertTrue(row == trigger.row);
+        assertSame(row, trigger.row);
         assertNotNull(trigger.oldValue);
         assertNull(trigger.newValue);
 
@@ -276,7 +276,7 @@ public class TriggerTest {
         assertNull(trigger.row);
         row.id(1);
         assertTrue(mTable.update(null, row));
-        assertTrue(row == trigger.row);
+        assertSame(row, trigger.row);
         assertNotNull(trigger.oldValue);
         assertNotNull(trigger.newValue);
         assertFalse(Arrays.equals(trigger.oldValue, trigger.newValue));
@@ -322,7 +322,7 @@ public class TriggerTest {
         row.id(1);
         row.extra("extra!");
         assertTrue(mTable.update(null, row));
-        assertTrue(row == trigger.row);
+        assertSame(row, trigger.row);
         assertNotNull(trigger.oldValue);
         assertNotNull(trigger.newValue);
         assertTrue(trigger.update);
@@ -372,7 +372,7 @@ public class TriggerTest {
         assertTrue(mTable.merge(null, row));
         assertEquals("v2", row.value());
         assertEquals("extra!", row.extra());
-        assertTrue(row == trigger.row);
+        assertSame(row, trigger.row);
         assertNotNull(trigger.oldValue);
         assertNotNull(trigger.newValue);
         assertFalse(trigger.update);

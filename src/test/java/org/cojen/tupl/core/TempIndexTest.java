@@ -57,7 +57,7 @@ public class TempIndexTest {
         Index temp = mDb.newTemporaryIndex();
         assertNull(temp.name());
         long id = temp.id();
-        assertTrue(temp == mDb.indexById(id));
+        assertSame(temp, mDb.indexById(id));
         temp.close();
         assertNull(mDb.indexById(id));
         temp = mDb.newTemporaryIndex();
@@ -174,18 +174,11 @@ public class TempIndexTest {
         Index temp = mDb.newTemporaryIndex();
 
         for (int i=0; i<10000; i++) {
-            Transaction txn;
-            switch (i % 3) {
-            default:
-                txn = null;
-                break;
-            case 1:
-                txn = Transaction.BOGUS;
-                break;
-            case 2:
-                txn = mDb.newTransaction(DurabilityMode.SYNC);
-                break;
-            }
+            Transaction txn = switch (i % 3) {
+                default -> null;
+                case 1 -> Transaction.BOGUS;
+                case 2 -> mDb.newTransaction(DurabilityMode.SYNC);
+            };
 
             temp.insert(txn, ("key-" + i).getBytes(), ("value-" + i).getBytes());
 

@@ -146,7 +146,7 @@ public class CheckpointFailureTest {
                 sleep(100);
             }
         }
-        assertTrue(ix != null);
+        assertNotNull(ix);
 
         mDb.checkpoint();
 
@@ -263,7 +263,7 @@ public class CheckpointFailureTest {
                 sleep(100);
             }
         }
-        assertTrue(ix != null);
+        assertNotNull(ix);
 
         mDb.checkpoint();
 

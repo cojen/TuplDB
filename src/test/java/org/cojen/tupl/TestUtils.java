@@ -76,7 +76,7 @@ public class TestUtils {
         org.junit.Assert.assertTrue(latch.await(seconds, TimeUnit.SECONDS));
     }
 
-    public static enum OpenMode {NORMAL, DIRECT, DIRECT_MAPPED};
+    public static enum OpenMode {NORMAL, DIRECT, DIRECT_MAPPED}
 
     public static Database newTempDatabase(Class context) throws IOException {
         return newTempDatabase(context, -1, OpenMode.NORMAL);
@@ -155,7 +155,7 @@ public class TestUtils {
     }
 
     public static void closeTempDatabases(Class context) {
-        TempFiles files = tempFilesFor(context);
+        TempFiles files = cTempFiles.get(context);
         if (files != null) {
             files.closeTempDatabases();
         }
@@ -342,7 +342,7 @@ public class TestUtils {
 
     private static File cSourceDir;
 
-    public static synchronized File findSourceDirectory() throws IOException {
+    public static synchronized File findSourceDirectory() {
         if (cSourceDir != null) {
             return cSourceDir;
         }
@@ -373,24 +373,15 @@ public class TestUtils {
         boolean tail = false;
 
         switch (matchDepth) {
-        case 0:
-            match = "org";
-            break;
-        case 1:
-            match = "cojen";
-            break;
-        case 2:
-            match = "tupl";
-            break;
-        case 3:
-            match = "core";
-            break;
-        case 4:
-            match = "LocalDatabase.java";
-            tail = true;
-            break;
-        default:
-            throw new IllegalStateException();
+            case 0 -> match = "org";
+            case 1 -> match = "cojen";
+            case 2 -> match = "tupl";
+            case 3 -> match = "core";
+            case 4 -> {
+                match = "LocalDatabase.java";
+                tail = true;
+            }
+            default -> throw new IllegalStateException();
         }
 
         var file = new File(dir, match);
@@ -424,7 +415,7 @@ public class TestUtils {
         return null;
     }
 
-    private static synchronized File createTempBaseFile(String prefix) throws IOException {
+    private static synchronized File createTempBaseFile(String prefix) {
         if (cBaseDir == null) {
             cBaseDir = new File(System.getProperty("java.io.tmpdir"), "tupl");
             cDeleteTempDir = cBaseDir.exists() ? null : cBaseDir;
@@ -458,33 +449,29 @@ public class TestUtils {
             }
 
             switch (mode) {
-            default:
-                throw new IllegalArgumentException();
-            case NORMAL:
-                config.directPageAccess(false);
-                break;
-            case DIRECT:
-                config.directPageAccess(true);
-                break;
-            case DIRECT_MAPPED:
-                org.junit.Assume.assumeTrue(MappedPageArray.isSupported());
-                int pageSize = 4096;
-                if (cacheSize < 0) {
-                    cacheSize = pageSize * 1000;
+                default -> throw new IllegalArgumentException();
+                case NORMAL -> config.directPageAccess(false);
+                case DIRECT -> config.directPageAccess(true);
+                case DIRECT_MAPPED -> {
+                    org.junit.Assume.assumeTrue(MappedPageArray.isSupported());
+                    int pageSize = 4096;
+                    if (cacheSize < 0) {
+                        cacheSize = pageSize * 1000;
+                    }
+                    File baseFile = newTempBaseFile();
+                    config.baseFile(baseFile);
+                    var dbFile = new File(baseFile.getParentFile(), baseFile.getName() + ".db");
+                    MappedPageArray pa = MappedPageArray.open
+                            (pageSize, (cacheSize + pageSize - 1) / pageSize, dbFile,
+                                    EnumSet.of(OpenOption.CREATE, OpenOption.MAPPED));
+                    config.dataPageArray(pa);
+                    config.directPageAccess(true);
+                    Database db = Database.open(config);
+                    synchronized (this) {
+                        mTempDatabases.put(db, baseFile);
+                    }
+                    return db;
                 }
-                File baseFile = newTempBaseFile();
-                config.baseFile(baseFile);
-                var dbFile = new File(baseFile.getParentFile(), baseFile.getName() + ".db");
-                MappedPageArray pa = MappedPageArray.open
-                    (pageSize, (cacheSize + pageSize - 1) / pageSize, dbFile,
-                     EnumSet.of(OpenOption.CREATE, OpenOption.MAPPED));
-                config.dataPageArray(pa);
-                config.directPageAccess(true);
-                Database db = Database.open(config);
-                synchronized (this) {
-                    mTempDatabases.put(db, baseFile);
-                }
-                return db;
             }
 
             return newTempDatabase(config);
@@ -541,7 +528,7 @@ public class TestUtils {
             return db;
         }
 
-        synchronized File newTempBaseFile() throws IOException {
+        synchronized File newTempBaseFile() {
             File baseFile = TestUtils.createTempBaseFile(mPrefix);
             mTempBaseFiles.add(baseFile);
             return baseFile;

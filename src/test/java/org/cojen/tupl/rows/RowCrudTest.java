@@ -67,7 +67,7 @@ public class RowCrudTest {
     public void basic() throws Exception {
         assertEquals(TestRow.class, mTable.rowType());
         assertTrue(mTable.isEmpty());
-        assertTrue(mTable == mDb.openTable(TestRow.class));
+        assertSame(mTable, mDb.openTable(TestRow.class));
 
         TestRow row = mTable.newRow();
         assertTrue(row.toString().endsWith("TestRow{}"));
@@ -279,12 +279,12 @@ public class RowCrudTest {
         }
 
         if (txn == null) {
-            // Auto-commit transaction releases the exlusive lock.
+            // Auto-commit transaction releases the exclusive lock.
             TestRow row = mTable.newRow();
             row.id(3);
             assertFalse(mTable.exists(null, row));
         } else {
-            // Regular transaction holds exlusive locks for rows that were deleted.
+            // Regular transaction holds exclusive locks for rows that were deleted.
             TestRow row = mTable.newRow();
             row.id(3);
             try {
@@ -409,13 +409,13 @@ public class RowCrudTest {
         final long checkId = 1003;
 
         if (txn == null) {
-            // Auto-commit transaction releases the exlusive lock.
+            // Auto-commit transaction releases the exclusive lock.
             TestRow row = mTable.newRow();
             row.id(checkId);
             mTable.load(null, row);
             assertEquals("s2-3x", row.str2());
         } else {
-            // Regular transaction holds exlusive locks for rows that were updated.
+            // Regular transaction holds exclusive locks for rows that were updated.
             TestRow row = mTable.newRow();
             row.id(checkId);
             try {
@@ -456,23 +456,11 @@ public class RowCrudTest {
             String rowStr = row.toString();
 
             switch (row.num1()) {
-            default: fail(); break;
-
-            case 1003:
-                assertTrue(rowStr.endsWith("TestRow{id=1003, num1=1003, str1=s1-3, str2=s2-3x}"));
-                break;
-
-            case 1004:
-                assertTrue(rowStr.endsWith("TestRow{id=4, num1=1004, str1=s1-4, str2=s2-4}"));
-                break;
-
-            case 1005:
-                assertTrue(rowStr.endsWith("TestRow{id=5, num1=1005, str1=s1-5, str2=s2-5x}"));
-                break;
-
-            case 1009:
-                assertTrue(rowStr.endsWith("TestRow{id=9, num1=1009, str1=s1-9, str2=s2-9x}"));
-                break;
+                default -> fail();
+                case 1003 -> assertTrue(rowStr.endsWith("TestRow{id=1003, num1=1003, str1=s1-3, str2=s2-3x}"));
+                case 1004 -> assertTrue(rowStr.endsWith("TestRow{id=4, num1=1004, str1=s1-4, str2=s2-4}"));
+                case 1005 -> assertTrue(rowStr.endsWith("TestRow{id=5, num1=1005, str1=s1-5, str2=s2-5x}"));
+                case 1009 -> assertTrue(rowStr.endsWith("TestRow{id=9, num1=1009, str1=s1-9, str2=s2-9x}"));
             }
         }
 

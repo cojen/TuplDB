@@ -312,7 +312,7 @@ public class CrudTest {
         byte[] value = "everyone".getBytes();
         byte[] value2 = "world".getBytes();
 
-        assertEquals(null, ix.exchange(null, key, value));
+        assertNull(ix.exchange(null, key, value));
         assertArrayEquals(value, ix.load(null, key));
 
         assertArrayEquals(value, ix.exchange(null, key, value2));
@@ -422,7 +422,7 @@ public class CrudTest {
             ix.store(Transaction.BOGUS, key, value);
             assertTrue(ix.replace(txn, key, value2));
             txn.exit();
-            // Bogus transaction artifact. Undo log entry was created earler.
+            // Bogus transaction artifact. Undo log entry was created earlier.
             assertNull(ix.load(txn, key));
 
             ix.store(Transaction.BOGUS, key, value);
@@ -483,7 +483,7 @@ public class CrudTest {
             ix.store(Transaction.BOGUS, key, value);
             assertTrue(ix.update(txn, key, value2));
             txn.exit();
-            // Bogus transaction artifact. Undo log entry was created earler.
+            // Bogus transaction artifact. Undo log entry was created earlier.
             assertNull(ix.load(txn, key));
 
             ix.store(Transaction.BOGUS, key, value);
@@ -547,7 +547,7 @@ public class CrudTest {
             ix.store(Transaction.BOGUS, key, value);
             assertTrue(ix.update(txn, key, value, value2));
             txn.exit();
-            // Bogus transaction artifact. Undo log entry was created earler.
+            // Bogus transaction artifact. Undo log entry was created earlier.
             assertNull(ix.load(txn, key));
 
             ix.store(Transaction.BOGUS, key, value);
@@ -602,7 +602,7 @@ public class CrudTest {
             ix.store(Transaction.BOGUS, key, value);
             assertTrue(ix.delete(txn, key));
             txn.exit();
-            // Bogus transaction artifact. Undo log entry was created earler.
+            // Bogus transaction artifact. Undo log entry was created earlier.
             assertNull(ix.load(txn, key));
 
             ix.store(Transaction.BOGUS, key, value);

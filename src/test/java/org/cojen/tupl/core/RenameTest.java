@@ -94,7 +94,7 @@ public class RenameTest {
         assertNull(mDb.findIndex("a"));
         ix1.close();
         Index ix3 = mDb.openIndex("a");
-        assertFalse(id == ix3.id());
+        assertNotEquals(id, ix3.id());
         ix1 = mDb.openIndex("c");
         assertEquals(id, ix1.id());
         assertEquals(ix1, mDb.indexById(id));

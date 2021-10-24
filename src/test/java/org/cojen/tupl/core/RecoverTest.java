@@ -96,7 +96,7 @@ public class RecoverTest {
                 try {
                     Transaction txn2 = mDb.newTransaction();
                     txn2.lockTimeout(60, TimeUnit.SECONDS);
-                    assertEquals(null, ix.load(txn2, key));
+                    assertNull(ix.load(txn2, key));
                 } catch (Throwable e) {
                     ex = e;
                 }
@@ -118,7 +118,7 @@ public class RecoverTest {
 
         Transaction txn2 = mDb.newTransaction();
         try {
-            assertEquals(null, ix.load(txn2, key));
+            assertNull(ix.load(txn2, key));
             fail();
         } catch (LockTimeoutException e) {
             // Still held as a result of stuck txn1.
@@ -214,7 +214,7 @@ public class RecoverTest {
 
         mDb = reopenTempDatabase(getClass(), mDb, mConfig);
         ix = mDb.openIndex("test");
-        assertEquals(null, ix.load(null, key));
+        assertNull(ix.load(null, key));
     }
 
     @Test
@@ -238,7 +238,7 @@ public class RecoverTest {
         mDb = reopenTempDatabase(getClass(), mDb, mConfig);
         ix = mDb.openIndex("test");
         assertArrayEquals(value, ix.load(null, k1));
-        assertEquals(null, ix.load(null, k2));
+        assertNull(ix.load(null, k2));
     }
 
     @Test
@@ -259,7 +259,7 @@ public class RecoverTest {
         mDb = reopenTempDatabase(getClass(), mDb, mConfig);
         ix = mDb.openIndex("test");
         assertArrayEquals(value, ix.load(null, k1));
-        assertEquals(null, ix.load(null, k2));
+        assertNull(ix.load(null, k2));
     }
 
     @Test
@@ -368,7 +368,7 @@ public class RecoverTest {
         if (commit) {
             assertArrayEquals("v2".getBytes(), ix.load(null, "b".getBytes()));
         } else {
-            assertEquals(null, ix.load(null, "b".getBytes()));
+            assertNull(ix.load(null, "b".getBytes()));
         }
         assertArrayEquals("v3".getBytes(), ix.load(null, "c".getBytes()));
     }
@@ -1075,7 +1075,7 @@ public class RecoverTest {
     @Test
     public void largeUndoMidCheckpoint() throws Exception {
         // Test commit of a transaction with a large undo log, with a checkpoint in the middle
-        // of it. This exersizes handling of the OP_COMMIT_TRUNCATE operation during recovery.
+        // of it. This exercises handling of the OP_COMMIT_TRUNCATE operation during recovery.
 
         final Index ix = mDb.openIndex("test");
         var rnd = new Random(3494847);
@@ -1153,7 +1153,7 @@ public class RecoverTest {
                 Thread.sleep(100);
             }
         }
-        assertTrue(ix != null);
+        assertNotNull(ix);
 
         db.checkpoint();
 
@@ -1190,7 +1190,7 @@ public class RecoverTest {
         // assert no lingering locks exist on the key after recovery
 
         Index ix2 = db2.findIndex("test");
-        assertTrue(ix2 != null);
+        assertNotNull(ix2);
 
         Transaction txn2 = db2.newTransaction();
         assertTrue(ix2.tryLockExclusive(txn2, "key1".getBytes(), 1).isHeld());
@@ -1229,7 +1229,7 @@ public class RecoverTest {
                 Thread.sleep(100);
             }
         }
-        assertTrue(ix1 != null);
+        assertNotNull(ix1);
 
         Index ix2 = db.openIndex("test2");
 
@@ -1265,18 +1265,15 @@ public class RecoverTest {
 
         var ex = new AtomicReference<Exception>();
 
-        Thread t1 = startAndWaitUntilBlocked(new Thread() {
-            @Override
-            public void run() {
-                // By suspending replication commit, the transaction commit will hang.
-                repl.suspendCommit(Thread.currentThread());
-                try {
-                    txn.commit();
-                } catch (Exception e) {
-                    ex.set(e);
-                }
+        Thread t1 = startAndWaitUntilBlocked(new Thread(() -> {
+            // By suspending replication commit, the transaction commit will hang.
+            repl.suspendCommit(Thread.currentThread());
+            try {
+                txn.commit();
+            } catch (Exception e) {
+                ex.set(e);
             }
-        });
+        }));
 
         // Force UndoLog to persist, and then close with an unfinished transaction.
         db.checkpoint();
@@ -1307,7 +1304,7 @@ public class RecoverTest {
                 Thread.sleep(100);
             }
         }
-        assertTrue(ix3 != null);
+        assertNotNull(ix3);
 
         // If ghosts remain, then indexes cannot be dropped.
         ix1 = db.openIndex("test1");

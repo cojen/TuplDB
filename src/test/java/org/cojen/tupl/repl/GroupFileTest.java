@@ -21,7 +21,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.InputStream;
 
 import java.net.InetSocketAddress;
 
@@ -139,7 +138,7 @@ public class GroupFileTest {
         assertEquals(peer, allPeers.iterator().next());
 
         Peer result = gf.addPeer(new InetSocketAddress("localhost", 1002), Role.NORMAL);
-        assertTrue(result == peer);
+        assertSame(result, peer);
         assertEquals(Role.NORMAL, peer.role());
 
         Peer peer2 = gf.addPeer(new InetSocketAddress("localhost", 1003), Role.STANDBY);
@@ -297,11 +296,10 @@ public class GroupFileTest {
         for (Peer p : allPeers) {
             if (p.equals(peer)) {
                 assertEquals(new InetSocketAddress("localhost", 1002), p.mAddress);
-                assertEquals(Role.NORMAL, p.role());
             } else {
                 assertEquals(new InetSocketAddress("localhost", 1003), p.mAddress);
-                assertEquals(Role.NORMAL, p.role());
             }
+            assertEquals(Role.NORMAL, p.role());
         }
     }
 
@@ -556,7 +554,7 @@ public class GroupFileTest {
             if (p.equals(p2)) {
                 assertFalse(found);
                 assertEquals(Role.OBSERVER, p.role());
-                assertTrue(p == p2);
+                assertSame(p, p2);
                 found = true;
             }
         }

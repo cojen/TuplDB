@@ -23,10 +23,6 @@ import static org.junit.Assume.*;
 
 import org.cojen.tupl.io.MappedPageArray;
 
-import org.cojen.tupl.*;
-
-import static org.cojen.tupl.TestUtils.*;
-
 /**
  * 
  *

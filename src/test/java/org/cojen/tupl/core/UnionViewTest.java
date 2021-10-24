@@ -52,7 +52,7 @@ public class UnionViewTest {
 
     @Test
     public void unlockCombine() throws Exception {
-        // Steping over entries with an updater should combine locks and then unlock them
+        // Stepping over entries with an updater should combine locks and then unlock them
         // together.
 
         final int keyCount = 10;

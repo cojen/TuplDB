@@ -23,7 +23,7 @@ import org.cojen.tupl.*;
 
 /**
  * Tests multiple threads inserting interleaving records adjacent to each other. This is a
- * regression test, which exersizes concurrent cursor frame binding, unbinding, and rebinding.
+ * regression test, which exercises concurrent cursor frame binding, unbinding, and rebinding.
  *
  * @author Brian S O'Neill
  */

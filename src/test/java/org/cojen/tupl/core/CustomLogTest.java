@@ -20,8 +20,6 @@ package org.cojen.tupl.core;
 import java.io.*;
 import java.util.*;
 
-import java.util.concurrent.locks.Lock;
-
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -125,28 +123,28 @@ public class CustomLogTest {
             mWriteHandler.redo(null, key);
             fail();
         } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage().indexOf("Invalid") >= 0);
+            assertTrue(e.getMessage().contains("Invalid"));
         }
 
         try {
             mWriteHandler.redo(Transaction.BOGUS, key);
             fail();
         } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage().indexOf("Invalid") >= 0);
+            assertTrue(e.getMessage().contains("Invalid"));
         }
 
         try {
             mWriteHandler.undo(null, key);
             fail();
         } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage().indexOf("Invalid") >= 0);
+            assertTrue(e.getMessage().contains("Invalid"));
         }
 
         try {
             mWriteHandler.undo(Transaction.BOGUS, key);
             fail();
         } catch (IllegalArgumentException e) {
-            assertTrue(e.getMessage().indexOf("Invalid") >= 0);
+            assertTrue(e.getMessage().contains("Invalid"));
         }
 
         txn.reset();
@@ -340,7 +338,7 @@ public class CustomLogTest {
         assertArrayEquals(message, mRecoveryHandler.mRedoMessages.get(0));
     }
 
-    class Handler implements CustomHandler {
+    static class Handler implements CustomHandler {
         List<byte[]> mRedoMessages = new ArrayList<>();
         long mRedoIndexId;
         byte[] mRedoKey;

@@ -19,10 +19,7 @@ package org.cojen.tupl.core;
 
 import static org.cojen.tupl.TestUtils.deleteTempDatabases;
 import static org.cojen.tupl.TestUtils.newTempDatabase;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -146,7 +143,7 @@ public class EvictionTest {
         if (autoLoad) {
             assertTrue(new String(evictionFilter.mValues.get(0)).startsWith("009998"));
         } else {
-            assertTrue(evictionFilter.mValues.get(0) == Cursor.NOT_LOADED);
+            assertSame(evictionFilter.mValues.get(0), Cursor.NOT_LOADED);
         }
         assertEquals(--recordCount, ix.count(null, null));
         

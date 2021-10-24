@@ -48,13 +48,13 @@ public class EventListenerTest {
         EventListener filtered = listener.observe(EventType.Category.DEBUG);
         filtered.notify(EventType.DEBUG, "hello");
         assertEquals("[DEBUG:hello:[]]", listener.mEvents.toString());
-        assertTrue(filtered == filtered.observe(EventType.Category.DEBUG));
+        assertSame(filtered, filtered.observe(EventType.Category.DEBUG));
 
         listener = new Listener();
         filtered = listener.observe(new EventType.Category[0]);
         filtered.notify(EventType.DEBUG, "hello");
         assertEquals("[]", listener.mEvents.toString());
-        assertTrue(filtered == filtered.observe(EventType.Category.DEBUG));
+        assertSame(filtered, filtered.observe(EventType.Category.DEBUG));
 
         listener = new Listener();
         filtered = listener.observe(EventType.Category.DEBUG, EventType.Category.DELETION);
@@ -76,21 +76,21 @@ public class EventListenerTest {
     @Test
     public void ignore() throws Exception {
         var listener = new Listener();
-        assertTrue(listener == listener.ignore(new EventType.Category[0]));
-        assertTrue(listener == listener.ignore(new Level[0]));
+        assertSame(listener, listener.ignore(new EventType.Category[0]));
+        assertSame(listener, listener.ignore(new Level[0]));
 
         EventListener filtered = listener.ignore(EventType.Category.DEBUG);
         filtered.notify(EventType.DEBUG, "hello");
         filtered.notify(EventType.CHECKPOINT_BEGIN, "world");
         assertEquals("[CHECKPOINT_BEGIN:world:[]]", listener.mEvents.toString());
-        assertTrue(filtered == filtered.ignore(EventType.Category.DEBUG));
+        assertSame(filtered, filtered.ignore(EventType.Category.DEBUG));
 
         listener = new Listener();
         filtered = listener.ignore(Level.DEBUG);
         filtered.notify(EventType.DEBUG, "hello");
         filtered.notify(EventType.CHECKPOINT_FAILED, "world");
         assertEquals("[CHECKPOINT_FAILED:world:[]]", listener.mEvents.toString());
-        assertTrue(filtered == filtered.ignore(Level.DEBUG));
+        assertSame(filtered, filtered.ignore(Level.DEBUG));
         listener.mEvents.clear();
         filtered = filtered.ignore(Level.WARNING);
         filtered.notify(EventType.DEBUG, "hello");

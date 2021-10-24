@@ -86,7 +86,7 @@ public class UnreplicatedTest {
             }
         }
 
-        assertTrue(ix != null);
+        assertNotNull(ix);
 
         ix.store(null, "hello".getBytes(), "world".getBytes());
 
@@ -161,7 +161,7 @@ public class UnreplicatedTest {
             }
         }
 
-        assertTrue(ix != null);
+        assertNotNull(ix);
 
         ix.store(null, "key1".getBytes(), "value1".getBytes());
 

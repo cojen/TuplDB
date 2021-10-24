@@ -18,7 +18,6 @@
 package org.cojen.tupl.util;
 
 import java.util.HashMap;
-import java.util.Map;
 import java.util.Random;
 
 import java.util.concurrent.TimeUnit;
@@ -172,7 +171,7 @@ public class WorkerTest {
         final int limit = max * 2;
         for (int i=1; i<=limit; i++) {
             Worker actual = group.enqueue(new Counter(total, i, 10));
-            assertTrue(actual != null);
+            assertNotNull(actual);
             if (w == null) {
                 w = actual;
             } else {

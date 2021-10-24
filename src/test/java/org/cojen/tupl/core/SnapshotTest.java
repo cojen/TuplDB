@@ -216,22 +216,20 @@ public class SnapshotTest {
             }
         };
 
-        var t = new Thread() {
-            public void run() {
-                try {
-                    var rnd = new Random(5198473);
-                    for (int i=0; i<1000000; i++) {
-                        int k = rnd.nextInt(1000000);
-                        String key = "key-" + k;
-                        String value = "rnd-" + k;
-                        index.store(null, key.getBytes(), value.getBytes());
-                    }
-                    slow.fast = true;
-                } catch (Exception e) {
-                    e.printStackTrace();
+        var t = new Thread(() -> {
+            try {
+                var rnd = new Random(5198473);
+                for (int i=0; i<1000000; i++) {
+                    int k = rnd.nextInt(1000000);
+                    String key = "key-" + k;
+                    String value = "rnd-" + k;
+                    index.store(null, key.getBytes(), value.getBytes());
                 }
+                slow.fast = true;
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-        };
+        });
         t.setDaemon(true);
         t.start();
 

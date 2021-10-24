@@ -18,7 +18,6 @@
 package org.cojen.tupl.core;
 
 import java.io.InputStream;
-import java.io.IOException;
 import java.io.OutputStream;
 
 import java.util.Arrays;
@@ -347,7 +346,7 @@ public class ValueAccessorTest {
     }
 
     @Test
-    public void extendExistingInlcudingInline() throws Exception {
+    public void extendExistingIncludingInline() throws Exception {
         // Test with various initial sizes which have some inline content encoded.
 
         extendExisting(513, 514, true);
@@ -358,7 +357,7 @@ public class ValueAccessorTest {
     }
 
     @Test
-    public void extendExistingInlcudingInlineCheckpoint() throws Exception {
+    public void extendExistingIncludingInlineCheckpoint() throws Exception {
         // Test with various initial sizes which have some inline content encoded.
 
         extendExisting(513, 514, true, true);

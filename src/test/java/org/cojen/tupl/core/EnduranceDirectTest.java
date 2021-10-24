@@ -17,8 +17,6 @@
 
 package org.cojen.tupl.core;
 
-import org.junit.Before;
-
 import org.cojen.tupl.*;
 
 /**

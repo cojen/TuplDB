@@ -649,7 +649,7 @@ public class FilteringTest {
         int count = 0;
         for (MyRow2 row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(row.name1(), row.name2());
-            assertTrue((row.id() & 1) == 0);
+            assertEquals(0, (row.id() & 1));
             assertEquals("name" + row.id(), row.name1());
             count++;
         }

@@ -379,7 +379,7 @@ public class MergeViewTest {
             if (v1 == null) {
                 assertNull(v2);
             } else {
-                assertTrue(v2 != null);
+                assertNotNull(v2);
                 assertEquals(v1, toString(v2));
             }
         }

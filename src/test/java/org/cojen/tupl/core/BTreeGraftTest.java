@@ -59,8 +59,8 @@ public class BTreeGraftTest {
         t1.store(null, k, v);
         t2.store(null, v, k);
 
-        BTree survivior = BTree.graftTempTree(t1, t2);
-        assertEquals(t1, survivior);
+        BTree survivor = BTree.graftTempTree(t1, t2);
+        assertEquals(t1, survivor);
 
         assertEquals(t1, mDatabase.indexById(t1.id()));
         assertNull(mDatabase.indexById(t2.id()));

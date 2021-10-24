@@ -40,24 +40,24 @@ public class LCacheTest {
         assertNull(cache.remove(1, this));
         assertNull(cache.add(e1));
         assertNull(cache.remove(2, this));
-        assertTrue(e1 == cache.remove(1, this));
+        assertSame(e1, cache.remove(1, this));
         assertNull(cache.remove(1, this));
 
         assertNull(cache.add(e1));
-        assertTrue(e1 == cache.add(e2));
+        assertSame(e1, cache.add(e2));
         assertNull(cache.remove(1, this));
-        assertTrue(e2 == cache.remove(2, this));
+        assertSame(e2, cache.remove(2, this));
         assertNull(cache.remove(2, this));
 
         assertNull(cache.add(e1));
         assertNull(cache.add(e1));
-        assertTrue(e1 == cache.remove(1, this));
+        assertSame(e1, cache.remove(1, this));
 
         TestEntry alt1 = new TestEntry(1, 1);
         assertNull(cache.add(e1));
-        assertTrue(alt1 == cache.add(alt1));
+        assertSame(alt1, cache.add(alt1));
         assertNull(cache.add(e1));
-        assertTrue(e1 == cache.remove(1, this));
+        assertSame(e1, cache.remove(1, this));
     }
 
     @Test
@@ -72,44 +72,44 @@ public class LCacheTest {
         assertNull(cache.add(e1));
         assertNull(cache.add(e2));
         assertNull(cache.add(e3));
-        assertTrue(e1 == cache.add(e4));
+        assertSame(e1, cache.add(e4));
         assertNull(cache.remove(1, this));
-        assertTrue(e2 == cache.remove(2, this));
-        assertTrue(e3 == cache.remove(3, this));
-        assertTrue(e4 == cache.remove(4, this));
+        assertSame(e2, cache.remove(2, this));
+        assertSame(e3, cache.remove(3, this));
+        assertSame(e4, cache.remove(4, this));
 
         assertNull(cache.add(e1));
         assertNull(cache.add(e2));
         assertNull(cache.add(e3));
-        assertTrue(e1 == cache.remove(1, this));
+        assertSame(e1, cache.remove(1, this));
         assertNull(cache.add(e4));
-        assertTrue(e2 == cache.add(e1));
-        assertTrue(e1 == cache.remove(1, this));
+        assertSame(e2, cache.add(e1));
+        assertSame(e1, cache.remove(1, this));
         assertNull(cache.remove(2, this));
-        assertTrue(e3 == cache.remove(3, this));
-        assertTrue(e4 == cache.remove(4, this));
+        assertSame(e3, cache.remove(3, this));
+        assertSame(e4, cache.remove(4, this));
 
         assertNull(cache.add(e1));
         assertNull(cache.add(e2));
         assertNull(cache.add(e3));
-        assertTrue(e2 == cache.remove(2, this));
+        assertSame(e2, cache.remove(2, this));
         assertNull(cache.add(e4));
-        assertTrue(e1 == cache.add(e2));
+        assertSame(e1, cache.add(e2));
         assertNull(cache.remove(1, this));
-        assertTrue(e2 == cache.remove(2, this));
-        assertTrue(e3 == cache.remove(3, this));
-        assertTrue(e4 == cache.remove(4, this));
+        assertSame(e2, cache.remove(2, this));
+        assertSame(e3, cache.remove(3, this));
+        assertSame(e4, cache.remove(4, this));
 
         assertNull(cache.add(e1));
         assertNull(cache.add(e2));
         assertNull(cache.add(e3));
-        assertTrue(e3 == cache.remove(3, this));
+        assertSame(e3, cache.remove(3, this));
         assertNull(cache.add(e4));
-        assertTrue(e1 == cache.add(e3));
+        assertSame(e1, cache.add(e3));
         assertNull(cache.remove(1, this));
-        assertTrue(e2 == cache.remove(2, this));
-        assertTrue(e3 == cache.remove(3, this));
-        assertTrue(e4 == cache.remove(4, this));
+        assertSame(e2, cache.remove(2, this));
+        assertSame(e3, cache.remove(3, this));
+        assertSame(e4, cache.remove(4, this));
     }
 
     @Test
@@ -123,8 +123,8 @@ public class LCacheTest {
         assertNull(cache.add(e2));
 
         assertNull(cache.remove(1, "foo"));
-        assertTrue(e2 == cache.remove(2, this));
-        assertTrue(e1 == cache.remove(1, this));
+        assertSame(e2, cache.remove(2, this));
+        assertSame(e1, cache.remove(1, this));
     }
 
     @Test
@@ -148,7 +148,7 @@ public class LCacheTest {
         assertNull(cache.add(e1));
         assertNull(cache.add(e2));
         assertNull(cache.add(e3));
-        assertTrue(e1 == cache.add(e4));
+        assertSame(e1, cache.add(e4));
         assertEquals(3, cache.size());
 
         assertNull(cache.maxSize(newMax));
@@ -156,10 +156,10 @@ public class LCacheTest {
         assertNull(cache.add(e1));
         assertEquals(4, cache.size());
 
-        assertTrue(e1 == cache.remove(1, this));
-        assertTrue(e2 == cache.remove(2, this));
-        assertTrue(e3 == cache.remove(3, this));
-        assertTrue(e4 == cache.remove(4, this));
+        assertSame(e1, cache.remove(1, this));
+        assertSame(e2, cache.remove(2, this));
+        assertSame(e3, cache.remove(3, this));
+        assertSame(e4, cache.remove(4, this));
         assertEquals(0, cache.size());
 
         for (int i=1; i<=newMax; i++) {
@@ -169,7 +169,7 @@ public class LCacheTest {
 
         TestEntry e = cache.add(new TestEntry(1000, 1000));
         assertNotNull(e);
-        assertTrue(e.mKey == 1);
+        assertEquals(1, e.mKey);
         assertEquals(newMax, cache.size());
     }
 
@@ -197,7 +197,7 @@ public class LCacheTest {
         TestEntry e = cache.maxSize(newMax);
 
         assertNotNull(e);
-        assertTrue(e.mKey == expect);
+        assertEquals(e.mKey, expect);
         expect++;
         assertEquals(999, cache.size());
 
@@ -206,7 +206,7 @@ public class LCacheTest {
             if (e == null) {
                 break;
             }
-            assertTrue(e.mKey == expect);
+            assertEquals(e.mKey, expect);
             expect++;
         }
 
@@ -215,7 +215,7 @@ public class LCacheTest {
         for (int i=0; i<newMax; i++) {
             e = cache.remove(expect, this);
             assertNotNull(e);
-            assertTrue(e.mKey == expect);
+            assertEquals(e.mKey, expect);
             expect++;
         }
 

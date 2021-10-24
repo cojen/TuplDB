@@ -161,7 +161,7 @@ public class SnapshotAbortTest {
         for (var exRef : exRefs) {
             var ex = (Throwable) exRef.get();
             assertTrue(ex instanceof IOException);
-            assertTrue(ex.getMessage().equals("Snapshot closed"));
+            assertEquals("Snapshot closed", ex.getMessage());
         }
     }
 }

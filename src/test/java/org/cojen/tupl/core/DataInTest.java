@@ -23,8 +23,6 @@ import java.util.Random;
 import org.junit.*;
 import static org.junit.Assert.*;
 
-import org.cojen.tupl.*;
-
 import static org.cojen.tupl.TestUtils.*;
 
 /**

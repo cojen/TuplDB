@@ -21,7 +21,6 @@ import java.io.File;
 import java.io.IOException;
 
 import java.net.ServerSocket;
-import java.net.SocketAddress;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -604,7 +603,7 @@ public class DatabaseReplicatorTest {
     }
 
     private void prepareTransfer(boolean prepareCommit) throws Exception {
-        // Prepared transaction should be transfered to replica and finish.
+        // Prepared transaction should be transferred to replica and finish.
 
         var dbQueue = new LinkedBlockingQueue<Database>();
         var txnQueue = new LinkedBlockingQueue<Transaction>();
@@ -713,7 +712,7 @@ public class DatabaseReplicatorTest {
 
     @Test
     public void prepareTransferPingPong() throws Exception {
-        // Prepared transaction should be transfered to replica, back to old leader, and then
+        // Prepared transaction should be transferred to replica, back to old leader, and then
         // finish.
 
         var dbQueue = new LinkedBlockingQueue<Database>();

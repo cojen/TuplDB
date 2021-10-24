@@ -129,7 +129,7 @@ public class ContendedLockTest {
         Transaction txn = mDb.newTransaction();
         ix.store(txn, key, null);
 
-        assertEquals(null, ix.load(Transaction.BOGUS, key));
+        assertNull(ix.load(Transaction.BOGUS, key));
 
         try {
             ix.load(null, key);
@@ -166,14 +166,14 @@ public class ContendedLockTest {
         }
 
         txn2.lockMode(LockMode.READ_UNCOMMITTED);
-        assertEquals(null, ix.load(txn2, key));
+        assertNull(ix.load(txn2, key));
 
         txn2.lockMode(LockMode.UNSAFE);
-        assertEquals(null, ix.load(txn2, key));
+        assertNull(ix.load(txn2, key));
 
         txn.commit();
 
-        assertEquals(null, ix.load(null, key));
+        assertNull(ix.load(null, key));
     }
 
     @Test
@@ -189,7 +189,7 @@ public class ContendedLockTest {
         ix.lockExclusive(txn, key);
         ix.store(Transaction.BOGUS, key, null);
 
-        assertEquals(null, ix.load(Transaction.BOGUS, key));
+        assertNull(ix.load(Transaction.BOGUS, key));
 
         try {
             ix.load(null, key);
@@ -226,14 +226,14 @@ public class ContendedLockTest {
         }
 
         txn2.lockMode(LockMode.READ_UNCOMMITTED);
-        assertEquals(null, ix.load(txn2, key));
+        assertNull(ix.load(txn2, key));
 
         txn2.lockMode(LockMode.UNSAFE);
-        assertEquals(null, ix.load(txn2, key));
+        assertNull(ix.load(txn2, key));
 
         txn.commit();
 
-        assertEquals(null, ix.load(null, key));
+        assertNull(ix.load(null, key));
     }
 
     @Test
@@ -291,30 +291,30 @@ public class ContendedLockTest {
 
         Updater u = start(ix, key, null, noGhost);
 
-        assertEquals(null, ix.load(null, key));
+        assertNull(ix.load(null, key));
 
         ix.store(null, key, value1);
         u = start(ix, key, null, noGhost);
         Transaction txn2 = mDb.newTransaction();
-        assertEquals(null, ix.load(txn2, key));
+        assertNull(ix.load(txn2, key));
         txn2.reset();
 
         ix.store(null, key, value1);
         u = start(ix, key, null, noGhost);
         txn2.lockMode(LockMode.UPGRADABLE_READ);
-        assertEquals(null, ix.load(txn2, key));
+        assertNull(ix.load(txn2, key));
         txn2.reset();
 
         ix.store(null, key, value1);
         u = start(ix, key, null, noGhost);
         txn2.lockMode(LockMode.REPEATABLE_READ);
-        assertEquals(null, ix.load(txn2, key));
+        assertNull(ix.load(txn2, key));
         txn2.reset();
 
         ix.store(null, key, value1);
         u = start(ix, key, null, noGhost);
         txn2.lockMode(LockMode.READ_COMMITTED);
-        assertEquals(null, ix.load(txn2, key));
+        assertNull(ix.load(txn2, key));
         txn2.reset();
     }
 

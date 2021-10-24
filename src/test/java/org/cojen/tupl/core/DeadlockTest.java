@@ -26,7 +26,6 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
-import static org.cojen.tupl.TestUtils.sleep;
 import static org.cojen.tupl.TestUtils.startAndWaitUntilBlocked;
 
 /**
@@ -164,7 +163,7 @@ public class DeadlockTest {
                     assertTrue(mExpectDeadlock);
                 }
             }
-        };
+        }
 
         // All three threads must be waiting for a deadlock to occur. As soon
         // as one times out, the rest can proceed because the dependency cycle

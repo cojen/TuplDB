@@ -1508,7 +1508,7 @@ public class LockTest {
                         fail("Unexpected exception " + e);
                     }
                 });
-            };
+            }
 
             final var reversedKeys = new ArrayList<byte[]>(keys);
             Collections.reverse(reversedKeys);
@@ -2005,7 +2005,7 @@ public class LockTest {
         locker.doUnlock();
         assertEquals(UNOWNED, locker.lockCheck(0, k1));
 
-        // This pairing of acquire and upgrade works because its for the same lock, immediately
+        // This pairing of acquire and upgrade works because it's for the same lock, immediately
         // upgraded.
         assertEquals(ACQUIRED, locker.doLockUpgradable(0, k1, -1));
         assertEquals(UPGRADED, locker.doLockExclusive(0, k1, -1));
@@ -2725,7 +2725,7 @@ public class LockTest {
     }
 
     @Test
-    public void uponLockExclusivee() throws Throwable {
+    public void uponLockExclusive() throws Throwable {
         Thread main = Thread.currentThread();
         var locker = new Locker(mManager);
         var ex = new AtomicReference<Throwable>();
@@ -2855,15 +2855,9 @@ public class LockTest {
         var t = new Thread(() -> {
             LockTest.sleep(delayMillis);
             switch (type) {
-            default:
-                locker.doUnlock();
-                break;
-            case 1:
-                locker.doUnlockToShared();
-                break;
-            case 2:
-                locker.doUnlockToUpgradable();
-                break;
+                default -> locker.doUnlock();
+                case 1 -> locker.doUnlockToShared();
+                case 2 -> locker.doUnlockToUpgradable();
             }
         });
 
@@ -2895,24 +2889,16 @@ public class LockTest {
                                          final long indexId, final byte[] key,
                                          final int type)
     {
-        return mExecutor.submit(new Callable<LockResult>() {
-            public LockResult call() throws Exception {
-                LockResult result;
-                synchronized (locker) {
-                    switch (type) {
-                    default:
-                        result = locker.doTryLockShared(indexId, key, MEDIUM_TIMEOUT);
-                        break;
-                    case 1:
-                        result = locker.doTryLockUpgradable(indexId, key, MEDIUM_TIMEOUT);
-                        break;
-                    case 2:
-                        result = locker.doTryLockExclusive(indexId, key, MEDIUM_TIMEOUT);
-                        break;
-                    }
-                }
-                return result;
+        return mExecutor.submit(() -> {
+            LockResult result;
+            synchronized (locker) {
+                result = switch (type) {
+                    default -> locker.doTryLockShared(indexId, key, MEDIUM_TIMEOUT);
+                    case 1 -> locker.doTryLockUpgradable(indexId, key, MEDIUM_TIMEOUT);
+                    case 2 -> locker.doTryLockExclusive(indexId, key, MEDIUM_TIMEOUT);
+                };
             }
+            return result;
         });
     }
 }

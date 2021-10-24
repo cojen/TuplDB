@@ -114,11 +114,10 @@ public class ReductionTest {
                     if (hasEqualComponent(op2)) {
                         if (descendingOperator(op1) == op2) {
                             assertEquals(~OP_EQ, result);
-                            handled++;
                         } else {
                             assertTrue(op1 == OP_EQ || op2 == OP_EQ);
-                            handled++;
                         }
+                        handled++;
                     } else {
                         if (op1 == OP_EQ) {
                             assertEquals(Integer.MAX_VALUE, result);
@@ -146,11 +145,10 @@ public class ReductionTest {
                     } else {
                         if (descendingOperator(op1) == op2) {
                             assertEquals(Integer.MAX_VALUE, result);
-                            handled++;
                         } else {
                             assertTrue(op1 == OP_NE || op2 == OP_NE);
-                            handled++;
                         }
+                        handled++;
                     }
                 }
             }
@@ -219,12 +217,12 @@ public class ReductionTest {
             @Override
             public void visit(ColumnToArgFilter filter) {
                 switch (filter.operator()) {
-                case OP_EQ: result = colValue == argValue; break;
-                case OP_NE: result = colValue != argValue; break;
-                case OP_LT: result = colValue < argValue; break;
-                case OP_GE: result = colValue >= argValue; break;
-                case OP_GT: result = colValue > argValue; break;
-                case OP_LE: result = colValue <= argValue; break;
+                    case OP_EQ -> result = colValue == argValue;
+                    case OP_NE -> result = colValue != argValue;
+                    case OP_LT -> result = colValue < argValue;
+                    case OP_GE -> result = colValue >= argValue;
+                    case OP_GT -> result = colValue > argValue;
+                    case OP_LE -> result = colValue <= argValue;
                 }
             }
         };

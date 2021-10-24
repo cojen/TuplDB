@@ -258,12 +258,12 @@ public class NormalizeTest {
                 int argValue = argValues[filter.argument()];
 
                 switch (filter.operator()) {
-                case OP_EQ: result = colValue == argValue; break;
-                case OP_NE: result = colValue != argValue; break;
-                case OP_LT: result = colValue < argValue; break;
-                case OP_GE: result = colValue >= argValue; break;
-                case OP_GT: result = colValue > argValue; break;
-                case OP_LE: result = colValue <= argValue; break;
+                    case OP_EQ -> result = colValue == argValue;
+                    case OP_NE -> result = colValue != argValue;
+                    case OP_LT -> result = colValue < argValue;
+                    case OP_GE -> result = colValue >= argValue;
+                    case OP_GT -> result = colValue > argValue;
+                    case OP_LE -> result = colValue <= argValue;
                 }
             }
         };

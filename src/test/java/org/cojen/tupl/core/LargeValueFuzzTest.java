@@ -109,7 +109,7 @@ public class LargeValueFuzzTest {
                     error = e;
                 }
             }
-        };
+        }
 
         // Base seed. Each thread gets a different seed and stores into a separate index. The
         // threads shouldn't interfere with each other.

@@ -98,13 +98,7 @@ public class RegistryTest {
             } catch (UnmodifiableViewException e) {
             }
 
-            int compare;
-            {
-                // Unsigned comparison.
-                long a = ix1.id() + Long.MIN_VALUE;
-                long b = ix2.id() + Long.MIN_VALUE;
-                compare = (a < b) ? -1 : ((a == b) ? 0 : 1);
-            }
+            int compare = Long.compareUnsigned(ix1.id(), ix2.id());
 
             Cursor c = registry.newCursor(null);
             c.first();

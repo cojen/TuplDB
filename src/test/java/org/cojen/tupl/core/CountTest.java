@@ -17,7 +17,6 @@
 
 package org.cojen.tupl.core;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 
@@ -75,7 +74,7 @@ public class CountTest {
         });
     }
 
-    static enum Mode {
+    enum Mode {
         NO_CHECKPOINTS, EXPLICIT_CHECKPOINTS, AUTO_CHECKPOINTS
     }
 
