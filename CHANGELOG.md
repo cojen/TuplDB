@@ -3,6 +3,7 @@ Changelog
 
 v1.5.3.4
 --------
+* Fix deadlock during compaction caused by releasing the wrong node latch.
 * Don't reset checkpoint duration stat when thresholds aren't met.
 
 v1.5.3.3 (2021-10-03)

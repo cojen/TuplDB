@@ -4853,7 +4853,7 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
     private boolean compactInternalNode(long highestNodeId, CursorFrame frame) throws IOException {
         Node node = frame.acquireShared();
         if (node.mSplit != null) {
-            mTree.finishSplitShared(frame, node);
+            node = mTree.finishSplitShared(frame, node);
         }
         boolean result;
         if (!node.isInternal() || frame.mNodePos >= node.highestInternalPos()) {
