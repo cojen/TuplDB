@@ -441,6 +441,7 @@ public class IndexingTest {
                 nameTable = table2.viewAlternateKey("name");
                 numTable = table2.viewSecondaryIndex("num");
             } catch (IllegalStateException e) {
+                assertTrue(e.getMessage().contains("not found"));
             }
             if (nameTable != null && numTable != null) {
                 break;
@@ -610,6 +611,7 @@ public class IndexingTest {
             try {
                 nameTable = table2.viewSecondaryIndex("name");
             } catch (IllegalStateException e) {
+                assertTrue(e.getMessage().contains("not found"));
             }
             if (nameTable != null) {
                 break;
@@ -681,6 +683,7 @@ public class IndexingTest {
             try {
                 numTable = table2.viewSecondaryIndex("num");
             } catch (IllegalStateException e) {
+                assertTrue(e.getMessage().contains("not found"));
             }
             if (numTable != null) {
                 break;
@@ -700,6 +703,7 @@ public class IndexingTest {
             try {
                 replicaNumTable = replicaTable.viewSecondaryIndex("num");
             } catch (IllegalStateException e) {
+                assertTrue(e.getMessage().contains("not found"));
             }
             if (replicaNumTable != null) {
                 break;

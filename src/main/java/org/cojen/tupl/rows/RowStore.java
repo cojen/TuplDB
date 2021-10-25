@@ -572,17 +572,19 @@ public class RowStore {
 
         // Must launch from a separate thread because locks are held by this thread until the
         // transaction finishes.
-        Runner.start(() -> doNotifySchema(indexId));
-    }
-
-    private void doNotifySchema(long indexId) {
-        try {
-            Index ix = mDatabase.indexById(indexId);
-            // FIXME: Sometimes ix is null even when database claims to still be open.
-            examineSecondaries(tableManager(ix));
-        } catch (Throwable e) {
-            uncaught(e);
-        }
+        Runner.start(() -> {
+            try {
+                Index ix;
+                while ((ix = mDatabase.indexById(indexId)) == null) {
+                    // FIXME: Sometimes ix is null due to an unknown race condition.
+                    System.err.println("notifySchema: index not found: " + indexId);
+                    Thread.sleep(100);
+                }
+                examineSecondaries(tableManager(ix));
+            } catch (Throwable e) {
+                uncaught(e);
+            }
+        });
     }
 
     /**
