@@ -353,13 +353,20 @@ public class TestUtils {
             throw new IllegalStateException("Not a directory: " + dir);
         }
 
-        do {
+
+        while (true) {
+            File parent = dir.getParentFile();
+            if (parent == null) {
+                // Don't search the root directory.
+                break;
+            }
             File found = findSourceDirectory(visited, dir, 0);
             if (found != null) {
                 cSourceDir = found;
                 return found;
             }
-        } while ((dir = dir.getParentFile()) != null);
+            dir = parent;
+        }
 
         return null;
     }
