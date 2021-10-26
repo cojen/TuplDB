@@ -26,6 +26,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.TreeMap;
 
+import java.util.concurrent.TimeUnit;
+
 import org.cojen.tupl.repl.ReplicatorConfig;
 
 import org.junit.*;
@@ -334,6 +336,7 @@ public class CursorRegisterTest {
         var config = new DatabaseConfig()
             .directPageAccess(false)
             .durabilityMode(DurabilityMode.NO_FLUSH)
+            .lockTimeout(5, TimeUnit.SECONDS)
             .replicate(replConfig);
 
         Database leaderDb = newTempDatabase(getClass(), config);
