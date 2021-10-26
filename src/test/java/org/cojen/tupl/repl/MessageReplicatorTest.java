@@ -588,5 +588,7 @@ public class MessageReplicatorTest {
             assertTrue(highPosition <= writer.waitForCommit(highPosition, COMMIT_TIMEOUT_NANOS));
             TestUtils.fastAssertArrayEquals(message, replica.readMessage());
         }
+
+        scheduler.shutdown();
     }
 }
