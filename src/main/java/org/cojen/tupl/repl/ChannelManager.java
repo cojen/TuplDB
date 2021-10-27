@@ -50,6 +50,8 @@ import java.util.zip.CRC32C;
 import javax.net.ServerSocketFactory;
 import javax.net.SocketFactory;
 
+import org.cojen.tupl.core.Scheduler;
+
 import org.cojen.tupl.util.Latch;
 
 import static org.cojen.tupl.io.Utils.closeQuietly;

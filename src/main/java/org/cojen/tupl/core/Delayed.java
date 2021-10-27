@@ -15,7 +15,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.repl;
+package org.cojen.tupl.core;
 
 import org.cojen.tupl.io.Utils;
 
@@ -24,10 +24,10 @@ import org.cojen.tupl.io.Utils;
  *
  * @author Brian S O'Neill
  */
-abstract class Delayed implements Comparable<Delayed>, Runnable {
+public abstract class Delayed implements Comparable<Delayed>, Runnable {
     protected long mCounter;
 
-    Delayed(long counter) {
+    public Delayed(long counter) {
         mCounter = counter;
     }
 

@@ -15,7 +15,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.repl;
+package org.cojen.tupl.core;
 
 import java.util.Random;
 

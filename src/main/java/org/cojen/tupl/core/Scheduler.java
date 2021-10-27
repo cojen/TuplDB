@@ -15,7 +15,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.repl;
+package org.cojen.tupl.core;
 
 import java.util.PriorityQueue;
 
@@ -28,17 +28,17 @@ import java.util.concurrent.RejectedExecutionException;
  *
  * @author Brian S O'Neill
  */
-final class Scheduler {
+public final class Scheduler {
     private final ExecutorService mExecutor;
     private final PriorityQueue<Delayed> mDelayed;
 
     private boolean mRunning;
 
-    Scheduler() {
+    public Scheduler() {
         this(Executors.newCachedThreadPool());
     }
 
-    Scheduler(ExecutorService executor) {
+    public Scheduler(ExecutorService executor) {
         if (executor == null) {
             throw new IllegalArgumentException();
         }
