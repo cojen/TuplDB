@@ -34,6 +34,20 @@ public final class Scheduler {
 
     private boolean mRunning;
 
+    private static Scheduler cDaemon;
+
+    public static synchronized Scheduler daemon() {
+        if (cDaemon == null) {
+            cDaemon = new Scheduler(Executors.newCachedThreadPool(r -> {
+                var t = new Thread(r);
+                t.setDaemon(true);
+                return t;
+            }));
+        }
+
+        return cDaemon;
+    }
+
     public Scheduler() {
         this(Executors.newCachedThreadPool());
     }

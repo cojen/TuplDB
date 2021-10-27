@@ -100,7 +100,7 @@ final class TempFileManager implements CauseCloseable, ShutdownHook {
             c = mFiles.remove(file);
         }
         Utils.closeQuietly(c);
-        file.delete();
+        delete(file, 1);
     }
 
     @Override
@@ -129,7 +129,7 @@ final class TempFileManager implements CauseCloseable, ShutdownHook {
                 Utils.closeQuietly(c, cause);
             }
             for (File f : files.keySet()) {
-                f.delete();
+                delete(f, 1);
             }
         }
     }
@@ -137,5 +137,12 @@ final class TempFileManager implements CauseCloseable, ShutdownHook {
     @Override
     public void shutdown() {
         close();
+    }
+
+    private void delete(File file, long delay) {
+        if (!file.delete()) {
+            // Keep trying.
+            Scheduler.daemon().schedule(() -> delete(file, delay * 2), delay);
+        }
     }
 }
