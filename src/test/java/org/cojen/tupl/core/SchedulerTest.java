@@ -68,14 +68,14 @@ public class SchedulerTest {
         task.runCheck();
 
         task = new Task();
-        long start = System.currentTimeMillis();
-        assertTrue(mScheduler.schedule(task, 100));
+        long start = System.nanoTime();
+        assertTrue(mScheduler.scheduleMillis(task, 100));
         task.runCheck();
-        long delay = System.currentTimeMillis() - start;
-        assertTrue("" + delay, delay >= 100 && delay <= 500);
+        long delayMillis = (System.nanoTime() - start) / 1_000_000L;
+        assertTrue("" + delayMillis, delayMillis >= 100 && delayMillis <= 1000);
 
         task = new Task();
-        assertTrue(mScheduler.schedule(task, 100));
+        assertTrue(mScheduler.scheduleMillis(task, 100));
         mScheduler.shutdown();
         try {
             task.runCheck();
@@ -106,15 +106,15 @@ public class SchedulerTest {
 
         for (int i=0; i<tasks.length; i++) {
             long delay = rnd.nextInt(1000);
-            tasks[i].expectedTime = System.currentTimeMillis() + delay;
-            mScheduler.schedule(tasks[i], delay);
+            tasks[i].expectedTime = System.nanoTime() + delay * 1_000_000L;
+            mScheduler.scheduleMillis(tasks[i], delay);
             TestUtils.sleep(rnd.nextInt(10));
         }
 
         for (Task task : tasks) {
             task.runCheck();
-            long deviation = task.actualTime - task.expectedTime;
-            assertTrue("" + deviation, deviation >= 0 && deviation <= 500); 
+            long deviationMillis = (task.actualTime - task.expectedTime) / 1_000_000L;
+            assertTrue("" + deviationMillis, deviationMillis >= 0 && deviationMillis <= 1000); 
         }
     }
 
@@ -125,7 +125,7 @@ public class SchedulerTest {
 
         @Override
         public void run() {
-            actualTime = System.currentTimeMillis();
+            actualTime = System.nanoTime();
             ran = true;
         }
 

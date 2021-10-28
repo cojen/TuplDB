@@ -82,7 +82,7 @@ public final class Scheduler {
             if (isShutdown()) {
                 return false;
             }
-            schedule(task, 1);
+            scheduleMillis(task, 1);
         }
         return true;
     }
@@ -90,14 +90,21 @@ public final class Scheduler {
     /**
      * @return false if shutdown
      */
-    public boolean schedule(Runnable task, long delayMillis) {
-        return schedule(new Delayed.Runner(System.currentTimeMillis() + delayMillis, task));
+    public boolean scheduleMillis(Runnable task, long delayMillis) {
+        return scheduleNanos(task, delayMillis * 1_000_000);
     }
 
     /**
      * @return false if shutdown
      */
-    public synchronized boolean schedule(Delayed delayed) {
+    public boolean scheduleNanos(Runnable task, long delayNanos) {
+        return scheduleNanos(new Delayed.Runner(System.nanoTime() + delayNanos, task));
+    }
+
+    /**
+     * @return false if shutdown
+     */
+    public synchronized boolean scheduleNanos(Delayed delayed) {
         mDelayed.add(delayed);
 
         if (!mRunning) {
@@ -143,12 +150,12 @@ public final class Scheduler {
                         mRunning = false;
                         return;
                     }
-                    long delay = delayed.mCounter - System.currentTimeMillis();
-                    if (delay <= 0) {
+                    long delayNanos = delayed.mCounter - System.nanoTime();
+                    if (delayNanos <= 0) {
                         break;
                     }
                     try {
-                        wait(delay);
+                        wait((delayNanos + 999_999) / 1_000_000);
                     } catch (InterruptedException e) {
                         if (isShutdown()) {
                             mRunning = false;

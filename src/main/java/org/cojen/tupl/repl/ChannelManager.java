@@ -367,8 +367,8 @@ final class ChannelManager {
         }
     }
 
-    private void schedule(Runnable task, long delayMillis) {
-        if (!mScheduler.schedule(task, delayMillis)) {
+    private void scheduleMillis(Runnable task, long delayMillis) {
+        if (!mScheduler.scheduleMillis(task, delayMillis)) {
             stop();
         }
     }
@@ -720,7 +720,7 @@ final class ChannelManager {
                 // flood of active connections. In case no close is received, run a task to
                 // explicitly close the existing channel before the remote side times out.
                 if (!existing.replaced(replyTask)) {
-                    schedule(existing::close, INITIAL_READ_TIMEOUT_MILLIS / 2);
+                    scheduleMillis(existing::close, INITIAL_READ_TIMEOUT_MILLIS / 2);
                 }
             }
 
@@ -819,7 +819,7 @@ final class ChannelManager {
             }
         }
 
-        schedule(this::checkWrites, WRITE_CHECK_DELAY_MILLIS);
+        scheduleMillis(this::checkWrites, WRITE_CHECK_DELAY_MILLIS);
     }
 
     static final VarHandle cWriteStateHandle;
@@ -919,7 +919,7 @@ final class ChannelManager {
             closeQuietly(s);
 
             if (localServer != null) {
-                schedule(this::connect, delay);
+                scheduleMillis(this::connect, delay);
             }
         }
 

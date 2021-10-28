@@ -142,7 +142,7 @@ final class TempFileManager implements CauseCloseable, ShutdownHook {
     private void delete(File file, long delay) {
         if (!file.delete()) {
             // Keep trying.
-            Scheduler.daemon().schedule(() -> delete(file, delay * 2), delay);
+            Scheduler.daemon().scheduleMillis(() -> delete(file, delay * 2), delay);
         }
     }
 }

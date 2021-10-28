@@ -454,7 +454,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         // Check again later.
-        mScheduler.schedule(this::roleChangeTask, ELECTION_DELAY_LOW_MILLIS);
+        mScheduler.scheduleMillis(this::roleChangeTask, ELECTION_DELAY_LOW_MILLIS);
     }
 
     @Override
@@ -1307,8 +1307,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             private void schedule() {
                 int delayMillis = ThreadLocalRandom.current()
                     .nextInt(SYNC_RATE_LOW_MILLIS, SYNC_RATE_HIGH_MILLIS);
-                mCounter = System.currentTimeMillis() + delayMillis;
-                mScheduler.schedule(this);
+                mCounter = System.nanoTime() + delayMillis * 1_000_000L;
+                mScheduler.scheduleNanos(this);
             }
         };
     }
@@ -1316,7 +1316,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private void scheduleMissingDataTask() {
         int delayMillis = ThreadLocalRandom.current()
             .nextInt(MISSING_DELAY_LOW_MILLIS, MISSING_DELAY_HIGH_MILLIS);
-        mScheduler.schedule(this::missingDataTask, delayMillis);
+        mScheduler.scheduleMillis(this::missingDataTask, delayMillis);
     }
 
     private void missingDataTask() {
@@ -1451,7 +1451,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private void scheduleElectionTask() {
         int delayMillis = ThreadLocalRandom.current()
             .nextInt(ELECTION_DELAY_LOW_MILLIS, ELECTION_DELAY_HIGH_MILLIS);
-        mScheduler.schedule(this::electionTask, delayMillis);
+        mScheduler.scheduleMillis(this::electionTask, delayMillis);
     }
 
     private void electionTask() {
@@ -1726,7 +1726,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     private void scheduleRemoveStaleMembersTask() {
-        mScheduler.schedule(this::removeStaleMembers, CONNECTING_THRESHOLD_MILLIS / 2);
+        mScheduler.scheduleMillis(this::removeStaleMembers, CONNECTING_THRESHOLD_MILLIS / 2);
     }
 
     private void removeStaleMembers() {
@@ -1966,7 +1966,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             throw new AssertionError();
         }
 
-        mScheduler.schedule(() -> {
+        mScheduler.scheduleMillis(() -> {
             if (mGroupFile.discardProposeConsumer(message)) {
                 closeQuietly(s);
             }
@@ -2280,7 +2280,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             // Schedule a task which forces a failover if a writer isn't created in time. This
             // implies that the member is lagging behind and shouldn't be the leader.
             ReplWriter old = mLeaderReplWriter; // expected to be null
-            mScheduler.schedule(() -> doFailover(old, true), LAG_TIMEOUT_MILLIS);
+            mScheduler.scheduleMillis(() -> doFailover(old, true), LAG_TIMEOUT_MILLIS);
         }
 
         if (!mRemovingStaleMembers) {
