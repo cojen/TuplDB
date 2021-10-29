@@ -2196,29 +2196,42 @@ final class FileTermLog extends Latch implements TermLog {
          * Truncates or deletes the file, according to the max length.
          */
         void truncate() throws IOException {
-            FileIO io;
-            long maxLength;
-
             acquireExclusive();
-            try {
-                maxLength = mMaxLength;
-                if (maxLength == 0) {
-                    close(false);
-                    io = null;
-                } else if ((io = openForWriting()) == null) {
+
+            while (true) {
+                FileIO io;
+                long maxLength;
+
+                try {
+                    maxLength = mMaxLength;
+                    if (maxLength == 0) {
+                        close(false);
+                        io = null;
+                    } else if ((io = openForWriting()) == null) {
+                        return;
+                    }
+                } finally {
+                    releaseExclusive();
+                }
+
+                if (io == null) {
+                    File file = file();
+                    if (file != null) {
+                        file.delete();
+                    }
                     return;
                 }
-            } finally {
-                releaseExclusive();
-            }
 
-            if (io == null) {
-                File file = file();
-                if (file != null) {
-                    file.delete();
+                try {
+                    io.truncateLength(maxLength);
+                    return;
+                } catch (IOException e) {
+                    acquireExclusive();
+                    if (mFileIO == io) {
+                        releaseExclusive();
+                        throw e;
+                    }
                 }
-            } else {
-                io.truncateLength(maxLength);
             }
         }
 
