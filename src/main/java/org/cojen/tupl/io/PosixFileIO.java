@@ -56,6 +56,7 @@ final class PosixFileIO extends AbstractFileIO {
     private final File mFile;
     private final int mReopenOptions;
 
+    // TODO: Design a better pooling mechanism. This creates a "leak" of buffers.
     private final ThreadLocal<BufRef> mBufRef;
     private final ThreadLocal<BufRef> mBufRefAlt;
     private final ThreadLocal<BufRef> mIovecRef;
