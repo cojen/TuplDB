@@ -6369,7 +6369,6 @@ final class LocalDatabase extends CoreDatabase {
                 }
 
                 deleteCommitHeader();
-                mCommitMasterUndoLog = null;
 
                 if (masterUndoLog != null) {
                     try {
@@ -6379,6 +6378,8 @@ final class LocalDatabase extends CoreDatabase {
                         suppress(e2, e);
                         close(e2);
                         throw e2;
+                    } finally {
+                        mCommitMasterUndoLog = null;
                     }
                 }
             }
@@ -6388,7 +6389,6 @@ final class LocalDatabase extends CoreDatabase {
 
         // Reset for next checkpoint.
         deleteCommitHeader();
-        mCommitMasterUndoLog = null;
 
         if (masterUndoLog != null) {
             // Delete the master undo log, which won't take effect until the next checkpoint.
@@ -6398,6 +6398,16 @@ final class LocalDatabase extends CoreDatabase {
                 if (!isClosed()) {
                     throw e;
                 }
+            } finally {
+                // Only clear the reference after attempting to truncate. If cleared too soon,
+                // then the close method will delete the arena without attempting to close the
+                // master undo log first. If this method calls truncateMaster after the arena
+                // is deleted, then it might perform a bogus memory delete and crash. Note that
+                // it's fine to attempt to delete the master undo log multiple times, because
+                // it has a check to ensure that the delete only happens once. Also note that
+                // the call to truncateMaster acquires the shared commit lock, so there's no
+                // race with the close method, because it acquires the exclusive commit lock.
+                mCommitMasterUndoLog = null;
             }
         }
 
