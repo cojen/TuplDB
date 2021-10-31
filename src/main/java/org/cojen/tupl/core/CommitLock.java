@@ -61,7 +61,7 @@ final class CommitLock implements Lock {
         public void release() {
             CommitLock lock = get();
             if (lock != null) {
-                lock.releaseShared();
+                lock.doReleaseShared();
             }
             count--;
         }
@@ -92,7 +92,7 @@ final class CommitLock implements Lock {
         mSharedAcquire.increment();
         Shared shared = mShared.get();
         if (mExclusiveThread != null && shared.count == 0) {
-            releaseShared();
+            doReleaseShared();
             return null;
         } else {
             shared.count++;
@@ -122,7 +122,7 @@ final class CommitLock implements Lock {
     public final void acquireShared(Shared shared) {
         mSharedAcquire.increment();
         if (mExclusiveThread != null && shared.count == 0) {
-            releaseShared();
+            doReleaseShared();
             mFullLatch.acquireShared();
             try {
                 mSharedAcquire.increment();
@@ -163,7 +163,7 @@ final class CommitLock implements Lock {
         mSharedAcquire.increment();
         Shared shared = mShared.get();
         if (mExclusiveThread != null && shared.count == 0) {
-            releaseShared();
+            doReleaseShared();
             mFullLatch.acquireSharedInterruptibly();
             try {
                 mSharedAcquire.increment();
@@ -192,7 +192,7 @@ final class CommitLock implements Lock {
         mSharedAcquire.increment();
         Shared shared = mShared.get();
         if (mExclusiveThread != null && shared.count == 0) {
-            releaseShared();
+            doReleaseShared();
             if (time < 0) {
                 mFullLatch.acquireShared();
             } else if (time == 0 || !mFullLatch.tryAcquireSharedNanos(unit.toNanos(time))) {
@@ -214,10 +214,14 @@ final class CommitLock implements Lock {
     @Override
     public final void unlock() {
         releaseShared();
-        mShared.get().count--;
     }
 
     public final void releaseShared() {
+        doReleaseShared();
+        mShared.get().count--;
+    }
+
+    private final void doReleaseShared() {
         mSharedRelease.increment();
         Thread t = mExclusiveThread;
         if (t != null && !hasSharedLockers()) {

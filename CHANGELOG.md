@@ -6,6 +6,7 @@ v1.5.4
 * Fix race condition which can cause the JVM to crash when the database is closed.
 * Fix deadlock during compaction caused by releasing the wrong node latch.
 * Fix improper lock release when writing cache primer.
+* Fix improper lock release/acquire when when opening indexes.
 * Don't reset checkpoint duration stat when thresholds aren't met.
 * Depends on Java 17.
 
