@@ -7,6 +7,7 @@ v1.5.4
 * Fix deadlock during compaction caused by releasing the wrong node latch.
 * Fix improper lock release when writing cache primer.
 * Don't reset checkpoint duration stat when thresholds aren't met.
+* Depends on Java 17.
 
 v1.5.3.3 (2021-10-03)
 --------
