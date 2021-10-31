@@ -1272,7 +1272,7 @@ class BTree extends Tree implements View, Index {
 
     /**
      * Performs a depth-first traversal of the tree, only visiting loaded nodes. Nodes passed
-     * to the visitor are latched exclusively, and they must be released by the visitor.
+     * to the visitor are latched shared, and they must be released by the visitor.
      */
     final void traverseLoaded(NodeVisitor visitor) throws IOException {
         Node node = mRoot;
@@ -1371,11 +1371,11 @@ class BTree extends Tree implements View, Index {
                     return;
                 }
             } finally {
-                node.releaseExclusive();
+                node.releaseShared();
             }
 
-            // Omit entries with very large keys. Primer encoding format needs to change
-            // for supporting larger keys.
+            // Omit entries with very large keys. The primer encoding format would need to
+            // change for supporting larger keys.
             if (midKey.length < 0xffff) {
                 dout.writeShort(midKey.length);
                 dout.write(midKey);

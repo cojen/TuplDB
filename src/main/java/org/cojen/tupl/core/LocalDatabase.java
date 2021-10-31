@@ -2401,6 +2401,7 @@ final class LocalDatabase extends CoreDatabase {
 
         for (TreeRef treeRef : mOpenTrees.values()) {
             Tree tree = treeRef.get();
+            // TODO: Doesn't work for anonymous indexes. The written name is empty and useless.
             if (tree != null && !Tree.isInternal(tree.id())) {
                 tree.writeCachePrimer(dout);
             }
