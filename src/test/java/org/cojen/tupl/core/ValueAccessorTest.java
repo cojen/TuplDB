@@ -1660,6 +1660,8 @@ public class ValueAccessorTest {
         txn.commit();
 
         fastAssertArrayEquals("w".getBytes(), ix.load(null, key));
+
+        db.close();
     }
 
     @Test

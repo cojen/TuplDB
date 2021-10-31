@@ -66,6 +66,8 @@ public class LargeKeyTest {
             byte[] v = ix.load(null, key);
             assertArrayEquals(value, v);
         }
+
+        db.close();
     }
 
     @Test
@@ -104,6 +106,8 @@ public class LargeKeyTest {
             byte[] v = ix.load(null, key);
             fastAssertArrayEquals(value, v);
         }
+
+        db.close();
     }
 
     @Test
@@ -149,6 +153,8 @@ public class LargeKeyTest {
             byte[] v = ix.load(null, key);
             fastAssertArrayEquals(value, v);
         }
+
+        db.close();
     }
 
     @Test

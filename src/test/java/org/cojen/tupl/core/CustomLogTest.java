@@ -149,7 +149,7 @@ public class CustomLogTest {
 
         txn.reset();
 
-        Database db = Database.open(new DatabaseConfig());
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
         txn = db.newTransaction();
 
         try {

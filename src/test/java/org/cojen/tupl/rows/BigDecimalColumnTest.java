@@ -46,7 +46,7 @@ public class BigDecimalColumnTest {
         // encoded bytes. The problem is that 0 and 0.0 won't be considered equal. See how
         // CompareUtils handles this case. It calls BigDecimal.compareTo instead of equals.
 
-        Database db = Database.open(new DatabaseConfig());
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
         Table<Rec> table = db.openTable(Rec.class);
 
         Rec row1 = table.newRow();

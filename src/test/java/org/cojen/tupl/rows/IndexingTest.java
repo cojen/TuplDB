@@ -53,7 +53,8 @@ public class IndexingTest {
 
     @Test
     public void basic() throws Exception {
-        Database db = Database.open(new DatabaseConfig().lockTimeout(100, TimeUnit.MILLISECONDS));
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false).
+                                    lockTimeout(100, TimeUnit.MILLISECONDS));
         Table<TestRow> table = db.openTable(TestRow.class);
 
         Table<TestRow> alt = table.viewAlternateKey("path");
@@ -383,7 +384,7 @@ public class IndexingTest {
     @Test
     @SuppressWarnings("unchecked")
     public void basicBackfill() throws Exception {
-        var config = new DatabaseConfig();
+        var config = new DatabaseConfig().directPageAccess(false);
         //config.eventListener(EventListener.printTo(System.out));
         Database db = Database.open(config);
 
@@ -516,7 +517,7 @@ public class IndexingTest {
     @Test
     @SuppressWarnings("unchecked")
     public void concurrentBackfill() throws Exception {
-        var config = new DatabaseConfig();
+        var config = new DatabaseConfig().directPageAccess(false);
         //config.eventListener(EventListener.printTo(System.out));
         Database db = Database.open(config);
 

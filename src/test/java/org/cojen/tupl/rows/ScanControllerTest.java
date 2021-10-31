@@ -158,7 +158,7 @@ public class ScanControllerTest {
 
     @Test
     public void mergedScans() throws Exception {
-        Database db = Database.open(new DatabaseConfig());
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
         Table<MyRow> table = db.openTable(MyRow.class);
         Table<MyRow2> table2 = db.openTable(MyRow2.class);
 

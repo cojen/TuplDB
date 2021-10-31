@@ -36,10 +36,10 @@ public class ConfigTest {
 
     @Test
     public void pageSize() throws Exception {
-        Database.open(new DatabaseConfig().pageSize(512));
-        Database.open(new DatabaseConfig().pageSize(65536));
-        Database.open(new DatabaseConfig().pageSize(0));
-        Database.open(new DatabaseConfig().pageSize(-1));
+        Database.open(new DatabaseConfig().pageSize(512)).close();
+        Database.open(new DatabaseConfig().pageSize(65536)).close();
+        Database.open(new DatabaseConfig().pageSize(0)).close();
+        Database.open(new DatabaseConfig().pageSize(-1)).close();
 
         try {
             Database.open(new DatabaseConfig().pageSize(511));
@@ -68,11 +68,11 @@ public class ConfigTest {
         // Defaults to minimum allowed.
         config.minCacheSize(-10);
         config.maxCacheSize(-8);
-        Database.open(config);
+        Database.open(config).close();
 
         config.minCacheSize(1000);
         config.maxCacheSize(-1);
-        Database.open(config);
+        Database.open(config).close();
     }
 
     //@Test

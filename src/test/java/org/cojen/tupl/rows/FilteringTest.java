@@ -42,7 +42,7 @@ public class FilteringTest {
     public void arrayColumnOrderingA() throws Exception {
         // Verify basic filter ordering.
 
-        Database db = Database.open(new DatabaseConfig());
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
         Table<A> table = db.openTable(A.class);
 
         int[] nums = {-1_000_000_000, -100, 0, 100, 1_000_000_000};
@@ -73,7 +73,7 @@ public class FilteringTest {
     public void arrayColumnOrderingB() throws Exception {
         // Verify basic filter ordering.
 
-        Database db = Database.open(new DatabaseConfig());
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
         Table<B> table = db.openTable(B.class);
 
         int[] nums = {-1_000_000_000, -100, 0, 100, 1_000_000_000};
@@ -96,7 +96,7 @@ public class FilteringTest {
     public void arrayColumnOrderingC() throws Exception {
         // Verify basic filter ordering.
 
-        Database db = Database.open(new DatabaseConfig());
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
         Table<C> table = db.openTable(C.class);
 
         int[] nums = {-1_000_000_000, -100, 0, 100, 1_000_000_000};
@@ -119,7 +119,7 @@ public class FilteringTest {
     public void arrayColumnOrderingAB() throws Exception {
         // Verify basic filter ordering.
 
-        Database db = Database.open(new DatabaseConfig());
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
         Table<AB> table = db.openTable(AB.class);
 
         byte[] nums = {-100, 0, 100};
@@ -150,7 +150,7 @@ public class FilteringTest {
     public void arrayColumnOrderingBB() throws Exception {
         // Verify basic filter ordering.
 
-        Database db = Database.open(new DatabaseConfig());
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
         Table<BB> table = db.openTable(BB.class);
 
         byte[] nums = {-100, 0, 100};
@@ -173,7 +173,7 @@ public class FilteringTest {
     public void arrayColumnOrderingCB() throws Exception {
         // Verify basic filter ordering.
 
-        Database db = Database.open(new DatabaseConfig());
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
         Table<CB> table = db.openTable(CB.class);
 
         byte[] nums = {-100, 0, 100};
@@ -196,7 +196,7 @@ public class FilteringTest {
     public void arrayColumnOrderingF() throws Exception {
         // Verify basic filter ordering.
 
-        Database db = Database.open(new DatabaseConfig());
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
         Table<F> table = db.openTable(F.class);
 
         float[] nums = {-1_000_000_000, -100, 0, 100, 1_000_000_000};
@@ -223,7 +223,7 @@ public class FilteringTest {
     public void arrayColumnOrderingG() throws Exception {
         // Verify basic filter ordering.
 
-        Database db = Database.open(new DatabaseConfig());
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
         Table<G> table = db.openTable(G.class);
 
         float[] nums = {-1_000_000_000, -100, 0, 100, 1_000_000_000};
@@ -579,7 +579,8 @@ public class FilteringTest {
         // Test a "true" filter which returns everything, and with a "false" filter which
         // returns nothing.
 
-        Database db = Database.open(new DatabaseConfig().lockTimeout(10, TimeUnit.MILLISECONDS));
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false).
+                                    lockTimeout(10, TimeUnit.MILLISECONDS));
         Table<MyRow> table = db.openTable(MyRow.class);
 
         for (int i=0; i<3; i++) {
@@ -634,7 +635,7 @@ public class FilteringTest {
     public void columnToColumn() throws Exception {
         // Basic column to column filtering.
 
-        Database db = Database.open(new DatabaseConfig());
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
         Table<MyRow2> table = db.openTable(MyRow2.class);
 
         for (int i=0; i<10; i++) {
