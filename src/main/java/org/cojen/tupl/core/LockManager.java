@@ -26,8 +26,6 @@ import java.util.Objects;
 
 import java.util.concurrent.Executor;
 
-import java.util.function.Consumer;
-
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockResult;
@@ -477,78 +475,6 @@ public final class LockManager {
             }
 
             return result;
-        }
-
-        /**
-         * @param type defined in Lock class
-         */
-        void uponLock(int type,
-                      Locker locker, long indexId, byte[] key, int hash,
-                      Executor exec, Consumer<LockResult> cont)
-        {
-            Objects.requireNonNull(exec);
-            Objects.requireNonNull(cont);
-
-            Lock lock;
-            acquireExclusive();
-            try {
-                Lock[] entries = mEntries;
-                int index = hash & (entries.length - 1);
-                for (lock = entries[index]; lock != null; lock = lock.mLockManagerNext) {
-                    if (lock.matches(indexId, key, hash)) {
-                        final Lock flock = lock;
-
-                        Consumer<LockResult> cont2 = result -> {
-                            if (result == ACQUIRED) {
-                                locker.push(flock);
-                            } else if (result == UPGRADED) {
-                                locker.pushUpgrade(flock);
-                            }
-                            exec.execute(() -> cont.accept(result));
-                        };
-
-                        if (type == TYPE_SHARED) {
-                            flock.uponLockShared(this, locker, cont2);
-                        } else if (type == TYPE_UPGRADABLE) {
-                            flock.uponLockUpgradable(locker, cont2);
-                        } else {
-                            flock.uponLockExclusive(locker, cont2);
-                        }
-
-                        return;
-                    }
-                }
-
-                if (mSize >= mGrowThreshold) {
-                    entries = rehash(entries);
-                    index = hash & (entries.length - 1);
-                }
-
-                lock = new Lock();
-
-                lock.mIndexId = indexId;
-                lock.mKey = key;
-                lock.mHashCode = hash;
-                lock.mLockManagerNext = entries[index];
-
-                lock.mLockCount = type;
-                if (type == TYPE_SHARED) {
-                    lock.setSharedLocker(locker);
-                } else {
-                    lock.mOwner = locker;
-                }
-
-                // Fence so that the isAvailable method doesn't observe a broken chain.
-                VarHandle.storeStoreFence();
-                entries[index] = lock;
-
-                mSize++;
-            } finally {
-                releaseExclusive();
-            }
-
-            locker.push(lock);
-            exec.execute(() -> cont.accept(ACQUIRED));
         }
 
         /**

@@ -3827,21 +3827,6 @@ loadScripts(document, 'script');</script>
 <div class="block">Registers the given task to start in a separate thread when the database instance has
  become the leader.</div>
 </dd>
-<dt><a href="org.cojen.tupl/org/cojen/tupl/Transaction.html#uponLockExclusive(long,byte%5B%5D,java.util.concurrent.Executor,java.util.function.Consumer)" class="member-name-link">uponLockExclusive(long, byte[], Executor, Consumer&lt;LockResult&gt;)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
-<dd>
-<div class="block">Asynchronously attempts to acquire an exclusive lock for the given key, denying any
- additional locks.</div>
-</dd>
-<dt><a href="org.cojen.tupl/org/cojen/tupl/Transaction.html#uponLockShared(long,byte%5B%5D,java.util.concurrent.Executor,java.util.function.Consumer)" class="member-name-link">uponLockShared(long, byte[], Executor, Consumer&lt;LockResult&gt;)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
-<dd>
-<div class="block">Asynchronously attempts to acquire a shared lock for the given key, denying exclusive
- locks.</div>
-</dd>
-<dt><a href="org.cojen.tupl/org/cojen/tupl/Transaction.html#uponLockUpgradable(long,byte%5B%5D,java.util.concurrent.Executor,java.util.function.Consumer)" class="member-name-link">uponLockUpgradable(long, byte[], Executor, Consumer&lt;LockResult&gt;)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Transaction.html" title="interface in org.cojen.tupl">Transaction</a></dt>
-<dd>
-<div class="block">Asynchronously attempts to acquire an upgrade lock for the given key, denying exclusive
- and additional upgradable locks.</div>
-</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html#uponSignal(java.lang.Runnable)" class="member-name-link">uponSignal(Runnable)</a> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>
 <dd>
 <div class="block">Invokes the given continuation upon the condition being signaled.</div>

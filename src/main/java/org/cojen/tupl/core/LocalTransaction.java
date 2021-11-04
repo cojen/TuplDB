@@ -22,8 +22,6 @@ import java.io.IOException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
-import java.util.function.Consumer;
-
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.InvalidTransactionException;
@@ -923,33 +921,6 @@ public final class LocalTransaction extends Locker implements Transaction {
         throws LockFailureException
     {
         return logExclusiveLock(doTryLockExclusive(indexId, key, nanosTimeout), indexId, key);
-    }
-
-    @Override
-    public void uponLockShared(long indexId, byte[] key, Executor exec, Consumer<LockResult> cont) {
-        doUponLockShared(indexId, key, exec, cont);
-    }
-
-    @Override
-    public void uponLockUpgradable(long indexId, byte[] key,
-                                   Executor exec, Consumer<LockResult> cont)
-    {
-        doUponLockUpgradable(indexId, key, exec, cont);
-    }
-
-    @Override
-    public void uponLockExclusive(long indexId, byte[] key,
-                                  Executor exec, Consumer<LockResult> cont)
-    {
-        doUponLockExclusive(indexId, key, exec, result -> {
-            try {
-                logExclusiveLock(result, indexId, key);
-            } catch (LockFailureException e) {
-                uncaught(e);
-                result = LockResult.INTERRUPTED;
-            }
-            cont.accept(result);
-        });
     }
 
     private LockResult logExclusiveLock(LockResult result, long indexId, byte[] key)

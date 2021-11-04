@@ -19,8 +19,6 @@ package org.cojen.tupl.core;
 
 import java.util.Arrays;
 
-import java.util.function.Consumer;
-
 import org.cojen.tupl.DeadlockException;
 import org.cojen.tupl.LockResult;
 
@@ -161,80 +159,6 @@ final class Lock {
     }
 
     /**
-     * Called with exclusive latch held, which is retained. The continuation receives
-     * INTERRUPTED if too many shared locks, because there's no way to deliver an exception.
-     */
-    void uponLockShared(Latch latch, Locker locker, Consumer<LockResult> cont) {
-        LatchCondition queueSX;
-        quick: {
-            LockResult result;
-
-            if (mOwner == locker) {
-                result = mLockCount == ~0 ? OWNED_EXCLUSIVE : OWNED_UPGRADABLE;
-            } else {
-                queueSX = mQueueSX;
-                if (queueSX != null) {
-                    if (!isSharedLocker(locker)) {
-                        break quick;
-                    }
-                    result = OWNED_SHARED;
-                } else {
-                    int count = mLockCount;
-                    if (count == ~0) {
-                        mQueueSX = queueSX = new LatchCondition();
-                        break quick;
-                    }
-                    if (count != 0 && isSharedLocker(locker)) {
-                        result = OWNED_SHARED;
-                    } else {
-                        try {
-                            addSharedLocker(count, locker);
-                            result = ACQUIRED;
-                        } catch (IllegalStateException e) {
-                            result = INTERRUPTED;
-                        }
-                    }
-                }
-            }
-
-            cont.accept(result);
-            return;
-        }
-
-        locker.mWaitingFor = this;
-
-        // Await for shared lock.
-        queueSX.uponSignalShared(() -> {
-            locker.mWaitingFor = null;
-            LatchCondition queue = mQueueSX;
-
-            LockResult result;
-            if (queue == null) {
-                // Assume LockManager was closed.
-                result = INTERRUPTED;
-            } else {
-                if (queue.isEmpty()) {
-                    // Indicate that last signal has been consumed, and also free memory.
-                    mQueueSX = null;
-                }
-
-                // After consuming one signal, next shared waiter must be signaled, and so on. Do
-                // this before calling addSharedLocker, in case it throws an exception.
-                queue.signalShared(latch);
-
-                try {
-                    addSharedLocker(mLockCount, locker);
-                    result = ACQUIRED;
-                } catch (IllegalStateException e) {
-                    result = INTERRUPTED;
-                }
-            }
-
-            cont.accept(result);
-        });
-    }
-
-    /**
      * Called with exclusive latch held, which is retained. If return value is TIMED_OUT_LOCK,
      * the locker's mWaitingFor field is set to this Lock as a side-effect.
      *
@@ -310,78 +234,6 @@ final class Lock {
     }
 
     /**
-     * Called with exclusive latch held, which is retained.
-     */
-    void uponLockUpgradable(Locker locker, Consumer<LockResult> cont) {
-        LatchCondition queueU;
-        quick: {
-            LockResult result;
-            doQuick: {
-                if (mOwner == locker) {
-                    result = mLockCount == ~0 ? OWNED_EXCLUSIVE : OWNED_UPGRADABLE;
-                    break doQuick;
-                }
-            
-                int count = mLockCount;
-                if (count != 0 && isSharedLocker(locker)) {
-                    if (!locker.canAttemptUpgrade(count)) {
-                        result = ILLEGAL;
-                        break doQuick;
-                    }
-                    if (count > 0) {
-                        // Give the impression that lock was always held upgradable. This prevents
-                        // pushing the lock into the locker twice.
-                        mLockCount = (count - 1) | 0x80000000;
-                        mOwner = locker;
-                        result = OWNED_UPGRADABLE;
-                        break doQuick;
-                    }
-                }
-
-                queueU = mQueueU;
-                if (queueU == null) {
-                    if (count >= 0) {
-                        mLockCount = count | 0x80000000;
-                        mOwner = locker;
-                        result = ACQUIRED;
-                        break doQuick;
-                    }
-                    mQueueU = queueU = new LatchCondition();
-                }
-
-                break quick;
-            }
-
-            cont.accept(result);
-            return;
-        }
-
-        locker.mWaitingFor = this;
-
-        // Await for upgradable lock.
-        queueU.uponSignal(() -> {
-            locker.mWaitingFor = null;
-            LatchCondition queue = mQueueU;
-
-            LockResult result;
-            if (queue == null) {
-                // Assume LockManager was closed.
-                result = INTERRUPTED;
-            } else {
-                if (queue.isEmpty()) {
-                    // Indicate that last signal has been consumed, and also free memory.
-                    mQueueU = null;
-                }
-                mLockCount |= 0x80000000;
-                mOwner = locker;
-                result = ACQUIRED;
-            }
-
-            cont.accept(result);
-        });
-    }
-
-    /**
      * Called with exclusive latch held, which is retained. If return value is TIMED_OUT_LOCK,
      * the locker's mWaitingFor field is set to this Lock as a side-effect.
      *
@@ -446,59 +298,6 @@ final class Lock {
                 return INTERRUPTED;
             }
         }
-    }
-
-    /**
-     * Called with exclusive latch held, which is retained.
-     */
-    void uponLockExclusive(Locker locker, Consumer<LockResult> cont) {
-        uponLockUpgradable(locker, result -> {
-            LatchCondition queueSX;
-            quick: {
-                if (result.isHeld() && result != OWNED_EXCLUSIVE) {
-                    queueSX = mQueueSX;
-                    if (queueSX == null) {
-                        if (mLockCount == 0x80000000) {
-                            mLockCount = ~0;
-                            if (result == OWNED_UPGRADABLE) {
-                                result = UPGRADED;
-                            }
-                        } else {
-                            mQueueSX = queueSX = new LatchCondition();
-                            break quick;
-                        }
-                    }
-                }
-
-                cont.accept(result);
-                return;
-            }
-
-            locker.mWaitingFor = this;
-
-            final LockResult fresult = result == OWNED_UPGRADABLE ? UPGRADED : ACQUIRED;
-
-            // Await for exclusive lock.
-            queueSX.uponSignal(() -> {
-                locker.mWaitingFor = null;
-                LatchCondition queue = mQueueSX;
-
-                LockResult actualResult;
-                if (queue == null) {
-                    // Assume LockManager was closed.
-                    actualResult = INTERRUPTED;
-                } else {
-                    if (queue.isEmpty()) {
-                        // Indicate that last signal has been consumed, and also free memory.
-                        mQueueSX = null;
-                    }
-                    mLockCount = ~0;
-                    actualResult = fresult;
-                }
-
-                cont.accept(actualResult);
-            });
-        });
     }
 
     /**

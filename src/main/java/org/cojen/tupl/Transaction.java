@@ -23,8 +23,6 @@ import java.io.IOException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
-import java.util.function.Consumer;
-
 import org.cojen.tupl.core.LocalTransaction;
 
 /**
@@ -362,72 +360,6 @@ public interface Transaction extends Flushable {
      */
     LockResult lockExclusive(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException;
-
-    /**
-     * Asynchronously attempts to acquire a shared lock for the given key, denying exclusive
-     * locks. If the continuation receives an {@linkplain LockResult#isAlreadyOwned owned}
-     * result, the transaction already owns a strong enough lock, and no extra unlock should be
-     * performed.
-     *
-     * <p>The continuation is run in the given executor, and so ownership of this transaction
-     * is effectively transferred. The current thread must not interact with the transaction
-     * again, unless custom synchronization is applied.
-     *
-     * <p><i>Note: This method is intended for advanced use cases.</i>
-     *
-     * @param key non-null key to lock; instance is not cloned and so it must not be modified
-     * after calling this method
-     * @param exec runs the continuation
-     * @param cont continuation to be called later; can receive {@link LockResult#INTERRUPTED
-     * INTERRUPTED}, {@link LockResult#ACQUIRED ACQUIRED}, {@link LockResult#OWNED_SHARED
-     * OWNED_SHARED}, {@link LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
-     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     */
-    void uponLockShared(long indexId, byte[] key, Executor exec, Consumer<LockResult> cont);
-
-    /**
-     * Asynchronously attempts to acquire an upgrade lock for the given key, denying exclusive
-     * and additional upgradable locks. If the continuation receives an {@linkplain
-     * LockResult#isAlreadyOwned owned} result, the transaction already owns a strong enough
-     * lock, and no extra unlock should be performed.
-     *
-     * <p>The continuation is run in the given executor, and so ownership of this transaction
-     * is effectively transferred. The current thread must not interact with the transaction
-     * again, unless custom synchronization is applied.
-     *
-     * <p><i>Note: This method is intended for advanced use cases.</i>
-     *
-     * @param key non-null key to lock; instance is not cloned and so it must not be modified
-     * after calling this method
-     * @param exec runs the continuation
-     * @param cont continuation to be called later; can receive {@link LockResult#ILLEGAL
-     * ILLEGAL}, {@link LockResult#INTERRUPTED INTERRUPTED}, {@link LockResult#ACQUIRED
-     * ACQUIRED}, {@link LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
-     * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     */
-    void uponLockUpgradable(long indexId, byte[] key, Executor exec, Consumer<LockResult> cont);
-
-    /**
-     * Asynchronously attempts to acquire an exclusive lock for the given key, denying any
-     * additional locks. If the continuation receives an {@linkplain LockResult#isAlreadyOwned
-     * owned} result, the transaction already owns exclusive lock, and no extra unlock should
-     * be performed.
-     *
-     * <p>The continuation is run in the given executor, and so ownership of this transaction
-     * is effectively transferred. The current thread must not interact with the transaction
-     * again, unless custom synchronization is applied.
-     *
-     * <p><i>Note: This method is intended for advanced use cases.</i>
-     *
-     * @param key non-null key to lock; instance is not cloned and so it must not be modified
-     * after calling this method
-     * @param exec runs the continuation
-     * @param cont continuation to be called later; can receive {@link LockResult#ILLEGAL
-     * ILLEGAL}, {@link LockResult#INTERRUPTED INTERRUPTED}, {@link LockResult#ACQUIRED
-     * ACQUIRED}, {@link LockResult#UPGRADED UPGRADED}, or {@link LockResult#OWNED_EXCLUSIVE
-     * OWNED_EXCLUSIVE}
-     */
-    void uponLockExclusive(long indexId, byte[] key, Executor exec, Consumer<LockResult> cont);
 
     /**
      * Checks the lock ownership for the given key.

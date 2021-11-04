@@ -353,33 +353,6 @@ extends <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/ja
 <div class="block">Releases the last lock or group acquired, within the current scope, retaining a shared
  lock.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#uponLockExclusive(long,byte%5B%5D,java.util.concurrent.Executor,java.util.function.Consumer)" class="member-name-link">uponLockExclusive</a><wbr>(long&nbsp;indexId,
- byte[]&nbsp;key,
- <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/Executor.html" title="class or interface in java.util.concurrent" class="external-link">Executor</a>&nbsp;exec,
- <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;<a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a>&gt;&nbsp;cont)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Asynchronously attempts to acquire an exclusive lock for the given key, denying any
- additional locks.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#uponLockShared(long,byte%5B%5D,java.util.concurrent.Executor,java.util.function.Consumer)" class="member-name-link">uponLockShared</a><wbr>(long&nbsp;indexId,
- byte[]&nbsp;key,
- <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/Executor.html" title="class or interface in java.util.concurrent" class="external-link">Executor</a>&nbsp;exec,
- <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;<a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a>&gt;&nbsp;cont)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Asynchronously attempts to acquire a shared lock for the given key, denying exclusive
- locks.</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#uponLockUpgradable(long,byte%5B%5D,java.util.concurrent.Executor,java.util.function.Consumer)" class="member-name-link">uponLockUpgradable</a><wbr>(long&nbsp;indexId,
- byte[]&nbsp;key,
- <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/Executor.html" title="class or interface in java.util.concurrent" class="external-link">Executor</a>&nbsp;exec,
- <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;<a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a>&gt;&nbsp;cont)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Asynchronously attempts to acquire an upgrade lock for the given key, denying exclusive
- and additional upgradable locks.</div>
-</div>
 </div>
 </div>
 </div>
@@ -833,82 +806,6 @@ extends <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/ja
 <dt>Throws:</dt>
 <dd><code><a href="LockFailureException.html" title="class in org.cojen.tupl">LockFailureException</a></code> - if interrupted, timed out, or illegal upgrade</dd>
 <dd><code><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></code> - if deadlock was detected after waiting full timeout</dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="uponLockShared(long,byte[],java.util.concurrent.Executor,java.util.function.Consumer)">
-<h3>uponLockShared</h3>
-<div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">uponLockShared</span><wbr><span class="parameters">(long&nbsp;indexId,
- byte[]&nbsp;key,
- <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/Executor.html" title="class or interface in java.util.concurrent" class="external-link">Executor</a>&nbsp;exec,
- <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;<a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a>&gt;&nbsp;cont)</span></div>
-<div class="block">Asynchronously attempts to acquire a shared lock for the given key, denying exclusive
- locks. If the continuation receives an <a href="LockResult.html#isAlreadyOwned()">owned</a>
- result, the transaction already owns a strong enough lock, and no extra unlock should be
- performed.
-
- <p>The continuation is run in the given executor, and so ownership of this transaction
- is effectively transferred. The current thread must not interact with the transaction
- again, unless custom synchronization is applied.
-
- <p><i>Note: This method is intended for advanced use cases.</i></div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>key</code> - non-null key to lock; instance is not cloned and so it must not be modified
- after calling this method</dd>
-<dd><code>exec</code> - runs the continuation</dd>
-<dd><code>cont</code> - continuation to be called later; can receive <a href="LockResult.html#INTERRUPTED"><code>INTERRUPTED</code></a>, <a href="LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="LockResult.html#OWNED_SHARED"><code>OWNED_SHARED</code></a>, <a href="LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="uponLockUpgradable(long,byte[],java.util.concurrent.Executor,java.util.function.Consumer)">
-<h3>uponLockUpgradable</h3>
-<div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">uponLockUpgradable</span><wbr><span class="parameters">(long&nbsp;indexId,
- byte[]&nbsp;key,
- <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/Executor.html" title="class or interface in java.util.concurrent" class="external-link">Executor</a>&nbsp;exec,
- <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;<a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a>&gt;&nbsp;cont)</span></div>
-<div class="block">Asynchronously attempts to acquire an upgrade lock for the given key, denying exclusive
- and additional upgradable locks. If the continuation receives an <a href="LockResult.html#isAlreadyOwned()">owned</a> result, the transaction already owns a strong enough
- lock, and no extra unlock should be performed.
-
- <p>The continuation is run in the given executor, and so ownership of this transaction
- is effectively transferred. The current thread must not interact with the transaction
- again, unless custom synchronization is applied.
-
- <p><i>Note: This method is intended for advanced use cases.</i></div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>key</code> - non-null key to lock; instance is not cloned and so it must not be modified
- after calling this method</dd>
-<dd><code>exec</code> - runs the continuation</dd>
-<dd><code>cont</code> - continuation to be called later; can receive <a href="LockResult.html#ILLEGAL"><code>ILLEGAL</code></a>, <a href="LockResult.html#INTERRUPTED"><code>INTERRUPTED</code></a>, <a href="LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="LockResult.html#OWNED_UPGRADABLE"><code>OWNED_UPGRADABLE</code></a>, or <a href="LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="uponLockExclusive(long,byte[],java.util.concurrent.Executor,java.util.function.Consumer)">
-<h3>uponLockExclusive</h3>
-<div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">uponLockExclusive</span><wbr><span class="parameters">(long&nbsp;indexId,
- byte[]&nbsp;key,
- <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/Executor.html" title="class or interface in java.util.concurrent" class="external-link">Executor</a>&nbsp;exec,
- <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;<a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a>&gt;&nbsp;cont)</span></div>
-<div class="block">Asynchronously attempts to acquire an exclusive lock for the given key, denying any
- additional locks. If the continuation receives an <a href="LockResult.html#isAlreadyOwned()">owned</a> result, the transaction already owns exclusive lock, and no extra unlock should
- be performed.
-
- <p>The continuation is run in the given executor, and so ownership of this transaction
- is effectively transferred. The current thread must not interact with the transaction
- again, unless custom synchronization is applied.
-
- <p><i>Note: This method is intended for advanced use cases.</i></div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>key</code> - non-null key to lock; instance is not cloned and so it must not be modified
- after calling this method</dd>
-<dd><code>exec</code> - runs the continuation</dd>
-<dd><code>cont</code> - continuation to be called later; can receive <a href="LockResult.html#ILLEGAL"><code>ILLEGAL</code></a>, <a href="LockResult.html#INTERRUPTED"><code>INTERRUPTED</code></a>, <a href="LockResult.html#ACQUIRED"><code>ACQUIRED</code></a>, <a href="LockResult.html#UPGRADED"><code>UPGRADED</code></a>, or <a href="LockResult.html#OWNED_EXCLUSIVE"><code>OWNED_EXCLUSIVE</code></a></dd>
 </dl>
 </section>
 </li>
