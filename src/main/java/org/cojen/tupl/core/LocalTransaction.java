@@ -19,7 +19,6 @@ package org.cojen.tupl.core;
 
 import java.io.IOException;
 
-import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
 import org.cojen.tupl.DatabaseException;

@@ -19,7 +19,6 @@ package org.cojen.tupl.core;
 
 import java.lang.ref.WeakReference;
 
-import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.cojen.tupl.DeadlockException;

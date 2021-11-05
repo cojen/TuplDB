@@ -24,8 +24,6 @@ import java.lang.ref.WeakReference;
 
 import java.util.Objects;
 
-import java.util.concurrent.Executor;
-
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockResult;
