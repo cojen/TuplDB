@@ -52,6 +52,7 @@ import org.cojen.tupl.View;
 import org.cojen.tupl.core.CoreDatabase;
 import org.cojen.tupl.core.ScanVisitor;
 
+import org.cojen.tupl.util.Clutch;
 import org.cojen.tupl.util.Runner;
 
 import static org.cojen.tupl.rows.RowUtils.*;
@@ -92,6 +93,8 @@ public class RowStore {
     private final Index mSchemata;
 
     private final WeakCache<Index, TableManager<?>> mTableManagers;
+
+    final Clutch.Pack mTriggerPack = new Clutch.Pack(16);
 
     // Extended key for referencing secondary indexes.
     private static final int K_SECONDARY = 1;

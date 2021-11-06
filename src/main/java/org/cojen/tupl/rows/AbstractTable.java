@@ -47,7 +47,6 @@ import org.cojen.tupl.filter.TrueFilter;
 
 import org.cojen.tupl.io.Utils;
 
-import org.cojen.tupl.util.Clutch;
 import org.cojen.tupl.util.Latch;
 
 /**
@@ -64,8 +63,6 @@ public abstract class AbstractTable<R> implements Table<R> {
     private final WeakCache<String, ScanControllerFactory<R>> mFilterFactoryCache;
 
     private HashMap<String, Latch> mFilterLatchMap;
-
-    final Clutch.Pack mTriggerPack = new Clutch.Pack(16);
 
     private Trigger<R> mTrigger;
     private static final VarHandle cTriggerHandle;
@@ -84,7 +81,7 @@ public abstract class AbstractTable<R> implements Table<R> {
         mSource = Objects.requireNonNull(source);
         mFilterFactoryCache = new WeakCache<>();
         if (supportsSecondaries()) {
-            Trigger<R> trigger = new Trigger<>(mTriggerPack);
+            Trigger<R> trigger = new Trigger<>(rowStoreRef().get().mTriggerPack);
             trigger.mMode = Trigger.SKIP;
             cTriggerHandle.setRelease(this, trigger);
         }
@@ -405,7 +402,7 @@ public abstract class AbstractTable<R> implements Table<R> {
         }
 
         if (trigger == null) {
-            trigger = new Trigger<>(mTriggerPack);
+            trigger = new Trigger<>(mTrigger.getPack());
             trigger.mMode = Trigger.SKIP;
         }
 
