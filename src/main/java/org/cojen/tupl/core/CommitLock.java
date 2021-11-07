@@ -160,19 +160,7 @@ final class CommitLock implements Lock {
      * @return shared object to unlock
      */
     public final Shared acquireSharedInterruptibly() throws InterruptedException {
-        mSharedAcquire.increment();
-        Shared shared = mShared.get();
-        if (mExclusiveThread != null && shared.count == 0) {
-            doReleaseShared();
-            mFullLatch.acquireSharedInterruptibly();
-            try {
-                mSharedAcquire.increment();
-            } finally {
-                mFullLatch.releaseShared();
-            }
-        }
-        shared.count++;
-        return shared;
+        return tryAcquireShared(-1, null);
     }
 
     /**
@@ -194,7 +182,7 @@ final class CommitLock implements Lock {
         if (mExclusiveThread != null && shared.count == 0) {
             doReleaseShared();
             if (time < 0) {
-                mFullLatch.acquireShared();
+                mFullLatch.acquireSharedInterruptibly();
             } else if (time == 0 || !mFullLatch.tryAcquireSharedNanos(unit.toNanos(time))) {
                 return null;
             }
