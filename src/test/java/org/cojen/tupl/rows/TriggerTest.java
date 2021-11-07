@@ -24,8 +24,6 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
-import org.cojen.tupl.util.Clutch;
-
 /**
  * 
  *
@@ -580,10 +578,6 @@ public class TriggerTest {
         TestRow row;
         byte[] oldValue, newValue;
         boolean update;
-
-        TestTrigger() {
-            super(new Clutch.Pack(16));
-        }
 
         @Override
         public void store(Transaction txn, TestRow row, byte[] key,

@@ -81,7 +81,7 @@ public abstract class AbstractTable<R> implements Table<R> {
         mSource = Objects.requireNonNull(source);
         mFilterFactoryCache = new WeakCache<>();
         if (supportsSecondaries()) {
-            Trigger<R> trigger = new Trigger<>(rowStoreRef().get().mTriggerPack);
+            var trigger = new Trigger<R>();
             trigger.mMode = Trigger.SKIP;
             cTriggerHandle.setRelease(this, trigger);
         }
@@ -402,7 +402,7 @@ public abstract class AbstractTable<R> implements Table<R> {
         }
 
         if (trigger == null) {
-            trigger = new Trigger<>(mTrigger.getPack());
+            trigger = new Trigger<>();
             trigger.mMode = Trigger.SKIP;
         }
 

@@ -40,6 +40,8 @@ import org.cojen.tupl.util.Parker;
 final class CommitLock implements Lock {
     // See: "Using LongAdder to make a Reader-Writer Lock" by Concurrency Freaks, and also
     // "NUMA-Aware Reader Writer Locks".
+    //
+    // Also see WideLatch class, which is isn't reentrant.
 
     private final LongAdder mSharedAcquire = new LongAdder();
     private final LongAdder mSharedRelease = new LongAdder();

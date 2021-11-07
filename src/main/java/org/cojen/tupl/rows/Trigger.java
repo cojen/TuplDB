@@ -21,7 +21,7 @@ import java.io.IOException;
 
 import org.cojen.tupl.Transaction;
 
-import org.cojen.tupl.util.Clutch;
+import org.cojen.tupl.util.WideLatch;
 
 /**
  * Defines the single main trigger that a table can have. A trigger implementation is expected
@@ -32,17 +32,11 @@ import org.cojen.tupl.util.Clutch;
  * @author Brian S O'Neill
  * @see AbstractTable#setTrigger
  */
-public class Trigger<R> extends Clutch {
+public class Trigger<R> extends WideLatch {
     public static final int ACTIVE = 0, SKIP = 1, DISABLED = 2;
-
-    private final Clutch.Pack mPack;
 
     // Set by AbstractTable.
     int mMode;
-
-    protected Trigger(Clutch.Pack pack) {
-        mPack = pack;
-    }
 
     /**
      * Called after a row has been stored, but before the row has been marked clean. By
@@ -139,10 +133,5 @@ public class Trigger<R> extends Clutch {
      * should return quickly or else run any tasks in a separate thread.
      */
     protected void notifyDisabled() {
-    }
-
-    @Override
-    protected Clutch.Pack getPack() {
-        return mPack;
     }
 }

@@ -32,8 +32,6 @@ import org.cojen.tupl.Index;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UniqueConstraintException;
 
-import org.cojen.tupl.util.Clutch;
-
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Field;
 import org.cojen.maker.Label;
@@ -169,7 +167,7 @@ public class IndexTriggerMaker<R> {
     /**
      * @param primaryIndexId primary index id
      */
-    Trigger<R> makeTrigger(RowStore rs, long primaryIndexId, Clutch.Pack pack) {
+    Trigger<R> makeTrigger(RowStore rs, long primaryIndexId) {
         mClassMaker = mPrimaryGen.beginClassMaker(IndexTriggerMaker.class, mRowType, "Trigger");
         mClassMaker.extend(Trigger.class).final_();
 
@@ -188,24 +186,24 @@ public class IndexTriggerMaker<R> {
 
         MethodType ctorMethodType;
         if (!hasBackfills) {
-            ctorMethodType = MethodType.methodType(void.class, Clutch.Pack.class, Index[].class);
+            ctorMethodType = MethodType.methodType(void.class, Index[].class);
         } else {
             ctorMethodType = MethodType.methodType
-                (void.class, Clutch.Pack.class, Index[].class, IndexBackfill[].class);
+                (void.class, Index[].class, IndexBackfill[].class);
         }
 
         {
             MethodMaker mm = mClassMaker.addConstructor(ctorMethodType);
-            mm.invokeSuperConstructor(mm.param(0));
+            mm.invokeSuperConstructor();
 
             for (int i=0; i<mSecondaryIndexes.length; i++) {
-                mm.field("ix" + i).set(mm.param(1).aget(i));
+                mm.field("ix" + i).set(mm.param(0).aget(i));
             }
 
             if (hasBackfills) {
                 for (int i=0; i<mBackfills.length; i++) {
                     if (mBackfills[i] != null) {
-                        mm.field("backfill" + i).set(mm.param(2).aget(i));
+                        mm.field("backfill" + i).set(mm.param(1).aget(i));
                     }
                 }
             }
@@ -237,9 +235,9 @@ public class IndexTriggerMaker<R> {
         try {
             var ctor = lookup.findConstructor(lookup.lookupClass(), ctorMethodType);
             if (!hasBackfills) {
-                trigger = (Trigger<R>) ctor.invoke(pack, mSecondaryIndexes);
+                trigger = (Trigger<R>) ctor.invoke(mSecondaryIndexes);
             } else {
-                trigger = (Trigger<R>) ctor.invoke(pack, mSecondaryIndexes, mBackfills);
+                trigger = (Trigger<R>) ctor.invoke(mSecondaryIndexes, mBackfills);
             }
         } catch (Throwable e) {
             throw rethrow(e);

@@ -262,7 +262,7 @@ public class TableManager<R> {
         if (table != null && table.supportsSecondaries()) {
             Trigger<R> trigger = null;
             if (maker != null) {
-                trigger = maker.makeTrigger(rs, mPrimaryIndex.id(), rs.mTriggerPack);
+                trigger = maker.makeTrigger(rs, mPrimaryIndex.id());
             }
             table.setTrigger(trigger);
         }
