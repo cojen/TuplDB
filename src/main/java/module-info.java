@@ -10,14 +10,16 @@ module org.cojen.tupl {
     exports org.cojen.tupl.tools;
     exports org.cojen.tupl.util;
 
-    requires transitive java.logging;
+    requires jdk.unsupported;
 
-    requires transitive jdk.unsupported;
+    requires com.sun.jna;
+    requires com.sun.jna.platform;
 
-    requires transitive com.sun.jna;
-    requires transitive com.sun.jna.platform;
+    requires org.cojen.maker;
 
-    requires transitive org.cojen.maker;
+    // Could be transitive because it's part of the public API, but only in EventListener.
+    // I doubt that the java.logging module is used much.
+    requires static java.logging;
 
     requires static java.management;
 
