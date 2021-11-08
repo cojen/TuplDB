@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.rows;
 
+import java.lang.ref.WeakReference;
+
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
@@ -33,6 +35,7 @@ import java.util.NavigableSet;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.WeakHashMap;
 
 import org.cojen.tupl.AlternateKey;
 import org.cojen.tupl.Hidden;
@@ -49,7 +52,7 @@ import static org.cojen.tupl.rows.ColumnInfo.*;
  * @author Brian S O'Neill
  */
 class RowInfo extends ColumnSet {
-    private static final WeakCache<Class<?>, RowInfo> cache = new WeakCache<>();
+    private static final WeakHashMap<Class<?>, WeakReference<RowInfo>> cache = new WeakHashMap<>();
 
     /**
      * Returns a new or cached instance.
@@ -57,17 +60,17 @@ class RowInfo extends ColumnSet {
      * @throws IllegalArgumentException if row type is malformed
      */
     static RowInfo find(Class<?> rowType) {
-        RowInfo info = cache.get(rowType);
-        if (info == null) {
-            synchronized (cache) {
-                info = cache.get(rowType);
-                if (info == null) {
-                    info = examine(rowType);
-                    cache.put(rowType, info);
-                }
+        synchronized (cache) {
+            WeakReference<RowInfo> ref = cache.get(rowType);
+            RowInfo info;
+
+            if (ref == null || (info = ref.get()) == null) {
+                info = examine(rowType);
+                cache.put(rowType, new WeakReference<>(info));
             }
+
+            return info;
         }
-        return info;
     }
 
     /**
