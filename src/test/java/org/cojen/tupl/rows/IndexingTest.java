@@ -388,7 +388,7 @@ public class IndexingTest {
         //config.eventListener(EventListener.printTo(System.out));
         Database db = Database.open(config);
 
-        final String typeName = IndexingTest.class.getName() + "BasicBackfill";
+        final String typeName = newRowTypeName();
 
         final Object[] spec = {
             long.class, "+id",
@@ -521,7 +521,7 @@ public class IndexingTest {
         //config.eventListener(EventListener.printTo(System.out));
         Database db = Database.open(config);
 
-        final String typeName = IndexingTest.class.getName() + "ConcurrentBackfill";
+        final String typeName = newRowTypeName();
 
         final Object[] spec = {
             long.class, "+id",
@@ -644,7 +644,7 @@ public class IndexingTest {
         config.replicate(replicaRepl);
         var replicaDb = newTempDatabase(getClass(), config);
 
-        final String typeName = IndexingTest.class.getName() + "ReplicaBackfill";
+        final String typeName = newRowTypeName();
 
         final Object[] spec = {
             long.class, "+id",
