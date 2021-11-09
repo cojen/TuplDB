@@ -421,8 +421,8 @@ final class Lock {
                     break unlock;
                 } else if (sharedObj instanceof LockerHTEntry[] entries) {
                     if (lockerHTremove(entries, locker)) {
-                        if (count == 2) {
-                            mSharedLockersObj = lockerHTgetOne(entries);
+                        if ((count & 0x7fffffff) == 1) {
+                            mSharedLockersObj = null;
                         }
                         break unlock;
                     }
@@ -554,16 +554,13 @@ final class Lock {
             }
             throw new IllegalStateException(message);
         }
-        if (mLockCount != ~0) {
-            // Already upgradable.
-            latch.releaseExclusive();
-            return;
-        }
-        deleteGhost(latch);
-        mLockCount = 0x80000000;
-        LatchCondition queueSX = mQueueSX;
-        if (queueSX != null) {
-            queueSX.signalShared(latch);
+        if (mLockCount == ~0) {
+            deleteGhost(latch);
+            mLockCount = 0x80000000;
+            LatchCondition queueSX = mQueueSX;
+            if (queueSX != null) {
+                queueSX.signalShared(latch);
+            }
         }
         latch.releaseExclusive();
     }
@@ -735,7 +732,7 @@ final class Lock {
             lockerHTadd(entries, newCount & 0x7fffffff, locker);
         } else {
             // Initial capacity of must be a power of 2.
-            var entries = new LockerHTEntry[8];
+            var entries = new LockerHTEntry[4];
             lockerHTadd(entries, (Locker) sharedObj);
             lockerHTadd(entries, locker);
             mSharedLockersObj = entries;
@@ -798,15 +795,6 @@ final class Lock {
             }
         }
         return false;
-    }
-
-    private static Locker lockerHTgetOne(LockerHTEntry[] entries) {
-        for (LockerHTEntry e : entries) {
-            if (e != null) {
-                return e.mOwner;
-            }
-        }
-        throw new AssertionError("No lockers in hashtable");
     }
 
     /**
