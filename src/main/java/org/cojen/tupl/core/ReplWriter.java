@@ -85,12 +85,12 @@ class ReplWriter extends RedoWriter {
 
     static {
         try {
-            cFirstPendingHandle =
-                MethodHandles.lookup().findVarHandle
+            var lookup = MethodHandles.lookup();
+
+            cFirstPendingHandle = lookup.findVarHandle
                 (ReplWriter.class, "mFirstPending", PendingTxn.class);
 
-            cLastPendingHandle =
-                MethodHandles.lookup().findVarHandle
+            cLastPendingHandle = lookup.findVarHandle
                 (ReplWriter.class, "mLastPending", PendingTxn.class);
         } catch (Throwable e) {
             throw Utils.rethrow(e);

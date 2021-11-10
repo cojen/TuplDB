@@ -46,12 +46,12 @@ public abstract class MappedPageArray extends PageArray {
 
     static {
         try {
-            cMappingPtrHandle =
-                MethodHandles.lookup().findVarHandle
+            var lookup = MethodHandles.lookup();
+
+            cMappingPtrHandle = lookup.findVarHandle
                 (MappedPageArray.class, "mMappingPtr", long.class);
 
-            cCauseHandle =
-                MethodHandles.lookup().findVarHandle
+            cCauseHandle = lookup.findVarHandle
                 (MappedPageArray.class, "mCause", Throwable.class);
         } catch (Throwable e) {
             throw rethrow(e);

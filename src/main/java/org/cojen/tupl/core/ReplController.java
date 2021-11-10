@@ -48,12 +48,12 @@ final class ReplController extends ReplWriter {
 
     static {
         try {
-            cCheckpointPosHandle =
-                MethodHandles.lookup().findVarHandle
+            var lookup = MethodHandles.lookup();
+
+            cCheckpointPosHandle = lookup.findVarHandle
                 (ReplController.class, "mCheckpointPos", long.class);
 
-            cSwitchingHandle =
-                MethodHandles.lookup().findVarHandle
+            cSwitchingHandle = lookup.findVarHandle
                 (ReplController.class, "mSwitchingToReplica", boolean.class);
         } catch (Throwable e) {
             throw Utils.rethrow(e);

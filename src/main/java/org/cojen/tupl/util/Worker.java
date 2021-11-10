@@ -65,25 +65,12 @@ public class Worker {
             // https://bugs.openjdk.java.net/browse/JDK-8074773
             Class<?> clazz = LockSupport.class;
 
-            cSizeHandle =
-                MethodHandles.lookup().findVarHandle
-                (Worker.class, "mSize", int.class);
-
-            cFirstHandle =
-                MethodHandles.lookup().findVarHandle
-                (Worker.class, "mFirst", Task.class);
-
-            cLastHandle =
-                MethodHandles.lookup().findVarHandle
-                (Worker.class, "mLast", Task.class);
-
-            cStateHandle =
-                MethodHandles.lookup().findVarHandle
-                (Worker.class, "mThreadState", int.class);
-
-            cThreadHandle =
-                MethodHandles.lookup().findVarHandle
-                (Worker.class, "mThread", Thread.class);
+            var lookup = MethodHandles.lookup();
+            cSizeHandle = lookup.findVarHandle(Worker.class, "mSize", int.class);
+            cFirstHandle = lookup.findVarHandle(Worker.class, "mFirst", Task.class);
+            cLastHandle = lookup.findVarHandle(Worker.class, "mLast", Task.class);
+            cStateHandle = lookup.findVarHandle(Worker.class, "mThreadState", int.class);
+            cThreadHandle = lookup.findVarHandle(Worker.class, "mThread", Thread.class);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }

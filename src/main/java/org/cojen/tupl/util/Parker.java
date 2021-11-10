@@ -212,12 +212,13 @@ public abstract class Parker {
 
         static {
             try {
-                STATE_HANDLE = MethodHandles.lookup()
-                    .findVarHandle(Entry.class, "mState", int.class);
+                var lookup = MethodHandles.lookup();
+
+                STATE_HANDLE = lookup.findVarHandle(Entry.class, "mState", int.class);
 
                 MethodHandle isVirtual;
                 try {
-                    isVirtual = MethodHandles.lookup().findVirtual
+                    isVirtual = lookup.findVirtual
                         (Thread.class, "isVirtual", MethodType.methodType(boolean.class));
                 } catch (NoSuchMethodException e) {
                     isVirtual = MethodHandles.empty

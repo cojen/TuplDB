@@ -56,12 +56,12 @@ class CursorFrame {
 
     static {
         try {
-            cNextCousinHandle =
-                MethodHandles.lookup().findVarHandle
+            var lookup = MethodHandles.lookup();
+
+            cNextCousinHandle = lookup.findVarHandle
                 (CursorFrame.class, "mNextCousin", CursorFrame.class);
 
-            cLastHandle =
-                MethodHandles.lookup().findVarHandle
+            cLastHandle = lookup.findVarHandle
                 (Node.class, "mLastCursorFrame", CursorFrame.class);
         } catch (Throwable e) {
             throw rethrow(e);

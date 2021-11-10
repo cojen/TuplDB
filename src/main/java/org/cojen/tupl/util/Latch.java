@@ -41,33 +41,14 @@ public class Latch {
 
     static {
         try {
-            cStateHandle =
-                MethodHandles.lookup().findVarHandle
-                (Latch.class, "mLatchState", int.class);
-
-            cFirstHandle =
-                MethodHandles.lookup().findVarHandle
-                (Latch.class, "mLatchFirst", WaitNode.class);
-
-            cLastHandle =
-                MethodHandles.lookup().findVarHandle
-                (Latch.class, "mLatchLast", WaitNode.class);
-
-            cWaiterHandle =
-                MethodHandles.lookup().findVarHandle
-                (WaitNode.class, "mWaiter", Object.class);
-
-            cWaitStateHandle =
-                MethodHandles.lookup().findVarHandle
-                (WaitNode.class, "mWaitState", int.class);
-
-            cPrevHandle =
-                MethodHandles.lookup().findVarHandle
-                (WaitNode.class, "mPrev", WaitNode.class);
-
-            cNextHandle =
-                MethodHandles.lookup().findVarHandle
-                (WaitNode.class, "mNext", WaitNode.class);
+            var lookup = MethodHandles.lookup();
+            cStateHandle = lookup.findVarHandle(Latch.class, "mLatchState", int.class);
+            cFirstHandle = lookup.findVarHandle(Latch.class, "mLatchFirst", WaitNode.class);
+            cLastHandle = lookup.findVarHandle(Latch.class, "mLatchLast", WaitNode.class);
+            cWaiterHandle = lookup.findVarHandle(WaitNode.class, "mWaiter", Object.class);
+            cWaitStateHandle = lookup.findVarHandle(WaitNode.class, "mWaitState", int.class);
+            cPrevHandle = lookup.findVarHandle(WaitNode.class, "mPrev", WaitNode.class);
+            cNextHandle = lookup.findVarHandle(WaitNode.class, "mNext", WaitNode.class);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }

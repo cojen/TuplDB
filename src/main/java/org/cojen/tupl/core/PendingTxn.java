@@ -48,13 +48,9 @@ final class PendingTxn extends Locker implements Runnable {
 
     static {
         try {
-            cCommitPosHandle =
-                MethodHandles.lookup().findVarHandle
-                (PendingTxn.class, "mCommitPos", long.class);
-
-            cNextHandle =
-                MethodHandles.lookup().findVarHandle
-                (PendingTxn.class, "mNext", PendingTxn.class);
+            var lookup = MethodHandles.lookup();
+            cCommitPosHandle = lookup.findVarHandle(PendingTxn.class, "mCommitPos", long.class);
+            cNextHandle = lookup.findVarHandle(PendingTxn.class, "mNext", PendingTxn.class);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }

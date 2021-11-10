@@ -58,12 +58,12 @@ abstract class BTreeSeparator extends LongAdder {
 
     static {
         try {
-            cExceptionHandle =
-                MethodHandles.lookup().findVarHandle
+            var lookup = MethodHandles.lookup();
+
+            cExceptionHandle = lookup.findVarHandle
                 (BTreeSeparator.class, "mException", Throwable.class);
 
-            cSpawnCountHandle =
-                MethodHandles.lookup().findVarHandle
+            cSpawnCountHandle = lookup.findVarHandle
                 (Worker.class, "mSpawnCount", int.class);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
