@@ -446,7 +446,7 @@ class Locker implements DatabaseAccess { // weak access to database
 
         if (result.isTimedOut()) {
             Object att = waitingFor == null ? null
-                : waitingFor.findOwnerAttachment(this, lockType);
+                : waitingFor.findOwnerAttachment(this, false, lockType);
             return new LockTimeoutException(nanosTimeout, att);
         }
 

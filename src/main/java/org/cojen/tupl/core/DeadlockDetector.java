@@ -82,7 +82,7 @@ final class DeadlockDetector extends HashMap<Locker, Boolean> {
             }
             info.mKey = key;
 
-            info.mAttachment = lock.findOwnerAttachment(mOrigin, lockType);
+            info.mAttachment = lock.findOwnerAttachment(mOrigin, false, lockType);
         }
 
         return new DeadlockInfoSet(infos);

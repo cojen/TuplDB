@@ -631,7 +631,7 @@ final class Lock {
     {
         var detector = new DeadlockDetector(locker, true);
         if (detector.scan()) {
-            Object att = findOwnerAttachment(locker, lockType);
+            Object att = findOwnerAttachment(locker, false, lockType);
             throw new DeadlockException(nanosTimeout, att,
                                         detector.mGuilty,
                                         detector.newDeadlockSet(lockType));
@@ -642,14 +642,13 @@ final class Lock {
      * Find an exclusive owner attachment, or the first found shared owner attachment. Might
      * acquire and release a shared latch to access the shared owner attachment.
      *
-     * @param locker pass null if already latched
      * @param lockType TYPE_SHARED, TYPE_UPGRADABLE, or TYPE_EXCLUSIVE
      */
-    Object findOwnerAttachment(Locker locker, int lockType) {
+    final Object findOwnerAttachment(Locker locker, boolean latched, int lockType) {
         // See note in DeadlockDetector regarding unlatched access to this Lock.
 
         Locker owner = mOwner;
-        if (owner != null) {
+        if (owner != null && owner != locker) {
             Object att = owner.attachment();
             if (att != null) {
                 return att;
@@ -671,14 +670,14 @@ final class Lock {
         }
 
         if (sharedObj instanceof LockerHTEntry[] entries) {
-            if (locker != null) {
+            if (!latched) {
                 // Need a latch to safely check the shared lock owner hashtable.
                 LockManager manager = locker.mManager;
                 if (manager != null) {
                     LockManager.Bucket bucket = manager.getBucket(mHashCode);
                     bucket.acquireShared();
                     try {
-                        return findOwnerAttachment(null, lockType);
+                        return findOwnerAttachment(locker, true, lockType);
                     } finally {
                         bucket.releaseShared();
                     }
