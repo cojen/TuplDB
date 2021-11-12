@@ -2094,7 +2094,7 @@ final class UndoLog implements DatabaseAccess {
             lock.mIndexId = indexId;
             lock.mKey = key;
             lock.mHashCode = LockManager.hash(indexId, key);
-            lock.mLockManagerNext = mTopLock;
+            lock.mLockNext = mTopLock;
             lock.mLockCount = lockCount;
             mTopLock = lock;
             return lock;
@@ -2104,7 +2104,7 @@ final class UndoLog implements DatabaseAccess {
             Lock lock = mTopLock;
             if (lock != null) while (true) {
                 // Copy next before the field is overwritten.
-                Lock next = lock.mLockManagerNext;
+                Lock next = lock.mLockNext;
                 txn.recoverLock(lock);
                 if (next == null) {
                     break;

@@ -39,6 +39,13 @@ import org.cojen.tupl.Transaction;
  */
 public abstract class CoreDatabase implements Database {
     /**
+     * @param owner the upgradable owner of the lock
+     */
+    public abstract DetachedLock newDetachedLock(Transaction owner);
+
+    public abstract <R> RowKeyLockSet<R> newRowKeyLockSet(long indexId);
+
+    /**
      * Defines anonymous secondary indexes and invokes a callback which should transactionally
      * store references to them. Next, a redo op is written which notifies replicas that the
      * set of secondaries has changed. Finally, the transaction is committed.

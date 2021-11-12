@@ -17,6 +17,9 @@
 
 package org.cojen.tupl.core;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import java.lang.ref.WeakReference;
 
 import java.util.concurrent.ThreadLocalRandom;
@@ -52,7 +55,19 @@ class Locker implements DatabaseAccess { // weak access to database
     ParentScope mParentScope;
 
     // Is null if empty; Lock instance if one; Block if more.
-    Object mTailBlock;
+    private Object mTailBlock;
+
+    // Must use this when pushing locks, as needed by the findAnyConflict method.
+    private static final VarHandle cTailBlockHandle;
+
+    static {
+        try {
+            cTailBlockHandle = MethodHandles.lookup().findVarHandle
+                (Locker.class, "mTailBlock", Object.class);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
+    }
 
     /**
      * @param manager null for Transaction.BOGUS or when closing down LockManager
@@ -698,7 +713,7 @@ class Locker implements DatabaseAccess { // weak access to database
                 if (tail != null) {
                     do {
                         tail.unlockToSavepoint(this, 0);
-                        tail = tail.pop();
+                        tail = tail.prev();
                     } while (tail != null);
                     mTailBlock = null;
                 }
@@ -707,13 +722,12 @@ class Locker implements DatabaseAccess { // weak access to database
             Object tailObj = mTailBlock;
             if (tailObj instanceof Block tail) {
                 while (true) {
-                    Block prev = tail.peek();
+                    Block prev = tail.prev();
                     if (prev == null) {
                         tail.unlockToSavepoint(this, 1);
                         break;
                     }
                     tail.unlockToSavepoint(this, 0);
-                    tail.discard();
                     tail = prev;
                 }
                 mTailBlock = tail;
@@ -722,7 +736,7 @@ class Locker implements DatabaseAccess { // weak access to database
             var tail = (Block) mTailBlock;
             while (tail != parentTailObj) {
                 tail.unlockToSavepoint(this, 0);
-                tail = tail.pop();
+                tail = tail.prev();
             }
             tail.unlockToSavepoint(this, parent.mTailBlockSize);
             mTailBlock = tail;
@@ -812,7 +826,7 @@ class Locker implements DatabaseAccess { // weak access to database
                 return;
             } else {
                 mManager.takeLockOwnership(lock, newOwner);
-                newOwner.mTailBlock = tailObj;
+                cTailBlockHandle.setRelease(newOwner, lock);
             }
             mTailBlock = null;
             return;
@@ -823,15 +837,15 @@ class Locker implements DatabaseAccess { // weak access to database
         do {
             int size = tail.transferExclusive(this, newOwner);
             if (size <= 0) {
-                tail = tail.pop();
+                tail = tail.prev();
             } else {
                 if (last == null) {
-                    newOwner.mTailBlock = tail;
+                    cTailBlockHandle.setRelease(newOwner, tail);
                 } else {
                     last.mPrev = tail;
                 }
                 last = tail;
-                tail = tail.peek();
+                tail = tail.prev();
             }
         } while (tail != null);
 
@@ -871,9 +885,9 @@ class Locker implements DatabaseAccess { // weak access to database
     final void push(Lock lock) {
         Object tailObj = mTailBlock;
         if (tailObj == null) {
-            mTailBlock = lock;
+            cTailBlockHandle.setRelease(this, lock);
         } else if (tailObj instanceof Lock tailLock) {
-            mTailBlock = new Block(tailLock, lock);
+            cTailBlockHandle.setRelease(this, new Block(tailLock, lock));
         } else {
             ((Block) tailObj).pushLock(this, lock, 0);
         }
@@ -887,11 +901,42 @@ class Locker implements DatabaseAccess { // weak access to database
             if (tailObj != lock || mParentScope != null) {
                 var block = new Block(tailLock, lock);
                 block.secondUpgrade();
-                mTailBlock = block;
+                cTailBlockHandle.setRelease(this, block);
             }
         } else {
             ((Block) tailObj).pushLock(this, lock, 1L << 63);
         }
+    }
+
+    /**
+     * Returns a lock which matches the index and predicate and is held exclusive or
+     * upgradable. This method is intended to be called by a thread which is independent of the
+     * one which is allowed to modify the Locker.
+     *
+     * @return conflicting lock or null if none found
+     */
+    final Lock findAnyConflict(long indexId, RowKeyPredicate predicate) {
+        Object tailObj = cTailBlockHandle.getAcquire(this);
+
+        if (tailObj != null) {
+            if (tailObj instanceof Lock lock) {
+                if (lock.mIndexId == indexId && predicate.testKey(lock.mKey) &&
+                    ((int) Lock.cLockCountHandle.getAcquire(lock)) < 0)
+                {
+                    return lock;
+                }
+            } else {
+                var block = (Block) tailObj;
+                do {
+                    Lock lock = block.findAnyConflict(indexId, predicate);
+                    if (lock != null) {
+                        return lock;
+                    }
+                } while ((block = block.prevAcquire()) != null);
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -916,17 +961,30 @@ class Locker implements DatabaseAccess { // weak access to database
         private final Lock[] mLocks;
         private long mUpgrades;
         // Size must always be at least 1.
-        int mSize;
+        private int mSize;
         private long mUnlockGroup;
 
         private Block mPrev;
+
+        // Must use these when pushing locks, as needed by the findAnyConflict method.
+        private static final VarHandle cPrevHandle, cSizeHandle;
+
+        static {
+            try {
+                var lookup = MethodHandles.lookup();
+                cPrevHandle = lookup.findVarHandle(Block.class, "mPrev", Block.class);
+                cSizeHandle = lookup.findVarHandle(Block.class, "mSize", int.class);
+            } catch (Throwable e) {
+                throw Utils.rethrow(e);
+            }
+        }
 
         Block(Lock first, Lock second) {
             var locks = new Lock[FIRST_BLOCK_CAPACITY];
             locks[0] = first;
             locks[1] = second;
             mLocks = locks;
-            mSize = 2;
+            cSizeHandle.setRelease(this, 2);
         }
 
         void secondUpgrade() {
@@ -937,14 +995,14 @@ class Locker implements DatabaseAccess { // weak access to database
          * @param upgrade {@literal 0 or 1L << 63}
          */
         private Block(Block prev, Lock first, long upgrade) {
-            mPrev = prev;
             int capacity = prev.mLocks.length;
             if (capacity < HIGHEST_BLOCK_CAPACITY) {
                 capacity <<= 1;
             }
             (mLocks = new Lock[capacity])[0] = first;
             mUpgrades = upgrade;
-            mSize = 1;
+            cSizeHandle.setRelease(this, 1);
+            cPrevHandle.setRelease(this, prev);
         }
 
         /**
@@ -967,9 +1025,9 @@ class Locker implements DatabaseAccess { // weak access to database
             if (size < locks.length) {
                 locks[size] = lock;
                 mUpgrades |= upgrade >>> size;
-                mSize = size + 1;
+                cSizeHandle.setRelease(this, size + 1);
             } else {
-                locker.mTailBlock = new Block(this, lock, upgrade);
+                cTailBlockHandle.setRelease(locker, new Block(this, lock, upgrade));
             }
         }
 
@@ -991,7 +1049,6 @@ class Locker implements DatabaseAccess { // weak access to database
                 mLocks[size] = null;
                 if (size == 0) {
                     locker.mTailBlock = mPrev;
-                    mPrev = null;
                 } else {
                     mSize = size;
                 }
@@ -1022,7 +1079,6 @@ class Locker implements DatabaseAccess { // weak access to database
                 if (size == 0) {
                     Block prev = block.mPrev;
                     locker.mTailBlock = prev;
-                    block.mPrev = null;
                     if ((block.mUnlockGroup & mask) == 0) {
                         return;
                     }
@@ -1063,7 +1119,6 @@ class Locker implements DatabaseAccess { // weak access to database
                 if (size == 0) {
                     Block prev = block.mPrev;
                     locker.mTailBlock = prev;
-                    block.mPrev = null;
                     if ((block.mUnlockGroup & mask) == 0) {
                         return;
                     }
@@ -1162,7 +1217,6 @@ class Locker implements DatabaseAccess { // weak access to database
                     if (size == 0) {
                         Block prev = block.mPrev;
                         locker.mTailBlock = prev;
-                        block.mPrev = null;
                         if ((block.mUnlockGroup & mask) == 0) {
                             return;
                         }
@@ -1307,18 +1361,25 @@ class Locker implements DatabaseAccess { // weak access to database
             return newSize;
         }
 
-        Block pop() {
-            Block prev = mPrev;
-            mPrev = null;
-            return prev;
+        Lock findAnyConflict(long indexId, RowKeyPredicate predicate) {
+            Lock[] locks = mLocks;
+            for (int i = (int) cSizeHandle.getAcquire(this); --i >= 0; ) {
+                Lock lock = locks[i];
+                if (lock != null && lock.mIndexId == indexId && predicate.testKey(lock.mKey) &&
+                    ((int) Lock.cLockCountHandle.getAcquire(lock)) < 0)
+                {
+                    return lock;
+                }
+            }
+            return null;
         }
 
-        Block peek() {
+        Block prev() {
             return mPrev;
         }
 
-        void discard() {
-            mPrev = null;
+        Block prevAcquire() {
+            return (Block) cPrevHandle.getAcquire(this);
         }
     }
 

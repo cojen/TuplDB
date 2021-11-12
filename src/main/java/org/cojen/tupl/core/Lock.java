@@ -17,6 +17,9 @@
 
 package org.cojen.tupl.core;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import java.util.Arrays;
 
 import org.cojen.tupl.DeadlockException;
@@ -37,13 +40,13 @@ import static org.cojen.tupl.LockResult.*;
  * @see LockManager
  */
 /*P*/
-final class Lock {
+class Lock {
     long mIndexId;
     byte[] mKey;
     int mHashCode;
 
     // Next entry in LockManager hash collision chain.
-    Lock mLockManagerNext;
+    Lock mLockNext;
 
     // 0xxx...  shared locks held (up to (2^31)-2)
     // 1xxx...  upgradable and shared locks held (up to (2^31)-2)
@@ -65,10 +68,21 @@ final class Lock {
     // Waiters for shared and exclusive locks. Contains regular and shared waiters.
     LatchCondition mQueueSX;
 
+    static final VarHandle cLockCountHandle;
+
+    static {
+        try {
+            var lookup = MethodHandles.lookup();
+            cLockCountHandle = lookup.findVarHandle(Lock.class, "mLockCount", int.class);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
+    }
+
     /**
      * @param locker optional locker
      */
-    boolean isAvailable(Locker locker) {
+    final boolean isAvailable(Locker locker) {
         return mLockCount >= 0 || mOwner == locker;
     }
 
@@ -77,14 +91,14 @@ final class Lock {
      *
      * @return UNOWNED, OWNED_SHARED, OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      */
-    LockResult check(Locker locker) {
+    final LockResult check(Locker locker) {
         int count = mLockCount;
         return mOwner == locker
             ? (count == ~0 ? OWNED_EXCLUSIVE : OWNED_UPGRADABLE)
             : ((count != 0 && isSharedLocker(locker)) ? OWNED_SHARED : UNOWNED);
     }
 
-    boolean isPrepareLock() {
+    final boolean isPrepareLock() {
         return mIndexId == Tree.PREPARED_TXNS_ID;
     }
 
@@ -96,7 +110,7 @@ final class Lock {
      * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      * @throws IllegalStateException if too many shared locks
      */
-    LockResult tryLockShared(Latch latch, Locker locker, long nanosTimeout) {
+    final LockResult tryLockShared(Latch latch, Locker locker, long nanosTimeout) {
         if (mOwner == locker) {
             return mLockCount == ~0 ? OWNED_EXCLUSIVE : OWNED_UPGRADABLE;
         }
@@ -143,12 +157,12 @@ final class Lock {
             mQueueSX = null;
         }
 
-        if (w >= 1) {
+        if (w > 0) {
+            locker.mWaitingFor = null;
             // After consuming one signal, next shared waiter must be signaled, and so on. Do
             // this before calling addSharedLocker, in case it throws an exception.
             queueSX.signalShared(latch);
             addSharedLocker(mLockCount, locker);
-            locker.mWaitingFor = null;
             return ACQUIRED;
         } else if (w == 0) {
             return TIMED_OUT_LOCK;
@@ -165,7 +179,7 @@ final class Lock {
      * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED,
      * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
      */
-    LockResult tryLockUpgradable(Latch latch, Locker locker, long nanosTimeout) {
+    final LockResult tryLockUpgradable(Latch latch, Locker locker, long nanosTimeout) {
         if (mOwner == locker) {
             return mLockCount == ~0 ? OWNED_EXCLUSIVE : OWNED_UPGRADABLE;
         }
@@ -220,10 +234,10 @@ final class Lock {
             mQueueU = null;
         }
 
-        if (w >= 1) {
+        if (w > 0) {
+            locker.mWaitingFor = null;
             mLockCount |= 0x80000000;
             mOwner = locker;
-            locker.mWaitingFor = null;
             return ACQUIRED;
         } else if (w == 0) {
             return TIMED_OUT_LOCK;
@@ -240,7 +254,7 @@ final class Lock {
      * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED, UPGRADED, or
      * OWNED_EXCLUSIVE
      */
-    LockResult tryLockExclusive(Latch latch, Locker locker, long nanosTimeout) {
+    final LockResult tryLockExclusive(Latch latch, Locker locker, long nanosTimeout) {
         final LockResult ur = tryLockUpgradable(latch, locker, nanosTimeout);
         if (!ur.isHeld() || ur == OWNED_EXCLUSIVE) {
             return ur;
@@ -283,9 +297,9 @@ final class Lock {
             mQueueSX = null;
         }
 
-        if (w >= 1) {
-            mLockCount = ~0;
+        if (w > 0) {
             locker.mWaitingFor = null;
+            mLockCount = ~0;
             return ur == OWNED_UPGRADABLE ? UPGRADED : ACQUIRED;
         } else {
             if (ur == ACQUIRED) {
@@ -321,27 +335,51 @@ final class Lock {
      * @param bucket only released if no exception is thrown
      * @throws IllegalStateException if lock not held or if exclusive lock held
      */
-    void unlock(Locker locker, LockManager.Bucket bucket) {
+    final void unlock(Locker locker, LockManager.Bucket bucket) {
         if (mOwner == locker) {
-            int count = mLockCount;
-
-            if (count != ~0) {
-                // Unlocking an upgradable lock.
-                mOwner = null;
-                LatchCondition queueU = mQueueU;
-                if ((mLockCount = count & 0x7fffffff) == 0 && queueU == null && mQueueSX == null) {
-                    // Lock is now completely unused.
-                    bucket.remove(this);
-                } else if (queueU != null) {
-                    // Signal at most one upgradable lock waiter.
-                    queueU.signal(bucket);
-                }
-            } else {
-                // Unlocking an exclusive lock.
-                throw unlockFail();
-            }
+            doUnlockOwned(bucket);
         } else {
             doUnlockShared(locker, bucket);
+        }
+    }
+
+    /**
+     * Called with exclusive latch held, which is released unless an exception is thrown.
+     *
+     * @param bucket briefly released and re-acquired for deleting a ghost
+     * @throws IllegalStateException if lock not held
+     */
+    final void doUnlock(Locker locker, LockManager.Bucket bucket) {
+        if (mOwner == locker) {
+            doUnlockOwnedUnrestricted(bucket);
+        } else {
+            doUnlockShared(locker, bucket);
+        }
+    }
+
+    /**
+     * Called with exclusive latch held, which is released unless an exception is thrown.
+     *
+     * @param bucket briefly released and re-acquired for deleting a ghost
+     * @throws IllegalStateException if lock not held or if exclusive lock held
+     */
+    private void doUnlockOwned(LockManager.Bucket bucket) {
+        int count = mLockCount;
+
+        if (count != ~0) {
+            // Unlocking an upgradable lock.
+            mOwner = null;
+            LatchCondition queueU = mQueueU;
+            if ((mLockCount = count & 0x7fffffff) == 0 && queueU == null && mQueueSX == null) {
+                // Lock is now completely unused.
+                bucket.remove(this);
+            } else if (queueU != null) {
+                // Signal at most one upgradable lock waiter.
+                queueU.signal(bucket);
+            }
+        } else {
+            // Unlocking an exclusive lock.
+            throw unlockFail();
         }
 
         bucket.releaseExclusive();
@@ -351,24 +389,11 @@ final class Lock {
      * Called with exclusive latch held, which is released unless an exception is thrown.
      *
      * @param bucket briefly released and re-acquired for deleting a ghost
-     * @throws IllegalStateException if lock not held
      */
-    void doUnlock(Locker locker, LockManager.Bucket bucket) {
-        if (mOwner == locker) {
-            doUnlockOwned(bucket);
-        } else {
-            doUnlockShared(locker, bucket);
-        }
-
-        bucket.releaseExclusive();
-    }
-
-    /**
-     * @param bucket briefly released and re-acquired for deleting a ghost
-     */
-    private void doUnlockOwned(LockManager.Bucket bucket) {
+    protected void doUnlockOwnedUnrestricted(LockManager.Bucket bucket) {
         int count = mLockCount;
 
+        unlock:
         if (count != ~0) {
             // Unlocking an upgradable lock.
             mOwner = null;
@@ -393,17 +418,19 @@ final class Lock {
                 // Signal at most one upgradable lock waiter.
                 queueU.signal(bucket);
                 if (queueSX == null) {
-                    return;
+                    break unlock;
                 }
             } else if (queueSX == null) {
                 // Lock is now completely unused.
                 bucket.remove(this);
-                return;
+                break unlock;
             }
             // Signal at most one shared lock waiter. There aren't any exclusive lock waiters,
             // because they would need to acquire the upgradable lock first, which was held.
             queueSX.signal(bucket);
         }
+
+        bucket.releaseExclusive();
     }
 
     /**
@@ -414,42 +441,46 @@ final class Lock {
         int count = mLockCount;
 
         unlock: {
-            if ((count & 0x7fffffff) != 0) {
-                Object sharedObj = mSharedLockersObj;
-                if (sharedObj == locker) {
-                    mSharedLockersObj = null;
-                    break unlock;
-                } else if (sharedObj instanceof LockerHTEntry[] entries) {
-                    if (lockerHTremove(entries, locker)) {
-                        if ((count & 0x7fffffff) == 1) {
-                            mSharedLockersObj = null;
+            check: {
+                if ((count & 0x7fffffff) != 0) {
+                    Object sharedObj = mSharedLockersObj;
+                    if (sharedObj == locker) {
+                        mSharedLockersObj = null;
+                        break check;
+                    } else if (sharedObj instanceof LockerHTEntry[] entries) {
+                        if (lockerHTremove(entries, locker)) {
+                            if ((count & 0x7fffffff) == 1) {
+                                mSharedLockersObj = null;
+                            }
+                            break check;
                         }
-                        break unlock;
                     }
                 }
+
+                if (isClosed(locker)) {
+                    break unlock;
+                }
+
+                throw new IllegalStateException("Lock not held");
             }
 
-            if (isClosed(locker)) {
-                return;
-            }
+            mLockCount = --count;
 
-            throw new IllegalStateException("Lock not held");
+            LatchCondition queueSX = mQueueSX;
+            if (count == 0x80000000) {
+                if (queueSX != null) {
+                    // Signal any exclusive lock waiter. Queue shouldn't contain any shared
+                    // lock waiters, because no exclusive lock is held. In case there are any,
+                    // signal them instead.
+                    queueSX.signal(bucket);
+                }
+            } else if (count == 0 && queueSX == null && mQueueU == null) {
+                // Lock is now completely unused.
+                bucket.remove(this);
+            }
         }
 
-        mLockCount = --count;
-
-        LatchCondition queueSX = mQueueSX;
-        if (count == 0x80000000) {
-            if (queueSX != null) {
-                // Signal any exclusive lock waiter. Queue shouldn't contain any shared
-                // lock waiters, because no exclusive lock is held. In case there are any,
-                // signal them instead.
-                queueSX.signal(bucket);
-            }
-        } else if (count == 0 && queueSX == null && mQueueU == null) {
-            // Lock is now completely unused.
-            bucket.remove(this);
-        }
+        bucket.releaseExclusive();
     }
 
     /**
@@ -459,7 +490,7 @@ final class Lock {
      * @throws IllegalStateException if lock not held, if exclusive lock held, or if too many
      * shared locks
      */
-    void unlockToShared(Locker locker, Latch latch) {
+    final void unlockToShared(Locker locker, Latch latch) {
         if (mOwner == locker) {
             int count = mLockCount;
 
@@ -492,7 +523,7 @@ final class Lock {
      * @param latch briefly released and re-acquired for deleting a ghost
      * @throws IllegalStateException if lock not held or if too many shared locks
      */
-    void doUnlockToShared(Locker locker, Latch latch) {
+    final void doUnlockToShared(Locker locker, Latch latch) {
         ownerCheck: if (mOwner == locker) {
             LatchCondition queueU;
             int count = mLockCount;
@@ -542,7 +573,7 @@ final class Lock {
      * @param latch briefly released and re-acquired for deleting a ghost
      * @throws IllegalStateException if lock not held
      */
-    void doUnlockToUpgradable(Locker locker, Latch latch) {
+    final void doUnlockToUpgradable(Locker locker, Latch latch) {
         if (mOwner != locker) {
             if (isClosed(locker)) {
                 latch.releaseExclusive();
@@ -601,32 +632,32 @@ final class Lock {
         }
     }
 
-    boolean matches(long indexId, byte[] key, int hash) {
+    final boolean matches(long indexId, byte[] key, int hash) {
         return mHashCode == hash && mIndexId == indexId && Arrays.equals(mKey, key);
     }
 
     /**
      * Must hold exclusive lock to be valid.
      */
-    void setGhostFrame(GhostFrame frame) {
+    final void setGhostFrame(GhostFrame frame) {
         mSharedLockersObj = frame;
     }
 
-    void setSharedLocker(Locker owner) {
+    final void setSharedLocker(Locker owner) {
         mSharedLockersObj = owner;
     }
 
     /**
      * Is null, a Locker, a LockerHTEntry[], or a GhostFrame.
      */
-    Object getSharedLocker() {
+    final Object getSharedLocker() {
         return mSharedLockersObj;
     }
 
     /**
      * @param lockType TYPE_SHARED, TYPE_UPGRADABLE, or TYPE_EXCLUSIVE
      */
-    void detectDeadlock(Locker locker, int lockType, long nanosTimeout)
+    final void detectDeadlock(Locker locker, int lockType, long nanosTimeout)
         throws DeadlockException
     {
         var detector = new DeadlockDetector(locker, true);
@@ -704,8 +735,10 @@ final class Lock {
      * Note: Caller can short-circuit this test by checking the lock count first. If negative,
      * then this method should return false. If the caller has already determined that mQueueSX
      * is non-null, then the short-circuit test is redundant and isn't useful.
+     *
+     * Must be called with latch held.
      */
-    private boolean isSharedLocker(Locker locker) {
+    final boolean isSharedLocker(Locker locker) {
         Object sharedObj = mSharedLockersObj;
         if (sharedObj == locker) {
             return true;
@@ -716,7 +749,77 @@ final class Lock {
         return false;
     }
 
-    private void addSharedLocker(int count, Locker locker) {
+    /**
+     * Removes the locker if isSharedLocker would return true, and there exists more than just
+     * the one shared locker. Return values:
+     *
+     * -1: locker isn't a shared lock owner; must wait for remaining shared lockers to leave
+     *  0: locker is now the full owner; must wait for remaining shared lockers to leave
+     *  1: locker is the sole shared lock owner, and so there's no need to wait
+     *  2: no shared locks are held at all, and so there's no need to wait
+     *
+     * Must be called with exclusive latch held, and must only be called when mOwner is null.
+     */
+    final int claimOwnership(Locker locker) {
+        Object sharedObj = mSharedLockersObj;
+
+        if (sharedObj == locker) {
+            return 1;
+        }
+
+        int count = mLockCount;
+        if ((count & 0x7fffffff) == 0) {
+            return 2;
+        }
+
+        if (sharedObj instanceof LockerHTEntry[] entries) {
+            if ((count & 0x7fffffff) == 1) {
+                if (lockerHTcontains(entries, locker)) {
+                    return 1;
+                }
+            } else if ((count & 0x7fffffff) > 1 && lockerHTremove(entries, locker)) {
+                mLockCount = count - 1;
+                mOwner = locker;
+                return 0;
+            }
+        }
+
+        return -1;
+    }
+
+    /**
+     * @return null, Locker, or a non-empty Locker[]
+     */
+    final Object copyLockers() {
+        int count = mLockCount;
+        if (count == ~0 || (count &= 0x7fffffff) == 0) {
+            return mOwner;
+        }
+
+        if (!(mSharedLockersObj instanceof LockerHTEntry[] entries)) {
+            return mOwner == null ? mSharedLockersObj
+                : new Locker[] {(Locker) mSharedLockersObj, mOwner};
+        }
+
+        Locker[] lockers;
+        if (mOwner == null) {
+            lockers = new Locker[count];
+        } else {
+            lockers = new Locker[count + 1];
+            lockers[lockers.length - 1] = mOwner;
+        }
+
+        int i = 0;
+        for (LockerHTEntry e : entries) {
+            for (; e != null; e = e.mNext) {
+                lockers[i++] = e.mOwner;
+            }
+        }
+        
+        return lockers;
+    }
+
+    final void addSharedLocker(int count, Locker locker) {
         if ((count & 0x7fffffff) >= 0x7ffffffe) {
             throw new IllegalStateException("Too many shared locks held");
         }

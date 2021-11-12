@@ -60,32 +60,41 @@ final class DeadlockDetector extends HashMap<Locker, Boolean> {
             return Collections.emptySet();
         }
 
-        var infos = new CoreDeadlockInfo[mLocks.size()];
+        var infos = new DeadlockInfo[mLocks.size()];
 
         final LockManager manager = mOrigin.mManager;
 
         int i = 0;
         for (Lock lock : mLocks.keySet()) {
-            var info = new CoreDeadlockInfo();
-            infos[i++] = info;
-
-            info.mIndexId = lock.mIndexId;
-
-            Index ix = manager.indexById(info.mIndexId);
-            if (ix != null) {
-                info.mIndexName = ix.name();
-            }
-
-            byte[] key = lock.mKey;
-            if (key != null) {
-                key = key.clone();
-            }
-            info.mKey = key;
-
-            info.mAttachment = lock.findOwnerAttachment(mOrigin, false, lockType);
+            Object attachment = lock.findOwnerAttachment(mOrigin, false, lockType);
+            infos[i++] = newDeadlockInfo(manager, lock, attachment);
         }
 
         return new DeadlockInfoSet(infos);
+    }
+
+    static DeadlockInfo newDeadlockInfo(LockManager manager, Lock lock, Object attachment) {
+        if (lock instanceof DetachedLock) {
+            return new DetachedDeadlockInfo(lock.toString(), attachment);
+        }
+
+        var info = new CoreDeadlockInfo();
+
+        info.mIndexId = lock.mIndexId;
+        info.mAttachment = attachment;
+
+        Index ix = manager.indexById(info.mIndexId);
+        if (ix != null) {
+            info.mIndexName = ix.name();
+        }
+
+        byte[] key = lock.mKey;
+        if (key != null) {
+            key = key.clone();
+        }
+        info.mKey = key;
+
+        return info;
     }
 
     /**

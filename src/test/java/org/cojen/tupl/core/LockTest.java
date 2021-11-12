@@ -30,6 +30,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -2511,6 +2512,61 @@ public class LockTest {
         for (String strKey : toss) {
             assertEquals(UNOWNED, locker.lockCheck(0, key(strKey)));
         }
+    }
+
+    @Test
+    public void detachedLock() throws Exception {
+        var db = (CoreDatabase) Database.open(new DatabaseConfig().directPageAccess(false));
+
+        Transaction owner = db.newTransaction();
+        DetachedLock lock = db.newDetachedLock(owner);
+
+        Transaction txn1 = db.newTransaction();
+        txn1.lockTimeout(1, TimeUnit.MILLISECONDS);
+
+        lock.acquireShared(txn1);
+
+        LockResult result = lock.tryAcquireExclusive(1000);
+        assertEquals(TIMED_OUT_LOCK, result);
+
+        txn1.reset();
+
+        result = lock.tryAcquireExclusive(1000);
+        assertEquals(ACQUIRED, result);
+        result = lock.tryAcquireExclusive(1000);
+        assertEquals(OWNED_EXCLUSIVE, result);
+
+        try {
+            lock.acquireShared(txn1);
+            fail();
+        } catch (LockTimeoutException e) {
+        }
+
+        owner.reset();
+
+        lock.acquireShared(txn1);
+        txn1.reset();
+
+        result = lock.tryAcquireShared(owner, 1000);
+        assertEquals(OWNED_UPGRADABLE, result);
+
+        result = lock.tryAcquireExclusive(1000);
+        assertEquals(ACQUIRED, result);
+
+        result = lock.tryAcquireShared(owner, 1000);
+        assertEquals(OWNED_EXCLUSIVE, result);
+
+        try {
+            lock.acquireShared(txn1);
+            fail();
+        } catch (LockTimeoutException e) {
+        }
+
+        owner.reset();
+
+        lock.acquireShared(txn1);
+        result = lock.tryAcquireShared(txn1, 1000);
+        assertEquals(OWNED_SHARED, result);
     }
 
     private long scheduleUnlock(final Locker locker, final long delayMillis)

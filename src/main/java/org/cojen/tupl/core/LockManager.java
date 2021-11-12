@@ -24,6 +24,8 @@ import java.lang.ref.WeakReference;
 
 import java.util.Objects;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockResult;
@@ -256,6 +258,17 @@ public final class LockManager {
         return locker;
     }
 
+    final DetachedLockImpl newDetachedLock(LocalTransaction owner) {
+        var lock = new DetachedLockImpl();
+        initDetachedLock(lock, owner);
+        return lock;
+    }
+
+    final void initDetachedLock(DetachedLockImpl lock, LocalTransaction owner) {
+        int hash = ThreadLocalRandom.current().nextInt();
+        lock.init(hash, owner, getBucket(hash));
+    }
+
     /**
      * Interrupts all waiters, and exclusive locks are transferred to hidden
      * locker. This prevents them from being acquired again.
@@ -325,7 +338,7 @@ public final class LockManager {
                     if (e.matches(indexId, key, hash)) {
                         return e.isAvailable(locker);
                     }
-                    e = e.mLockManagerNext;
+                    e = e.mLockNext;
                 }
                 // Not found.
                 if (stamp == mStamp) {
@@ -352,7 +365,7 @@ public final class LockManager {
         Lock lockFor(long indexId, byte[] key, int hash) {
             Lock[] entries = mEntries;
             int index = hash & (entries.length - 1);
-            for (Lock e = entries[index]; e != null; e = e.mLockManagerNext) {
+            for (Lock e = entries[index]; e != null; e = e.mLockNext) {
                 if (e.matches(indexId, key, hash)) {
                     return e;
                 }
@@ -366,7 +379,7 @@ public final class LockManager {
         Lock lockAccess(long indexId, byte[] key, int hash) {
             Lock[] entries = mEntries;
             int index = hash & (entries.length - 1);
-            for (Lock lock = entries[index]; lock != null; lock = lock.mLockManagerNext) {
+            for (Lock lock = entries[index]; lock != null; lock = lock.mLockNext) {
                 if (lock.matches(indexId, key, hash)) {
                     return lock;
                 }
@@ -382,7 +395,7 @@ public final class LockManager {
             lock.mIndexId = indexId;
             lock.mKey = key;
             lock.mHashCode = hash;
-            lock.mLockManagerNext = entries[index];
+            lock.mLockNext = entries[index];
 
             // Fence so that the isAvailable method doesn't observe a broken chain.
             VarHandle.storeStoreFence();
@@ -408,7 +421,7 @@ public final class LockManager {
                     try {
                         Lock[] entries = mEntries;
                         int index = hash & (entries.length - 1);
-                        for (lock = entries[index]; lock != null; lock = lock.mLockManagerNext) {
+                        for (lock = entries[index]; lock != null; lock = lock.mLockNext) {
                             if (lock.matches(indexId, key, hash)) {
                                 if (type == TYPE_SHARED) {
                                     result = lock.tryLockShared(this, locker, nanosTimeout);
@@ -433,7 +446,7 @@ public final class LockManager {
                         lock.mIndexId = indexId;
                         lock.mKey = key;
                         lock.mHashCode = hash;
-                        lock.mLockManagerNext = entries[index];
+                        lock.mLockNext = entries[index];
 
                         lock.mLockCount = type;
                         if (type == TYPE_SHARED) {
@@ -486,7 +499,7 @@ public final class LockManager {
             try {
                 Lock[] entries = mEntries;
                 int index = hash & (entries.length - 1);
-                for (Lock e = entries[index]; e != null; e = e.mLockManagerNext) {
+                for (Lock e = entries[index]; e != null; e = e.mLockNext) {
                     if (e.matches(lock.mIndexId, lock.mKey, hash)) {
                         // Lock already exists, but make sure lock upgrades are captured
                         // and any ghost frame is preserved.
@@ -506,7 +519,7 @@ public final class LockManager {
                     index = hash & (entries.length - 1);
                 }
 
-                lock.mLockManagerNext = entries[index];
+                lock.mLockNext = entries[index];
                 lock.mOwner = locker;
 
                 // Fence so that the isAvailable method doesn't observe a broken chain.
@@ -531,11 +544,11 @@ public final class LockManager {
             int index = lock.mHashCode & (entries.length - 1);
             Lock e = entries[index];
             if (e == lock) {
-                entries[index] = e.mLockManagerNext;
+                entries[index] = e.mLockNext;
             } else while (true) {
-                Lock next = e.mLockManagerNext;
+                Lock next = e.mLockNext;
                 if (next == lock) {
-                    e.mLockManagerNext = next.mLockManagerNext;
+                    e.mLockNext = next.mLockNext;
                     break;
                 }
                 e = next;
@@ -553,7 +566,7 @@ public final class LockManager {
                     Lock[] entries = mEntries;
                     for (int i=entries.length; --i>=0 ;) {
                         for (Lock e = entries[i], prev = null; e != null; ) {
-                            Lock next = e.mLockManagerNext;
+                            Lock next = e.mLockNext;
 
                             if (e.mLockCount == ~0) {
                                 // Transfer exclusive lock.
@@ -566,9 +579,9 @@ public final class LockManager {
                                 if (prev == null) {
                                     entries[i] = next;
                                 } else {
-                                    prev.mLockManagerNext = next;
+                                    prev.mLockNext = next;
                                 }
-                                e.mLockManagerNext = null;
+                                e.mLockNext = null;
                                 mSize--;
                             }
 
@@ -609,9 +622,9 @@ public final class LockManager {
 
             for (int i=entries.length; --i>=0 ;) {
                 for (Lock e = entries[i]; e != null; ) {
-                    Lock next = e.mLockManagerNext;
+                    Lock next = e.mLockNext;
                     int ix = e.mHashCode & newMask;
-                    e.mLockManagerNext = newEntries[ix];
+                    e.mLockNext = newEntries[ix];
                     newEntries[ix] = e;
                     e = next;
                 }

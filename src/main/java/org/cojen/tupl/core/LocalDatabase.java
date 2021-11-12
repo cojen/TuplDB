@@ -3936,6 +3936,16 @@ final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
+    public DetachedLock newDetachedLock(Transaction owner) {
+        return mLockManager.newDetachedLock((LocalTransaction) owner);
+    }
+
+    @Override
+    public <R> RowKeyLockSet<R> newRowKeyLockSet(long indexId) {
+        return new RowKeyLockSetImpl<R>(mLockManager, indexId);
+    }
+
+    @Override
     public void createSecondaryIndexes(Transaction txn, long primaryIndexId,
                                        long[] ids, Runnable callback)
         throws IOException
