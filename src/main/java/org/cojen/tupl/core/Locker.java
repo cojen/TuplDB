@@ -915,7 +915,7 @@ class Locker implements DatabaseAccess { // weak access to database
      *
      * @return conflicting lock or null if none found
      */
-    final Lock findAnyConflict(long indexId, RowKeyPredicate predicate) {
+    final Lock findAnyConflict(long indexId, RowPredicate predicate) {
         Object tailObj = cTailBlockHandle.getAcquire(this);
 
         if (tailObj != null) {
@@ -1361,7 +1361,7 @@ class Locker implements DatabaseAccess { // weak access to database
             return newSize;
         }
 
-        Lock findAnyConflict(long indexId, RowKeyPredicate predicate) {
+        Lock findAnyConflict(long indexId, RowPredicate predicate) {
             Lock[] locks = mLocks;
             for (int i = (int) cSizeHandle.getAcquire(this); --i >= 0; ) {
                 Lock lock = locks[i];

@@ -33,20 +33,20 @@ import org.cojen.tupl.*;
  *
  * @author Brian S O'Neill
  */
-public class RowKeyLockTest {
+public class RowPredicateTest {
     public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(RowKeyLockTest.class.getName());
+        org.junit.runner.JUnitCore.main(RowPredicateTest.class.getName());
     }
 
     private CoreDatabase mDb;
-    private RowKeyLockSet<TestRow> mSet;
+    private RowPredicateSet<TestRow> mSet;
 
     @Before
     public void setup() throws Exception {
         mDb = (CoreDatabase) Database.open(new DatabaseConfig()
                                            .directPageAccess(false)
                                            .lockTimeout(100, TimeUnit.MILLISECONDS));
-        mSet = mDb.newRowKeyLockSet(1234);
+        mSet = mDb.newRowPredicateSet(1234);
     }
 
     @After
@@ -557,7 +557,7 @@ public class RowKeyLockTest {
 
     static record TestRow(int value) {}
 
-    static class TestPredicate implements RowKeyPredicate<TestRow> {
+    static class TestPredicate implements RowPredicate<TestRow> {
         private final Set<TestRow> mMatches;
 
         TestPredicate(TestRow match) {
@@ -571,6 +571,16 @@ public class RowKeyLockTest {
         @Override
         public boolean testRow(TestRow row) {
             return mMatches.contains(row);
+        }
+
+        @Override
+        public boolean testRow(TestRow row, byte[] value) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public boolean testRow(TestRow row, Cursor c) {
+            throw new UnsupportedOperationException();
         }
 
         @Override

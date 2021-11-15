@@ -17,11 +17,14 @@
 
 package org.cojen.tupl.core;
 
+import java.io.IOException;
+
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
 import java.util.concurrent.TimeUnit;
 
+import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DeadlockException;
 import org.cojen.tupl.DeadlockInfo;
 import org.cojen.tupl.LockFailureException;
@@ -36,7 +39,7 @@ import org.cojen.tupl.util.LatchCondition;
  * @author Brian S O'Neill
  */
 /*P*/
-final class RowKeyLockSetImpl<R> implements RowKeyLockSet<R> {
+final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
     private final LockManager mManager;
     private final long mIndexId;
 
@@ -55,12 +58,12 @@ final class RowKeyLockSetImpl<R> implements RowKeyLockSet<R> {
             var lookup = MethodHandles.lookup();
 
             cNewestVersionHandle = lookup.findVarHandle
-                (RowKeyLockSetImpl.class, "mNewestVersion", VersionLock.class);
+                (RowPredicateSetImpl.class, "mNewestVersion", VersionLock.class);
 
             cLockNextHandle = lookup.findVarHandle(Lock.class, "mLockNext", Lock.class);
 
             cLastEvaluatorHandle = lookup.findVarHandle
-                (RowKeyLockSetImpl.class, "mLastEvaluator", Evaluator.class);
+                (RowPredicateSetImpl.class, "mLastEvaluator", Evaluator.class);
 
             cNextHandle = lookup.findVarHandle(Evaluator.class, "mNext", Evaluator.class);
         } catch (Throwable e) {
@@ -68,7 +71,7 @@ final class RowKeyLockSetImpl<R> implements RowKeyLockSet<R> {
         }
     }
 
-    RowKeyLockSetImpl(LockManager manager, long indexId) {
+    RowPredicateSetImpl(LockManager manager, long indexId) {
         mManager = manager;
         mIndexId = indexId;
         mNewestVersion = newVersion();
@@ -93,6 +96,30 @@ final class RowKeyLockSetImpl<R> implements RowKeyLockSet<R> {
     }
 
     @Override
+    public void acquireShared(Transaction txn, R row, byte[] value) throws LockFailureException {
+        var local = (LocalTransaction) txn;
+        mNewestVersion.acquire(local);
+
+        for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
+            if (e.testRow(row, value)) {
+                e.matched(local);
+            }
+        }
+    }
+
+    @Override
+    public void acquireShared(Transaction txn, R row, Cursor c) throws IOException {
+        var local = (LocalTransaction) txn;
+        mNewestVersion.acquire(local);
+
+        for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
+            if (e.testRow(row, c)) {
+                e.matched(local);
+            }
+        }
+    }
+
+    @Override
     public int countPredicates() {
         int count = 0;
         for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
@@ -102,13 +129,23 @@ final class RowKeyLockSetImpl<R> implements RowKeyLockSet<R> {
     }
 
     @Override
-    public void addPredicate(Transaction txn, RowKeyPredicate<R> predicate)
+    public void addPredicate(Transaction txn, RowPredicate<R> predicate)
         throws LockFailureException
     {
         addEvaluator(txn, new Evaluator<R>() {
             @Override
             public boolean testRow(R row) {
                 return predicate.testRow(row);
+            }
+
+            @Override
+            public boolean testRow(R row, byte[] value) {
+                return predicate.testRow(row, value);
+            }
+
+            @Override
+            public boolean testRow(R row, Cursor c) throws IOException {
+                return predicate.testRow(row, c);
             }
 
             @Override
@@ -125,12 +162,12 @@ final class RowKeyLockSetImpl<R> implements RowKeyLockSet<R> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public Class<? extends RowKeyPredicate<R>> evaluatorClass() {
+    public Class<? extends RowPredicate<R>> evaluatorClass() {
         return (Class) Evaluator.class;
     }
 
     @Override
-    public void addEvaluator(Transaction txn, RowKeyPredicate<R> predicate)
+    public void addEvaluator(Transaction txn, RowPredicate<R> predicate)
         throws LockFailureException
     {
         addEvaluator(txn, (Evaluator<R>) predicate);
@@ -475,10 +512,8 @@ final class RowKeyLockSetImpl<R> implements RowKeyLockSet<R> {
     /**
      * Implements the actual predicate lock instances.
      */
-    public static abstract class Evaluator<R> extends DetachedLockImpl
-        implements RowKeyPredicate<R>
-    {
-        private RowKeyLockSetImpl<R> mSet;
+    public static abstract class Evaluator<R> extends DetachedLockImpl implements RowPredicate<R> {
+        private RowPredicateSetImpl<R> mSet;
 
         private volatile Evaluator<R> mNext;
         private volatile Evaluator<R> mPrev;

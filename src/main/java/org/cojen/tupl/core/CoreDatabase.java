@@ -43,7 +43,7 @@ public abstract class CoreDatabase implements Database {
      */
     public abstract DetachedLock newDetachedLock(Transaction owner);
 
-    public abstract <R> RowKeyLockSet<R> newRowKeyLockSet(long indexId);
+    public abstract <R> RowPredicateSet<R> newRowPredicateSet(long indexId);
 
     /**
      * Defines anonymous secondary indexes and invokes a callback which should transactionally

@@ -17,19 +17,37 @@
 
 package org.cojen.tupl.core;
 
+import java.io.IOException;
+
+import org.cojen.tupl.Cursor;
+
 /**
- * Defines an interface intended for locking rows based on a rule that matches the key columns
- * of a row.
+ * Defines an interface intended for locking rows based on a rule that matches on a row.
  *
  * @author Brian S O'Neill
- * @see RowKeyLockSet
+ * @see RowPredicateSet
  */
-public interface RowKeyPredicate<R> {
+public interface RowPredicate<R> {
     /**
-     * Called by an insert or delete operation. Although the row will be full if called by an
-     * insert, the delete will only fill in the key columns.
+     * Called by an insert operation, and so all columns of the row are filled in.
      */
     public boolean testRow(R row);
+
+    /**
+     * Called by a delete operation, and so only the key columns of the row are filled in.
+     * Additional columns must be decoded as necessary.
+     *
+     * @param value non-null value being deleted
+     */
+    public boolean testRow(R row, byte[] value);
+
+    /**
+     * Called by a delete operation, and so only the key columns of the row are filled in.
+     * Additional columns must be decoded as necessary.
+     *
+     * @param c refers to the row being deleted, but the value hasn't been loaded yet
+     */
+    public boolean testRow(R row, Cursor c) throws IOException;
 
     /**
      * Determine if a lock held against the given key matches the row predicate. This variant

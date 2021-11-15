@@ -3941,8 +3941,8 @@ final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
-    public <R> RowKeyLockSet<R> newRowKeyLockSet(long indexId) {
-        return new RowKeyLockSetImpl<R>(mLockManager, indexId);
+    public <R> RowPredicateSet<R> newRowPredicateSet(long indexId) {
+        return new RowPredicateSetImpl<R>(mLockManager, indexId);
     }
 
     @Override

@@ -17,26 +17,51 @@
 
 package org.cojen.tupl.core;
 
+import java.io.IOException;
+
+import org.cojen.tupl.Cursor;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.Transaction;
 
 /**
- * Maintains a set of locks which match on row key predicates, which can be used for
- * implementing serializable transaction isolation.
+ * Maintains a set of locks which match on row predicates, which can be used for implementing
+ * serializable transaction isolation.
  *
  * @author Brian S O'Neill
- * @see RowKeyPredicate
+ * @see RowPredicate
  */
-public interface RowKeyLockSet<R> {
+public interface RowPredicateSet<R> {
     /**
      * Acquires shared access for all the row locks, waiting if necessary, and retains the
      * locks for the entire transaction scope. If lock acquisition times out, all row locks
      * acquired up to that point are still retained.
      *
-     * @param row is passed to the {@link RowKeyPredicate#testRow} method
+     * @param row is passed to the {@code RowPredicate.testRow} method
      * @throws IllegalStateException if too many shared locks
      */
     void acquireShared(Transaction txn, R row) throws LockFailureException;
+
+    /**
+     * Acquires shared access for all the row locks, waiting if necessary, and retains the
+     * locks for the entire transaction scope. If lock acquisition times out, all row locks
+     * acquired up to that point are still retained.
+     *
+     * @param row is passed to the {@code RowPredicate.testRow} method
+     * @param value is passed to the {@code RowPredicate.testRow} method
+     * @throws IllegalStateException if too many shared locks
+     */
+    void acquireShared(Transaction txn, R row, byte[] value) throws LockFailureException;
+
+    /**
+     * Acquires shared access for all the row locks, waiting if necessary, and retains the
+     * locks for the entire transaction scope. If lock acquisition times out, all row locks
+     * acquired up to that point are still retained.
+     *
+     * @param row is passed to the {@code RowPredicate.testRow} method
+     * @param c is passed to the {@code RowPredicate.testRow} method
+     * @throws IllegalStateException if too many shared locks
+     */
+    void acquireShared(Transaction txn, R row, Cursor c) throws IOException;
 
     /**
      * Count the number of predicates currently in the set. O(n) cost.
@@ -52,16 +77,16 @@ public interface RowKeyLockSet<R> {
      * @param txn exclusive owner of the lock
      * @param predicate defines the lock matching rules
      */
-    void addPredicate(Transaction txn, RowKeyPredicate<R> predicate) throws LockFailureException;
+    void addPredicate(Transaction txn, RowPredicate<R> predicate) throws LockFailureException;
 
     /**
      * Returns a class which can be extended for evaluating predicate locks directly.
      */
-    Class<? extends RowKeyPredicate<R>> evaluatorClass();
+    Class<? extends RowPredicate<R>> evaluatorClass();
 
     /**
      * @param evaluator can only be added once; no recycling
      * @see #addPredicate
      */
-    void addEvaluator(Transaction txn, RowKeyPredicate<R> evaluator) throws LockFailureException;
+    void addEvaluator(Transaction txn, RowPredicate<R> evaluator) throws LockFailureException;
 }
