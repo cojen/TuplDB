@@ -380,10 +380,9 @@ abstract class ColumnCodec {
      *
      * @param in true if argument is a collection for "in" filtering
      * @param argVar argument value to compare against, converted to the the column type
-     * @param argNum zero-based filter argument number
      */
-    void filterDefineFields(boolean in, Variable argVar, int argNum) {
-        defineArgField(argVar, argFieldName(argNum)).set(argVar);
+    void filterDefineFields(boolean in, Variable argVar, String argFieldName) {
+        defineArgField(argVar, argFieldName).set(argVar);
     }
 
     /**
@@ -458,7 +457,11 @@ abstract class ColumnCodec {
     }
 
     protected String argFieldName(int argNum, String suffix) {
-        return mInfo.name + '$' + argNum + '$' + suffix;
+        return argFieldName(argFieldName(argNum), suffix);
+    }
+
+    protected String argFieldName(String base, String suffix) {
+        return base + '$' + suffix;
     }
 
     protected Field defineArgField(Object type, String name) {

@@ -37,10 +37,8 @@ class FilterArguments {
 
     private final ColumnCodec[] mKeyCodecs, mValueCodecs;
 
-    private static record ColumnArg(ColumnInfo column, int argument) { }
-
-    private final HashMap<ColumnArg, Variable> mArgVarMap;
-    private final HashSet<ColumnArg> mHasFields;
+    private final HashMap<String, Variable> mArgVarMap;
+    private final HashSet<String> mHasFields;
 
     /**
      * @param ctor first constructor param must be an Object[] of arguments
@@ -67,12 +65,12 @@ class FilterArguments {
      * @param mm can pass null to force field creation, but no variable is returned
      */
     Variable argVar(MethodMaker mm, ColumnToArgFilter filter) {
-        var key = new ColumnArg(filter.column(), filter.argument());
+        String argFieldName = ColumnCodec.argFieldName(filter.column(), filter.argument());
 
-        var argVar = mArgVarMap.get(key);
+        var argVar = mArgVarMap.get(argFieldName);
 
         if (argVar == null) {
-            Class<?> argType = key.column.type;
+            Class<?> argType = filter.column().type;
 
             if (filter.isIn(filter.operator())) {
                 // FIXME: Sort and use binary search if large enough. Be sure to clone array if
@@ -81,19 +79,19 @@ class FilterArguments {
                 argType = argType.arrayType();
             }
 
-            argVar = mCtorMaker.param(0).aget(key.argument);
+            argVar = mCtorMaker.param(0).aget(filter.argument());
             argVar = ConvertCallSite.make(mCtorMaker, argType, argVar);
 
-            mArgVarMap.put(key, argVar);
+            mArgVarMap.put(argFieldName, argVar);
         }
 
         if (mm == mCtorMaker) {
             return argVar;
         }
 
-        String colName = key.column.name;
+        String colName = filter.column().name;
 
-        if (!mHasFields.contains(key)) {
+        if (!mHasFields.contains(argFieldName)) {
             int colNum;
             {
                 Integer num = mRowGen.columnNumbers().get(colName);
@@ -117,9 +115,9 @@ class FilterArguments {
                 codecs[colNum] = codec = codec.bind(mCtorMaker);
             }
 
-            codec.filterDefineFields(filter.isIn(filter.operator()), argVar, key.argument);
+            codec.filterDefineFields(filter.isIn(filter.operator()), argVar, argFieldName);
 
-            mHasFields.add(key);
+            mHasFields.add(argFieldName);
         }
 
         return mm == null ? null : mm.field(colName);
