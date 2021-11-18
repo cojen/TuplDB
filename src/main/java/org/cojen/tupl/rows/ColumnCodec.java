@@ -372,29 +372,18 @@ abstract class ColumnCodec {
     }
 
     /**
-     * Makes code which defines and initializes final field(s) for filter arguments. An
-     * exception is thrown at runtime if the argVar cannot be cast to the actual column type.
+     * Makes code which defines and initializes final field(s) for filter arguments.
      *
      * This method is only called when the codec has been bound to a constructor, and it's
      * called on the destination codec (the currently defined row version). The implementation
      * should only consider the column type and not the specific encoding format.
      *
      * @param in true if argument is a collection for "in" filtering
-     * @param argVar argument value to compare against; variable type is Object
+     * @param argVar argument value to compare against, converted to the the column type
      * @param argNum zero-based filter argument number
-     * @return the converted argVar
      */
-    Variable filterPrepare(boolean in, Variable argVar, int argNum) {
-        Class<?> argType = mInfo.type;
-        if (in) {
-            // FIXME: Sort and use binary search if large enough. Be sure to clone array if it
-            // wasn't converted.
-            // FIXME: Support other types of 'in' arguments: Predicate, IntPredicate, etc.
-            argType = argType.arrayType();
-        }
-        argVar = ConvertCallSite.make(mMaker, argType, argVar);
+    void filterDefineFields(boolean in, Variable argVar, int argNum) {
         defineArgField(argVar, argFieldName(argNum)).set(argVar);
-        return argVar;
     }
 
     /**

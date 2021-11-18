@@ -48,8 +48,8 @@ abstract class BytesColumnCodec extends ColumnCodec {
      * field with the original argument.
      */
     @Override
-    Variable filterPrepare(boolean in, Variable argVar, int argNum) {
-        argVar = super.filterPrepare(in, argVar, argNum);
+    void filterDefineFields(boolean in, Variable argVar, int argNum) {
+        super.filterDefineFields(in, argVar, argNum);
 
         Variable bytesVar;
 
@@ -64,8 +64,6 @@ abstract class BytesColumnCodec extends ColumnCodec {
         }
 
         defineArgField(bytesVar, argFieldName(argNum, "bytes")).set(bytesVar);
-
-        return argVar;
     }
 
     /**

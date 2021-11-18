@@ -28,9 +28,6 @@ import java.lang.ref.WeakReference;
 import java.math.BigDecimal;
 
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
 import java.util.TreeMap;
 
 import java.util.function.IntFunction;
@@ -82,8 +79,7 @@ public class FilteredScanMaker<R> {
     private final ClassMaker mFilterMaker;
     private final MethodMaker mFilterCtorMaker;
 
-    // Bound to mFilterCtorMaker.
-    private final ColumnCodec[] mKeyCodecs, mValueCodecs;
+    private final FilterArguments mArguments;
 
     // Stop the scan when this filter evaluates to false.
     private String mStopColumn;
@@ -132,8 +128,7 @@ public class FilteredScanMaker<R> {
 
         mFilterCtorMaker = mFilterMaker.addConstructor(Object[].class).varargs().private_();
 
-        mKeyCodecs = ColumnCodec.bind(mRowGen.keyCodecs(), mFilterCtorMaker);
-        mValueCodecs = ColumnCodec.bind(mRowGen.valueCodecs(), mFilterCtorMaker);
+        mArguments = new FilterArguments(mRowGen, mFilterCtorMaker);
 
         // Need a constructor for the factory singleton instance.
         mFilterMaker.addConstructor().private_().invokeSuperConstructor(null, false, null, false);
@@ -145,17 +140,9 @@ public class FilteredScanMaker<R> {
         // Define the fields to hold the filter arguments.
         if (mFilter != null) {
             mFilter.accept(new Visitor() {
-                private final HashSet<Integer> mAdded = new HashSet<>();
-
                 @Override
                 public void visit(ColumnToArgFilter filter) {
-                    int argNum = filter.argument();
-                    if (mAdded.add(argNum)) {
-                        int colNum = columnNumberFor(filter.column().name);
-                        boolean in = filter.isIn(filter.operator());
-                        Variable argVar = mFilterCtorMaker.param(0).aget(argNum);
-                        codecFor(colNum).filterPrepare(in, argVar, argNum);
-                    }
+                    mArguments.argVar(null, filter);
                 }
             });
         }
@@ -163,12 +150,11 @@ public class FilteredScanMaker<R> {
         var ctorParams = new Object[] {null, false, null, false};
 
         if (mLowBound != null || mHighBound != null) {
-            var argVarMap = new HashMap<ColumnArg, Variable>();
             if (mLowBound != null) {
-                encodeBound(argVarMap, ctorParams, mLowBound, true);
+                encodeBound(ctorParams, mLowBound, true);
             }
             if (mHighBound != null) {
-                encodeBound(argVarMap, ctorParams, mHighBound, false);
+                encodeBound(ctorParams, mHighBound, false);
             }
         }
 
@@ -208,47 +194,10 @@ public class FilteredScanMaker<R> {
         }
     }
 
-    private Integer columnNumberFor(String colName) {
-        Integer num = mRowGen.columnNumbers().get(colName);
-        if (num == null) {
-            throw new IllegalStateException("Column is unavailable for filtering: " + colName);
-        }
-        return num;
-    }
-
-    private ColumnCodec codecFor(int colNum) {
-        ColumnCodec[] codecs = mKeyCodecs;
-        return colNum < codecs.length ? codecs[colNum] : mValueCodecs[colNum - codecs.length];
-    }
-
-    /**
-     * Simple hashtable key.
-     */
-    private static class ColumnArg {
-        ColumnInfo column;
-        int argument;
-
-        @Override
-        public int hashCode() {
-            return column.hashCode() * 31 + argument;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            var other = (ColumnArg) obj;
-            return argument == other.argument && column.equals(other.column);
-        }
-    }
-
     /**
      * Adds code to the constructor.
      */
-    private void encodeBound(Map<ColumnArg, Variable> argVarMap, Object[] ctorParams,
-                             RowFilter bound, boolean low)
-    {
+    private void encodeBound(Object[] ctorParams, RowFilter bound, boolean low) {
         ColumnCodec[] codecs = mRowGen.keyCodecs();
         var argVars = new Variable[codecs.length];
 
@@ -260,12 +209,6 @@ public class FilteredScanMaker<R> {
             @Override
             public void visit(ColumnToArgFilter filter) {
                 ColumnInfo column = filter.column();
-                int argument = filter.argument();
-                var key = new ColumnArg();
-                key.column = column;
-                key.argument = argument;
-
-                Variable argVar = argVarMap.get(key);
 
                 if (filter.operator() == ColumnToArgFilter.OP_EQ
                     && column.type == BigDecimal.class)
@@ -275,7 +218,7 @@ public class FilteredScanMaker<R> {
                             filter = filter.withOperator(ColumnToArgFilter.OP_GE);
                         } else {
                             mStopColumn = column.name;
-                            mStopArgument = argument;
+                            mStopArgument = filter.argument();
                             // Assume that this sub-filter is the last, but use the previous
                             // last now. As a stop filter, it closes the cursor instead of
                             // relying on a high bound.
@@ -293,11 +236,7 @@ public class FilteredScanMaker<R> {
 
                 last = filter;
 
-                if (argVar == null) {
-                    argVar = mFilterCtorMaker.param(0).aget(argument);
-                    argVar = ConvertCallSite.make(mFilterCtorMaker, column.type, argVar);
-                    argVarMap.put(key, argVar);
-                }
+                Variable argVar = mArguments.argVar(mFilterCtorMaker, filter);
 
                 if (ulp) {
                     argVar = argVar.get();
