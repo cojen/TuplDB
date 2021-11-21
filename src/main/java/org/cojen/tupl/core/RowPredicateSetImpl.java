@@ -132,45 +132,47 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
     public void addPredicate(Transaction txn, RowPredicate<R> predicate)
         throws LockFailureException
     {
-        addEvaluator(txn, new Evaluator<R>() {
-            @Override
-            public boolean testRow(R row) {
-                return predicate.testRow(row);
-            }
+        Evaluator<R> evaluator;
+        if (predicate instanceof Evaluator) {
+            evaluator = (Evaluator<R>) predicate;
+        } else if (predicate instanceof RowPredicate.None) {
+            return;
+        } else {
+            evaluator = new Evaluator<R>() {
+                @Override
+                public boolean testRow(R row) {
+                    return predicate.testRow(row);
+                }
 
-            @Override
-            public boolean testRow(R row, byte[] value) {
-                return predicate.testRow(row, value);
-            }
+                @Override
+                public boolean testRow(R row, byte[] value) {
+                    return predicate.testRow(row, value);
+                }
 
-            @Override
-            public boolean testRow(R row, Cursor c) throws IOException {
-                return predicate.testRow(row, c);
-            }
+                @Override
+                public boolean testRow(R row, Cursor c) throws IOException {
+                    return predicate.testRow(row, c);
+                }
 
-            @Override
-            public boolean testKey(byte[] key) {
-                return predicate.testKey(key);
-            }
+                @Override
+                public boolean testKey(byte[] key) {
+                    return predicate.testKey(key);
+                }
 
-            @Override
-            public String toString() {
-                return predicate.toString();
-            }
-        });
+                @Override
+                public String toString() {
+                    return predicate.toString();
+                }
+            };
+        }
+
+        addEvaluator(txn, evaluator);
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public Class<? extends RowPredicate<R>> evaluatorClass() {
         return (Class) Evaluator.class;
-    }
-
-    @Override
-    public void addEvaluator(Transaction txn, RowPredicate<R> predicate)
-        throws LockFailureException
-    {
-        addEvaluator(txn, (Evaluator<R>) predicate);
     }
 
     private void addEvaluator(final Transaction txn, final Evaluator<R> evaluator)

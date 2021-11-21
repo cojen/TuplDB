@@ -80,13 +80,8 @@ public interface RowPredicateSet<R> {
     void addPredicate(Transaction txn, RowPredicate<R> predicate) throws LockFailureException;
 
     /**
-     * Returns a class which can be extended for evaluating predicate locks directly.
+     * Returns a class which can be extended for evaluating predicate locks directly. When used,
+     * the predicate instances cannot be recycled.
      */
     Class<? extends RowPredicate<R>> evaluatorClass();
-
-    /**
-     * @param evaluator can only be added once; no recycling
-     * @see #addPredicate
-     */
-    void addEvaluator(Transaction txn, RowPredicate<R> evaluator) throws LockFailureException;
 }

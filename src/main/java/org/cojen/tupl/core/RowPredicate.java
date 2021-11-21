@@ -53,5 +53,55 @@ public interface RowPredicate<R> {
      * Determine if a lock held against the given key matches the row predicate. This variant
      * is called for transactions which were created before the predicate lock.
      */
-    public boolean testKey(byte[] key);
+    public default boolean testKey(byte[] key) {
+        // When undecided, always default to true.
+        return true;
+    }
+
+    /**
+     * Returns a predicate that always evaluates to true.
+     */
+    @SuppressWarnings("unchecked")
+    public static <R> RowPredicate<R> all() {
+        return All.THE;
+    }
+
+    /**
+     * Defines a predicate that always evaluates to false.
+     */
+    public abstract class None<R> implements RowPredicate<R> {
+        @Override
+        public final boolean testRow(R row) {
+            return false;
+        }
+
+        @Override
+        public final boolean testRow(R row, byte[] value) {
+            return false;
+        }
+
+        @Override
+        public final boolean testRow(R row, Cursor c) {
+            return false;
+        }
+    }
+
+    static final class All implements RowPredicate {
+        static final All THE = new All();
+
+        @Override
+        public boolean testRow(Object row) {
+            return true;
+        }
+
+        @Override
+        public boolean testRow(Object row, byte[] value) {
+            return true;
+        }
+
+        @Override
+        public boolean testRow(Object row, Cursor c) {
+            return true;
+        }
+    }
 }
