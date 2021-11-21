@@ -21,7 +21,6 @@ import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.lang.invoke.VarHandle;
 
 import java.lang.ref.WeakReference;
 
@@ -33,12 +32,15 @@ import java.util.TreeMap;
 import java.util.function.IntFunction;
 
 import org.cojen.maker.ClassMaker;
+import org.cojen.maker.Field;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DatabaseException;
+
+import org.cojen.tupl.core.RowPredicate;
 
 import org.cojen.tupl.filter.AndFilter;
 import org.cojen.tupl.filter.ColumnToArgFilter;
@@ -55,21 +57,9 @@ import org.cojen.tupl.io.Utils;
  * @author Brian S O'Neill
  */
 public class FilteredScanMaker<R> {
-    private static long cFilterNum;
-    private static final VarHandle cFilterNumHandle;
-
-    static {
-        try {
-            cFilterNumHandle =
-                MethodHandles.lookup().findStaticVarHandle
-                (FilteredScanMaker.class, "cFilterNum", long.class);
-        } catch (Throwable e) {
-            throw Utils.rethrow(e);
-        }
-    }
-
     private final WeakReference<RowStore> mStoreRef;
     private final Class<?> mTableClass;
+    private final Class<?> mPredicateClass;
     private final Class<R> mRowType;
     private final RowGen mRowGen;
     private final boolean mIsPrimaryTable;
@@ -78,8 +68,6 @@ public class FilteredScanMaker<R> {
     private final String mFilterStr;
     private final ClassMaker mFilterMaker;
     private final MethodMaker mFilterCtorMaker;
-
-    private final FilterArguments mArguments;
 
     // Stop the scan when this filter evaluates to false.
     private String mStopColumn;
@@ -97,6 +85,7 @@ public class FilteredScanMaker<R> {
      *
      * @param storeRef is passed along to the generated code
      * @param unfiltered defines the encode methods; the decode method will be overridden
+     * @param predClass contains references to the argument fields
      * @param filter the filter to apply to all rows which are in bounds, or null if none
      * @param filterStr the canonical string for the filter param, or null if none
      * @param lowBound pass null for open bound
@@ -104,12 +93,14 @@ public class FilteredScanMaker<R> {
      */
     public FilteredScanMaker(WeakReference<RowStore> storeRef, Class<?> tableClass,
                              Class<? extends SingleScanController<R>> unfiltered,
+                             Class<? extends RowPredicate> predClass,
                              Class<R> rowType, RowInfo rowInfo, long indexId,
                              RowFilter filter, String filterStr,
                              RowFilter lowBound, RowFilter highBound)
     {
         mStoreRef = storeRef;
         mTableClass = tableClass;
+        mPredicateClass = predClass;
         mRowType = rowType;
 
         mRowGen = rowInfo.rowGen();
@@ -121,14 +112,15 @@ public class FilteredScanMaker<R> {
         mHighBound = highBound;
         mFilterStr = filterStr;
 
-        // Generate a sub-package with an increasing number to facilitate unloading.
-        long filterNum = (long) cFilterNumHandle.getAndAdd(1L);
-        mFilterMaker = mRowGen.beginClassMaker(getClass(), rowType, "f" + filterNum, "Filter")
+        // Define in the same package as the predicate class, in order to access it, and to
+        // facilitate class unloading.
+        mFilterMaker = mRowGen.anotherClassMaker(getClass(), predClass, "Filter")
             .final_().extend(unfiltered).implement(ScanControllerFactory.class);
 
-        mFilterCtorMaker = mFilterMaker.addConstructor(Object[].class).varargs().private_();
+        mFilterMaker.addField(predClass, "predicate").private_().final_();
 
-        mArguments = new FilterArguments(mRowGen, mFilterCtorMaker);
+        mFilterCtorMaker = mFilterMaker.addConstructor(predClass).private_();
+        mFilterCtorMaker.field("predicate").set(mFilterCtorMaker.param(0));
 
         // Need a constructor for the factory singleton instance.
         mFilterMaker.addConstructor().private_().invokeSuperConstructor(null, false, null, false);
@@ -136,16 +128,6 @@ public class FilteredScanMaker<R> {
 
     public ScanControllerFactory<R> finish() {
         // Finish the filter class...
-
-        // Define the fields to hold the filter arguments.
-        if (mFilter != null) {
-            mFilter.accept(new Visitor() {
-                @Override
-                public void visit(ColumnToArgFilter filter) {
-                    mArguments.argVar(null, filter);
-                }
-            });
-        }
 
         var ctorParams = new Object[] {null, false, null, false};
 
@@ -162,6 +144,12 @@ public class FilteredScanMaker<R> {
 
         addDecodeRowMethod();
 
+        // Override and return the predicate object.
+        {
+            MethodMaker mm = mFilterMaker.addMethod(RowPredicate.class, "predicate").public_();
+            mm.return_(mm.field("predicate"));
+        }
+
         // Provide access to the inherited markAllClean method.
         {
             Class<?> rowClass = RowMaker.find(mRowType);
@@ -176,11 +164,15 @@ public class FilteredScanMaker<R> {
             mm.field("factory").set(mm.new_(mFilterMaker));
         }
 
-        // Define the factory method.
+        // Define the factory methods.
         {
             MethodMaker mm = mFilterMaker.addMethod
                 (ScanController.class, "newScanController", Object[].class).public_().varargs();
-            mm.return_(mm.new_(mFilterMaker, mm.param(0)));
+            mm.return_(mm.new_(mFilterMaker, mm.new_(mPredicateClass, mm.param(0))));
+
+            mm = mFilterMaker.addMethod
+                (ScanController.class, "newScanController", RowPredicate.class).public_();
+            mm.return_(mm.new_(mFilterMaker, mm.param(0).cast(mPredicateClass)));
         }
 
         MethodHandles.Lookup filterLookup = mFilterMaker.finishLookup();
@@ -236,7 +228,9 @@ public class FilteredScanMaker<R> {
 
                 last = filter;
 
-                Variable argVar = mArguments.argVar(mFilterCtorMaker, filter);
+                String fieldName = ColumnCodec.argFieldName(filter.column(), filter.argument());
+                // param(0) is the predicate instance which has the argument fields.
+                Variable argVar = mFilterCtorMaker.param(0).field(fieldName);
 
                 if (ulp) {
                     argVar = argVar.get();
@@ -697,7 +691,7 @@ public class FilteredScanMaker<R> {
 
             ColumnInfo colInfo = filter.column();
             int op = filter.operator();
-            Variable argObjVar = mDecoderVar; // contains the arg fields prepared earlier
+            Variable predVar = mDecoderVar.field("predicate");
             int argNum = filter.argument();
 
             Integer colNum = columnNumberFor(colInfo.name);
@@ -716,9 +710,9 @@ public class FilteredScanMaker<R> {
                 Object decoded = located.mDecodedQuick;
                 if (decoded != null) {
                     codec.filterQuickCompare(colInfo, located.mSrcVar, located.mOffsetVar, op,
-                                             decoded, argObjVar, argNum, mPass, mFail);
+                                             decoded, predVar, argNum, mPass, mFail);
                 } else {
-                    var argField = argObjVar.field(ColumnCodec.argFieldName(colInfo, argNum));
+                    var argField = predVar.field(ColumnCodec.argFieldName(colInfo, argNum));
                     CompareUtils.compare(mMaker, colInfo, located.mDecodedVar,
                                          colInfo, argField, op, mPass, mFail);
                 }
@@ -726,7 +720,7 @@ public class FilteredScanMaker<R> {
                 // Column doesn't exist in the row, so compare against a default. This code
                 // assumes that value codecs always define an arg field which preserves the
                 // original argument, possibly converted to the correct type.
-                var argField = argObjVar.field(ColumnCodec.argFieldName(colInfo, argNum));
+                var argField = predVar.field(ColumnCodec.argFieldName(colInfo, argNum));
                 var columnVar = mMaker.var(colInfo.type);
                 Converter.setDefault(mMaker, colInfo, columnVar);
                 CompareUtils.compare(mMaker, colInfo, columnVar,

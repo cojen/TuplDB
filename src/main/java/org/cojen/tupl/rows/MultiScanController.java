@@ -23,6 +23,8 @@ import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
 
+import org.cojen.tupl.core.RowPredicate;
+
 /**
  * 
  *
@@ -40,6 +42,11 @@ final class MultiScanController<R> implements ScanController<R> {
     MultiScanController(ScanController<R>[] controllers) {
         mControllers = controllers;
         assignCurrent(0);
+    }
+
+    @Override
+    public RowPredicate<R> predicate() {
+        return mControllers[0].predicate();
     }
 
     @Override

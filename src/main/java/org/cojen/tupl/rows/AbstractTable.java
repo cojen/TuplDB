@@ -39,6 +39,8 @@ import org.cojen.tupl.RowUpdater;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 
+import org.cojen.tupl.core.RowPredicate;
+
 import org.cojen.tupl.filter.ComplexFilterException;
 import org.cojen.tupl.filter.FalseFilter;
 import org.cojen.tupl.filter.Parser;
@@ -205,14 +207,8 @@ public abstract class AbstractTable<R> implements Table<R> {
         return factory;
     }
 
-    private ScanControllerFactory<R> findFilteredFactory(final String filter) {
-        return findFilteredFactory(filter, null, null, null);
-    }
-
     @SuppressWarnings("unchecked")
-    private ScanControllerFactory<R> findFilteredFactory
-        (final String filter, RowInfo rowInfo, RowFilter rf, RowFilter[] range)
-    {
+    private ScanControllerFactory<R> findFilteredFactory(final String filter) {
         Latch latch;
         while (true) {
             check: synchronized (mFilterFactoryCache) {
@@ -239,9 +235,8 @@ public abstract class AbstractTable<R> implements Table<R> {
         Throwable ex = null;
 
         obtain: try {
-            if (rf == null) {
-                rf = parse(rowType(), filter).reduce();
-            }
+            Class<?> rowType = rowType();
+            RowFilter rf = parse(rowType, filter).reduce();
 
             if (rf instanceof FalseFilter) {
                 factory = EmptyScanController.factory();
@@ -260,40 +255,39 @@ public abstract class AbstractTable<R> implements Table<R> {
                 break obtain;
             }
 
-            if (rowInfo == null) {
-                rowInfo = RowInfo.find(rowType());
-                byte[] secondaryDesc = secondaryDescriptor();
-                if (secondaryDesc != null) {
-                    rowInfo = RowStore.indexRowInfo(rowInfo, secondaryDesc);
-                }
+            RowInfo rowInfo = RowInfo.find(rowType);
+            byte[] secondaryDesc = secondaryDescriptor();
+            if (secondaryDesc != null) {
+                rowInfo = RowStore.indexRowInfo(rowInfo, secondaryDesc);
             }
 
-            if (range == null) {
-                RowFilter[][] ranges = multiRangeExtract(rowInfo, rf);
+            RowFilter[][] ranges = multiRangeExtract(rowInfo, rf);
 
-                if (ranges.length > 1) {
-                    var rangeFactories = new ScanControllerFactory[ranges.length];
-                    for (int i=0; i<ranges.length; i++) {
-                        // Merge the range components together to find sharable factories.
-                        RowFilter merged = merge(ranges[i]);
-                        rangeFactories[i] = findFilteredFactory
-                            (merged.toString(), rowInfo, merged, ranges[i]);
-                    }
-                    factory = new MultiScanControllerFactory(rangeFactories);
-                    break obtain;
+            // FIXME: evaluatorClass
+            Class<? extends RowPredicate> baseClass = null;
+
+            Class<? extends RowPredicate> predClass =
+                RowPredicateMaker.make(baseClass, rowType, rowInfo, rf, ranges);
+
+            if (ranges.length > 1) {
+                var rangeFactories = new ScanControllerFactory[ranges.length];
+                for (int i=0; i<ranges.length; i++) {
+                    rangeFactories[i] = newFilteredFactory(rowInfo, ranges[i], predClass);
                 }
-
-                range = ranges[0];
-
-                if (range[1] == null && range[2] == null) {
-                    // Full scan, so just use the original reduced filter. It's possible that
-                    // the dnf/cnf form is reduced even further, but when doing a full scan,
-                    // let the user define the order in which the filter terms are examined.
-                    range[0] = rf;
-                }
+                factory = new MultiScanControllerFactory(rangeFactories);
+                break obtain;
             }
 
-            factory = newFilteredFactory(rowInfo, range);
+            RowFilter[] range = ranges[0];
+
+            if (range[1] == null && range[2] == null) {
+                // Full scan, so just use the original reduced filter. It's possible that
+                // the dnf/cnf form is reduced even further, but when doing a full scan,
+                // let the user define the order in which the filter terms are examined.
+                range[0] = rf;
+            }
+
+            factory = newFilteredFactory(rowInfo, range, predClass);
         } catch (Throwable e) {
             factory = null;
             ex = e;
@@ -318,16 +312,10 @@ public abstract class AbstractTable<R> implements Table<R> {
         return factory;
     }
 
-    private static RowFilter merge(RowFilter[] range) {
-        return and(and(range[1], range[2]), range[0]);
-    }
-
-    private static RowFilter and(RowFilter a, RowFilter b) {
-        return a == null ? b : (b == null ? a : a.and(b));
-    }
-
     @SuppressWarnings("unchecked")
-    private ScanControllerFactory<R> newFilteredFactory(RowInfo rowInfo, RowFilter[] range) {
+    private ScanControllerFactory<R> newFilteredFactory(RowInfo rowInfo, RowFilter[] range,
+                                                        Class<? extends RowPredicate> predClass)
+    {
         Class unfilteredClass = unfiltered().getClass();
 
         RowFilter remainder = range[0];
@@ -337,7 +325,7 @@ public abstract class AbstractTable<R> implements Table<R> {
         String remainderStr = remainder == null ? null : remainder.toString();
 
         return new FilteredScanMaker<R>
-            (rowStoreRef(), getClass(), unfilteredClass, rowType(), rowInfo,
+            (rowStoreRef(), getClass(), unfilteredClass, predClass, rowType(), rowInfo,
              mSource.id(), remainder, remainderStr, lowBound, highBound).finish();
     }
 

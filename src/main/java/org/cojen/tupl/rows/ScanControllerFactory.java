@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.rows;
 
+import org.cojen.tupl.core.RowPredicate;
+
 /**
  * 
  *
@@ -25,4 +27,8 @@ package org.cojen.tupl.rows;
 @FunctionalInterface
 public interface ScanControllerFactory<R> {
     ScanController<R> newScanController(Object... args);
+
+    default ScanController<R> newScanController(RowPredicate predicate) {
+        throw new UnsupportedOperationException();
+    }
 }

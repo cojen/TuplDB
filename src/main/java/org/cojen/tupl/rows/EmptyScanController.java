@@ -17,6 +17,10 @@
 
 package org.cojen.tupl.rows;
 
+import org.cojen.tupl.Cursor;
+
+import org.cojen.tupl.core.RowPredicate;
+
 /**
  * Scan of nothing.
  *
@@ -32,6 +36,11 @@ final class EmptyScanController extends SingleScanController implements ScanCont
 
     private EmptyScanController() {
         super(EMPTY, false, null, false);
+    }
+
+    @Override
+    public RowPredicate predicate() {
+        return null;
     }
 
     @Override

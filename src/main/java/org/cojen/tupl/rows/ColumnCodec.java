@@ -372,7 +372,7 @@ abstract class ColumnCodec {
     }
 
     /**
-     * Makes code which defines and initializes final field(s) for filter arguments.
+     * Makes code which defines and initializes extra final field(s) for filter arguments.
      *
      * This method is only called when the codec has been bound to a constructor, and it's
      * called on the destination codec (the currently defined row version). The implementation
@@ -381,8 +381,7 @@ abstract class ColumnCodec {
      * @param in true if argument is a collection for "in" filtering
      * @param argVar argument value to compare against, converted to the the column type
      */
-    void filterDefineFields(boolean in, Variable argVar, String argFieldName) {
-        defineArgField(argVar, argFieldName).set(argVar);
+    void filterDefineExtraFields(boolean in, Variable argVar, String argFieldName) {
     }
 
     /**
@@ -448,8 +447,12 @@ abstract class ColumnCodec {
     // FIXME: When filter passes, take advantage of existing decoded variables and avoid double
     // decode if possible.
 
+    static String argFieldName(String colName, int argNum) {
+        return colName + '$' + argNum;
+    }
+
     static String argFieldName(ColumnInfo info, int argNum) {
-        return info.name + '$' + argNum;
+        return argFieldName(info.name, argNum);
     }
 
     protected String argFieldName(int argNum) {
@@ -460,12 +463,12 @@ abstract class ColumnCodec {
         return argFieldName(argFieldName(argNum), suffix);
     }
 
-    protected String argFieldName(String base, String suffix) {
+    static String argFieldName(String base, String suffix) {
         return base + '$' + suffix;
     }
 
     protected Field defineArgField(Object type, String name) {
-        mMaker.classMaker().addField(type, name).private_().final_();
+        mMaker.classMaker().addField(type, name).final_();
         return mMaker.field(name);
     }
 

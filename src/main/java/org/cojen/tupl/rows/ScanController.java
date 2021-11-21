@@ -25,6 +25,8 @@ import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
 
+import org.cojen.tupl.core.RowPredicate;
+
 /**
  * 
  *
@@ -33,6 +35,13 @@ import org.cojen.tupl.View;
  */
 public interface ScanController<R> {
     static final byte[] EMPTY = new byte[0];
+
+    /**
+     * Returns a predicate which is shared by all scan batches.
+     */
+    default RowPredicate<R> predicate() {
+        return RowPredicate.all();
+    }
 
     boolean isSingleBatch();
 

@@ -44,13 +44,10 @@ abstract class BytesColumnCodec extends ColumnCodec {
     }
 
     /**
-     * Defines a byte[] arg field set to null or an encoded string of bytes, and also defines a
-     * field with the original argument.
+     * Defines a byte[] arg field set to null or an encoded string of bytes.
      */
     @Override
-    void filterDefineFields(boolean in, Variable argVar, String argFieldName) {
-        super.filterDefineFields(in, argVar, argFieldName);
-
+    void filterDefineExtraFields(boolean in, Variable argVar, String argFieldName) {
         Variable bytesVar;
 
         if (in) {

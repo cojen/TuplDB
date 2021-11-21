@@ -105,8 +105,13 @@ class RowGen {
             name = bob.toString();
         }
 
-        ClassLoader loader = rowType == null ? null : rowType.getClassLoader();
+        return beginClassMaker(who, rowType == null ? null : rowType.getClassLoader(), name);
+    }
 
+    /**
+     * @param who the class which is making a class (can be null)
+     */
+    public static ClassMaker beginClassMaker(Class<?> who, ClassLoader loader, String name) {
         ClassMaker cm = ClassMaker.begin(name, loader, MAKER_KEY);
 
         if (who != null) {
@@ -123,6 +128,23 @@ class RowGen {
         thisModule.addExports("org.cojen.tupl.views", thatModule);
 
         return cm;
+    }
+
+    /**
+     * @param who the class which is making a class (can be null)
+     * @param peer defines the package to define the new class in
+     */
+    public ClassMaker anotherClassMaker(Class<?> who, Class<?> peer, String suffix) {
+        String name = info.name;
+        int ix = name.lastIndexOf('.');
+        if (ix > 0) {
+            name = name.substring(ix + 1);
+        }
+        if (suffix != null && !suffix.isEmpty()) {
+            name = name + '-' + suffix;
+        }
+        name = peer.getPackageName() + '.' + name;
+        return beginClassMaker(who, peer.getClassLoader().getParent(), name);
     }
 
     /**
