@@ -381,7 +381,7 @@ public class FilteredScanMaker<R> {
 
             var indy = mm.var(FilteredScanMaker.class).indy
                 ("indyDecodeRow", mStoreRef, mTableClass, mRowType, mIndexId,
-                 mFilter, mFilterStr, mStopColumn, mStopArgument);
+                 new WeakReference<>(mFilter), mFilterStr, mStopColumn, mStopArgument);
 
             var valueVar = mm.param(1);
 
@@ -407,12 +407,12 @@ public class FilteredScanMaker<R> {
     public static CallSite indyDecodeRow(MethodHandles.Lookup lookup, String name, MethodType mt,
                                          WeakReference<RowStore> storeRef,
                                          Class<?> tableClass, Class<?> rowType, long indexId,
-                                         RowFilter filter, String filterStr,
+                                         WeakReference<RowFilter> filterRef, String filterStr,
                                          String stopColumn, int stopArgument)
     {
         var dm = new DecodeMaker
             (lookup, mt, storeRef, tableClass, rowType, indexId,
-             filter, filterStr, stopColumn, stopArgument);
+             filterRef, filterStr, stopColumn, stopArgument);
         return new SwitchCallSite(lookup, mt, dm);
     }
 
@@ -427,14 +427,13 @@ public class FilteredScanMaker<R> {
         private final String mStopColumn;
         private final int mStopArgument;
 
-        // The DecodeMaker isn't defined as a lambda function because these fields cannot be final.
+        // The DecodeMaker isn't defined as a lambda function because this field cannot be final.
         private WeakReference<RowFilter> mFilterRef;
-        private WeakReference<RowFilter> mStopFilterRef;
 
         DecodeMaker(MethodHandles.Lookup lookup, MethodType mt,
                     WeakReference<RowStore> storeRef, Class<?> tableClass,
                     Class<?> rowType, long indexId,
-                    RowFilter filter, String filterStr,
+                    WeakReference<RowFilter> filterRef, String filterStr,
                     String stopColumn, int stopArgument)
         {
             mLookup = lookup;
@@ -444,7 +443,7 @@ public class FilteredScanMaker<R> {
             mRowType = rowType;
             mIndexId = indexId;
             mFilterStr = filterStr;
-            mFilterRef = new WeakReference<>(filter);
+            mFilterRef = filterRef;
             mStopColumn = stopColumn;
             mStopArgument = stopArgument;
         }
