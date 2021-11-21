@@ -20,6 +20,10 @@ package org.cojen.tupl.filter;
 import java.math.BigInteger;
 
 import java.util.Arrays;
+import java.util.Set;
+
+import org.cojen.tupl.rows.ColumnInfo;
+
 
 /**
  * 
@@ -87,6 +91,58 @@ public abstract class GroupFilter extends RowFilter {
         }
         Arrays.sort(subFilters);
         return newInstance(subFilters);
+    }
+
+    @Override
+    public RowFilter prioritize(Set<ColumnInfo> columns) {
+        RowFilter[] subFilters = mSubFilters;
+        if (subFilters.length == 0) {
+            return this;
+        }
+
+        subFilters = subFilters.clone();
+        for (int i=0; i<subFilters.length; i++) {
+            subFilters[i] = subFilters[i].prioritize(columns);
+        }
+
+        Arrays.sort(subFilters,
+                    (a, b) -> Double.compare(matchStrength(b, columns), matchStrength(a, columns)));
+
+        return newInstance(subFilters);
+    }
+
+    /**
+     * Assumes that the given filter has been prioritized already.
+     *
+     * @return [0..1]
+     */
+    private static double matchStrength(RowFilter filter, Set<ColumnInfo> columns) {
+        if (filter instanceof ColumnToArgFilter cf) {
+            return columns.contains(cf.column()) ? 1 : 0;
+        }
+
+        if (filter instanceof GroupFilter gf) {
+            double sum = 0;
+            for (RowFilter sub : gf.mSubFilters) {
+                double strength = matchStrength(sub, columns);
+                if (strength == 0) {
+                    // By assuming that filter is already prioritized, can stop early.
+                    break;
+                }
+                sum += strength;
+            }
+            return sum / gf.mSubFilters.length;
+        }
+
+        if (filter instanceof ColumnToColumnFilter cf) {
+            double strength = columns.contains(cf.column()) ? 0.5 : 0;
+            if (columns.contains(cf.otherColumn())) {
+                strength += 0.5;
+            }
+            return strength;
+        }
+
+        return 0;
     }
 
     @Override

@@ -18,6 +18,7 @@
 package org.cojen.tupl.filter;
 
 import java.util.Arrays;
+import java.util.Set;
 
 import org.cojen.tupl.rows.ColumnInfo;
 
@@ -139,6 +140,29 @@ public class OrFilter extends GroupFilter {
     @Override
     public AndFilter not() {
         return new AndFilter(subNot());
+    }
+
+    @Override
+    public RowFilter retain(Set<ColumnInfo> columns, RowFilter undecided) {
+        RowFilter[] subFilters = mSubFilters;
+        if (subFilters.length == 0) {
+            return this;
+        }
+
+        subFilters = mSubFilters.clone();
+
+        int len = 0;
+        for (int i=0; i<subFilters.length; i++) {
+            RowFilter sub = subFilters[i].retain(columns, undecided);
+            if (sub == TrueFilter.THE) {
+                return sub;
+            }
+            if (sub != FalseFilter.THE) {
+                subFilters[len++] = sub;
+            }
+        }
+
+        return newInstance(subFilters, 0, len);
     }
 
     @Override

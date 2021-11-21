@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.filter;
 
+import java.util.Set;
+
 import org.cojen.tupl.rows.ColumnInfo;
 
 import static java.lang.Integer.MIN_VALUE;
@@ -113,6 +115,11 @@ public abstract class ColumnFilter extends RowFilter {
 
     @Override
     public ColumnFilter sort() {
+        return this;
+    }
+
+    @Override
+    public RowFilter prioritize(Set<ColumnInfo> columns) {
         return this;
     }
 

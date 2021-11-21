@@ -18,6 +18,7 @@
 package org.cojen.tupl.filter;
 
 import java.util.Objects;
+import java.util.Set;
 
 import org.cojen.tupl.rows.ColumnInfo;
 
@@ -109,6 +110,22 @@ public abstract class RowFilter implements Comparable<RowFilter> {
      * Returns this filter with a canonical sort order, for performing equivalence comparisons.
      */
     public abstract RowFilter sort();
+
+    /**
+     * Re-orders the terms of this filter such that the given columns are evaluated first.
+     */
+    // TODO: Intended for use by RowPredicate::testRow(R, byte[]) to examine keys first.
+    public abstract RowFilter prioritize(Set<ColumnInfo> columns);
+
+    /**
+     * Remove terms which refer to columns which aren't in the given set.
+     *
+     * @param columns columns to remove (not retain)
+     * @param undecided default filter to use when the resulting filter cannot be certain of a
+     * match (usually TRUE or FALSE)
+     */
+    // TODO: Intended for use by RowPredicate::testKey(byte[]), with TRUE for undecided.
+    public abstract RowFilter retain(Set<ColumnInfo> columns, RowFilter undecided);
 
     /**
      * Given a set of columns corresponding to the primary key of an index, extract a suitable

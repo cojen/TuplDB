@@ -19,6 +19,8 @@ package org.cojen.tupl.filter;
 
 import java.math.BigDecimal;
 
+import java.util.Set;
+
 import org.cojen.tupl.rows.ColumnInfo;
 
 /**
@@ -73,6 +75,11 @@ public class ColumnToArgFilter extends ColumnFilter {
             mMatchHashCode = hash;
         }
         return hash;
+    }
+
+    @Override
+    public RowFilter retain(Set<ColumnInfo> columns, RowFilter undecided) {
+        return columns.contains(mColumn) ? this : undecided;
     }
 
     @Override

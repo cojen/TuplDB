@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.filter;
 
+import java.util.Set;
+
 import org.cojen.tupl.rows.ColumnInfo;
 
 /**
@@ -76,6 +78,11 @@ public final class ColumnToColumnFilter extends ColumnFilter {
             mMatchHashCode = hash;
         }
         return hash;
+    }
+
+    @Override
+    public RowFilter retain(Set<ColumnInfo> columns, RowFilter undecided) {
+        return (columns.contains(mColumn) && columns.contains(mOtherColumn)) ? this : undecided;
     }
 
     public ColumnInfo otherColumn() {

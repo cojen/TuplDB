@@ -20,6 +20,7 @@ package org.cojen.tupl.filter;
 import java.math.BigDecimal;
 
 import java.util.Arrays;
+import java.util.Set;
 
 import org.cojen.tupl.rows.ColumnInfo;
 
@@ -142,6 +143,29 @@ public class AndFilter extends GroupFilter {
     @Override
     public OrFilter not() {
         return new OrFilter(subNot());
+    }
+
+    @Override
+    public RowFilter retain(Set<ColumnInfo> columns, RowFilter undecided) {
+        RowFilter[] subFilters = mSubFilters;
+        if (subFilters.length == 0) {
+            return this;
+        }
+
+        subFilters = mSubFilters.clone();
+
+        int len = 0;
+        for (int i=0; i<subFilters.length; i++) {
+            RowFilter sub = subFilters[i].retain(columns, undecided);
+            if (sub == FalseFilter.THE) {
+                return sub;
+            }
+            if (sub != TrueFilter.THE) {
+                subFilters[len++] = sub;
+            }
+        }
+
+        return newInstance(subFilters, 0, len);
     }
 
     @Override
