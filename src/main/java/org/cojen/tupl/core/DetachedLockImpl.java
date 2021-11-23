@@ -46,16 +46,17 @@ class DetachedLockImpl extends Lock implements DetachedLock {
     }
 
     @Override
-    public final void acquireShared(Transaction txn) throws LockFailureException {
-        acquireShared((LocalTransaction) txn);
+    public final LockResult acquireShared(Transaction txn) throws LockFailureException {
+        return acquireShared((LocalTransaction) txn);
     }
 
-    final void acquireShared(LocalTransaction txn) throws LockFailureException {
+    final LockResult acquireShared(LocalTransaction txn) throws LockFailureException {
         long nanosTimeout = txn.lockTimeout(TimeUnit.NANOSECONDS);
         LockResult result = tryAcquireShared(txn, nanosTimeout);
         if (!result.isHeld()) {
             throw txn.failed(LockManager.TYPE_SHARED, result, nanosTimeout);
         }
+        return result;
     }
 
     @Override

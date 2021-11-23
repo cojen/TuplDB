@@ -32,9 +32,9 @@ import org.cojen.tupl.Transaction;
  */
 public interface RowPredicateSet<R> {
     /**
-     * Acquires shared access for all the row locks, waiting if necessary, and retains the
-     * locks for the entire transaction scope. If lock acquisition times out, all row locks
-     * acquired up to that point are still retained.
+     * Acquires shared access for all the predicate locks, waiting if necessary, and retains
+     * the locks for the entire transaction scope. If any lock acquisition times out, all locks
+     * acquired by this operation are released.
      *
      * @param row is passed to the {@code RowPredicate.testRow} method
      * @throws IllegalStateException if too many shared locks
@@ -42,9 +42,9 @@ public interface RowPredicateSet<R> {
     void acquireShared(Transaction txn, R row) throws LockFailureException;
 
     /**
-     * Acquires shared access for all the row locks, waiting if necessary, and retains the
-     * locks for the entire transaction scope. If lock acquisition times out, all row locks
-     * acquired up to that point are still retained.
+     * Acquires shared access for all the predicate locks, waiting if necessary, and retains
+     * the locks for the entire transaction scope. If any lock acquisition times out, all locks
+     * acquired by this operation are released.
      *
      * @param row is passed to the {@code RowPredicate.testRow} method
      * @param value is passed to the {@code RowPredicate.testRow} method
@@ -53,9 +53,9 @@ public interface RowPredicateSet<R> {
     void acquireShared(Transaction txn, R row, byte[] value) throws LockFailureException;
 
     /**
-     * Acquires shared access for all the row locks, waiting if necessary, and retains the
-     * locks for the entire transaction scope. If lock acquisition times out, all row locks
-     * acquired up to that point are still retained.
+     * Acquires shared access for all the predicate locks, waiting if necessary, and retains
+     * the locks for the entire transaction scope. If any lock acquisition times out, all locks
+     * acquired by this operation are released.
      *
      * @param row is passed to the {@code RowPredicate.testRow} method
      * @param c is passed to the {@code RowPredicate.testRow} method

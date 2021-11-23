@@ -64,8 +64,8 @@ public class RowPredicateTest {
         var row1 = new TestRow(1 + offset);
         var row2 = new TestRow(2 + offset);
 
-        var key1 = new byte[] {(byte) (1 + offset)};
-        var key2 = new byte[] {(byte) (2 + offset)};
+        var key1 = row1.key();
+        var key2 = row2.key();
 
         var pred1 = new TestPredicate(row1);
         var pred2 = new TestPredicate(row2);
@@ -237,8 +237,8 @@ public class RowPredicateTest {
         var row1 = new TestRow(1);
         var row2 = new TestRow(2);
 
-        var key1 = new byte[] {1};
-        var key2 = new byte[] {2};
+        var key1 = row1.key();
+        var key2 = row2.key();
 
         var pred1 = new TestPredicate(row1);
         var pred2 = new TestPredicate(row2);
@@ -333,7 +333,7 @@ public class RowPredicateTest {
         // Test that a transaction can add a predicate for a lock it already owns.
 
         var row1 = new TestRow(1);
-        var key1 = new byte[] {1};
+        var key1 = row1.key();
         var pred1 = new TestPredicate(row1);
 
         var txn1 = mDb.newTransaction();
@@ -375,8 +375,8 @@ public class RowPredicateTest {
         var row1 = new TestRow(1);
         var row2 = new TestRow(2);
 
-        var key1 = new byte[] {1};
-        var key2 = new byte[] {2};
+        var key1 = row1.key();
+        var key2 = row2.key();
 
         var predSet = Collections.<TestRow>newSetFromMap(new ConcurrentHashMap<>());
         predSet.add(row1);
@@ -435,7 +435,7 @@ public class RowPredicateTest {
         // exclusive locks can conflict with the predicate.
 
         var row1 = new TestRow(1);
-        var key1 = new byte[] {1};
+        var key1 = row1.key();
         var pred1 = new TestPredicate(row1);
 
         var txn1 = mDb.newTransaction();
@@ -453,7 +453,7 @@ public class RowPredicateTest {
         // Two predicates which match the same rows shouldn't conflict with each other.
 
         var row1 = new TestRow(1);
-        var key1 = new byte[] {1};
+        var key1 = row1.key();
 
         var pred1 = new TestPredicate(row1);
         var pred2 = new TestPredicate(row1);
@@ -519,6 +519,71 @@ public class RowPredicateTest {
         }
     }
 
+    @Test
+    public void multiAcquireFail() throws Exception {
+        // Test that attempting to acquire multiple predicate locks and failing releases all
+        // locks acquired before the failure.
+
+        var row1 = new TestRow(1);
+        var row2 = new TestRow(2);
+        var row3 = new TestRow(3);
+
+        var key1 = row1.key();
+        var key2 = row2.key();
+        var key3 = row3.key();
+
+        var pred1 = new TestPredicate(row1);
+        var pred2 = new TestPredicate(Set.of(row1, row2));
+        var pred3 = new TestPredicate(row3);
+
+        var txn0 =  mDb.newTransaction();
+        txn0.attach("txn0");
+        mSet.addPredicate(txn0, pred3);
+
+        var txn1 = mDb.newTransaction();
+        txn1.attach("txn1");
+        mSet.acquireShared(txn1, row1);
+        txn1.lockExclusive(1234, key1);
+        mSet.acquireShared(txn1, row2);
+        txn1.lockExclusive(1234, key2);
+
+        Waiter w2 = start(() -> {
+            var txn2 = mDb.newTransaction();
+            txn2.attach("txn2");
+            txn2.lockTimeout(2, TimeUnit.SECONDS);
+            mSet.addPredicate(txn2, pred1);
+        });
+
+        Waiter w3 = start(() -> {
+            var txn3 = mDb.newTransaction();
+            txn3.attach("txn3");
+            txn3.lockTimeout(2, TimeUnit.SECONDS);
+            mSet.addPredicate(txn3, pred2);
+        });
+
+        // Sneaky change of predicate behavior. I'm just being lazy and don't want to define a
+        // test row that has multiple columns.
+        pred3.mMatches = Collections.singleton(row1);
+
+        var txn5 = mDb.newTransaction();
+        txn5.attach("txn5");
+        try {
+            // This should acquire two locks but fail on pred3. The first two should get
+            // released.
+            mSet.acquireShared(txn5, row1);
+            fail();
+        } catch (LockTimeoutException e) {
+            String message = e.getMessage();
+            assertTrue(message, message.contains("owner attachment: txn0"));
+        }
+
+        txn1.reset();
+
+        // These can proceed after txn1 has been released and txn5 released two locks.
+        w2.await();
+        w3.await();
+    }
+
     static interface Task {
         void run() throws Exception;
     }
@@ -555,10 +620,14 @@ public class RowPredicateTest {
         return TestUtils.startAndWaitUntilBlocked(new Waiter(task));
     }
 
-    static record TestRow(int value) {}
+    static record TestRow(int value) {
+        byte[] key() {
+            return new byte[] {(byte) value};
+        }
+    }
 
     static class TestPredicate implements RowPredicate<TestRow> {
-        private final Set<TestRow> mMatches;
+        Set<TestRow> mMatches;
 
         TestPredicate(TestRow match) {
             this(Collections.singleton(match));
@@ -586,7 +655,9 @@ public class RowPredicateTest {
         @Override
         public boolean testKey(byte[] key) {
             for (TestRow match : mMatches) {
-                return key.length == 1 && key[0] == match.value;
+                if (key.length == 1 && key[0] == match.value) {
+                    return true;
+                }
             }
             return false;
         }

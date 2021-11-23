@@ -88,10 +88,18 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
         var local = (LocalTransaction) txn;
         mNewestVersion.acquire(local);
 
-        for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
-            if (e.testRow(row)) {
-                e.matched(local);
+        int acquired = 0;
+        try {
+            for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
+                if (e.testRow(row) && e.matched(local).isAcquired() && ++acquired > 1) {
+                    txn.unlockCombine();
+                }
             }
+        } catch (Throwable e) {
+            if (acquired != 0) {
+                txn.unlock();
+            }
+            throw e;
         }
     }
 
@@ -100,10 +108,18 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
         var local = (LocalTransaction) txn;
         mNewestVersion.acquire(local);
 
-        for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
-            if (e.testRow(row, value)) {
-                e.matched(local);
+        int acquired = 0;
+        try {
+            for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
+                if (e.testRow(row, value) && e.matched(local).isAcquired() && ++acquired > 1) {
+                    txn.unlockCombine();
+                }
             }
+        } catch (Throwable e) {
+            if (acquired != 0) {
+                txn.unlock();
+            }
+            throw e;
         }
     }
 
@@ -112,10 +128,18 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
         var local = (LocalTransaction) txn;
         mNewestVersion.acquire(local);
 
-        for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
-            if (e.testRow(row, c)) {
-                e.matched(local);
+        int acquired = 0;
+        try {
+            for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
+                if (e.testRow(row, c) && e.matched(local).isAcquired() && ++acquired > 1) {
+                    txn.unlockCombine();
+                }
             }
+        } catch (Throwable e) {
+            if (acquired != 0) {
+                txn.unlock();
+            }
+            throw e;
         }
     }
 
@@ -539,9 +563,9 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
             mSet.remove(this);
         }
 
-        final void matched(LocalTransaction txn) throws LockFailureException {
+        final LockResult matched(LocalTransaction txn) throws LockFailureException {
             cMatchedHandle.weakCompareAndSetPlain(this, false, true);
-            acquireShared(txn);
+            return acquireShared(txn);
         }
 
         /**

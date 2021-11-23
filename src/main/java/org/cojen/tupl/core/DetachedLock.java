@@ -35,7 +35,7 @@ public interface DetachedLock {
      *
      * @throws IllegalStateException if too many shared locks
      */
-    void acquireShared(Transaction txn) throws LockFailureException;
+    LockResult acquireShared(Transaction txn) throws LockFailureException;
 
     /**
      * Any transaction can attempt to acquire the shared lock.
