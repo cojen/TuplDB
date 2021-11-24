@@ -91,7 +91,7 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
         int acquired = 0;
         try {
             for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
-                if (e.testRow(row) && e.matched(local).isAcquired() && ++acquired > 1) {
+                if (e.testRow(row) && e.acquire(local).isAcquired() && ++acquired > 1) {
                     txn.unlockCombine();
                 }
             }
@@ -111,7 +111,7 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
         int acquired = 0;
         try {
             for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
-                if (e.testRow(row, value) && e.matched(local).isAcquired() && ++acquired > 1) {
+                if (e.testRow(row, value) && e.acquire(local).isAcquired() && ++acquired > 1) {
                     txn.unlockCombine();
                 }
             }
@@ -131,10 +131,105 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
         int acquired = 0;
         try {
             for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
-                if (e.testRow(row, c) && e.matched(local).isAcquired() && ++acquired > 1) {
+                if (e.testRow(row, c) && e.acquire(local).isAcquired() && ++acquired > 1) {
                     txn.unlockCombine();
                 }
             }
+        } catch (Throwable e) {
+            if (acquired != 0) {
+                txn.unlock();
+            }
+            throw e;
+        }
+    }
+
+    @Override
+    public boolean tryAcquireShared(Transaction txn, R row) throws LockFailureException {
+        var local = (LocalTransaction) txn;
+        mNewestVersion.acquire(local);
+
+        int acquired = 0;
+        try {
+            for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
+                if (e.testRow(row)) {
+                    LockResult result = e.tryAcquire(local);
+                    if (!result.isHeld()) {
+                        if (acquired != 0) {
+                            txn.unlock();
+                        }
+                        return false;
+                    }
+                    if (result.isAcquired() && ++acquired > 1) {
+                        txn.unlockCombine();
+                    }
+                }
+            }
+
+            return true;
+        } catch (Throwable e) {
+            if (acquired != 0) {
+                txn.unlock();
+            }
+            throw e;
+        }
+    }
+
+    @Override
+    public boolean tryAcquireShared(Transaction txn, R row, byte[] value)
+        throws LockFailureException
+    {
+        var local = (LocalTransaction) txn;
+        mNewestVersion.acquire(local);
+
+        int acquired = 0;
+        try {
+            for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
+                if (e.testRow(row, value)) {
+                    LockResult result = e.tryAcquire(local);
+                    if (!result.isHeld()) {
+                        if (acquired != 0) {
+                            txn.unlock();
+                        }
+                        return false;
+                    }
+                    if (result.isAcquired() && ++acquired > 1) {
+                        txn.unlockCombine();
+                    }
+                }
+            }
+
+            return true;
+        } catch (Throwable e) {
+            if (acquired != 0) {
+                txn.unlock();
+            }
+            throw e;
+        }
+    }
+
+    @Override
+    public boolean tryAcquireShared(Transaction txn, R row, Cursor c) throws IOException {
+        var local = (LocalTransaction) txn;
+        mNewestVersion.acquire(local);
+
+        int acquired = 0;
+        try {
+            for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
+                if (e.testRow(row, c)) {
+                    LockResult result = e.tryAcquire(local);
+                    if (!result.isHeld()) {
+                        if (acquired != 0) {
+                            txn.unlock();
+                        }
+                        return false;
+                    }
+                    if (result.isAcquired() && ++acquired > 1) {
+                        txn.unlockCombine();
+                    }
+                }
+            }
+
+            return true;
         } catch (Throwable e) {
             if (acquired != 0) {
                 txn.unlock();
@@ -563,9 +658,14 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
             mSet.remove(this);
         }
 
-        final LockResult matched(LocalTransaction txn) throws LockFailureException {
+        final LockResult acquire(LocalTransaction txn) throws LockFailureException {
             cMatchedHandle.weakCompareAndSetPlain(this, false, true);
             return acquireShared(txn);
+        }
+
+        final LockResult tryAcquire(LocalTransaction txn) throws LockFailureException {
+            cMatchedHandle.weakCompareAndSetPlain(this, false, true);
+            return tryAcquireShared(txn, 0);
         }
 
         /**

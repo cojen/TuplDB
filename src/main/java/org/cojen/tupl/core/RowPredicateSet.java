@@ -33,8 +33,8 @@ import org.cojen.tupl.Transaction;
 public interface RowPredicateSet<R> {
     /**
      * Acquires shared access for all the predicate locks, waiting if necessary, and retains
-     * the locks for the entire transaction scope. If any lock acquisition times out, all locks
-     * acquired by this operation are released.
+     * the locks for the entire transaction scope. If any lock acquisition times out, all
+     * predicate locks acquired by this operation are released.
      *
      * @param row is passed to the {@code RowPredicate.testRow} method
      * @throws IllegalStateException if too many shared locks
@@ -43,8 +43,8 @@ public interface RowPredicateSet<R> {
 
     /**
      * Acquires shared access for all the predicate locks, waiting if necessary, and retains
-     * the locks for the entire transaction scope. If any lock acquisition times out, all locks
-     * acquired by this operation are released.
+     * the locks for the entire transaction scope. If any lock acquisition times out, all
+     * predicate locks acquired by this operation are released.
      *
      * @param row is passed to the {@code RowPredicate.testRow} method
      * @param value is passed to the {@code RowPredicate.testRow} method
@@ -54,14 +54,49 @@ public interface RowPredicateSet<R> {
 
     /**
      * Acquires shared access for all the predicate locks, waiting if necessary, and retains
-     * the locks for the entire transaction scope. If any lock acquisition times out, all locks
-     * acquired by this operation are released.
+     * the locks for the entire transaction scope. If any lock acquisition times out, all
+     * predicate locks acquired by this operation are released.
      *
      * @param row is passed to the {@code RowPredicate.testRow} method
      * @param c is passed to the {@code RowPredicate.testRow} method
      * @throws IllegalStateException if too many shared locks
      */
     void acquireShared(Transaction txn, R row, Cursor c) throws IOException;
+
+    /**
+     * Acquires shared access for all the predicate locks, without waiting, and retains the
+     * locks for the entire transaction scope. If any lock acquisition fails, all predicate
+     * locks acquired by this operation are released.
+     *
+     * @param row is passed to the {@code RowPredicate.testRow} method
+     * @return false if any lock acquisition failed
+     * @throws IllegalStateException if too many shared locks
+     */
+    boolean tryAcquireShared(Transaction txn, R row) throws LockFailureException;
+
+    /**
+     * Acquires shared access for all the predicate locks, without waiting, and retains the
+     * locks for the entire transaction scope. If any lock acquisition fails, all predicate
+     * locks acquired by this operation are released.
+     *
+     * @param row is passed to the {@code RowPredicate.testRow} method
+     * @param value is passed to the {@code RowPredicate.testRow} method
+     * @return false if any lock acquisition failed
+     * @throws IllegalStateException if too many shared locks
+     */
+    boolean tryAcquireShared(Transaction txn, R row, byte[] value) throws LockFailureException;
+
+    /**
+     * Acquires shared access for all the predicate locks, without waiting, and retains the
+     * locks for the entire transaction scope. If any lock acquisition fails, all predicate
+     * locks acquired by this operation are released.
+     *
+     * @param row is passed to the {@code RowPredicate.testRow} method
+     * @param c is passed to the {@code RowPredicate.testRow} method
+     * @return false if any lock acquisition failed
+     * @throws IllegalStateException if too many shared locks
+     */
+    boolean tryAcquireShared(Transaction txn, R row, Cursor c) throws IOException;
 
     /**
      * Count the number of predicates currently in the set. O(n) cost.
