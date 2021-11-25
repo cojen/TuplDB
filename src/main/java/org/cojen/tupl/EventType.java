@@ -29,9 +29,9 @@ public enum EventType {
     DEBUG(Category.DEBUG, Level.DEBUG),
 
     /** Signals the beginning of cache initialization. */
-    CACHE_INIT_BEGIN(Category.CACHE_INIT, Level.INFO),
+    CACHE_INIT_BEGIN(Category.CACHE, Level.INFO),
     /** Signals the end of cache initialization, reporting the duration. */
-    CACHE_INIT_COMPLETE(Category.CACHE_INIT, Level.INFO),
+    CACHE_INIT_COMPLETE(Category.CACHE, Level.INFO),
 
     /** Signals the beginning of database recovery. */
     RECOVERY_BEGIN(Category.RECOVERY, Level.INFO),
@@ -115,8 +115,8 @@ public enum EventType {
         /** General debug category. */
         DEBUG,
 
-        /** Cache initialization allocates memory according to the minimum cache size. */
-        CACHE_INIT,
+        /** Category mainly used during cache initialization. */
+        CACHE,
 
         /** Recovery processes transactions which did not get included in the last checkpoint. */
         RECOVERY,
