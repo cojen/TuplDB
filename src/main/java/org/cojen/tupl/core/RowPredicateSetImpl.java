@@ -17,14 +17,11 @@
 
 package org.cojen.tupl.core;
 
-import java.io.IOException;
-
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
 import java.util.concurrent.TimeUnit;
 
-import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DeadlockException;
 import org.cojen.tupl.DeadlockInfo;
 import org.cojen.tupl.LockFailureException;
@@ -84,157 +81,38 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
     }
 
     @Override
-    public void acquireShared(Transaction txn, R row) throws LockFailureException {
+    public void acquire(Transaction txn, R row) throws LockFailureException {
         var local = (LocalTransaction) txn;
         mNewestVersion.acquire(local);
 
-        int acquired = 0;
-        try {
-            for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
-                if (e.testRow(row) && e.acquire(local).isAcquired() && ++acquired > 1) {
-                    txn.unlockCombine();
-                }
+        for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
+            if (e.test(row)) {
+                e.matched(local);
             }
-        } catch (Throwable e) {
-            if (acquired != 0) {
-                txn.unlock();
-            }
-            throw e;
         }
     }
 
     @Override
-    public void acquireShared(Transaction txn, R row, byte[] value) throws LockFailureException {
+    public void acquire(Transaction txn, R row, byte[] value) throws LockFailureException {
         var local = (LocalTransaction) txn;
         mNewestVersion.acquire(local);
 
-        int acquired = 0;
-        try {
-            for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
-                if (e.testRow(row, value) && e.acquire(local).isAcquired() && ++acquired > 1) {
-                    txn.unlockCombine();
-                }
+        for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
+            if (e.test(row, value)) {
+                e.matched(local);
             }
-        } catch (Throwable e) {
-            if (acquired != 0) {
-                txn.unlock();
-            }
-            throw e;
         }
     }
 
     @Override
-    public void acquireShared(Transaction txn, R row, Cursor c) throws IOException {
+    public void acquire(Transaction txn, byte[] key, byte[] value) throws LockFailureException {
         var local = (LocalTransaction) txn;
         mNewestVersion.acquire(local);
 
-        int acquired = 0;
-        try {
-            for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
-                if (e.testRow(row, c) && e.acquire(local).isAcquired() && ++acquired > 1) {
-                    txn.unlockCombine();
-                }
+        for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
+            if (e.test(key, value)) {
+                e.matched(local);
             }
-        } catch (Throwable e) {
-            if (acquired != 0) {
-                txn.unlock();
-            }
-            throw e;
-        }
-    }
-
-    @Override
-    public boolean tryAcquireShared(Transaction txn, R row) throws LockFailureException {
-        var local = (LocalTransaction) txn;
-        mNewestVersion.acquire(local);
-
-        int acquired = 0;
-        try {
-            for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
-                if (e.testRow(row)) {
-                    LockResult result = e.tryAcquire(local);
-                    if (!result.isHeld()) {
-                        if (acquired != 0) {
-                            txn.unlock();
-                        }
-                        return false;
-                    }
-                    if (result.isAcquired() && ++acquired > 1) {
-                        txn.unlockCombine();
-                    }
-                }
-            }
-
-            return true;
-        } catch (Throwable e) {
-            if (acquired != 0) {
-                txn.unlock();
-            }
-            throw e;
-        }
-    }
-
-    @Override
-    public boolean tryAcquireShared(Transaction txn, R row, byte[] value)
-        throws LockFailureException
-    {
-        var local = (LocalTransaction) txn;
-        mNewestVersion.acquire(local);
-
-        int acquired = 0;
-        try {
-            for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
-                if (e.testRow(row, value)) {
-                    LockResult result = e.tryAcquire(local);
-                    if (!result.isHeld()) {
-                        if (acquired != 0) {
-                            txn.unlock();
-                        }
-                        return false;
-                    }
-                    if (result.isAcquired() && ++acquired > 1) {
-                        txn.unlockCombine();
-                    }
-                }
-            }
-
-            return true;
-        } catch (Throwable e) {
-            if (acquired != 0) {
-                txn.unlock();
-            }
-            throw e;
-        }
-    }
-
-    @Override
-    public boolean tryAcquireShared(Transaction txn, R row, Cursor c) throws IOException {
-        var local = (LocalTransaction) txn;
-        mNewestVersion.acquire(local);
-
-        int acquired = 0;
-        try {
-            for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
-                if (e.testRow(row, c)) {
-                    LockResult result = e.tryAcquire(local);
-                    if (!result.isHeld()) {
-                        if (acquired != 0) {
-                            txn.unlock();
-                        }
-                        return false;
-                    }
-                    if (result.isAcquired() && ++acquired > 1) {
-                        txn.unlockCombine();
-                    }
-                }
-            }
-
-            return true;
-        } catch (Throwable e) {
-            if (acquired != 0) {
-                txn.unlock();
-            }
-            throw e;
         }
     }
 
@@ -259,23 +137,23 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
         } else {
             evaluator = new Evaluator<R>() {
                 @Override
-                public boolean testRow(R row) {
-                    return predicate.testRow(row);
+                public boolean test(R row) {
+                    return predicate.test(row);
                 }
 
                 @Override
-                public boolean testRow(R row, byte[] value) {
-                    return predicate.testRow(row, value);
+                public boolean test(R row, byte[] value) {
+                    return predicate.test(row, value);
                 }
 
                 @Override
-                public boolean testRow(R row, Cursor c) throws IOException {
-                    return predicate.testRow(row, c);
+                public boolean test(byte[] key, byte[] value) {
+                    return predicate.test(key, value);
                 }
 
                 @Override
-                public boolean testKey(byte[] key) {
-                    return predicate.testKey(key);
+                public boolean test(byte[] key) {
+                    return predicate.test(key);
                 }
 
                 @Override
@@ -658,14 +536,9 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
             mSet.remove(this);
         }
 
-        final LockResult acquire(LocalTransaction txn) throws LockFailureException {
+        final void matched(LocalTransaction txn) throws LockFailureException {
             cMatchedHandle.weakCompareAndSetPlain(this, false, true);
-            return acquireShared(txn);
-        }
-
-        final LockResult tryAcquire(LocalTransaction txn) throws LockFailureException {
-            cMatchedHandle.weakCompareAndSetPlain(this, false, true);
-            return tryAcquireShared(txn, 0);
+            acquireShared(txn);
         }
 
         /**

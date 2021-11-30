@@ -17,10 +17,6 @@
 
 package org.cojen.tupl.core;
 
-import java.io.IOException;
-
-import org.cojen.tupl.Cursor;
-
 /**
  * Defines an interface intended for locking rows based on a rule that matches on a row.
  *
@@ -29,31 +25,26 @@ import org.cojen.tupl.Cursor;
  */
 public interface RowPredicate<R> {
     /**
-     * Called by an insert operation, and so all columns of the row are filled in.
+     * Test against a completely filled in row.
      */
-    public boolean testRow(R row);
+    public boolean test(R row);
 
     /**
-     * Called by a delete operation, and so only the key columns of the row are filled in.
-     * Additional columns must be decoded as necessary.
-     *
-     * @param value non-null value being deleted
+     * Test against a row in which only the primary key columns are filled in. Additional
+     * columns must be decoded as necessary.
      */
-    public boolean testRow(R row, byte[] value);
+    public boolean test(R row, byte[] value);
 
     /**
-     * Called by a delete operation, and so only the key columns of the row are filled in.
-     * Additional columns must be decoded as necessary.
-     *
-     * @param c refers to the row being deleted, but the value hasn't been loaded yet
+     * Test against an encoded key and value. All columns must be decoded as necessary.
      */
-    public boolean testRow(R row, Cursor c) throws IOException;
+    public boolean test(byte[] key, byte[] value);
 
     /**
      * Determine if a lock held against the given key matches the row predicate. This variant
      * is called for transactions which were created before the predicate lock.
      */
-    public default boolean testKey(byte[] key) {
+    public default boolean test(byte[] key) {
         // When undecided, always default to true.
         return true;
     }
@@ -71,17 +62,17 @@ public interface RowPredicate<R> {
      */
     public abstract class None<R> implements RowPredicate<R> {
         @Override
-        public final boolean testRow(R row) {
+        public final boolean test(R row) {
             return false;
         }
 
         @Override
-        public final boolean testRow(R row, byte[] value) {
+        public final boolean test(R row, byte[] value) {
             return false;
         }
 
         @Override
-        public final boolean testRow(R row, Cursor c) {
+        public final boolean test(byte[] key, byte[] value) {
             return false;
         }
     }
@@ -90,17 +81,17 @@ public interface RowPredicate<R> {
         static final All THE = new All();
 
         @Override
-        public boolean testRow(Object row) {
+        public boolean test(Object row) {
             return true;
         }
 
         @Override
-        public boolean testRow(Object row, byte[] value) {
+        public boolean test(Object row, byte[] value) {
             return true;
         }
 
         @Override
-        public boolean testRow(Object row, Cursor c) {
+        public boolean test(byte[] key, byte[] value) {
             return true;
         }
     }

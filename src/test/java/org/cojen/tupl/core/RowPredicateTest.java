@@ -85,7 +85,7 @@ public class RowPredicateTest {
             // Nothing is blocked.
 
             mSet.addPredicate(txn1, pred1); // range scan action
-            mSet.acquireShared(txn2, row2); // modify action
+            mSet.acquire(txn2, row2); // modify action
 
             if (count) {
                 assertEquals(1, mSet.countPredicates());
@@ -110,7 +110,7 @@ public class RowPredicateTest {
             }
 
             try {
-                mSet.acquireShared(txn2, row1); // modify action
+                mSet.acquire(txn2, row1); // modify action
                 fail();
             } catch (LockTimeoutException e) {
                 String message = e.getMessage();
@@ -119,7 +119,7 @@ public class RowPredicateTest {
 
             txn2.lockTimeout(2, TimeUnit.SECONDS);
 
-            Waiter w = start(() -> mSet.acquireShared(txn2, row1)); // modify action
+            Waiter w = start(() -> mSet.acquire(txn2, row1)); // modify action
 
             // Unblock txn2.
             txn1.reset();
@@ -138,7 +138,7 @@ public class RowPredicateTest {
             // Nothing is blocked.
 
             // Lock against same index, but a non-conflicting key (modify action).
-            mSet.acquireShared(txn2, row2);
+            mSet.acquire(txn2, row2);
             txn2.lockExclusive(1234, key2);
 
             // Lock against a different index, but the same key (modify action).
@@ -163,14 +163,14 @@ public class RowPredicateTest {
             // txn1 is blocked.
 
             // Lock against same index, but a non-conflicting key (modify action).
-            mSet.acquireShared(txn2, row2);
+            mSet.acquire(txn2, row2);
             txn2.lockExclusive(1234, key2);
 
             // Lock against a different index, but the same key (modify action).
             txn2.lockExclusive(5678, key1);
 
             // Lock against same index and a conflicting key (modify action).
-            mSet.acquireShared(txn2, row1);
+            mSet.acquire(txn2, row1);
             txn2.lockExclusive(1234, key1);
 
             try {
@@ -256,10 +256,10 @@ public class RowPredicateTest {
             txn1.attach("txn1");
             txn2.attach("txn2");
 
-            mSet.acquireShared(txn1, row1);
+            mSet.acquire(txn1, row1);
             txn1.lockExclusive(1234, key1);
 
-            mSet.acquireShared(txn2, row2);
+            mSet.acquire(txn2, row2);
             txn2.lockExclusive(1234, key2);
 
             Waiter w = start(() -> {
@@ -301,11 +301,11 @@ public class RowPredicateTest {
             LockTimeoutException e1 = null, e2 = null;
 
             Waiter w = start(() -> {
-                mSet.acquireShared(txn1, row2);
+                mSet.acquire(txn1, row2);
             });
 
             try {
-                mSet.acquireShared(txn2, row1);
+                mSet.acquire(txn2, row1);
                 fail();
             } catch (LockTimeoutException e) {
                 e1 = e;
@@ -338,7 +338,7 @@ public class RowPredicateTest {
 
         var txn1 = mDb.newTransaction();
 
-        mSet.acquireShared(txn1, row1);
+        mSet.acquire(txn1, row1);
         txn1.lockExclusive(1234, key1);
 
         // Shouldn't block.
@@ -390,7 +390,7 @@ public class RowPredicateTest {
         mSet.addPredicate(txn1, pred);
 
         try {
-            mSet.acquireShared(txn2, row1);
+            mSet.acquire(txn2, row1);
             fail();
         } catch (LockTimeoutException e) {
             // Cannot acquire because predicate is at row1.
@@ -400,11 +400,11 @@ public class RowPredicateTest {
         predSet.remove(row1);
 
         // Can acquire the lock now.
-        mSet.acquireShared(txn2, row1);
+        mSet.acquire(txn2, row1);
         txn2.lockUpgradable(1234, key1);
 
         try {
-            mSet.acquireShared(txn2, row2);
+            mSet.acquire(txn2, row2);
             fail();
         } catch (LockTimeoutException e) {
             // Cannot acquire because predicate is at row2.
@@ -413,7 +413,7 @@ public class RowPredicateTest {
         txn1.reset();
 
         // Can acquire the lock now.
-        mSet.acquireShared(txn2, row2);
+        mSet.acquire(txn2, row2);
         txn2.lockExclusive(1234, key2);
 
         try {
@@ -441,7 +441,7 @@ public class RowPredicateTest {
         var txn1 = mDb.newTransaction();
         var txn2 = mDb.newTransaction();
 
-        mSet.acquireShared(txn1, row1);
+        mSet.acquire(txn1, row1);
         txn1.lockShared(1234, key1);
 
         // Shouldn't block.
@@ -468,7 +468,7 @@ public class RowPredicateTest {
             var txn3 = mDb.newTransaction();
 
             try {
-                mSet.acquireShared(txn3, row1);
+                mSet.acquire(txn3, row1);
                 fail();
             } catch (LockTimeoutException e) {
             }
@@ -476,7 +476,7 @@ public class RowPredicateTest {
             txn2.reset();
 
             try {
-                mSet.acquireShared(txn3, row1);
+                mSet.acquire(txn3, row1);
                 fail();
             } catch (LockTimeoutException e) {
             }
@@ -484,7 +484,7 @@ public class RowPredicateTest {
             txn3.lockTimeout(2, TimeUnit.SECONDS);
 
             Waiter w = start(() -> {
-                mSet.acquireShared(txn3, row1);
+                mSet.acquire(txn3, row1);
                 txn3.reset();
             });
 
@@ -503,13 +503,13 @@ public class RowPredicateTest {
             var txn3 = mDb.newTransaction();
 
             try {
-                mSet.acquireShared(txn3, row1);
+                mSet.acquire(txn3, row1);
                 fail();
             } catch (LockTimeoutException e) {
             }
 
             Waiter w = start(() -> {
-                mSet.acquireShared(txn3, row1);
+                mSet.acquire(txn3, row1);
                 txn3.reset();
             });
 
@@ -517,71 +517,6 @@ public class RowPredicateTest {
 
             w.await();
         }
-    }
-
-    @Test
-    public void multiAcquireFail() throws Exception {
-        // Test that attempting to acquire multiple predicate locks and failing releases all
-        // locks acquired before the failure.
-
-        var row1 = new TestRow(1);
-        var row2 = new TestRow(2);
-        var row3 = new TestRow(3);
-
-        var key1 = row1.key();
-        var key2 = row2.key();
-        var key3 = row3.key();
-
-        var pred1 = new TestPredicate(row1);
-        var pred2 = new TestPredicate(Set.of(row1, row2));
-        var pred3 = new TestPredicate(row3);
-
-        var txn0 =  mDb.newTransaction();
-        txn0.attach("txn0");
-        mSet.addPredicate(txn0, pred3);
-
-        var txn1 = mDb.newTransaction();
-        txn1.attach("txn1");
-        mSet.acquireShared(txn1, row1);
-        txn1.lockExclusive(1234, key1);
-        mSet.acquireShared(txn1, row2);
-        txn1.lockExclusive(1234, key2);
-
-        Waiter w2 = start(() -> {
-            var txn2 = mDb.newTransaction();
-            txn2.attach("txn2");
-            txn2.lockTimeout(2, TimeUnit.SECONDS);
-            mSet.addPredicate(txn2, pred1);
-        });
-
-        Waiter w3 = start(() -> {
-            var txn3 = mDb.newTransaction();
-            txn3.attach("txn3");
-            txn3.lockTimeout(2, TimeUnit.SECONDS);
-            mSet.addPredicate(txn3, pred2);
-        });
-
-        // Sneaky change of predicate behavior. I'm just being lazy and don't want to define a
-        // test row that has multiple columns.
-        pred3.mMatches = Collections.singleton(row1);
-
-        var txn5 = mDb.newTransaction();
-        txn5.attach("txn5");
-        try {
-            // This should acquire two locks but fail on pred3. The first two should get
-            // released.
-            mSet.acquireShared(txn5, row1);
-            fail();
-        } catch (LockTimeoutException e) {
-            String message = e.getMessage();
-            assertTrue(message, message.contains("owner attachment: txn0"));
-        }
-
-        txn1.reset();
-
-        // These can proceed after txn1 has been released and txn5 released two locks.
-        w2.await();
-        w3.await();
     }
 
     static interface Task {
@@ -627,7 +562,7 @@ public class RowPredicateTest {
     }
 
     static class TestPredicate implements RowPredicate<TestRow> {
-        Set<TestRow> mMatches;
+        private final Set<TestRow> mMatches;
 
         TestPredicate(TestRow match) {
             this(Collections.singleton(match));
@@ -638,22 +573,22 @@ public class RowPredicateTest {
         }
 
         @Override
-        public boolean testRow(TestRow row) {
+        public boolean test(TestRow row) {
             return mMatches.contains(row);
         }
 
         @Override
-        public boolean testRow(TestRow row, byte[] value) {
+        public boolean test(TestRow row, byte[] value) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        public boolean testRow(TestRow row, Cursor c) {
+        public boolean test(byte[] key, byte[] value) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        public boolean testKey(byte[] key) {
+        public boolean test(byte[] key) {
             for (TestRow match : mMatches) {
                 if (key.length == 1 && key[0] == match.value) {
                     return true;

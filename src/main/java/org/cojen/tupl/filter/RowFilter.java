@@ -114,7 +114,7 @@ public abstract class RowFilter implements Comparable<RowFilter> {
     /**
      * Re-orders the terms of this filter such that the given columns are evaluated first.
      */
-    // TODO: Intended for use by RowPredicate::testRow(R, byte[]) to examine keys first.
+    // TODO: Intended for use by RowPredicate::test(R, byte[]) to examine keys first.
     public abstract RowFilter prioritize(Set<ColumnInfo> columns);
 
     /**
@@ -124,7 +124,7 @@ public abstract class RowFilter implements Comparable<RowFilter> {
      * @param undecided default filter to use when the resulting filter cannot be certain of a
      * match (usually TRUE or FALSE)
      */
-    // TODO: Intended for use by RowPredicate::testKey(byte[]), with TRUE for undecided.
+    // TODO: Intended for use by RowPredicate::test(byte[]), with TRUE for undecided.
     public abstract RowFilter retain(Set<ColumnInfo> columns, RowFilter undecided);
 
     /**
