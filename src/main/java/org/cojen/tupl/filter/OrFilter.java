@@ -18,7 +18,7 @@
 package org.cojen.tupl.filter;
 
 import java.util.Arrays;
-import java.util.Set;
+import java.util.Map;
 
 import org.cojen.tupl.rows.ColumnInfo;
 
@@ -143,7 +143,7 @@ public class OrFilter extends GroupFilter {
     }
 
     @Override
-    public RowFilter retain(Set<ColumnInfo> columns, RowFilter undecided) {
+    public RowFilter retain(Map<String, ColumnInfo> columns, RowFilter undecided) {
         RowFilter[] subFilters = mSubFilters;
         if (subFilters.length == 0) {
             return this;

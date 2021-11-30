@@ -17,8 +17,8 @@
 
 package org.cojen.tupl.filter;
 
+import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 import org.cojen.tupl.rows.ColumnInfo;
 
@@ -114,18 +114,17 @@ public abstract class RowFilter implements Comparable<RowFilter> {
     /**
      * Re-orders the terms of this filter such that the given columns are evaluated first.
      */
-    // TODO: Intended for use by RowPredicate::test(R, byte[]) to examine keys first.
-    public abstract RowFilter prioritize(Set<ColumnInfo> columns);
+    public abstract RowFilter prioritize(Map<String, ColumnInfo> columns);
 
     /**
      * Remove terms which refer to columns which aren't in the given set.
      *
-     * @param columns columns to remove (not retain)
+     * @param columns columns to retain (not remove)
      * @param undecided default filter to use when the resulting filter cannot be certain of a
      * match (usually TRUE or FALSE)
      */
     // TODO: Intended for use by RowPredicate::test(byte[]), with TRUE for undecided.
-    public abstract RowFilter retain(Set<ColumnInfo> columns, RowFilter undecided);
+    public abstract RowFilter retain(Map<String, ColumnInfo> columns, RowFilter undecided);
 
     /**
      * Given a set of columns corresponding to the primary key of an index, extract a suitable

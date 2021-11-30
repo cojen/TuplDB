@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.filter;
 
+import java.util.Map;
 import java.util.Set;
 
 import org.cojen.tupl.rows.ColumnInfo;
@@ -119,7 +120,7 @@ public abstract class ColumnFilter extends RowFilter {
     }
 
     @Override
-    public RowFilter prioritize(Set<ColumnInfo> columns) {
+    public RowFilter prioritize(Map<String, ColumnInfo> columns) {
         return this;
     }
 

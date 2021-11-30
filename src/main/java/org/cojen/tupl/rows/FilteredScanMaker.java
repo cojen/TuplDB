@@ -412,7 +412,7 @@ public class FilteredScanMaker<R> {
         private final String mStopColumn;
         private final int mStopArgument;
 
-        // The DecodeMaker isn't defined as a lambda function because this field cannot be final.
+        // This class isn't defined as a lambda function because this field cannot be final.
         private WeakReference<RowFilter> mFilterRef;
 
         DecodeMaker(MethodHandles.Lookup lookup, MethodType mt,

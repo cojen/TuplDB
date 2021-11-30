@@ -266,8 +266,9 @@ public abstract class AbstractTable<R> implements Table<R> {
             // FIXME: evaluatorClass
             Class<? extends RowPredicate> baseClass = null;
 
-            Class<? extends RowPredicate> predClass =
-                RowPredicateMaker.make(baseClass, rowType, rowInfo, rf, ranges);
+            Class<? extends RowPredicate> predClass = new RowPredicateMaker
+                (rowStoreRef(), getClass(), baseClass, rowType, rowInfo.rowGen(),
+                 mSource.id(), rf, filter, ranges).finish();
 
             if (ranges.length > 1) {
                 var rangeFactories = new ScanControllerFactory[ranges.length];

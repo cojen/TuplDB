@@ -31,7 +31,7 @@ public abstract class Visitor {
         subVisit(filter);
     }
 
-    private void subVisit(GroupFilter filter) {
+    protected void subVisit(GroupFilter filter) {
         for (RowFilter sub : filter.mSubFilters) {
             sub.accept(this);
         }

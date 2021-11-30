@@ -19,7 +19,7 @@ package org.cojen.tupl.filter;
 
 import java.math.BigDecimal;
 
-import java.util.Set;
+import java.util.Map;
 
 import org.cojen.tupl.rows.ColumnInfo;
 
@@ -78,8 +78,8 @@ public class ColumnToArgFilter extends ColumnFilter {
     }
 
     @Override
-    public RowFilter retain(Set<ColumnInfo> columns, RowFilter undecided) {
-        return columns.contains(mColumn) ? this : undecided;
+    public RowFilter retain(Map<String, ColumnInfo> columns, RowFilter undecided) {
+        return columns.containsKey(mColumn.name) ? this : undecided;
     }
 
     @Override

@@ -17,7 +17,7 @@
 
 package org.cojen.tupl.filter;
 
-import java.util.Set;
+import java.util.Map;
 
 import org.cojen.tupl.rows.ColumnInfo;
 
@@ -81,8 +81,9 @@ public final class ColumnToColumnFilter extends ColumnFilter {
     }
 
     @Override
-    public RowFilter retain(Set<ColumnInfo> columns, RowFilter undecided) {
-        return (columns.contains(mColumn) && columns.contains(mOtherColumn)) ? this : undecided;
+    public RowFilter retain(Map<String, ColumnInfo> columns, RowFilter undecided) {
+        return (columns.containsKey(mColumn.name) &&
+                columns.containsKey(mOtherColumn.name)) ? this : undecided;
     }
 
     public ColumnInfo otherColumn() {

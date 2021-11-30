@@ -20,7 +20,7 @@ package org.cojen.tupl.filter;
 import java.math.BigInteger;
 
 import java.util.Arrays;
-import java.util.Set;
+import java.util.Map;
 
 import org.cojen.tupl.rows.ColumnInfo;
 
@@ -94,7 +94,7 @@ public abstract class GroupFilter extends RowFilter {
     }
 
     @Override
-    public RowFilter prioritize(Set<ColumnInfo> columns) {
+    public RowFilter prioritize(Map<String, ColumnInfo> columns) {
         RowFilter[] subFilters = mSubFilters;
         if (subFilters.length == 0) {
             return this;
@@ -116,9 +116,9 @@ public abstract class GroupFilter extends RowFilter {
      *
      * @return [0..1]
      */
-    private static double matchStrength(RowFilter filter, Set<ColumnInfo> columns) {
+    private static double matchStrength(RowFilter filter, Map<String, ColumnInfo> columns) {
         if (filter instanceof ColumnToArgFilter cf) {
-            return columns.contains(cf.column()) ? 1 : 0;
+            return columns.containsKey(cf.column().name) ? 1 : 0;
         }
 
         if (filter instanceof GroupFilter gf) {
@@ -135,8 +135,8 @@ public abstract class GroupFilter extends RowFilter {
         }
 
         if (filter instanceof ColumnToColumnFilter cf) {
-            double strength = columns.contains(cf.column()) ? 0.5 : 0;
-            if (columns.contains(cf.otherColumn())) {
+            double strength = columns.containsKey(cf.column().name) ? 0.5 : 0;
+            if (columns.containsKey(cf.otherColumn().name)) {
                 strength += 0.5;
             }
             return strength;
