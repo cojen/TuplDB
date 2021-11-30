@@ -150,13 +150,6 @@ public class FilteredScanMaker<R> {
             mm.return_(mm.field("predicate"));
         }
 
-        // Provide access to the inherited markAllClean method.
-        {
-            Class<?> rowClass = RowMaker.find(mRowType);
-            MethodMaker mm = mFilterMaker.addMethod(null, "markAllClean", rowClass).static_();
-            mm.super_().invoke("markAllClean", mm.param(0));
-        }
-
         // Define a singleton instance which serves as the factory.
         {
             mFilterMaker.addField(mFilterMaker, "factory").private_().static_().final_();
@@ -370,6 +363,8 @@ public class FilteredScanMaker<R> {
 
         MethodMaker mm = mFilterMaker.addMethod(Object.class, "decodeRow", params).public_();
 
+        var predicateVar = mm.field("predicate");
+
         if (mIsPrimaryTable) {
             // The decode method is implemented using indy, to support multiple schema versions.
 
@@ -386,12 +381,12 @@ public class FilteredScanMaker<R> {
             var schemaVersion = TableMaker.decodeSchemaVersion(mm, valueVar);
 
             mm.return_(indy.invoke(Object.class, "decodeRow", null, schemaVersion,
-                                   mm.param(0), mm.param(1), mm.param(2), mm.this_()));
+                                   mm.param(0), mm.param(1), mm.param(2), predicateVar));
         } else {
             // Decoding a secondary index row is simpler because it has no schema version.
             Class<?> rowClass = RowMaker.find(mRowType);
             var visitor = new DecodeVisitor
-                (mm, 0, mTableClass, rowClass, mRowGen, null, mm.this_(), // decoderVar
+                (mm, 0, mTableClass, rowClass, mRowGen, null, predicateVar,
                  mStopColumn, mStopArgument);
             mFilter.accept(visitor);
             visitor.done();
@@ -513,9 +508,9 @@ public class FilteredScanMaker<R> {
         private final Class<?> mRowClass;
         private final RowGen mRowGen;
         private final MethodHandle mDecoder;
-        private final Variable mDecoderVar;
         private final String mStopColumn;
         private final int mStopArgument;
+        private final Variable mPredicateVar;
 
         private final ColumnCodec[] mKeyCodecs, mValueCodecs;
 
@@ -536,7 +531,7 @@ public class FilteredScanMaker<R> {
          *     R decodeRow(byte[] key, Cursor c, R row)
          *
          * When using the first two forms, a decoder MethodHandle must be provided. When using
-         * the last two forms, a decoderVar must be provided.
+         * the last two forms, a predicateVar must be provided.
          *
          * If a stopColumn and stopArgument are provided, then the cursor method form is
          * required in order for the stop to actually work.
@@ -547,11 +542,11 @@ public class FilteredScanMaker<R> {
          * @param rowClass current row implementation
          * @param rowGen actual row definition to be decoded
          * @param decoder performs full decoding of the value columns
-         * @param decoderVar the actual decoder/filter instance
+         * @param predicateVar implements RowPredicate
          */
         DecodeVisitor(MethodMaker mm, int valueOffset,
                       Class<?> tableClass, Class<?> rowClass, RowGen rowGen,
-                      MethodHandle decoder, Variable decoderVar,
+                      MethodHandle decoder, Variable predicateVar,
                       String stopColumn, int stopArgument)
         {
             mMaker = mm;
@@ -569,16 +564,16 @@ public class FilteredScanMaker<R> {
             }
             mValueVar = valueVar;
 
-            if (decoderVar == null) {
+            if (predicateVar == null) {
                 if (decoder == null) {
                     throw new IllegalArgumentException();
                 }
-                mDecoderVar = mm.param(3);
+                mPredicateVar = mm.param(3);
             } else {
                 if (decoder != null) {
                     throw new IllegalArgumentException();
                 }
-                mDecoderVar = decoderVar;
+                mPredicateVar = predicateVar;
             }
 
             mKeyCodecs = ColumnCodec.bind(rowGen.keyCodecs(), mm);
@@ -612,9 +607,7 @@ public class FilteredScanMaker<R> {
                 mMaker.var(mTableClass).invoke("decodeValue", rowVar, mValueVar);
             }
 
-            // Call the generated filter class, which has access to the inherited markAllClean
-            // method.
-            mDecoderVar.invoke("markAllClean", rowVar);
+            mMaker.var(mTableClass).invoke("markAllClean", rowVar);
 
             mMaker.return_(rowVar);
         }
@@ -691,7 +684,6 @@ public class FilteredScanMaker<R> {
 
             ColumnInfo colInfo = filter.column();
             int op = filter.operator();
-            Variable predVar = mDecoderVar.field("predicate");
             int argNum = filter.argument();
 
             Integer colNum = columnNumberFor(colInfo.name);
@@ -710,9 +702,9 @@ public class FilteredScanMaker<R> {
                 Object decoded = located.mDecodedQuick;
                 if (decoded != null) {
                     codec.filterQuickCompare(colInfo, located.mSrcVar, located.mOffsetVar, op,
-                                             decoded, predVar, argNum, mPass, mFail);
+                                             decoded, mPredicateVar, argNum, mPass, mFail);
                 } else {
-                    var argField = predVar.field(ColumnCodec.argFieldName(colInfo, argNum));
+                    var argField = mPredicateVar.field(ColumnCodec.argFieldName(colInfo, argNum));
                     CompareUtils.compare(mMaker, colInfo, located.mDecodedVar,
                                          colInfo, argField, op, mPass, mFail);
                 }
@@ -720,7 +712,7 @@ public class FilteredScanMaker<R> {
                 // Column doesn't exist in the row, so compare against a default. This code
                 // assumes that value codecs always define an arg field which preserves the
                 // original argument, possibly converted to the correct type.
-                var argField = predVar.field(ColumnCodec.argFieldName(colInfo, argNum));
+                var argField = mPredicateVar.field(ColumnCodec.argFieldName(colInfo, argNum));
                 var columnVar = mMaker.var(colInfo.type);
                 Converter.setDefault(mMaker, colInfo, columnVar);
                 CompareUtils.compare(mMaker, colInfo, columnVar,

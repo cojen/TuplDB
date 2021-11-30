@@ -195,6 +195,8 @@ public class TableMaker {
             // TODO: define update, merge, and remove methods that accept a match row
         }
 
+        addMarkAllCleanMethod();
+
         addRowStoreRefMethod();
 
         addUnfilteredMethod();
@@ -1401,6 +1403,13 @@ public class TableMaker {
         }
     }
 
+    private void addMarkAllCleanMethod() {
+        // Used by filter implementations, and it must be public because filters are defined in
+        // a different package.
+        MethodMaker mm = mClassMaker.addMethod(null, "markAllClean", mRowClass).public_().static_();
+        markAllClean(mm.param(0));
+    }
+
     /**
      * Remaining states are UNSET or CLEAN.
      */
@@ -1504,12 +1513,6 @@ public class TableMaker {
             var rowVar = mm.param(0).cast(rowClass);
             var tableVar = mm.var(lookup.lookupClass());
             mm.return_(tableVar.invoke("encodeValue", rowVar));
-        }
-
-        {
-            // Used by filter subclasses.
-            MethodMaker mm = cm.addMethod(null, "markAllClean", rowClass).protected_().static_();
-            TableMaker.markAllClean(mm.param(0), rowGen, codecGen);
         }
 
         if (rowGen == codecGen) { // isPrimaryTable, so a schema must be decoded

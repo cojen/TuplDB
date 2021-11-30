@@ -64,7 +64,7 @@ abstract class BytesColumnCodec extends ColumnCodec {
     }
 
     /**
-     * Called by filterPrepare.
+     * Called by filterDefineExtraFields.
      *
      * @return byte[] variable
      */
