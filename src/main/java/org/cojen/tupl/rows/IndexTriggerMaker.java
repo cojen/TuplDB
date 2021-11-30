@@ -686,7 +686,7 @@ public class IndexTriggerMaker<R> {
         var keyVar = mm.param(2);
         var oldValueVar = mm.param(3);
 
-        var schemaVersion = TableMaker.decodeSchemaVersion(mm, oldValueVar);
+        var schemaVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", oldValueVar);
 
         var secondaryIndexIds = new long[mSecondaryIndexes.length];
         for (int i=0; i<secondaryIndexIds.length; i++) {

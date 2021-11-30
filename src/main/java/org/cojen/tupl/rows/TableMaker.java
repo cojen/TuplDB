@@ -610,7 +610,7 @@ public class TableMaker {
             (null, "decodeValue", mRowClass, byte[].class).static_().public_();
 
         var data = mm.param(1);
-        var schemaVersion = decodeSchemaVersion(mm, data);
+        var schemaVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", data);
 
         var indy = mm.var(TableMaker.class).indy("indyDecodeValueColumns");
         indy.invoke(null, "decodeValue", null, schemaVersion, mm.param(0), data);
@@ -685,25 +685,6 @@ public class TableMaker {
         MethodHandle mh = lookup.findStatic(lookup.lookupClass(), "decodeValueSwitchCallSite",
                                             MethodType.methodType(SwitchCallSite.class));
         return (SwitchCallSite) mh.invokeExact();
-    }
-
-    /**
-     * Decodes the first 1 to 4 bytes of the given byte array into a schema version int
-     * variable. When the given byte array is empty, the schema version is zero.
-     */
-    static Variable decodeSchemaVersion(MethodMaker mm, Variable bytes) {
-        var schemaVersion = mm.var(int.class);
-        Label notEmpty = mm.label();
-        bytes.alength().ifNe(0, notEmpty);
-        schemaVersion.set(0);
-        Label cont = mm.label();
-        mm.goto_(cont);
-        notEmpty.here();
-        schemaVersion.set(bytes.aget(0));
-        schemaVersion.ifGe(0, cont);
-        schemaVersion.set(mm.var(RowUtils.class).invoke("decodeIntBE", bytes, 0).and(~(1 << 31)));
-        cont.here();
-        return schemaVersion;
     }
 
     /**
@@ -1068,7 +1049,7 @@ public class TableMaker {
         Variable cursorVar = mm.param(3);
 
         Variable valueVar = cursorVar.invoke("value");
-        Variable decodeVersion = decodeSchemaVersion(mm, valueVar);
+        Variable decodeVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", valueVar);
 
         Label sameVersion = mm.label();
         decodeVersion.ifEq(schemaVersion, sameVersion);

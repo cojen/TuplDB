@@ -615,6 +615,21 @@ public class RowUtils extends Utils {
     }
 
     /**
+     * Decodes the schema version from the first 1 to 4 bytes of the given byte array. When the
+     * given byte array is empty, the schema version is zero.
+     */
+    public static int decodeSchemaVersion(byte[] src) {
+        if (src.length == 0) {
+            return 0;
+        }
+        int version = src[0];
+        if (version < 0) {
+            version = decodeIntBE(src, 0) & ~(1 << 31);
+        }
+        return version;
+    }
+
+    /**
      * Skip the schema version pseudo field, which is encoded at the start of a value.
      *
      * @param src source of encoded data

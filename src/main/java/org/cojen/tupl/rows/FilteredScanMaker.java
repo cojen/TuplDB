@@ -374,7 +374,7 @@ public class FilteredScanMaker<R> {
                 valueVar = valueVar.invoke("value");
             }
 
-            var schemaVersion = TableMaker.decodeSchemaVersion(mm, valueVar);
+            var schemaVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", valueVar);
 
             mm.return_(indy.invoke(Object.class, "decodeRow", null, schemaVersion,
                                    mm.param(0), mm.param(1), mm.param(2), predicateVar));
