@@ -974,11 +974,27 @@ public class RowStore {
      * Finds a RowInfo for a specific schemaVersion. If not the same as the current version,
      * the alternateKeys and secondaryIndexes will be null (not just empty sets).
      *
+     * If the given schemaVersion is 0, then the returned RowInfo only consists a primary key
+     * and no value columns.
+     *
      * @throws CorruptDatabaseException if not found
      */
     RowInfo rowInfo(Class<?> rowType, long indexId, int schemaVersion)
         throws IOException, CorruptDatabaseException
     {
+        if (schemaVersion == 0) {
+            // No value columns to decode, and the primary key cannot change.
+            RowInfo fullInfo = RowInfo.find(rowType);
+            if (fullInfo.valueColumns.isEmpty()) {
+                return fullInfo;
+            }
+            RowInfo info = new RowInfo(fullInfo.name);
+            info.keyColumns = fullInfo.keyColumns;
+            info.valueColumns = Collections.emptyNavigableMap();
+            info.allColumns = new TreeMap<>(info.keyColumns);
+            return info;
+        }
+
         // Can use NO_FLUSH because transaction will be only used for reading data.
         Transaction txn = mSchemata.newTransaction(DurabilityMode.NO_FLUSH);
         txn.lockMode(LockMode.REPEATABLE_READ);

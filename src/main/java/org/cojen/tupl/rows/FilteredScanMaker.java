@@ -380,12 +380,12 @@ public class FilteredScanMaker<R> {
                                    mm.param(0), mm.param(1), mm.param(2), predicateVar));
         } else {
             // Decoding a secondary index row is simpler because it has no schema version.
-            Class<?> rowClass = RowMaker.find(mRowType);
             var visitor = new DecodeVisitor
-                (mm, 0, mTableClass, rowClass, mRowGen, null, predicateVar,
-                 mStopColumn, mStopArgument);
+                (mm, 0, mTableClass, mRowGen, predicateVar, mStopColumn, mStopArgument);
             mFilter.accept(visitor);
-            visitor.done();
+            Class<?> rowClass = RowMaker.find(mRowType);
+            Variable rowVar = mm.param(2);
+            visitor.finishDecode(null, rowClass, rowVar);
         }
     }
 
@@ -458,16 +458,7 @@ public class FilteredScanMaker<R> {
             MethodHandle decoder;
 
             try {
-                if (schemaVersion != 0) {
-                    rowInfo = store.rowInfo(mRowType, mIndexId, schemaVersion);
-                } else {
-                    // No value columns to decode, and the primary key cannot change.
-                    RowInfo dstRowInfo = RowInfo.find(mRowType);
-                    rowInfo = new RowInfo(dstRowInfo.name);
-                    rowInfo.keyColumns = dstRowInfo.keyColumns;
-                    rowInfo.valueColumns = Collections.emptyNavigableMap();
-                    rowInfo.allColumns = new TreeMap<>(rowInfo.keyColumns);
-                }
+                rowInfo = store.rowInfo(mRowType, mIndexId, schemaVersion);
 
                 // Obtain the MethodHandle which fully decodes the value columns.
                 decoder = (MethodHandle) mLookup.findStatic
@@ -478,16 +469,16 @@ public class FilteredScanMaker<R> {
                 return new ExceptionCallSite.Failed(mMethodType, mm, e);
             }
 
-            Class<?> rowClass = RowMaker.find(mRowType);
             RowGen rowGen = rowInfo.rowGen();
-
             int valueOffset = RowUtils.lengthPrefixPF(schemaVersion);
+            var predicateVar = mm.param(3);
 
             var visitor = new DecodeVisitor
-                (mm, valueOffset, mTableClass, rowClass, rowGen, decoder, null,
-                 mStopColumn, mStopArgument);
+                (mm, valueOffset, mTableClass, rowGen, predicateVar, mStopColumn, mStopArgument);
             filter.accept(visitor);
-            visitor.done();
+            Class<?> rowClass = RowMaker.find(mRowType);
+            Variable rowVar = mm.param(2);
+            visitor.finishDecode(decoder, rowClass, rowVar);
 
             return mm.finish();
         }

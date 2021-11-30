@@ -34,7 +34,7 @@ import org.cojen.tupl.filter.Visitor;
 
 /**
  * Generates code to filter and decode rows for a specific schema version. After passing this
- * visitor to the RowFilter.accept method, call the done method.
+ * visitor to the RowFilter.accept method, call a finish method.
  *
  * @author Brian S O'Neill
  * @see FilteredScanMaker
@@ -44,12 +44,10 @@ class DecodeVisitor extends Visitor {
     private final Variable mValueVar;
     private final int mValueOffset;
     private final Class<?> mTableClass;
-    private final Class<?> mRowClass;
     private final RowGen mRowGen;
-    private final MethodHandle mDecoder;
+    private final Variable mPredicateVar;
     private final String mStopColumn;
     private final int mStopArgument;
-    private final Variable mPredicateVar;
 
     private final ColumnCodec[] mKeyCodecs, mValueCodecs;
 
@@ -62,38 +60,35 @@ class DecodeVisitor extends Visitor {
     private int mHighestLocatedValue;
 
     /**
-     * Supports four forms of methods:
+     * Supports two forms of decode methods and two forms of predicate methods.
      *
-     *     R decodeRow(byte[] key, byte[] value, R row, decoder/filter)
-     *     R decodeRow(byte[] key, Cursor c, R row, decoder/filter)
-     *     R decodeRow(byte[] key, byte[] value, R row)
-     *     R decodeRow(byte[] key, Cursor c, R row)
-     *
-     * When using the first two forms, a decoder MethodHandle must be provided. When using
-     * the last two forms, a predicateVar must be pass to this constructor.
+     *     R decodeRow(byte[] key, byte[] value, ...)
+     *     R decodeRow(byte[] key, Cursor c, ...)
      *
      * If a stopColumn and stopArgument are provided, then the cursor method form is
      * required in order for the stop to actually work.
      *
-     * @param mm signature: R decodeRow(byte[] key, byte[] value, R row [, decoder/filter])
+     *     boolean test(byte[] key, byte[] value, ...)
+     *     boolean test(R row, byte[] value, ...)
+     *
+     * The predicate form which accepts a row only examines primary key columns from it.
+     *
+     * Note that other forms are supported, but the only the common forms are listed above.
+     *
+     * @param mm signature: R decodeRow(byte[] key, byte[] value, ...)
      * @param valueOffset offset to skip past the schema version
      * @param tableClass current table implementation class
-     * @param rowClass current row implementation
      * @param rowGen actual row definition to be decoded
-     * @param decoder performs full decoding of the value columns
      * @param predicateVar implements RowPredicate
      */
-    DecodeVisitor(MethodMaker mm, int valueOffset,
-                  Class<?> tableClass, Class<?> rowClass, RowGen rowGen,
-                  MethodHandle decoder, Variable predicateVar,
-                  String stopColumn, int stopArgument)
+    DecodeVisitor(MethodMaker mm, int valueOffset, Class<?> tableClass, RowGen rowGen,
+                  Variable predicateVar, String stopColumn, int stopArgument)
     {
         mMaker = mm;
         mValueOffset = valueOffset;
         mTableClass = tableClass;
-        mRowClass = rowClass;
         mRowGen = rowGen;
-        mDecoder = decoder;
+        mPredicateVar = predicateVar;
         mStopColumn = stopColumn;
         mStopArgument = stopArgument;
 
@@ -103,18 +98,6 @@ class DecodeVisitor extends Visitor {
         }
         mValueVar = valueVar;
 
-        if (predicateVar == null) {
-            if (decoder == null) {
-                throw new IllegalArgumentException();
-            }
-            mPredicateVar = mm.param(3);
-        } else {
-            if (decoder != null) {
-                throw new IllegalArgumentException();
-            }
-            mPredicateVar = predicateVar;
-        }
-
         mKeyCodecs = ColumnCodec.bind(rowGen.keyCodecs(), mm);
         mValueCodecs = ColumnCodec.bind(rowGen.valueCodecs(), mm);
 
@@ -123,9 +106,14 @@ class DecodeVisitor extends Visitor {
     }
 
     /**
-     * Must be called after visiting.
+     * Must be called after visiting when making a full decoder.
+     *
+     * @param decoder performs full decoding of the value columns; pass null to invoke the full
+     * decode method in the generated table class
+     * @param rowClass current row implementation
+     * @param rowVar refers to the row parameter to allocate or fill in
      */
-    void done() {
+    void finishDecode(MethodHandle decoder, Class<?> rowClass, Variable rowVar) {
         mFail.here();
         mMaker.return_(null);
 
@@ -134,17 +122,17 @@ class DecodeVisitor extends Visitor {
         // FIXME: Some columns may have already been decoded, so don't double decode them.
 
         var tableVar = mMaker.var(mTableClass);
-        var rowVar = mMaker.param(2).cast(mRowClass);
+        rowVar = rowVar.cast(rowClass);
         Label hasRow = mMaker.label();
         rowVar.ifNe(null, hasRow);
-        rowVar.set(mMaker.new_(mRowClass));
+        rowVar.set(mMaker.new_(rowClass));
         hasRow.here();
         tableVar.invoke("decodePrimaryKey", rowVar, mMaker.param(0));
 
         // Invoke the schema-specific decoder directly, instead of calling the decodeValue
         // method which redundantly examines the schema version and switches on it.
-        if (mDecoder != null) {
-            mMaker.invoke(mDecoder, rowVar, mValueVar);
+        if (decoder != null) {
+            mMaker.invoke(decoder, rowVar, mValueVar);
         } else {
             mMaker.var(mTableClass).invoke("decodeValue", rowVar, mValueVar);
         }
@@ -152,6 +140,16 @@ class DecodeVisitor extends Visitor {
         mMaker.var(mTableClass).invoke("markAllClean", rowVar);
 
         mMaker.return_(rowVar);
+    }
+
+    /**
+     * Must be called after visiting when making a predicate.
+     */
+    void finishPredicate() {
+        mFail.here();
+        mMaker.return_(false);
+        mPass.here();
+        mMaker.return_(true);
     }
 
     @Override
@@ -238,18 +236,24 @@ class DecodeVisitor extends Visitor {
             mFail = stop;
         }
 
+        doCompare:
         if (colNum != null) {
             ColumnCodec codec = codecFor(colNum);
-            LocatedColumn located = decodeColumn(colNum, colInfo, true);
-            Object decoded = located.mDecodedQuick;
-            if (decoded != null) {
-                codec.filterQuickCompare(colInfo, located.mSrcVar, located.mOffsetVar, op,
-                                         decoded, mPredicateVar, argNum, mPass, mFail);
+            Object dc = decodeColumn(colNum, colInfo, true);
+            Variable decodedVar;
+            if (dc instanceof LocatedColumn located) {
+                Object decoded = located.mDecodedQuick;
+                if (decoded != null) {
+                    codec.filterQuickCompare(colInfo, located.mSrcVar, located.mOffsetVar, op,
+                                             decoded, mPredicateVar, argNum, mPass, mFail);
+                    break doCompare;
+                }
+                decodedVar = located.mDecodedVar;
             } else {
-                var argField = mPredicateVar.field(ColumnCodec.argFieldName(colInfo, argNum));
-                CompareUtils.compare(mMaker, colInfo, located.mDecodedVar,
-                                     colInfo, argField, op, mPass, mFail);
+                decodedVar = (Variable) dc;
             }
+            var argField = mPredicateVar.field(ColumnCodec.argFieldName(colInfo, argNum));
+            CompareUtils.compare(mMaker, colInfo, decodedVar, colInfo, argField, op, mPass, mFail);
         } else {
             // Column doesn't exist in the row, so compare against a default. This code
             // assumes that value codecs always define an arg field which preserves the
@@ -308,7 +312,12 @@ class DecodeVisitor extends Visitor {
 
     private Variable decodeColumnOrDefault(Integer colNum, ColumnInfo colInfo) {
         if (colNum != null) {
-            return decodeColumn(colNum, colInfo, false).mDecodedVar;
+            Object dc = decodeColumn(colNum, colInfo, false);
+            if (dc instanceof LocatedColumn located) {
+                return located.mDecodedVar;
+            } else {
+                return (Variable) dc;
+            }
         } else {
             var colVar = mMaker.var(colInfo.type);
             Converter.setDefault(mMaker, colInfo, colVar);
@@ -330,8 +339,9 @@ class DecodeVisitor extends Visitor {
      *
      * @param colInfo current definition for column
      * @param quick allow quick decode
+     * @return a Variable or LocatedColumn
      */
-    private LocatedColumn decodeColumn(int colNum, ColumnInfo colInfo, boolean quick) {
+    private Object decodeColumn(int colNum, ColumnInfo colInfo, boolean quick) {
         Variable srcVar;
         LocatedColumn[] located;
         ColumnCodec[] codecs = mKeyCodecs;
@@ -362,6 +372,11 @@ class DecodeVisitor extends Visitor {
             }
             located[0] = new LocatedColumn();
             located[0].located(srcVar, mMaker.var(int.class).set(startOffset));
+        }
+
+        if (srcVar.classType() != byte[].class) {
+            // Access the column from a row object.
+            return srcVar.invoke(colInfo.name);
         }
 
         if (colNum < highestNum) {
