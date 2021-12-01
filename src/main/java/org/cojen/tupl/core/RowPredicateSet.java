@@ -72,9 +72,11 @@ public interface RowPredicateSet<R> {
      * from the set, and it isn't added to the transaction.
      *
      * @param txn exclusive owner of the lock
+     * @param indexId the index that the predicate applies to
      * @param predicate defines the lock matching rules
      */
-    void addPredicate(Transaction txn, RowPredicate<R> predicate) throws LockFailureException;
+    void addPredicate(Transaction txn, long indexId, RowPredicate<R> predicate)
+        throws LockFailureException;
 
     /**
      * Returns a class which can be extended for evaluating predicate locks directly. When used,

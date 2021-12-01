@@ -44,7 +44,7 @@ public interface RowPredicate<R> {
      * Determine if a lock held against the given key matches the row predicate. This variant
      * is called for transactions which were created before the predicate lock.
      */
-    public default boolean test(byte[] key) {
+    public default boolean test(long indexId, byte[] key) {
         // When undecided, always default to true.
         return true;
     }
