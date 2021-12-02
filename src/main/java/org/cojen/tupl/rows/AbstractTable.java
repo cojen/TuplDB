@@ -267,7 +267,7 @@ public abstract class AbstractTable<R> implements Table<R> {
             Class<? extends RowPredicate> baseClass = null;
 
             Class<? extends RowPredicate> predClass = new RowPredicateMaker
-                (rowStoreRef(), getClass(), baseClass, rowType, rowInfo.rowGen(),
+                (rowStoreRef(), baseClass, rowType, rowInfo.rowGen(),
                  mSource.id(), rf, filter, ranges).finish();
 
             if (ranges.length > 1) {

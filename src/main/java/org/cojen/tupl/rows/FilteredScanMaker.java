@@ -381,11 +381,11 @@ public class FilteredScanMaker<R> {
         } else {
             // Decoding a secondary index row is simpler because it has no schema version.
             var visitor = new DecodeVisitor
-                (mm, 0, mTableClass, mRowGen, predicateVar, mStopColumn, mStopArgument);
+                (mm, 0, mRowGen, predicateVar, mStopColumn, mStopArgument);
             mFilter.accept(visitor);
             Class<?> rowClass = RowMaker.find(mRowType);
             Variable rowVar = mm.param(2);
-            visitor.finishDecode(null, rowClass, rowVar);
+            visitor.finishDecode(null, mTableClass, rowClass, rowVar);
         }
     }
 
@@ -474,11 +474,11 @@ public class FilteredScanMaker<R> {
             var predicateVar = mm.param(3);
 
             var visitor = new DecodeVisitor
-                (mm, valueOffset, mTableClass, rowGen, predicateVar, mStopColumn, mStopArgument);
+                (mm, valueOffset, rowGen, predicateVar, mStopColumn, mStopArgument);
             filter.accept(visitor);
             Class<?> rowClass = RowMaker.find(mRowType);
             Variable rowVar = mm.param(2);
-            visitor.finishDecode(decoder, rowClass, rowVar);
+            visitor.finishDecode(decoder, mTableClass, rowClass, rowVar);
 
             return mm.finish();
         }

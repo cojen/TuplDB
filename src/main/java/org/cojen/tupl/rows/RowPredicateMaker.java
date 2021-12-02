@@ -70,7 +70,6 @@ public class RowPredicateMaker {
     }
 
     private final WeakReference<RowStore> mStoreRef;
-    private final Class<?> mTableClass;
     private final Class<? extends RowPredicate> mBaseClass;
     private final Class<?> mRowType;
     private final RowGen mRowGen;
@@ -92,12 +91,11 @@ public class RowPredicateMaker {
      * @param ranges filter broken down into ranges, or null if not applicable. See
      * RowFilter.multiRangeExtract
      */
-    RowPredicateMaker(WeakReference<RowStore> storeRef, Class<?> tableClass,
+    RowPredicateMaker(WeakReference<RowStore> storeRef,
                       Class<? extends RowPredicate> baseClass, Class<?> rowType, RowGen rowGen,
                       long indexId, RowFilter filter, String filterStr, RowFilter[][] ranges)
     {
         mStoreRef = storeRef;
-        mTableClass = tableClass;
 
         if (baseClass == null) {
             baseClass = RowPredicate.None.class;
@@ -357,7 +355,7 @@ public class RowPredicateMaker {
         }
 
         var indy = mm.var(RowPredicateMaker.class).indy
-            ("indyDecodeTest", mStoreRef, mTableClass, mRowType, mIndexId, mFilterRef, mFilterStr);
+            ("indyDecodeTest", mStoreRef, mRowType, mIndexId, mFilterRef, mFilterStr);
 
         Class<?> rowClass = RowMaker.find(mRowType);
         var rowVar = mm.param(0).cast(rowClass);
@@ -373,7 +371,7 @@ public class RowPredicateMaker {
             (boolean.class, "test", byte[].class, byte[].class).public_();
 
         var indy = mm.var(RowPredicateMaker.class).indy
-            ("indyDecodeTest", mStoreRef, mTableClass, mRowType, mIndexId, mFilterRef, mFilterStr);
+            ("indyDecodeTest", mStoreRef, mRowType, mIndexId, mFilterRef, mFilterStr);
 
         var valueVar = mm.param(1);
 
@@ -390,11 +388,10 @@ public class RowPredicateMaker {
      */
     public static CallSite indyDecodeTest(MethodHandles.Lookup lookup, String name, MethodType mt,
                                           WeakReference<RowStore> storeRef,
-                                          Class<?> tableClass, Class<?> rowType, long indexId,
+                                          Class<?> rowType, long indexId,
                                           WeakReference<RowFilter> filterRef, String filterStr)
     {
-        var dtm = new DecodeTestMaker
-            (lookup, mt, storeRef, tableClass, rowType, indexId, filterRef, filterStr);
+        var dtm = new DecodeTestMaker(lookup, mt, storeRef, rowType, indexId, filterRef, filterStr);
         return new SwitchCallSite(lookup, mt, dtm);
     }
 
@@ -405,7 +402,6 @@ public class RowPredicateMaker {
         private final MethodHandles.Lookup mLookup;
         private final MethodType mMethodType;
         private final WeakReference<RowStore> mStoreRef;
-        private final Class<?> mTableClass;
         private final Class<?> mRowType;
         private final long mIndexId;
         private final String mFilterStr;
@@ -414,14 +410,12 @@ public class RowPredicateMaker {
         private WeakReference<RowFilter> mFilterRef;
 
         DecodeTestMaker(MethodHandles.Lookup lookup, MethodType mt,
-                        WeakReference<RowStore> storeRef, Class<?> tableClass,
-                        Class<?> rowType, long indexId,
+                        WeakReference<RowStore> storeRef, Class<?> rowType, long indexId,
                         WeakReference<RowFilter> filterRef, String filterStr)
         {
             mLookup = lookup;
             mMethodType = mt.dropParameterTypes(0, 1);
             mStoreRef = storeRef;
-            mTableClass = tableClass;
             mRowType = rowType;
             mIndexId = indexId;
             mFilterStr = filterStr;
@@ -466,8 +460,7 @@ public class RowPredicateMaker {
             int valueOffset = RowUtils.lengthPrefixPF(schemaVersion);
             RowGen rowGen = rowInfo.rowGen();
             var predicateVar = mm.param(2);
-            var visitor = new DecodeVisitor
-                (mm, valueOffset, mTableClass, rowGen, predicateVar, null, 0);
+            var visitor = new DecodeVisitor(mm, valueOffset, rowGen, predicateVar, null, 0);
             filter.accept(visitor);
             visitor.finishPredicate();
 

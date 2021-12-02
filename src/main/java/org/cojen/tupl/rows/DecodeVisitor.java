@@ -43,7 +43,6 @@ class DecodeVisitor extends Visitor {
     private final MethodMaker mMaker;
     private final Variable mValueVar;
     private final int mValueOffset;
-    private final Class<?> mTableClass;
     private final RowGen mRowGen;
     private final Variable mPredicateVar;
     private final String mStopColumn;
@@ -77,16 +76,14 @@ class DecodeVisitor extends Visitor {
      *
      * @param mm signature: R decodeRow(byte[] key, byte[] value, ...)
      * @param valueOffset offset to skip past the schema version
-     * @param tableClass current table implementation class
      * @param rowGen actual row definition to be decoded
      * @param predicateVar implements RowPredicate
      */
-    DecodeVisitor(MethodMaker mm, int valueOffset, Class<?> tableClass, RowGen rowGen,
+    DecodeVisitor(MethodMaker mm, int valueOffset, RowGen rowGen,
                   Variable predicateVar, String stopColumn, int stopArgument)
     {
         mMaker = mm;
         mValueOffset = valueOffset;
-        mTableClass = tableClass;
         mRowGen = rowGen;
         mPredicateVar = predicateVar;
         mStopColumn = stopColumn;
@@ -110,10 +107,13 @@ class DecodeVisitor extends Visitor {
      *
      * @param decoder performs full decoding of the value columns; pass null to invoke the full
      * decode method in the generated table class
+     * @param tableClass current table implementation class
      * @param rowClass current row implementation
      * @param rowVar refers to the row parameter to allocate or fill in
      */
-    void finishDecode(MethodHandle decoder, Class<?> rowClass, Variable rowVar) {
+    void finishDecode(MethodHandle decoder,
+                      Class<?> tableClass, Class<?> rowClass, Variable rowVar)
+    {
         mFail.here();
         mMaker.return_(null);
 
@@ -121,7 +121,7 @@ class DecodeVisitor extends Visitor {
 
         // FIXME: Some columns may have already been decoded, so don't double decode them.
 
-        var tableVar = mMaker.var(mTableClass);
+        var tableVar = mMaker.var(tableClass);
         rowVar = rowVar.cast(rowClass);
         Label hasRow = mMaker.label();
         rowVar.ifNe(null, hasRow);
@@ -134,10 +134,10 @@ class DecodeVisitor extends Visitor {
         if (decoder != null) {
             mMaker.invoke(decoder, rowVar, mValueVar);
         } else {
-            mMaker.var(mTableClass).invoke("decodeValue", rowVar, mValueVar);
+            mMaker.var(tableClass).invoke("decodeValue", rowVar, mValueVar);
         }
 
-        mMaker.var(mTableClass).invoke("markAllClean", rowVar);
+        mMaker.var(tableClass).invoke("markAllClean", rowVar);
 
         mMaker.return_(rowVar);
     }
