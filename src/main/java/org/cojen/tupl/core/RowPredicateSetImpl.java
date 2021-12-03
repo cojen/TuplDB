@@ -25,7 +25,9 @@ import java.util.concurrent.TimeUnit;
 import org.cojen.tupl.DeadlockException;
 import org.cojen.tupl.DeadlockInfo;
 import org.cojen.tupl.LockFailureException;
+import org.cojen.tupl.LockInterruptedException;
 import org.cojen.tupl.LockResult;
+import org.cojen.tupl.LockTimeoutException;
 import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.util.LatchCondition;
@@ -79,38 +81,63 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
     }
 
     @Override
-    public void acquire(Transaction txn, R row) throws LockFailureException {
+    public AutoCloseable openAcquire(Transaction txn, R row) throws LockFailureException {
         var local = (LocalTransaction) txn;
-        mNewestVersion.acquire(local);
+        VersionLock lock = mNewestVersion;
+        lock.acquire(local);
 
-        for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
-            if (e.test(row)) {
-                e.matched(local);
+        try {
+            for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
+                if (e.test(row)) {
+                    e.matched(local);
+                }
             }
+            return lock;
+        } catch (Throwable e) {
+            lock.close();
+            throw e;
         }
     }
 
     @Override
-    public void acquire(Transaction txn, R row, byte[] value) throws LockFailureException {
+    public AutoCloseable openAcquire(Transaction txn, R row, byte[] value)
+        throws LockFailureException
+    {
         var local = (LocalTransaction) txn;
-        mNewestVersion.acquire(local);
+        VersionLock lock = mNewestVersion;
+        lock.acquire(local);
 
-        for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
-            if (e.test(row, value)) {
-                e.matched(local);
+        try {
+            for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
+                if (e.test(row, value)) {
+                    e.matched(local);
+                }
             }
+            return lock;
+        } catch (Throwable e) {
+            lock.close();
+            throw e;
         }
     }
 
     @Override
-    public void acquire(Transaction txn, byte[] key, byte[] value) throws LockFailureException {
+    public AutoCloseable openAcquire(Transaction txn, byte[] key, byte[] value)
+        throws LockFailureException
+    {
         var local = (LocalTransaction) txn;
-        mNewestVersion.acquire(local);
+        VersionLock lock = mNewestVersion;
+        lock.acquire(local);
 
-        for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
-            if (e.test(key, value)) {
-                e.matched(local);
+        try {
+            for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
+                if (e.test(key, value)) {
+                    e.matched(local);
+                }
             }
+            return lock;
+        } catch (Throwable e) {
+            lock.close();
+            throw e;
         }
     }
 
@@ -301,7 +328,23 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
     }
 
     // FIXME: Define a striped variant for improved concurrency.
-    private static final class VersionLock extends DetachedLockImpl {
+    private static final class VersionLock extends DetachedLockImpl implements AutoCloseable {
+
+        private static final VarHandle cIndexIdHandle, cQueueUHandle;
+
+        static {
+            try {
+                var lookup = MethodHandles.lookup();
+                // Re-purpose the otherwise unused mIndexId and mQueueU fields for open acquires.
+                cIndexIdHandle = lookup.findVarHandle
+                    (VersionLock.class, "mIndexId", long.class);
+                cQueueUHandle = lookup.findVarHandle
+                    (VersionLock.class, "mQueueU", LatchCondition.class);
+            } catch (Throwable e) {
+                throw Utils.rethrow(e);
+            }
+        }
+
         /**
          * Similar to acquireShared except it doesn't block if a queue exists.
          *
@@ -315,6 +358,7 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
                 if (count == ~0) {
                     throw new IllegalStateException();
                 }
+                cIndexIdHandle.getAndAdd(this, 1);
                 if (count != 0 && isSharedLocker(locker)) {
                     return;
                 }
@@ -324,6 +368,25 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
             }
 
             locker.push(this);
+        }
+
+        /**
+         * Called when an openAcquire step is finished.
+         */
+        @Override
+        public void close() {
+            if (((long) cIndexIdHandle.getAndAdd(this, -1)) == 1) {
+                var queue = (LatchCondition) cQueueUHandle.getAcquire(this);
+                if (queue != null) {
+                    LockManager.Bucket bucket = mBucket;
+                    bucket.acquireExclusive();
+                    try {
+                        queue.signalAll(bucket);
+                    } finally {
+                        bucket.releaseExclusive();
+                    }
+                }
+            }
         }
 
         /**
@@ -359,6 +422,33 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
             } catch (Throwable e) {
                 bucket.releaseExclusive();
                 throw e;
+            }
+
+            if (((long) cIndexIdHandle.getVolatile(this)) != 0) {
+                // Need to wait for in-flight open acquires to finish.
+
+                var queue = mQueueU;
+                if (queue == null) {
+                    try {
+                        queue = new LatchCondition();
+                        cQueueUHandle.setRelease(this, queue);
+                    } catch (Throwable e) {
+                        bucket.releaseExclusive();
+                        throw e;
+                    }
+                }
+
+                if (((long) cIndexIdHandle.getVolatile(this)) != 0) {
+                    var w = queue.await(bucket, txn.mLockTimeoutNanos);
+                    if (mLockCount == 0x80000000) {
+                        bucket.releaseExclusive();
+                        return true;
+                    }
+                    if (w <= 0 && ((long) cIndexIdHandle.getVolatile(this)) != 0) {
+                        bucket.releaseExclusive();
+                        throw failed(txn, w);
+                    }
+                }
             }
 
             // While we're waiting, scan all the current lock owners (lockers) and see if we
@@ -496,13 +586,18 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
                     (0, deadlock.ownerAttachment(), true, new DeadlockInfoSet(infos));
             }
 
-            LockResult result = w < 0 ? LockResult.INTERRUPTED : LockResult.TIMED_OUT_LOCK;
-
-            throw txn.failed(LockManager.TYPE_EXCLUSIVE, result, txn.mLockTimeoutNanos);
+            throw failed(txn, w);
         }
 
         private static Lock findAnyConflict(Locker locker, long indexId, Evaluator<?> evaluator) {
             return evaluator.hasMatched() ? evaluator : locker.findAnyConflict(indexId, evaluator);
+        }
+
+        private static LockFailureException failed(LocalTransaction txn, int w)
+            throws DeadlockException
+        {
+            LockResult result = w < 0 ? LockResult.INTERRUPTED : LockResult.TIMED_OUT_LOCK;
+            return txn.failed(LockManager.TYPE_EXCLUSIVE, result, txn.mLockTimeoutNanos);
         }
     }
 

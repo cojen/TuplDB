@@ -34,9 +34,10 @@ public interface RowPredicateSet<R> {
      * acquired up to that point are still retained.
      *
      * @param row is passed to the {@code RowPredicate.test} method
+     * @return object which must be closed after all related locks have been acquired too
      * @throws IllegalStateException if too many shared locks
      */
-    void acquire(Transaction txn, R row) throws LockFailureException;
+    AutoCloseable openAcquire(Transaction txn, R row) throws LockFailureException;
 
     /**
      * Acquires shared access for all the row locks, waiting if necessary, and retains the
@@ -45,9 +46,10 @@ public interface RowPredicateSet<R> {
      *
      * @param row is passed to the {@code RowPredicate.test} method
      * @param value is passed to the {@code RowPredicate.test} method
+     * @return object which must be closed after all related locks have been acquired too
      * @throws IllegalStateException if too many shared locks
      */
-    void acquire(Transaction txn, R row, byte[] value) throws LockFailureException;
+    AutoCloseable openAcquire(Transaction txn, R row, byte[] value) throws LockFailureException;
 
     /**
      * Acquires shared access for all the row locks, waiting if necessary, and retains the
@@ -56,9 +58,11 @@ public interface RowPredicateSet<R> {
      *
      * @param key is passed to the {@code RowPredicate.test} method
      * @param value is passed to the {@code RowPredicate.test} method
+     * @return object which must be closed after all related locks have been acquired too
      * @throws IllegalStateException if too many shared locks
      */
-    void acquire(Transaction txn, byte[] key, byte[] value) throws LockFailureException;
+    AutoCloseable openAcquire(Transaction txn, byte[] key, byte[] value)
+        throws LockFailureException;
 
     /**
      * Count the number of predicates currently in the set. O(n) cost.
