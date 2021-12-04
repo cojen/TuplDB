@@ -920,7 +920,7 @@ class Locker implements DatabaseAccess { // weak access to database
 
         if (tailObj != null) {
             if (tailObj instanceof Lock lock) {
-                if (lock.mIndexId == indexId && predicate.test(indexId, lock.mKey) &&
+                if (lock.mIndexId == indexId && predicate.test(lock.mKey) &&
                     ((int) Lock.cLockCountHandle.getAcquire(lock)) < 0)
                 {
                     return lock;
@@ -1365,8 +1365,8 @@ class Locker implements DatabaseAccess { // weak access to database
             Lock[] locks = mLocks;
             for (int i = (int) cSizeHandle.getAcquire(this); --i >= 0; ) {
                 Lock lock = locks[i];
-                if (lock != null && lock.mIndexId == indexId && predicate.test(indexId, lock.mKey)
-                    && ((int) Lock.cLockCountHandle.getAcquire(lock)) < 0)
+                if (lock != null && lock.mIndexId == indexId && predicate.test(lock.mKey) &&
+                    ((int) Lock.cLockCountHandle.getAcquire(lock)) < 0)
                 {
                     return lock;
                 }

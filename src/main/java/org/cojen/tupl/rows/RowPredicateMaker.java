@@ -149,7 +149,7 @@ public class RowPredicateMaker {
             addPartialDecodeTestMethod();
             addFullDecodeTestMethod();
             // FIXME
-            //addKeyTestMethod(long, byte[].class);
+            //addKeyTestMethod(byte[].class);
         }
 
         // Add toString method.

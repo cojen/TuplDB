@@ -40,6 +40,7 @@ import org.cojen.tupl.util.LatchCondition;
 /*P*/
 final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
     private final LockManager mManager;
+    private final long mIndexId;
 
     // Linked stack of VersionLocks.
     private volatile VersionLock mNewestVersion;
@@ -69,8 +70,9 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
         }
     }
 
-    RowPredicateSetImpl(LockManager manager) {
+    RowPredicateSetImpl(LockManager manager, long indexId) {
         mManager = manager;
+        mIndexId = indexId;
         mNewestVersion = newVersion();
     }
 
@@ -151,7 +153,7 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
     }
 
     @Override
-    public void addPredicate(Transaction txn, long indexId, RowPredicate<R> predicate)
+    public void addPredicate(Transaction txn, RowPredicate<R> predicate)
         throws LockFailureException
     {
         Evaluator<R> evaluator;
@@ -177,8 +179,8 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
                 }
 
                 @Override
-                public boolean test(long indexId, byte[] key) {
-                    return predicate.test(indexId, key);
+                public boolean test(byte[] key) {
+                    return predicate.test(key);
                 }
 
                 @Override
@@ -188,7 +190,7 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
             };
         }
 
-        addEvaluator(txn, indexId, evaluator);
+        addEvaluator(txn, evaluator);
     }
 
     @Override
@@ -197,7 +199,7 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
         return (Class) Evaluator.class;
     }
 
-    private void addEvaluator(Transaction txn, long indexId, Evaluator<R> evaluator)
+    private void addEvaluator(final Transaction txn, final Evaluator<R> evaluator)
         throws LockFailureException
     {
         final var local = (LocalTransaction) txn;
@@ -258,7 +260,7 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
             VersionLock newerVersion = null;
 
             while (true) {
-                boolean discard = version.await(indexId, evaluator, local);
+                boolean discard = version.await(mIndexId, evaluator, local);
                 var olderVersion = (VersionLock) version.mLockNext;
                 if (discard && newerVersion != null) {
                     cLockNextHandle.weakCompareAndSet(newerVersion, version, olderVersion);
