@@ -38,7 +38,7 @@ import org.cojen.tupl.util.LatchCondition;
  * @author Brian S O'Neill
  */
 /*P*/
-final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
+final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
     private final LockManager mManager;
     private final long mIndexId;
 
@@ -57,12 +57,12 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
             var lookup = MethodHandles.lookup();
 
             cNewestVersionHandle = lookup.findVarHandle
-                (RowPredicateSetImpl.class, "mNewestVersion", VersionLock.class);
+                (RowPredicateLockImpl.class, "mNewestVersion", VersionLock.class);
 
             cLockNextHandle = lookup.findVarHandle(Lock.class, "mLockNext", Lock.class);
 
             cLastEvaluatorHandle = lookup.findVarHandle
-                (RowPredicateSetImpl.class, "mLastEvaluator", Evaluator.class);
+                (RowPredicateLockImpl.class, "mLastEvaluator", Evaluator.class);
 
             cNextHandle = lookup.findVarHandle(Evaluator.class, "mNext", Evaluator.class);
         } catch (Throwable e) {
@@ -70,7 +70,7 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
         }
     }
 
-    RowPredicateSetImpl(LockManager manager, long indexId) {
+    RowPredicateLockImpl(LockManager manager, long indexId) {
         mManager = manager;
         mIndexId = indexId;
         mNewestVersion = newVersion();
@@ -203,7 +203,7 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
         throws LockFailureException
     {
         final var local = (LocalTransaction) txn;
-        evaluator.mSet = this;
+        evaluator.mLock = this;
         mManager.initDetachedLock(evaluator, local);
 
         // Adopts a similar concurrent linked list design as used by CursorFrame.bind.
@@ -607,7 +607,7 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
      * Implements the actual predicate lock instances.
      */
     public static abstract class Evaluator<R> extends DetachedLockImpl implements RowPredicate<R> {
-        private RowPredicateSetImpl<R> mSet;
+        private RowPredicateLockImpl<R> mLock;
 
         private volatile Evaluator<R> mNext;
         private volatile Evaluator<R> mPrev;
@@ -628,7 +628,7 @@ final class RowPredicateSetImpl<R> implements RowPredicateSet<R> {
         @Override
         protected final void doUnlockOwnedUnrestricted(LockManager.Bucket bucket) {
             super.doUnlockOwnedUnrestricted(bucket);
-            mSet.remove(this);
+            mLock.remove(this);
         }
 
         final void matched(LocalTransaction txn) throws LockFailureException {

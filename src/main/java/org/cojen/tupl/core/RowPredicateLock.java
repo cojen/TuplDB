@@ -27,7 +27,7 @@ import org.cojen.tupl.Transaction;
  * @author Brian S O'Neill
  * @see RowPredicate
  */
-public interface RowPredicateSet<R> {
+public interface RowPredicateLock<R> {
     /**
      * Acquires shared access for all the row locks, waiting if necessary, and retains the
      * locks for the entire transaction scope. If lock acquisition times out, all row locks

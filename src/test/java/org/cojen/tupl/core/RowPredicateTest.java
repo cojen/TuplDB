@@ -39,20 +39,20 @@ public class RowPredicateTest {
     }
 
     private CoreDatabase mDb;
-    private RowPredicateSet<TestRow> mSet;
+    private RowPredicateLock<TestRow> mLock;
 
     @Before
     public void setup() throws Exception {
         mDb = (CoreDatabase) Database.open(new DatabaseConfig()
                                            .directPageAccess(false)
                                            .lockTimeout(100, TimeUnit.MILLISECONDS));
-        mSet = mDb.newRowPredicateSet(1234);
+        mLock = mDb.newRowPredicateLock(1234);
     }
 
     @After
     public void teardown() throws Exception {
         mDb.close();
-        mSet = null;
+        mLock = null;
     }
 
     @Test
@@ -77,7 +77,7 @@ public class RowPredicateTest {
         txn2.attach("txn2_" + offset);
 
         if (count) {
-            assertEquals(0, mSet.countPredicates());
+            assertEquals(0, mLock.countPredicates());
         }
 
         {
@@ -85,12 +85,12 @@ public class RowPredicateTest {
             // Nothing is blocked.
 
             txn1.lockTimeout(2, TimeUnit.SECONDS);
-            mSet.addPredicate(txn1, pred1); // range scan action
+            mLock.addPredicate(txn1, pred1); // range scan action
             txn1.lockTimeout(100, TimeUnit.MILLISECONDS);
-            mSet.openAcquire(txn2, row2).close(); // modify action
+            mLock.openAcquire(txn2, row2).close(); // modify action
 
             if (count) {
-                assertEquals(1, mSet.countPredicates());
+                assertEquals(1, mLock.countPredicates());
             }
 
             txn1.reset();
@@ -98,7 +98,7 @@ public class RowPredicateTest {
         }
 
         if (count) {
-            assertEquals(0, mSet.countPredicates());
+            assertEquals(0, mLock.countPredicates());
         }
 
         {
@@ -106,15 +106,15 @@ public class RowPredicateTest {
             // txn2 is blocked.
 
             txn1.lockTimeout(2, TimeUnit.SECONDS);
-            mSet.addPredicate(txn1, pred1); // range scan action
+            mLock.addPredicate(txn1, pred1); // range scan action
             txn1.lockTimeout(100, TimeUnit.MILLISECONDS);
 
             if (count) {
-                assertEquals(1, mSet.countPredicates());
+                assertEquals(1, mLock.countPredicates());
             }
 
             try {
-                mSet.openAcquire(txn2, row1).close(); // modify action
+                mLock.openAcquire(txn2, row1).close(); // modify action
                 fail();
             } catch (LockTimeoutException e) {
                 String message = e.getMessage();
@@ -123,7 +123,7 @@ public class RowPredicateTest {
 
             txn2.lockTimeout(2, TimeUnit.SECONDS);
 
-            Waiter w = start(() -> mSet.openAcquire(txn2, row1).close()); // modify action
+            Waiter w = start(() -> mLock.openAcquire(txn2, row1).close()); // modify action
 
             // Unblock txn2.
             txn1.reset();
@@ -134,7 +134,7 @@ public class RowPredicateTest {
         }
 
         if (count) {
-            assertEquals(0, mSet.countPredicates());
+            assertEquals(0, mLock.countPredicates());
         }
 
         {
@@ -142,7 +142,7 @@ public class RowPredicateTest {
             // Nothing is blocked.
 
             // Lock against same index, but a non-conflicting key (modify action).
-            var acq = mSet.openAcquire(txn2, row2);
+            var acq = mLock.openAcquire(txn2, row2);
             txn2.lockExclusive(1234, key2);
             acq.close();
 
@@ -150,11 +150,11 @@ public class RowPredicateTest {
             txn2.lockExclusive(5678, key1);
 
             txn1.lockTimeout(2, TimeUnit.SECONDS);
-            mSet.addPredicate(txn1, pred1); // range scan action
+            mLock.addPredicate(txn1, pred1); // range scan action
             txn1.lockTimeout(100, TimeUnit.MILLISECONDS);
 
             if (count) {
-                assertEquals(1, mSet.countPredicates());
+                assertEquals(1, mLock.countPredicates());
             }
 
             txn1.reset();
@@ -162,7 +162,7 @@ public class RowPredicateTest {
         }
 
         if (count) {
-            assertEquals(0, mSet.countPredicates());
+            assertEquals(0, mLock.countPredicates());
         }
 
         {
@@ -170,7 +170,7 @@ public class RowPredicateTest {
             // txn1 is blocked.
 
             // Lock against same index, but a non-conflicting key (modify action).
-            var acq = mSet.openAcquire(txn2, row2);
+            var acq = mLock.openAcquire(txn2, row2);
             txn2.lockExclusive(1234, key2);
             acq.close();
 
@@ -178,27 +178,27 @@ public class RowPredicateTest {
             txn2.lockExclusive(5678, key1);
 
             // Lock against same index and a conflicting key (modify action).
-            acq = mSet.openAcquire(txn2, row1);
+            acq = mLock.openAcquire(txn2, row1);
             txn2.lockExclusive(1234, key1);
             acq.close();
 
             try {
-                mSet.addPredicate(txn1, pred1); // range scan action
+                mLock.addPredicate(txn1, pred1); // range scan action
                 fail();
             } catch (LockTimeoutException e) {
                 // expected
             }
 
             if (count) {
-                assertEquals(0, mSet.countPredicates());
+                assertEquals(0, mLock.countPredicates());
             }
 
             txn1.lockTimeout(2, TimeUnit.SECONDS);
 
-            Waiter w = start(() -> mSet.addPredicate(txn1, pred1)); // range scan action
+            Waiter w = start(() -> mLock.addPredicate(txn1, pred1)); // range scan action
 
             if (count) {
-                assertEquals(1, mSet.countPredicates());
+                assertEquals(1, mLock.countPredicates());
             }
 
             // Unblock txn1.
@@ -207,14 +207,14 @@ public class RowPredicateTest {
             w.await();
 
             if (count) {
-                assertEquals(1, mSet.countPredicates());
+                assertEquals(1, mLock.countPredicates());
             }
 
             txn1.reset();
         }
 
         if (count) {
-            assertEquals(0, mSet.countPredicates());
+            assertEquals(0, mLock.countPredicates());
         }
     }
 
@@ -265,20 +265,20 @@ public class RowPredicateTest {
             txn1.attach("txn1");
             txn2.attach("txn2");
 
-            var acq = mSet.openAcquire(txn1, row1);
+            var acq = mLock.openAcquire(txn1, row1);
             txn1.lockExclusive(1234, key1);
             acq.close();
 
-            acq = mSet.openAcquire(txn2, row2);
+            acq = mLock.openAcquire(txn2, row2);
             txn2.lockExclusive(1234, key2);
             acq.close();
 
             Waiter w = start(() -> {
-                mSet.addPredicate(txn1, pred2);
+                mLock.addPredicate(txn1, pred2);
             });
 
             try {
-                mSet.addPredicate(txn2, pred1);
+                mLock.addPredicate(txn2, pred1);
                 fail();
             } catch (DeadlockException e) {
                 assertEquals("txn1", e.ownerAttachment());
@@ -303,8 +303,8 @@ public class RowPredicateTest {
             txn1.attach("txn1");
             txn2.attach("txn2");
 
-            mSet.addPredicate(txn1, pred1);
-            mSet.addPredicate(txn2, pred2);
+            mLock.addPredicate(txn1, pred1);
+            mLock.addPredicate(txn2, pred2);
 
             txn1.lockTimeout(2, TimeUnit.SECONDS);
             txn2.lockTimeout(2, TimeUnit.SECONDS);
@@ -312,11 +312,11 @@ public class RowPredicateTest {
             LockTimeoutException e1 = null, e2 = null;
 
             Waiter w = start(() -> {
-                mSet.openAcquire(txn1, row2).close();
+                mLock.openAcquire(txn1, row2).close();
             });
 
             try {
-                mSet.openAcquire(txn2, row1).close();
+                mLock.openAcquire(txn2, row1).close();
                 fail();
             } catch (LockTimeoutException e) {
                 e1 = e;
@@ -349,16 +349,16 @@ public class RowPredicateTest {
 
         var txn1 = mDb.newTransaction();
 
-        var acq = mSet.openAcquire(txn1, row1);
+        var acq = mLock.openAcquire(txn1, row1);
         txn1.lockExclusive(1234, key1);
         acq.close();
 
         // Shouldn't block.
-        mSet.addPredicate(txn1, pred1);
+        mLock.addPredicate(txn1, pred1);
 
         try {
             var txn2 = mDb.newTransaction();
-            mSet.addPredicate(txn2, pred1);
+            mLock.addPredicate(txn2, pred1);
             fail();
         } catch (LockTimeoutException e) {
         }
@@ -366,7 +366,7 @@ public class RowPredicateTest {
         Waiter w = start(() -> {
             var txn2 = mDb.newTransaction();
             txn2.lockTimeout(2, TimeUnit.SECONDS);
-            mSet.addPredicate(txn2, pred1);
+            mLock.addPredicate(txn2, pred1);
         });
 
         assertEquals(Thread.State.TIMED_WAITING, w.getState());
@@ -399,10 +399,10 @@ public class RowPredicateTest {
         var txn1 = mDb.newTransaction();
         var txn2 = mDb.newTransaction();
 
-        mSet.addPredicate(txn1, pred);
+        mLock.addPredicate(txn1, pred);
 
         try {
-            mSet.openAcquire(txn2, row1).close();
+            mLock.openAcquire(txn2, row1).close();
             fail();
         } catch (LockTimeoutException e) {
             // Cannot acquire because predicate is at row1.
@@ -412,12 +412,12 @@ public class RowPredicateTest {
         predSet.remove(row1);
 
         // Can acquire the lock now.
-        var acq = mSet.openAcquire(txn2, row1);
+        var acq = mLock.openAcquire(txn2, row1);
         txn2.lockUpgradable(1234, key1);
         acq.close();
 
         try {
-            mSet.openAcquire(txn2, row2).close();
+            mLock.openAcquire(txn2, row2).close();
             fail();
         } catch (LockTimeoutException e) {
             // Cannot acquire because predicate is at row2.
@@ -426,12 +426,12 @@ public class RowPredicateTest {
         txn1.reset();
 
         // Can acquire the lock now.
-        acq = mSet.openAcquire(txn2, row2);
+        acq = mLock.openAcquire(txn2, row2);
         txn2.lockExclusive(1234, key2);
         acq.close();
 
         try {
-            mSet.addPredicate(txn1, new TestPredicate(row1));
+            mLock.addPredicate(txn1, new TestPredicate(row1));
             fail();
         } catch (LockTimeoutException e) {
             // Cannot add predicate because txn2 owns conflicting row locks.
@@ -439,7 +439,7 @@ public class RowPredicateTest {
 
         txn2.reset();
 
-        mSet.addPredicate(txn1, new TestPredicate(row1));
+        mLock.addPredicate(txn1, new TestPredicate(row1));
         txn1.reset();
     }
 
@@ -455,12 +455,12 @@ public class RowPredicateTest {
         var txn1 = mDb.newTransaction();
         var txn2 = mDb.newTransaction();
 
-        var acq = mSet.openAcquire(txn1, row1);
+        var acq = mLock.openAcquire(txn1, row1);
         txn1.lockShared(1234, key1);
         acq.close();
 
         // Shouldn't block.
-        mSet.addPredicate(txn2, pred1);
+        mLock.addPredicate(txn2, pred1);
     }
 
     @Test
@@ -477,13 +477,13 @@ public class RowPredicateTest {
             var txn1 = mDb.newTransaction();
             var txn2 = mDb.newTransaction();
 
-            mSet.addPredicate(txn1, pred1);
-            mSet.addPredicate(txn2, pred2);
+            mLock.addPredicate(txn1, pred1);
+            mLock.addPredicate(txn2, pred2);
 
             var txn3 = mDb.newTransaction();
 
             try {
-                mSet.openAcquire(txn3, row1).close();
+                mLock.openAcquire(txn3, row1).close();
                 fail();
             } catch (LockTimeoutException e) {
             }
@@ -491,7 +491,7 @@ public class RowPredicateTest {
             txn2.reset();
 
             try {
-                mSet.openAcquire(txn3, row1).close();
+                mLock.openAcquire(txn3, row1).close();
                 fail();
             } catch (LockTimeoutException e) {
             }
@@ -499,7 +499,7 @@ public class RowPredicateTest {
             txn3.lockTimeout(2, TimeUnit.SECONDS);
 
             Waiter w = start(() -> {
-                mSet.openAcquire(txn3, row1).close();
+                mLock.openAcquire(txn3, row1).close();
                 txn3.reset();
             });
 
@@ -512,19 +512,19 @@ public class RowPredicateTest {
         {
             var txn1 = mDb.newTransaction();
 
-            mSet.addPredicate(txn1, pred1);
-            mSet.addPredicate(txn1, pred2);
+            mLock.addPredicate(txn1, pred1);
+            mLock.addPredicate(txn1, pred2);
 
             var txn3 = mDb.newTransaction();
 
             try {
-                mSet.openAcquire(txn3, row1).close();
+                mLock.openAcquire(txn3, row1).close();
                 fail();
             } catch (LockTimeoutException e) {
             }
 
             Waiter w = start(() -> {
-                mSet.openAcquire(txn3, row1).close();
+                mLock.openAcquire(txn3, row1).close();
                 txn3.reset();
             });
 
@@ -543,11 +543,11 @@ public class RowPredicateTest {
         var pred1 = new TestPredicate(row1);
 
         var txn1 = mDb.newTransaction();
-        var acq = mSet.openAcquire(txn1, row1);
+        var acq = mLock.openAcquire(txn1, row1);
 
         var txn2 = mDb.newTransaction();
         try {
-            mSet.addPredicate(txn2, pred1);
+            mLock.addPredicate(txn2, pred1);
             fail();
         } catch (LockTimeoutException e) {
             // The openAcquire isn't finished.
@@ -558,7 +558,7 @@ public class RowPredicateTest {
         acq.close();
 
         try {
-            mSet.addPredicate(txn2, pred1);
+            mLock.addPredicate(txn2, pred1);
             fail();
         } catch (LockTimeoutException e) {
             // A required row lock is held.
@@ -566,7 +566,7 @@ public class RowPredicateTest {
 
         txn1.reset();
 
-        mSet.addPredicate(txn2, pred1);
+        mLock.addPredicate(txn2, pred1);
         txn2.lockUpgradable(1234, key1);
         txn2.reset();
     }

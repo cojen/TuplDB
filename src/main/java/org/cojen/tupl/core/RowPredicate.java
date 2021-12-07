@@ -21,7 +21,7 @@ package org.cojen.tupl.core;
  * Defines an interface intended for locking rows based on a rule that matches on a row.
  *
  * @author Brian S O'Neill
- * @see RowPredicateSet
+ * @see RowPredicateLock
  */
 public interface RowPredicate<R> {
     /**
