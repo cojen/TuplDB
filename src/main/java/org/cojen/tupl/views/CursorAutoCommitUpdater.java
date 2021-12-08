@@ -20,28 +20,108 @@ package org.cojen.tupl.views;
 import java.io.IOException;
 
 import org.cojen.tupl.Cursor;
+import org.cojen.tupl.LockResult;
+import org.cojen.tupl.Transaction;
+import org.cojen.tupl.UnpositionedCursorException;
+import org.cojen.tupl.Updater;
+
+import org.cojen.tupl.core.Utils;
 
 /**
  * Commits every transactional update, and exits the scope when closed. For any entry stepped
- * over, acquired locks are released.
+ * over, acquired locks are released. The linked transaction is automatically exited when the
+ * updater is closed.
  *
  * @author Brian S O'Neill
  */
-public class CursorAutoCommitUpdater extends CursorNonRepeatableUpdater {
+public final class CursorAutoCommitUpdater extends CursorScanner implements Updater {
+    private LockResult mLockResult;
+
     /**
      * @param cursor unpositioned cursor
      */
     public CursorAutoCommitUpdater(Cursor cursor) throws IOException {
         super(cursor);
+        mLockResult = cursor.first();
+        cursor.register();
     }
 
     @Override
-    protected void postUpdate() throws IOException {
-        mCursor.link().commit();
+    public boolean step() throws IOException {
+        LockResult result = mLockResult;
+        if (result == null) {
+            return false;
+        }
+
+        Cursor c = mCursor;
+        Transaction txn = c.link();
+
+        tryStep: {
+            try {
+                if (result.isAcquired()) {
+                    txn.unlock();
+                }
+                result = c.next();
+            } catch (UnpositionedCursorException e) {
+                break tryStep;
+            } catch (Throwable e) {
+                throw Utils.fail(this, e);
+            }
+            if (c.key() != null) {
+                mLockResult = result;
+                return true;
+            }
+        }
+
+        mLockResult = null;
+        txn.exit();
+
+        return false;
     }
 
     @Override
-    protected void finished() throws IOException {
-        mCursor.link().exit();
+    public boolean update(byte[] value) throws IOException {
+        Cursor c = mCursor;
+
+        try {
+            c.store(value);
+        } catch (UnpositionedCursorException e) {
+            close();
+            return false;
+        } catch (Throwable e) {
+            throw Utils.fail(this, e);
+        }
+
+        Transaction txn = c.link();
+        txn.commit();
+
+        tryStep: {
+            LockResult result;
+            try {
+                result = c.next();
+            } catch (UnpositionedCursorException e) {
+                break tryStep;
+            } catch (Throwable e) {
+                throw Utils.fail(this, e);
+            }
+            if (c.key() != null) {
+                mLockResult = result;
+                return true;
+            }
+        }
+
+        mLockResult = null;
+        txn.exit();
+
+        return false;
+    }
+
+    @Override
+    public void close() throws IOException {
+        mCursor.reset();
+        if (mLockResult != null) {
+            mLockResult = null;
+            mCursor.link().exit();
+        }
     }
 }

@@ -30,7 +30,7 @@ import org.cojen.tupl.core.Utils;
  *
  * @author Brian S O'Neill
  */
-public class CursorSimpleUpdater extends CursorScanner implements Updater {
+public final class CursorSimpleUpdater extends CursorScanner implements Updater {
     /**
      * @param cursor unpositioned cursor
      */

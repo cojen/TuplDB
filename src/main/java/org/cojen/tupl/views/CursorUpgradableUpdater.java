@@ -32,19 +32,21 @@ import org.cojen.tupl.core.Utils;
  *
  * @author Brian S O'Neill
  */
-public class CursorUpgradableUpdater extends CursorScanner implements Updater {
-    private LockMode mOriginalMode;
-
+public final class CursorUpgradableUpdater extends CursorScanner implements Updater {
     /**
      * @param cursor unpositioned cursor; must be linked to a non-null transaction
      */
     public CursorUpgradableUpdater(Cursor cursor) throws IOException {
         super(cursor);
         Transaction txn = cursor.link();
-        mOriginalMode = txn.lockMode();
+        LockMode original = txn.lockMode();
         txn.lockMode(LockMode.UPGRADABLE_READ);
-        cursor.first();
-        cursor.register();
+        try {
+            cursor.first();
+            cursor.register();
+        } finally {
+            txn.lockMode(original);
+        }
     }
 
     @Override
@@ -52,7 +54,14 @@ public class CursorUpgradableUpdater extends CursorScanner implements Updater {
         tryStep: {
             Cursor c = mCursor;
             try {
-                c.next();
+                Transaction txn = c.link();
+                LockMode original = txn.lockMode();
+                txn.lockMode(LockMode.UPGRADABLE_READ);
+                try {
+                    c.next();
+                } finally {
+                    txn.lockMode(original);
+                }
             } catch (UnpositionedCursorException e) {
                 break tryStep;
             } catch (Throwable e) {
@@ -62,7 +71,6 @@ public class CursorUpgradableUpdater extends CursorScanner implements Updater {
                 return true;
             }
         }
-        resetTxnMode();
         return false;
     }
 
@@ -71,25 +79,10 @@ public class CursorUpgradableUpdater extends CursorScanner implements Updater {
         try {
             mCursor.store(value);
         } catch (UnpositionedCursorException e) {
-            resetTxnMode();
             return false;
         } catch (Throwable e) {
             throw Utils.fail(this, e);
         }
         return step();
-    }
-
-    @Override
-    public void close() throws IOException {
-        resetTxnMode();
-        mCursor.reset();
-    }
-
-    private void resetTxnMode() {
-        LockMode original = mOriginalMode;
-        if (original != null) {
-            mOriginalMode = null;
-            mCursor.link().lockMode(original);
-        }
     }
 }

@@ -83,12 +83,11 @@ public interface View {
     /**
      * Returns a new updater over this view.
      *
-     * <p>When providing a transaction which acquires locks
-     * (or the transaction is null), upgradable locks are acquired for each entry visited by
-     * the updater. If the transaction lock mode is non-repeatable, any lock acquisitions for
-     * entries which are stepped over are released when moving to the next entry. Updates with
-     * a null transaction are auto-committed and become visible to other transactions as the
-     * updater moves along.
+     * <p>When providing a transaction which acquires locks (or the transaction is null),
+     * upgradable locks are acquired for each entry visited by the updater. If the transaction
+     * lock mode is non-repeatable, any lock acquisitions for entries which are stepped over
+     * are released when moving to the next entry. Updates with a null transaction are
+     * auto-committed and become visible to other transactions as the updater moves along.
      *
      * @param txn optional transaction for Updater to use; pass null for auto-commit mode
      * @return a new updater positioned at the first entry in the view
@@ -113,10 +112,7 @@ public interface View {
             return switch (txn.lockMode()) {
                 default -> new CursorSimpleUpdater(c);
                 case REPEATABLE_READ -> new CursorUpgradableUpdater(c);
-                case READ_COMMITTED, READ_UNCOMMITTED -> {
-                    txn.enter();
-                    yield new CursorNonRepeatableUpdater(c);
-                }
+                case READ_COMMITTED, READ_UNCOMMITTED -> new CursorNonRepeatableUpdater(c);
             };
         }
     }

@@ -20,6 +20,7 @@ package org.cojen.tupl.views;
 import java.io.IOException;
 
 import org.cojen.tupl.Cursor;
+import org.cojen.tupl.LockMode;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnpositionedCursorException;
@@ -32,7 +33,7 @@ import org.cojen.tupl.core.Utils;
  *
  * @author Brian S O'Neill
  */
-public class CursorNonRepeatableUpdater extends CursorScanner implements Updater {
+public final class CursorNonRepeatableUpdater extends CursorScanner implements Updater {
     private LockResult mLockResult;
 
     /**
@@ -40,8 +41,15 @@ public class CursorNonRepeatableUpdater extends CursorScanner implements Updater
      */
     public CursorNonRepeatableUpdater(Cursor cursor) throws IOException {
         super(cursor);
-        mLockResult = cursor.first();
-        cursor.register();
+        Transaction txn = cursor.link();
+        LockMode original = txn.lockMode();
+        txn.lockMode(LockMode.UPGRADABLE_READ);
+        try {
+            mLockResult = cursor.first();
+            cursor.register();
+        } finally {
+            txn.lockMode(original);
+        }
     }
 
     @Override
@@ -52,13 +60,22 @@ public class CursorNonRepeatableUpdater extends CursorScanner implements Updater
         }
 
         Cursor c = mCursor;
+        Transaction txn = c.link();
 
         tryStep: {
-            if (result.isAcquired()) {
-                c.link().unlock();
-            }
             try {
-                result = c.next();
+                if (result.isAcquired()) {
+                    // If the transaction is being acted upon independently of this updater,
+                    // then this technique might throw an IllegalStateException.
+                    txn.unlock();
+                }
+                LockMode original = txn.lockMode();
+                txn.lockMode(LockMode.UPGRADABLE_READ);
+                try {
+                    result = c.next();
+                } finally {
+                    txn.lockMode(original);
+                }
             } catch (UnpositionedCursorException e) {
                 break tryStep;
             } catch (Throwable e) {
@@ -71,7 +88,6 @@ public class CursorNonRepeatableUpdater extends CursorScanner implements Updater
         }
 
         mLockResult = null;
-        finished();
 
         return false;
     }
@@ -89,12 +105,17 @@ public class CursorNonRepeatableUpdater extends CursorScanner implements Updater
             throw Utils.fail(this, e);
         }
 
-        postUpdate();
-
-        LockResult result;
         tryStep: {
+            LockResult result;
             try {
-                result = c.next();
+                Transaction txn = c.link();
+                LockMode original = txn.lockMode();
+                txn.lockMode(LockMode.UPGRADABLE_READ);
+                try {
+                    result = c.next();
+                } finally {
+                    txn.lockMode(original);
+                }
             } catch (UnpositionedCursorException e) {
                 break tryStep;
             } catch (Throwable e) {
@@ -107,7 +128,6 @@ public class CursorNonRepeatableUpdater extends CursorScanner implements Updater
         }
 
         mLockResult = null;
-        finished();
 
         return false;
     }
@@ -115,24 +135,6 @@ public class CursorNonRepeatableUpdater extends CursorScanner implements Updater
     @Override
     public void close() throws IOException {
         mCursor.reset();
-        if (mLockResult != null) {
-            mLockResult = null;
-            finished();
-        }
-    }
-
-    /**
-     * Called after each update.
-     */
-    protected void postUpdate() throws IOException {
-    }
-
-    /**
-     * Called at most once, when no more entries remain.
-     */
-    protected void finished() throws IOException {
-        Transaction txn = mCursor.link();
-        txn.commit();
-        txn.exit();
+        mLockResult = null;
     }
 }
