@@ -92,7 +92,7 @@ public class IndexLockTest {
             newRowScanner(table, updater, scanTxn, "id >= ? && id <= ?", 3, 7);
             fail();
         } catch (LockTimeoutException e) {
-            // Predicate lock.
+            predicateLockTimeout(e);
         }
 
         // Attempt to exclude the row being inserted by a non-key filter, but this won't work.
@@ -105,7 +105,7 @@ public class IndexLockTest {
                           "id >= ? && id <= ? && name != ?", 3, 7, "name-5");
             fail();
         } catch (LockTimeoutException e) {
-            // Predicate lock.
+            predicateLockTimeout(e);
         }
 
         // Exclude the row being inserted by key, and then the scan can begin.
@@ -116,7 +116,7 @@ public class IndexLockTest {
             scanner.step();
             fail();
         } catch (LockTimeoutException e) {
-            // Row lock.
+            rowLockTimeout(e);
         }
 
         scanner.close();
@@ -136,7 +136,7 @@ public class IndexLockTest {
                 nameIx.newRowScanner(scanTxn, "name >= ? && name <= ?", "name-3", "name-7");
                 fail();
             } catch (LockTimeoutException e) {
-                // Predicate lock.
+                predicateLockTimeout(e);
             }
 
             // Exclude the row being inserted, and then the scan can begin.
@@ -147,7 +147,7 @@ public class IndexLockTest {
                 scanner.step();
                 fail();
             } catch (LockTimeoutException e) {
-                // Row lock.
+                rowLockTimeout(e);
             }
 
             scanner.close();
@@ -161,7 +161,7 @@ public class IndexLockTest {
                 scanner.step();
                 fail();
             } catch (LockTimeoutException e) {
-                // Row lock.
+                rowLockTimeout(e);
             }
 
             scanner.close();
@@ -210,6 +210,30 @@ public class IndexLockTest {
     }
 
     @Test
+    public void rowLockStall() throws Exception {
+        // A RowScanner which returns at most one row doesn't install a predicate lock, but it
+        // can still stall on a row lock held by another transaction.
+
+        var table = mDatabase.openTable(TestRow.class);
+
+        fill(table, 0, 3);
+
+        Transaction txn1 = mDatabase.newTransaction();
+        TestRow row = table.newRow();
+        row.id(5);
+        row.name("name-5");
+        table.insert(txn1, row);
+
+        Transaction scanTxn = mDatabase.newTransaction();
+        try {
+            table.newRowScanner(scanTxn, "id == ?", 5);
+            fail();
+        } catch (LockTimeoutException e) {
+            rowLockTimeout(e);
+        }
+    }
+
+    @Test
     public void blockedByScanner() throws Exception {
         blockedByScanner(TestRow.class, false);
     }
@@ -253,14 +277,14 @@ public class IndexLockTest {
             table.insert(insertTxn, row);
             fail();
         } catch (LockTimeoutException e) {
-            // Predicate lock.
+            predicateLockTimeout(e);
         }
 
         try {
             table.store(insertTxn, row);
             fail();
         } catch (LockTimeoutException e) {
-            // Predicate lock.
+            predicateLockTimeout(e);
         }
 
         // Inserting against a row not part of the scan isn't blocked.
@@ -292,7 +316,7 @@ public class IndexLockTest {
                 updater2.update();
                 fail();
             } catch (LockTimeoutException e) {
-                // Predicate lock.
+                predicateLockTimeout(e);
             }
 
             updater2.close();
@@ -469,6 +493,24 @@ public class IndexLockTest {
     {
         return updater ? table.newRowUpdater(txn, filter, args)
             : table.newRowScanner(txn, filter, args);
+    }
+
+    private static void predicateLockTimeout(LockTimeoutException e) throws LockTimeoutException {
+        for (StackTraceElement elem : e.getStackTrace()) {
+            if (elem.getClassName().contains("RowPredicateLock")) {
+                return;
+            }
+        }
+        throw e;
+    }
+
+    private static void rowLockTimeout(LockTimeoutException e) throws LockTimeoutException {
+        for (StackTraceElement elem : e.getStackTrace()) {
+            if (elem.getClassName().contains("BTreeCursor")) {
+                return;
+            }
+        }
+        throw e;
     }
 
     static interface Task {

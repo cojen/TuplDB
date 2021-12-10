@@ -133,8 +133,10 @@ public abstract class AbstractTable<R> implements Table<R> {
                     if (lock != null) {
                         // Add a predicate lock which is scoped just to the scanner.
                         closer = lock.addPredicate(txn, controller.predicate());
-                        scanner = BasicRowScanner.locked(this, controller, closer);
-                        break prepare2;
+                        if (closer != null) {
+                            scanner = BasicRowScanner.locked(this, controller, closer);
+                            break prepare2;
+                        }
                     }
                     // Fallthrough to next case.
                 }
@@ -158,7 +160,9 @@ public abstract class AbstractTable<R> implements Table<R> {
                 scanner.init(txn);
                 return scanner;
             } catch (Throwable e) {
-                closer.close();
+                if (closer != null) {
+                    closer.close();
+                }
                 throw e;
             }
         }
@@ -207,8 +211,10 @@ public abstract class AbstractTable<R> implements Table<R> {
                     if (lock != null) {
                         // Add a predicate lock which is scoped just to the updater.
                         closer = lock.addPredicate(txn, controller.predicate());
-                        updater = NonRepeatableRowUpdater.locked(this, controller, closer);
-                        break prepare2;
+                        if (closer != null) {
+                            updater = NonRepeatableRowUpdater.locked(this, controller, closer);
+                            break prepare2;
+                        }
                     }
                     // Fallthrough to next case.
                 }
@@ -237,7 +243,9 @@ public abstract class AbstractTable<R> implements Table<R> {
                 updater.init(txn);
                 return updater;
             } catch (Throwable e) {
-                closer.close();
+                if (closer != null) {
+                    closer.close();
+                }
                 throw e;
             }
         }
@@ -364,10 +372,17 @@ public abstract class AbstractTable<R> implements Table<R> {
                 rowInfo = RowStore.indexRowInfo(rowInfo, secondaryDesc);
             }
 
-            RowFilter[][] ranges = multiRangeExtract(rowInfo, rf);
+            var keyColumns = rowInfo.keyColumns.values().toArray(ColumnInfo[]::new);
+            RowFilter[][] ranges = multiRangeExtract(rowInfo, rf, keyColumns);
 
-            Class<? extends RowPredicate> baseClass =
-                mIndexLock == null ? null : mIndexLock.evaluatorClass();
+            Class<? extends RowPredicate> baseClass;
+
+            if (ranges.length == 1 && RowFilter.matchesOne(ranges[0], keyColumns)) {
+                // No predicate lock is required when the filter matches at most one row.
+                baseClass = null;
+            } else {
+                baseClass = mIndexLock == null ? null : mIndexLock.evaluatorClass();
+            }
 
             Class<? extends RowPredicate> predClass = new RowPredicateMaker
                 (rowStoreRef(), baseClass, rowType, rowInfo.rowGen(),
@@ -433,9 +448,9 @@ public abstract class AbstractTable<R> implements Table<R> {
              mSource.id(), remainder, remainderStr, lowBound, highBound).finish();
     }
 
-    private RowFilter[][] multiRangeExtract(RowInfo rowInfo, RowFilter rf) {
-        var keyColumns = rowInfo.keyColumns.values().toArray(ColumnInfo[]::new);
-
+    private RowFilter[][] multiRangeExtract(RowInfo rowInfo, RowFilter rf,
+                                            ColumnInfo... keyColumns)
+    {
         try {
             return rf.dnf().multiRangeExtract(false, false, keyColumns);
         } catch (ComplexFilterException e) {

@@ -139,6 +139,14 @@ public class ColumnToArgFilter extends ColumnFilter {
         return filter;
     }
 
+    @Override
+    boolean matchesOne(RowFilter high, ColumnInfo... keyColumns) {
+        return (high instanceof ColumnToArgFilter highCol) &&
+            mOperator == OP_GE && highCol.mOperator == OP_LE &&
+            mArgNum == highCol.mArgNum && mColumn.equals(highCol.mColumn) &&
+            keyColumns.length == 1 && keyColumns[0].equals(mColumn);
+    }
+
     public int argument() {
         return mArgNum;
     }

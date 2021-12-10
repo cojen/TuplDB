@@ -132,25 +132,26 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
     }
 
     @Override
-    public Evaluator<R> addPredicate(Transaction txn, RowPredicate<R> predicate)
+    public Closer addPredicate(Transaction txn, RowPredicate<R> predicate)
         throws LockFailureException
     {
-        Evaluator<R> evaluator;
         if (predicate instanceof Evaluator) {
-            evaluator = (Evaluator<R>) predicate;
+            var evaluator = (Evaluator<R>) predicate;
+            addEvaluator(txn, evaluator);
+            return evaluator;
         } else {
-            evaluator = makeEvaluator(predicate);
+            return addNonEvaluator(txn, predicate);
         }
-        addEvaluator(txn, evaluator);
-        return evaluator;
     }
 
-    private Evaluator<R> makeEvaluator(RowPredicate<R> predicate) {
+    private Closer addNonEvaluator(Transaction txn, RowPredicate<R> predicate)
+        throws LockFailureException
+    {
         if (predicate instanceof RowPredicate.None) {
             return null;
         }
 
-        return new Evaluator<R>() {
+        var evaluator = new Evaluator<R>() {
             @Override
             public boolean test(R row) {
                 return predicate.test(row);
@@ -171,6 +172,10 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
                 return predicate.toString();
             }
         };
+
+        addEvaluator(txn, evaluator);
+
+        return evaluator;
     }
 
     @Override

@@ -284,6 +284,45 @@ public class AndFilter extends GroupFilter {
     }
 
     @Override
+    boolean matchesOne(RowFilter high, ColumnInfo... keyColumns) {
+        if (!(high instanceof AndFilter highCol) ||
+            mSubFilters.length != keyColumns.length ||
+            mSubFilters.length != highCol.mSubFilters.length)
+        {
+            return false;
+        }
+
+        for (int i=0; i<mSubFilters.length; i++) {
+            RowFilter lowSub = mSubFilters[i];
+            if (!(lowSub instanceof ColumnToArgFilter lowSubCol)) {
+                return false;
+            }
+
+            RowFilter highSub = highCol.mSubFilters[i];
+            if (!(highSub instanceof ColumnToArgFilter highSubCol)) {
+                return false;
+            }
+
+            if (lowSubCol.mArgNum != highSubCol.mArgNum ||
+                !lowSubCol.mColumn.equals(highSubCol.mColumn))
+            {
+                return false;
+            }
+
+            int lowOp = OP_EQ, highOp = OP_EQ;
+            if (i == mSubFilters.length - 1) {
+                lowOp = OP_GE; highOp = OP_LE;
+            }
+
+            if (lowSubCol.mOperator != lowOp || highSubCol.mOperator != highOp) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    @Override
     final char opChar() {
         return '&';
     }

@@ -178,6 +178,27 @@ public abstract class RowFilter implements Comparable<RowFilter> {
         return range == null ? null : new RowFilter[][] {range};
     }
 
+    /**
+     * Returns true if the given range (as provided by rangeExtract or multiRangeExtract)
+     * exactly matches one row.
+     */
+    public static boolean matchesOne(RowFilter[] range, ColumnInfo... keyColumns) {
+        if (range[0] != null) {
+            return false;
+        }
+        RowFilter low = range[1];
+        RowFilter high = range[2];
+        return low != null && high != null && low.matchesOne(high, keyColumns);
+    }
+
+    /**
+     * Returns true if this low filter and the given high filter fully matches all the given
+     * key columns. False is returned if a column is a "fuzzy" match.
+     */
+    boolean matchesOne(RowFilter high, ColumnInfo... keyColumns) {
+        return false;
+    }
+
     @Override
     public final int hashCode() {
         return mHash;

@@ -65,7 +65,8 @@ public interface RowPredicateLock<R> {
      *
      * @param txn exclusive owner of the lock
      * @param predicate defines the lock matching rules
-     * @return an object which can release the predicate lock before the transaction exits
+     * @return an object which can release the predicate lock before the transaction exits; is
+     * null if no actual predicate was installed
      */
     Closer addPredicate(Transaction txn, RowPredicate<R> predicate) throws LockFailureException;
 
