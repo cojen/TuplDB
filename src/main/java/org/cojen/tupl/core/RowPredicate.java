@@ -30,12 +30,6 @@ public interface RowPredicate<R> {
     public boolean test(R row);
 
     /**
-     * Test against a row in which only the primary key columns are filled in. Additional
-     * columns must be decoded as necessary.
-     */
-    public boolean test(R row, byte[] value);
-
-    /**
      * Test against an encoded key and value. All columns must be decoded as necessary.
      */
     public boolean test(byte[] key, byte[] value);
@@ -67,11 +61,6 @@ public interface RowPredicate<R> {
         }
 
         @Override
-        public final boolean test(R row, byte[] value) {
-            return false;
-        }
-
-        @Override
         public final boolean test(byte[] key, byte[] value) {
             return false;
         }
@@ -82,11 +71,6 @@ public interface RowPredicate<R> {
 
         @Override
         public boolean test(Object row) {
-            return true;
-        }
-
-        @Override
-        public boolean test(Object row, byte[] value) {
             return true;
         }
 

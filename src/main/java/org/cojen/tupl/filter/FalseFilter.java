@@ -23,7 +23,7 @@ package org.cojen.tupl.filter;
  * @author Brian S O'Neill
  */
 public final class FalseFilter extends OrFilter {
-    static final FalseFilter THE = new FalseFilter();
+    public static final FalseFilter THE = new FalseFilter();
 
     private FalseFilter() {
         mReduced = true;

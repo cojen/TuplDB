@@ -83,7 +83,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
     }
 
     @Override
-    public AutoCloseable openAcquire(Transaction txn, R row) throws LockFailureException {
+    public Closer openAcquire(Transaction txn, R row) throws LockFailureException {
         var local = (LocalTransaction) txn;
         VersionLock lock = mNewestVersion;
         lock.acquire(local);
@@ -102,28 +102,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
     }
 
     @Override
-    public AutoCloseable openAcquire(Transaction txn, R row, byte[] value)
-        throws LockFailureException
-    {
-        var local = (LocalTransaction) txn;
-        VersionLock lock = mNewestVersion;
-        lock.acquire(local);
-
-        try {
-            for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
-                if (e.test(row, value)) {
-                    e.matched(local);
-                }
-            }
-            return lock;
-        } catch (Throwable e) {
-            lock.close();
-            throw e;
-        }
-    }
-
-    @Override
-    public AutoCloseable openAcquire(Transaction txn, byte[] key, byte[] value)
+    public Closer openAcquire(Transaction txn, byte[] key, byte[] value)
         throws LockFailureException
     {
         var local = (LocalTransaction) txn;
@@ -153,44 +132,45 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
     }
 
     @Override
-    public void addPredicate(Transaction txn, RowPredicate<R> predicate)
+    public Evaluator<R> addPredicate(Transaction txn, RowPredicate<R> predicate)
         throws LockFailureException
     {
         Evaluator<R> evaluator;
         if (predicate instanceof Evaluator) {
             evaluator = (Evaluator<R>) predicate;
-        } else if (predicate instanceof RowPredicate.None) {
-            return;
         } else {
-            evaluator = new Evaluator<R>() {
-                @Override
-                public boolean test(R row) {
-                    return predicate.test(row);
-                }
+            evaluator = makeEvaluator(predicate);
+        }
+        addEvaluator(txn, evaluator);
+        return evaluator;
+    }
 
-                @Override
-                public boolean test(R row, byte[] value) {
-                    return predicate.test(row, value);
-                }
-
-                @Override
-                public boolean test(byte[] key, byte[] value) {
-                    return predicate.test(key, value);
-                }
-
-                @Override
-                public boolean test(byte[] key) {
-                    return predicate.test(key);
-                }
-
-                @Override
-                public String toString() {
-                    return predicate.toString();
-                }
-            };
+    private Evaluator<R> makeEvaluator(RowPredicate<R> predicate) {
+        if (predicate instanceof RowPredicate.None) {
+            return null;
         }
 
-        addEvaluator(txn, evaluator);
+        return new Evaluator<R>() {
+            @Override
+            public boolean test(R row) {
+                return predicate.test(row);
+            }
+
+            @Override
+            public boolean test(byte[] key, byte[] value) {
+                return predicate.test(key, value);
+            }
+
+            @Override
+            public boolean test(byte[] key) {
+                return predicate.test(key);
+            }
+
+            @Override
+            public String toString() {
+                return predicate.toString();
+            }
+        };
     }
 
     @Override
@@ -330,7 +310,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
     }
 
     // FIXME: Define a striped variant for improved concurrency.
-    private static final class VersionLock extends DetachedLockImpl implements AutoCloseable {
+    private static final class VersionLock extends DetachedLockImpl implements Closer {
 
         private static final VarHandle cIndexIdHandle, cQueueUHandle;
 
@@ -606,7 +586,9 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
     /**
      * Implements the actual predicate lock instances.
      */
-    public static abstract class Evaluator<R> extends DetachedLockImpl implements RowPredicate<R> {
+    public static abstract class Evaluator<R>
+        extends DetachedLockImpl implements RowPredicate<R>, Closer
+    {
         private RowPredicateLockImpl<R> mLock;
 
         private volatile Evaluator<R> mNext;
@@ -643,6 +625,16 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
          */
         final boolean hasMatched() {
             return (boolean) cMatchedHandle.getOpaque(this);
+        }
+
+        /**
+         * Called to release the predicate lock before the transaction exits.
+         */
+        @Override
+        public void close() {
+            var bucket = mBucket;
+            bucket.acquireExclusive();
+            doUnlockOwnedUnrestricted(bucket);
         }
     }
 }

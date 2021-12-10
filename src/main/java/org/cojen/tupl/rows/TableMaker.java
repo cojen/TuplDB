@@ -38,6 +38,8 @@ import org.cojen.tupl.Index;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnmodifiableViewException;
 
+import org.cojen.tupl.core.RowPredicateLock;
+
 import org.cojen.tupl.views.ViewUtils;
 
 /**
@@ -54,6 +56,7 @@ public class TableMaker {
     private final Class<?> mRowClass;
     private final byte[] mSecondaryDescriptor;
     private final long mIndexId;
+    private final boolean mSupportsIndexLock;
     private final ClassMaker mClassMaker;
 
     /**
@@ -62,8 +65,10 @@ public class TableMaker {
      * @param store generated class is pinned to this specific instance
      * @param rowGen describes row encoding
      */
-    TableMaker(RowStore store, Class<?> type, RowGen rowGen, long indexId) {
-        this(store, type, rowGen, rowGen, null, indexId);
+    TableMaker(RowStore store, Class<?> type, RowGen rowGen,
+               long indexId, boolean supportsIndexLock)
+    {
+        this(store, type, rowGen, rowGen, null, indexId, supportsIndexLock);
     }
 
     /**
@@ -75,7 +80,7 @@ public class TableMaker {
      * @param secondaryDesc secondary index descriptor
      */
     TableMaker(RowStore store, Class<?> type, RowGen rowGen, RowGen codecGen,
-               byte[] secondaryDesc, long indexId)
+               byte[] secondaryDesc, long indexId, boolean supportsIndexLock)
     {
         mStore = store;
         mRowType = type;
@@ -85,6 +90,7 @@ public class TableMaker {
         mRowClass = RowMaker.find(type);
         mSecondaryDescriptor = secondaryDesc;
         mIndexId = indexId;
+        mSupportsIndexLock = supportsIndexLock;
 
         String suffix = "Table";
         Class baseClass;
@@ -102,13 +108,16 @@ public class TableMaker {
     }
 
     /**
-     * @return a constructor which accepts a (TableManager, Index) and returns an AbstractTable
-     * implementation
+     * @return a constructor which accepts a (TableManager, Index, RowPredicateLock) and returns
+     * an AbstractTable implementation
      */
     MethodHandle finish() {
+        MethodType mt = MethodType.methodType
+            (void.class, TableManager.class, Index.class, RowPredicateLock.class);
+
         {
-            MethodMaker mm = mClassMaker.addConstructor(TableManager.class, Index.class);
-            mm.invokeSuperConstructor(mm.param(0), mm.param(1));
+            MethodMaker mm = mClassMaker.addConstructor(mt);
+            mm.invokeSuperConstructor(mm.param(0), mm.param(1), mm.param(2));
         }
 
         // Add the simple rowType method.
@@ -207,9 +216,7 @@ public class TableMaker {
 
         try {
             var lookup = mClassMaker.finishLookup();
-            return lookup.findConstructor
-                (lookup.lookupClass(),
-                 MethodType.methodType(void.class, TableManager.class, Index.class));
+            return lookup.findConstructor(lookup.lookupClass(), mt);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }
@@ -778,12 +785,10 @@ public class TableMaker {
         var keyVar = mm.invoke("encodePrimaryKey", rowVar);
         var valueVar = mm.invoke("encodeValue", rowVar);
 
-        final var source = mm.field("mSource");
-
         Variable resultVar = null;
 
         if (!supportsTriggers()) {
-            resultVar = source.invoke(variant, txnVar, keyVar, valueVar);
+            resultVar = storeNoTrigger(mm, variant, txnVar, rowVar, keyVar, valueVar);
         } else {
             Label cont = mm.label();
 
@@ -792,21 +797,13 @@ public class TableMaker {
             prepareForTrigger(mm, mm.this_(), triggerVar, skipLabel);
             Label triggerStart = mm.label().here();
 
+            final var source = mm.field("mSource").get();
+
             // Trigger requires a non-null transaction.
             txnVar.set(mm.var(ViewUtils.class).invoke("enterScope", source, txnVar));
             Label txnStart = mm.label().here();
 
-            if (variant == "insert") {
-                var insertResultVar = source.invoke(variant, txnVar, keyVar, valueVar);
-                Label passed = mm.label();
-                insertResultVar.ifTrue(passed);
-                mm.return_(false);
-                passed.here();
-                triggerVar.invoke("insert", txnVar, rowVar, keyVar, valueVar);
-                txnVar.invoke("commit");
-                markAllClean(rowVar);
-                mm.return_(true);
-            } else if (variant == "replace") {
+            if (variant == "replace") {
                 var cursorVar = source.invoke("newCursor", txnVar);
                 Label cursorStart = mm.label().here();
                 cursorVar.invoke("find", keyVar);
@@ -822,22 +819,50 @@ public class TableMaker {
                 markAllClean(rowVar);
                 mm.return_(true);
             } else {
-                var oldValueVar = source.invoke("exchange", txnVar, keyVar, valueVar);
-                Label wasNull = mm.label();
-                oldValueVar.ifEq(null, wasNull);
-                triggerVar.invoke("store", txnVar, rowVar, keyVar, oldValueVar, valueVar);
-                Label commit = mm.label();
-                mm.goto_(commit);
-                wasNull.here();
-                triggerVar.invoke("insert", txnVar, rowVar, keyVar, valueVar);
-                commit.here();
-                txnVar.invoke("commit");
-                if (variant == "store") {
-                    markAllClean(rowVar);
-                    mm.return_();
+                Variable closerVar;
+                Label opStart;
+                if (!mSupportsIndexLock) {
+                    closerVar = null;
+                    opStart = null;
                 } else {
-                    resultVar = oldValueVar;
-                    mm.goto_(cont);
+                    closerVar = mm.field("mIndexLock").invoke("openAcquire", txnVar, rowVar);
+                    opStart = mm.label().here();
+                }
+
+                if (variant == "insert") {
+                    var insertResultVar = source.invoke(variant, txnVar, keyVar, valueVar);
+                    if (closerVar != null) {
+                        mm.finally_(opStart, () -> closerVar.invoke("close"));
+                    }
+                    Label passed = mm.label();
+                    insertResultVar.ifTrue(passed);
+                    mm.return_(false);
+                    passed.here();
+                    triggerVar.invoke("insert", txnVar, rowVar, keyVar, valueVar);
+                    txnVar.invoke("commit");
+                    markAllClean(rowVar);
+                    mm.return_(true);
+                } else {
+                    var oldValueVar = source.invoke("exchange", txnVar, keyVar, valueVar);
+                    if (closerVar != null) {
+                        mm.finally_(opStart, () -> closerVar.invoke("close"));
+                    }
+                    Label wasNull = mm.label();
+                    oldValueVar.ifEq(null, wasNull);
+                    triggerVar.invoke("store", txnVar, rowVar, keyVar, oldValueVar, valueVar);
+                    Label commit = mm.label();
+                    mm.goto_(commit);
+                    wasNull.here();
+                    triggerVar.invoke("insert", txnVar, rowVar, keyVar, valueVar);
+                    commit.here();
+                    txnVar.invoke("commit");
+                    if (variant == "store") {
+                        markAllClean(rowVar);
+                        mm.return_();
+                    } else {
+                        resultVar = oldValueVar;
+                        mm.goto_(cont);
+                    }
                 }
             }
 
@@ -845,12 +870,12 @@ public class TableMaker {
 
             skipLabel.here();
 
-            var invokeResultVar = source.invoke(variant, txnVar, keyVar, valueVar);
+            Variable storeResultVar = storeNoTrigger(mm, variant, txnVar, rowVar, keyVar, valueVar);
             
             if (resultVar == null) {
-                resultVar = invokeResultVar;
+                resultVar = storeResultVar;
             } else {
-                resultVar.set(invokeResultVar);
+                resultVar.set(storeResultVar);
             }
 
             mm.finally_(triggerStart, () -> triggerVar.invoke("releaseShared"));
@@ -892,6 +917,34 @@ public class TableMaker {
         mm = mClassMaker.addMethod
             (Object.class, variant, Transaction.class, Object.class).public_().bridge();
         mm.return_(mm.this_().invoke(returnType, variant, null, mm.param(0), mm.param(1)));
+    }
+
+    /**
+     * @param variant "store", "exchange", "insert", or "replace"
+     */
+    private Variable storeNoTrigger(MethodMaker mm, String variant,
+                                    Variable txnVar, Variable rowVar,
+                                    Variable keyVar, Variable valueVar)
+    {
+        Variable source = mm.field("mSource");
+
+        if (variant == "replace" || !mSupportsIndexLock) {
+            return source.invoke(variant, txnVar, keyVar, valueVar);
+        }
+
+        source = mm.field("mSource").get();
+
+        // RowPredicateLock requires a non-null transaction.
+        txnVar.set(mm.var(ViewUtils.class).invoke("enterScope", source, txnVar));
+        Label txnStart = mm.label().here();
+        var closerVar = mm.field("mIndexLock").invoke("openAcquire", txnVar, rowVar);
+        Label opStart = mm.label().here();
+        var resultVar = source.invoke(variant, txnVar, keyVar, valueVar);
+        mm.finally_(opStart, () -> closerVar.invoke("close"));
+        txnVar.invoke("commit");
+        mm.finally_(txnStart, () -> txnVar.invoke("exit"));
+
+        return resultVar;
     }
 
     private static void copyFields(MethodMaker mm, Variable src, Variable dst,

@@ -40,6 +40,7 @@ import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.core.RowPredicate;
+import org.cojen.tupl.core.RowPredicateLock;
 
 import org.cojen.tupl.filter.ComplexFilterException;
 import org.cojen.tupl.filter.FalseFilter;
@@ -69,6 +70,9 @@ public abstract class AbstractTable<R> implements Table<R> {
     private Trigger<R> mTrigger;
     private static final VarHandle cTriggerHandle;
 
+    // Is null if unsupported.
+    protected final RowPredicateLock<R> mIndexLock;
+
     static {
         try {
             cTriggerHandle = MethodHandles.lookup().findVarHandle
@@ -78,15 +82,23 @@ public abstract class AbstractTable<R> implements Table<R> {
         }
     }
 
-    protected AbstractTable(TableManager<R> manager, Index source) {
+    /**
+     * @param indexLock is null if unsupported
+     */
+    protected AbstractTable(TableManager<R> manager, Index source, RowPredicateLock<R> indexLock) {
         mTableManager = manager;
+
         mSource = Objects.requireNonNull(source);
+
         mFilterFactoryCache = new WeakCache<>();
+
         if (supportsSecondaries()) {
             var trigger = new Trigger<R>();
             trigger.mMode = Trigger.SKIP;
             cTriggerHandle.setRelease(this, trigger);
         }
+
+        mIndexLock = indexLock;
     }
 
     @Override
@@ -104,8 +116,55 @@ public abstract class AbstractTable<R> implements Table<R> {
     private RowScanner<R> newRowScanner(Transaction txn, ScanController<R> controller)
         throws IOException
     {
-        var scanner = new BasicRowScanner<>(this, controller);
+        final BasicRowScanner<R> scanner;
+        prepare: if (txn == null) {
+            scanner = new BasicRowScanner<>(this, controller);
+        } else {
+            final RowPredicateLock.Closer closer;
+            prepare2: {
+                switch (txn.lockMode()) {
+                case UPGRADABLE_READ: case REPEATABLE_READ: default: {
+                    scanner = new BasicRowScanner<>(this, controller);
+                    break;
+                }
+
+                case READ_COMMITTED: {
+                    RowPredicateLock<R> lock = mIndexLock;
+                    if (lock != null) {
+                        // Add a predicate lock which is scoped just to the scanner.
+                        closer = lock.addPredicate(txn, controller.predicate());
+                        scanner = BasicRowScanner.locked(this, controller, closer);
+                        break prepare2;
+                    }
+                    // Fallthrough to next case.
+                }
+
+                case READ_UNCOMMITTED: case UNSAFE:
+                    scanner = new BasicRowScanner<>(this, controller);
+                    // Don't add a predicate lock.
+                    break prepare;
+                }
+
+                if (mIndexLock == null) {
+                    break prepare;
+                }
+
+                // When this case is reached, the predicate lock effectively makes the
+                // transaction serializable.
+                closer = mIndexLock.addPredicate(txn, controller.predicate());
+            }
+
+            try {
+                scanner.init(txn);
+                return scanner;
+            } catch (Throwable e) {
+                closer.close();
+                throw e;
+            }
+        }
+
         scanner.init(txn);
+
         return scanner;
     }
 
@@ -124,19 +183,63 @@ public abstract class AbstractTable<R> implements Table<R> {
     protected RowUpdater<R> newRowUpdater(Transaction txn, ScanController<R> controller)
         throws IOException
     {
-        BasicRowUpdater<R> updater;
-        if (txn == null) {
+        final BasicRowUpdater<R> updater;
+        prepare: if (txn == null) {
             txn = mSource.newTransaction(null);
             updater = new AutoCommitRowUpdater<>(this, controller);
         } else {
-            updater = switch (txn.lockMode()) {
-                default -> new BasicRowUpdater<>(this, controller);
-                case REPEATABLE_READ -> new UpgradableRowUpdater<>(this, controller);
-                case READ_COMMITTED, READ_UNCOMMITTED -> {
-                    txn.enter();
-                    yield new NonRepeatableRowUpdater<>(this, controller);
+            final RowPredicateLock.Closer closer;
+            prepare2: {
+                switch (txn.lockMode()) {
+                case UPGRADABLE_READ: default: {
+                    updater = new BasicRowUpdater<>(this, controller);
+                    break;
                 }
-            };
+
+                case REPEATABLE_READ: {
+                    // Need to use upgradable locks to prevent deadlocks.
+                    updater = new UpgradableRowUpdater<>(this, controller);
+                    break;
+                }
+
+                case READ_COMMITTED: {
+                    RowPredicateLock<R> lock = mIndexLock;
+                    if (lock != null) {
+                        // Add a predicate lock which is scoped just to the updater.
+                        closer = lock.addPredicate(txn, controller.predicate());
+                        updater = NonRepeatableRowUpdater.locked(this, controller, closer);
+                        break prepare2;
+                    }
+                    // Fallthrough to next case.
+                }
+
+                case READ_UNCOMMITTED:
+                    updater = new NonRepeatableRowUpdater<>(this, controller);
+                    // Don't add a predicate lock.
+                    break prepare;
+
+                case UNSAFE:
+                    updater = new BasicRowUpdater<>(this, controller);
+                    // Don't add a predicate lock.
+                    break prepare;
+                }
+
+                if (mIndexLock == null) {
+                    break prepare;
+                }
+
+                // When this case is reached, the predicate lock effectively makes the
+                // transaction serializable.
+                closer = mIndexLock.addPredicate(txn, controller.predicate());
+            }
+
+            try {
+                updater.init(txn);
+                return updater;
+            } catch (Throwable e) {
+                closer.close();
+                throw e;
+            }
         }
 
         updater.init(txn);
@@ -263,12 +366,12 @@ public abstract class AbstractTable<R> implements Table<R> {
 
             RowFilter[][] ranges = multiRangeExtract(rowInfo, rf);
 
-            // FIXME: evaluatorClass
-            Class<? extends RowPredicate> baseClass = null;
+            Class<? extends RowPredicate> baseClass =
+                mIndexLock == null ? null : mIndexLock.evaluatorClass();
 
             Class<? extends RowPredicate> predClass = new RowPredicateMaker
                 (rowStoreRef(), baseClass, rowType, rowInfo.rowGen(),
-                 mSource.id(), rf, filter, ranges).finish();
+                 mTableManager.mPrimaryIndex.id(), mSource.id(), rf, filter, ranges).finish();
 
             if (ranges.length > 1) {
                 var rangeFactories = new ScanControllerFactory[ranges.length];

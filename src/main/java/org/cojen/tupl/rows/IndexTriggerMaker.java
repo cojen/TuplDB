@@ -32,6 +32,8 @@ import org.cojen.tupl.Index;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UniqueConstraintException;
 
+import org.cojen.tupl.core.RowPredicateLock;
+
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Field;
 import org.cojen.maker.Label;
@@ -55,6 +57,7 @@ public class IndexTriggerMaker<R> {
     final byte[][] mSecondaryDescriptors;
     final SecondaryInfo[] mSecondaryInfos;
     final Index[] mSecondaryIndexes;
+    final RowPredicateLock<R>[] mSecondaryLocks;
     final IndexBackfill<R>[] mBackfills;
 
     // Map for all the columns needed by all of the secondary indexes.
@@ -80,6 +83,7 @@ public class IndexTriggerMaker<R> {
         mSecondaryDescriptors = new byte[numIndexes][];
         mSecondaryInfos = new SecondaryInfo[numIndexes];
         mSecondaryIndexes = new Index[numIndexes];
+        mSecondaryLocks = new RowPredicateLock[numIndexes];
         mBackfills = new IndexBackfill[numIndexes];
     }
 
@@ -89,7 +93,8 @@ public class IndexTriggerMaker<R> {
      * @param secondaryIndexes note: elements are null for dropped indexes
      */
     private IndexTriggerMaker(Class<R> rowType, RowInfo primaryInfo,
-                              SecondaryInfo[] secondaryInfos, Index[] secondaryIndexes)
+                              SecondaryInfo[] secondaryInfos, Index[] secondaryIndexes,
+                              RowPredicateLock<R>[] secondaryLocks)
     {
         mRowType = rowType;
         mRowClass = RowMaker.find(rowType);
@@ -98,6 +103,7 @@ public class IndexTriggerMaker<R> {
         mSecondaryDescriptors = null;
         mSecondaryInfos = secondaryInfos;
         mSecondaryIndexes = secondaryIndexes;
+        mSecondaryLocks = secondaryLocks;
         mBackfills = null;
     }
 
@@ -167,6 +173,7 @@ public class IndexTriggerMaker<R> {
     /**
      * @param primaryIndexId primary index id
      */
+    @SuppressWarnings("unchecked")
     Trigger<R> makeTrigger(RowStore rs, long primaryIndexId) {
         mClassMaker = mPrimaryGen.beginClassMaker(IndexTriggerMaker.class, mRowType, "Trigger");
         mClassMaker.extend(Trigger.class).final_();
@@ -175,6 +182,10 @@ public class IndexTriggerMaker<R> {
 
         for (int i=0; i<mSecondaryIndexes.length; i++) {
             mClassMaker.addField(Index.class, "ix" + i).private_().final_();
+
+            if (mSecondaryLocks[i] != null) {
+                mClassMaker.addField(RowPredicateLock.class, "lock" + i).private_().final_();
+            }
 
             IndexBackfill backfill = mBackfills[i];
             if (backfill != null) {
@@ -186,10 +197,11 @@ public class IndexTriggerMaker<R> {
 
         MethodType ctorMethodType;
         if (!hasBackfills) {
-            ctorMethodType = MethodType.methodType(void.class, Index[].class);
+            ctorMethodType = MethodType.methodType
+                (void.class, Index[].class, RowPredicateLock[].class);
         } else {
             ctorMethodType = MethodType.methodType
-                (void.class, Index[].class, IndexBackfill[].class);
+                (void.class, Index[].class, RowPredicateLock[].class, IndexBackfill[].class);
         }
 
         {
@@ -200,10 +212,16 @@ public class IndexTriggerMaker<R> {
                 mm.field("ix" + i).set(mm.param(0).aget(i));
             }
 
+            for (int i=0; i<mSecondaryLocks.length; i++) {
+                if (mSecondaryLocks[i] != null) {
+                    mm.field("lock" + i).set(mm.param(1).aget(i));
+                }
+            }
+
             if (hasBackfills) {
                 for (int i=0; i<mBackfills.length; i++) {
                     if (mBackfills[i] != null) {
-                        mm.field("backfill" + i).set(mm.param(1).aget(i));
+                        mm.field("backfill" + i).set(mm.param(2).aget(i));
                     }
                 }
             }
@@ -235,9 +253,9 @@ public class IndexTriggerMaker<R> {
         try {
             var ctor = lookup.findConstructor(lookup.lookupClass(), ctorMethodType);
             if (!hasBackfills) {
-                trigger = (Trigger<R>) ctor.invoke(mSecondaryIndexes);
+                trigger = (Trigger<R>) ctor.invoke(mSecondaryIndexes, mSecondaryLocks);
             } else {
-                trigger = (Trigger<R>) ctor.invoke(mSecondaryIndexes, mBackfills);
+                trigger = (Trigger<R>) ctor.invoke(mSecondaryIndexes, mSecondaryLocks, mBackfills);
             }
         } catch (Throwable e) {
             throw rethrow(e);
@@ -653,12 +671,28 @@ public class IndexTriggerMaker<R> {
             var secondaryValueVar = encodeColumns
                 (mm, mColumnSources, rowVar, ROW_FULL, keyVar, newValueVar, secondaryValueCodecs);
 
+            Variable closerVar;
+            Label opStart;
+            if (mSecondaryLocks[i] == null) {
+                closerVar = null;
+                opStart = null;
+            } else {
+                closerVar = mm.field("lock" + i).invoke("openAcquire", txnVar, rowVar);
+                opStart = mm.label().here();
+            }
+
             var ixField = mm.field("ix" + i);
 
             if (!secondaryInfo.isAltKey) {
                 ixField.invoke("store", txnVar, secondaryKeyVar, secondaryValueVar);
+                if (closerVar != null) {
+                    mm.finally_(opStart, () -> closerVar.invoke("close"));
+                }
             } else {
                 var result = ixField.invoke("insert", txnVar, secondaryKeyVar, secondaryValueVar);
+                if (closerVar != null) {
+                    mm.finally_(opStart, () -> closerVar.invoke("close"));
+                }
                 Label pass = mm.label();
                 result.ifTrue(pass);
                 mm.new_(UniqueConstraintException.class, "Alternate key").throw_();
@@ -718,6 +752,7 @@ public class IndexTriggerMaker<R> {
      *
      *     void (int schemaVersion, Transaction txn, Row row, byte[] key, byte[] oldValueVar)
      */
+    @SuppressWarnings("unchecked")
     public static SwitchCallSite indyDelete(MethodHandles.Lookup lookup, String name,
                                             MethodType mt, WeakReference<RowStore> storeRef,
                                             Class<?> rowType, long indexId,
@@ -740,6 +775,7 @@ public class IndexTriggerMaker<R> {
 
             RowInfo primaryInfo;
             Index[] secondaryIndexes;
+            RowPredicateLock[] secondaryLocks;
             try {
                 if (schemaVersion == 0) {
                     // When the schema version is zero, the primary value is empty. Since the
@@ -748,10 +784,15 @@ public class IndexTriggerMaker<R> {
                 } else {
                     primaryInfo = store.rowInfo(rowType, indexId, schemaVersion);
                 }
+
                 secondaryIndexes = new Index[secondaryIndexIds.length];
+                secondaryLocks = new RowPredicateLock[secondaryIndexes.length];
+
                 for (int i=0; i<secondaryIndexIds.length; i++) {
                     secondaryIndexes[i] = store.mDatabase.indexById(secondaryIndexIds[i]);
+                    secondaryLocks[i] = store.indexLock(secondaryIndexes[i]);
                 }
+
             } catch (Exception e) {
                 var mm = MethodMaker.begin(lookup, "delete", mtx);
                 return new ExceptionCallSite.Failed(mtx, mm, e);
@@ -760,7 +801,7 @@ public class IndexTriggerMaker<R> {
             SecondaryInfo[] secondaryInfos = RowStore.indexRowInfos(primaryInfo, secondaryDescs);
 
             var maker = new IndexTriggerMaker<>
-                (rowType, primaryInfo, secondaryInfos, secondaryIndexes);
+                (rowType, primaryInfo, secondaryInfos, secondaryIndexes, secondaryLocks);
 
             IndexBackfill[] backfills = null;
             if (backfillRefs != null) {
@@ -952,34 +993,22 @@ public class IndexTriggerMaker<R> {
             Label cont = mm.label();
             mm.goto_(cont);
 
-            // Index needs to be updated. Delete the old entry and insert a new one.
+            // Index needs to be updated. Insert the new entry and delete the old one.
             modified.here();
+
+            Variable closerVar;
+            Label opStart;
+            if (mSecondaryLocks[i] == null) {
+                closerVar = null;
+                opStart = null;
+            } else {
+                closerVar = mm.field("lock" + i).invoke("openAcquire", txnVar, rowVar);
+                opStart = mm.label().here();
+            }
 
             SecondaryInfo secondaryInfo = mSecondaryInfos[i];
             RowGen secondaryGen = secondaryInfo.rowGen();
             Field ixField = mm.field("ix" + i);
-
-            {
-                // Perform "just-in-time" decoding for some or all of the columns that make up
-                // the key to delete.
-                for (Map.Entry<String, ColumnCodec> e : secondaryGen.keyCodecMap().entrySet()) {
-                    oldColumnSources.get(e.getKey()).performJitDecode(mm);
-                }
-
-                ColumnCodec[] secondaryKeyCodecs = ColumnCodec.bind(secondaryGen.keyCodecs(), mm);
-
-                var secondaryKeyVar = encodeColumns
-                    (mm, oldColumnSources, rowVar, ROW_KEY_ONLY,
-                     keyVar, oldValueVar, secondaryKeyCodecs);
-
-                ixField.invoke("store", txnVar, secondaryKeyVar, null);
-
-                if (mBackfills[i] != null) {
-                    mm.field("backfill" + i).invoke("deleted", txnVar, secondaryKeyVar);
-                }
-            }
-
-            // Now insert a new entry.
 
             ColumnCodec[] secondaryKeyCodecs = ColumnCodec.bind(secondaryGen.keyCodecs(), mm);
             ColumnCodec[] secondaryValueCodecs = ColumnCodec.bind(secondaryGen.valueCodecs(), mm);
@@ -992,8 +1021,14 @@ public class IndexTriggerMaker<R> {
 
             if (!secondaryInfo.isAltKey) {
                 ixField.invoke("store", txnVar, secondaryKeyVar, secondaryValueVar);
+                if (closerVar != null) {
+                    mm.finally_(opStart, () -> closerVar.invoke("close"));
+                }
             } else {
                 var result = ixField.invoke("insert", txnVar, secondaryKeyVar, secondaryValueVar);
+                if (closerVar != null) {
+                    mm.finally_(opStart, () -> closerVar.invoke("close"));
+                }
                 Label pass = mm.label();
                 result.ifTrue(pass);
                 mm.new_(UniqueConstraintException.class, "Alternate key").throw_();
@@ -1003,6 +1038,26 @@ public class IndexTriggerMaker<R> {
             if (mBackfills[i] != null) {
                 mm.field("backfill" + i).invoke
                     ("inserted", txnVar, secondaryKeyVar, secondaryValueVar);
+            }
+
+            // Now delete the old entry.
+
+            // Perform "just-in-time" decoding for some or all of the columns that make up the
+            // key to delete.
+            for (Map.Entry<String, ColumnCodec> e : secondaryGen.keyCodecMap().entrySet()) {
+                oldColumnSources.get(e.getKey()).performJitDecode(mm);
+            }
+
+            secondaryKeyCodecs = ColumnCodec.bind(secondaryGen.keyCodecs(), mm);
+
+            secondaryKeyVar = encodeColumns
+                (mm, oldColumnSources, rowVar, ROW_KEY_ONLY,
+                 keyVar, oldValueVar, secondaryKeyCodecs);
+
+            ixField.invoke("store", txnVar, secondaryKeyVar, null);
+
+            if (mBackfills[i] != null) {
+                mm.field("backfill" + i).invoke("deleted", txnVar, secondaryKeyVar);
             }
 
             cont.here();

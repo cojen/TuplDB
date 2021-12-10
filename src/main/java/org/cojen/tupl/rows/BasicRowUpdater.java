@@ -31,6 +31,8 @@ import org.cojen.tupl.UniqueConstraintException;
 import org.cojen.tupl.UnpositionedCursorException;
 import org.cojen.tupl.View;
 
+import org.cojen.tupl.core.RowPredicateLock;
+
 import org.cojen.tupl.views.ViewUtils;
 
 /**
@@ -187,7 +189,21 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
 
         Transaction txn = ViewUtils.enterScope(source, c.link());
         doUpdate: try {
-            if (!source.insert(txn, key, value)) {
+            boolean result;
+
+            RowPredicateLock<R> lock = mTable.mIndexLock;
+            if (lock == null) {
+                result = source.insert(txn, key, value);
+            } else {
+                RowPredicateLock.Closer closer = lock.openAcquire(txn, row);
+                try {
+                    result = source.insert(txn, key, value);
+                } finally {
+                    closer.close();
+                }
+            }
+
+            if (!result) {
                 if (cmp < 0) {
                     mKeysToSkip.remove(key);
                 }

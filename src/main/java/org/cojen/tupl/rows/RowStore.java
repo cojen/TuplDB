@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.WeakHashMap;
 
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -50,6 +51,7 @@ import org.cojen.tupl.UniqueConstraintException;
 import org.cojen.tupl.View;
 
 import org.cojen.tupl.core.CoreDatabase;
+import org.cojen.tupl.core.RowPredicateLock;
 import org.cojen.tupl.core.ScanVisitor;
 
 import org.cojen.tupl.util.Runner;
@@ -93,6 +95,8 @@ public class RowStore {
 
     private final WeakCache<Index, TableManager<?>> mTableManagers;
 
+    private final WeakHashMap<Index, RowPredicateLock<?>> mIndexLocks;
+
     // Extended key for referencing secondary indexes.
     private static final int K_SECONDARY = 1;
 
@@ -127,6 +131,7 @@ public class RowStore {
         mDatabase = db;
         mSchemata = schemata;
         mTableManagers = new WeakCache<>();
+        mIndexLocks = new WeakHashMap<>();
 
         registerToUpdateSchemata();
 
@@ -190,6 +195,21 @@ public class RowStore {
         return manager;
     }
 
+    /**
+     * @return null if predicate lock is unsupported
+     */
+    @SuppressWarnings("unchecked")
+    <R> RowPredicateLock<R> indexLock(Index ix) {
+        synchronized (mIndexLocks) {
+            var lock = mIndexLocks.get(ix);
+            if (lock == null) {
+                lock = mDatabase.newRowPredicateLock(ix.id());
+                mIndexLocks.put(ix, lock);
+            }
+            return (RowPredicateLock<R>) lock;
+        }
+    }
+
     @SuppressWarnings("unchecked")
     public <R> Table<R> asTable(Index ix, Class<R> type) throws IOException {
         return ((TableManager<R>) tableManager(ix)).asTable(this, ix, type);
@@ -230,9 +250,12 @@ public class RowStore {
                 checkSchema(type.getName(), currentInfo, info);
             }
 
+            RowPredicateLock<R> indexLock = indexLock(ix);
+
             try {
-                var mh = new TableMaker(this, type, info.rowGen(), ix.id()).finish();
-                table = (AbstractTable) mh.invoke(manager, ix);
+                var mh = new TableMaker(this, type, info.rowGen(),
+                                        ix.id(), indexLock != null).finish();
+                table = (AbstractTable) mh.invoke(manager, ix, indexLock);
             } catch (Throwable e) {
                 throw rethrow(e);
             }
@@ -464,13 +487,13 @@ public class RowStore {
         indexRowInfo.alternateKeys = Collections.emptyNavigableSet();
         indexRowInfo.secondaryIndexes = Collections.emptyNavigableSet();
 
-        var manager = (TableManager<R>) tableManager(ix);
+        RowPredicateLock<R> indexLock = indexLock(ix);
 
         try {
-            var maker = new TableMaker
-                (this, rowType, rowInfo.rowGen(), indexRowInfo.rowGen(), descriptor, ix.id());
+            var maker = new TableMaker(this, rowType, rowInfo.rowGen(), indexRowInfo.rowGen(),
+                                       descriptor, ix.id(), indexLock != null);
             var mh = maker.finish();
-            table = (AbstractTable<R>) mh.invoke(manager, ix);
+            table = (AbstractTable<R>) mh.invoke(primaryTable.mTableManager, ix, indexLock);
         } catch (Throwable e) {
             throw rethrow(e);
         }
@@ -1096,6 +1119,44 @@ public class RowStore {
             infos[i] = indexRowInfo(primaryInfo, descriptors[i]);
         }
         return infos;
+    }
+
+    /**
+     * Returns a primary RowInfo or a secondary RowInfo, for the current schema version. Only
+     * key columns are stable across schema versions.
+     *
+     * @param indexId can be the primaryIndexId or a secondary index id
+     * @return RowInfo or SecondaryInfo, or null if not found
+     */
+    RowInfo currentRowInfo(Class<?> rowType, long primaryIndexId, long indexId) throws IOException {
+        RowInfo primaryInfo = RowInfo.find(rowType);
+
+        if (primaryIndexId == indexId) {
+            return primaryInfo;
+        }
+
+        Index primaryIndex = mDatabase.indexById(primaryIndexId);
+
+        if (primaryIndex == null) {
+            return null;
+        }
+
+        TableManager<?> manager = tableManager(primaryIndex);
+
+        // Scan the set of secondary indexes to find it. Not the most efficient approach, but
+        // tables aren't expected to have tons of secondaries.
+
+        View secondariesView = viewExtended(primaryIndexId, K_SECONDARY);
+
+        try (Cursor c = secondariesView.newCursor(null)) {
+            for (c.first(); c.key() != null; c.next()) {
+                if (indexId == decodeLongLE(c.value(), 0)) {
+                    return manager.secondaryInfo(primaryInfo, c.key());
+                }
+            }
+        }
+
+        return null;
     }
 
     /**

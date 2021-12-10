@@ -20,17 +20,51 @@ package org.cojen.tupl.rows;
 import java.io.IOException;
 
 import org.cojen.tupl.Cursor;
+import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Transaction;
 
 /**
  * Commits every transactional update, and exits the scope when closed. For any entry stepped
- * over, acquired locks are released.
+ * over, acquired locks are released. The linked transaction is automatically exited when the
+ * updater is closed.
  *
  * @author Brian S O'Neill
  */
-class AutoCommitRowUpdater<R> extends NonRepeatableRowUpdater<R> {
+final class AutoCommitRowUpdater<R> extends BasicRowUpdater<R> {
+    LockResult mLockResult;
+
     AutoCommitRowUpdater(AbstractTable<R> table, ScanController<R> controller) {
         super(table, controller);
+    }
+
+    @Override
+    protected LockResult toFirst(Cursor c) throws IOException {
+        LockResult result = c.first();
+        c.register();
+        return mLockResult = result;
+    }
+
+    @Override
+    protected LockResult toNext(Cursor c) throws IOException {
+        LockResult result = mLockResult;
+        if (result != null && result.isAcquired()) {
+            c.link().unlock();
+        }
+        return mLockResult = c.next();
+    }
+
+    @Override
+    protected void unlocked() {
+        mLockResult = null;
+    }
+
+    @Override
+    protected void finished() throws IOException {
+        mRow = null;
+        if (mLockResult != null) {
+            mLockResult = null;
+            mCursor.link().exit();
+        }
     }
 
     @Override
@@ -70,14 +104,5 @@ class AutoCommitRowUpdater<R> extends NonRepeatableRowUpdater<R> {
         mCursor.delete();
         trigger.store(txn, row, c.key(), oldValue, null);
         txn.commit();
-    }
-
-    @Override
-    protected void finished() throws IOException {
-        mRow = null;
-        if (mLockResult != null) {
-            mLockResult = null;
-            mCursor.link().exit();
-        }
     }
 }

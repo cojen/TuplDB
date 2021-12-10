@@ -20,8 +20,11 @@ package org.cojen.tupl.rows;
 import java.io.IOException;
 
 import org.cojen.tupl.Cursor;
+import org.cojen.tupl.LockMode;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Transaction;
+
+import org.cojen.tupl.core.RowPredicateLock;
 
 /**
  * Updater which releases acquired locks for rows which are stepped over.
@@ -29,6 +32,22 @@ import org.cojen.tupl.Transaction;
  * @author Brian S O'Neill
  */
 class NonRepeatableRowUpdater<R> extends BasicRowUpdater<R> {
+    /**
+     * Constructs a NonRepeatableRowUpdater which releases the predicate lock when the updater
+     * finishes. The lock can also be released when the transaction finishes.
+     */
+    static <R> NonRepeatableRowUpdater<R> locked
+        (AbstractTable<R> table, ScanController<R> controller, RowPredicateLock.Closer closer)
+    {
+        return new NonRepeatableRowUpdater<R>(table, controller) {
+            @Override
+            protected void finished() throws IOException {
+                super.finished();
+                closer.close();
+            }
+        };
+    }
+
     LockResult mLockResult;
 
     NonRepeatableRowUpdater(AbstractTable<R> table, ScanController<R> controller) {
@@ -37,18 +56,32 @@ class NonRepeatableRowUpdater<R> extends BasicRowUpdater<R> {
 
     @Override
     protected LockResult toFirst(Cursor c) throws IOException {
-        LockResult result = c.first();
-        c.register();
-        return mLockResult = result;
+        Transaction txn = c.link();
+        LockMode original = txn.lockMode();
+        txn.lockMode(LockMode.UPGRADABLE_READ);
+        try {
+            return mLockResult = super.toFirst(c);
+        } finally {
+            txn.lockMode(original);
+        }
     }
 
     @Override
     protected LockResult toNext(Cursor c) throws IOException {
+        Transaction txn = c.link();
         LockResult result = mLockResult;
         if (result != null && result.isAcquired()) {
-            c.link().unlock();
+            // If the transaction is being acted upon independently of this updater,
+            // then this technique might throw an IllegalStateException.
+            txn.unlock();
         }
-        return mLockResult = c.next();
+        LockMode original = txn.lockMode();
+        txn.lockMode(LockMode.UPGRADABLE_READ);
+        try {
+            return mLockResult = c.next();
+        } finally {
+            txn.lockMode(original);
+        }
     }
 
     @Override
@@ -59,11 +92,6 @@ class NonRepeatableRowUpdater<R> extends BasicRowUpdater<R> {
     @Override
     protected void finished() throws IOException {
         mRow = null;
-        if (mLockResult != null) {
-            mLockResult = null;
-            Transaction txn = mCursor.link();
-            txn.commit();
-            txn.exit();
-        }
+        mLockResult = null;
     }
 }

@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.TreeMap;
 
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.TimeUnit;
 
 import org.cojen.tupl.CorruptDatabaseException;
@@ -50,7 +51,7 @@ public class TableManager<R> {
     final WeakCache<Class<R>, AbstractTable<R>> mTables;
     volatile WeakReference<AbstractTable<R>> mMostRecentTable;
 
-    private final TreeMap<byte[], WeakReference<SecondaryInfo>> mIndexInfos;
+    private final ConcurrentSkipListMap<byte[], WeakReference<SecondaryInfo>> mIndexInfos;
 
     private TreeMap<byte[], IndexBackfill<R>> mIndexBackfills;
 
@@ -61,7 +62,7 @@ public class TableManager<R> {
     TableManager(Index primaryIndex) {
         mPrimaryIndex = primaryIndex;
         mTables = new WeakCache<>();
-        mIndexInfos = new TreeMap<>(Arrays::compareUnsigned);
+        mIndexInfos = new ConcurrentSkipListMap<>(Arrays::compareUnsigned);
     }
 
     Table<R> asTable(RowStore rs, Index ix, Class<R> type) throws IOException {
@@ -149,6 +150,16 @@ public class TableManager<R> {
         return null;
     }
 
+    SecondaryInfo secondaryInfo(RowInfo primaryInfo, byte[] desc) {
+        WeakReference<SecondaryInfo> infoRef = mIndexInfos.get(desc);
+        SecondaryInfo info;
+        if (infoRef == null || (info = infoRef.get()) == null) {
+            info = RowStore.indexRowInfo(primaryInfo, desc);
+            mIndexInfos.put(desc, new WeakReference<>(info));
+        }
+        return info;
+    }
+
     /**
      * Update the set of indexes, based on what is found in the given View. If anything
      * changed, a new trigger is installed on all tables. Caller is expected to hold a lock
@@ -213,14 +224,7 @@ public class TableManager<R> {
             byte[] desc;
             for (c.first(); (desc = c.key()) != null; c.next(), i++) {
                 maker.mSecondaryDescriptors[i] = desc;
-
-                WeakReference<SecondaryInfo> infoRef = mIndexInfos.get(desc);
-                SecondaryInfo info;
-                if (infoRef == null || (info = infoRef.get()) == null) {
-                    info = RowStore.indexRowInfo(primaryInfo, desc);
-                    mIndexInfos.put(desc, new WeakReference<>(info));
-                }
-                maker.mSecondaryInfos[i] = info;
+                maker.mSecondaryInfos[i] = secondaryInfo(primaryInfo, desc);
 
                 byte[] value = c.value();
 
@@ -230,6 +234,8 @@ public class TableManager<R> {
                     throw new CorruptDatabaseException("Secondary index is missing: " + indexId);
                 }
                 maker.mSecondaryIndexes[i] = index;
+
+                maker.mSecondaryLocks[i] = rs.indexLock(index);
 
                 byte state = value[8];
                 if (state != 'B') { // not "backfill" state

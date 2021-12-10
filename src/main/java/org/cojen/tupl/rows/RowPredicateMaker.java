@@ -46,6 +46,7 @@ import org.cojen.tupl.filter.ColumnToColumnFilter;
 import org.cojen.tupl.filter.GroupFilter;
 import org.cojen.tupl.filter.OrFilter;
 import org.cojen.tupl.filter.RowFilter;
+import org.cojen.tupl.filter.TrueFilter;
 import org.cojen.tupl.filter.Visitor;
 
 import org.cojen.tupl.io.Utils;
@@ -73,6 +74,7 @@ public class RowPredicateMaker {
     private final Class<? extends RowPredicate> mBaseClass;
     private final Class<?> mRowType;
     private final RowGen mRowGen;
+    private final long mPrimaryIndexId;
     private final long mIndexId;
     private final RowFilter mFilter;
     private final WeakReference<RowFilter> mFilterRef;
@@ -93,7 +95,8 @@ public class RowPredicateMaker {
      */
     RowPredicateMaker(WeakReference<RowStore> storeRef,
                       Class<? extends RowPredicate> baseClass, Class<?> rowType, RowGen rowGen,
-                      long indexId, RowFilter filter, String filterStr, RowFilter[][] ranges)
+                      long primaryIndexId, long indexId,
+                      RowFilter filter, String filterStr, RowFilter[][] ranges)
     {
         mStoreRef = storeRef;
 
@@ -104,6 +107,7 @@ public class RowPredicateMaker {
         mBaseClass = baseClass;
         mRowType = rowType;
         mRowGen = rowGen;
+        mPrimaryIndexId = primaryIndexId;
         mIndexId = indexId;
         mFilter = filter;
         mFilterRef = new WeakReference<>(filter);
@@ -132,24 +136,23 @@ public class RowPredicateMaker {
         var defined = new HashSet<String>();
 
         if (mRanges == null) {
-            makeAllFields(defined, mFilter);
+            makeAllFields(defined, mFilter, true);
         } else {
             for (RowFilter[] range : mRanges) {
-                makeAllFields(defined, range[0]);
+                makeAllFields(defined, range[0], true);
             }
-            // Must make basic fields for those not yet defined, which should all be key columns.
+            // Make fields for those not yet defined, which should all be key columns. Extra
+            // fields are lazily initialized when this predicate is tested with an encoded key.
             for (RowFilter[] range : mRanges) {
-                makeBasicFields(defined, range[1]);
-                makeBasicFields(defined, range[2]);
+                makeAllFields(defined, range[1], false);
+                makeAllFields(defined, range[2], false);
             }
         }
 
         if (!RowPredicate.None.class.isAssignableFrom(mBaseClass)) {
             addRowTestMethod();
-            addPartialDecodeTestMethod();
             addFullDecodeTestMethod();
-            // FIXME
-            //addKeyTestMethod(byte[].class);
+            addKeyTestMethod();
         }
 
         // Add toString method.
@@ -162,21 +165,12 @@ public class RowPredicateMaker {
     }
 
     /**
-     * For all codecs of the given filter, makes and initializes all the necessary fields.
+     * For all codecs of the given filter, makes all the necessary fields and optionally
+     * initializes them.
      */
-    private void makeAllFields(HashSet<String> defined, RowFilter filter) {
+    private void makeAllFields(HashSet<String> defined, RowFilter filter, boolean init) {
         if (filter != null) {
-            filter.accept(new FieldMaker(defined, true));
-        }
-    }
-
-    /**
-     * For all codecs of the given filter, makes and initializes only the converted argument
-     * fields.
-     */
-    private void makeBasicFields(HashSet<String> defined, RowFilter filter) {
-        if (filter != null) {
-            filter.accept(new FieldMaker(defined, false));
+            filter.accept(new FieldMaker(defined, init));
         }
     }
 
@@ -307,91 +301,43 @@ public class RowPredicateMaker {
         }
     }
 
-    private void addPartialDecodeTestMethod() {
-        MethodMaker mm = mClassMaker.addMethod
-            (boolean.class, "test", Object.class, byte[].class).public_();
-
-        // If the filter only accesses key columns, then call the test(row) method.
-        {
-            Map<String, ColumnInfo> keyColumns = mRowGen.info.keyColumns;
-
-            var checker = new Visitor() {
-                boolean stop;
-
-                @Override
-                protected void subVisit(GroupFilter filter) {
-                    for (RowFilter sub : filter.subFilters()) {
-                        sub.accept(this);
-                        if (stop) {
-                            return;
-                        }
-                    }
-                }
-
-                @Override
-                public void visit(ColumnToArgFilter filter) {
-                    check(filter.column());
-                }
-
-                @Override
-                public void visit(ColumnToColumnFilter filter) {
-                    check(filter.column());
-                    check(filter.otherColumn());
-                }
-
-                private void check(ColumnInfo column) {
-                    if (!keyColumns.containsKey(column.name)) {
-                        stop = true;
-                    }
-                }
-            };
-
-            mFilter.accept(checker);
-
-            if (!checker.stop) {
-                mm.return_(mm.invoke("test", mm.param(0)));
-                return;
-            }
-        }
-
-        var indy = mm.var(RowPredicateMaker.class).indy
-            ("indyDecodeTest", mStoreRef, mRowType, mIndexId, mFilterRef, mFilterStr);
-
-        Class<?> rowClass = RowMaker.find(mRowType);
-        var rowVar = mm.param(0).cast(rowClass);
-        var valueVar = mm.param(1);
-
-        mm.return_(indy.invoke(boolean.class, "test", null,
-                               mm.var(RowUtils.class).invoke("decodeSchemaVersion", valueVar),
-                               rowVar, valueVar, mm.this_()));
-    }
-
     private void addFullDecodeTestMethod() {
         MethodMaker mm = mClassMaker.addMethod
             (boolean.class, "test", byte[].class, byte[].class).public_();
 
-        var indy = mm.var(RowPredicateMaker.class).indy
-            ("indyDecodeTest", mStoreRef, mRowType, mIndexId, mFilterRef, mFilterStr);
-
         var valueVar = mm.param(1);
 
-        mm.return_(indy.invoke(boolean.class, "test", null,
-                               mm.var(RowUtils.class).invoke("decodeSchemaVersion", valueVar),
-                               mm.param(0), valueVar, mm.this_()));
+        if (mPrimaryIndexId == mIndexId) {
+            var indy = mm.var(RowPredicateMaker.class).indy
+                ("indySchemaDecodeTest", mStoreRef, mRowType, mIndexId, mFilterRef, mFilterStr);
+
+            var schemaVersionVar = mm.var(RowUtils.class).invoke("decodeSchemaVersion", valueVar);
+
+            mm.return_(indy.invoke(boolean.class, "test", null,
+                                   schemaVersionVar, mm.param(0), valueVar, mm.this_()));
+        } else {
+            var indy = mm.var(RowPredicateMaker.class).indy
+                ("indyDecodeTest", mStoreRef, mRowType,
+                 mPrimaryIndexId, mIndexId, mFilterRef, mFilterStr);
+
+            mm.return_(indy.invoke(boolean.class, "test", null, mm.param(0), valueVar, mm.this_()));
+        }
     }
 
     /**
-     * Accepts these MethodTypes:
+     * Makes a decode test method for the primary index only. A schema version must be decoded.
      *
-     * boolean test(int schemaVersion, R row, byte[] value, RowPredicate predicate)
+     * Accepts this MethodType:
+     *
      * boolean test(int schemaVersion, byte[] key, byte[] value, RowPredicate predicate)
      */
-    public static CallSite indyDecodeTest(MethodHandles.Lookup lookup, String name, MethodType mt,
-                                          WeakReference<RowStore> storeRef,
-                                          Class<?> rowType, long indexId,
-                                          WeakReference<RowFilter> filterRef, String filterStr)
+    public static CallSite indySchemaDecodeTest
+        (MethodHandles.Lookup lookup, String name, MethodType mt,
+         WeakReference<RowStore> storeRef, Class<?> rowType, long primaryIndexId,
+         WeakReference<RowFilter> filterRef, String filterStr)
     {
-        var dtm = new DecodeTestMaker(lookup, mt, storeRef, rowType, indexId, filterRef, filterStr);
+        var dtm = new DecodeTestMaker
+            (lookup, mt, storeRef, rowType, primaryIndexId, filterRef, filterStr);
         return new SwitchCallSite(lookup, mt, dtm);
     }
 
@@ -403,21 +349,21 @@ public class RowPredicateMaker {
         private final MethodType mMethodType;
         private final WeakReference<RowStore> mStoreRef;
         private final Class<?> mRowType;
-        private final long mIndexId;
+        private final long mPrimaryIndexId;
         private final String mFilterStr;
 
         // This class isn't defined as a lambda function because this field cannot be final.
         private WeakReference<RowFilter> mFilterRef;
 
         DecodeTestMaker(MethodHandles.Lookup lookup, MethodType mt,
-                        WeakReference<RowStore> storeRef, Class<?> rowType, long indexId,
+                        WeakReference<RowStore> storeRef, Class<?> rowType, long primaryIndexId,
                         WeakReference<RowFilter> filterRef, String filterStr)
         {
             mLookup = lookup;
             mMethodType = mt.dropParameterTypes(0, 1);
             mStoreRef = storeRef;
             mRowType = rowType;
-            mIndexId = indexId;
+            mPrimaryIndexId = primaryIndexId;
             mFilterStr = filterStr;
             mFilterRef = filterRef;
         }
@@ -434,47 +380,112 @@ public class RowPredicateMaker {
             RowStore store = mStoreRef.get();
             if (store == null) {
                 mm.new_(DatabaseException.class, "Closed").throw_();
-                return mm.finish();
+            } else {
+                RowInfo rowInfo;
+                try {
+                    rowInfo = store.rowInfo(mRowType, mPrimaryIndexId, schemaVersion);
+                } catch (Throwable e) {
+                    return new ExceptionCallSite.Failed(mMethodType, mm, e);
+                }
+
+                RowFilter filter = mFilterRef.get();
+
+                if (filter == null) {
+                    filter = AbstractTable.parse(mRowType, mFilterStr);
+                    mFilterRef = new WeakReference<>(filter);
+                }
+
+                int valueOffset = RowUtils.lengthPrefixPF(schemaVersion);
+                RowGen rowGen = rowInfo.rowGen();
+                var predicateVar = mm.param(2);
+                var visitor = new DecodeVisitor(mm, valueOffset, rowGen, predicateVar, null, 0);
+                filter.accept(visitor);
+                visitor.finishPredicate();
             }
-
-            RowInfo rowInfo;
-            try {
-                rowInfo = store.rowInfo(mRowType, mIndexId, schemaVersion);
-            } catch (Throwable e) {
-                return new ExceptionCallSite.Failed(mMethodType, mm, e);
-            }
-
-            RowFilter filter = mFilterRef.get();
-
-            if (filter == null) {
-                filter = AbstractTable.parse(mRowType, mFilterStr);
-                mFilterRef = new WeakReference<>(filter);
-            }
-
-            if (mm.param(0).classType() != byte[].class) {
-                // The key columns are found in the row, so check those first to reduce the
-                // amount of columns that need to be decoded.
-                filter = filter.prioritize(rowInfo.keyColumns);
-            }
-
-            int valueOffset = RowUtils.lengthPrefixPF(schemaVersion);
-            RowGen rowGen = rowInfo.rowGen();
-            var predicateVar = mm.param(2);
-            var visitor = new DecodeVisitor(mm, valueOffset, rowGen, predicateVar, null, 0);
-            filter.accept(visitor);
-            visitor.finishPredicate();
 
             return mm.finish();
         }
     }
 
+    private void addKeyTestMethod() {
+        // Can only check the key columns. If undecided, assume that the predicate matches.
+        RowFilter filter = mFilter.retain(mRowGen.info.keyColumns, TrueFilter.THE);
+
+        if (filter == TrueFilter.THE) {
+            // Rely on the default implementation, which always returns true.
+            return;
+        }
+
+        WeakReference<RowFilter> filterRef = mFilterRef;
+        String filterStr = mFilterStr;
+
+        if (!filter.equals(mFilter)) {
+            filterRef = new WeakReference<>(filter);
+            filterStr = filter.toString();
+        }
+
+        MethodMaker mm = mClassMaker.addMethod(boolean.class, "test", byte[].class).public_();
+
+        var indy = mm.var(RowPredicateMaker.class).indy
+            ("indyDecodeTest", mStoreRef, mRowType,
+             mPrimaryIndexId, mIndexId, filterRef, filterStr);
+
+        mm.return_(indy.invoke(boolean.class, "test", null, mm.param(0), mm.this_()));
+    }
+
+    /**
+     * Makes a decode test method for secondary indexes, or for just the key of a primary
+     * indexes. In both cases, there's no schema version to decode.
+     *
+     * Accepts these MethodTypes:
+     *
+     * boolean test(byte[] key, RowPredicate predicate)
+     * boolean test(byte[] key, byte[] value, RowPredicate predicate)
+     */
+    public static CallSite indyDecodeTest(MethodHandles.Lookup lookup, String name, MethodType mt,
+                                          WeakReference<RowStore> storeRef,
+                                          Class<?> rowType, long primaryIndexId, long indexId,
+                                          WeakReference<RowFilter> filterRef, String filterStr)
+    {
+        return ExceptionCallSite.make(() -> {
+            MethodMaker mm = MethodMaker.begin(lookup, name, mt);
+
+            RowStore store = storeRef.get();
+            if (store == null) {
+                mm.new_(DatabaseException.class, "Closed").throw_();
+            } else {
+                RowInfo rowInfo;
+                try {
+                    rowInfo = store.currentRowInfo(rowType, primaryIndexId, indexId);
+                } catch (Throwable e) {
+                    return new ExceptionCallSite.Failed(mt, mm, e);
+                }
+
+                RowFilter filter = filterRef.get();
+                if (filter == null) {
+                    filter = AbstractTable.parse(rowType, filterStr);
+                }
+
+                // DecodeVisitor assumes that the second parameter is a byte[] value, but if
+                // the filter only examines key columns, it won't attempt to access the value.
+
+                var predicateVar = mm.param(mt.parameterCount() - 1);
+                var visitor = new DecodeVisitor(mm, 0, rowInfo.rowGen(), predicateVar, null, 0);
+                filter.accept(visitor);
+                visitor.finishPredicate();
+            }
+
+            return mm.finish();
+        });
+    }
+
     private class FieldMaker extends Visitor {
         private final HashSet<String> mDefined;
-        private final boolean mAll;
+        private final boolean mInit;
 
-        FieldMaker(HashSet<String> defined, boolean all) {
+        FieldMaker(HashSet<String> defined, boolean init) {
             mDefined = defined;
-            mAll = all;
+            mInit = init;
         }
 
         @Override
@@ -500,11 +511,9 @@ public class RowPredicateMaker {
             argVar = ConvertCallSite.make(mCtorMaker, argType, argVar);
 
             ColumnCodec codec = codecFor(colName);
-            codec.defineArgField(argVar, argFieldName).set(argVar);
+            codec.defineArgField(argVar, argFieldName, argVar);
 
-            if (mAll) {
-                codec.filterDefineExtraFields(in, argVar, argFieldName);
-            }
+            codec.filterDefineExtraFields(in, argVar, argFieldName, mInit);
 
             mDefined.add(argFieldName);
         }

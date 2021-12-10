@@ -29,9 +29,7 @@ import org.cojen.tupl.Transaction;
  *
  * @author Brian S O'Neill
  */
-class UpgradableRowUpdater<R> extends BasicRowUpdater<R> {
-    LockMode mOriginalMode;
-
+final class UpgradableRowUpdater<R> extends BasicRowUpdater<R> {
     UpgradableRowUpdater(AbstractTable<R> table, ScanController<R> controller) {
         super(table, controller);
     }
@@ -39,18 +37,24 @@ class UpgradableRowUpdater<R> extends BasicRowUpdater<R> {
     @Override
     protected LockResult toFirst(Cursor c) throws IOException {
         Transaction txn = c.link();
-        mOriginalMode = txn.lockMode();
+        LockMode original = txn.lockMode();
         txn.lockMode(LockMode.UPGRADABLE_READ);
-        return super.toFirst(c);
+        try {
+            return super.toFirst(c);
+        } finally {
+            txn.lockMode(original);
+        }
     }
 
     @Override
-    protected void finished() throws IOException {
-        LockMode original = mOriginalMode;
-        if (original != null) {
-            mOriginalMode = null;
-            mCursor.link().lockMode(original);
+    protected LockResult toNext(Cursor c) throws IOException {
+        Transaction txn = c.link();
+        LockMode original = txn.lockMode();
+        txn.lockMode(LockMode.UPGRADABLE_READ);
+        try {
+            return super.toNext(c);
+        } finally {
+            txn.lockMode(original);
         }
-        super.finished();
     }
 }

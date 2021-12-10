@@ -123,7 +123,6 @@ public abstract class RowFilter implements Comparable<RowFilter> {
      * @param undecided default filter to use when the resulting filter cannot be certain of a
      * match (usually TRUE or FALSE)
      */
-    // TODO: Intended for use by RowPredicate::test(byte[]), with TRUE for undecided.
     public abstract RowFilter retain(Map<String, ColumnInfo> columns, RowFilter undecided);
 
     /**

@@ -380,8 +380,9 @@ abstract class ColumnCodec {
      *
      * @param in true if argument is a collection for "in" filtering
      * @param argVar argument value to compare against, converted to the the column type
+     * @param init if false, extra fields aren't final and aren't initialized
      */
-    void filterDefineExtraFields(boolean in, Variable argVar, String argFieldName) {
+    void filterDefineExtraFields(boolean in, Variable argVar, String argFieldName, boolean init) {
     }
 
     /**
@@ -467,9 +468,21 @@ abstract class ColumnCodec {
         return base + '$' + suffix;
     }
 
-    protected Field defineArgField(Object type, String name) {
+    /**
+     * Define a final arg field, initialized by the constructor.
+     *
+     * @param initVar initial and final value to assign
+     */
+    protected void defineArgField(Object type, String name, Variable initVar) {
         mMaker.classMaker().addField(type, name).final_();
-        return mMaker.field(name);
+        mMaker.field(name).set(initVar);
+    }
+
+    /**
+     * Define a non-final arg field, to be lazily initialzied.
+     */
+    protected void defineArgField(Object type, String name) {
+        mMaker.classMaker().addField(type, name);
     }
 
     /**

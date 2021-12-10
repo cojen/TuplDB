@@ -37,19 +37,7 @@ public interface RowPredicateLock<R> {
      * @return object which must be closed after all related locks have been acquired too
      * @throws IllegalStateException if too many shared locks
      */
-    AutoCloseable openAcquire(Transaction txn, R row) throws LockFailureException;
-
-    /**
-     * Acquires shared access for all the row locks, waiting if necessary, and retains the
-     * locks for the entire transaction scope. If lock acquisition times out, all row locks
-     * acquired up to that point are still retained.
-     *
-     * @param row is passed to the {@code RowPredicate.test} method
-     * @param value is passed to the {@code RowPredicate.test} method
-     * @return object which must be closed after all related locks have been acquired too
-     * @throws IllegalStateException if too many shared locks
-     */
-    AutoCloseable openAcquire(Transaction txn, R row, byte[] value) throws LockFailureException;
+    Closer openAcquire(Transaction txn, R row) throws LockFailureException;
 
     /**
      * Acquires shared access for all the row locks, waiting if necessary, and retains the
@@ -61,7 +49,7 @@ public interface RowPredicateLock<R> {
      * @return object which must be closed after all related locks have been acquired too
      * @throws IllegalStateException if too many shared locks
      */
-    AutoCloseable openAcquire(Transaction txn, byte[] key, byte[] value)
+    Closer openAcquire(Transaction txn, byte[] key, byte[] value)
         throws LockFailureException;
 
     /**
@@ -77,12 +65,17 @@ public interface RowPredicateLock<R> {
      *
      * @param txn exclusive owner of the lock
      * @param predicate defines the lock matching rules
+     * @return an object which can release the predicate lock before the transaction exits
      */
-    void addPredicate(Transaction txn, RowPredicate<R> predicate) throws LockFailureException;
+    Closer addPredicate(Transaction txn, RowPredicate<R> predicate) throws LockFailureException;
 
     /**
      * Returns a class which can be extended for evaluating predicate locks directly. When used,
      * the predicate instances cannot be recycled.
      */
     Class<? extends RowPredicate<R>> evaluatorClass();
+
+    public static interface Closer {
+        void close();
+    }
 }

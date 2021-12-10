@@ -630,11 +630,6 @@ public class RowPredicateTest {
         }
 
         @Override
-        public boolean test(TestRow row, byte[] value) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
         public boolean test(byte[] key, byte[] value) {
             throw new UnsupportedOperationException();
         }

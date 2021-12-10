@@ -23,7 +23,7 @@ package org.cojen.tupl.filter;
  * @author Brian S O'Neill
  */
 public final class TrueFilter extends AndFilter {
-    static final TrueFilter THE = new TrueFilter();
+    public static final TrueFilter THE = new TrueFilter();
 
     private TrueFilter() {
         mReduced = true;

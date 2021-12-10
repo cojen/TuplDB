@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.rows;
 
+import java.lang.reflect.Modifier;
+
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
@@ -44,23 +46,46 @@ abstract class BytesColumnCodec extends ColumnCodec {
     }
 
     /**
-     * Defines a byte[] arg field set to null or an encoded string of bytes.
+     * Defines a byte[] arg field set to null or an encoded string of bytes. If an 'in' op,
+     * then the field is a byte[][].
      */
     @Override
-    void filterDefineExtraFields(boolean in, Variable argVar, String argFieldName) {
-        Variable bytesVar;
+    void filterDefineExtraFields(boolean in, Variable argVar, String argFieldName, boolean init) {
+        Class<?> fieldType = in ? byte[][].class : byte[].class;
+        String fieldName = argFieldName(argFieldName, "bytes");
 
-        if (in) {
-            var lengthVar = argVar.alength();
-            final var fargVar = argVar;
-            bytesVar = ConvertUtils.convertArray(mMaker, byte[][].class, lengthVar, ixVar -> {
-                return filterPrepareBytes(fargVar.aget(ixVar));
-            });
-        } else {
-            bytesVar = filterPrepareBytes(argVar);
+        if (init) {
+            defineArgField(fieldType, fieldName, filterPrepareBytes(argVar, in));
+            return;
         }
 
-        defineArgField(bytesVar, argFieldName(argFieldName, "bytes")).set(bytesVar);
+        defineArgField(fieldType, fieldName);
+
+        // Define a method for accessing the field, which lazily initializes it.
+
+        MethodMaker mm = mMaker.classMaker().addMethod(byte[].class, fieldName);
+        var codec = (BytesColumnCodec) bind(mm);
+
+        var bytes = mm.field(fieldName).getOpaque();
+        Label doInit = mm.label();
+        bytes.ifEq(null, doInit);
+        mm.return_(bytes);
+
+        doInit.here();
+        bytes.set(codec.filterPrepareBytes(mm.field(argFieldName), in));
+        mm.field(fieldName).setOpaque(bytes);
+        mm.return_(bytes);
+    }
+
+    private Variable filterPrepareBytes(Variable argVar, boolean in) {
+        if (in) {
+            var lengthVar = argVar.alength();
+            return ConvertUtils.convertArray(mMaker, byte[][].class, lengthVar, ixVar -> {
+                return filterPrepareBytes(argVar.aget(ixVar));
+            });
+        } else {
+            return filterPrepareBytes(argVar);
+        }
     }
 
     /**
@@ -147,7 +172,7 @@ abstract class BytesColumnCodec extends ColumnCodec {
             cont.here();
         }
 
-        var argVar = argObjVar.field(argFieldName(argNum, "bytes")).get();
+        var argVar = bytesField(argObjVar, argNum);
 
         if (ColumnFilter.isIn(op)) {
             CompareUtils.compareIn(mMaker, argVar, op, pass, fail, (a, p, f) -> {
@@ -214,7 +239,7 @@ abstract class BytesColumnCodec extends ColumnCodec {
                                          int op, Variable argObjVar, int argNum,
                                          Label pass, Label fail)
     {
-        var argVar = argObjVar.field(argFieldName(argNum, "bytes")).get();
+        var argVar = bytesField(argObjVar, argNum);
 
         if (dstInfo.isDescending()) {
             op = ColumnFilter.descendingOperator(op);
@@ -232,6 +257,28 @@ abstract class BytesColumnCodec extends ColumnCodec {
                                        srcVar, offsetVar, endVar,
                                        argVar, 0, argVar.alength(),
                                        op, pass, fail);
+        }
+    }
+
+    /**
+     * @param argObjVar object which contains fields prepared earlier
+     * @param argNum zero-based filter argument number
+     */
+    protected Variable bytesField(Variable argObjVar, int argNum) {
+        String name = argFieldName(argNum, "bytes");
+
+        boolean isFinal = true;
+        try {
+            isFinal = Modifier.isFinal(argObjVar.classType().getDeclaredField(name).getModifiers());
+        } catch (NoSuchFieldException e) {
+            // Accessing the field below will throw an exception.
+        }
+
+        if (isFinal) {
+            return argObjVar.field(name).get();
+        } else {
+            // Invoke the lazy init method.
+            return argObjVar.invoke(name);
         }
     }
 }

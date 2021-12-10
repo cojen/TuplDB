@@ -25,14 +25,18 @@ import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnmodifiableViewException;
 
+import org.cojen.tupl.core.RowPredicateLock;
+
 /**
  * Base class for the tables returned by viewAlternateKey and viewSecondaryIndex.
  *
  * @author Brian S O'Neill
  */
 public abstract class AbstractTableView<R> extends AbstractTable<R> {
-    protected AbstractTableView(TableManager<R> manager, Index source) {
-        super(manager, source);
+    protected AbstractTableView(TableManager<R> manager,
+                                Index source, RowPredicateLock<R> indexLock)
+    {
+        super(manager, source, indexLock);
     }
 
     @Override
