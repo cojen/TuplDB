@@ -322,6 +322,136 @@ public class IndexLockTest {
         scanner.close();
     }
 
+    @Test
+    public void deadlock() throws Exception {
+        // Force a deadlock by moving a row. This is caused by deleting the old row before
+        // inserting a replacement.
+
+        var table = mDatabase.openTable(TestRow.class);
+
+        fill(table, 0, 3);
+
+        // The predicate lock will guard the whole table.
+        Transaction txn1 = mDatabase.newTransaction();
+        // Be nice and don't retain row locks, but this isn't enough.
+        txn1.lockMode(LockMode.READ_COMMITTED);
+        var scanner = table.newRowScanner(txn1);
+
+        // Move a row by deleting before inserting. Deletes don't acquire a predicate lock.
+        Transaction txn2 = mDatabase.newTransaction();
+        var row = table.newRow();
+        row.id(1);
+        table.load(txn2, row);
+        table.delete(txn2, row);
+
+        assertEquals(0, scanner.row().id());
+
+        // The scanner will be blocked on the row being deleted.
+        txn1.lockTimeout(2, TimeUnit.SECONDS);
+        Waiter w1 = start(() -> {
+            scanner.step();
+        });
+
+        // Finish the move by inserting, which must acquire the predicate lock.
+        row.id(100);
+        try {
+            table.insert(txn2, row);
+            fail();
+        } catch (DeadlockException e) {
+        }
+
+        txn2.exit();
+
+        w1.await();
+        scanner.close();
+        txn1.exit();
+    }
+
+    @Test
+    public void noDeadlock() throws Exception {
+        noDeadlock(LockMode.READ_COMMITTED);
+    }
+
+    @Test
+    public void noDeadlock2() throws Exception {
+        // Same as noDeadlock, but with a stronger scan lock mode.
+        noDeadlock(LockMode.REPEATABLE_READ);
+    }
+
+    @Test
+    public void noDeadlock3() throws Exception {
+        // The name of this test is a lie. Deadlock is expected when the scan uses the
+        // strongest locking mode.
+        try {
+            noDeadlock(LockMode.UPGRADABLE_READ);
+            fail();
+        } catch (DeadlockException e) {
+        }
+    }
+
+    private void noDeadlock(LockMode scanLockMode) throws Exception {
+        // Attempt a row move without deadlock by inserting before deleting. Note that if the
+        // scanner uses the UPGRADABLE_READ lock mode, a deadlock is caused by the load
+        // operation, which also needs UPGRADABLE_READ to finish the delete.
+
+        var table = mDatabase.openTable(TestRow.class);
+
+        fill(table, 0, 3);
+
+        Transaction txn1 = mDatabase.newTransaction();
+        txn1.lockMode(scanLockMode);
+        var scanner = table.newRowScanner(txn1);
+
+        Transaction txn2 = mDatabase.newTransaction();
+        var row = table.newRow();
+        row.id(1);
+        table.load(txn2, row); // needs UPGRADABLE_READ lock mode
+        row.id(100);
+
+        // Begin the move by inserting, which must acquire the predicate lock.
+        txn2.lockTimeout(2, TimeUnit.SECONDS);
+        Waiter w1 = start(() -> {
+            table.insert(txn2, row);
+        });
+
+        for (int i=0; i<=3; i++) {
+            assertEquals(i, scanner.row().id());
+            scanner.step();
+        }
+
+        assertNull(scanner.row());
+
+        if (scanLockMode == LockMode.REPEATABLE_READ) {
+            // Must forcibly release the row locks.
+            scanner.close();
+            txn1.exit();
+        }
+
+        // The scanner has finished, and so the move operation is unblocked.
+        w1.await();
+
+        row.id(1);
+        table.delete(txn2, row);
+        txn2.commit();
+
+        scanner.close();
+        txn1.exit();
+
+        // Verify the row move.
+
+        scanner = table.newRowScanner(null);
+
+        long[] expect = {0, 2, 3, 100};
+
+        for (int i=0; i<=3; i++) {
+            long id = scanner.row().id();
+            assertEquals(expect[i], id);
+            scanner.step();
+        }
+
+        assertNull(scanner.row());
+    }
+
     private static <R extends TestRow> void fill(Table<R> table, int start, int end)
         throws Exception
     {
