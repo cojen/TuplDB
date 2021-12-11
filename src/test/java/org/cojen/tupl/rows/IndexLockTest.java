@@ -382,6 +382,7 @@ public class IndexLockTest {
             table.insert(txn2, row);
             fail();
         } catch (DeadlockException e) {
+            predicateLockTimeout(e);
         }
 
         txn2.exit();
@@ -410,6 +411,7 @@ public class IndexLockTest {
             noDeadlock(LockMode.UPGRADABLE_READ);
             fail();
         } catch (DeadlockException e) {
+            rowLockTimeout(e);
         }
     }
 
