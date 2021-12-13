@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.core;
 
+import java.io.IOException;
+
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.Transaction;
 
@@ -29,27 +31,28 @@ import org.cojen.tupl.Transaction;
  */
 public interface RowPredicateLock<R> {
     /**
-     * Acquires shared access for all the row locks, waiting if necessary, and retains the
-     * locks for the entire transaction scope. If lock acquisition times out, all row locks
+     * Acquires shared access for all the predicate locks, waiting if necessary, and retains
+     * the locks for the entire transaction scope. If lock acquisition times out, all locks
      * acquired up to that point are still retained.
      *
      * @param row is passed to the {@code RowPredicate.test} method
-     * @return object which must be closed after all related locks have been acquired too
+     * @return object which must be closed after the specific row lock has been acquired; call
+     * failed if an exception is thrown instead
      * @throws IllegalStateException if too many shared locks
      */
-    Closer openAcquire(Transaction txn, R row) throws LockFailureException;
+    Closer openAcquire(Transaction txn, R row) throws IOException;
 
     /**
-     * Acquires shared access for all the row locks, waiting if necessary, and retains the
-     * locks for the entire transaction scope. If lock acquisition times out, all row locks
+     * Acquires shared access for all the predicate locks, waiting if necessary, and retains
+     * the locks for the entire transaction scope. If lock acquisition times out, all locks
      * acquired up to that point are still retained.
      *
      * @param key is passed to the {@code RowPredicate.test} method
      * @param value is passed to the {@code RowPredicate.test} method
-     * @return object which must be closed after all related locks have been acquired too
+     * @return object which must be closed after the specific row lock has been acquired
      * @throws IllegalStateException if too many shared locks
      */
-    Closer openAcquire(Transaction txn, byte[] key, byte[] value)
+    Closer openAcquireNoRedo(Transaction txn, byte[] key, byte[] value)
         throws LockFailureException;
 
     /**
@@ -78,5 +81,8 @@ public interface RowPredicateLock<R> {
 
     public static interface Closer {
         void close();
+
+        void failed(Throwable ex, Transaction txn, long indexId, byte[] key, byte[] value)
+            throws IOException;
     }
 }

@@ -755,6 +755,9 @@ public class IndexingTest {
         assertEquals(fillAmount + 1, count(replicaNumTable));
         verifyIndex(replicaTable, replicaNumTable, 0);
         verifyIndex(replicaNumTable, replicaTable, 0);
+
+        leaderDb.close();
+        replicaDb.close();
     }
 
     private static <R> void verifyIndex(Table<R> a, Table<R> b, int expectMissing)

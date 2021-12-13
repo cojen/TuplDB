@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.core;
 
+import java.io.IOException;
+
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
@@ -83,12 +85,14 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
     }
 
     @Override
-    public Closer openAcquire(Transaction txn, R row) throws LockFailureException {
+    public Closer openAcquire(Transaction txn, R row) throws IOException {
         var local = (LocalTransaction) txn;
         VersionLock lock = mNewestVersion;
         lock.acquire(local);
 
         try {
+            local.redoPredicateLockOpen();
+
             for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
                 if (e.test(row)) {
                     e.matched(local);
@@ -102,7 +106,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
     }
 
     @Override
-    public Closer openAcquire(Transaction txn, byte[] key, byte[] value)
+    public Closer openAcquireNoRedo(Transaction txn, byte[] key, byte[] value)
         throws LockFailureException
     {
         var local = (LocalTransaction) txn;
@@ -358,7 +362,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
         }
 
         /**
-         * Called when an openAcquire step is finished.
+         * Called when an openAcquire step finishes successfully.
          */
         @Override
         public void close() {
@@ -373,6 +377,22 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
                         bucket.releaseExclusive();
                     }
                 }
+            }
+        }
+
+        /**
+         * Called when an openAcquire step didn't finish properly.
+         */
+        @Override
+        public void failed(Throwable ex, Transaction txn, long indexId, byte[] key, byte[] value)
+            throws IOException
+        {
+            close();
+            try {
+                ((LocalTransaction) txn).redoPredicateLockAcquire(indexId, key, value);
+            } catch (IOException e) {
+                Utils.suppress(e, ex);
+                throw e;
             }
         }
 
@@ -640,6 +660,14 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
             var bucket = mBucket;
             bucket.acquireExclusive();
             doUnlockOwnedUnrestricted(bucket);
+        }
+
+        /**
+         * Not expected to be called.
+         */
+        @Override
+        public void failed(Throwable ex, Transaction txn, long indexId, byte[] key, byte[] value) {
+            close();
         }
     }
 }

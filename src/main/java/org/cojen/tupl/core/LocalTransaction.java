@@ -59,6 +59,9 @@ public final class LocalTransaction extends Locker implements Transaction {
     // Must be set with HAS_PREPARE to indicate that prepareCommit was called.
     static final int HAS_PREPARE_COMMIT = 16;
 
+    // When set, the next operation should acquire a predicate lock.
+    static final int HAS_PREDICATE_OPEN = 32;
+
     final LocalDatabase mDatabase;
     final TransactionContext mContext;
     RedoWriter mRedo;
@@ -1615,6 +1618,52 @@ public final class LocalTransaction extends Locker implements Transaction {
 
     final void setHasTrash() {
         mHasState |= HAS_TRASH;
+    }
+
+    /**
+     * Called after a predicate lock has been acquired, but before the associated row operation
+     * begins.
+     */
+    final void redoPredicateLockOpen() throws IOException {
+        check();
+
+        if (mRedo == null) {
+            return;
+        }
+
+        long txnId = mTxnId;
+
+        final CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
+        try {
+            if (txnId == 0) {
+                txnId = doAssignTransactionId();
+            }
+        } finally {
+            shared.release();
+        }
+
+        try {
+            mContext.redoPredicateLockOpen(mRedo, txnId);
+        } catch (Throwable e) {
+            borked(e);
+        }
+    }
+
+    /**
+     * Called to complete an open predicate lock acquisition when the associated row operation
+     * failed.
+     */
+    final void redoPredicateLockAcquire(long indexId, byte[] key, byte[] value) throws IOException {
+        long txnId;
+        if (mBorked != null || mRedo == null || (txnId = mTxnId) == 0) {
+            return;
+        }
+
+        try {
+            mContext.redoStore(mRedo, OP_TXN_PREDICATE_LOCK_ACQUIRE, txnId, indexId, key, value);
+        } catch (Throwable e) {
+            borked(e);
+        }
     }
 
     /**

@@ -24,12 +24,12 @@ import java.util.Objects;
 import java.util.TreeSet;
 
 import org.cojen.tupl.Cursor;
+import org.cojen.tupl.Index;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.RowUpdater;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UniqueConstraintException;
 import org.cojen.tupl.UnpositionedCursorException;
-import org.cojen.tupl.View;
 
 import org.cojen.tupl.core.RowPredicateLock;
 
@@ -185,7 +185,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
             }
         }
 
-        View source = mTable.mSource;
+        Index source = mTable.mSource;
 
         Transaction txn = ViewUtils.enterScope(source, c.link());
         doUpdate: try {
@@ -198,8 +198,10 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
                 RowPredicateLock.Closer closer = lock.openAcquire(txn, row);
                 try {
                     result = source.insert(txn, key, value);
-                } finally {
                     closer.close();
+                } catch (Throwable e) {
+                    closer.failed(e, txn, source.id(), key, value);
+                    throw e;
                 }
             }
 

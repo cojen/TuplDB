@@ -24,13 +24,13 @@ package org.cojen.tupl.core;
  *
  * @author Brian S O'Neill
  */
-abstract class LHashTable<E extends LHashTable.Entry<E>> {
+public abstract class LHashTable<E extends LHashTable.Entry<E>> {
     public static final class ObjEntry<V> extends Entry<ObjEntry<V>> {
         public V value;
     }
 
     public static final class Obj<V> extends LHashTable<ObjEntry<V>> {
-        Obj(int capacity) {
+        public Obj(int capacity) {
             super(capacity);
         }
 
@@ -72,7 +72,7 @@ abstract class LHashTable<E extends LHashTable.Entry<E>> {
     /**
      * @param capacity initial capacity
      */
-    LHashTable(int capacity) {
+    public LHashTable(int capacity) {
         clear(capacity);
     }
 

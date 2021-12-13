@@ -831,9 +831,7 @@ public class TableMaker {
 
                 if (variant == "insert") {
                     var insertResultVar = source.invoke(variant, txnVar, keyVar, valueVar);
-                    if (closerVar != null) {
-                        mm.finally_(opStart, () -> closerVar.invoke("close"));
-                    }
+                    finishAcquire(mm, closerVar, opStart, txnVar, source, keyVar, valueVar);
                     Label passed = mm.label();
                     insertResultVar.ifTrue(passed);
                     mm.return_(false);
@@ -844,9 +842,7 @@ public class TableMaker {
                     mm.return_(true);
                 } else {
                     var oldValueVar = source.invoke("exchange", txnVar, keyVar, valueVar);
-                    if (closerVar != null) {
-                        mm.finally_(opStart, () -> closerVar.invoke("close"));
-                    }
+                    finishAcquire(mm, closerVar, opStart, txnVar, source, keyVar, valueVar);
                     Label wasNull = mm.label();
                     oldValueVar.ifEq(null, wasNull);
                     triggerVar.invoke("store", txnVar, rowVar, keyVar, oldValueVar, valueVar);
@@ -940,7 +936,7 @@ public class TableMaker {
         var closerVar = mm.field("mIndexLock").invoke("openAcquire", txnVar, rowVar);
         Label opStart = mm.label().here();
         var resultVar = source.invoke(variant, txnVar, keyVar, valueVar);
-        mm.finally_(opStart, () -> closerVar.invoke("close"));
+        finishAcquire(mm, closerVar, opStart, txnVar, source, keyVar, valueVar);
         txnVar.invoke("commit");
         mm.finally_(txnStart, () -> txnVar.invoke("exit"));
 
@@ -967,6 +963,24 @@ public class TableMaker {
             }
 
             dst.field(info.name).set(srcField);
+        }
+    }
+
+    /**
+     * To be called after invoking the operation associated with an openAcquire call.
+     *
+     * @param closeVar if null, then no close code is added
+     */
+    static void finishAcquire(MethodMaker mm, Variable closerVar, Label opStart, Variable txnVar,
+                              Variable indexVar, Variable keyVar, Variable valueVar)
+    {
+        if (closerVar != null) {
+            closerVar.invoke("close");
+            mm.catch_(opStart, Throwable.class, exVar -> {
+                var indexIdVar = indexVar.invoke("id");
+                closerVar.invoke("failed", exVar, txnVar, indexIdVar, keyVar, valueVar);
+                exVar.throw_();
+            });
         }
     }
 

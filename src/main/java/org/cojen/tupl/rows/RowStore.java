@@ -19,6 +19,8 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
+import java.lang.invoke.VarHandle;
+
 import java.lang.ref.WeakReference;
 
 import java.util.ArrayList;
@@ -35,7 +37,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import java.util.WeakHashMap;
 
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -44,6 +45,7 @@ import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Index;
+import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
@@ -51,6 +53,7 @@ import org.cojen.tupl.UniqueConstraintException;
 import org.cojen.tupl.View;
 
 import org.cojen.tupl.core.CoreDatabase;
+import org.cojen.tupl.core.LHashTable;
 import org.cojen.tupl.core.RowPredicateLock;
 import org.cojen.tupl.core.ScanVisitor;
 
@@ -95,7 +98,7 @@ public class RowStore {
 
     private final WeakCache<Index, TableManager<?>> mTableManagers;
 
-    private final WeakHashMap<Index, RowPredicateLock<?>> mIndexLocks;
+    private final LHashTable.Obj<RowPredicateLock<?>> mIndexLocks;
 
     // Extended key for referencing secondary indexes.
     private static final int K_SECONDARY = 1;
@@ -131,7 +134,7 @@ public class RowStore {
         mDatabase = db;
         mSchemata = schemata;
         mTableManagers = new WeakCache<>();
-        mIndexLocks = new WeakHashMap<>();
+        mIndexLocks = new LHashTable.Obj<>(8);
 
         registerToUpdateSchemata();
 
@@ -198,15 +201,31 @@ public class RowStore {
     /**
      * @return null if predicate lock is unsupported
      */
+    <R> RowPredicateLock<R> indexLock(Index index) {
+        return indexLock(index.id());
+    }
+
+    /**
+     * @return null if predicate lock is unsupported
+     */
     @SuppressWarnings("unchecked")
-    <R> RowPredicateLock<R> indexLock(Index ix) {
+    <R> RowPredicateLock<R> indexLock(long indexId) {
+        var lock = mIndexLocks.getValue(indexId);
+        if (lock == null) {
+            lock = makeIndexLock(indexId);
+        }
+        return (RowPredicateLock<R>) lock;
+    }
+
+    private RowPredicateLock<?> makeIndexLock(long indexId) {
         synchronized (mIndexLocks) {
-            var lock = mIndexLocks.get(ix);
+            var lock = mIndexLocks.getValue(indexId);
             if (lock == null) {
-                lock = mDatabase.newRowPredicateLock(ix.id());
-                mIndexLocks.put(ix, lock);
+                lock = mDatabase.newRowPredicateLock(indexId);
+                VarHandle.storeStoreFence();
+                mIndexLocks.insert(indexId).value = lock;
             }
-            return (RowPredicateLock<R>) lock;
+            return lock;
         }
     }
 
@@ -608,6 +627,16 @@ public class RowStore {
                 uncaught(e);
             }
         });
+    }
+
+    /**
+     * Called in response to a redo log message.
+     */
+    public RowPredicateLock.Closer txnPredicateLockAcquire(Transaction txn, long indexId,
+                                                           byte[] key, byte[] value)
+        throws LockFailureException
+    {
+        return indexLock(indexId).openAcquireNoRedo(txn, key, value);
     }
 
     /**

@@ -26,6 +26,8 @@ import org.cojen.tupl.*;
 
 import org.cojen.tupl.core.Utils;
 
+import static org.cojen.tupl.TestUtils.*;
+
 /**
  * 
  *
@@ -47,7 +49,10 @@ public class IndexLockTest {
     
     @After
     public void teardown() throws Exception {
-        mDatabase.close();
+        if (mDatabase != null) {
+            mDatabase.close();
+            mDatabase = null;
+        }
     }
 
     @Test
@@ -478,6 +483,137 @@ public class IndexLockTest {
         assertNull(scanner.row());
     }
 
+    @Test
+    public void replicaScanStall() throws Exception {
+        // A replica RowScanner cannot start when an open transaction has inserted a row into
+        // the range that will be scanned.
+
+        teardown(); // discard pre-built Database instance
+
+        var replicaRepl = new SocketReplicator(null, 0);
+        var leaderRepl = new SocketReplicator("localhost", replicaRepl.getPort());
+
+        var config = new DatabaseConfig().directPageAccess(false).replicate(leaderRepl);
+        //config.eventListener(EventListener.printTo(System.out));
+
+        var leaderDb = newTempDatabase(getClass(), config);
+        waitToBecomeLeader(leaderDb, 10);
+
+        config.replicate(replicaRepl);
+        var replicaDb = newTempDatabase(getClass(), config);
+
+        var leaderTable = leaderDb.openTable(TestRow.class);
+
+        fill(leaderTable, 0, 3);
+
+        Transaction txn1 = leaderDb.newTransaction();
+        TestRow row = leaderTable.newRow();
+        row.id(5);
+        row.name("name-5");
+        leaderTable.insert(txn1, row);
+        txn1.flush();
+
+        fence(leaderRepl, replicaRepl);
+
+        var replicaTable = replicaDb.openTable(TestRow.class);
+
+        // Scan is blocked.
+
+        Transaction scanTxn = replicaDb.newTransaction();
+        try {
+            replicaTable.newRowScanner(scanTxn, "id >= ? && id <= ?", 3, 7);
+            fail();
+        } catch (LockTimeoutException e) {
+            predicateLockTimeout(e);
+        }
+
+        // Scan can start when txn1 finishes.
+
+        scanTxn.reset();
+        scanTxn.lockTimeout(2, TimeUnit.SECONDS);
+
+        Waiter w1 = start(() -> {
+            var scanner = replicaTable.newRowScanner(scanTxn, "id >= ? && id <= ?", 3, 7);
+            assertEquals(3, scanner.row().id());
+            scanner.step();
+            assertEquals(5, scanner.row().id());
+            scanner.close();
+            scanTxn.reset();
+        });
+
+        txn1.commit();
+        fence(leaderRepl, replicaRepl);
+
+        w1.await();
+
+        leaderDb.close();
+        replicaDb.close();
+    }
+
+    @Test
+    public void replicaBlockedByScanner() throws Exception {
+        // An incoming replica insert or store operation must wait for a dependent scan to
+        // finish. Unfortunately, this stalls replication, but at least it's safe.
+
+        teardown(); // discard pre-built Database instance
+
+        var replicaRepl = new SocketReplicator(null, 0);
+        var leaderRepl = new SocketReplicator("localhost", replicaRepl.getPort());
+
+        var config = new DatabaseConfig().directPageAccess(false).replicate(leaderRepl);
+        //config.eventListener(EventListener.printTo(System.out));
+
+        var leaderDb = newTempDatabase(getClass(), config);
+        waitToBecomeLeader(leaderDb, 10);
+
+        config.replicate(replicaRepl);
+        var replicaDb = newTempDatabase(getClass(), config);
+
+        var leaderTable = leaderDb.openTable(TestRow.class);
+
+        fill(leaderTable, 0, 3);
+
+        fence(leaderRepl, replicaRepl);
+
+        var replicaTable = replicaDb.openTable(TestRow.class);
+
+        Transaction txn1 = replicaDb.newTransaction();
+        txn1.lockMode(LockMode.READ_COMMITTED);
+        var scanner = replicaTable.newRowScanner(txn1, "id >= ? && id <= ?", 3, 7);
+
+        // This store is blocked on the replica side.
+        TestRow row = leaderTable.newRow();
+        row.id(5);
+        row.name("name-5");
+        leaderTable.store(null, row);
+
+        // Even the fence operation is blocked now.
+
+        Waiter w1 = start(() -> {
+            long start = System.nanoTime();
+            fence(leaderRepl, replicaRepl);
+            long end = System.nanoTime();
+            assertTrue((end - start) >= 1_000_000_000L);
+        });
+
+        sleep(1000);
+
+        assertFalse(replicaTable.load(null, row));
+
+        assertEquals(3, scanner.row().id());
+
+        // Stepping to the end closes the scanner, which releases the predicate lock.
+        assertNull(scanner.step());
+
+        w1.await();
+
+        assertTrue(replicaTable.load(null, row));
+        assertEquals("name-5", row.name());
+
+        leaderDb.close();
+        replicaDb.close();
+    }
+
     private static <R extends TestRow> void fill(Table<R> table, int start, int end)
         throws Exception
     {
@@ -487,6 +623,17 @@ public class IndexLockTest {
             row.name("name-" + i);
             table.store(null, row);
         }
+    }
+
+    /**
+     * Writes a fence to the leader and waits for the replica to catch up.
+     */
+    private static void fence(SocketReplicator leaderRepl, SocketReplicator replicaRepl)
+        throws Exception
+    {
+        byte[] message = ("fence:" + System.nanoTime()).getBytes();
+        leaderRepl.writeControl(message);
+        replicaRepl.waitForControl(message);
     }
 
     private static <R extends TestRow> RowScanner<R> newRowScanner

@@ -685,14 +685,12 @@ public class IndexTriggerMaker<R> {
 
             if (!secondaryInfo.isAltKey) {
                 ixField.invoke("store", txnVar, secondaryKeyVar, secondaryValueVar);
-                if (closerVar != null) {
-                    mm.finally_(opStart, () -> closerVar.invoke("close"));
-                }
+                TableMaker.finishAcquire(mm, closerVar, opStart, txnVar, ixField,
+                                         secondaryKeyVar, secondaryValueVar);
             } else {
                 var result = ixField.invoke("insert", txnVar, secondaryKeyVar, secondaryValueVar);
-                if (closerVar != null) {
-                    mm.finally_(opStart, () -> closerVar.invoke("close"));
-                }
+                TableMaker.finishAcquire(mm, closerVar, opStart, txnVar, ixField,
+                                         secondaryKeyVar, secondaryValueVar);
                 Label pass = mm.label();
                 result.ifTrue(pass);
                 mm.new_(UniqueConstraintException.class, "Alternate key").throw_();
@@ -996,16 +994,6 @@ public class IndexTriggerMaker<R> {
             // Index needs to be updated. Insert the new entry and delete the old one.
             modified.here();
 
-            Variable closerVar;
-            Label opStart;
-            if (mSecondaryLocks[i] == null) {
-                closerVar = null;
-                opStart = null;
-            } else {
-                closerVar = mm.field("lock" + i).invoke("openAcquire", txnVar, rowVar);
-                opStart = mm.label().here();
-            }
-
             SecondaryInfo secondaryInfo = mSecondaryInfos[i];
             RowGen secondaryGen = secondaryInfo.rowGen();
             Field ixField = mm.field("ix" + i);
@@ -1019,16 +1007,24 @@ public class IndexTriggerMaker<R> {
             var secondaryValueVar = encodeColumns
                 (mm, newColumnSources, rowVar, ROW_FULL, keyVar, newValueVar, secondaryValueCodecs);
 
+            Variable closerVar;
+            Label opStart;
+            if (mSecondaryLocks[i] == null) {
+                closerVar = null;
+                opStart = null;
+            } else {
+                closerVar = mm.field("lock" + i).invoke("openAcquire", txnVar, rowVar);
+                opStart = mm.label().here();
+            }
+
             if (!secondaryInfo.isAltKey) {
                 ixField.invoke("store", txnVar, secondaryKeyVar, secondaryValueVar);
-                if (closerVar != null) {
-                    mm.finally_(opStart, () -> closerVar.invoke("close"));
-                }
+                TableMaker.finishAcquire(mm, closerVar, opStart, txnVar, ixField,
+                                         secondaryKeyVar, secondaryValueVar);
             } else {
                 var result = ixField.invoke("insert", txnVar, secondaryKeyVar, secondaryValueVar);
-                if (closerVar != null) {
-                    mm.finally_(opStart, () -> closerVar.invoke("close"));
-                }
+                TableMaker.finishAcquire(mm, closerVar, opStart, txnVar, ixField,
+                                         secondaryKeyVar, secondaryValueVar);
                 Label pass = mm.label();
                 result.ifTrue(pass);
                 mm.new_(UniqueConstraintException.class, "Alternate key").throw_();
