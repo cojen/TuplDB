@@ -610,20 +610,35 @@ public class RowStore {
      */
     public void notifySchema(long indexId) {
         // FIXME: If there's an exception, then the redo op isn't processed again. Define a
-        // workflow task perhaps?
+        // workflow task perhaps? Secondaries are also examined when tables are opened.
 
         // Must launch from a separate thread because locks are held by this thread until the
         // transaction finishes.
         Runner.start(() -> {
+            long retry = 0;
             try {
                 Index ix;
                 while ((ix = mDatabase.indexById(indexId)) == null) {
                     // FIXME: Sometimes ix is null due to an unknown race condition.
-                    System.err.println("notifySchema: index not found: " + indexId);
+                    if (retry == 0) {
+                        System.err.println("notifySchema: index not found: " + indexId);
+                        retry = System.currentTimeMillis();
+                    }
                     Thread.sleep(100);
+                }
+                if (retry != 0) {
+                    long duration = System.currentTimeMillis() - retry;
+                    System.err.println("notifySchema: found: " + ix + ", " + duration);
                 }
                 examineSecondaries(tableManager(ix));
             } catch (Throwable e) {
+                if (retry != 0) {
+                    long duration = System.currentTimeMillis() - retry;
+                    synchronized (System.err) {
+                        System.err.println("notifySchema: failed: " + indexId + ", " + duration);
+                        e.printStackTrace(System.err);
+                    }
+                }
                 uncaught(e);
             }
         });
