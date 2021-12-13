@@ -49,6 +49,8 @@ public class IndexLockTest {
     
     @After
     public void teardown() throws Exception {
+        deleteTempDatabases(getClass());
+
         if (mDatabase != null) {
             mDatabase.close();
             mDatabase = null;
