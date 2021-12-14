@@ -615,30 +615,13 @@ public class RowStore {
         // Must launch from a separate thread because locks are held by this thread until the
         // transaction finishes.
         Runner.start(() -> {
-            long retry = 0;
             try {
-                Index ix;
-                while ((ix = mDatabase.indexById(indexId)) == null) {
-                    // FIXME: Sometimes ix is null due to an unknown race condition.
-                    if (retry == 0) {
-                        System.err.println("notifySchema: index not found: " + indexId);
-                        retry = System.currentTimeMillis();
-                    }
-                    Thread.sleep(100);
+                Index ix = mDatabase.indexById(indexId);
+                // Index won't be found if it was concurrently dropped.
+                if (ix != null) {
+                    examineSecondaries(tableManager(ix));
                 }
-                if (retry != 0) {
-                    long duration = System.currentTimeMillis() - retry;
-                    System.err.println("notifySchema: found: " + ix + ", " + duration);
-                }
-                examineSecondaries(tableManager(ix));
             } catch (Throwable e) {
-                if (retry != 0) {
-                    long duration = System.currentTimeMillis() - retry;
-                    synchronized (System.err) {
-                        System.err.println("notifySchema: failed: " + indexId + ", " + duration);
-                        e.printStackTrace(System.err);
-                    }
-                }
                 uncaught(e);
             }
         });
