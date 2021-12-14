@@ -51,6 +51,19 @@ class BasicRowScanner<R> implements RowScanner<R> {
         };
     }
 
+    /**
+     * Constructs a BasicRowScanner which exits the transaction scope when the scanner finishes.
+     */
+    static <R> BasicRowScanner<R> scoped(AbstractTable<R> table, ScanController<R> controller) {
+        return new BasicRowScanner<R>(table, controller) {
+            @Override
+            protected void finished() throws IOException {
+                super.finished();
+                mCursor.link().exit();
+            }
+        };
+    }
+
     final AbstractTable<R> mTable;
     final ScanController<R> mController;
 
@@ -66,6 +79,8 @@ class BasicRowScanner<R> implements RowScanner<R> {
 
     /**
      * Must be called after construction.
+     *
+     * @param txn can be null
      */
     final void init(Transaction txn) throws IOException {
         a: while (true) {

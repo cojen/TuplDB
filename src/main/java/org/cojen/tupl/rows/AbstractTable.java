@@ -34,6 +34,7 @@ import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventType;
 import org.cojen.tupl.Index;
+import org.cojen.tupl.LockMode;
 import org.cojen.tupl.RowScanner;
 import org.cojen.tupl.RowUpdater;
 import org.cojen.tupl.Table;
@@ -117,59 +118,76 @@ public abstract class AbstractTable<R> implements Table<R> {
         throws IOException
     {
         final BasicRowScanner<R> scanner;
-        prepare: if (txn == null) {
-            scanner = new BasicRowScanner<>(this, controller);
-        } else {
-            final RowPredicateLock.Closer closer;
-            prepare2: {
-                switch (txn.lockMode()) {
-                case UPGRADABLE_READ: case REPEATABLE_READ: default: {
-                    scanner = new BasicRowScanner<>(this, controller);
-                    break;
-                }
+        RowPredicateLock.Closer closer;
 
-                case READ_COMMITTED: {
-                    RowPredicateLock<R> lock = mIndexLock;
-                    if (lock != null) {
-                        // Add a predicate lock which is scoped just to the scanner.
-                        closer = lock.addPredicate(txn, controller.predicate());
-                        if (closer != null) {
-                            scanner = BasicRowScanner.locked(this, controller, closer);
-                            break prepare2;
-                        }
+        addPredicate: {
+            final RowPredicateLock<R> lock;
+
+            if (txn == null) {
+                lock = mIndexLock;
+                if (lock != null) {
+                    // Add a predicate lock which is scoped just to the scanner.
+                    txn = mSource.newTransaction(null);
+                    closer = lock.addPredicate(txn, controller.predicate());
+                    if (closer != null) {
+                        txn.lockMode(LockMode.READ_COMMITTED);
+                        scanner = BasicRowScanner.scoped(this, controller);
+                        break addPredicate;
                     }
-                    // Fallthrough to next case.
+                    txn = null;
                 }
-
-                case READ_UNCOMMITTED: case UNSAFE:
-                    scanner = new BasicRowScanner<>(this, controller);
-                    // Don't add a predicate lock.
-                    break prepare;
-                }
-
-                if (mIndexLock == null) {
-                    break prepare;
-                }
-
-                // When this case is reached, the predicate lock effectively makes the
-                // transaction serializable.
-                closer = mIndexLock.addPredicate(txn, controller.predicate());
+                scanner = new BasicRowScanner<>(this, controller);
+                // Don't add a predicate lock.
+                closer = null;
+                break addPredicate;
             }
 
-            try {
-                scanner.init(txn);
-                return scanner;
-            } catch (Throwable e) {
-                if (closer != null) {
-                    closer.close();
-                }
-                throw e;
+            switch (txn.lockMode()) {
+            case UPGRADABLE_READ: case REPEATABLE_READ: default: {
+                scanner = new BasicRowScanner<>(this, controller);
+                break;
             }
+
+            case READ_COMMITTED: {
+                lock = mIndexLock;
+                if (lock != null) {
+                    // Add a predicate lock which is scoped just to the scanner.
+                    closer = lock.addPredicate(txn, controller.predicate());
+                    if (closer != null) {
+                        scanner = BasicRowScanner.locked(this, controller, closer);
+                        break addPredicate;
+                    }
+                }
+                // Fallthrough to next case.
+            }
+
+            case READ_UNCOMMITTED: case UNSAFE:
+                scanner = new BasicRowScanner<>(this, controller);
+                // Don't add a predicate lock.
+                closer = null;
+                break addPredicate;
+            }
+
+            lock = mIndexLock;
+            if (lock == null) {
+                closer = null;
+                break addPredicate;
+            }
+
+            // When this case is reached, the predicate lock effectively makes the transaction
+            // serializable.
+            closer = lock.addPredicate(txn, controller.predicate());
         }
 
-        scanner.init(txn);
-
-        return scanner;
+        try {
+            scanner.init(txn);
+            return scanner;
+        } catch (Throwable e) {
+            if (closer != null) {
+                closer.close();
+            }
+            throw e;
+        }
     }
 
     @Override
@@ -188,71 +206,86 @@ public abstract class AbstractTable<R> implements Table<R> {
         throws IOException
     {
         final BasicRowUpdater<R> updater;
-        prepare: if (txn == null) {
-            txn = mSource.newTransaction(null);
-            updater = new AutoCommitRowUpdater<>(this, controller);
-        } else {
-            final RowPredicateLock.Closer closer;
-            prepare2: {
-                switch (txn.lockMode()) {
-                case UPGRADABLE_READ: default: {
-                    updater = new BasicRowUpdater<>(this, controller);
-                    break;
-                }
+        RowPredicateLock.Closer closer;
 
-                case REPEATABLE_READ: {
-                    // Need to use upgradable locks to prevent deadlocks.
-                    updater = new UpgradableRowUpdater<>(this, controller);
-                    break;
-                }
+        addPredicate: {
+            final RowPredicateLock<R> lock;
 
-                case READ_COMMITTED: {
-                    RowPredicateLock<R> lock = mIndexLock;
-                    if (lock != null) {
-                        // Add a predicate lock which is scoped just to the updater.
-                        closer = lock.addPredicate(txn, controller.predicate());
-                        if (closer != null) {
-                            updater = NonRepeatableRowUpdater.locked(this, controller, closer);
-                            break prepare2;
-                        }
+            if (txn == null) {
+                txn = mSource.newTransaction(null);
+                lock = mIndexLock;
+                if (lock != null) {
+                    // Add a predicate lock which is scoped just to the updater.
+                    closer = lock.addPredicate(txn, controller.predicate());
+                    if (closer != null) {
+                        updater = AutoCommitRowUpdater.scoped(this, controller);
+                        break addPredicate;
                     }
-                    // Fallthrough to next case.
                 }
-
-                case READ_UNCOMMITTED:
-                    updater = new NonRepeatableRowUpdater<>(this, controller);
-                    // Don't add a predicate lock.
-                    break prepare;
-
-                case UNSAFE:
-                    updater = new BasicRowUpdater<>(this, controller);
-                    // Don't add a predicate lock.
-                    break prepare;
-                }
-
-                if (mIndexLock == null) {
-                    break prepare;
-                }
-
-                // When this case is reached, the predicate lock effectively makes the
-                // transaction serializable.
-                closer = mIndexLock.addPredicate(txn, controller.predicate());
+                updater = new AutoCommitRowUpdater<>(this, controller);
+                // Don't add a predicate lock.
+                closer = null;
+                break addPredicate;
             }
 
-            try {
-                updater.init(txn);
-                return updater;
-            } catch (Throwable e) {
-                if (closer != null) {
-                    closer.close();
-                }
-                throw e;
+            switch (txn.lockMode()) {
+            case UPGRADABLE_READ: default: {
+                updater = new BasicRowUpdater<>(this, controller);
+                break;
             }
+
+            case REPEATABLE_READ: {
+                // Need to use upgradable locks to prevent deadlocks.
+                updater = new UpgradableRowUpdater<>(this, controller);
+                break;
+            }
+
+            case READ_COMMITTED: {
+                lock = mIndexLock;
+                if (lock != null) {
+                    // Add a predicate lock which is scoped just to the updater.
+                    closer = lock.addPredicate(txn, controller.predicate());
+                    if (closer != null) {
+                        updater = NonRepeatableRowUpdater.locked(this, controller, closer);
+                        break addPredicate;
+                    }
+                }
+                // Fallthrough to next case.
+            }
+
+            case READ_UNCOMMITTED:
+                updater = new NonRepeatableRowUpdater<>(this, controller);
+                // Don't add a predicate lock.
+                closer = null;
+                break addPredicate;
+
+            case UNSAFE:
+                updater = new BasicRowUpdater<>(this, controller);
+                // Don't add a predicate lock.
+                closer = null;
+                break addPredicate;
+            }
+
+            lock = mIndexLock;
+            if (lock == null) {
+                closer = null;
+                break addPredicate;
+            }
+
+            // When this case is reached, the predicate lock effectively makes the transaction
+            // serializable.
+            closer = lock.addPredicate(txn, controller.predicate());
         }
 
-        updater.init(txn);
-
-        return updater;
+        try {
+            updater.init(txn);
+            return updater;
+        } catch (Throwable e) {
+            if (closer != null) {
+                closer.close();
+            }
+            throw e;
+        }
     }
 
     @Override

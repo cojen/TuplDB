@@ -129,10 +129,15 @@ public class IndexLockTest {
         scanner.close();
         scanTxn.reset();
 
-        // Null transaction doesn't check the predicate lock.
-        scanner = newRowScanner(table, updater, null, "id >= ? && id <= ?", 3, 7);
-        assertEquals(3, scanner.row().id());
-        scanner.close();
+        // Null transaction behaves the same as READ_COMMITTED and checks the predicate
+        // lock. With an updater, a null transaction behaves the same as UPGRADABLE_READ with
+        // auto-commit, and it also checks the predicate lock.
+        try {
+            newRowScanner(table, updater, null, "id >= ? && id <= ?", 3, 7);
+            fail();
+        } catch (LockTimeoutException e) {
+            predicateLockTimeout(e);
+        }
 
         if (!updater && type == TestRow2.class) {
             // Scans over a secondary index are also blocked.
@@ -304,12 +309,19 @@ public class IndexLockTest {
             // Scanners don't block each other, except via row locks.
             Transaction txn2 = mDatabase.newTransaction();
             txn2.lockMode(LockMode.READ_COMMITTED);
-            var scanner2 = newRowScanner(table, updater, txn2, "id >= ? && id <= ?", 3, 7);
+            var scanner2 = table.newRowScanner(txn2, "id >= ? && id <= ?", 3, 7);
             assertEquals(3, scanner2.row().id());
             scanner2.step();
             assertEquals(6, scanner2.row().id());
             scanner2.close();
             txn2.reset();
+
+            // Null transaction is same as READ_COMMITTED.
+            scanner2 = table.newRowScanner(null, "id >= ? && id <= ?", 3, 7);
+            assertEquals(3, scanner2.row().id());
+            scanner2.step();
+            assertEquals(6, scanner2.row().id());
+            scanner2.close();
         }
 
         if (!updater) {
@@ -554,6 +566,15 @@ public class IndexLockTest {
 
     @Test
     public void replicaBlockedByScanner() throws Exception {
+        replicaBlockedByScanner(false);
+    }
+
+    @Test
+    public void replicaBlockedByScanner2() throws Exception {
+        replicaBlockedByScanner(true);
+    }
+
+    private void replicaBlockedByScanner(boolean withTxn) throws Exception {
         // An incoming replica insert or store operation must wait for a dependent scan to
         // finish. Unfortunately, this stalls replication, but at least it's safe.
 
@@ -579,8 +600,15 @@ public class IndexLockTest {
 
         var replicaTable = replicaDb.openTable(TestRow.class);
 
-        Transaction txn1 = replicaDb.newTransaction();
-        txn1.lockMode(LockMode.READ_COMMITTED);
+        Transaction txn1;
+        if (withTxn) {
+            txn1 = replicaDb.newTransaction();
+            txn1.lockMode(LockMode.READ_COMMITTED);
+        } else {
+            // Behaves same as READ_COMMITTED.
+            txn1 = null;
+        }
+
         var scanner = replicaTable.newRowScanner(txn1, "id >= ? && id <= ?", 3, 7);
 
         // This store is blocked on the replica side.
