@@ -27,6 +27,7 @@ import org.junit.*;
 import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
+import org.cojen.tupl.util.Latch;
 
 /**
  * 
@@ -569,6 +570,100 @@ public class RowPredicateTest {
         mLock.addPredicate(txn2, pred1);
         txn2.lockUpgradable(1234, key1);
         txn2.reset();
+    }
+
+    @Test
+    public void exclusiveLock() throws Exception {
+
+        // Lock a row for scanning.
+        var txn1 = mDb.newTransaction();
+        var row1 = new TestRow(1);
+        var pred1 = new TestPredicate(row1);
+        mLock.addPredicate(txn1, pred1);
+
+        // Lock a row for insert (no conflict with scan).
+        var txn2 = mDb.newTransaction();
+        var row2 = new TestRow(2);
+        var pred2 = new TestPredicate(row2);
+        var acq = mLock.openAcquire(txn2, row2);
+        txn2.lockExclusive(1234, row2.key());
+        acq.close();
+
+        // Exclusive lock isn't granted until predicate and row locks are released.
+        var txn3 = mDb.newTransaction();
+        txn3.lockTimeout(10, TimeUnit.SECONDS);
+        var latch1 = new Latch(Latch.EXCLUSIVE);
+        var latch2 = new Latch(Latch.EXCLUSIVE);
+        Waiter w3 = start(() -> {
+            mLock.withExclusiveNoRedo(txn3, () -> {
+                latch1.releaseExclusive();
+                latch2.acquireExclusive();
+            });
+        });
+
+        // Exclusive lock not granted yet.
+        assertFalse(latch1.tryAcquireExclusiveNanos(100_000_000L));
+
+        txn1.exit();
+        txn2.exit();
+
+        // Exclusive lock was granted.
+        assertTrue(latch1.tryAcquireExclusiveNanos(2_000_000_000L));
+
+        // New calls to openAcquire are blocked.
+        var txn4 = mDb.newTransaction();
+        try {
+            var row4 = new TestRow(4);
+            var pred4 = new TestPredicate(row4);
+            mLock.openAcquire(txn4, row4).close();
+            fail();
+        } catch (LockTimeoutException e) {
+            txn4.exit();
+        }
+
+        // New calls to addPredicate are blocked.
+        var txn5 = mDb.newTransaction();
+        try {
+            var row5 = new TestRow(5);
+            var pred5 = new TestPredicate(row5);
+            mLock.addPredicate(txn5, pred5);
+            fail();
+        } catch (LockTimeoutException e) {
+            txn5.exit();
+        }
+
+        // New calls to withExclusiveNoRedo are blocked.
+        var txn6 = mDb.newTransaction();
+        try {
+            mLock.withExclusiveNoRedo(txn6, () -> {});
+            fail();
+        } catch (LockTimeoutException e) {
+            txn6.exit();
+        }
+
+        txn4.lockTimeout(10, TimeUnit.SECONDS);
+        Waiter w4 = start(() -> {
+            var row4 = new TestRow(4);
+            var pred4 = new TestPredicate(row4);
+            mLock.openAcquire(txn4, row4).close();
+        });
+
+        txn5.lockTimeout(10, TimeUnit.SECONDS);
+        Waiter w5 = start(() -> {
+            var row5 = new TestRow(5);
+            var pred5 = new TestPredicate(row5);
+            mLock.addPredicate(txn5, pred5);
+        });
+
+        // Allow exclusive lock to be released.
+        latch2.releaseExclusive();
+
+        // Wait for exclusive to be released.
+        w3.join();
+
+        // Wait for blocked calls to complete.
+        w4.join();
+        w5.join();
     }
 
     static interface Task {

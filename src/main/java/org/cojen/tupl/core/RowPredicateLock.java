@@ -56,11 +56,6 @@ public interface RowPredicateLock<R> {
         throws LockFailureException;
 
     /**
-     * Count the number of predicates currently in the set. O(n) cost.
-     */
-    int countPredicates();
-
-    /**
      * Adds a predicate lock into the set, and waits for all existing transactions which match
      * on it to finish. Once added, the lock remains in the set for the entire scope of the
      * given transaction, held exclusively. If the add operation times out, the lock is removed
@@ -74,6 +69,20 @@ public interface RowPredicateLock<R> {
     Closer addPredicate(Transaction txn, RowPredicate<R> predicate) throws LockFailureException;
 
     /**
+     * Acquires an exclusive lock, which blocks all calls to openAcquire and addPredicate, and
+     * waits for existing locks to be released. The exclusive lock is released when the
+     * callback returns or throws an exception.
+     *
+     * @param callback runs with exclusive lock held
+     */
+    void withExclusiveNoRedo(Transaction txn, Runnable callback) throws IOException;
+
+    /**
+     * Count the number of predicates currently in the set. O(n) cost.
+     */
+    int countPredicates();
+
+    /**
      * Returns a class which can be extended for evaluating predicate locks directly. When used,
      * the predicate instances cannot be recycled.
      */
@@ -82,6 +91,9 @@ public interface RowPredicateLock<R> {
     public static interface Closer {
         void close();
 
+        /**
+         * Only expected to be used when using openAcquire(txn, row).
+         */
         void failed(Throwable ex, Transaction txn, long indexId, byte[] key, byte[] value)
             throws IOException;
     }

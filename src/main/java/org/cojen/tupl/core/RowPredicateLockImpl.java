@@ -87,8 +87,8 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
     @Override
     public Closer openAcquire(Transaction txn, R row) throws IOException {
         var local = (LocalTransaction) txn;
-        VersionLock lock = mNewestVersion;
-        lock.acquire(local);
+        VersionLock version = mNewestVersion;
+        version.acquire(local);
 
         try {
             local.redoPredicateLockOpen();
@@ -98,9 +98,9 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
                     e.matched(local);
                 }
             }
-            return lock;
+            return version;
         } catch (Throwable e) {
-            lock.close();
+            version.close();
             throw e;
         }
     }
@@ -110,8 +110,8 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
         throws LockFailureException
     {
         var local = (LocalTransaction) txn;
-        VersionLock lock = mNewestVersion;
-        lock.acquire(local);
+        VersionLock version = mNewestVersion;
+        version.acquire(local);
 
         try {
             for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
@@ -119,20 +119,11 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
                     e.matched(local);
                 }
             }
-            return lock;
+            return version;
         } catch (Throwable e) {
-            lock.close();
+            version.close();
             throw e;
         }
-    }
-
-    @Override
-    public int countPredicates() {
-        int count = 0;
-        for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
-            count++;
-        }
-        return count;
     }
 
     @Override
@@ -180,12 +171,6 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
         addEvaluator(txn, evaluator);
 
         return evaluator;
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public Class<? extends RowPredicate<R>> evaluatorClass() {
-        return (Class) Evaluator.class;
     }
 
     private void addEvaluator(final Transaction txn, final Evaluator<R> evaluator)
@@ -266,6 +251,53 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
             remove(evaluator);
             throw e;
         }
+    }
+
+    @Override
+    public void withExclusiveNoRedo(Transaction txn, Runnable callback) throws IOException {
+        var local = (LocalTransaction) txn;
+
+        local.enter();
+        try {
+            // Adding a predicate that matches 'all' will block all new calls to openAcquire,
+            // which in turn blocks new rows from being inserted.
+            addPredicate(local, RowPredicate.all());
+
+            // Holding the version lock blocks addPredicate calls once they call version.await.
+            // They won't acquire the exclusive evaluator lock until this step completes.
+            final VersionLock version = mNewestVersion;
+            version.acquire(local);
+
+            try {
+                // Wait for existing row scan operations to finish. This loop should encounter
+                // the evaluator associated with the 'all' predicate added above, but this
+                // won't block because it's owned by the same transaction.
+                for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
+                    e.acquireShared(local);
+                }
+
+                callback.run();
+            } finally {
+                version.close();
+            }
+        } finally {
+            txn.exit();
+        }
+    }
+
+    @Override
+    public int countPredicates() {
+        int count = 0;
+        for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
+            count++;
+        }
+        return count;
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Class<? extends RowPredicate<R>> evaluatorClass() {
+        return (Class) Evaluator.class;
     }
 
     private void remove(final Evaluator<R> lock) {
