@@ -52,7 +52,6 @@ final class NullableLastBigIntegerColumnCodec extends NonNullLastBigIntegerColum
         if (totalVar == null) {
             totalVar = mMaker.var(int.class).set(0);
         }
-        mBytesVar = mMaker.var(byte[].class);
         Label notNull = mMaker.label();
         srcVar.ifNe(null, notNull);
         mBytesVar.set(null);
