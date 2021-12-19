@@ -97,4 +97,19 @@ public interface RowPredicateLock<R> {
         void failed(Throwable ex, Transaction txn, long indexId, byte[] key, byte[] value)
             throws IOException;
     }
+
+    static final class NonCloser implements Closer {
+        static final NonCloser THE = new NonCloser();
+
+        private NonCloser() {
+        }
+
+        @Override
+        public void close() {
+        }
+
+        @Override
+        public void failed(Throwable ex, Transaction txn, long indexId, byte[] key, byte[] value) {
+        }
+    }
 }

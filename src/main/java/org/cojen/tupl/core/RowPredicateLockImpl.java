@@ -28,6 +28,7 @@ import org.cojen.tupl.DeadlockException;
 import org.cojen.tupl.DeadlockInfo;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockInterruptedException;
+import org.cojen.tupl.LockMode;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.LockTimeoutException;
 import org.cojen.tupl.Transaction;
@@ -86,6 +87,10 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
 
     @Override
     public Closer openAcquire(Transaction txn, R row) throws IOException {
+        if (txn.lockMode() == LockMode.UNSAFE) {
+            return NonCloser.THE;
+        }
+
         var local = (LocalTransaction) txn;
         VersionLock version = mNewestVersion;
         version.acquire(local);
@@ -109,6 +114,8 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
     public Closer openAcquireNoRedo(Transaction txn, byte[] key, byte[] value)
         throws LockFailureException
     {
+        // Assume this method is called by ReplEngine, in which case txn is never UNSAFE.
+
         var local = (LocalTransaction) txn;
         VersionLock version = mNewestVersion;
         version.acquire(local);
