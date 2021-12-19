@@ -92,12 +92,13 @@ public class IndexTriggerMaker<R> {
      *
      * @param secondaryIndexes note: elements are null for dropped indexes
      */
-    private IndexTriggerMaker(Class<R> rowType, RowInfo primaryInfo,
+    @SuppressWarnings("unchecked")
+    private IndexTriggerMaker(Class<R> rowType, Class rowClass, RowInfo primaryInfo,
                               SecondaryInfo[] secondaryInfos, Index[] secondaryIndexes,
                               RowPredicateLock<R>[] secondaryLocks)
     {
         mRowType = rowType;
-        mRowClass = RowMaker.find(rowType);
+        mRowClass = rowClass;
         mPrimaryGen = primaryInfo.rowGen();
 
         mSecondaryDescriptors = null;
@@ -799,7 +800,7 @@ public class IndexTriggerMaker<R> {
             SecondaryInfo[] secondaryInfos = RowStore.indexRowInfos(primaryInfo, secondaryDescs);
 
             var maker = new IndexTriggerMaker<>
-                (rowType, primaryInfo, secondaryInfos, secondaryIndexes, secondaryLocks);
+                (rowType, rowClass, primaryInfo, secondaryInfos, secondaryIndexes, secondaryLocks);
 
             IndexBackfill[] backfills = null;
             if (backfillRefs != null) {
