@@ -45,6 +45,12 @@ class Encoder {
         mBuffer[mLength++] = (byte) v;
     }
 
+    public void writeIntBE(int v) {
+        ensureCapacity(4);
+        encodeIntBE(mBuffer, mLength, v);
+        mLength += 4;
+    }
+
     public void writeIntLE(int v) {
         ensureCapacity(4);
         encodeIntLE(mBuffer, mLength, v);

@@ -464,8 +464,9 @@ public class RowStore {
         View secondariesView = viewExtended(primaryTable.mSource.id(), K_SECONDARY);
         secondariesView = secondariesView.viewPrefix(new byte[] {(byte) type}, 0);
 
-        // Identify the first match. The ASCII value for '+' is less than '-', and so a match
-        // for ascending order is generally found first when an unspecified order was given.
+        // Identify the first match. Ascending order is encoded with bit 7 clear (see
+        // ColumnInfo), and so matches for ascending order are generally found first when an
+        // unspecified order was given.
         long indexId;
         RowInfo indexRowInfo;
         byte[] descriptor;
@@ -523,9 +524,10 @@ public class RowStore {
     }
 
     /**
-     * Compares descriptors as encoded by EncodedRowInfo.encodeDescriptor.
+     * Compares descriptors as encoded by EncodedRowInfo.encodeDescriptor. Column types are
+     * ignored except for comparing key column ordering.
      *
-     * @param search can have '~' unspecified orderings
+     * @param search typeCode can be -1 for unspecified orderings
      * @param found should not have any unspecified orderings
      */
     private static boolean descriptorMatches(byte[] search, byte[] found) {
@@ -535,7 +537,7 @@ public class RowStore {
 
         int offset = 1; // skip the type prefix
 
-        for (int part=1; part<=2; part++) {
+        for (int part=1; part<=2; part++) { // part 1 is keys section, part 2 is values section
             int numColumns = decodePrefixPF(search, offset);
             if (numColumns != decodePrefixPF(found, offset)) {
                 return false;
@@ -543,13 +545,26 @@ public class RowStore {
             offset += lengthPrefixPF(numColumns);
 
             for (int i=0; i<numColumns; i++) {
-                if (part == 1) { // first part examines the "keys" portion of the descriptor
-                    byte ordering = search[offset];
-                    if (ordering != found[offset] && ordering != '~') {
-                        return false;
+                if (part == 1) {
+                    // Only examine the key column ordering.
+                    int searchTypeCode = decodeIntBE(search, offset) ^ (1 << 31);
+                    if (searchTypeCode != -1) { // is -1 when unspecified
+                        int foundTypeCode = decodeIntBE(found, offset) ^ (1 << 31);
+                        if ((searchTypeCode & ColumnInfo.TYPE_DESCENDING) != 
+                            (foundTypeCode & ColumnInfo.TYPE_DESCENDING))
+                        {
+                            // Ordering doesn't match.
+                            return false;
+                        }
                     }
-                    offset++;
+                } else {
+                    // Ignore value column type codes.
                 }
+
+                offset += 4;
+
+                // Now compare the column name.
+
                 int nameLength = decodePrefixPF(search, offset);
                 if (nameLength != decodePrefixPF(found, offset)) {
                     return false;
@@ -1096,20 +1111,7 @@ public class RowStore {
         info.keyColumns = new LinkedHashMap<>(numKeys);
 
         for (int i=0; i<numKeys; i++) {
-            boolean descending = desc[offset++] == '-';
-            int nameLength = decodePrefixPF(desc, offset);
-            offset += lengthPrefixPF(nameLength);
-            String name = decodeStringUTF(desc, offset, nameLength).intern();
-            offset += nameLength;
-
-            ColumnInfo column = primaryInfo.allColumns.get(name);
-
-            if (descending != column.isDescending()) {
-                column = column.copy();
-                column.typeCode ^= ColumnInfo.TYPE_DESCENDING;
-            }
-
-            info.keyColumns.put(name, column);
+            offset = decodeIndexColumn(primaryInfo, desc, offset, info.keyColumns);
         }
 
         int numValues = decodePrefixPF(desc, offset);
@@ -1119,22 +1121,47 @@ public class RowStore {
             offset += lengthPrefixPF(numValues);
             info.valueColumns = new TreeMap<>();
 
-            for (int i=0; i<numValues; i++) {
-                int nameLength = decodePrefixPF(desc, offset);
-                offset += lengthPrefixPF(nameLength);
-                String name = decodeStringUTF(desc, offset, nameLength).intern();
-                offset += nameLength;
-
-                ColumnInfo column = primaryInfo.allColumns.get(name);
-
-                info.valueColumns.put(name, column);
-            }
+            offset = decodeIndexColumn(primaryInfo, desc, offset, info.valueColumns);
         }
 
         info.allColumns = new TreeMap<>(info.keyColumns);
         info.allColumns.putAll(info.valueColumns);
 
         return info;
+    }
+
+    /**
+     * @param columns decoded column goes here
+     * @return updated offset
+     */
+    private static int decodeIndexColumn(RowInfo primaryInfo, byte[] desc, int offset,
+                                         Map<String, ColumnInfo> columns)
+    {
+        int typeCode = decodeIntBE(desc, offset) ^ (1 << 31); offset += 4;
+        int nameLength = decodePrefixPF(desc, offset);
+        offset += lengthPrefixPF(nameLength);
+        String name = decodeStringUTF(desc, offset, nameLength);
+        offset += nameLength;
+
+        ColumnInfo column = primaryInfo.allColumns.get(name);
+
+        makeColumn: {
+            if (column == null) {
+                name = name.intern();
+                column = new ColumnInfo();
+                column.name = name;
+            } else if (column.typeCode != typeCode) {
+                column = column.copy();
+            } else {
+                break makeColumn;
+            }
+            column.typeCode = typeCode;
+            column.assignType();
+        }
+
+        columns.put(column.name, column);
+
+        return offset;
     }
 
     /**
@@ -1458,30 +1485,18 @@ public class RowStore {
          */
         private static byte[] encodeDescriptor(char type, Encoder encoder, ColumnSet cs) {
             encoder.reset(0);
-
             encoder.writeByte((byte) type);
-
-            encoder.writePrefixPF(cs.keyColumns.size());
-            for (ColumnInfo column : cs.keyColumns.values()) {
-                int typeCode = column.typeCode;
-                char prefix;
-                if (typeCode == -1) {
-                    // The "unspecified" prefix is expected only when calling examineIndex from
-                    // the indexTable method.
-                    prefix = '~';
-                } else {
-                    prefix = ColumnInfo.isDescending(typeCode) ? '-' : '+';
-                }
-                encoder.writeByte(prefix);
-                encoder.writeStringUTF(column.name);
-            }
-
-            encoder.writePrefixPF(cs.valueColumns.size());
-            for (ColumnInfo column : cs.valueColumns.values()) {
-                encoder.writeStringUTF(column.name);
-            }
-
+            encodeColumns(encoder, cs.keyColumns);
+            encodeColumns(encoder, cs.valueColumns);
             return encoder.toByteArray();
+        }
+
+        private static void encodeColumns(Encoder encoder, Map<String, ColumnInfo> columns) {
+            encoder.writePrefixPF(columns.size());
+            for (ColumnInfo column : columns.values()) {
+                encoder.writeIntBE(column.typeCode ^ (1 << 31));
+                encoder.writeStringUTF(column.name);
+            }
         }
     }
 }
