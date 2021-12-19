@@ -760,12 +760,103 @@ public class IndexingTest {
         replicaDb.close();
     }
 
-    private static <R> void verifyIndex(Table<R> a, Table<R> b, int expectMissing)
+    @Test
+    @SuppressWarnings("unchecked")
+    public void addColumnAndIndex() throws Exception {
+        var config = new DatabaseConfig().directPageAccess(false);
+        //config.eventListener(EventListener.printTo(System.out));
+        Database db = Database.open(config);
+
+        final String typeName = newRowTypeName();
+
+        Object[] spec = {
+            long.class, "+id",
+            BigInteger.class, "num?"
+        };
+
+        ClassMaker cm = newRowTypeMaker(typeName, spec);
+        Class t1 = cm.finish();
+        var accessors1 = access(spec, t1);
+        var setters1 = accessors1[1];
+        var table1 = db.openIndex("test").asTable(t1);
+
+        // Fill 'er up.
+
+        final int fillAmount = 100;
+
+        final long seed = 8675308;
+        var rnd = new Random(seed);
+
+        for (int i=0; i<fillAmount; i++) {
+            var row = table1.newRow();
+            setters1[0].invoke(row, i); // id
+            setters1[1].invoke(row, randomValue(rnd, spec, 1)); // num
+            table1.store(null, row);
+        }
+
+        // Now add an index which refers to a newly added column. It should default to "".
+
+        spec = new Object[] {
+            long.class, "+id",
+            String.class, "name",
+            BigInteger.class, "num?"
+        };
+
+        cm = newRowTypeMaker(typeName, spec);
+        addSecondaryIndex(cm, "-name");
+        Class t2 = cm.finish();
+        var accessors2 = access(spec, t2);
+        var setters2 = accessors2[1];
+        var table2 = db.openIndex("test").asTable(t2);
+
+        Table nameTable = null;
+        for (int i=0; i<1000; i++) {
+            try {
+                nameTable = table2.viewSecondaryIndex("name");
+            } catch (IllegalStateException e) {
+                assertTrue(e.getMessage().contains("not found"));
+            }
+            if (nameTable != null) {
+                break;
+            }
+            // Wait for backfill to finish.
+            sleep(100);
+        }
+
+        assertEquals(fillAmount, verifyIndex(table2, nameTable, 0));
+
+        // Add a new row using the new table definition.
+
+        {
+            var row = table2.newRow();
+            setters2[0].invoke(row, 999998L); // id
+            setters2[1].invoke(row, "name-999998"); // name
+            setters2[2].invoke(row, new BigInteger("999998")); // num
+            table2.store(null, row);
+        }
+
+        assertEquals(fillAmount + 1, verifyIndex(table2, nameTable, 0));
+
+        // Add a new row using the old table definition.
+
+        {
+            var row = table1.newRow();
+            setters1[0].invoke(row, 999999L); // id
+            setters1[1].invoke(row, new BigInteger("999999")); // num
+            table1.store(null, row);
+        }
+
+        assertEquals(fillAmount + 2, verifyIndex(table2, nameTable, 0));
+    }
+
+    private static <R> int verifyIndex(Table<R> a, Table<R> b, int expectMissing)
         throws Exception
     {
+        int found = 0;
         RowScanner<R> s = a.newRowScanner(null);
 
         for (R ra = s.row(); s.row() != null; ra = s.step(ra)) {
+            found++;
             R rb = a.cloneRow(ra);
             assertTrue(b.load(null, rb));
             a.load(null, rb);
@@ -779,6 +870,8 @@ public class IndexingTest {
         }
 
         assertEquals(0, expectMissing);
+
+        return found;
     }
 
     private static <R> long count(Table<R> table) throws Exception {

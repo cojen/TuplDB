@@ -1042,6 +1042,7 @@ public class RowStore {
      * If the given schemaVersion is 0, then the returned RowInfo only consists a primary key
      * and no value columns.
      *
+     * @param rowType can pass null if not available (unless schemaVersion is 0)
      * @throws CorruptDatabaseException if not found
      */
     RowInfo rowInfo(Class<?> rowType, long indexId, int schemaVersion)
@@ -1068,7 +1069,7 @@ public class RowStore {
             c.autoload(false);
             c.find(key(indexId));
             RowInfo current = null;
-            if (c.value() != null) {
+            if (c.value() != null && rowType != null) {
                 var buf = new byte[4];
                 if (decodeIntLE(buf, 0) == schemaVersion) {
                     // Matches, but don't simply return it. The current one might not have been
@@ -1080,7 +1081,8 @@ public class RowStore {
             c.autoload(true);
             c.findNearby(key(indexId, schemaVersion));
 
-            RowInfo info = decodeExisting(rowType.getName(), null, c.value());
+            String typeName = rowType == null ? null : rowType.getName();
+            RowInfo info = decodeExisting(typeName, null, c.value());
 
             if (current != null && current.allColumns.equals(info.allColumns)) {
                 // Current one matches, so use the canonical RowInfo instance.

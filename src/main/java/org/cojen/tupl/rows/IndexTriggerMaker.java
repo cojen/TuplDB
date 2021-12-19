@@ -90,6 +90,8 @@ public class IndexTriggerMaker<R> {
     /**
      * Used by indy methods.
      *
+     * @param rowType can pass null if only backfill encoding is to be used
+     * @param rowClass can pass null if only backfill encoding is to be used
      * @param secondaryIndexes note: elements are null for dropped indexes
      */
     @SuppressWarnings("unchecked")
@@ -109,16 +111,14 @@ public class IndexTriggerMaker<R> {
     }
 
     /**
+     * @param primaryIndexId primary index id
      * @param which which secondary index to make a backfill for 
      */
-    IndexBackfill<R> makeBackfill(RowStore rs, TableManager<R> manager, int which) {
-        SecondaryInfo secondaryInfo = mSecondaryInfos[which];
-        Index secondaryIndex = mSecondaryIndexes[which];
-
+    IndexBackfill<R> makeBackfill(RowStore rs, long primaryIndexId,
+                                  TableManager<R> manager, int which)
+    {
         ClassMaker cm = mPrimaryGen.beginClassMaker(IndexTriggerMaker.class, mRowType, "Backfill");
         cm.extend(IndexBackfill.class).final_();
-
-        mColumnSources = buildColumnSources(secondaryInfo);
 
         MethodMaker mm = cm.addMethod
             (null, "encode", byte[].class, byte[].class, byte[][].class, int.class);
@@ -129,7 +129,94 @@ public class IndexTriggerMaker<R> {
         var secondaryEntryVar = mm.param(2);
         var offsetVar = mm.param(3);
 
-        int numValues = findColumns(mm, primaryKeyVar, primaryValueVar, -1, ROW_NONE);
+        byte[] secondaryDesc = mSecondaryDescriptors[which];
+
+        var indy = mm.var(IndexTriggerMaker.class).indy
+            ("indyBackfillEncode", rs.ref(), mRowType, primaryIndexId, secondaryDesc);
+
+        var schemaVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", primaryValueVar);
+
+        indy.invoke(null, "encode", null, schemaVersion,
+                    primaryKeyVar, primaryValueVar, secondaryEntryVar, offsetVar);
+
+        // Now define the constructor.
+
+        MethodType ctorMethodType = MethodType.methodType
+            (void.class, RowStore.class, TableManager.class,
+             Index.class, byte[].class, String.class);
+
+        mm = cm.addConstructor(ctorMethodType);
+        mm.invokeSuperConstructor(mm.param(0), mm.param(1), true, // autoload
+                                  mm.param(2), mm.param(3), mm.param(4));
+
+        var lookup = cm.finishHidden();
+
+        Index secondaryIndex = mSecondaryIndexes[which];
+        String secondaryStr = mSecondaryInfos[which].eventString();
+
+        try {
+            var ctor = lookup.findConstructor(lookup.lookupClass(), ctorMethodType);
+            return (IndexBackfill<R>) ctor.invoke
+                (rs, manager, secondaryIndex, secondaryDesc, secondaryStr);
+        } catch (Throwable e) {
+            throw rethrow(e);
+        }
+    }
+
+    /**
+     * Bootstrap method for the backfill encode method.
+     *
+     * MethodType is:
+     *
+     *     void (int schemaVersion,
+     *           byte[] primaryKey, byte[] primaryValue, byte[][] secondaryEntry, int offset)
+     */
+    public static SwitchCallSite indyBackfillEncode
+        (MethodHandles.Lookup lookup, String name, MethodType mt,
+         WeakReference<RowStore> storeRef, Class<?> rowType, long primaryIndexId,
+         byte[] secondaryDesc)
+    {
+        return new SwitchCallSite(lookup, mt, schemaVersion -> {
+            // Drop the schemaVersion parameter.
+            var mtx = MethodType.methodType
+                (void.class, byte[].class, byte[].class, byte[][].class, int.class);
+
+            RowStore store = storeRef.get();
+            if (store == null) {
+                var mm = MethodMaker.begin(lookup, "encode", mtx);
+                mm.new_(DatabaseException.class, "Closed").throw_();
+                return mm.finish();
+            }
+
+            RowInfo primaryInfo;
+            try {
+                primaryInfo = store.rowInfo(rowType, primaryIndexId, schemaVersion);
+            } catch (Exception e) {
+                var mm = MethodMaker.begin(lookup, "encode", mtx);
+                return new ExceptionCallSite.Failed(mtx, mm, e);
+            }
+
+            var maker = new IndexTriggerMaker<>(null, null, primaryInfo, null, null, null);
+
+            SecondaryInfo secondaryInfo = RowStore.indexRowInfo(primaryInfo, secondaryDesc);
+
+            return maker.makeBackfillEncodeMethod(lookup, mtx, secondaryInfo);
+        });
+    }
+
+    private MethodHandle makeBackfillEncodeMethod(MethodHandles.Lookup lookup, MethodType mt,
+                                                  SecondaryInfo secondaryInfo)
+    {
+        MethodMaker mm = MethodMaker.begin(lookup, "encode", mt);
+
+        var primaryKeyVar = mm.param(0);
+        var primaryValueVar = mm.param(1);
+        var secondaryEntryVar = mm.param(2);
+        var offsetVar = mm.param(3);
+
+        mColumnSources = buildColumnSources(secondaryInfo);
+
+        findColumns(mm, primaryKeyVar, primaryValueVar, -1, ROW_NONE);
 
         RowGen secondaryGen = secondaryInfo.rowGen();
 
@@ -145,30 +232,8 @@ public class IndexTriggerMaker<R> {
                                               primaryKeyVar, primaryValueVar, secondaryValueCodecs);
 
         secondaryEntryVar.aset(offsetVar.add(1), secondaryValueVar);
-        
-        // Now define the constructor.
 
-        MethodType ctorMethodType = MethodType.methodType
-            (void.class, RowStore.class, TableManager.class,
-             Index.class, byte[].class, String.class);
-
-        mm = cm.addConstructor(ctorMethodType);
-        boolean autoload = numValues != 0;
-        mm.invokeSuperConstructor(mm.param(0), mm.param(1), autoload,
-                                  mm.param(2), mm.param(3), mm.param(4));
-
-        var lookup = cm.finishHidden();
-
-        byte[] secondaryDesc = mSecondaryDescriptors[which];
-        String secondaryStr = secondaryInfo.eventString();
-
-        try {
-            var ctor = lookup.findConstructor(lookup.lookupClass(), ctorMethodType);
-            return (IndexBackfill<R>) ctor.invoke
-                (rs, manager, secondaryIndex, secondaryDesc, secondaryStr);
-        } catch (Throwable e) {
-            throw rethrow(e);
-        }
+        return mm.finish();
     }
 
     /**
@@ -293,6 +358,9 @@ public class IndexTriggerMaker<R> {
 
             buildColumnSources(sources, valueCodecMap, false, secondaryKeyCodecs);
             buildColumnSources(sources, valueCodecMap, false, secondaryValueCodecs);
+
+            buildNullColumnSources(sources, secondaryKeyCodecs);
+            buildNullColumnSources(sources, secondaryValueCodecs);
         }
 
         return sources;
@@ -327,6 +395,32 @@ public class IndexTriggerMaker<R> {
     }
 
     /**
+     * Builds sources with NullColumnCodec for those not found in the primary key or value.
+     *
+     * @param sources results stored here
+     * @param secondaryCodecs secondary index columns which need to be found
+     */
+    private void buildNullColumnSources(Map<String, ColumnSource> sources,
+                                        ColumnCodec[] secondaryCodecs)
+    {
+        for (ColumnCodec codec : secondaryCodecs) {
+            String name = codec.mInfo.name;
+            ColumnSource source = sources.get(name);
+            if (source == null) {
+                var primaryCodec = new NullColumnCodec(codec.mInfo, null);
+                // Pass true for fromKey, because like key columns, "null" columns always exist.
+                source = new ColumnSource(sources.size(), primaryCodec, true);
+                sources.put(name, source);
+            }
+            if (source.mCodec.equals(codec)) {
+                source.mMatches++;
+            } else {
+                source.mMismatches++;
+            }
+        }
+    }
+
+    /**
      * Returns a copy that excludes the ColumnSource Variable fields.
      */
     private Map<String, ColumnSource> cloneColumnSources() {
@@ -345,10 +439,9 @@ public class IndexTriggerMaker<R> {
      * @param valueVar primary value byte array
      * @param valueOffset initial offset into byte array, or -1 to auto skip schema version
      * @param rowMode see ROW_* fields
-     * @return the number of columns accessed from the encoded value
      */
-    private int findColumns(MethodMaker mm,
-                            Variable keyVar, Variable valueVar, int valueOffset, int rowMode)
+    private void findColumns(MethodMaker mm,
+                             Variable keyVar, Variable valueVar, int valueOffset, int rowMode)
     {
         // Determine how many columns must be accessed from the encoded form.
 
@@ -368,8 +461,6 @@ public class IndexTriggerMaker<R> {
         findColumns(mm, keyVar, 0, true, rowMode, numKeys);
 
         findColumns(mm, valueVar, valueOffset, false, rowMode, numValues);
-
-        return numValues;
     }
 
     /**
@@ -776,13 +867,7 @@ public class IndexTriggerMaker<R> {
             Index[] secondaryIndexes;
             RowPredicateLock[] secondaryLocks;
             try {
-                if (schemaVersion == 0) {
-                    // When the schema version is zero, the primary value is empty. Since the
-                    // primary key never changes, can lookup the canonical RowInfo instance.
-                    primaryInfo = RowInfo.find(rowType);
-                } else {
-                    primaryInfo = store.rowInfo(rowType, indexId, schemaVersion);
-                }
+                primaryInfo = store.rowInfo(rowType, indexId, schemaVersion);
 
                 secondaryIndexes = new Index[secondaryIndexIds.length];
                 secondaryLocks = new RowPredicateLock[secondaryIndexes.length];
@@ -1119,7 +1204,7 @@ public class IndexTriggerMaker<R> {
         for (ColumnCodec codec : codecs) {
             ColumnSource source = columnSources.get(codec.mInfo.name);
             if (!source.shouldCopyBytes(codec)) {
-                totalVar = codec.encodeSize(source.accessColumn(rowVar), totalVar);
+                totalVar = codec.encodeSize(source.accessColumn(mm, rowVar), totalVar);
             } else {
                 // FIXME: Detect spans and reduce additions.
                 var lengthVar = source.mEndVar.sub(source.mStartVar);
@@ -1150,7 +1235,7 @@ public class IndexTriggerMaker<R> {
             ColumnCodec codec = codecs[i];
             ColumnSource source = columnSources.get(codec.mInfo.name);
             if (!source.shouldCopyBytes(codec)) {
-                codec.encode(source.accessColumn(rowVar), dstVar, offsetVar);
+                codec.encode(source.accessColumn(mm, rowVar), dstVar, offsetVar);
             } else {
                 // FIXME: Detect spans and reduce copies.
                 Variable bytesVar = source.mFromKey ? keyVar : valueVar;
@@ -1227,7 +1312,9 @@ public class IndexTriggerMaker<R> {
          * @param rowMode see ROW_* fields
          */
         boolean mustFind(int rowMode) {
-            if (rowMode == ROW_FULL || (rowMode == ROW_KEY_ONLY && mFromKey)) {
+            if (mCodec instanceof NullColumnCodec) {
+                return false;
+            } else if (rowMode == ROW_FULL || (rowMode == ROW_KEY_ONLY && mFromKey)) {
                 if (isPrimitive()) {
                     // Primitive columns are cheap to encode, so no need to copy the byte form.
                     return false;
@@ -1422,16 +1509,22 @@ public class IndexTriggerMaker<R> {
          * @param rowVar primary row
          * @return a decoded variable or a field from the row
          */
-        Variable accessColumn(Variable rowVar) {
+        Variable accessColumn(MethodMaker mm, Variable rowVar) {
             Variable colVar = mDecodedVar;
+
             if (colVar == null) {
                 Checked checked = mChecked;
                 if (checked != null) {
                     colVar = checked.mColumnVar;
+                } else if (mCodec instanceof NullColumnCodec ncc) {
+                    colVar = mm.var(ncc.mInfo.type);
+                    ncc.decode(colVar, null, null, null);
+                    mDecodedVar = colVar;
                 } else {
                     colVar = rowVar.field(mCodec.mInfo.name);
                 }
             }
+
             return colVar;
         }
 

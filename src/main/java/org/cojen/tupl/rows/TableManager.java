@@ -248,7 +248,7 @@ public class TableManager<R> {
                     IndexBackfill<R> backfill = mIndexBackfills.get(desc);
 
                     if (backfill == null) {
-                        backfill = maker.makeBackfill(rs, this, i);
+                        backfill = maker.makeBackfill(rs, mPrimaryIndex.id(), this, i);
                         mIndexBackfills.put(desc, backfill);
                         if (newBackfills == null) {
                             newBackfills = new ArrayList<>();
