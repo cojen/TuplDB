@@ -890,56 +890,66 @@ public class RowStore {
 
         RowPredicateLock<?> lock = indexLock(secondaryIndex.id());
 
-        Runnable task;
-
         if (lock == null) {
             if (listener != null) {
                 listener.notify(EventType.TABLE_INDEX_INFO, "Dropping %1$s", eventStr);
             }
-            task = mDatabase.deleteIndex(secondaryIndex);
-        } else {
-            // Acquire the lock to wait for all scans to complete, and to prevent new ones from
-            // starting.
 
-            var taskRef = new Runnable[1];
+            Runnable task = mDatabase.deleteIndex(secondaryIndex);
 
-            Transaction txn = mDatabase.newTransaction();
-            try {
-                Runnable mustWait = null;
-
-                if (listener != null) {
-                    mustWait = () -> listener.notify
-                        (EventType.TABLE_INDEX_INFO, "Waiting to drop %1$s", eventStr);
-                }
-
-                lock.withExclusiveNoRedo(txn, mustWait, () -> {
-                    try {
-                        if (listener != null) {
-                            listener.notify(EventType.TABLE_INDEX_INFO, "Dropping %1$s", eventStr);
-                        }
-                        taskRef[0] = mDatabase.deleteIndex(secondaryIndex);
-                    } catch (Throwable e) {
-                        throw rethrow(e);
-                    }
-                });
-
-                txn.commit();
-            } finally {
-                txn.exit();
+            if (listener == null) {
+                return task;
             }
 
-            removeIndexLock(secondaryIndex.id());
-            
-            task = taskRef[0];
-        }
-
-        if (listener == null) {
-            return task;
+            return () -> {
+                task.run();
+                listener.notify(EventType.TABLE_INDEX_INFO, "Finished dropping %1$s", eventStr);
+            };
         }
 
         return () -> {
-            task.run();
-            listener.notify(EventType.TABLE_INDEX_INFO, "Finished dropping %1$s", eventStr);
+            try {
+                Transaction txn = mDatabase.newTransaction();
+                try {
+                    // Acquire the predicate lock to wait for all scans to complete, and to
+                    // prevent new ones from starting.
+
+                    txn.lockTimeout(-1, null);
+
+                    Runnable mustWait = null;
+
+                    if (listener != null) {
+                        mustWait = () -> listener.notify
+                            (EventType.TABLE_INDEX_INFO, "Waiting to drop %1$s", eventStr);
+                    }
+
+                    lock.withExclusiveNoRedo(txn, mustWait, () -> {
+                        try {
+                            if (listener != null) {
+                                listener.notify(EventType.TABLE_INDEX_INFO,
+                                                "Dropping %1$s", eventStr);
+                            }
+
+                            mDatabase.deleteIndex(secondaryIndex).run();
+
+                            if (listener != null) {
+                                listener.notify(EventType.TABLE_INDEX_INFO,
+                                                "Finished dropping %1$s", eventStr);
+                            }
+                        } catch (Throwable e) {
+                            uncaught(e);
+                        }
+                    });
+
+                    txn.commit();
+                } finally {
+                    txn.exit();
+                }
+
+                removeIndexLock(secondaryIndex.id());
+            } catch (Throwable e) {
+                uncaught(e);
+            }
         };
     }
 

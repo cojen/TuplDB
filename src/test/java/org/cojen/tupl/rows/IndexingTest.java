@@ -850,8 +850,17 @@ public class IndexingTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     public void dropIndex() throws Exception {
+        dropIndex(false);
+    }
+
+    @Test
+    public void dropIndexWithStall() throws Exception {
+        dropIndex(true);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void dropIndex(boolean stall) throws Exception {
         var config = new DatabaseConfig().directPageAccess(false);
         //config.eventListener(EventListener.printTo(System.out));
         Database db = Database.open(config);
@@ -899,6 +908,12 @@ public class IndexingTest {
 
         // Define the table again, but without the secondary index.
 
+        RowScanner scanner = null;
+        if (stall) {
+            // Prevent deleting the index until the scan has finished.
+            scanner = nameTable.newRowScanner(null);
+        }
+
         Class t2 = newRowType(typeName, spec);
         var accessors2 = access(spec, t2);
         var setters2 = accessors2[1];
@@ -913,6 +928,11 @@ public class IndexingTest {
 
         // FIXME: test concurrent drop; trigger will throw an exception; should check and ignore
         // FIXME: test replica drop; it needs notification from ReplEngine
+
+        if (stall) {
+            assertEquals(fillAmount, nameTable.newStream(null).count());
+            scanner.close();
+        }
 
         assertEquals(0, nameTable.newStream(null).count());
 
