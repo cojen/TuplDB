@@ -44,6 +44,8 @@ import java.util.function.Supplier;
 import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DurabilityMode;
+import org.cojen.tupl.EventListener;
+import org.cojen.tupl.EventType;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockMode;
@@ -838,7 +840,9 @@ public class RowStore {
                     if (value != null && value.length >= 8) {
                         Index secondaryIndex = mDatabase.indexById(decodeLongLE(c.value(), 0));
                         if (secondaryIndex != null) {
-                            Runnable task = deleteIndex(secondaryIndex);
+                            long primaryIndexId = decodeLongBE(indexKey, 0);
+                            byte[] descriptor = Arrays.copyOfRange(key, 8 + 4 + 4, key.length);
+                            Runnable task = deleteIndex(primaryIndexId, secondaryIndex, descriptor);
                             if (deleteTasks == null) {
                                 deleteTasks = new ArrayList<>();
                             }
@@ -861,36 +865,79 @@ public class RowStore {
         }
     }
 
-    private Runnable deleteIndex(Index ix) throws IOException {
-        RowPredicateLock<?> lock = indexLock(ix.id());
+    private Runnable deleteIndex(long primaryIndexId, Index secondaryIndex, byte[] descriptor)
+        throws IOException
+    {
+        EventListener listener = mDatabase.eventListener();
+
+        String eventStr;
+        if (listener == null) {
+            eventStr = null;
+        } else {
+            SecondaryInfo secondaryInfo = null;
+            try {
+                RowInfo primaryInfo = decodeExisting(null, null, primaryIndexId);
+                secondaryInfo = indexRowInfo(primaryInfo, descriptor);
+            } catch (Exception e) {
+            }
+
+            if (secondaryInfo == null) {
+                eventStr = String.valueOf(secondaryIndex.id());
+            } else {
+                eventStr = secondaryInfo.eventString();
+            }
+        }
+
+        RowPredicateLock<?> lock = indexLock(secondaryIndex.id());
+
+        Runnable task;
 
         if (lock == null) {
-            return mDatabase.deleteIndex(ix);
-        }
+            if (listener != null) {
+                listener.notify(EventType.TABLE_INDEX_INFO, "Dropping %1$s", eventStr);
+            }
+            task = mDatabase.deleteIndex(secondaryIndex);
+        } else {
+            // Acquire the lock to wait for all scans to complete, and to prevent new ones from
+            // starting.
 
-        // Acquire the lock to wait for all scans to complete and to prevent new ones from
-        // starting.
+            var taskRef = new Runnable[1];
 
-        var taskRef = new Runnable[1];
-
-        Transaction txn = mDatabase.newTransaction();
-        try {
-            lock.withExclusiveNoRedo(txn, () -> {
-                try {
-                    taskRef[0] = mDatabase.deleteIndex(ix);
-                } catch (Throwable e) {
-                    throw rethrow(e);
+            Transaction txn = mDatabase.newTransaction();
+            try {
+                if (listener != null) {
+                    listener.notify(EventType.TABLE_INDEX_INFO, "Waiting to drop %1$s", eventStr);
                 }
-            });
 
-            txn.commit();
-        } finally {
-            txn.exit();
+                lock.withExclusiveNoRedo(txn, () -> {
+                    try {
+                        if (listener != null) {
+                            listener.notify(EventType.TABLE_INDEX_INFO, "Dropping %1$s", eventStr);
+                        }
+                        taskRef[0] = mDatabase.deleteIndex(secondaryIndex);
+                    } catch (Throwable e) {
+                        throw rethrow(e);
+                    }
+                });
+
+                txn.commit();
+            } finally {
+                txn.exit();
+            }
+
+            removeIndexLock(secondaryIndex.id());
+            
+            task = taskRef[0];
         }
 
-        removeIndexLock(ix.id());
+        if (listener == null) {
+            return task;
+        }
 
-        return taskRef[0];
+        return () -> {
+            task.run();
+            listener.notify(EventType.TABLE_INDEX_INFO, "Finished dropping %1$s", eventStr);
+        };
     }
 
     /**
@@ -904,7 +951,7 @@ public class RowStore {
     {
         int schemaVersion;
 
-        List<Index> secondariesToDelete = null;
+        Map<Index, byte[]> secondariesToDelete = null;
 
         Transaction txn = mSchemata.newTransaction(DurabilityMode.SYNC);
         try (Cursor current = mSchemata.newCursor(txn)) {
@@ -1038,10 +1085,10 @@ public class RowStore {
                         manager.removeFromIndexTables(secondaryIndex);
 
                         if (secondariesToDelete == null) {
-                            secondariesToDelete = new ArrayList<>();
+                            secondariesToDelete = new LinkedHashMap<>();
                         }
 
-                        secondariesToDelete.add(secondaryIndex);
+                        secondariesToDelete.put(secondaryIndex, c.key());
                     }
                 }
             }
@@ -1101,9 +1148,9 @@ public class RowStore {
         }
 
         if (secondariesToDelete != null) {
-            for (Index ix : secondariesToDelete) {
+            for (var entry : secondariesToDelete.entrySet()) {
                 try {
-                    Runner.start(deleteIndex(ix));
+                    Runner.start(deleteIndex(indexId, entry.getKey(), entry.getValue()));
                 } catch (IOException e) {
                     // Assume leadership was lost.
                 }

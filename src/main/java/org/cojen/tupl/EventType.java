@@ -74,10 +74,10 @@ public enum EventType {
     /** Unhandled in the replication system, and the database must be shutdown. */
     REPLICATION_PANIC(Category.REPLICATION, Level.ERROR),
 
-    /** Information regarding a backfill task on a new secondary index or alternate key. */
-    TABLE_INDEX_BACKFILL_INFO(Category.TABLE, Level.INFO),
-    /** Error regarding a backfill task on a new secondary index or alternate key. */
-    TABLE_INDEX_BACKFILL_ERROR(Category.TABLE, Level.ERROR),
+    /** Information regarding a task on a new secondary index or alternate key. */
+    TABLE_INDEX_INFO(Category.TABLE, Level.INFO),
+    /** Error regarding a task on a new secondary index or alternate key. */
+    TABLE_INDEX_ERROR(Category.TABLE, Level.ERROR),
     /** Warning which indicates that a filtered row scan might be suboptimal. */
     TABLE_COMPLEX_FILTER(Category.TABLE, Level.WARNING),
 

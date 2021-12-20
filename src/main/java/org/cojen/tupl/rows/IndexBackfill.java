@@ -106,7 +106,7 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
         }
 
         if (listener != null) {
-            listener.notify(EventType.TABLE_INDEX_BACKFILL_INFO,
+            listener.notify(EventType.TABLE_INDEX_INFO,
                             "Starting backfill for %1$s", mSecondaryStr);
         }
 
@@ -116,7 +116,7 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
             success = doRun();
 
             if (!success && listener != null) {
-                listener.notify(EventType.TABLE_INDEX_BACKFILL_INFO,
+                listener.notify(EventType.TABLE_INDEX_INFO,
                                 "Stopped backfill for %1$s", mSecondaryStr);
             }
         } catch (Throwable e) {
@@ -127,7 +127,7 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
             mRowStore.activateSecondaryIndex(this, success);
 
             if (success && listener != null) {
-                listener.notify(EventType.TABLE_INDEX_BACKFILL_INFO,
+                listener.notify(EventType.TABLE_INDEX_INFO,
                                 "Finished backfill for %1$s", mSecondaryStr);
             }
         } catch (Throwable e) {
@@ -141,7 +141,7 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
             if (listener == null) {
                 RowUtils.uncaught(e);
             } else {
-                listener.notify(EventType.TABLE_INDEX_BACKFILL_ERROR, message, mSecondaryStr, e);
+                listener.notify(EventType.TABLE_INDEX_ERROR, message, mSecondaryStr, e);
             }
         }
     }
