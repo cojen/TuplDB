@@ -930,11 +930,29 @@ public class IndexingTest {
         // FIXME: test replica drop; it needs notification from ReplEngine
 
         if (stall) {
-            assertEquals(fillAmount, nameTable.newStream(null).count());
+            try {
+                assertEquals(fillAmount, nameTable.newStream(null).count());
+            } catch (Exception e) {
+                if (e instanceof LockTimeoutException) {
+                    // Okay too.
+                } else {
+                    throw e;
+                }
+            }
+
             scanner.close();
         }
 
-        assertEquals(0, nameTable.newStream(null).count());
+        for (int i=100; --i>=0; ) {
+            long count = nameTable.newStream(null).count();
+            if (count == 0) {
+                break;
+            }
+            if (i == 0) {
+                assertEquals(0, count);
+            }
+            sleep(100);
+        }
 
         {
             var row = table1.newRow();
