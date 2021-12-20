@@ -1525,7 +1525,18 @@ final class LocalDatabase extends CoreDatabase {
 
         BTree trashed = openTrashedTree(treeIdBytes, false);
 
-        return new Deletion(trashed, false, null);
+        boolean resumed = false;
+        EventListener listener = null;
+
+        if (mCheckpointer == null || !mCheckpointer.isStarted()) {
+            // If not replicated and is recovering, report the deletion, if a listener exists.
+            // If database is read-only, then no checkpointer exists, but report the deletion
+            // even though it can't truly finish.
+            resumed = true;
+            listener = mEventListener;
+        }
+
+        return new Deletion(trashed, resumed, listener);
     }
 
     /**

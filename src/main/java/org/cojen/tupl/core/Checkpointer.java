@@ -119,8 +119,13 @@ final class Checkpointer implements Runnable {
         if (!initialCheckpoint) {
             mState = STATE_RUNNING;
         }
-        mThread = newThread(this);
-        mThread.start();
+        Thread t = newThread(this);
+        t.start();
+        mThread = t;
+    }
+
+    boolean isStarted() {
+        return mThread != null;
     }
 
     private static Thread newThread(Runnable r) {
