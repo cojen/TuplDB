@@ -73,9 +73,11 @@ public interface RowPredicateLock<R> {
      * waits for existing locks to be released. The exclusive lock is released when the
      * callback returns or throws an exception.
      *
+     * @param mustWait if not null, is called when the lock might not be immediately available
      * @param callback runs with exclusive lock held
      */
-    void withExclusiveNoRedo(Transaction txn, Runnable callback) throws IOException;
+    void withExclusiveNoRedo(Transaction txn, Runnable mustWait, Runnable callback)
+        throws IOException;
 
     /**
      * Count the number of predicates currently in the set. O(n) cost.

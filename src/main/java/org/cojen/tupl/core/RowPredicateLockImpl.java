@@ -146,7 +146,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
         }
     }
 
-    private Closer addNonEvaluator(Transaction txn, RowPredicate<R> predicate)
+    private Evaluator addNonEvaluator(Transaction txn, RowPredicate<R> predicate)
         throws LockFailureException
     {
         if (predicate instanceof RowPredicate.None) {
@@ -261,14 +261,16 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
     }
 
     @Override
-    public void withExclusiveNoRedo(Transaction txn, Runnable callback) throws IOException {
+    public void withExclusiveNoRedo(Transaction txn, Runnable mustWait, Runnable callback)
+        throws IOException
+    {
         var local = (LocalTransaction) txn;
 
         local.enter();
         try {
             // Adding a predicate that matches 'all' will block all new calls to openAcquire,
             // which in turn blocks new rows from being inserted.
-            addPredicate(local, RowPredicate.all());
+            Evaluator all = addNonEvaluator(local, RowPredicate.all());
 
             // Holding the version lock blocks addPredicate calls once they call version.await.
             // They won't acquire the exclusive evaluator lock until this step completes.
@@ -276,11 +278,17 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
             version.acquire(local);
 
             try {
-                // Wait for existing row scan operations to finish. This loop should encounter
-                // the evaluator associated with the 'all' predicate added above, but this
-                // won't block because it's owned by the same transaction.
+                // Wait for existing row scan operations to finish.
                 for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
-                    e.acquireShared(local);
+                    if (e != all) {
+                        if (mustWait != null) {
+                            // Pessimistic invocation.
+                            mustWait.run();
+                            mustWait = null;
+                        }
+
+                        e.acquireShared(local);
+                    }
                 }
 
                 callback.run();

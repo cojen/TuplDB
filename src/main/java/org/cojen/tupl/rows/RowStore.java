@@ -905,11 +905,14 @@ public class RowStore {
 
             Transaction txn = mDatabase.newTransaction();
             try {
+                Runnable mustWait = null;
+
                 if (listener != null) {
-                    listener.notify(EventType.TABLE_INDEX_INFO, "Waiting to drop %1$s", eventStr);
+                    mustWait = () -> listener.notify
+                        (EventType.TABLE_INDEX_INFO, "Waiting to drop %1$s", eventStr);
                 }
 
-                lock.withExclusiveNoRedo(txn, () -> {
+                lock.withExclusiveNoRedo(txn, mustWait, () -> {
                     try {
                         if (listener != null) {
                             listener.notify(EventType.TABLE_INDEX_INFO, "Dropping %1$s", eventStr);

@@ -595,7 +595,7 @@ public class RowPredicateTest {
         var latch1 = new Latch(Latch.EXCLUSIVE);
         var latch2 = new Latch(Latch.EXCLUSIVE);
         Waiter w3 = start(() -> {
-            mLock.withExclusiveNoRedo(txn3, () -> {
+            mLock.withExclusiveNoRedo(txn3, null, () -> {
                 latch1.releaseExclusive();
                 latch2.acquireExclusive();
             });
@@ -635,7 +635,7 @@ public class RowPredicateTest {
         // New calls to withExclusiveNoRedo are blocked.
         var txn6 = mDb.newTransaction();
         try {
-            mLock.withExclusiveNoRedo(txn6, () -> {});
+            mLock.withExclusiveNoRedo(txn6, null, () -> {});
             fail();
         } catch (LockTimeoutException e) {
             txn6.exit();
