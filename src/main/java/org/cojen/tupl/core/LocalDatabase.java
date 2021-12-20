@@ -75,6 +75,7 @@ import org.cojen.tupl.Crypto;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DatabaseFullException;
+import org.cojen.tupl.DeletedIndexException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventType;
@@ -1195,6 +1196,23 @@ final class LocalDatabase extends CoreDatabase {
             && !findNumberedFiles(mBaseFile, REDO_FILE_SUFFIX, 0, Long.MAX_VALUE).isEmpty();
     }
 
+    /**
+     * Returns a ClosedIndexException or a DeletedIndexException.
+     */
+    ClosedIndexException newClosedIndexException(BTree tree) {
+        if (lookupIndexById(tree.mId) == null && tree.mIdBytes != null) {
+            try {
+                if (!mRegistry.exists(Transaction.BOGUS, tree.mIdBytes) && !isClosed()) {
+                    return new DeletedIndexException();
+                }
+            } catch (IOException e) {
+                // Can't truly know if deleted or not.
+            }
+        }
+
+        return new ClosedIndexException();
+    }
+
     @Override
     public Index findIndex(byte[] name) throws IOException {
         return openTree(name, false);
@@ -1360,7 +1378,7 @@ final class LocalDatabase extends CoreDatabase {
         root.acquireExclusive();
         try {
             if (root.mPage == p_closedTreePage()) {
-                throw new ClosedIndexException();
+                throw newClosedIndexException(tree);
             }
 
             if (Tree.isInternal(tree.mId)) {
@@ -1558,7 +1576,7 @@ final class LocalDatabase extends CoreDatabase {
 
                 if (!doMoveToTrash(txn, tree.mIdBytes)) {
                     // Handle concurrent delete attempt.
-                    throw new ClosedIndexException();
+                    throw newClosedIndexException(tree);
                 }
 
                 if (txn.mRedo != null) {
@@ -1599,7 +1617,7 @@ final class LocalDatabase extends CoreDatabase {
         Node root = tree.close(true, true);
         if (root == null) {
             // Handle concurrent close attempt.
-            throw new ClosedIndexException();
+            throw newClosedIndexException(tree);
         }
 
         BTree trashed = newBTreeInstance(tree.mId, tree.mIdBytes, tree.mName, root);

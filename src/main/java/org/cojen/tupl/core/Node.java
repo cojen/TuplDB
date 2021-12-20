@@ -4730,7 +4730,7 @@ final class Node extends Clutch implements DatabaseAccess {
 
         if (page == p_closedTreePage()) {
             // Node is a closed tree root.
-            throw new ClosedIndexException();
+            throw tree.mDatabase.newClosedIndexException(tree);
         }
 
         Node newNode = tree.mDatabase.allocDirtyNode(NodeGroup.MODE_UNEVICTABLE);
@@ -4800,7 +4800,7 @@ final class Node extends Clutch implements DatabaseAccess {
 
         if (page == p_closedTreePage()) {
             // Node is a closed tree root.
-            throw new ClosedIndexException();
+            throw tree.mDatabase.newClosedIndexException(tree);
         }
 
         Node newNode = tree.mDatabase.allocDirtyNode(NodeGroup.MODE_UNEVICTABLE);

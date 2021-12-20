@@ -1009,7 +1009,7 @@ class BTree extends Tree implements View, Index {
         try {
             try {
                 if (root.mPage == p_closedTreePage()) {
-                    throw new ClosedIndexException();
+                    throw mDatabase.newClosedIndexException(this);
                 }
 
                 if (mustBeEmpty && (!root.isLeaf() || root.hasKeys())) {

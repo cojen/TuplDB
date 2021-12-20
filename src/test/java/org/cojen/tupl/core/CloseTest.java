@@ -61,6 +61,8 @@ public class CloseTest {
         try {
             ix.store(null, "hello".getBytes(), "world".getBytes());
             fail();
+        } catch (DeletedIndexException e) {
+            throw e;
         } catch (ClosedIndexException e) {
             // expected -- index is closed
         }
@@ -82,6 +84,8 @@ public class CloseTest {
         try {
             c.store("something".getBytes());
             fail();
+        } catch (DeletedIndexException e) {
+            throw e;
         } catch (ClosedIndexException e) {
             // expected -- index is closed
         }
@@ -102,6 +106,8 @@ public class CloseTest {
         try {
             c.store("value".getBytes());
             fail();
+        } catch (DeletedIndexException e) {
+            throw e;
         } catch (ClosedIndexException e) {
             // expected -- index is closed
         }
@@ -230,7 +236,7 @@ public class CloseTest {
         try {
             ix.store(null, "hello".getBytes(), "world".getBytes());
             fail();
-        } catch (ClosedIndexException e) {
+        } catch (DeletedIndexException e) {
         }
 
         ix = mDb.openIndex("drop");
@@ -282,7 +288,7 @@ public class CloseTest {
         try {
             ix.drop();
             fail();
-        } catch (ClosedIndexException e) {
+        } catch (DeletedIndexException e) {
         }
 
         assertNull(mDb.findIndex("drop"));
@@ -331,12 +337,14 @@ public class CloseTest {
         try {
             mDb.deleteIndex(ix2);
             fail();
-        } catch (ClosedIndexException e) {
+        } catch (DeletedIndexException e) {
         }
 
         try {
             ix.store(null, "hello".getBytes(), "world!".getBytes());
             fail();
+        } catch (DeletedIndexException e) {
+            throw e;
         } catch (ClosedIndexException e) {
         }
 
@@ -387,6 +395,8 @@ public class CloseTest {
         try {
             c.store("stuff".getBytes());
             fail();
+        } catch (DeletedIndexException e) {
+            throw e;
         } catch (ClosedIndexException e) {
         }
     }
