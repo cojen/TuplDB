@@ -545,7 +545,7 @@ public class TableMaker {
                 RowInfo info = RowInfo.find(rowType);
                 int schemaVersion;
                 try {
-                    schemaVersion = store.schemaVersion(info, indexId, true);
+                    schemaVersion = store.schemaVersion(info, false, indexId, true);
                 } catch (Exception e) {
                     return new ExceptionCallSite.Failed(mt, mm, e);
                 }

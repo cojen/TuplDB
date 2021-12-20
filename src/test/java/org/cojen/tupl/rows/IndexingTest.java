@@ -849,6 +849,101 @@ public class IndexingTest {
         assertEquals(fillAmount + 2, verifyIndex(table2, nameTable, 0));
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    public void dropIndex() throws Exception {
+        var config = new DatabaseConfig().directPageAccess(false);
+        //config.eventListener(EventListener.printTo(System.out));
+        Database db = Database.open(config);
+
+        final String typeName = newRowTypeName();
+
+        final Object[] spec = {
+            long.class, "+id",
+            String.class, "name",
+            BigInteger.class, "num?"
+        };
+
+        ClassMaker cm = newRowTypeMaker(typeName, spec);
+        addSecondaryIndex(cm, "name");
+        Class t1 = cm.finish();
+        var accessors1 = access(spec, t1);
+        var setters1 = accessors1[1];
+        var table1 = db.openIndex("test").asTable(t1);
+
+        // Fill 'er up.
+
+        final int fillAmount = 10_000;
+
+        final long seed = 8675308;
+        var rnd = new Random(seed);
+
+        for (int i=0; i<fillAmount; i++) {
+            var row = table1.newRow();
+            setters1[0].invoke(row, i); // id
+
+            var name = (String) randomValue(rnd, spec, 1);
+            setters1[1].invoke(row, name); // name
+
+            setters1[2].invoke(row, randomValue(rnd, spec, 2)); // num
+
+            table1.store(null, row);
+        }
+
+        var nameTable = table1.viewSecondaryIndex("name");
+        verifyIndex(nameTable, table1, 0);
+        assertEquals(fillAmount, nameTable.newStream(null).count());
+        long nameTableId = ((AbstractTable) nameTable).mSource.id();
+
+        assertNotNull(db.indexById(nameTableId));
+
+        // Define the table again, but without the secondary index.
+
+        Class t2 = newRowType(typeName, spec);
+        var accessors2 = access(spec, t2);
+        var setters2 = accessors2[1];
+        var table2 = db.openIndex("test").asTable(t2);
+
+        try {
+            table2.viewSecondaryIndex("name");
+            fail();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().contains("not found"));
+        }
+
+        // FIXME: test concurrent drop; trigger will throw an exception; should check and ignore
+        // FIXME: test replica drop; it needs notification from ReplEngine
+
+        assertEquals(0, nameTable.newStream(null).count());
+
+        {
+            var row = table1.newRow();
+            setters1[0].invoke(row, 10); // id
+            setters1[1].invoke(row, "new name"); // name
+            table1.merge(null, row);
+            //System.out.println(row);
+        }
+
+        {
+            var row = table2.newRow();
+            setters2[0].invoke(row, 20); // id
+            setters2[1].invoke(row, "new name"); // name
+            table2.merge(null, row);
+            //System.out.println(row);
+        }
+
+        try {
+            table2.viewSecondaryIndex("name");
+            fail();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().contains("not found"));
+        }
+
+        assertEquals(0, nameTable.newStream(null).count());
+
+        assertNull(db.indexById(nameTableId));
+    }
+
     private static <R> int verifyIndex(Table<R> a, Table<R> b, int expectMissing)
         throws Exception
     {

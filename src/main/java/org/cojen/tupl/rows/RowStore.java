@@ -229,6 +229,12 @@ public class RowStore {
         }
     }
 
+    private void removeIndexLock(long indexId) {
+        synchronized (mIndexLocks) {
+            mIndexLocks.remove(indexId);
+        }
+    }
+
     @SuppressWarnings("unchecked")
     public <R> Table<R> asTable(Index ix, Class<R> type) throws IOException {
         return ((TableManager<R>) tableManager(ix)).asTable(this, ix, type);
@@ -289,7 +295,7 @@ public class RowStore {
         // Attempt to eagerly update schema metadata and secondary indexes.
         try {
             // Pass false for notify because examineSecondaries will be invoked by caller.
-            schemaVersion(info, ix.id(), false);
+            schemaVersion(info, true, ix.id(), false);
         } catch (IOException e) {
             // Ignore and try again when storing rows or when the leadership changes.
         }
@@ -602,7 +608,7 @@ public class RowStore {
                     if (table != null) {
                         RowInfo info = RowInfo.find(table.rowType());
                         long indexId = manager.mPrimaryIndex.id();
-                        schemaVersion(info, indexId, true); // notify = true
+                        schemaVersion(info, true, indexId, true); // notify = true
                     }
                 }
             } catch (IOException e) {
@@ -832,7 +838,7 @@ public class RowStore {
                     if (value != null && value.length >= 8) {
                         Index secondaryIndex = mDatabase.indexById(decodeLongLE(c.value(), 0));
                         if (secondaryIndex != null) {
-                            Runnable task = mDatabase.deleteIndex(secondaryIndex);
+                            Runnable task = deleteIndex(secondaryIndex);
                             if (deleteTasks == null) {
                                 deleteTasks = new ArrayList<>();
                             }
@@ -855,13 +861,50 @@ public class RowStore {
         }
     }
 
+    private Runnable deleteIndex(Index ix) throws IOException {
+        RowPredicateLock<?> lock = indexLock(ix.id());
+
+        if (lock == null) {
+            return mDatabase.deleteIndex(ix);
+        }
+
+        // Acquire the lock to wait for all scans to complete and to prevent new ones from
+        // starting.
+
+        var taskRef = new Runnable[1];
+
+        Transaction txn = mDatabase.newTransaction();
+        try {
+            lock.withExclusiveNoRedo(txn, () -> {
+                try {
+                    taskRef[0] = mDatabase.deleteIndex(ix);
+                } catch (Throwable e) {
+                    throw rethrow(e);
+                }
+            });
+
+            txn.commit();
+        } finally {
+            txn.exit();
+        }
+
+        removeIndexLock(ix.id());
+
+        return taskRef[0];
+    }
+
     /**
      * Returns the schema version for the given row info, creating a new version if necessary.
      *
+     * @param mostRecent true if the given info is known to be the most recent definition
      * @param notify true to call notifySchema if anything changed
      */
-    int schemaVersion(final RowInfo info, final long indexId, boolean notify) throws IOException {
+    int schemaVersion(RowInfo info, boolean mostRecent, long indexId, boolean notify)
+        throws IOException
+    {
         int schemaVersion;
+
+        List<Index> secondariesToDelete = null;
 
         Transaction txn = mSchemata.newTransaction(DurabilityMode.SYNC);
         try (Cursor current = mSchemata.newCursor(txn)) {
@@ -872,11 +915,25 @@ public class RowStore {
             if (current.value() != null) {
                 // Check if the schema has changed.
                 schemaVersion = decodeIntLE(current.value(), 0);
+
                 RowInfo currentInfo = decodeExisting
                     (txn, info.name, indexId, current.value(), schemaVersion);
+
                 if (checkSchema(info.name, currentInfo, info)) {
                     // Exactly the same, so don't create a new version.
                     return schemaVersion;
+                }
+
+                if (!mostRecent) {
+                    RowInfo info2 = info.withIndexes(currentInfo);
+                    if (info2 != info) {
+                        // Don't change the indexes.
+                        info = info2;
+                        if (checkSchema(info.name, currentInfo, info)) {
+                            // Don't create a new version.
+                            return schemaVersion;
+                        }
+                    }
                 }
             }
 
@@ -955,20 +1012,36 @@ public class RowStore {
 
             // Start with the full set of secondary descriptors and later prune it down to
             // those that need to be created.
-            var secondaries = encoded.secondaries;
+            TreeSet<byte[]> secondaries = encoded.secondaries;
 
             // Access a view of persisted secondary descriptors to index ids and states.
             View secondariesView = viewExtended(indexId, K_SECONDARY);
 
             // Find and update secondary indexes that should be deleted.
+            TableManager<?> manager = null;
             try (Cursor c = secondariesView.newCursor(txn)) {
                 for (c.first(); c.key() != null; c.next()) {
-                    if (!secondaries.contains(c.key())) {
-                        byte[] value = c.value();
+                    byte[] value = c.value();
+                    Index secondaryIndex = mDatabase.indexById(decodeLongLE(value, 0));
+                    if (secondaryIndex == null) {
+                        c.store(null); // already deleted, so remove the entry
+                    } else if (!secondaries.contains(c.key())) {
                         if (value[8] != 'D') {
                             value[8] = 'D'; // "deleting" state
                             c.store(value);
                         }
+
+                        if (manager == null) {
+                            manager = tableManager(mDatabase.indexById(indexId));
+                        }
+
+                        manager.removeFromIndexTables(secondaryIndex);
+
+                        if (secondariesToDelete == null) {
+                            secondariesToDelete = new ArrayList<>();
+                        }
+
+                        secondariesToDelete.add(secondaryIndex);
                     }
                 }
             }
@@ -1025,6 +1098,16 @@ public class RowStore {
             });
         } finally {
             txn.reset();
+        }
+
+        if (secondariesToDelete != null) {
+            for (Index ix : secondariesToDelete) {
+                try {
+                    Runner.start(deleteIndex(ix));
+                } catch (IOException e) {
+                    // Assume leadership was lost.
+                }
+            }
         }
 
         if (notify) {

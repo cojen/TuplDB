@@ -126,6 +126,14 @@ public class TableManager<R> {
         return indexTables;
     }
 
+    synchronized void removeFromIndexTables(Index secondaryIndex) {
+        if (mIndexTables != null) {
+            if (mIndexTables.removeValues(table -> table.mSource == secondaryIndex)) {
+                mIndexTables = null;
+            }
+        }
+    }
+
     /**
      * Returns the most recent table that was accessed from the asTable method. If it becomes
      * unreferenced, then this method returns null. By design, there's no linked list of recent
@@ -189,6 +197,7 @@ public class TableManager<R> {
      * @param table can be null if no table instances exist
      * @param rowType can be null if table is null
      * @param primaryInfo required
+     * @param secondaries key is secondary index descriptor, value is index id and state
      */
     private void update(AbstractTable<R> table, Class<R> rowType, RowInfo primaryInfo,
                         RowStore rs, Transaction txn, View secondaries)
@@ -196,9 +205,11 @@ public class TableManager<R> {
     {
         int numIndexes = 0;
         try (Cursor c = secondaries.newCursor(txn)) {
-            c.autoload(false);
             for (c.first(); c.key() != null; c.next()) {
-                numIndexes++;
+                byte state = c.value()[8];
+                if (state != 'D') {
+                    numIndexes++;
+                }
             }
         }
 
@@ -222,25 +233,33 @@ public class TableManager<R> {
         try (Cursor c = secondaries.newCursor(txn)) {
             int i = 0;
             byte[] desc;
-            for (c.first(); (desc = c.key()) != null; c.next(), i++) {
-                maker.mSecondaryDescriptors[i] = desc;
-                maker.mSecondaryInfos[i] = secondaryInfo(primaryInfo, desc);
-
+            for (c.first(); (desc = c.key()) != null; c.next()) {
                 byte[] value = c.value();
-
                 long indexId = decodeLongLE(value, 0);
+                byte state = value[8];
+
+                if (state != 'B') { // not "backfill" state
+                    removeIndexBackfill(desc);
+
+                    if (state == 'D') { // "deleting" state
+                        continue;
+                    }
+                }
+
                 Index index = rs.mDatabase.indexById(indexId);
                 if (index == null) {
                     throw new CorruptDatabaseException("Secondary index is missing: " + indexId);
                 }
+
+                maker.mSecondaryDescriptors[i] = desc;
+                maker.mSecondaryInfos[i] = secondaryInfo(primaryInfo, desc);
+
+
                 maker.mSecondaryIndexes[i] = index;
 
                 maker.mSecondaryLocks[i] = rs.indexLock(index);
 
-                byte state = value[8];
-                if (state != 'B') { // not "backfill" state
-                    removeIndexBackfill(desc);
-                } else {
+                if (state == 'B') { // "backfill" state
                     if (mIndexBackfills == null) {
                         mIndexBackfills = new TreeMap<>(Arrays::compareUnsigned);
                     }
@@ -258,6 +277,8 @@ public class TableManager<R> {
 
                     maker.mBackfills[i] = backfill;
                 }
+
+                i++;
             }
         }
 

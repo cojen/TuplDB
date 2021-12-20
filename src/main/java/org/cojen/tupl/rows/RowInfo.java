@@ -32,6 +32,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.NavigableSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -163,6 +164,27 @@ class RowInfo extends ColumnSet {
             }
         }
         return gen;
+    }
+
+    /**
+     * Returns a copy of this RowInfo but with the alternateKeys and secondaryIndexes from the
+     * given RowInfo. If they're the same, then this RowInfo is returned as-is.
+     */
+    RowInfo withIndexes(RowInfo current) {
+        if (Objects.equals(alternateKeys, current.alternateKeys) &&
+            Objects.equals(secondaryIndexes, current.secondaryIndexes))
+        {
+            return this;
+        }
+
+        var copy = new RowInfo(name);
+        copy.allColumns = allColumns;
+        copy.valueColumns = valueColumns;
+        copy.keyColumns = keyColumns;
+        copy.alternateKeys = current.alternateKeys;
+        copy.secondaryIndexes = current.secondaryIndexes;
+
+        return copy;
     }
 
     @Override

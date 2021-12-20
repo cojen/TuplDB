@@ -27,6 +27,7 @@ import java.util.List;
 
 import java.util.function.BiFunction;
 import java.util.function.IntFunction;
+import java.util.function.Predicate;
 
 /**
  * Simple cache of weakly referenced values. The keys must not strongly reference the values,
@@ -114,7 +115,7 @@ class WeakCache<K, V> extends ReferenceQueue<Object> {
                 for (var existing = entries[i]; existing != null; ) {
                     var e = existing;
                     existing = existing.mNext;
-                    if (e.get() != null) {
+                    if (!e.refersTo(null)) {
                         size++;
                         index = e.mHash & (newEntries.length - 1);
                         e.mNext = newEntries[index];
@@ -134,6 +135,31 @@ class WeakCache<K, V> extends ReferenceQueue<Object> {
         mSize++;
 
         return newEntry;
+    }
+
+    /**
+     * @return true if cache is now empty
+     */
+    public synchronized boolean removeValues(Predicate<V> p) {
+        var entries = mEntries;
+
+        for (int i=entries.length; --i>=0 ;) {
+            for (Entry<K, V> e = entries[i], prev = null; e != null; e = e.mNext) {
+                V value = e.get();
+                if (value == null || p.test(value)) {
+                    if (prev == null) {
+                        entries[i].mNext = e.mNext;
+                    } else {
+                        prev.mNext = e.mNext;
+                    }
+                    mSize--;
+                } else {
+                    prev = e;
+                }
+            }
+        }
+
+        return mSize == 0;
     }
 
     @SuppressWarnings({"unchecked"})

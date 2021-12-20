@@ -437,7 +437,7 @@ public class RowUtils extends Utils {
                     c = c & 0x3f;
                     // Multiply by 192, add in remainder, remove offset of 2, and denormalize.
                     chars[charLen++] =
-                            (char) ((c << 7) + (c << 6) + ((src[srcOffset++] ^ xorMask) & 0xff) + 94);
+                        (char) ((c << 7) + (c << 6) + ((src[srcOffset++] ^ xorMask) & 0xff) + 94);
                 }
                 default -> {
                     // 110xxxxx xxxxxxxx xxxxxxxx
