@@ -166,10 +166,33 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
 
             return locks;
         } catch (Exception e) {
-            // FIXME: release the locks
+            if (locks != null) {
+                if (locks instanceof Lock lock) {
+                    unlockUnowned(lock);
+                } else {
+                    for (Lock lock : (Lock[]) locks) {
+                        unlockUnowned(lock);
+                    }
+                }
+            }
+
             throw e;
         } finally {
             version.close();
+        }
+    }
+
+    private void unlockUnowned(Lock lock) {
+        LockManager.Bucket bucket = mManager.getBucket(lock.mHashCode);
+        bucket.acquireExclusive();
+        try {
+            if (lock instanceof DetachedLock) {
+                lock.doUnlock(null, bucket);
+            } else {
+                lock.doUnlockOwnedUnrestricted(bucket);
+            }
+        } finally {
+            bucket.releaseExclusive();
         }
     }
 
@@ -405,7 +428,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
         }
     }
 
-    // FIXME: Define a striped variant for improved concurrency.
+    // TODO: Define a striped variant for improved concurrency.
     private static final class VersionLock extends DetachedLockImpl implements Closer {
 
         private static final VarHandle cIndexIdHandle, cQueueUHandle;
