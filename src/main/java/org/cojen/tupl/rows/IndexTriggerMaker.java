@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.cojen.tupl.DatabaseException;
+import org.cojen.tupl.DeletedIndexException;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UniqueConstraintException;
@@ -764,15 +765,13 @@ public class IndexTriggerMaker<R> {
                 (mm, mColumnSources, rowVar, ROW_FULL, keyVar, newValueVar, secondaryValueCodecs);
 
             Variable closerVar;
-            Label opStart;
             if (mSecondaryLocks[i] == null) {
                 closerVar = null;
-                opStart = null;
             } else {
                 closerVar = mm.field("lock" + i).invoke("openAcquire", txnVar, rowVar);
-                opStart = mm.label().here();
             }
 
+            Label opStart = mm.label().here();
             var ixField = mm.field("ix" + i);
 
             if (!secondaryInfo.isAltKey) {
@@ -793,6 +792,10 @@ public class IndexTriggerMaker<R> {
                 mm.field("backfill" + i).invoke
                     ("inserted", txnVar, secondaryKeyVar, secondaryValueVar);
             }
+
+            mm.catch_(opStart, DeletedIndexException.class, exVar -> {
+                // Index was dropped. Assume that this trigger will soon be replaced.
+            });
         }
     }
 
@@ -961,11 +964,17 @@ public class IndexTriggerMaker<R> {
             var secondaryKeyVar = encodeColumns
                 (mm, mColumnSources, rowVar, ROW_KEY_ONLY, keyVar, oldValueVar, secondaryKeyCodecs);
 
+            Label opStart = mm.label().here();
+
             mm.field(ixFieldName).invoke("store", txnVar, secondaryKeyVar, null);
 
             if (backfillFieldName != null) {
                 mm.field(backfillFieldName).invoke("deleted", txnVar, secondaryKeyVar);
             }
+
+            mm.catch_(opStart, DeletedIndexException.class, exVar -> {
+                // Index was dropped. Assume that this trigger will soon be replaced.
+            });
         }
 
         var lookup = mClassMaker.finishHidden();
@@ -1094,14 +1103,13 @@ public class IndexTriggerMaker<R> {
                 (mm, newColumnSources, rowVar, ROW_FULL, keyVar, newValueVar, secondaryValueCodecs);
 
             Variable closerVar;
-            Label opStart;
             if (mSecondaryLocks[i] == null) {
                 closerVar = null;
-                opStart = null;
             } else {
                 closerVar = mm.field("lock" + i).invoke("openAcquire", txnVar, rowVar);
-                opStart = mm.label().here();
             }
+
+            Label opStart = mm.label().here();
 
             if (!secondaryInfo.isAltKey) {
                 ixField.invoke("store", txnVar, secondaryKeyVar, secondaryValueVar);
@@ -1141,6 +1149,10 @@ public class IndexTriggerMaker<R> {
             if (mBackfills[i] != null) {
                 mm.field("backfill" + i).invoke("deleted", txnVar, secondaryKeyVar);
             }
+
+            mm.catch_(opStart, DeletedIndexException.class, exVar -> {
+                // Index was dropped. Assume that this trigger will soon be replaced.
+            });
 
             cont.here();
         }

@@ -926,7 +926,6 @@ public class IndexingTest {
             assertTrue(e.getMessage().contains("not found"));
         }
 
-        // FIXME: test concurrent drop; trigger will throw an exception; should check and ignore
         // FIXME: test replica drop; it needs notification from ReplEngine
 
         if (stall) {
