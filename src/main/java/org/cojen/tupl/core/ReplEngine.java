@@ -46,6 +46,8 @@ import org.cojen.tupl.ext.CustomHandler;
 
 import org.cojen.tupl.repl.StreamReplicator;
 
+import org.cojen.tupl.rows.RowStore;
+
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.LatchCondition;
 import org.cojen.tupl.util.Runner;
@@ -554,11 +556,18 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
                     txn.exit();
                 }
 
-                if (ix != null) {
-                    ix.close();
-                }
+                Runnable task;
+                makeTask: {
+                    RowStore rs = mDatabase.tryRowStore();
+                    if (rs != null) {
+                        task = rs.redoDeleteIndex(indexId, () -> doDeleteIndex(indexId, ix));
+                        if (task != null) {
+                            break makeTask;
+                        }
+                    }
 
-                Runnable task = mDatabase.replicaDeleteTree(indexId);
+                    task = doDeleteIndex(indexId, ix);
+                }
 
                 // Allow index deletion to run concurrently. If multiple deletes are received
                 // concurrently, then the application is likely doing concurrent deletes. If
@@ -569,6 +578,17 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         });
 
         return true;
+    }
+
+    private Runnable doDeleteIndex(long indexId, Index ix) {
+        try {
+            if (ix != null) {
+                ix.close();
+            }
+            return mDatabase.replicaDeleteTree(indexId);
+        } catch (IOException e) {
+            throw rethrow(e);
+        }
     }
 
     @Override

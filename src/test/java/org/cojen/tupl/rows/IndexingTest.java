@@ -926,8 +926,6 @@ public class IndexingTest {
             assertTrue(e.getMessage().contains("not found"));
         }
 
-        // FIXME: test replica drop; it needs notification from ReplEngine
-
         if (stall) {
             try {
                 assertEquals(fillAmount, nameTable.newStream(null).count());
@@ -979,6 +977,126 @@ public class IndexingTest {
         assertEquals(0, nameTable.newStream(null).count());
 
         assertNull(db.indexById(nameTableId));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void dropIndexReplica() throws Exception {
+        var replicaRepl = new SocketReplicator(null, 0);
+        var leaderRepl = new SocketReplicator("localhost", replicaRepl.getPort());
+
+        var config = new DatabaseConfig().directPageAccess(false).replicate(leaderRepl);
+        //config.eventListener(EventListener.printTo(System.out));
+
+        var leaderDb = newTempDatabase(getClass(), config);
+        waitToBecomeLeader(leaderDb, 10);
+
+        config.replicate(replicaRepl);
+        var replicaDb = newTempDatabase(getClass(), config);
+
+        final String typeName = newRowTypeName();
+
+        final Object[] spec = {
+            long.class, "+id",
+            String.class, "name",
+            BigInteger.class, "num?"
+        };
+
+        ClassMaker cm = newRowTypeMaker(typeName, spec);
+        addSecondaryIndex(cm, "name");
+        Class t1 = cm.finish();
+        var accessors1 = access(spec, t1);
+        var setters1 = accessors1[1];
+        var table1 = leaderDb.openIndex("test").asTable(t1);
+
+        // Fill 'er up.
+
+        final int fillAmount = 10_000;
+
+        final long seed = 8675308;
+        var rnd = new Random(seed);
+
+        for (int i=0; i<fillAmount; i++) {
+            var row = table1.newRow();
+            setters1[0].invoke(row, i); // id
+
+            var name = (String) randomValue(rnd, spec, 1);
+            setters1[1].invoke(row, name); // name
+
+            setters1[2].invoke(row, randomValue(rnd, spec, 2)); // num
+
+            table1.store(null, row);
+        }
+
+        var nameTable = table1.viewSecondaryIndex("name");
+        verifyIndex(nameTable, table1, 0);
+        assertEquals(fillAmount, nameTable.newStream(null).count());
+        long nameTableId = ((AbstractTable) nameTable).mSource.id();
+
+        assertNotNull(leaderDb.indexById(nameTableId));
+
+        fence(leaderRepl, replicaRepl);
+
+        Table replicaTable = replicaDb.openIndex("test").asTable(t1);
+
+        var replicaNameTable = replicaTable.viewSecondaryIndex("name");
+        assertEquals(nameTableId, ((AbstractTable) replicaNameTable).mSource.id());
+
+        verifyIndex(replicaNameTable, replicaTable, 0);
+        assertEquals(fillAmount, replicaNameTable.newStream(null).count());
+
+        // Define the table again, but without the secondary index.
+
+        Class t2 = newRowType(typeName, spec);
+        var accessors2 = access(spec, t2);
+        var setters2 = accessors2[1];
+        var table2 = leaderDb.openIndex("test").asTable(t2);
+
+        try {
+            table2.viewSecondaryIndex("name");
+            fail();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().contains("not found"));
+        }
+
+        for (int i=100; --i>=0; ) {
+            long count = nameTable.newStream(null).count();
+            if (count == 0) {
+                break;
+            }
+            if (i == 0) {
+                assertEquals(0, count);
+            }
+            sleep(100);
+        }
+
+        for (int i=100; --i>=0; ) {
+            long count = replicaNameTable.newStream(null).count();
+            if (count == 0) {
+                break;
+            }
+            if (i == 0) {
+                assertEquals(0, count);
+            }
+            sleep(100);
+        }
+
+        try {
+            table2.viewSecondaryIndex("name");
+            fail();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().contains("not found"));
+        }
+
+        try {
+            replicaTable.viewSecondaryIndex("name");
+            fail();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().contains("not found"));
+        }
+
+        leaderDb.close();
+        replicaDb.close();
     }
 
     private static <R> int verifyIndex(Table<R> a, Table<R> b, int expectMissing)

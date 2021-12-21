@@ -83,9 +83,11 @@ public class RowStore {
 
        (indexId, hash(primary ColumnSet)) -> schemaVersion[]    // hash collision chain
 
-       (indexId, 0, K_SECONDARY, descriptor) -> indexId, state
+       (indexId, 0, K_SECONDARY, descriptor) -> secondaryIndexId, state
 
        (indexId, 0, K_TYPE_NAME) -> current type name (UTF-8)
+
+       (secondaryIndexId, 0, K_DROPPED) -> primaryIndexId, descriptor
 
        (0L, indexId, taskType) -> ...  workflow task against an index
 
@@ -108,26 +110,8 @@ public class RowStore {
     // Extended key to store the fully qualified type name.
     private static final int K_TYPE_NAME = 2;
 
-    /*
-      FIXME: notes
-
-      - For indexes to delete, acquire a lock to delete them. If state is backfill, then stop
-        any backfill task, and delete the index. If state is active, then cannot delete until all
-        queries using the index are done with it.
-
-      - Replicas cannot delete indexes. Only the leader can. However, the leader cannot delete
-        an index if any replica is still using it. Hmm... there's no way to ask this. Need to
-        define a new redo operation which deletes an index when no longer in use. Using GC
-        takes too long. Need a latch or clutch to manage a ref count.
-
-      - What if the replica becomes the leader and has a different set of index annotations?
-        Should it revert? This is a problem during deployments. Should index definitions not be
-        defined as annotations? Won't really help if old code is still running. Is an explicit
-        index set version required to be manually defined? I think in practice it should be
-        fine for indexes to flip on and off during a deployment. Everything should be fine when
-        the dust settles.
-
-     */
+    // Extended key to track secondary indexes which are being dropped.
+    private static final int K_DROPPED = 3;
 
     private static final int TASK_DELETE_SCHEMA = 1;
 
@@ -663,6 +647,28 @@ public class RowStore {
     }
 
     /**
+     * Called when an index is deleted. If the indexId refers to a known secondary index, then
+     * it gets deleted by the returned Runnable. Otherwise, null is returned and the caller
+     * should perform the delete.
+     *
+     * @param taskFactory returns a task which performs the actual delete
+     */
+    public Runnable redoDeleteIndex(long indexId, Supplier<Runnable> taskFactory)
+        throws IOException
+    {
+        byte[] value = viewExtended(indexId, K_DROPPED).load(Transaction.BOGUS, EMPTY_BYTES);
+
+        if (value == null) {
+            return null;
+        }
+
+        long primaryIndexId = decodeLongLE(value, 0);
+        byte[] descriptor = Arrays.copyOfRange(value, 8, value.length);
+
+        return deleteIndex(primaryIndexId, indexId, descriptor, null, taskFactory);
+    }
+
+    /**
      * Also called from TableManager.asTable.
      */
     <R> void examineSecondaries(TableManager<R> manager) throws IOException {
@@ -844,7 +850,8 @@ public class RowStore {
                         if (secondaryIndex != null) {
                             long primaryIndexId = decodeLongBE(indexKey, 0);
                             byte[] descriptor = Arrays.copyOfRange(key, 8 + 4 + 4, key.length);
-                            Runnable task = deleteIndex(primaryIndexId, secondaryIndex, descriptor);
+                            Runnable task = deleteIndex
+                                (primaryIndexId, 0, descriptor, secondaryIndex, null);
                             if (deleteTasks == null) {
                                 deleteTasks = new ArrayList<>();
                             }
@@ -867,9 +874,22 @@ public class RowStore {
         }
     }
 
-    private Runnable deleteIndex(long primaryIndexId, Index secondaryIndex, byte[] descriptor)
+    /**
+     * @param secondaryIndexId ignored when secondaryIndex is provided
+     * @param secondaryIndex required when no taskFactory is provided
+     * @param taskFactory can be null when a secondaryIndex is provided
+     */
+    private Runnable deleteIndex(long primaryIndexId, long secondaryIndexId, byte[] descriptor,
+                                 Index secondaryIndex, Supplier<Runnable> taskFactory)
         throws IOException
     {
+        if (secondaryIndex != null) {
+            secondaryIndexId = secondaryIndex.id();
+        }
+
+        // Remove it from the cache.
+        tableManager(mDatabase.indexById(primaryIndexId)).removeFromIndexTables(secondaryIndexId);
+
         EventListener listener = mDatabase.eventListener();
 
         String eventStr;
@@ -884,20 +904,25 @@ public class RowStore {
             }
 
             if (secondaryInfo == null) {
-                eventStr = String.valueOf(secondaryIndex.id());
+                eventStr = String.valueOf(secondaryIndexId);
             } else {
                 eventStr = secondaryInfo.eventString();
             }
         }
 
-        RowPredicateLock<?> lock = indexLock(secondaryIndex.id());
+        RowPredicateLock<?> lock = indexLock(secondaryIndexId);
 
         if (lock == null) {
             if (listener != null) {
                 listener.notify(EventType.TABLE_INDEX_INFO, "Dropping %1$s", eventStr);
             }
 
-            Runnable task = mDatabase.deleteIndex(secondaryIndex);
+            Runnable task;
+            if (taskFactory == null) {
+                task = mDatabase.deleteIndex(secondaryIndex);
+            } else {
+                task = taskFactory.get();
+            }
 
             if (listener == null) {
                 return task;
@@ -909,9 +934,12 @@ public class RowStore {
             };
         }
 
+        final long fSecondaryIndexId = secondaryIndexId;
+
         return () -> {
             try {
                 Transaction txn = mDatabase.newTransaction();
+
                 try {
                     // Acquire the predicate lock to wait for all scans to complete, and to
                     // prevent new ones from starting.
@@ -932,7 +960,14 @@ public class RowStore {
                                                 "Dropping %1$s", eventStr);
                             }
 
-                            mDatabase.deleteIndex(secondaryIndex).run();
+                            Runnable task;
+                            if (taskFactory == null) {
+                                task = mDatabase.deleteIndex(secondaryIndex);
+                            } else {
+                                task = taskFactory.get();
+                            }
+
+                            task.run();
 
                             if (listener != null) {
                                 listener.notify(EventType.TABLE_INDEX_INFO,
@@ -948,7 +983,7 @@ public class RowStore {
                     txn.exit();
                 }
 
-                removeIndexLock(secondaryIndex.id());
+                removeIndexLock(fSecondaryIndexId);
             } catch (Throwable e) {
                 uncaught(e);
             }
@@ -1082,22 +1117,34 @@ public class RowStore {
             // Find and update secondary indexes that should be deleted.
             TableManager<?> manager = null;
             try (Cursor c = secondariesView.newCursor(txn)) {
-                for (c.first(); c.key() != null; c.next()) {
+                byte[] key;
+                for (c.first(); (key = c.key()) != null; c.next()) {
                     byte[] value = c.value();
                     Index secondaryIndex = mDatabase.indexById(decodeLongLE(value, 0));
                     if (secondaryIndex == null) {
                         c.store(null); // already deleted, so remove the entry
-                    } else if (!secondaries.contains(c.key())) {
+                    } else if (!secondaries.contains(key)) {
                         if (value[8] != 'D') {
                             value[8] = 'D'; // "deleting" state
                             c.store(value);
                         }
 
+                        // Encode primaryIndexId and secondary descriptor. This entry is only
+                        // required with replication, allowing it to quickly identify a deleted
+                        // index as being a secondary index. This entry is deleted when
+                        // doDeleteSchema is called.
+                        var droppedEntry = new byte[8 + key.length];
+                        encodeLongLE(droppedEntry, 0, indexId);
+                        System.arraycopy(key, 0, droppedEntry, 8, key.length);
+                        View droppedView = viewExtended(secondaryIndex.id(), K_DROPPED);
+                        droppedView.store(txn, EMPTY_BYTES, droppedEntry);
+
                         if (manager == null) {
                             manager = tableManager(mDatabase.indexById(indexId));
                         }
 
-                        manager.removeFromIndexTables(secondaryIndex);
+                        // This removes entries from a cache, so not harmful if txn fails.
+                        manager.removeFromIndexTables(secondaryIndex.id());
 
                         if (secondariesToDelete == null) {
                             secondariesToDelete = new LinkedHashMap<>();
@@ -1165,7 +1212,9 @@ public class RowStore {
         if (secondariesToDelete != null) {
             for (var entry : secondariesToDelete.entrySet()) {
                 try {
-                    Runner.start(deleteIndex(indexId, entry.getKey(), entry.getValue()));
+                    Index secondaryIndex = entry.getKey();
+                    byte[] descriptor = entry.getValue();
+                    Runner.start(deleteIndex(indexId, 0, descriptor, secondaryIndex, null));
                 } catch (IOException e) {
                     // Assume leadership was lost.
                 }

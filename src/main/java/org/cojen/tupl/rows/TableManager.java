@@ -126,9 +126,9 @@ public class TableManager<R> {
         return indexTables;
     }
 
-    synchronized void removeFromIndexTables(Index secondaryIndex) {
+    synchronized void removeFromIndexTables(long secondaryIndexId) {
         if (mIndexTables != null) {
-            if (mIndexTables.removeValues(table -> table.mSource == secondaryIndex)) {
+            if (mIndexTables.removeValues(table -> table.mSource.id() == secondaryIndexId)) {
                 mIndexTables = null;
             }
         }
