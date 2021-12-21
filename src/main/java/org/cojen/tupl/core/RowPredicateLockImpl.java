@@ -111,25 +111,65 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
     }
 
     @Override
-    public Closer openAcquireNoRedo(Transaction txn, byte[] key, byte[] value)
+    public Object acquireLocksNoPush(Transaction txn, byte[] key, byte[] value)
         throws LockFailureException
     {
         // Assume this method is called by ReplEngine, in which case txn is never UNSAFE.
 
         var local = (LocalTransaction) txn;
+
+        Object locks = null;
+        int numLocks = 0;
+
         VersionLock version = mNewestVersion;
-        version.acquire(local);
+        if (version.acquireNoPush(local)) {
+            locks = version;
+            numLocks = 1;
+        }
 
         try {
-            for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
-                if (e.test(key, value)) {
-                    e.matched(local);
+            for (Evaluator<R> e = mLastEvaluator; ; e = e.mPrev) {
+                Lock lock;
+                if (e == null) {
+                    lock = local.doLockUpgradableNoPush(mIndexId, key);
+                } else {
+                    if (!e.test(key, value)) {
+                        continue;
+                    }
+                    lock = e.matchedNoPush(local);
+                }
+
+                if (lock != null) {
+                    if (locks == null) {
+                        locks = lock;
+                    } else if (locks instanceof Lock first) {
+                        var array = new Lock[4];
+                        array[0] = first;
+                        array[1] = lock;
+                        locks = array;
+                    } else {
+                        var array = (Lock[]) locks;
+                        if (numLocks >= array.length) {
+                            var newArray = new Lock[array.length << 1];
+                            System.arraycopy(array, 0, newArray, 0, array.length);
+                            array = newArray;
+                        }
+                        array[numLocks] = lock;
+                    }
+                    numLocks++;
+                }
+
+                if (e == null) {
+                    break;
                 }
             }
-            return version;
-        } catch (Throwable e) {
-            version.close();
+
+            return locks;
+        } catch (Exception e) {
+            // FIXME: release the locks
             throw e;
+        } finally {
+            version.close();
         }
     }
 
@@ -406,6 +446,31 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
             }
 
             locker.push(this);
+        }
+
+        /**
+         * Similar to acquireShared except it doesn't block if a queue exists.
+         *
+         * @throws IllegalStateException if an exclusive lock is held
+         */
+        boolean acquireNoPush(Locker locker) {
+            LockManager.Bucket bucket = mBucket;
+            bucket.acquireExclusive();
+            try {
+                int count = mLockCount;
+                if (count == ~0) {
+                    throw new IllegalStateException();
+                }
+                cIndexIdHandle.getAndAdd(this, 1);
+                if (count != 0 && isSharedLocker(locker)) {
+                    return false;
+                }
+                addSharedLocker(count, locker);
+            } finally {
+                bucket.releaseExclusive();
+            }
+
+            return true;
         }
 
         /**
@@ -688,6 +753,11 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
         final void matched(LocalTransaction txn) throws LockFailureException {
             cMatchedHandle.weakCompareAndSetPlain(this, false, true);
             acquireShared(txn);
+        }
+
+        final Lock matchedNoPush(LocalTransaction txn) throws LockFailureException {
+            cMatchedHandle.weakCompareAndSetPlain(this, false, true);
+            return acquireSharedNoPush(txn);
         }
 
         /**

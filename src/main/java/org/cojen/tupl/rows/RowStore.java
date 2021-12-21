@@ -652,12 +652,14 @@ public class RowStore {
 
     /**
      * Called in response to a redo log message.
+     *
+     * @return null or a Lock, or an array of Locks
+     * @see RowPredicateLock#acquireLocksNoPush
      */
-    public RowPredicateLock.Closer txnPredicateLockAcquire(Transaction txn, long indexId,
-                                                           byte[] key, byte[] value)
+    public Object acquireLocksNoPush(Transaction txn, long indexId, byte[] key, byte[] value)
         throws LockFailureException
     {
-        return indexLock(indexId).openAcquireNoRedo(txn, key, value);
+        return indexLock(indexId).acquireLocksNoPush(txn, key, value);
     }
 
     /**
@@ -737,7 +739,7 @@ public class RowStore {
      * non-transactionally stores task metadata which indicates that the schema should be
      * deleted. The caller should run the returned object without holding the commit lock.
      *
-     * If no checkpoint occurs, then the expecation is that the deleteSchema method is called
+     * If no checkpoint occurs, then the expectation is that the deleteSchema method is called
      * again, which allows the deletion to run again. This means that deleteSchema should
      * only really be called from removeFromTrash, which automatically runs again if no
      * checkpoint occurs.

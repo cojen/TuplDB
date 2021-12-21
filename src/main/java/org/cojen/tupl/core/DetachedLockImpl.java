@@ -58,6 +58,30 @@ class DetachedLockImpl extends Lock implements DetachedLock {
         }
     }
 
+    /**
+     * Acquire a shared lock, but don't push the lock into the owned lock stack. Returns this
+     * lock if acquired, or null if already owned.
+     */
+    final Lock acquireSharedNoPush(LocalTransaction txn) throws LockFailureException {
+        long nanosTimeout = txn.lockTimeout(TimeUnit.NANOSECONDS);
+
+        LockResult result;
+
+        LockManager.Bucket bucket = mBucket;
+        bucket.acquireExclusive();
+        try {
+            result = tryLockShared(bucket, txn, nanosTimeout);
+        } finally {
+            bucket.releaseExclusive();
+        }
+
+        if (!result.isHeld()) {
+            throw txn.failed(LockManager.TYPE_SHARED, result, nanosTimeout);
+        }
+
+        return result == LockResult.ACQUIRED ? this : null;
+    }
+
     @Override
     public final LockResult tryAcquireShared(Transaction txn, long nanosTimeout) {
         return tryAcquireShared((LocalTransaction) txn, nanosTimeout);

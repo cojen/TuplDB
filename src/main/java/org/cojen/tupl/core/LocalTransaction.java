@@ -59,9 +59,6 @@ public final class LocalTransaction extends Locker implements Transaction {
     // Must be set with HAS_PREPARE to indicate that prepareCommit was called.
     static final int HAS_PREPARE_COMMIT = 16;
 
-    // When set, the next operation should acquire a predicate lock.
-    static final int HAS_PREDICATE_OPEN = 32;
-
     final LocalDatabase mDatabase;
     final TransactionContext mContext;
     RedoWriter mRedo;
