@@ -168,6 +168,25 @@ public class RowStore {
         }
     }
 
+    /**
+     * Try to find a table which is bound to the given index, and return a partially decoded
+     * row. Returns null if not found.
+     */
+    public Object asRow(Index ix, byte[] key) {
+        var manager = (TableManager<?>) mTableManagers.get(ix);
+        if (manager != null) {
+            AbstractTable<?> table = manager.mostRecentTable();
+            if (table != null) {
+                try {
+                    return table.asRow(key);
+                } catch (Throwable e) {
+                    // Ignore any decoding errors.
+                }
+            }
+        }
+        return null;
+    }
+
     private TableManager<?> tableManager(Index ix) {
         var manager = (TableManager<?>) mTableManagers.get(ix);
 

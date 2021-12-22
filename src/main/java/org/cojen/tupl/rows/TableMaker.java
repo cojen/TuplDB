@@ -205,9 +205,8 @@ public class TableMaker {
         }
 
         addMarkAllCleanMethod();
-
+        addAsRowMethod();
         addRowStoreRefMethod();
-
         addUnfilteredMethod();
 
         if (!isPrimaryTable()) {
@@ -1424,12 +1423,18 @@ public class TableMaker {
             }
             mask >>>= (32 - ((rowGen.info.allColumns.size() & 0b1111) << 1));
             rowVar.field(stateFields[i]).set(mask);
-            return;
+        } else {
+            // Only mark columns clean that are defined by codecGen. All others are unset.
+            markClean(rowVar, rowGen, codecGen.info.allColumns);
         }
+    }
 
-        // Only mark columns clean that are defined by codecGen. All others are unset.
-
-        final Map<String, ColumnInfo> columns = codecGen.info.allColumns;
+    /**
+     * Mark only the given columns as clean. All others are unset.
+     */
+    private static void markClean(final Variable rowVar, final RowGen rowGen,
+                                  final Map<String, ColumnInfo> columns)
+    {
         final int maxNum = rowGen.info.allColumns.size();
 
         int num = 0, mask = 0;
@@ -1476,6 +1481,17 @@ public class TableMaker {
 
     private Field stateField(Variable rowVar, int columnNum) {
         return rowVar.field(mRowGen.stateField(columnNum));
+    }
+
+    private void addAsRowMethod() {
+        MethodMaker mm = mClassMaker.addMethod(mRowType, "asRow", byte[].class).protected_();
+        var rowVar = mm.new_(mRowClass);
+        mm.invoke("decodePrimaryKey", rowVar, mm.param(0));
+        markClean(rowVar, mRowGen, mCodecGen.info.keyColumns);
+        mm.return_(rowVar);
+
+        mm = mClassMaker.addMethod(Object.class, "asRow", byte[].class).protected_().bridge();
+        mm.return_(mm.this_().invoke(mRowType, "asRow", null, mm.param(0)));
     }
 
     private void addRowStoreRefMethod() {

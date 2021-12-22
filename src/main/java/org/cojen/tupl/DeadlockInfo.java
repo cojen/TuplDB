@@ -29,6 +29,11 @@ import org.cojen.tupl.core.Utils;
  */
 public interface DeadlockInfo extends Serializable {
     /**
+     * @return the lock request row object, possibly null
+     */
+    public Object row();
+
+    /**
      * @return the lock request index id
      */
     public long indexId();

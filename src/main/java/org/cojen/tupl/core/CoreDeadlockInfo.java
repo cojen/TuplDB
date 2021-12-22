@@ -30,10 +30,16 @@ import java.util.Objects;
 final class CoreDeadlockInfo implements DeadlockInfo {
     private static final long serialVersionUID = 1L;
 
+    Object mRow;
     long mIndexId;
     byte[] mIndexName;
     byte[] mKey;
     Object mAttachment;
+
+    @Override
+    public Object row() {
+        return mRow;
+    }
 
     @Override
     public long indexId() {
@@ -74,10 +80,13 @@ final class CoreDeadlockInfo implements DeadlockInfo {
 
     @Override
     public String toString() {
-        var b = new StringBuilder()
-            .append('{')
-            .append("indexId").append(": ").append(mIndexId)
-            .append(", ");
+        var b = new StringBuilder().append('{');
+
+        if (mRow != null) {
+            b.append("row").append(": ").append(mRow).append(", ");
+        }
+
+        b.append("indexId").append(": ").append(mIndexId).append(", ");
 
         String name = Utils.utf8(mIndexName);
         if (name != null) {

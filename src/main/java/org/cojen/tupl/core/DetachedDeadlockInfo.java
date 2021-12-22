@@ -28,6 +28,11 @@ final record DetachedDeadlockInfo(String desc, Object ownerAttachment) implement
     private static final long serialVersionUID = 1L;
 
     @Override
+    public Object row() {
+        return null;
+    }
+
+    @Override
     public long indexId() {
         return 0;
     }

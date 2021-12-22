@@ -402,6 +402,17 @@ public class IndexLockTest {
             fail();
         } catch (DeadlockException e) {
             predicateLockTimeout(e);
+
+            findRow: {
+                for (DeadlockInfo info : e.deadlockSet()) {
+                    Object r = info.row();
+                    if (r != null) {
+                        assertEquals(1, ((TestRow) r).id());
+                        break findRow;
+                    }
+                }
+                fail();
+            }
         }
 
         txn2.exit();

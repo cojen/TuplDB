@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.core;
 
+import java.lang.ref.Reference;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -24,6 +26,8 @@ import java.util.Set;
 
 import org.cojen.tupl.DeadlockInfo;
 import org.cojen.tupl.Index;
+
+import org.cojen.tupl.rows.RowStore;
 
 /**
  * Used internally by Locker. Only detects deadlocks caused by independent threads. A thread
@@ -93,6 +97,17 @@ final class DeadlockDetector extends HashMap<Locker, Boolean> {
             key = key.clone();
         }
         info.mKey = key;
+
+        Reference<LocalDatabase> dbRef = manager.mDatabaseRef;
+        if (dbRef != null) {
+            LocalDatabase db = dbRef.get();
+            if (db != null) {
+                RowStore rs = db.tryRowStore();
+                if (rs != null) {
+                    info.mRow = rs.asRow(ix, key);
+                }
+            }
+        }
 
         return info;
     }

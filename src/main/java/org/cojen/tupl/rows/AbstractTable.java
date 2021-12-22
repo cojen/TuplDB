@@ -508,6 +508,11 @@ public abstract class AbstractTable<R> implements Table<R> {
         }
     }
 
+    /**
+     * Partially decodes a row from a key.
+     */
+    protected abstract R asRow(byte[] key);
+
     protected abstract WeakReference<RowStore> rowStoreRef();
 
     /**
