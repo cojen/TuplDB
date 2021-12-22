@@ -331,7 +331,7 @@ public interface Table<R> {
     // more view layers after performing projection, for example.
     //public Table<R> viewFiltered(String filter, Object... args);
 
-    // FIXME: viewOf? viewSelection? viewProjection? viewOnly? viewWith? viewWithout?
+    // FIXME: viewOf? viewSelection? viewProjection? viewOnly? viewWith? viewWithout? viewColumns?
     // Projection.
     //public Table<R> viewSelect(String... columns);
 

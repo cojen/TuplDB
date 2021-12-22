@@ -282,8 +282,7 @@ public class RowPredicateMaker {
         public void visit(ColumnToArgFilter filter) {
             ColumnInfo ci = filter.column();
             String colName = ci.name;
-            // TODO: direct field access
-            var colVar = mRowVar.invoke(colName);
+            var colVar = mRowVar.field(colName);
             String argFieldName = ColumnCodec.argFieldName(colName, filter.argument());
             var argVar = mPredicateVar.field(argFieldName);
             CompareUtils.compare(mMaker, ci, colVar, ci, argVar, filter.operator(), mPass, mFail);
@@ -292,11 +291,9 @@ public class RowPredicateMaker {
         @Override
         public void visit(ColumnToColumnFilter filter) {
             ColumnInfo c1 = filter.column();
-            // TODO: direct field access
-            var c1Var = mRowVar.invoke(c1.name);
+            var c1Var = mRowVar.field(c1.name);
             ColumnInfo c2 = filter.otherColumn();
-            // TODO: direct field access
-            var c2Var = mRowVar.invoke(c2.name);
+            var c2Var = mRowVar.field(c2.name);
             CompareUtils.compare(mMaker, c1, c1Var, c2, c2Var, filter.operator(), mPass, mFail);
         }
     }

@@ -90,7 +90,9 @@ public class RowMaker {
 
         // Add column fields.
         for (ColumnInfo info : mRowInfo.allColumns.values()) {
-            mClassMaker.addField(info.type, info.name);
+            // Define fields as public such that they're accessible by generated code located
+            // in different packages. Using different packages faciliates class unloading.
+            mClassMaker.addField(info.type, info.name).public_();
         }
 
         // Add column state fields.

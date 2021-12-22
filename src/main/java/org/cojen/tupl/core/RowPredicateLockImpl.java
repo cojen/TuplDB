@@ -299,8 +299,6 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
             // Sweep through the versions, from newest to oldest, and wait for all matching
             // transactions to finish.
 
-            // FIXME: Timeout needs to be adjusted for each await call.
-
             VersionLock newerVersion = null;
 
             while (true) {

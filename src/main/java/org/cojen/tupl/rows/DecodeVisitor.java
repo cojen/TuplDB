@@ -376,8 +376,7 @@ class DecodeVisitor extends Visitor {
 
         if (srcVar.classType() != byte[].class) {
             // Access the column from a row object.
-            // TODO: direct field access
-            return srcVar.invoke(colInfo.name);
+            return srcVar.field(colInfo.name).get();
         }
 
         if (colNum < highestNum) {
