@@ -113,7 +113,7 @@ public class RowStore {
     // Extended key to track secondary indexes which are being dropped.
     private static final int K_DROPPED = 3;
 
-    private static final int TASK_DELETE_SCHEMA = 1;
+    private static final int TASK_DELETE_SCHEMA = 1, TASK_NOTIFY_SCHEMA = 2;
 
     public RowStore(CoreDatabase db, Index schemata) throws IOException {
         mSelfRef = new WeakReference<>(this);
@@ -634,23 +634,43 @@ public class RowStore {
      * Called in response to a redo log message. Implementation should examine the set of
      * secondary indexes associated with the table and perform actions to build or drop them.
      */
-    public void notifySchema(long indexId) {
-        // FIXME: If there's an exception, then the redo op isn't processed again. Define a
-        // workflow task perhaps? Secondaries are also examined when tables are opened.
-
+    public void notifySchema(long indexId) throws IOException {
+        byte[] taskKey = newTaskKey(TASK_NOTIFY_SCHEMA, indexId);
+        Transaction txn = beginWorkflowTask(taskKey);
+        
         // Must launch from a separate thread because locks are held by this thread until the
         // transaction finishes.
         Runner.start(() -> {
             try {
-                Index ix = mDatabase.indexById(indexId);
-                // Index won't be found if it was concurrently dropped.
-                if (ix != null) {
-                    examineSecondaries(tableManager(ix));
+                try {
+                    doNotifySchema(null, null, indexId);
+                    mSchemata.delete(txn, taskKey);
+                    txn.commit();
+                } finally {
+                    txn.reset();
                 }
             } catch (Throwable e) {
                 uncaught(e);
             }
         });
+    }
+
+    /**
+     * @param txn if non-null, pass to mSchemata.delete when false is returned
+     * @param taskKey is non-null if this is a recovered workflow task
+     * @return true if workflow task (if any) can be immediately deleted
+     */
+    private boolean doNotifySchema(Transaction txn, byte[] taskKey, long indexId)
+        throws IOException
+    {
+        Index ix = mDatabase.indexById(indexId);
+
+        // Index won't be found if it was concurrently dropped.
+        if (ix != null) {
+            examineSecondaries(tableManager(ix));
+        }
+
+        return true;
     }
 
     /**
@@ -773,23 +793,13 @@ public class RowStore {
      * @return an optional task to run without commit lock held
      */
     public Runnable deleteSchema(byte[] indexKey) throws IOException {
-        var taskKey = new byte[8 + 8 + 4];
-        System.arraycopy(indexKey, 0, taskKey, 8, 8);
-        encodeIntBE(taskKey, 8 + 8, TASK_DELETE_SCHEMA);
-
-        // Use a transaction to lock the task, and so finishAllWorkflowTasks will skip it.
-        Transaction txn = mDatabase.newTransaction(DurabilityMode.NO_REDO);
-        try {
-            mSchemata.store(txn, taskKey, EMPTY_BYTES);
-        } catch (Throwable e) {
-            txn.reset(e);
-            throw e;
-        }
+        byte[] taskKey = newTaskKey(TASK_DELETE_SCHEMA, indexKey);
+        Transaction txn = beginWorkflowTask(taskKey);
 
         return () -> {
             try {
                 try {
-                    doDeleteSchema(indexKey);
+                    doDeleteSchema(null, null, indexKey);
                     mSchemata.delete(txn, taskKey);
                     txn.commit();
                 } finally {
@@ -801,57 +811,14 @@ public class RowStore {
         };
     }
 
-    private void finishAllWorkflowTasks() throws IOException {
-        // Use transaction locks to identity tasks which should be skipped.
-        Transaction txn = mDatabase.newTransaction(DurabilityMode.NO_REDO);
-        try {
-            txn.lockMode(LockMode.UNSAFE); // don't auto acquire locks
-
-            var prefix = new byte[8]; // 0L is the prefix for all workflow tasks
-
-            try (Cursor c = mSchemata.viewPrefix(prefix, 0).newCursor(txn)) {
-                c.autoload(false);
-
-                for (c.first(); c.key() != null; c.next()) {
-                    if (!txn.tryLockExclusive(mSchemata.id(), c.key(), 0).isHeld()) {
-                        // Skip it.
-                        continue;
-                    }
-
-                    try {
-                        // Load and check the value again, in case another thread deleted it
-                        // before the lock was acquired.
-                        c.load();
-                        byte[] taskValue = c.value();
-                        if (taskValue != null) {
-                            doWorkflowTask(c.key(), taskValue);
-                            c.delete();
-                        }
-                    } finally {
-                        txn.unlock();
-                    }
-                }
-            }
-        } finally {
-            txn.reset();
-        }
-    }
-
     /**
-     * @param taskKey (0L, indexId, taskType)
+     * @param txn if non-null, pass to mSchemata.delete when false is returned
+     * @param taskKey is non-null if this is a recovered workflow task
+     * @return true if workflow task (if any) can be immediately deleted
      */
-    private void doWorkflowTask(byte[] taskKey, byte[] taskValue) throws IOException {
-        var indexKey = new byte[8];
-        System.arraycopy(taskKey, 8, indexKey, 0, 8);
-        int taskType = decodeIntBE(taskKey, 8 + 8);
-
-        switch (taskType) {
-            default -> throw new CorruptDatabaseException("Unknown task: " + taskType);
-            case TASK_DELETE_SCHEMA -> doDeleteSchema(indexKey);
-        }
-    }
-
-    private void doDeleteSchema(byte[] indexKey) throws IOException {
+    private boolean doDeleteSchema(Transaction txn, byte[] taskKey, byte[] indexKey)
+        throws IOException
+    {
         List<Runnable> deleteTasks = null;
 
         try (Cursor c = mSchemata.viewPrefix(indexKey, 0).newCursor(Transaction.BOGUS)) {
@@ -883,14 +850,122 @@ public class RowStore {
             }
         }
 
-        if (deleteTasks != null) {
-            var tasks = deleteTasks;
-            Runner.start(() -> {
-                for (Runnable task : tasks) {
-                    task.run();
-                }
-            });
+        if (deleteTasks == null) {
+            return true;
         }
+
+        final var tasks = deleteTasks;
+
+        Runner.start(() -> {
+            try {
+                try {
+                    for (Runnable task : tasks) {
+                        task.run();
+                    }
+                    mSchemata.delete(txn, taskKey);
+                    txn.commit();
+                } finally {
+                    txn.reset();
+                }
+            } catch (Throwable e) {
+                uncaught(e);
+            }
+        });
+
+        return false;
+    }
+
+    /**
+     * @param indexKey long index id, big-endian encoded
+     */
+    private byte[] newTaskKey(int taskType, byte[] indexKey) {
+        var taskKey = new byte[8 + 8 + 4];
+        System.arraycopy(indexKey, 0, taskKey, 8, 8);
+        encodeIntBE(taskKey, 8 + 8, taskType);
+        return taskKey;
+    }
+
+    private byte[] newTaskKey(int taskType, long indexKey) {
+        var taskKey = new byte[8 + 8 + 4];
+        encodeLongBE(taskKey, 8, indexKey);
+        encodeIntBE(taskKey, 8 + 8, taskType);
+        return taskKey;
+    }
+
+    /**
+     * @return a transaction to commit and reset when task is done
+     */
+    private Transaction beginWorkflowTask(byte[] taskKey) throws IOException {
+        // Use a transaction to lock the task, and so finishAllWorkflowTasks will skip it.
+        Transaction txn = mDatabase.newTransaction(DurabilityMode.NO_REDO);
+        try {
+            mSchemata.store(txn, taskKey, EMPTY_BYTES);
+        } catch (Throwable e) {
+            txn.reset(e);
+            throw e;
+        }
+        return txn;
+    }
+
+    private void finishAllWorkflowTasks() throws IOException {
+        // Use transaction locks to identity tasks which should be skipped.
+        Transaction txn = mDatabase.newTransaction(DurabilityMode.NO_REDO);
+        try {
+            txn.lockMode(LockMode.UNSAFE); // don't auto acquire locks; is auto-commit
+
+            var prefix = new byte[8]; // 0L is the prefix for all workflow tasks
+
+            try (Cursor c = mSchemata.viewPrefix(prefix, 0).newCursor(txn)) {
+                c.autoload(false);
+
+                for (c.first(); c.key() != null; c.next()) {
+                    if (!txn.tryLockExclusive(mSchemata.id(), c.key(), 0).isHeld()) {
+                        // Skip it.
+                        continue;
+                    }
+
+                    // Load and check the value again, in case another thread deleted it
+                    // before the lock was acquired.
+                    c.load();
+                    byte[] taskValue = c.value();
+
+                    if (taskValue != null) {
+                        if (runRecoveredWorkflowTask(txn, c.key(), taskValue)) {
+                            c.delete();
+                        } else {
+                            // Need a replacement transaction.
+                            txn = mDatabase.newTransaction(DurabilityMode.NO_REDO);
+                            txn.lockMode(LockMode.UNSAFE);
+                            c.link(txn);
+                            continue;
+                        }
+                    }
+
+                    txn.unlock();
+                }
+            }
+        } finally {
+            txn.reset();
+        }
+    }
+
+    /**
+     * @param txn must pass to mSchemata.delete when false is returned
+     * @param taskKey (0L, indexId, taskType)
+     * @return true if task can be immediately deleted
+     */
+    private boolean runRecoveredWorkflowTask(Transaction txn, byte[] taskKey, byte[] taskValue)
+        throws IOException
+    {
+        var indexKey = new byte[8];
+        System.arraycopy(taskKey, 8, indexKey, 0, 8);
+        int taskType = decodeIntBE(taskKey, 8 + 8);
+
+        return switch (taskType) {
+        default -> throw new CorruptDatabaseException("Unknown task: " + taskType);
+        case TASK_DELETE_SCHEMA -> doDeleteSchema(txn, taskKey, indexKey);
+        case TASK_NOTIFY_SCHEMA -> doNotifySchema(txn, taskKey, decodeLongBE(indexKey, 0));
+        };
     }
 
     /**
