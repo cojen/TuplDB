@@ -176,7 +176,7 @@ public abstract class GroupFilter extends RowFilter {
         return mSubFilters;
     }
 
-    abstract char opChar();
+    public abstract char opChar();
 
     RowFilter newInstance(RowFilter... subFilters) {
         return newInstance(subFilters, 0, subFilters.length);

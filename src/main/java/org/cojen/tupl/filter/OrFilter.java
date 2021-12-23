@@ -247,7 +247,7 @@ public class OrFilter extends GroupFilter {
     }
 
     @Override
-    final char opChar() {
+    public final char opChar() {
         return '|';
     }
 

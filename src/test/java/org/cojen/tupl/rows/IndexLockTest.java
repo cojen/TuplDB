@@ -366,7 +366,16 @@ public class IndexLockTest {
     }
 
     @Test
-    public void deadlock() throws Exception {
+    public void deadlockAll() throws Exception {
+        deadlock(false);
+    }
+
+    @Test
+    public void deadlockWithFilter() throws Exception {
+        deadlock(true);
+    }
+
+    private void deadlock(boolean withFilter) throws Exception {
         // Force a deadlock by moving a row. This is caused by deleting the old row before
         // inserting a replacement.
 
@@ -378,7 +387,14 @@ public class IndexLockTest {
         Transaction txn1 = mDatabase.newTransaction();
         // Be nice and don't retain row locks, but this isn't enough.
         txn1.lockMode(LockMode.READ_COMMITTED);
-        var scanner = table.newRowScanner(txn1);
+
+        RowScanner<TestRow> scanner;
+        if (!withFilter) {
+            scanner = table.newRowScanner(txn1);
+        } else {
+            // This shouldn't actually filter anything out.
+            scanner = table.newRowScanner(txn1, "id >= ? && name != ?", -123, "xxx");
+        }
 
         // Move a row by deleting before inserting. Deletes don't acquire a predicate lock.
         Transaction txn2 = mDatabase.newTransaction();
@@ -409,6 +425,15 @@ public class IndexLockTest {
                     if (r != null) {
                         assertEquals(1, ((TestRow) r).id());
                         break findRow;
+                    }
+                }
+                fail();
+            }
+
+            findFilter: if (withFilter) {
+                for (DeadlockInfo info : e.deadlockSet()) {
+                    if (info.toString().contains("id >= -123 && name != xxx")) {
+                        break findFilter;
                     }
                 }
                 fail();

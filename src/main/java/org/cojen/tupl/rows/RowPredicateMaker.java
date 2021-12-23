@@ -41,9 +41,11 @@ import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.core.RowPredicate;
 
 import org.cojen.tupl.filter.AndFilter;
+import org.cojen.tupl.filter.ColumnFilter;
 import org.cojen.tupl.filter.ColumnToArgFilter;
 import org.cojen.tupl.filter.ColumnToColumnFilter;
 import org.cojen.tupl.filter.GroupFilter;
+import org.cojen.tupl.filter.InFilter;
 import org.cojen.tupl.filter.OrFilter;
 import org.cojen.tupl.filter.RowFilter;
 import org.cojen.tupl.filter.TrueFilter;
@@ -157,8 +159,10 @@ public class RowPredicateMaker {
 
         // Add toString method.
         {
-            // TODO: Substitute the argument values for non-hidden columns.
-            mClassMaker.addMethod(String.class, "toString").public_().return_(mFilterStr);
+            MethodMaker mm = mClassMaker.addMethod(String.class, "toString").public_();
+            var indy = mm.var(RowPredicateMaker.class).indy
+                ("indyToString", mRowType, mFilterRef, mFilterStr);
+            mm.return_(indy.invoke(String.class, "toString", null, mm.this_()));
         }
 
         return (Class) mClassMaker.finish();
@@ -171,6 +175,46 @@ public class RowPredicateMaker {
     private void makeAllFields(HashSet<String> defined, RowFilter filter, boolean init) {
         if (filter != null) {
             filter.accept(new FieldMaker(defined, init));
+        }
+    }
+
+    private class FieldMaker extends Visitor {
+        private final HashSet<String> mDefined;
+        private final boolean mInit;
+
+        FieldMaker(HashSet<String> defined, boolean init) {
+            mDefined = defined;
+            mInit = init;
+        }
+
+        @Override
+        public void visit(ColumnToArgFilter filter) {
+            String colName = filter.column().name;
+            String argFieldName = ColumnCodec.argFieldName(colName, filter.argument());
+
+            if (mDefined.contains(argFieldName)) {
+                return;
+            }
+
+            Class<?> argType = filter.column().type;
+            boolean in = filter.isIn(filter.operator());
+
+            if (in) {
+                // FIXME: Sort and use binary search if large enough. Be sure to clone array if
+                // it wasn't converted.
+                // FIXME: Support other types of 'in' arguments: Predicate, IntPredicate, etc.
+                argType = argType.arrayType();
+            }
+
+            Variable argVar = mCtorMaker.param(0).aget(filter.argument());
+            argVar = ConvertCallSite.make(mCtorMaker, argType, argVar);
+
+            ColumnCodec codec = codecFor(colName);
+            codec.defineArgField(argVar, argFieldName, argVar);
+
+            codec.filterDefineExtraFields(in, argVar, argFieldName, mInit);
+
+            mDefined.add(argFieldName);
         }
     }
 
@@ -476,43 +520,110 @@ public class RowPredicateMaker {
         });
     }
 
-    private class FieldMaker extends Visitor {
-        private final HashSet<String> mDefined;
-        private final boolean mInit;
+    public static CallSite indyToString(MethodHandles.Lookup lookup, String name, MethodType mt,
+                                        Class<?> rowType,
+                                        WeakReference<RowFilter> filterRef, String filterStr)
+    {
+        RowFilter filter = filterRef.get();
+        if (filter == null) {
+            filter = AbstractTable.parse(rowType, filterStr);
+        }
+        MethodMaker mm = MethodMaker.begin(lookup, name, mt);
+        var sm = new ToStringMaker(mm, mm.param(0));
+        filter.accept(sm);
+        mm.return_(sm.mBuilderVar.invoke("toString"));
+        return new ConstantCallSite(mm.finish());
 
-        FieldMaker(HashSet<String> defined, boolean init) {
-            mDefined = defined;
-            mInit = init;
+    }
+
+    private static class ToStringMaker extends Visitor {
+        private final MethodMaker mMaker;
+        private final Variable mPredicateVar;
+
+        Variable mBuilderVar;
+
+        ToStringMaker(MethodMaker mm, Variable predicateVar) {
+            mMaker = mm;
+            mPredicateVar = predicateVar;
+            mBuilderVar = mm.new_(StringBuilder.class);
+        }
+
+        @Override
+        public void visit(OrFilter filter) {
+            RowFilter[] subFilters = filter.subFilters();
+            if (subFilters.length == 0) {
+                mBuilderVar = mBuilderVar.invoke("append", 'F');
+            } else {
+                appendGroupFilter(filter, subFilters);
+            }
+        }
+
+        @Override
+        public void visit(AndFilter filter) {
+            RowFilter[] subFilters = filter.subFilters();
+            if (subFilters.length == 0) {
+                mBuilderVar = mBuilderVar.invoke("append", 'T');
+            } else {
+                appendGroupFilter(filter, subFilters);
+            }
+        }
+
+        @Override
+        public void visit(InFilter filter) {
+            int op = filter.operator();
+            if (op == ColumnFilter.OP_NOT_IN) {
+                mBuilderVar = mBuilderVar.invoke("append", '!').invoke("append", '(');
+            }
+            mBuilderVar = mBuilderVar.invoke("append", filter.column().name).invoke("append", ' ')
+                .invoke("append", "in").invoke("append", ' ');
+            appendArgument(filter.column(), filter.argument());
+            if (op == ColumnFilter.OP_NOT_IN) {
+                mBuilderVar = mBuilderVar.invoke("append", ')');
+            }
         }
 
         @Override
         public void visit(ColumnToArgFilter filter) {
-            String colName = filter.column().name;
-            String argFieldName = ColumnCodec.argFieldName(colName, filter.argument());
+            appendColumnAndOp(filter);
+            appendArgument(filter.column(), filter.argument());
+        }
 
-            if (mDefined.contains(argFieldName)) {
-                return;
+        @Override
+        public void visit(ColumnToColumnFilter filter) {
+            appendColumnAndOp(filter);
+            mBuilderVar = mBuilderVar.invoke("append", filter.otherColumn().name);
+        }
+
+        protected void appendArgument(ColumnInfo column, int argNum) {
+            if (column.hidden) {
+                mBuilderVar = mBuilderVar.invoke("append", '?').invoke("append", argNum);
+            } else {
+                String argFieldName = ColumnCodec.argFieldName(column.name, argNum);
+                mBuilderVar = mBuilderVar.invoke("append", mPredicateVar.field(argFieldName));
             }
+        }
 
-            Class<?> argType = filter.column().type;
-            boolean in = filter.isIn(filter.operator());
+        private void appendColumnAndOp(ColumnFilter filter) {
+            mBuilderVar = mBuilderVar.invoke("append", filter.column().name).invoke("append", ' ')
+                .invoke("append", filter.operatorString()).invoke("append", ' ');
+        }
 
-            if (in) {
-                // FIXME: Sort and use binary search if large enough. Be sure to clone array if
-                // it wasn't converted.
-                // FIXME: Support other types of 'in' arguments: Predicate, IntPredicate, etc.
-                argType = argType.arrayType();
+        private void appendGroupFilter(GroupFilter filter, RowFilter[] subFilters) {
+            char opChar = filter.opChar();
+            for (int i=0; i<subFilters.length; i++) {
+                if (i != 0) {
+                    mBuilderVar = mBuilderVar.invoke("append", ' ')
+                        .invoke("append", opChar).invoke("append", opChar).invoke("append", ' ');
+                }
+                RowFilter sub = subFilters[i];
+                if (sub instanceof GroupFilter) {
+                    mBuilderVar = mBuilderVar.invoke("append", '(');
+                    sub.accept(this);
+                    mBuilderVar = mBuilderVar.invoke("append", ')');
+                } else {
+                    sub.accept(this);
+                }
             }
-
-            Variable argVar = mCtorMaker.param(0).aget(filter.argument());
-            argVar = ConvertCallSite.make(mCtorMaker, argType, argVar);
-
-            ColumnCodec codec = codecFor(colName);
-            codec.defineArgField(argVar, argFieldName, argVar);
-
-            codec.filterDefineExtraFields(in, argVar, argFieldName, mInit);
-
-            mDefined.add(argFieldName);
         }
     }
 }

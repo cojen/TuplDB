@@ -132,6 +132,20 @@ public abstract class ColumnFilter extends RowFilter {
         return mOperator;
     }
 
+    public String operatorString() {
+        return switch (mOperator) {
+        case OP_EQ -> "==";
+        case OP_NE -> "!=";
+        case OP_GE -> ">=";
+        case OP_LT -> "<";
+        case OP_LE -> "<=";
+        case OP_GT -> ">";
+        case OP_IN -> "in";
+        case OP_NOT_IN -> "!in";
+        default -> "?";
+        };
+    }
+
     /**
      * @return true if operator is OP_EQ or OP_NE
      */
@@ -230,18 +244,6 @@ public abstract class ColumnFilter extends RowFilter {
 
     @Override
     void appendTo(StringBuilder b) {
-        b.append(mColumn.name).append(' ');
-
-        final String opStr = switch (mOperator) {
-            case OP_EQ -> "==";
-            case OP_NE -> "!=";
-            case OP_GE -> ">=";
-            case OP_LT -> "<";
-            case OP_LE -> "<=";
-            case OP_GT -> ">";
-            default -> "?";
-        };
-
-        b.append(opStr).append(' ');
+        b.append(mColumn.name).append(' ').append(operatorString()).append(' ');
     }
 }

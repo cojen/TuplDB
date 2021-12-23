@@ -51,7 +51,7 @@ class RowGen {
     /**
      * @param who the class which is making a class (can be null)
      * @param rowType defines the ClassLoader to use (can be null)
-     * @param suffix appended to class name
+     * @param suffix appended to class name (can be null)
      */
     public ClassMaker beginClassMaker(Class<?> who, Class<?> rowType, String suffix) {
         return beginClassMaker(who, rowType, info, null, suffix);
@@ -61,7 +61,7 @@ class RowGen {
      * @param who the class which is making a class (can be null)
      * @param rowType defines the ClassLoader to use (can be null)
      * @param subPackage optional (can be null)
-     * @param suffix appended to class name
+     * @param suffix appended to class name (can be null)
      */
     public ClassMaker beginClassMaker(Class<?> who, Class<?> rowType,
                                       String subPackage, String suffix)
@@ -74,7 +74,7 @@ class RowGen {
      * @param rowType defines the ClassLoader to use (can be null)
      * @param info used for defining the class name (can be null)
      * @param subPackage optional (can be null)
-     * @param suffix appended to class name
+     * @param suffix appended to class name (can be null)
      */
     public static ClassMaker beginClassMaker(Class<?> who, Class<?> rowType, RowInfo info,
                                              String subPackage, String suffix)
