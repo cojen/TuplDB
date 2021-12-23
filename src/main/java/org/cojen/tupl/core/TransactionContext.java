@@ -56,7 +56,7 @@ final class TransactionContext extends Latch implements Flushable {
         }
     }
 
-    private final int mTxnStride;
+    private final long mTxnStride;
 
     // Access to these fields is protected by synchronizing on this context object.
     private long mInitialTxnId;

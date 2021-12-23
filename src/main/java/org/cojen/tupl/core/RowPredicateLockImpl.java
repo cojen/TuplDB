@@ -457,7 +457,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
                 if (count == ~0) {
                     throw new IllegalStateException();
                 }
-                cIndexIdHandle.getAndAdd(this, 1);
+                cIndexIdHandle.getAndAdd(this, 1L);
                 if (count != 0 && isSharedLocker(locker)) {
                     return;
                 }
@@ -482,7 +482,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
                 if (count == ~0) {
                     throw new IllegalStateException();
                 }
-                cIndexIdHandle.getAndAdd(this, 1);
+                cIndexIdHandle.getAndAdd(this, 1L);
                 if (count != 0 && isSharedLocker(locker)) {
                     return false;
                 }
@@ -499,7 +499,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
          */
         @Override
         public void close() {
-            if (((long) cIndexIdHandle.getAndAdd(this, -1)) == 1) {
+            if (((long) cIndexIdHandle.getAndAdd(this, -1L)) == 1L) {
                 var queue = (LatchCondition) cQueueUHandle.getAcquire(this);
                 if (queue != null) {
                     LockManager.Bucket bucket = mBucket;
@@ -564,7 +564,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
                 throw e;
             }
 
-            if (((long) cIndexIdHandle.getVolatile(this)) != 0) {
+            if (((long) cIndexIdHandle.getVolatile(this)) != 0L) {
                 // Need to wait for in-flight open acquires to finish.
 
                 var queue = mQueueU;
@@ -578,13 +578,13 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
                     }
                 }
 
-                if (((long) cIndexIdHandle.getVolatile(this)) != 0) {
+                if (((long) cIndexIdHandle.getVolatile(this)) != 0L) {
                     var w = queue.await(bucket, txn.mLockTimeoutNanos);
                     if (mLockCount == 0x80000000) {
                         bucket.releaseExclusive();
                         return true;
                     }
-                    if (w <= 0 && ((long) cIndexIdHandle.getVolatile(this)) != 0) {
+                    if (w <= 0 && ((long) cIndexIdHandle.getVolatile(this)) != 0L) {
                         bucket.releaseExclusive();
                         throw failed(txn, w);
                     }
