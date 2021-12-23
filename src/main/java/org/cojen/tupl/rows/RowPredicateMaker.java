@@ -19,6 +19,7 @@ package org.cojen.tupl.rows;
 
 import java.lang.invoke.CallSite;
 import java.lang.invoke.ConstantCallSite;
+import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
@@ -52,6 +53,8 @@ import org.cojen.tupl.filter.TrueFilter;
 import org.cojen.tupl.filter.Visitor;
 
 import org.cojen.tupl.io.Utils;
+
+import static org.cojen.tupl.rows.ColumnInfo.*;
 
 /**
  * Makes classes that implement RowPredicate and contain the filter arguments needed by
@@ -597,10 +600,50 @@ public class RowPredicateMaker {
         protected void appendArgument(ColumnInfo column, int argNum) {
             if (column.hidden) {
                 mBuilderVar = mBuilderVar.invoke("append", '?').invoke("append", argNum);
-            } else {
-                String argFieldName = ColumnCodec.argFieldName(column.name, argNum);
-                mBuilderVar = mBuilderVar.invoke("append", mPredicateVar.field(argFieldName));
+                return;
             }
+
+            Variable argValue = mPredicateVar.field(ColumnCodec.argFieldName(column.name, argNum));
+            Class<?> argType = argValue.classType();
+
+            if (argType.isArray()) {
+                MethodHandle mh = ArrayStringMaker.make(argType, column.isUnsignedInteger());
+                mBuilderVar = mMaker.invoke(mh, mBuilderVar, argValue, 16); // limit=16
+                return;
+            }
+
+            if (!column.isUnsignedInteger()) {
+                mBuilderVar = mBuilderVar.invoke("append", argValue);
+                return;
+            }
+
+            final Variable strValue = mMaker.var(String.class);
+
+            Label cont = null;
+
+            if (column.isNullable()) {
+                Label notNull = mMaker.label();
+                argValue.ifNe(null, notNull);
+                strValue.set("null");
+                cont = mMaker.label();
+                mMaker.goto_(cont);
+                notNull.here();
+            }
+
+            switch (column.plainTypeCode()) {
+            default: throw new AssertionError();
+            case TYPE_UBYTE: argValue = argValue.cast(int.class).and(0xff); break;
+            case TYPE_USHORT: argValue = argValue.cast(int.class).and(0xffff); break;
+            case TYPE_UINT: case TYPE_ULONG: break;
+            }
+
+            strValue.set(argValue.invoke("toUnsignedString", argValue));
+
+            if (cont != null) {
+                cont.here();
+            }
+
+            mBuilderVar = mBuilderVar.invoke("append", strValue);
         }
 
         private void appendColumnAndOp(ColumnFilter filter) {

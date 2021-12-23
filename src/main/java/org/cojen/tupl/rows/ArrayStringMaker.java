@@ -45,7 +45,7 @@ class ArrayStringMaker {
      */
     synchronized static MethodHandle make(Class<?> arrayType, boolean unsigned) {
         Class<?> elementType = arrayType.getComponentType();
-        if (!unsigned && !elementType.isPrimitive()) {
+        if (!unsigned && !isPrimitiveElement(elementType)) {
             // Use the generic Object[] superclass, reducing the number of generated classes.
             int dims = 1;
             while ((elementType = elementType.getComponentType()) != null) {
@@ -78,6 +78,15 @@ class ArrayStringMaker {
         }
 
         return mh;
+    }
+
+    private static boolean isPrimitiveElement(Class<?> elementType) {
+        do {
+            if (elementType.isPrimitive()) {
+                return true;
+            }
+        } while ((elementType = elementType.getComponentType()) != null);
+        return false;
     }
 
     private static MethodHandle doMake(Class<?> arrayType, boolean unsigned) {

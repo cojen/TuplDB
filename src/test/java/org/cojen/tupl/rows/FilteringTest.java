@@ -679,4 +679,75 @@ public class FilteringTest {
         String name2();
         void name2(String str);
     }
+
+    @Test
+    public void filterString() throws Exception {
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Table<MyRow3> table = db.openTable(MyRow3.class);
+
+        String str = table.newRowScanner(null).toString();
+        assertTrue(str.contains("unfiltered"));
+
+        str = table.newRowScanner(null, "name == ?", "x").toString();
+        assertTrue(str.contains("name == x"));
+
+        str = table.newRowScanner
+            (null, "(id == ? || array1 != ?) && num1 > ?", -10, new int[] {1, 2}, 5).toString();
+        assertTrue(str.contains("(id == -10 || array1 != [1, 2]) && num1 > 5"));
+
+        str = table.newRowScanner
+            (null, "(num2 != ? || num3 < ?) || num3 <= ?", -1, null, -1).toString();
+        assertTrue(str.contains("num2 != 4294967295 || num3 < null || num3 <= -1"));
+
+        str = table.newRowScanner
+            (null, "num4 != ? && num4 < ? && num5 <= ?", null, -1, -1).toString();
+        assertTrue(str.contains
+                   ("num4 != null && num4 < 4294967295 && num5 <= 18446744073709551615"));
+
+        str = table.newRowScanner(null, "!(id in ?)", new int[] {1, -2}).toString();
+        assertTrue(str.contains("!(id in [1, -2])"));
+
+        int[][] a = {{1, 2}, {3, 4}};
+        str = table.newRowScanner(null, "array1 in ?", (Object) a).toString();
+        assertTrue(str.contains("array1 in [[1, 2], [3, 4]]"));
+
+        int[][] b = {{-1, 2}, {-3, 4}};
+        str = table.newRowScanner(null, "array2 in ?", (Object) b).toString();
+        assertTrue(str.contains("array2 in [[4294967295, 2], [4294967293, 4]]"));
+    }
+
+    @PrimaryKey("id")
+    public interface MyRow3 {
+        int id();
+        void id(int id);
+
+        String name();
+        void name(String str);
+
+        int[] array1();
+        void array1(int[] a);
+
+        @Unsigned
+        int[] array2();
+        void array2(int[] a);
+
+        Integer num1();
+        void num1(Integer n);
+
+        @Unsigned
+        Integer num2();
+        void num2(Integer n);
+
+        @Nullable
+        Integer num3();
+        void num3(Integer n);
+
+        @Nullable @Unsigned
+        Integer num4();
+        void num4(Integer n);
+
+        @Unsigned
+        long num5();
+        void num5(long n);
+    }
 }

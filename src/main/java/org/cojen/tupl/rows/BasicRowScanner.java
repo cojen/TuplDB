@@ -27,6 +27,7 @@ import org.cojen.tupl.RowScanner;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnpositionedCursorException;
 
+import org.cojen.tupl.core.RowPredicate;
 import org.cojen.tupl.core.RowPredicateLock;
 
 /**
@@ -122,6 +123,22 @@ class BasicRowScanner<R> implements RowScanner<R> {
         }
 
         finished();
+    }
+
+    @Override
+    public String toString() {
+        var b = new StringBuilder();
+        RowUtils.appendMiniString(b, this);
+        b.append('{');
+
+        RowPredicate<R> predicate = mController.predicate();
+        if (predicate == RowPredicate.all()) {
+            b.append("unfiltered");
+        } else {
+            b.append("filter").append(": ").append(predicate);
+        }
+
+        return b.append('}').toString();
     }
 
     @Override
