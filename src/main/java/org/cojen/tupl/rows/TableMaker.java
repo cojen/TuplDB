@@ -1341,7 +1341,7 @@ public class TableMaker {
     }
 
     private void addResetMethod() {
-        MethodMaker mm = mClassMaker.addMethod(null, "reset", Object.class).public_();
+        MethodMaker mm = mClassMaker.addMethod(null, "resetRow", Object.class).public_();
         Variable rowVar = mm.param(0).cast(mRowClass);
 
         // Clear the column fields that refer to objects.

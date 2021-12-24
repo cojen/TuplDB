@@ -95,7 +95,7 @@ public interface Table<R> {
     /**
      * Resets the state of the given row such that all columns are unset.
      */
-    public void reset(R row);
+    public void resetRow(R row);
 
     /**
      * Returns a new scanner for all rows of this table.
