@@ -36,35 +36,6 @@ import org.cojen.tupl.core.RowPredicateLock;
  * @author Brian S O'Neill
  */
 class BasicRowScanner<R> implements RowScanner<R> {
-    /**
-     * Constructs a BasicRowScanner which releases the predicate lock when the scanner
-     * finishes. The lock can also be released when the transaction finishes.
-     */
-    static <R> BasicRowScanner<R> locked
-        (AbstractTable<R> table, ScanController<R> controller, RowPredicateLock.Closer closer)
-    {
-        return new BasicRowScanner<R>(table, controller) {
-            @Override
-            protected void finished() throws IOException {
-                super.finished();
-                closer.close();
-            }
-        };
-    }
-
-    /**
-     * Constructs a BasicRowScanner which exits the transaction scope when the scanner finishes.
-     */
-    static <R> BasicRowScanner<R> scoped(AbstractTable<R> table, ScanController<R> controller) {
-        return new BasicRowScanner<R>(table, controller) {
-            @Override
-            protected void finished() throws IOException {
-                super.finished();
-                mCursor.link().exit();
-            }
-        };
-    }
-
     final AbstractTable<R> mTable;
     final ScanController<R> mController;
 

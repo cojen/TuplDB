@@ -117,66 +117,19 @@ public abstract class AbstractTable<R> implements Table<R> {
     private RowScanner<R> newRowScanner(Transaction txn, ScanController<R> controller)
         throws IOException
     {
-        final BasicRowScanner<R> scanner;
-        RowPredicateLock.Closer closer;
+        final var scanner = new BasicRowScanner<>(this, controller);
+        RowPredicateLock.Closer closer = null;
 
-        addPredicate: {
-            final RowPredicateLock<R> lock;
-
-            if (txn == null) {
-                lock = mIndexLock;
-                if (lock != null) {
-                    // Add a predicate lock which is scoped just to the scanner.
-                    txn = mSource.newTransaction(null);
-                    closer = lock.addPredicate(txn, controller.predicate());
-                    if (closer != null) {
-                        txn.lockMode(LockMode.READ_COMMITTED);
-                        scanner = BasicRowScanner.scoped(this, controller);
-                        break addPredicate;
-                    }
-                    txn = null;
-                }
-                scanner = new BasicRowScanner<>(this, controller);
-                // Don't add a predicate lock.
-                closer = null;
-                break addPredicate;
+        if (txn != null && !txn.lockMode().noReadLock) {
+            RowPredicateLock<R> lock = mIndexLock;
+            if (lock != null) {
+                // This case is reached when a transaction was provided which is read committed
+                // or higher. Adding a predicate lock prevents new rows from being inserted
+                // into the scan range for the duration of the transaction scope. If the lock
+                // mode is repeatable read, then rows which have been read cannot be deleted,
+                // effectively making the transaction serializable.
+                closer = lock.addPredicate(txn, controller.predicate());
             }
-
-            switch (txn.lockMode()) {
-            case UPGRADABLE_READ: case REPEATABLE_READ: default: {
-                scanner = new BasicRowScanner<>(this, controller);
-                break;
-            }
-
-            case READ_COMMITTED: {
-                lock = mIndexLock;
-                if (lock != null) {
-                    // Add a predicate lock which is scoped just to the scanner.
-                    closer = lock.addPredicate(txn, controller.predicate());
-                    if (closer != null) {
-                        scanner = BasicRowScanner.locked(this, controller, closer);
-                        break addPredicate;
-                    }
-                }
-                // Fallthrough to next case.
-            }
-
-            case READ_UNCOMMITTED: case UNSAFE:
-                scanner = new BasicRowScanner<>(this, controller);
-                // Don't add a predicate lock.
-                closer = null;
-                break addPredicate;
-            }
-
-            lock = mIndexLock;
-            if (lock == null) {
-                closer = null;
-                break addPredicate;
-            }
-
-            // When this case is reached, the predicate lock effectively makes the transaction
-            // serializable.
-            closer = lock.addPredicate(txn, controller.predicate());
         }
 
         try {
@@ -206,25 +159,15 @@ public abstract class AbstractTable<R> implements Table<R> {
         throws IOException
     {
         final BasicRowUpdater<R> updater;
-        RowPredicateLock.Closer closer;
+        RowPredicateLock.Closer closer = null;
 
         addPredicate: {
             final RowPredicateLock<R> lock;
 
             if (txn == null) {
                 txn = mSource.newTransaction(null);
-                lock = mIndexLock;
-                if (lock != null) {
-                    // Add a predicate lock which is scoped just to the updater.
-                    closer = lock.addPredicate(txn, controller.predicate());
-                    if (closer != null) {
-                        updater = AutoCommitRowUpdater.scoped(this, controller);
-                        break addPredicate;
-                    }
-                }
                 updater = new AutoCommitRowUpdater<>(this, controller);
                 // Don't add a predicate lock.
-                closer = null;
                 break addPredicate;
             }
 
@@ -241,39 +184,34 @@ public abstract class AbstractTable<R> implements Table<R> {
             }
 
             case READ_COMMITTED: {
-                lock = mIndexLock;
-                if (lock != null) {
-                    // Add a predicate lock which is scoped just to the updater.
-                    closer = lock.addPredicate(txn, controller.predicate());
-                    if (closer != null) {
-                        updater = NonRepeatableRowUpdater.locked(this, controller, closer);
-                        break addPredicate;
-                    }
-                }
-                // Fallthrough to next case.
+                // Row locks are released when possible, but a predicate lock will still be
+                // held for the duration of the transaction. It's not worth the trouble to
+                // determine if it can be safely released when the updater finishes.
+                updater = new NonRepeatableRowUpdater<>(this, controller);
+                break;
             }
 
             case READ_UNCOMMITTED:
                 updater = new NonRepeatableRowUpdater<>(this, controller);
                 // Don't add a predicate lock.
-                closer = null;
                 break addPredicate;
 
             case UNSAFE:
                 updater = new BasicRowUpdater<>(this, controller);
                 // Don't add a predicate lock.
-                closer = null;
                 break addPredicate;
             }
 
             lock = mIndexLock;
             if (lock == null) {
-                closer = null;
                 break addPredicate;
             }
 
-            // When this case is reached, the predicate lock effectively makes the transaction
-            // serializable.
+            // This case is reached when a transaction was provided which is read committed
+            // or higher. Adding a predicate lock prevents new rows from being inserted
+            // into the scan range for the duration of the transaction scope. If the lock
+            // mode is repeatable read, then rows which have been read cannot be deleted,
+            // effectively making the transaction serializable.
             closer = lock.addPredicate(txn, controller.predicate());
         }
 

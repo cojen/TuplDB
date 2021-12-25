@@ -129,11 +129,16 @@ public class IndexLockTest {
         scanner.close();
         scanTxn.reset();
 
-        // Null transaction behaves the same as READ_COMMITTED and checks the predicate
-        // lock. With an updater, a null transaction behaves the same as UPGRADABLE_READ with
-        // auto-commit, and it also checks the predicate lock.
         try {
-            newRowScanner(table, updater, null, "id >= ? && id <= ?", 3, 7);
+            // Need an explicit transaction to add a predicate lock. READ_COMMITTED is the
+            // lowest level that does this.
+            Transaction txn = mDatabase.newTransaction();
+            try {
+                txn.lockMode(LockMode.READ_COMMITTED);
+                newRowScanner(table, updater, txn, "id >= ? && id <= ?", 3, 7);
+            } finally {
+                txn.exit();
+            }
             fail();
         } catch (LockTimeoutException e) {
             predicateLockTimeout(e);
@@ -316,7 +321,8 @@ public class IndexLockTest {
             scanner2.close();
             txn2.reset();
 
-            // Null transaction is same as READ_COMMITTED.
+            // Null transaction doesn't add a predicate lock. This scan doesn't require it
+            // because no concurrent inserts are being performed.
             scanner2 = table.newRowScanner(null, "id >= ? && id <= ?", 3, 7);
             assertEquals(3, scanner2.row().id());
             scanner2.step();
@@ -358,6 +364,8 @@ public class IndexLockTest {
         w2.await();
 
         scanner.close();
+        // Null transaction doesn't add a predicate lock. This scan doesn't require it
+        // because no concurrent inserts are being performed.
         scanner = newRowScanner(table, updater, null, "id >= ? && id <= ?", 3, 7);
         assertEquals(3, scanner.row().id());
         scanner.step();
@@ -502,8 +510,11 @@ public class IndexLockTest {
 
         assertNull(scanner.row());
 
-        if (scanLockMode == LockMode.REPEATABLE_READ) {
-            // Must forcibly release the row locks.
+        if (scanLockMode == LockMode.READ_COMMITTED) {
+            // Must forcibly release the predicate lock.
+            txn1.exit();
+        } else if (scanLockMode == LockMode.REPEATABLE_READ) {
+            // Must forcibly release the row locks and the predicate lock.
             scanner.close();
             txn1.exit();
         }
@@ -520,6 +531,8 @@ public class IndexLockTest {
 
         // Verify the row move.
 
+        // Null transaction doesn't add a predicate lock. This scan doesn't require it
+        // because no concurrent inserts are being performed.
         scanner = table.newRowScanner(null);
 
         long[] expect = {0, 2, 3, 100};
@@ -602,15 +615,6 @@ public class IndexLockTest {
 
     @Test
     public void replicaBlockedByScanner() throws Exception {
-        replicaBlockedByScanner(false);
-    }
-
-    @Test
-    public void replicaBlockedByScanner2() throws Exception {
-        replicaBlockedByScanner(true);
-    }
-
-    private void replicaBlockedByScanner(boolean withTxn) throws Exception {
         // An incoming replica insert or store operation must wait for a dependent scan to
         // finish. Unfortunately, this stalls replication, but at least it's safe.
 
@@ -636,14 +640,8 @@ public class IndexLockTest {
 
         var replicaTable = replicaDb.openTable(TestRow.class);
 
-        Transaction txn1;
-        if (withTxn) {
-            txn1 = replicaDb.newTransaction();
-            txn1.lockMode(LockMode.READ_COMMITTED);
-        } else {
-            // Behaves same as READ_COMMITTED.
-            txn1 = null;
-        }
+        Transaction txn1 = replicaDb.newTransaction();
+        txn1.lockMode(LockMode.READ_COMMITTED);
 
         var scanner = replicaTable.newRowScanner(txn1, "id >= ? && id <= ?", 3, 7);
 
@@ -668,13 +666,62 @@ public class IndexLockTest {
 
         assertEquals(3, scanner.row().id());
 
-        // Stepping to the end closes the scanner, which releases the predicate lock.
-        assertNull(scanner.step());
+        // Exiting the transaction scope releases the predicate lock. The scanner is still
+        // active and can continue without predicate lock protection.
+        txn1.exit();
 
         w1.await();
 
         assertTrue(replicaTable.load(null, row));
         assertEquals("name-5", row.name());
+
+        assertEquals("name-5", scanner.step().name());
+
+        leaderDb.close();
+        replicaDb.close();
+    }
+
+    @Test
+    public void replicaNotBlockedByScanner() throws Exception {
+        // Without a transaction, a scanner shouldn't block replication.
+
+        teardown(); // discard pre-built Database instance
+
+        var replicaRepl = new SocketReplicator(null, 0);
+        var leaderRepl = new SocketReplicator("localhost", replicaRepl.getPort());
+
+        var config = new DatabaseConfig().directPageAccess(false).replicate(leaderRepl);
+        //config.eventListener(EventListener.printTo(System.out));
+
+        var leaderDb = newTempDatabase(getClass(), config);
+        waitToBecomeLeader(leaderDb, 10);
+
+        config.replicate(replicaRepl);
+        var replicaDb = newTempDatabase(getClass(), config);
+
+        var leaderTable = leaderDb.openTable(TestRow.class);
+
+        fill(leaderTable, 0, 3);
+
+        fence(leaderRepl, replicaRepl);
+
+        var replicaTable = replicaDb.openTable(TestRow.class);
+
+        var scanner = replicaTable.newRowScanner(null, "id >= ? && id <= ?", 3, 7);
+
+        // This store shouldn't be blocked on the replica side.
+        TestRow row = leaderTable.newRow();
+        row.id(5);
+        row.name("name-5");
+        leaderTable.store(null, row);
+
+        fence(leaderRepl, replicaRepl);
+
+        assertTrue(replicaTable.load(null, row));
+        assertEquals("name-5", row.name());
+
+        assertEquals(3, scanner.row().id());
+        assertEquals("name-5", scanner.step().name());
 
         leaderDb.close();
         replicaDb.close();

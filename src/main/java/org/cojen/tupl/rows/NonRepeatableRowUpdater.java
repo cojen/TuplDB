@@ -32,22 +32,6 @@ import org.cojen.tupl.core.RowPredicateLock;
  * @author Brian S O'Neill
  */
 class NonRepeatableRowUpdater<R> extends BasicRowUpdater<R> {
-    /**
-     * Constructs a NonRepeatableRowUpdater which releases the predicate lock when the updater
-     * finishes. The lock can also be released when the transaction finishes.
-     */
-    static <R> NonRepeatableRowUpdater<R> locked
-        (AbstractTable<R> table, ScanController<R> controller, RowPredicateLock.Closer closer)
-    {
-        return new NonRepeatableRowUpdater<R>(table, controller) {
-            @Override
-            protected void finished() throws IOException {
-                super.finished();
-                closer.close();
-            }
-        };
-    }
-
     LockResult mLockResult;
 
     NonRepeatableRowUpdater(AbstractTable<R> table, ScanController<R> controller) {

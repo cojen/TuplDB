@@ -271,6 +271,8 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
 
     /**
      * Called after the key and value changed and have been updated.
+     *
+     * @param txn never null
      */
     protected void postStoreKeyValue(Transaction txn) throws IOException {
     }

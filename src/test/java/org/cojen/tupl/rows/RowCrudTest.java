@@ -373,13 +373,11 @@ public class RowCrudTest {
             (txn, "num1 > ? && num1 < ? || str2 == ?", 1002, 1006, "s2-9");
 
         for (TestRow row = updater.row(); row != null; ) {
-            if (row.num1() == 1004 || row.id() == 1003) {
+            if (row.num1() == 1004) {
                 row = updater.step();
             } else {
                 row.str2(row.str2() + "x");
                 if (row.id() == 3) {
-                    // Changing the primary key is allowed, but it can cause the row to be
-                    // observed again, depending on the scan order.
                     row.id(1003);
                     row = updater.update();
                 } else {

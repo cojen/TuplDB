@@ -908,10 +908,13 @@ public class IndexingTest {
 
         // Define the table again, but without the secondary index.
 
+        Transaction txn = null;
         RowScanner scanner = null;
         if (stall) {
             // Prevent deleting the index until the scan has finished.
-            scanner = nameTable.newRowScanner(null);
+            txn = db.newTransaction();
+            txn.lockMode(LockMode.READ_COMMITTED);
+            scanner = nameTable.newRowScanner(txn);
         }
 
         Class t2 = newRowType(typeName, spec);
@@ -938,6 +941,7 @@ public class IndexingTest {
             }
 
             scanner.close();
+            txn.exit();
         }
 
         for (int i=100; --i>=0; ) {

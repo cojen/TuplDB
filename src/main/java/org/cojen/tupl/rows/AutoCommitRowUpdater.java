@@ -31,21 +31,6 @@ import org.cojen.tupl.Transaction;
  * @author Brian S O'Neill
  */
 class AutoCommitRowUpdater<R> extends BasicRowUpdater<R> {
-    /**
-     * Constructs an AutoCommitRowUpdater which exits the transaction scope when the updater
-     * finishes.
-     */
-    static <R> AutoCommitRowUpdater<R> scoped(AbstractTable<R> table, ScanController<R> controller)
-    {
-        return new AutoCommitRowUpdater<R>(table, controller) {
-            @Override
-            protected void finished() throws IOException {
-                super.finished();
-                mCursor.link().exit();
-            }
-        };
-    }
-
     LockResult mLockResult;
 
     AutoCommitRowUpdater(AbstractTable<R> table, ScanController<R> controller) {
