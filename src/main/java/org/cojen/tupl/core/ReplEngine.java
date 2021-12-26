@@ -558,7 +558,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
 
                 Runnable task;
                 makeTask: {
-                    RowStore rs = mDatabase.tryRowStore();
+                    RowStore rs = mDatabase.rowStore(false);
                     if (rs != null) {
                         task = rs.redoDeleteIndex(indexId, () -> doDeleteIndex(indexId, ix));
                         if (task != null) {

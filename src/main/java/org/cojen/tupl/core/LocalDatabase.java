@@ -3399,13 +3399,24 @@ final class LocalDatabase extends CoreDatabase {
         return preparedTxns;
     }
 
+    /**
+     * @return a non-null RowStore instance
+     */
     RowStore rowStore() throws IOException {
-        RowStore rs = mRowStore;
-        return rs != null ? rs : openRowStore(true);
+        return rowStore(true);
     }
 
     /**
-     * @return null if it doesn't exist
+     * @param create pass true to create if necessary
+     * @return null if create is false and RowStore doesn't exist
+     */
+    RowStore rowStore(boolean create) throws IOException {
+        RowStore rs = mRowStore;
+        return rs != null ? rs : openRowStore(create);
+    }
+
+    /**
+     * @return null if RowStore doesn't exist or isn't open
      */
     RowStore tryRowStore() {
         return mRowStore;
