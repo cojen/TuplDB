@@ -106,6 +106,7 @@ public final class LocalPool<B> {
                         break expand;
                     }
                     entry = new TheEntry<>(mSupplier.get());
+                    VarHandle.storeStoreFence();
                     allEntries[numEntries] = entry;
                     mNumEntries = numEntries + 1;
                 }
@@ -150,9 +151,15 @@ public final class LocalPool<B> {
      */
     public static interface Entry<B> {
         /**
-         * Return the pooled instance, which is locked exclusively.
+         * Return the pooled object, which is locked exclusively.
          */
         public B get();
+
+        /**
+         * Replace the pooled object. This should only be called while the entry is locked
+         * exclusively.
+         */
+        public void replace(B instance);
 
         /**
          * Release the entry such that another thread can use the pooled object.
@@ -161,7 +168,7 @@ public final class LocalPool<B> {
     }
 
     private static class TheEntry<B> extends Latch implements Entry<B> {
-        private final B mInstance;
+        private B mInstance;
 
         private TheEntry(B instance) {
             super(EXCLUSIVE);
@@ -171,6 +178,11 @@ public final class LocalPool<B> {
         @Override
         public B get() {
             return mInstance;
+        }
+
+        @Override
+        public void replace(B instance) {
+            mInstance = instance;
         }
 
         @Override
