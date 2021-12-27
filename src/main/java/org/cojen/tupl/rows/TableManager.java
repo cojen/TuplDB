@@ -253,10 +253,7 @@ public class TableManager<R> {
 
                 maker.mSecondaryDescriptors[i] = desc;
                 maker.mSecondaryInfos[i] = secondaryInfo(primaryInfo, desc);
-
-
                 maker.mSecondaryIndexes[i] = index;
-
                 maker.mSecondaryLocks[i] = rs.indexLock(index);
 
                 if (state == 'B') { // "backfill" state

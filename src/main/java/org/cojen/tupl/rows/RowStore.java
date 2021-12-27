@@ -106,7 +106,7 @@ public class RowStore {
     private final LHashTable.Obj<RowPredicateLock<?>> mIndexLocks;
 
     // Used by tests.
-    boolean mStallTasks;
+    volatile boolean mStallTasks;
 
     // Extended key for referencing secondary indexes.
     private static final int K_SECONDARY = 1;
@@ -644,7 +644,7 @@ public class RowStore {
 
         // Test mode only.
         if (mStallTasks) {
-            txn.exit();
+            txn.reset();
             return;
         }
         
@@ -815,7 +815,7 @@ public class RowStore {
 
         // Test mode only.
         if (mStallTasks) {
-            txn.exit();
+            txn.reset();
             return null;
         }
 
@@ -931,7 +931,8 @@ public class RowStore {
         return txn;
     }
 
-    private void finishAllWorkflowTasks() throws IOException {
+    // Is package-private to be accessible for testing.
+    void finishAllWorkflowTasks() throws IOException {
         // Use transaction locks to identity tasks which should be skipped.
         Transaction txn = mDatabase.newTransaction(DurabilityMode.NO_REDO);
         try {

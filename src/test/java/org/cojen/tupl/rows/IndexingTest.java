@@ -32,6 +32,8 @@ import org.cojen.maker.ClassMaker;
 
 import org.cojen.tupl.*;
 
+import org.cojen.tupl.core.CoreDatabase;
+
 import static org.cojen.tupl.TestUtils.*;
 
 import static org.cojen.tupl.rows.RowTestUtils.*;
@@ -630,8 +632,17 @@ public class IndexingTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
     public void replicaBackfill() throws Exception {
+        replicaBackfill(false);
+    }
+
+    @Test
+    public void replicaBackfillRecover() throws Exception {
+        replicaBackfill(true);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void replicaBackfill(boolean stall) throws Exception {
         var replicaRepl = new SocketReplicator(null, 0);
         var leaderRepl = new SocketReplicator("localhost", replicaRepl.getPort());
 
@@ -642,7 +653,7 @@ public class IndexingTest {
         waitToBecomeLeader(leaderDb, 10);
 
         config.replicate(replicaRepl);
-        var replicaDb = newTempDatabase(getClass(), config);
+        var replicaDb = (CoreDatabase) newTempDatabase(getClass(), config);
 
         final String typeName = newRowTypeName();
 
@@ -670,7 +681,14 @@ public class IndexingTest {
             table1.store(null, row);
         }
 
+        fence(leaderRepl, replicaRepl);
+        Table replicaTable = replicaDb.openIndex("test").asTable(t1);
+
         // Define the table again, with a secondary index added.
+
+        if (stall) {
+            replicaDb.rowStore().mStallTasks = true;
+        }
 
         ClassMaker cm = newRowTypeMaker(typeName, spec);
         addSecondaryIndex(cm, "num");
@@ -695,9 +713,22 @@ public class IndexingTest {
 
         assertNotNull(numTable);
 
-        fence(leaderRepl, replicaRepl);
+        if (stall) {
+            for (int i=0; i<10; i++) {
+                try {
+                    replicaTable.viewSecondaryIndex("num");
+                    fail();
+                } catch (IllegalStateException e) {
+                    assertTrue(e.getMessage().contains("not found"));
+                }
+                sleep(100);
+            }
 
-        Table replicaTable = replicaDb.openIndex("test").asTable(t1);
+            // Simulate re-opening the replica.
+            RowStore rs = replicaDb.rowStore();
+            rs.mStallTasks = false;
+            rs.finishAllWorkflowTasks();
+        }
 
         Table replicaNumTable = null;
         for (int i=0; i<1000; i++) {
