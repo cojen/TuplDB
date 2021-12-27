@@ -54,6 +54,7 @@ public class RowStoreTest {
         final var rnd = new Random(seed);
 
         final Database db = Database.open(new DatabaseConfig());
+        final Index ix = db.openIndex("test");
         final RowStore rs = new RowStore((CoreDatabase) db, db.openIndex("Schemata"));
 
         final Map<String, ColumnInfo> keyColumns = randomKeyColumns(0, rnd);
@@ -64,7 +65,7 @@ public class RowStoreTest {
 
         for (int i=0; i<200; i++) {
             RowInfo rowInfo = randomRowInfo("Test", keyColumns, withAltKey, withIndex, rnd);
-            Integer version = rs.schemaVersion(rowInfo, true, 123, false);
+            Integer version = rs.schemaVersion(rowInfo, true, ix.id(), false);
 
             RowInfo existing = rowInfos.get(version);
             if (existing == null) {
@@ -75,7 +76,7 @@ public class RowStoreTest {
         }
 
         for (Map.Entry<Integer, RowInfo> e : rowInfos.entrySet()) {
-            Integer version = rs.schemaVersion(e.getValue(), true, 123, false);
+            Integer version = rs.schemaVersion(e.getValue(), true, ix.id(), false);
             assertEquals(version, e.getKey());
         }
 

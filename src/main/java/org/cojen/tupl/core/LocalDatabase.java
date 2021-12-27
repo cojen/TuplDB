@@ -1543,6 +1543,15 @@ final class LocalDatabase extends CoreDatabase {
 
         BTree trashed = openTrashedTree(treeIdBytes, false);
 
+        if (trashed == null) {
+            // If it doesn't exist (new index was empty), at least attempt to delete the schema
+            // if it represented a table. Otherwise, a dummy Deletion task will be returned.
+            RowStore rs = openRowStore(false);
+            if (rs != null) {
+                return rs.deleteSchema(treeIdBytes);
+            }
+        }
+
         boolean resumed = false;
         EventListener listener = null;
 
@@ -3402,7 +3411,8 @@ final class LocalDatabase extends CoreDatabase {
     /**
      * @return a non-null RowStore instance
      */
-    RowStore rowStore() throws IOException {
+    @Override
+    public RowStore rowStore() throws IOException {
         return rowStore(true);
     }
 

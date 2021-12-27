@@ -43,6 +43,7 @@ import java.util.function.Supplier;
 
 import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.Cursor;
+import org.cojen.tupl.DeletedIndexException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventType;
@@ -103,6 +104,9 @@ public class RowStore {
     private final WeakCache<Index, TableManager<?>> mTableManagers;
 
     private final LHashTable.Obj<RowPredicateLock<?>> mIndexLocks;
+
+    // Used by tests.
+    boolean mStallTasks;
 
     // Extended key for referencing secondary indexes.
     private static final int K_SECONDARY = 1;
@@ -637,6 +641,12 @@ public class RowStore {
     public void notifySchema(long indexId) throws IOException {
         byte[] taskKey = newTaskKey(TASK_NOTIFY_SCHEMA, indexId);
         Transaction txn = beginWorkflowTask(taskKey);
+
+        // Test mode only.
+        if (mStallTasks) {
+            txn.exit();
+            return;
+        }
         
         // Must launch from a separate thread because locks are held by this thread until the
         // transaction finishes.
@@ -645,7 +655,6 @@ public class RowStore {
                 try {
                     doNotifySchema(null, null, indexId);
                     mSchemata.delete(txn, taskKey);
-                    txn.commit();
                 } finally {
                     txn.reset();
                 }
@@ -804,12 +813,17 @@ public class RowStore {
         byte[] taskKey = newTaskKey(TASK_DELETE_SCHEMA, indexKey);
         Transaction txn = beginWorkflowTask(taskKey);
 
+        // Test mode only.
+        if (mStallTasks) {
+            txn.exit();
+            return null;
+        }
+
         return () -> {
             try {
                 try {
                     doDeleteSchema(null, null, indexKey);
                     mSchemata.delete(txn, taskKey);
-                    txn.commit();
                 } finally {
                     txn.reset();
                 }
@@ -822,6 +836,7 @@ public class RowStore {
     /**
      * @param txn if non-null, pass to mSchemata.delete when false is returned
      * @param taskKey is non-null if this is a recovered workflow task
+     * @param indexKey long index id, big-endian encoded
      * @return true if workflow task (if any) can be immediately deleted
      */
     private boolean doDeleteSchema(Transaction txn, byte[] taskKey, byte[] indexKey)
@@ -901,13 +916,14 @@ public class RowStore {
     }
 
     /**
-     * @return a transaction to commit and reset when task is done
+     * @return a transaction to reset when task is done
      */
     private Transaction beginWorkflowTask(byte[] taskKey) throws IOException {
         // Use a transaction to lock the task, and so finishAllWorkflowTasks will skip it.
         Transaction txn = mDatabase.newTransaction(DurabilityMode.NO_REDO);
         try {
-            mSchemata.store(txn, taskKey, EMPTY_BYTES);
+            mSchemata.lockUpgradable(txn, taskKey);
+            mSchemata.store(Transaction.BOGUS, taskKey, EMPTY_BYTES);
         } catch (Throwable e) {
             txn.reset(e);
             throw e;
@@ -927,7 +943,7 @@ public class RowStore {
                 c.autoload(false);
 
                 for (c.first(); c.key() != null; c.next()) {
-                    if (!txn.tryLockExclusive(mSchemata.id(), c.key(), 0).isHeld()) {
+                    if (!txn.tryLockUpgradable(mSchemata.id(), c.key(), 0).isHeld()) {
                         // Skip it.
                         continue;
                     }
@@ -1101,6 +1117,10 @@ public class RowStore {
     int schemaVersion(RowInfo info, boolean mostRecent, long indexId, boolean notify)
         throws IOException
     {
+        if (mDatabase.indexById(indexId) == null) {
+            throw new DeletedIndexException();
+        }
+
         int schemaVersion;
 
         Map<Index, byte[]> secondariesToDelete = null;

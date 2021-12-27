@@ -29,6 +29,8 @@ import org.cojen.tupl.EventListener;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.Transaction;
 
+import org.cojen.tupl.rows.RowStore;
+
 /**
  * Provides access to features of LocalDatabase implementation class, to reduce the number of
  * generated classes. In particular, there's no generated _Checkpointer class because
@@ -59,6 +61,11 @@ public abstract class CoreDatabase implements Database {
     public abstract void createSecondaryIndexes(Transaction txn, long primaryIndexId,
                                                 long[] ids, Runnable callback)
         throws IOException;
+
+    /**
+     * @return a non-null RowStore instance
+     */
+    public abstract RowStore rowStore() throws IOException;
 
     /**
      * Add a listener which observes incoming replication operations.
