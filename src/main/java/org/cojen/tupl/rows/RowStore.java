@@ -793,6 +793,14 @@ public class RowStore {
      * @return an optional task to run without commit lock held
      */
     public Runnable deleteSchema(byte[] indexKey) throws IOException {
+        try (Cursor c = mSchemata.viewPrefix(indexKey, 0).newCursor(Transaction.BOGUS)) {
+            c.autoload(false);
+            c.first();
+            if (c.key() == null) {
+                return null;
+            }
+        }
+
         byte[] taskKey = newTaskKey(TASK_DELETE_SCHEMA, indexKey);
         Transaction txn = beginWorkflowTask(taskKey);
 
