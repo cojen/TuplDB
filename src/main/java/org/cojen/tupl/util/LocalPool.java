@@ -47,6 +47,7 @@ public final class LocalPool<B> {
         }
     }
 
+    private final Latch mFullLatch;
     private final ThreadLocal<TheEntry<B>> mLocalEntry;
     private final Supplier<B> mSupplier;
     private final TheEntry<B>[] mAllEntries;
@@ -55,6 +56,8 @@ public final class LocalPool<B> {
 
     /**
      * Construct a pool with a maximum size equal to the number of available processors.
+     *
+     * @param supplier can pass null to create entries which initially reference null
      */
     public LocalPool(Supplier<B> supplier) {
         this(supplier, -1);
@@ -63,6 +66,8 @@ public final class LocalPool<B> {
     /**
      * Construct a pool with the given maximum size. If negative, then this is multiplied by
      * the number of available processors and negated.
+     *
+     * @param supplier can pass null to create entries which initially reference null
      */
     @SuppressWarnings("unchecked")
     public LocalPool(Supplier<B> supplier, int maxSize) {
@@ -72,14 +77,10 @@ public final class LocalPool<B> {
             }
             maxSize = -(maxSize * Runtime.getRuntime().availableProcessors());
         }
+        mFullLatch = new Latch();
         mLocalEntry = new ThreadLocal<>();
         mSupplier = supplier;
         mAllEntries = (TheEntry<B>[]) new TheEntry[maxSize];
-        for (int i=0; i<maxSize; i++) {
-            mAllEntries[i] = new TheEntry<>(supplier.get());
-            mAllEntries[i].release();
-        }
-        mNumEntries = maxSize;
     }
 
     /**
@@ -96,25 +97,48 @@ public final class LocalPool<B> {
     private Entry<B> accessSlow() {
         TheEntry<B> entry;
         doAccess: {
+            var rnd = ThreadLocalRandom.current();
             TheEntry<B>[] allEntries = mAllEntries;
-            int numEntries = (int) cNumEntriesHandle.getOpaque(this);
+            int numEntries = (int) cNumEntriesHandle.getAcquire(this);
+
+            if (numEntries > 0) {
+                entry = allEntries[rnd.nextInt(numEntries)];
+                if (entry != null && entry.tryAcquireExclusive()) {
+                    break doAccess;
+                }
+            }
+
+            mFullLatch.acquireShared();
+            numEntries = mNumEntries;
 
             if (numEntries < allEntries.length) expand: {
-                synchronized (this) {
+                if (!mFullLatch.tryUpgrade()) {
+                    mFullLatch.releaseShared();
+                    mFullLatch.acquireExclusive();
                     numEntries = mNumEntries;
                     if (numEntries >= allEntries.length) {
+                        mFullLatch.downgrade();
                         break expand;
                     }
-                    entry = new TheEntry<>(mSupplier.get());
+                }
+
+                try {
+                    entry = new TheEntry<>(mSupplier == null ? null : mSupplier.get());
                     VarHandle.storeStoreFence();
                     allEntries[numEntries] = entry;
                     mNumEntries = numEntries + 1;
+                    break doAccess;
+                } finally {
+                    mFullLatch.releaseExclusive();
                 }
-                break doAccess;
             }
 
-            entry = allEntries[ThreadLocalRandom.current().nextInt(allEntries.length)];
-            entry.acquireExclusive();
+            try {
+                entry = allEntries[rnd.nextInt(numEntries)];
+                entry.acquireExclusive();
+            } finally {
+                mFullLatch.releaseShared();
+            }
         }
 
         mLocalEntry.set(entry);
@@ -129,13 +153,17 @@ public final class LocalPool<B> {
     public void clear(Consumer<B> consumer) {
         TheEntry<B>[] removed;
 
-        synchronized (this) {
+        mFullLatch.acquireExclusive();
+        try {
             int num = mNumEntries;
             if (num <= 0) {
                 return;
             }
             removed = Arrays.copyOfRange(mAllEntries, 0, num);
+            Arrays.fill(mAllEntries, null);
             mNumEntries = 0;
+        } finally {
+            mFullLatch.releaseExclusive();
         }
 
         for (var e : removed) {

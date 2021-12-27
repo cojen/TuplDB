@@ -164,6 +164,10 @@ loadScripts(document, 'script');</script>
 <h3>LocalPool</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">LocalPool</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;<a href="LocalPool.html" title="type parameter in LocalPool">B</a>&gt;&nbsp;supplier)</span></div>
 <div class="block">Construct a pool with a maximum size equal to the number of available processors.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>supplier</code> - can pass null to create entries which initially reference null</dd>
+</dl>
 </section>
 </li>
 <li>
@@ -173,6 +177,10 @@ loadScripts(document, 'script');</script>
  int&nbsp;maxSize)</span></div>
 <div class="block">Construct a pool with the given maximum size. If negative, then this is multiplied by
  the number of available processors and negated.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>supplier</code> - can pass null to create entries which initially reference null</dd>
+</dl>
 </section>
 </li>
 </ul>
