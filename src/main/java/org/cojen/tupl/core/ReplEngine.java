@@ -1285,6 +1285,12 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
+    public boolean txnPredicateLockClose(long txnId) throws IOException {
+        getTxnEntry(txnId).mHasPredicateOpen = false;
+        return true;
+    }
+
+    @Override
     public boolean txnPredicateLockAcquire(long txnId, long indexId, byte[] key, byte[] value)
         throws IOException
     {

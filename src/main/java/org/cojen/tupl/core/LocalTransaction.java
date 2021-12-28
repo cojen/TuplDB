@@ -1621,7 +1621,7 @@ public final class LocalTransaction extends Locker implements Transaction {
      * Called after a predicate lock has been acquired, but before the associated row operation
      * begins.
      */
-    final void redoPredicateLockOpen() throws IOException {
+    final void redoPredicateLock(byte op) throws IOException {
         check();
 
         if (mRedo == null) {
@@ -1640,7 +1640,7 @@ public final class LocalTransaction extends Locker implements Transaction {
         }
 
         try {
-            mContext.redoPredicateLockOpen(mRedo, txnId);
+            mContext.redoPredicateLock(mRedo, op, txnId);
         } catch (Throwable e) {
             borked(e);
         }

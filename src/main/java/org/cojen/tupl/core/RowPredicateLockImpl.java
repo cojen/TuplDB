@@ -96,14 +96,18 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
         version.acquire(local);
 
         try {
-            local.redoPredicateLockOpen();
-
-            for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
-                if (e.test(row)) {
-                    e.matched(local);
+            local.redoPredicateLock(RedoOps.OP_TXN_PREDICATE_LOCK_OPEN);
+            try {
+                for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
+                    if (e.test(row)) {
+                        e.matchAcquire(local);
+                    }
                 }
+                return version;
+            } catch (Throwable e) {
+                local.redoPredicateLock(RedoOps.OP_TXN_PREDICATE_LOCK_CLOSE);
+                throw e;
             }
-            return version;
         } catch (Throwable e) {
             version.close();
             throw e;
@@ -136,7 +140,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
                     if (!e.test(key, value)) {
                         continue;
                     }
-                    lock = e.matchedNoPush(local);
+                    lock = e.matchAcquireNoPush(local);
                 }
 
                 if (lock != null) {
@@ -522,7 +526,12 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
         {
             close();
             try {
-                ((LocalTransaction) txn).redoPredicateLockAcquire(indexId, key, value);
+                var local = (LocalTransaction) txn;
+                if (ex instanceof LockFailureException) {
+                    local.redoPredicateLock(RedoOps.OP_TXN_PREDICATE_LOCK_CLOSE);
+                } else {
+                    local.redoPredicateLockAcquire(indexId, key, value);
+                }
             } catch (IOException e) {
                 Utils.suppress(e, ex);
                 throw e;
@@ -771,12 +780,12 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
             mLock.remove(this);
         }
 
-        final void matched(LocalTransaction txn) throws LockFailureException {
+        final void matchAcquire(LocalTransaction txn) throws LockFailureException {
             cMatchedHandle.weakCompareAndSetPlain(this, false, true);
             acquireShared(txn);
         }
 
-        final Lock matchedNoPush(LocalTransaction txn) throws LockFailureException {
+        final Lock matchAcquireNoPush(LocalTransaction txn) throws LockFailureException {
             cMatchedHandle.weakCompareAndSetPlain(this, false, true);
             return acquireSharedNoPush(txn);
         }

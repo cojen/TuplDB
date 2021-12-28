@@ -43,10 +43,10 @@ public interface RowPredicateLock<R> {
     Closer openAcquire(Transaction txn, R row) throws IOException;
 
     /**
-     * Acquires shared access for all the predicate locks, an upgradable row lock, waiting if
-     * necessary. The returned object is a Lock or an array of Locks, which must be pushed to
-     * the transaction by the caller. If an exception is thrown, all locks acquired up to that
-     * point are released.
+     * Acquires shared access for all the predicate locks and an upgradable row lock, waiting
+     * if necessary. The returned object is a Lock or an array of Locks, which must be pushed
+     * to the transaction by the caller. If an exception is thrown, all locks acquired up to
+     * that point are released.
      *
      * @param key is passed to the {@code RowPredicate.test} method
      * @param value is passed to the {@code RowPredicate.test} method

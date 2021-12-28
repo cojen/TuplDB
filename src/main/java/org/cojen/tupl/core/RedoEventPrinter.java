@@ -303,6 +303,12 @@ class RedoEventPrinter implements RedoVisitor {
     }
 
     @Override
+    public boolean txnPredicateLockClose(long txnId) {
+        mListener.notify(mType, "Redo %1$s: txnId=%2$d", "txnPredicateLockClose", txnId);
+        return true;
+    }
+
+    @Override
     public boolean txnPredicateLockAcquire(long txnId, long indexId, byte[] key, byte[] value) {
         mListener.notify(mType, "Redo %1$s: txnId=%2$d, indexId=%3$d, key=%4$s, value=%5$s",
                          "txnPredicateLockAcquire", txnId, indexId, keyStr(key), valueStr(value));

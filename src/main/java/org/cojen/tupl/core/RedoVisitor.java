@@ -266,6 +266,11 @@ interface RedoVisitor {
 
     /**
      * @param txnId non-zero transaction id
+     */
+    public boolean txnPredicateLockClose(long txnId) throws IOException;
+
+    /**
+     * @param txnId non-zero transaction id
      * @param indexId non-zero index id
      * @param key non-null key
      * @param value value to store; null to delete
