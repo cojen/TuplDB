@@ -178,12 +178,20 @@ public class TableMaker {
             Class autoGenClass, autoGenApplierClass;
             Object minVal, maxVal;
             if (mAutoColumn.type == int.class) {
-                autoGenClass = AutomaticKeyGenerator.OfInt.class;
+                if (mAutoColumn.isUnsigned()) {
+                    autoGenClass = AutomaticKeyGenerator.OfUInt.class;
+                } else {
+                    autoGenClass = AutomaticKeyGenerator.OfInt.class;
+                }
                 autoGenApplierClass = AutomaticKeyGenerator.OfInt.Applier.class;
                 minVal = (int) Math.max(mAutoColumn.autoMin, Integer.MIN_VALUE);
                 maxVal = (int) Math.min(mAutoColumn.autoMax, Integer.MAX_VALUE);
             } else {
-                autoGenClass = AutomaticKeyGenerator.OfLong.class;
+                if (mAutoColumn.isUnsigned()) {
+                    autoGenClass = AutomaticKeyGenerator.OfULong.class;
+                } else {
+                    autoGenClass = AutomaticKeyGenerator.OfLong.class;
+                }
                 autoGenApplierClass = AutomaticKeyGenerator.OfLong.Applier.class;
                 minVal = mAutoColumn.autoMin;
                 maxVal = mAutoColumn.autoMax;

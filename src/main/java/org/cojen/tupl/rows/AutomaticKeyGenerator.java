@@ -80,7 +80,7 @@ public abstract class AutomaticKeyGenerator<R> {
                 }
             } while (value == 0);
 
-            RowUtils.encodeIntBE(key, key.length - 4, value);
+            encode(key, value);
         }
 
         @Override
@@ -88,7 +88,7 @@ public abstract class AutomaticKeyGenerator<R> {
                                                        R row, byte[] srcKey, byte[] dstKey)
             throws IOException
         {
-            int value = RowUtils.decodeIntBE(srcKey, srcKey.length - 4) + 1;
+            int value = decode(srcKey) + 1;
             if (value == 0) {
                 value = 1;
             }
@@ -96,10 +96,18 @@ public abstract class AutomaticKeyGenerator<R> {
                 value = mMin;
             }
 
-            RowUtils.encodeIntBE(dstKey, dstKey.length - 4, value);
+            encode(dstKey, value);
 
             return mApplier == null ? RowPredicateLock.NonCloser.THE
                 : mApplier.applyToRow(txn, row, value);
+        }
+
+        protected int decode(byte[] key) {
+            return RowUtils.decodeIntBE(key, key.length - 4) ^ (1 << 31);
+        }
+
+        protected void encode(byte[] key, int value) {
+            RowUtils.encodeIntBE(key, key.length - 4, value ^ (1 << 31));
         }
 
         public static interface Applier<R> {
@@ -108,6 +116,24 @@ public abstract class AutomaticKeyGenerator<R> {
              */
             public RowPredicateLock.Closer applyToRow(Transaction txn, R row, int value)
                 throws IOException;
+        }
+    }
+
+    public static class OfUInt<R> extends OfInt<R> {
+        /**
+         * @param min inclusive
+         * @param max inclusive
+         */
+        public OfUInt(Index index, int min, int max, Applier<R> applier) {
+            super(index, min, max, applier);
+        }
+
+        protected int decode(byte[] key) {
+            return RowUtils.decodeIntBE(key, key.length - 4);
+        }
+
+        protected void encode(byte[] key, int value) {
+            RowUtils.encodeIntBE(key, key.length - 4, value);
         }
     }
 
@@ -139,7 +165,7 @@ public abstract class AutomaticKeyGenerator<R> {
                 }
             } while (value == 0);
 
-            RowUtils.encodeLongBE(key, key.length - 8, value);
+            encode(key, value);
         }
 
         @Override
@@ -147,7 +173,7 @@ public abstract class AutomaticKeyGenerator<R> {
                                                        R row, byte[] srcKey, byte[] dstKey)
             throws IOException
         {
-            long value = RowUtils.decodeLongBE(srcKey, srcKey.length - 8) + 1;
+            long value = decode(srcKey) + 1;
             if (value == 0) {
                 value = 1;
             }
@@ -155,10 +181,18 @@ public abstract class AutomaticKeyGenerator<R> {
                 value = mMin;
             }
 
-            RowUtils.encodeLongBE(dstKey, dstKey.length - 8, value);
+            encode(dstKey, value);
 
             return mApplier == null ? RowPredicateLock.NonCloser.THE
                 : mApplier.applyToRow(txn, row, value);
+        }
+
+        protected long decode(byte[] key) {
+            return RowUtils.decodeLongBE(key, key.length - 8) ^ (1L << 63);
+        }
+
+        protected void encode(byte[] key, long value) {
+            RowUtils.encodeLongBE(key, key.length - 8, value ^ (1L << 63));
         }
 
         public static interface Applier<R> {
@@ -167,6 +201,24 @@ public abstract class AutomaticKeyGenerator<R> {
              */
             public RowPredicateLock.Closer applyToRow(Transaction txn, R row, long value)
                 throws IOException;
+        }
+    }
+
+    public static class OfULong<R> extends OfLong<R> {
+        /**
+         * @param min inclusive
+         * @param max inclusive
+         */
+        public OfULong(Index index, long min, long max, Applier<R> applier) {
+            super(index, min, max, applier);
+        }
+
+        protected long decode(byte[] key) {
+            return RowUtils.decodeLongBE(key, key.length - 8);
+        }
+
+        protected void encode(byte[] key, long value) {
+            RowUtils.encodeLongBE(key, key.length - 8, value);
         }
     }
 
@@ -291,6 +343,7 @@ public abstract class AutomaticKeyGenerator<R> {
     /**
      * Closes all the cursors, but doesn't prevent them from being replaced.
      */
+    // TODO: Try to call this when table or database is closed.
     public void clear() {
         mStatePool.clear(ref -> {
             var state = ref.get();
