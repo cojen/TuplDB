@@ -39,6 +39,7 @@ import java.util.TreeSet;
 import java.util.WeakHashMap;
 
 import org.cojen.tupl.AlternateKey;
+import org.cojen.tupl.Automatic;
 import org.cojen.tupl.Hidden;
 import org.cojen.tupl.Nullable;
 import org.cojen.tupl.PrimaryKey;
@@ -87,11 +88,24 @@ class RowInfo extends ColumnSet {
 
         var info = new RowInfo(rowType.getName());
 
-        info.examineAllColumns(rowType, messages);
+        ColumnInfo autoColumn = info.examineAllColumns(rowType, messages);
         errorCheck(rowType, messages);
 
         info.examinePrimaryKey(rowType, messages);
         errorCheck(rowType, messages);
+
+        if (autoColumn != null) {
+            Iterator<ColumnInfo> it = info.keyColumns.values().iterator();
+            while (true) {
+                ColumnInfo column = it.next();
+                if (!it.hasNext()) {
+                    if (column != autoColumn) {
+                        messages.add("automatic column must be the last in the primary key");
+                    }
+                    break;
+                }
+            }
+        }
 
         AlternateKey altKey = rowType.getAnnotation(AlternateKey.class);
         AlternateKey.Set altKeySet = rowType.getAnnotation(AlternateKey.Set.class);
@@ -208,8 +222,12 @@ class RowInfo extends ColumnSet {
         }
     }
 
-    private void examineAllColumns(Class<?> rowType, Set<String> messages) {
+    /**
+     * @return automatic column, if one is defined
+     */
+    private ColumnInfo examineAllColumns(Class<?> rowType, Set<String> messages) {
         allColumns = new TreeMap<>();
+        ColumnInfo autoColumn = null;
 
         for (Method method : rowType.getMethods()) {
             if (method.isDefault()) {
@@ -292,6 +310,35 @@ class RowInfo extends ColumnSet {
                 }
             }
 
+            Automatic auto = method.getAnnotation(Automatic.class);
+            if (auto != null) {
+                long min = auto.min();
+                long max = auto.max();
+
+                if (min >= max) {
+                    messages.add("illegal automatic range [" + min + ", " + max + ']');
+                }
+
+                switch (info.typeCode & ~TYPE_DESCENDING) {
+                case TYPE_UINT: case TYPE_ULONG: case TYPE_INT: case TYPE_LONG:
+                    if (!info.isAutomatic()) {
+                        if (autoColumn == null) {
+                            info.autoMin = min;
+                            info.autoMax = max;
+                            autoColumn = info;
+                        } else {
+                            messages.add("at most one column can be automatic");
+                        }
+                    } else if (info.autoMin != min || info.autoMax != max) {
+                        messages.add("inconsistent automatic range");
+                    }
+                    break;
+                default:
+                    messages.add("column \"" + info.type.getSimpleName() + ' ' + info.name +
+                                 "\" cannot be automatic");
+                }
+            }
+
             info.hidden |= method.isAnnotationPresent(Hidden.class);
         }
 
@@ -302,6 +349,8 @@ class RowInfo extends ColumnSet {
                 messages.add("no mutator method for column \"" + info.name + '"');
             }
         }
+
+        return autoColumn;
     }
 
     /**

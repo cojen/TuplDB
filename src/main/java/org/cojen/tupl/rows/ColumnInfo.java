@@ -107,6 +107,12 @@ public class ColumnInfo implements Cloneable {
 
     boolean hidden;
 
+    long autoMin, autoMax;
+
+    boolean isAutomatic() {
+        return autoMin != autoMax;
+    }
+
     public int plainTypeCode() {
         return plainTypeCode(typeCode);
     }

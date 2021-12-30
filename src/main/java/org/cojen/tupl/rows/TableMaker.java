@@ -26,6 +26,7 @@ import java.lang.ref.WeakReference;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Field;
@@ -58,6 +59,7 @@ public class TableMaker {
     private final long mIndexId;
     private final boolean mSupportsIndexLock;
     private final ClassMaker mClassMaker;
+    private final ColumnInfo mAutoColumn;
 
     /**
      * Constructor for primary table.
@@ -105,6 +107,18 @@ public class TableMaker {
         mClassMaker = codecGen.beginClassMaker(getClass(), type, suffix).extend(baseClass);
 
         mClassMaker.final_().public_();
+
+        ColumnInfo auto = null;
+        if (isPrimaryTable()) {
+            for (ColumnInfo column : codecGen.info.keyColumns.values()) {
+                if (column.isAutomatic()) {
+                    auto = column;
+                    break;
+                }
+            }
+        }
+
+        mAutoColumn = auto;
     }
 
     /**
@@ -115,10 +129,8 @@ public class TableMaker {
         MethodType mt = MethodType.methodType
             (void.class, TableManager.class, Index.class, RowPredicateLock.class);
 
-        {
-            MethodMaker mm = mClassMaker.addConstructor(mt);
-            mm.invokeSuperConstructor(mm.param(0), mm.param(1), mm.param(2));
-        }
+        MethodMaker ctor = mClassMaker.addConstructor(mt);
+        ctor.invokeSuperConstructor(ctor.param(0), ctor.param(1), ctor.param(2));
 
         // Add the simple rowType method.
         mClassMaker.addMethod(Class.class, "rowType").public_().return_(mRowType);
@@ -142,6 +154,68 @@ public class TableMaker {
         // Add the reset method.
         addResetMethod();
 
+        // Add encode/decode methods.
+        {
+            ColumnCodec[] keyCodecs = mCodecGen.keyCodecs();
+            addEncodeColumnsMethod("encodePrimaryKey", keyCodecs);
+            addDecodeColumnsMethod("decodePrimaryKey", keyCodecs);
+
+            if (isPrimaryTable()) {
+                addDynamicEncodeValueColumns();
+                addDynamicDecodeValueColumns();
+            } else {
+                // The encodeValue method is only used for storing rows into the table. By
+                // making it always fail, there's no backdoor to permit modifications.
+                mClassMaker.addMethod(byte[].class, "encodeValue", mRowClass)
+                    .static_().new_(UnmodifiableViewException.class).throw_();
+
+                addDecodeColumnsMethod("decodeValue", mCodecGen.valueCodecs());
+            }
+        }
+
+        // Add code to support an automatic column (if defined).
+        if (mAutoColumn != null) {
+            Class autoGenClass, autoGenApplierClass;
+            Object minVal, maxVal;
+            if (mAutoColumn.type == int.class) {
+                autoGenClass = AutomaticKeyGenerator.OfInt.class;
+                autoGenApplierClass = AutomaticKeyGenerator.OfInt.Applier.class;
+                minVal = (int) Math.max(mAutoColumn.autoMin, Integer.MIN_VALUE);
+                maxVal = (int) Math.min(mAutoColumn.autoMax, Integer.MAX_VALUE);
+            } else {
+                autoGenClass = AutomaticKeyGenerator.OfLong.class;
+                autoGenApplierClass = AutomaticKeyGenerator.OfLong.Applier.class;
+                minVal = mAutoColumn.autoMin;
+                maxVal = mAutoColumn.autoMax;
+            }
+
+            mClassMaker.implement(autoGenApplierClass);
+
+            mClassMaker.addField(autoGenClass, "autogen").private_().final_();
+
+            ctor.field("autogen").set
+                (ctor.new_(autoGenClass, ctor.param(1), minVal, maxVal, ctor.this_()));
+
+            MethodMaker mm = mClassMaker.addMethod
+                (RowPredicateLock.Closer.class, "applyToRow",
+                 Transaction.class, Object.class, mAutoColumn.type);
+            mm.public_();
+            var rowVar = mm.param(1).cast(mRowClass);
+            rowVar.field(mAutoColumn.name).set(mm.param(2));
+
+            if (!mSupportsIndexLock) {
+                mm.return_(mm.var(RowPredicateLock.NonCloser.class).field("THE"));
+            } else {
+                mm.return_(mm.field("mIndexLock").invoke("tryOpenAcquire", mm.param(0), rowVar));
+            }
+
+            var allButAuto = new TreeMap<>(mCodecGen.info.allColumns);
+            allButAuto.remove(mAutoColumn.name);
+            addCheckSet("checkAllButAutoSet", allButAuto);
+
+            addStoreAutoMethod();
+        }
+
         // Add private methods which check that required columns are set.
         {
             addCheckSet("checkPrimaryKeySet", mCodecGen.info.keyColumns);
@@ -164,24 +238,6 @@ public class TableMaker {
             }
 
             addCheckAnyDirty("checkPrimaryKeyAnyDirty", mCodecGen.info.keyColumns);
-        }
-
-        // Add encode/decode methods.
-
-        ColumnCodec[] keyCodecs = mCodecGen.keyCodecs();
-        addEncodeColumnsMethod("encodePrimaryKey", keyCodecs);
-        addDecodeColumnsMethod("decodePrimaryKey", keyCodecs);
-
-        if (isPrimaryTable()) {
-            addDynamicEncodeValueColumns();
-            addDynamicDecodeValueColumns();
-        } else {
-            // The encodeValue method is only used for storing rows into the table. By making
-            // it always fail, there's no backdoor to permit modifications.
-            mClassMaker.addMethod(byte[].class, "encodeValue", mRowClass)
-                .static_().new_(UnmodifiableViewException.class).throw_();
-
-            addDecodeColumnsMethod("decodeValue", mCodecGen.valueCodecs());
         }
 
         // Add the public load/store methods, etc.
@@ -778,7 +834,23 @@ public class TableMaker {
 
         Label ready = mm.label();
         mm.invoke("checkAllSet", rowVar).ifTrue(ready);
+
+        if (variant != "replace" && mAutoColumn != null) {
+            Label notReady = mm.label();
+            mm.invoke("checkAllButAutoSet", rowVar).ifFalse(notReady);
+            mm.invoke("storeAuto", txnVar, rowVar);
+            if (variant == "exchange") {
+                mm.return_(null);
+            } else if (variant == "insert") {
+                mm.return_(true);
+            } else {
+                mm.return_();
+            }
+            notReady.here();
+        }
+
         mm.invoke("requireAllSet", rowVar);
+
         ready.here();
 
         var keyVar = mm.invoke("encodePrimaryKey", rowVar);
@@ -940,6 +1012,45 @@ public class TableMaker {
         mm.finally_(txnStart, () -> txnVar.invoke("exit"));
 
         return resultVar;
+    }
+
+    private void addStoreAutoMethod() {
+        MethodMaker mm = mClassMaker.addMethod(null, "storeAuto", Transaction.class, mRowClass);
+
+        Variable txnVar = mm.param(0);
+        Variable rowVar = mm.param(1);
+
+        var keyVar = mm.invoke("encodePrimaryKey", rowVar);
+        var valueVar = mm.invoke("encodeValue", rowVar);
+
+        // Call enterScopex because bogus transaction doesn't work with AutomaticKeyGenerator.
+        txnVar.set(mm.var(ViewUtils.class).invoke("enterScopex", mm.field("mSource"), txnVar));
+        Label txnStart = mm.label().here();
+
+        if (!supportsTriggers()) {
+            mm.field("autogen").invoke("store", txnVar, rowVar, keyVar, valueVar);
+            txnVar.invoke("commit");
+            markAllClean(rowVar);
+            mm.return_();
+        } else {
+            var triggerVar = mm.var(Trigger.class);
+            Label skipLabel = mm.label();
+            prepareForTrigger(mm, mm.this_(), triggerVar, skipLabel);
+            Label triggerStart = mm.label().here();
+            mm.field("autogen").invoke("store", txnVar, rowVar, keyVar, valueVar);
+            triggerVar.invoke("insert", txnVar, rowVar, keyVar, valueVar);
+            Label commitLabel = mm.label();
+            mm.goto_(commitLabel);
+            skipLabel.here();
+            mm.field("autogen").invoke("store", txnVar, rowVar, keyVar, valueVar);
+            commitLabel.here();
+            txnVar.invoke("commit");
+            markAllClean(rowVar);
+            mm.return_();
+            mm.finally_(triggerStart, () -> triggerVar.invoke("releaseShared"));
+        }
+
+        mm.finally_(txnStart, () -> txnVar.invoke("exit"));
     }
 
     private static void copyFields(MethodMaker mm, Variable src, Variable dst,

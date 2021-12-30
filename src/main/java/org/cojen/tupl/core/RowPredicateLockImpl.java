@@ -115,6 +115,52 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
     }
 
     @Override
+    public Closer tryOpenAcquire(Transaction txn, R row) throws IOException {
+        if (txn.lockMode() == LockMode.UNSAFE) {
+            return NonCloser.THE;
+        }
+
+        var local = (LocalTransaction) txn;
+        VersionLock version = mNewestVersion;
+
+        Closer closer;
+        if (version.acquire(local)) {
+            // Indicate that at least one lock was acquired.
+            closer = version;
+        } else {
+            // No locks actually acquired yet (was already held).
+            closer = NonCloser.THE;
+        }
+
+        try {
+            local.redoPredicateLock(RedoOps.OP_TXN_PREDICATE_LOCK_OPEN);
+            try {
+                for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
+                    if (e.test(row)) {
+                        LockResult result = e.tryMatchAcquire(local);
+                        if (result == LockResult.ACQUIRED) {
+                            txn.unlockCombine();
+                            closer = version;
+                        } else if (!result.isHeld()) {
+                            if (closer == version) {
+                                txn.unlock();
+                            }
+                            return null;
+                        }
+                    }
+                }
+                return closer;
+            } catch (Throwable e) {
+                local.redoPredicateLock(RedoOps.OP_TXN_PREDICATE_LOCK_CLOSE);
+                throw e;
+            }
+        } catch (Throwable e) {
+            version.close();
+            throw e;
+        }
+    }
+
+    @Override
     public Object acquireLocksNoPush(Transaction txn, byte[] key, byte[] value)
         throws LockFailureException
     {
@@ -451,9 +497,10 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
         /**
          * Similar to acquireShared except it doesn't block if a queue exists.
          *
+         * @return true if just acquired
          * @throws IllegalStateException if an exclusive lock is held
          */
-        void acquire(Locker locker) {
+        boolean acquire(Locker locker) {
             LockManager.Bucket bucket = mBucket;
             bucket.acquireExclusive();
             try {
@@ -463,7 +510,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
                 }
                 cIndexIdHandle.getAndAdd(this, 1L);
                 if (count != 0 && isSharedLocker(locker)) {
-                    return;
+                    return false;
                 }
                 addSharedLocker(count, locker);
             } finally {
@@ -471,6 +518,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
             }
 
             locker.push(this);
+            return true;
         }
 
         /**
@@ -783,6 +831,11 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
         final void matchAcquire(LocalTransaction txn) throws LockFailureException {
             cMatchedHandle.weakCompareAndSetPlain(this, false, true);
             acquireShared(txn);
+        }
+
+        final LockResult tryMatchAcquire(LocalTransaction txn) throws LockFailureException {
+            cMatchedHandle.weakCompareAndSetPlain(this, false, true);
+            return tryAcquireShared(txn, 0);
         }
 
         final Lock matchAcquireNoPush(LocalTransaction txn) throws LockFailureException {

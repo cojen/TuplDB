@@ -43,6 +43,21 @@ public interface RowPredicateLock<R> {
     Closer openAcquire(Transaction txn, R row) throws IOException;
 
     /**
+     * Acquires shared access for all the predicate locks, without waiting, and retains the
+     * locks for the entire transaction scope. If lock acquisition fails, all locks
+     * acquired up to that point are released.
+     *
+     * Returns null if not acquired, or else a Closer instance. Returns NonCloser if accepted,
+     * but all the necessary locks were already held. Call close on the Closer when the
+     * specific row lock has been acquired, or else call failed if an exception is thrown.
+     *
+     * @param row is passed to the {@code RowPredicate.test} method
+     * @return null if not acquired
+     * @throws IllegalStateException if too many shared locks
+     */
+    Closer tryOpenAcquire(Transaction txn, R row) throws IOException;
+
+    /**
      * Acquires shared access for all the predicate locks and an upgradable row lock, waiting
      * if necessary. The returned object is a Lock or an array of Locks, which must be pushed
      * to the transaction by the caller. If an exception is thrown, all locks acquired up to
@@ -101,8 +116,8 @@ public interface RowPredicateLock<R> {
             throws IOException;
     }
 
-    static final class NonCloser implements Closer {
-        static final NonCloser THE = new NonCloser();
+    public static final class NonCloser implements Closer {
+        public static final NonCloser THE = new NonCloser();
 
         private NonCloser() {
         }

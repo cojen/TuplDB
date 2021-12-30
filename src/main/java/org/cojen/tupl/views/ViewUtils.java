@@ -336,6 +336,19 @@ public class ViewUtils {
         return txn;
     }
 
+    /**
+     * Returns a new transaction or enters a scope. This variant throws an exception when given
+     * a bogus transaction.
+     */
+    public static Transaction enterScopex(View view, Transaction txn) throws IOException {
+        if (txn == null) {
+            txn = view.newTransaction(null);
+        } else {
+            txn.enter();
+        }
+        return txn;
+    }
+
     public static void commit(Cursor c, byte[] value) throws IOException {
         try {
             c.store(value);
