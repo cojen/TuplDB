@@ -128,8 +128,16 @@ public class RowStore {
 
         registerToUpdateSchemata();
 
-        // Finish any tasks left over from when the RowStore was last used.
-        finishAllWorkflowTasks();
+        // Finish any tasks left over from when the RowStore was last used. Call this from a
+        // separate thread to unblock LocalDatabase, which is holding mOpenTreesLatch when
+        // constructing this RowStore instance.
+        Runner.start(() -> {
+            try {
+                finishAllWorkflowTasks();
+            } catch (Throwable e) {
+                uncaught(e);
+            }
+        });
     }
 
     WeakReference<RowStore> ref() {
