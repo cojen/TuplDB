@@ -1199,16 +1199,19 @@ public class TableMaker {
         // of the current schema version.
 
         var indy = mm.var(TableMaker.class).indy
-            ("indyDoUpdate", mStore.ref(), mRowType, mIndexId, supportsTriggers());
+            ("indyDoUpdate", mStore.ref(), mRowType, mIndexId, supportsTriggers() ? 1 : 0);
         indy.invoke(null, "doUpdate", null, mm.this_(), rowVar, mergeVar, cursorVar);
         mm.return_(true);
 
         mm.finally_(cursorStart, () -> cursorVar.invoke("reset"));
     }
 
+    /**
+     * @param triggers 0 for false, 1 for true
+     */
     public static CallSite indyDoUpdate(MethodHandles.Lookup lookup, String name, MethodType mt,
                                         WeakReference<RowStore> storeRef,
-                                        Class<?> rowType, long indexId, boolean triggers)
+                                        Class<?> rowType, long indexId, int triggers)
     {
         return doIndyEncode
             (lookup, name, mt, storeRef, rowType, indexId, (mm, info, schemaVersion) -> {
@@ -1216,8 +1219,11 @@ public class TableMaker {
             });
     }
 
+    /**
+     * @param triggers 0 for false, 1 for true
+     */
     private static void finishIndyDoUpdate(MethodMaker mm, RowInfo rowInfo, int schemaVersion,
-                                           boolean triggers)
+                                           int triggers)
     {
         // All these variables were provided by the indy call in addDoUpdateMethod.
         Variable tableVar = mm.param(0);
@@ -1359,14 +1365,14 @@ public class TableMaker {
             noSpan.here();
         }
 
-        if (!triggers) {
+        if (triggers == 0) {
             cursorVar.invoke("commit", newValueVar);
         }
 
         Label doMerge = mm.label();
         mergeVar.ifTrue(doMerge);
 
-        if (triggers) {
+        if (triggers != 0) {
             var triggerVar = mm.var(Trigger.class);
             Label skipLabel = mm.label();
             prepareForTrigger(mm, tableVar, triggerVar, skipLabel);
@@ -1410,7 +1416,7 @@ public class TableMaker {
             cont.here();
         }
 
-        if (triggers) {
+        if (triggers != 0) {
             var triggerVar = mm.var(Trigger.class);
             Label skipLabel = mm.label();
             prepareForTrigger(mm, tableVar, triggerVar, skipLabel);
