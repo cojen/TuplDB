@@ -348,7 +348,8 @@ public abstract class AbstractTable<R> implements Table<R> {
 
             Class<? extends RowPredicate> baseClass;
 
-            if (ranges.length == 1 && RowFilter.matchesOne(ranges[0], keyColumns)) {
+            // FIXME: Although no predicate lock is required, a row lock is required.
+            if (false && ranges.length == 1 && RowFilter.matchesOne(ranges[0], keyColumns)) {
                 // No predicate lock is required when the filter matches at most one row.
                 baseClass = null;
             } else {

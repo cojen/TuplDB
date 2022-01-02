@@ -228,8 +228,8 @@ public class IndexLockTest {
 
     @Test
     public void rowLockStall() throws Exception {
-        // A RowScanner which returns at most one row doesn't install a predicate lock, but it
-        // can still stall on a row lock held by another transaction.
+        // A RowScanner which returns at most one row doesn't need to install a predicate lock,
+        // but it can still stall on a row lock held by another transaction.
 
         var table = mDatabase.openTable(TestRow.class);
 
@@ -246,7 +246,30 @@ public class IndexLockTest {
             table.newRowScanner(scanTxn, "id == ?", 5);
             fail();
         } catch (LockTimeoutException e) {
-            rowLockTimeout(e);
+            // Can be caused by a row lock timeout or a predicate lock timeout.
+        }
+    }
+
+    @Test
+    public void rowLockStall2() throws Exception {
+        // A RowScanner which returns at most one row doesn't need to install a predicate lock,
+        // but it should still acquire a lock even when the row doesn't exist.
+
+        var table = mDatabase.openTable(TestRow.class);
+
+        Transaction txn1 = mDatabase.newTransaction();
+        table.newRowScanner(txn1, "id == ?", 5);
+
+        Transaction txn2 = mDatabase.newTransaction();
+        TestRow row = table.newRow();
+        row.id(5);
+        row.name("name-5");
+
+        try {
+            table.insert(txn2, row);
+            fail();
+        } catch (LockTimeoutException e) {
+            // Can be caused by a row lock timeout or a predicate lock timeout.
         }
     }
 
