@@ -81,12 +81,12 @@ public abstract class AbstractTableView<R> extends AbstractTable<R> {
 
     @Override
     public Table<R> viewAlternateKey(String... columns) throws IOException {
-        return null;
+        throw new IllegalStateException();
     }
 
     @Override
     public Table<R> viewSecondaryIndex(String... columns) throws IOException {
-        return null;
+        throw new IllegalStateException();
     }
 
     @Override

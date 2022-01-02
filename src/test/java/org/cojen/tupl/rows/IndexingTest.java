@@ -63,8 +63,17 @@ public class IndexingTest {
         Table<TestRow> ix1 = table.viewSecondaryIndex("name");
         Table<TestRow> ix2 = table.viewSecondaryIndex("num", "name");
 
-        assertNull(ix1.viewAlternateKey("path"));
-        assertNull(ix1.viewSecondaryIndex("name"));
+        try {
+            ix1.viewAlternateKey("path");
+            fail();
+        } catch (IllegalStateException e) {
+        }
+
+        try {
+            ix1.viewSecondaryIndex("name");
+            fail();
+        } catch (IllegalStateException e) {
+        }
 
         {
             TestRow row = table.newRow();
