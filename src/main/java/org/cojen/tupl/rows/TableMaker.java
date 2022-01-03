@@ -106,6 +106,8 @@ public class TableMaker {
 
         mClassMaker = codecGen.beginClassMaker(getClass(), type, suffix).extend(baseClass);
 
+        mClassMaker.implement(TableBasicsMaker.find(type));
+
         mClassMaker.final_().public_();
 
         ColumnInfo auto = null;
@@ -131,28 +133,6 @@ public class TableMaker {
 
         MethodMaker ctor = mClassMaker.addConstructor(mt);
         ctor.invokeSuperConstructor(ctor.param(0), ctor.param(1), ctor.param(2));
-
-        // Add the simple rowType method.
-        mClassMaker.addMethod(Class.class, "rowType").public_().return_(mRowType);
-
-        // Add the newRow method and its bridge.
-        {
-            MethodMaker mm = mClassMaker.addMethod(mRowType, "newRow").public_();
-            mm.return_(mm.new_(mRowClass));
-            mm = mClassMaker.addMethod(Object.class, "newRow").public_().bridge();
-            mm.return_(mm.this_().invoke(mRowType, "newRow", null));
-        }
-
-        // Add the cloneRow method and its bridge.
-        {
-            MethodMaker mm = mClassMaker.addMethod(mRowType, "cloneRow", Object.class).public_();
-            mm.return_(mm.param(0).cast(mRowClass).invoke("clone"));
-            mm = mClassMaker.addMethod(Object.class, "cloneRow", Object.class).public_().bridge();
-            mm.return_(mm.this_().invoke(mRowType, "cloneRow", null, mm.param(0)));
-        }
-
-        // Add the reset method.
-        addResetMethod();
 
         // Add encode/decode methods.
         {
@@ -1463,24 +1443,6 @@ public class TableMaker {
         Label tryStart = mm.label().here();
         mm.return_(mm.invoke("doUpdate", txnVar, rowVar, merge));
         mm.finally_(tryStart, () -> txnVar.invoke("exit"));
-    }
-
-    private void addResetMethod() {
-        MethodMaker mm = mClassMaker.addMethod(null, "resetRow", Object.class).public_();
-        Variable rowVar = mm.param(0).cast(mRowClass);
-
-        // Clear the column fields that refer to objects.
-        for (ColumnInfo info : mRowInfo.allColumns.values()) {
-            Field field = rowVar.field(info.name);
-            if (!info.type.isPrimitive()) {
-                field.set(null);
-            }
-        }
-
-        // Clear the column state fields.
-        for (String name : mRowGen.stateFields()) {
-            rowVar.field(name).set(0);
-        }
     }
 
     private void resetValueColumns(Variable rowVar) {
