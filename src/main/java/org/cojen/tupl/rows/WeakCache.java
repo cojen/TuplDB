@@ -34,6 +34,7 @@ import java.util.function.Predicate;
  * or else they won't get GC'd.
  *
  * @author Brian S O'Neill
+ * @see WeakClassCache
  */
 class WeakCache<K, V> extends ReferenceQueue<Object> {
     private Entry<K, V>[] mEntries;
@@ -68,7 +69,7 @@ class WeakCache<K, V> extends ReferenceQueue<Object> {
 
         var entries = mEntries;
         for (var e = entries[key.hashCode() & (entries.length - 1)]; e != null; e = e.mNext) {
-            if (e.mKey.equals(key)) {
+            if (e.matches(key)) {
                 return e;
             }
         }
@@ -91,9 +92,9 @@ class WeakCache<K, V> extends ReferenceQueue<Object> {
         int index = hash & (entries.length - 1);
 
         for (Entry<K, V> e = entries[index], prev = null; e != null; e = e.mNext) {
-            if (e.mKey.equals(key)) {
+            if (e.matches(key)) {
                 e.clear();
-                var newEntry = new Entry<>(key, value, hash, this);
+                var newEntry = newEntry(key, value, hash);
                 if (prev == null) {
                     newEntry.mNext = e.mNext;
                 } else {
@@ -128,7 +129,7 @@ class WeakCache<K, V> extends ReferenceQueue<Object> {
             index = hash & (entries.length - 1);
         }
 
-        var newEntry = new Entry<K, V>(key, value, hash, this);
+        var newEntry = newEntry(key, value, hash);
         newEntry.mNext = entries[index];
         VarHandle.storeStoreFence(); // ensure that entry value is safely visible
         entries[index] = newEntry;
@@ -245,16 +246,24 @@ class WeakCache<K, V> extends ReferenceQueue<Object> {
         } while ((obj = poll()) != null);
     }
 
-    private static final class Entry<K, V> extends WeakReference<V> {
-        final K mKey;
+    protected Entry<K, V> newEntry(K key, V value, int hash) {
+        return new Entry<>(key, value, hash, this);
+    }
+
+    protected static class Entry<K, V> extends WeakReference<V> {
+        protected final K mKey;
         final int mHash;
 
         Entry<K, V> mNext;
 
-        Entry(K key, V value, int hash, WeakCache<K, V> cache) {
-            super(value, cache);
+        protected Entry(K key, V value, int hash, ReferenceQueue<Object> queue) {
+            super(value, queue);
             mKey = key;
             mHash = hash;
+        }
+
+        protected boolean matches(K key) {
+            return mKey.equals(key);
         }
     }
 }

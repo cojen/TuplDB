@@ -23,14 +23,11 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
-import java.lang.ref.WeakReference;
-
 import java.lang.reflect.Method;
 
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
-import java.util.WeakHashMap;
 
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Field;
@@ -49,24 +46,26 @@ import static org.cojen.tupl.rows.ColumnInfo.*;
  */
 public class RowMaker {
     // Maps rowType interface classes to implementation classes.
-    private static final WeakHashMap<Class<?>, WeakReference<Class<?>>> cache = new WeakHashMap<>();
+    private static final WeakClassCache<Class<?>> cache = new WeakClassCache<>();
 
     /**
      * Returns the Row implementation class, creating it if necessary.
      */
     @SuppressWarnings("unchecked")
     public static <R> Class<? extends R> find(Class<R> rowType) {
-        synchronized (cache) {
-            WeakReference<Class<?>> ref = cache.get(rowType);
-            Class clazz;
+        Class clazz = cache.get(rowType);
 
-            if (ref == null || (clazz = ref.get()) == null) {
-                clazz = new RowMaker(rowType, RowInfo.find(rowType).rowGen()).finish();
-                cache.put(rowType, new WeakReference<>(clazz));
+        if (clazz == null) {
+            synchronized (cache) {
+                clazz = cache.get(rowType);
+                if (clazz == null) {
+                    clazz = new RowMaker(rowType, RowInfo.find(rowType).rowGen()).finish();
+                    cache.put(rowType, clazz);
+                }
             }
-
-            return clazz;
         }
+
+        return clazz;
     }
 
     // States used by the column state fields.
