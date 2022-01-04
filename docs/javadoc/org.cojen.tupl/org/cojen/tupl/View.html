@@ -206,7 +206,9 @@ loadScripts(document, 'script');</script>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#newCursor(org.cojen.tupl.Transaction)" class="member-name-link">newCursor</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Returns a new cursor over this view.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#newScanner(org.cojen.tupl.Transaction)" class="member-name-link">newScanner</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
@@ -405,6 +407,11 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="newCursor(org.cojen.tupl.Transaction)">
 <h3>newCursor</h3>
 <div class="member-signature"><span class="return-type"><a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a></span>&nbsp;<span class="element-name">newCursor</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</span></div>
+<div class="block">Returns a new cursor over this view.
+
+ <p>Note that passing null for the transaction doesn't provide cursor stability with
+ respect to updates. Either use an <a href="#newUpdater(org.cojen.tupl.Transaction)"><code>Updater</code></a>, or pass an explicit
+ transaction and call <a href="Cursor.html#commit(byte%5B%5D)"><code>commit</code></a> to apply each update.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>txn</code> - optional transaction for Cursor to <a href="Cursor.html#link(org.cojen.tupl.Transaction)"><code>link</code></a> to; pass null for
@@ -466,6 +473,9 @@ loadScripts(document, 'script');</script>
  permitting them to be larger than what can fit in main memory. Essentially, this is a
  convenience method which disables <a href="Cursor.html#autoload(boolean)"><code>autoload</code></a>, and then
  positions the cursor at the given key.
+
+ <p>Note that passing null for the transaction doesn't provide cursor stability with
+ respect to updates. Instead, pass an explicit transaction and call <a href="Cursor.html#commit(byte%5B%5D)"><code>commit</code></a> to apply each update.
 
  <p>If the entry must be locked, ownership of the key instance is transferred. The key
  must not be modified after calling this method.</div>
@@ -1260,7 +1270,7 @@ loadScripts(document, 'script');</script>
 </main>
 <footer role="contentinfo">
 <hr>
-<p class="legal-copy"><small>Copyright &#169; 2011&#x2013;2021 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+<p class="legal-copy"><small>Copyright &#169; 2011&#x2013;2022 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
 </div>
 </div>

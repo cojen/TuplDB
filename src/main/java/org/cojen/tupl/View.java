@@ -60,6 +60,12 @@ public interface View {
     }
 
     /**
+     * Returns a new cursor over this view.
+     *
+     * <p>Note that passing null for the transaction doesn't provide cursor stability with
+     * respect to updates. Either use an {@link newUpdater Updater}, or pass an explicit
+     * transaction and call {@link Cursor#commit commit} to apply each update.
+     *
      * @param txn optional transaction for Cursor to {@link Cursor#link link} to; pass null for
      * auto-commit mode
      * @return a new unpositioned cursor
@@ -122,6 +128,10 @@ public interface View {
      * permitting them to be larger than what can fit in main memory. Essentially, this is a
      * convenience method which disables {@link Cursor#autoload(boolean) autoload}, and then
      * positions the cursor at the given key.
+     *
+     * <p>Note that passing null for the transaction doesn't provide cursor stability with
+     * respect to updates. Instead, pass an explicit transaction and call {@link Cursor#commit
+     * commit} to apply each update.
      *
      * <p>If the entry must be locked, ownership of the key instance is transferred. The key
      * must not be modified after calling this method.

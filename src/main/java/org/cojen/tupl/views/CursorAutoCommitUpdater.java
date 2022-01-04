@@ -84,16 +84,13 @@ public final class CursorAutoCommitUpdater extends CursorScanner implements Upda
         Cursor c = mCursor;
 
         try {
-            c.store(value);
+            c.commit(value);
         } catch (UnpositionedCursorException e) {
             close();
             return false;
         } catch (Throwable e) {
             throw Utils.fail(this, e);
         }
-
-        Transaction txn = c.link();
-        txn.commit();
 
         tryStep: {
             LockResult result;
@@ -111,7 +108,7 @@ public final class CursorAutoCommitUpdater extends CursorScanner implements Upda
         }
 
         mLockResult = null;
-        txn.exit();
+        c.link().exit();
 
         return false;
     }
