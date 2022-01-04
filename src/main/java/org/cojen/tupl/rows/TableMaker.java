@@ -34,6 +34,7 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.Transaction;
@@ -78,7 +79,7 @@ public class TableMaker {
      *
      * @param store generated class is pinned to this specific instance
      * @param rowGen describes row encoding
-     * @param codecGen describes key and value codecs (different than gen)
+     * @param codecGen describes key and value codecs (different than rowGen)
      * @param secondaryDesc secondary index descriptor
      */
     TableMaker(RowStore store, Class<?> type, RowGen rowGen, RowGen codecGen,
@@ -1633,7 +1634,7 @@ public class TableMaker {
         {
             // Specified by RowDecoderEncoder.
             MethodMaker mm = cm.addMethod
-                (Object.class, "decodeRow", byte[].class, byte[].class, Object.class).public_();
+                (Object.class, "decodeRow", byte[].class, Cursor.class, Object.class).public_();
             var tableVar = mm.var(lookup.lookupClass());
             var rowVar = mm.param(2).cast(rowClass);
             Label hasRow = mm.label();
@@ -1641,7 +1642,7 @@ public class TableMaker {
             rowVar.set(mm.new_(rowClass));
             hasRow.here();
             tableVar.invoke("decodePrimaryKey", rowVar, mm.param(0));
-            tableVar.invoke("decodeValue", rowVar, mm.param(1));
+            tableVar.invoke("decodeValue", rowVar, mm.param(1).invoke("value"));
             markAllClean(rowVar, rowGen, codecGen);
             mm.return_(rowVar);
         }

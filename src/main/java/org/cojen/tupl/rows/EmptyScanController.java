@@ -49,7 +49,7 @@ final class EmptyScanController extends SingleScanController implements ScanCont
     }
 
     @Override
-    public Object decodeRow(byte[] key, byte[] value, Object row) {
+    public Object decodeRow(byte[] key, Cursor c, Object row) {
         throw new AssertionError();
     }
 

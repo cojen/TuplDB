@@ -174,6 +174,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
 
         if (cmp < 0) {
             if (mKeysToSkip == null) {
+                // TODO: Consider designing a more memory efficient set or hashtable.
                 mKeysToSkip = new TreeSet<>(Arrays::compareUnsigned);
             }
             // FIXME: For AutoCommitRowUpdater, consider limiting the size of the set and

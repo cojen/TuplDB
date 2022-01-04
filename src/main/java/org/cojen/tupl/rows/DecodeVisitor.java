@@ -74,10 +74,12 @@ class DecodeVisitor extends Visitor {
      *
      * Note that other forms are supported, but the only the common forms are listed above.
      *
-     * @param mm signature: R decodeRow(byte[] key, byte[] value, ...)
+     * @param mm signature: see above
      * @param valueOffset offset to skip past the schema version
      * @param rowGen actual row definition to be decoded
      * @param predicateVar implements RowPredicate
+     * @param stopColumn optional
+     * @param stopArgument required when stopColumn is provided
      */
     DecodeVisitor(MethodMaker mm, int valueOffset, RowGen rowGen,
                   Variable predicateVar, String stopColumn, int stopArgument)

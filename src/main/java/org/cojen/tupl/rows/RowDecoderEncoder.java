@@ -31,24 +31,18 @@ public interface RowDecoderEncoder<R> {
      * @param row can pass null to construct a new instance
      * @return null if row is filtered out
      */
-    // Note: This variant exists to support a potential optimization in which the cursor value
-    // isn't autoloaded. A filter might not need to eagerly load the cursor value.
-    default R decodeRow(byte[] key, Cursor c, R row) throws IOException {
-        return decodeRow(key, c.value(), row);
-    }
+    R decodeRow(byte[] key, Cursor c, R row) throws IOException;
 
     /**
-     * @param row can pass null to construct a new instance
-     * @return null if row is filtered out
-     */
-    R decodeRow(byte[] key, byte[] value, R row) throws IOException;
-
-    /**
+     * Called by BasicRowUpdater.
+     *
      * @return null if the key columns didn't change
      */
     byte[] encodeKey(R row);
 
     /**
+     * Called by BasicRowUpdater.
+     *
      * @return non-null value
      */
     byte[] encodeValue(R row);

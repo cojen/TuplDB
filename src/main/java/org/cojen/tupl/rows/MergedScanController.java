@@ -21,6 +21,8 @@ import java.io.IOException;
 
 import java.util.Arrays;
 
+import org.cojen.tupl.Cursor;
+
 /**
  * 
  *
@@ -104,9 +106,9 @@ final class MergedScanController<R> extends SingleScanController<R> {
     }
 
     @Override
-    public R decodeRow(byte[] key, byte[] value, R row) throws IOException {
+    public R decodeRow(byte[] key, Cursor c, R row) throws IOException {
         if (mMode == 2) {
-            return mLowDecoder.decodeRow(key, value, row);
+            return mLowDecoder.decodeRow(key, c, row);
         }
 
         if (mMode != 3) {
@@ -115,7 +117,7 @@ final class MergedScanController<R> extends SingleScanController<R> {
                 // Fallthrough to mode 3.
                 mMode = 3;
             } else {
-                R decoded = mLowDecoder.decodeRow(key, value, row);
+                R decoded = mLowDecoder.decodeRow(key, c, row);
                 if (decoded != null) {
                     return decoded;
                 }
@@ -135,7 +137,7 @@ final class MergedScanController<R> extends SingleScanController<R> {
             }
         }
 
-        return mHighDecoder.decodeRow(key, value, row);
+        return mHighDecoder.decodeRow(key, c, row);
     }
 
     @Override

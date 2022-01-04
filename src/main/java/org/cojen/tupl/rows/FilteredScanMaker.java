@@ -350,14 +350,8 @@ public class FilteredScanMaker<R> {
 
         // Implement/override method as specified by RowDecoderEncoder.
 
-        Object[] params;
-        if (mStopColumn == null) {
-            params = new Object[] {byte[].class, byte[].class, Object.class};
-        } else {
-            params = new Object[] {byte[].class, Cursor.class, Object.class};
-        }
-
-        MethodMaker mm = mFilterMaker.addMethod(Object.class, "decodeRow", params).public_();
+        MethodMaker mm = mFilterMaker.addMethod
+            (Object.class, "decodeRow", byte[].class, Cursor.class, Object.class).public_();
 
         var predicateVar = mm.field("predicate");
 
@@ -368,11 +362,7 @@ public class FilteredScanMaker<R> {
                 ("indyDecodeRow", mStoreRef, mTableClass, mRowType, mIndexId,
                  new WeakReference<>(mFilter), mFilterStr, mStopColumn, mStopArgument);
 
-            var valueVar = mm.param(1);
-
-            if (valueVar.classType() == Cursor.class) {
-                valueVar = valueVar.invoke("value");
-            }
+            var valueVar = mm.param(1).invoke("value");
 
             var schemaVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", valueVar);
 

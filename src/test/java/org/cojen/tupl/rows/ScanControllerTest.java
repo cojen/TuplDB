@@ -141,7 +141,7 @@ public class ScanControllerTest {
         }
 
         @Override
-        public Object decodeRow(byte[] key, byte[] value, Object row) {
+        public Object decodeRow(byte[] key, Cursor value, Object row) {
             throw new UnsupportedOperationException();
         }
 
