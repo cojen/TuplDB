@@ -406,17 +406,10 @@ public class IndexTriggerMaker<R> {
     {
         for (ColumnCodec codec : secondaryCodecs) {
             String name = codec.mInfo.name;
-            ColumnSource source = sources.get(name);
-            if (source == null) {
+            if (!sources.containsKey(name)) {
                 var primaryCodec = new NullColumnCodec(codec.mInfo, null);
                 // Pass true for fromKey, because like key columns, "null" columns always exist.
-                source = new ColumnSource(sources.size(), primaryCodec, true);
-                sources.put(name, source);
-            }
-            if (source.mCodec.equals(codec)) {
-                source.mMatches++;
-            } else {
-                source.mMismatches++;
+                sources.put(name, new ColumnSource(sources.size(), primaryCodec, true));
             }
         }
     }
@@ -1272,10 +1265,10 @@ public class IndexTriggerMaker<R> {
         // When true, the column is in the primary key, else in the primary value.
         final boolean mFromKey;
 
-        // Number of secondary indexes that can use the codec directly; encoding is the same.
+        // Non-zero if any secondary indexes can use the codec directly; encoding is the same.
         int mMatches;
 
-        // Number of secondary indexes that need transformed columns.
+        // Non-zero if any secondary indexes need this column to be transformed.
         int mMismatches;
 
         // The remaining fields are used during code generation passes.
