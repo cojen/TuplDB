@@ -1133,14 +1133,19 @@ public class IndexTriggerMaker<R> {
 
             secondaryKeyCodecs = ColumnCodec.bind(secondaryGen.keyCodecs(), mm);
 
-            secondaryKeyVar = encodeColumns
+            var deleteKeyVar = encodeColumns
                 (mm, oldColumnSources, rowVar, ROW_KEY_ONLY,
                  keyVar, oldValueVar, secondaryKeyCodecs);
 
-            ixField.invoke("store", txnVar, secondaryKeyVar, null);
+            if (!secondaryInfo.isAltKey && !secondaryInfo.valueColumns.isEmpty()) {
+                // If this is a covering index, then the key might be the same. Don't delete it.
+                mm.var(Arrays.class).invoke("equals", secondaryKeyVar, deleteKeyVar).ifTrue(cont);
+            }
+
+            ixField.invoke("store", txnVar, deleteKeyVar, null);
 
             if (mBackfills[i] != null) {
-                mm.field("backfill" + i).invoke("deleted", txnVar, secondaryKeyVar);
+                mm.field("backfill" + i).invoke("deleted", txnVar, deleteKeyVar);
             }
 
             mm.catch_(opStart, DeletedIndexException.class, exVar -> {

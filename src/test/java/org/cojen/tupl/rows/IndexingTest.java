@@ -1222,4 +1222,46 @@ public class IndexingTest {
         BigDecimal num();
         void num(BigDecimal num);
     }
+
+    @Test
+    public void coveringIndex() throws Exception {
+        // Test for when only the value portion of a covering index changes. The "num" column
+        // is defined after the primary key has been fully specified in the index, and so that
+        // defines it as the value portion.
+
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Table<TestRow2> table = db.openTable(TestRow2.class);
+        Table<TestRow2> ix = table.viewSecondaryIndex("name", "id", "num");
+
+        TestRow2 row = table.newRow();
+        row.id(1);
+        row.name("name-1");
+        row.path("path-1");
+        row.num(100);
+        table.store(null, row);
+
+        assertTrue(ix.load(null, row));
+
+        row.num(200);
+        table.update(null, row);
+
+        row.num(200);
+        assertTrue(ix.load(null, row));
+    }
+
+    @PrimaryKey("id")
+    @SecondaryIndex({"name", "id", "num"})
+    public interface TestRow2 {
+        long id();
+        void id(long id);
+
+        String name();
+        void name(String str);
+
+        String path();
+        void path(String str);
+
+        int num();
+        void num(int num);
+    }
 }
