@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Cojen.org
+ *  Copyright (C) 2022 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -12,37 +12,29 @@
  *  GNU Affero General Public License for more details.
  *
  *  You should have received a copy of the GNU Affero General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package org.cojen.tupl.rows;
 
 import java.lang.invoke.VarHandle;
 
-import java.lang.ref.WeakReference;
 import java.lang.ref.ReferenceQueue;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import java.util.function.BiFunction;
-import java.util.function.IntFunction;
-import java.util.function.Predicate;
+import java.lang.ref.SoftReference;
 
 /**
- * Simple cache of weakly referenced values. The keys must not strongly reference the values,
+ * Simple cache of softly referenced values. The keys must not strongly reference the values,
  * or else they won't get GC'd.
  *
  * @author Brian S O'Neill
- * @see WeakClassCache
- * @see SoftCache
+ * @see WeakCache
  */
-class WeakCache<K, V> extends ReferenceQueue<Object> {
+class SoftCache<K, V> extends ReferenceQueue<Object> {
     private Entry<K, V>[] mEntries;
     private int mSize;
 
     @SuppressWarnings({"unchecked"})
-    public WeakCache() {
+    public SoftCache() {
         // Initial capacity must be a power of 2.
         mEntries = new Entry[2];
     }
@@ -52,7 +44,7 @@ class WeakCache<K, V> extends ReferenceQueue<Object> {
      * Double check with synchronization.
      */
     public V get(K key) {
-        WeakReference<V> ref = getRef(key);
+        SoftReference<V> ref = getRef(key);
         return ref == null ? null : ref.get();
     }
 
@@ -60,7 +52,7 @@ class WeakCache<K, V> extends ReferenceQueue<Object> {
      * Can be called without explicit synchronization, but entries can appear to go missing.
      * Double check with synchronization.
      */
-    public WeakReference<V> getRef(K key) {
+    public SoftReference<V> getRef(K key) {
         Object obj = poll();
         if (obj != null) {
             synchronized (this) {
@@ -79,10 +71,10 @@ class WeakCache<K, V> extends ReferenceQueue<Object> {
     }
 
     /**
-     * @return a new weak reference to the value
+     * @return a new soft reference to the value
      */
     @SuppressWarnings({"unchecked"})
-    public synchronized WeakReference<V> put(K key, V value) {
+    public synchronized SoftReference<V> put(K key, V value) {
         Object obj = poll();
         if (obj != null) {
             cleanup(obj);
@@ -140,87 +132,6 @@ class WeakCache<K, V> extends ReferenceQueue<Object> {
     }
 
     /**
-     * @return true if cache is now empty
-     */
-    public synchronized boolean removeValues(Predicate<V> p) {
-        var entries = mEntries;
-
-        for (int i=entries.length; --i>=0 ;) {
-            for (Entry<K, V> e = entries[i], prev = null; e != null; e = e.mNext) {
-                V value = e.get();
-                if (value == null || p.test(value)) {
-                    if (prev == null) {
-                        entries[i].mNext = e.mNext;
-                    } else {
-                        prev.mNext = e.mNext;
-                    }
-                    mSize--;
-                } else {
-                    prev = e;
-                }
-            }
-        }
-
-        return mSize == 0;
-    }
-
-    @SuppressWarnings({"unchecked"})
-    synchronized K[] copyKeys(IntFunction<K[]> generator) {
-        Object obj = poll();
-        if (obj != null) {
-            cleanup(obj);
-        }
-
-        K[] keys = generator.apply(mSize);
-
-        var entries = mEntries;
-        for (int i=0, k=0; i<entries.length; i++) {
-            for (Entry<K, V> e = entries[i]; e != null; e = e.mNext) {
-                keys[k++] = e.mKey;
-            }
-        }
-
-        return keys;
-    }
-
-    /**
-     * @return null if no values
-     */
-    List<V> copyValues() {
-        return findValues(null, (list, value) -> {
-            if (list == null) {
-                list = new ArrayList<>();
-            }
-            list.add(value);
-            return list;
-        });
-    }
-
-    /**
-     * @param collection passed to the function (can be anything or even null)
-     * @param fun accepts a the collection and a value, and returns a collection
-     * @return the updated collection
-     */
-    synchronized <C> C findValues(C collection, BiFunction<C, V, C> fun) {
-        var entries = mEntries;
-        for (Entry<K, V> entry : entries) {
-            for (Entry<K, V> e = entry; e != null; e = e.mNext) {
-                V value = e.get();
-                if (value != null) {
-                    collection = fun.apply(collection, value);
-                }
-            }
-        }
-
-        Object obj = poll();
-        if (obj != null) {
-            cleanup(obj);
-        }
-
-        return collection;
-    }
-
-    /**
      * Caller must be synchronized.
      *
      * @param obj not null
@@ -251,7 +162,7 @@ class WeakCache<K, V> extends ReferenceQueue<Object> {
         return new Entry<>(key, value, hash, this);
     }
 
-    protected static class Entry<K, V> extends WeakReference<V> {
+    protected static class Entry<K, V> extends SoftReference<V> {
         protected final K mKey;
         final int mHash;
 

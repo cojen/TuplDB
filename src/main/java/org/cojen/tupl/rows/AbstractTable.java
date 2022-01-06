@@ -63,7 +63,7 @@ public abstract class AbstractTable<R> implements Table<R> {
 
     protected final Index mSource;
 
-    private final WeakCache<String, ScanControllerFactory<R>> mFilterFactoryCache;
+    private final SoftCache<String, ScanControllerFactory<R>> mFilterFactoryCache;
 
     private HashMap<String, Latch> mFilterLatchMap;
 
@@ -90,7 +90,7 @@ public abstract class AbstractTable<R> implements Table<R> {
 
         mSource = Objects.requireNonNull(source);
 
-        mFilterFactoryCache = new WeakCache<>();
+        mFilterFactoryCache = new SoftCache<>();
 
         if (supportsSecondaries()) {
             var trigger = new Trigger<R>();
