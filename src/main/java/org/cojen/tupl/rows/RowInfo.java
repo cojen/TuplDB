@@ -17,8 +17,6 @@
 
 package org.cojen.tupl.rows;
 
-import java.lang.ref.WeakReference;
-
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 

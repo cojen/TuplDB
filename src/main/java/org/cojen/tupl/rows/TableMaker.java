@@ -1068,7 +1068,7 @@ public class TableMaker {
     /**
      * To be called after invoking the operation associated with an openAcquire call.
      *
-     * @param closeVar if null, then no close code is added
+     * @param closerVar if null, then no close code is added
      */
     static void finishAcquire(MethodMaker mm, Variable closerVar, Label opStart, Variable txnVar,
                               Variable indexVar, Variable keyVar, Variable valueVar)

@@ -36,7 +36,6 @@ import org.cojen.tupl.Transaction;
 import org.cojen.tupl.core.RowPredicateLock;
 
 import org.cojen.tupl.util.LocalPool;
-import org.cojen.tupl.util.Runner;
 
 /**
  * Stores entries into an index using automatically generated keys.
@@ -112,7 +111,7 @@ public abstract class AutomaticKeyGenerator<R> {
 
         public static interface Applier<R> {
             /**
-             * @see RowPredicateLock.tryOpenAcquire
+             * @see RowPredicateLock#tryOpenAcquire
              */
             public RowPredicateLock.Closer applyToRow(Transaction txn, R row, int value)
                 throws IOException;
@@ -197,7 +196,7 @@ public abstract class AutomaticKeyGenerator<R> {
 
         public static interface Applier<R> {
             /**
-             * @see RowPredicateLock.tryOpenAcquire
+             * @see RowPredicateLock#tryOpenAcquire
              */
             public RowPredicateLock.Closer applyToRow(Transaction txn, R row, long value)
                 throws IOException;

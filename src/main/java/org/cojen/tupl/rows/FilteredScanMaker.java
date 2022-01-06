@@ -26,9 +26,6 @@ import java.lang.ref.WeakReference;
 
 import java.math.BigDecimal;
 
-import java.util.Collections;
-import java.util.TreeMap;
-
 import java.util.function.IntFunction;
 
 import org.cojen.maker.ClassMaker;

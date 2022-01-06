@@ -24,8 +24,6 @@ import org.cojen.tupl.LockMode;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Transaction;
 
-import org.cojen.tupl.core.RowPredicateLock;
-
 /**
  * Updater which releases acquired locks for rows which are stepped over.
  *

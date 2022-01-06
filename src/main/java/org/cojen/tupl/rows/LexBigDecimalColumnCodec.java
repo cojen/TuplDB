@@ -28,7 +28,7 @@ import org.cojen.maker.Variable;
  * @author Brian S O'Neill
  */
 final class LexBigDecimalColumnCodec extends ColumnCodec {
-    protected Variable mBytesVar;
+    private Variable mBytesVar;
 
     LexBigDecimalColumnCodec(ColumnInfo info, MethodMaker mm) {
         super(info, mm);

@@ -27,7 +27,6 @@ import java.lang.invoke.VarHandle;
 import java.lang.ref.WeakReference;
 
 import java.util.HashSet;
-import java.util.Map;
 
 import java.util.function.IntFunction;
 
@@ -36,7 +35,6 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DatabaseException;
 
 import org.cojen.tupl.core.RowPredicate;
@@ -303,9 +301,9 @@ public class RowPredicateMaker {
         public void visit(OrFilter filter) {
             final Label originalFail = mFail;
             RowFilter[] subFilters = filter.subFilters();
-            for (int i=0; i<subFilters.length; i++) {
+            for (RowFilter subFilter : subFilters) {
                 mFail = mMaker.label();
-                subFilters[i].accept(this);
+                subFilter.accept(this);
                 mFail.here();
             }
             mMaker.goto_(originalFail);
@@ -316,9 +314,9 @@ public class RowPredicateMaker {
         public void visit(AndFilter filter) {
             final Label originalPass = mPass;
             RowFilter[] subFilters = filter.subFilters();
-            for (int i=0; i<subFilters.length; i++) {
+            for (RowFilter subFilter : subFilters) {
                 mPass = mMaker.label();
-                subFilters[i].accept(this);
+                subFilter.accept(this);
                 mPass.here();
             }
             mMaker.goto_(originalPass);

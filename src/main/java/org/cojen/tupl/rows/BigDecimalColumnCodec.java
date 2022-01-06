@@ -31,8 +31,8 @@ import org.cojen.maker.Variable;
 final class BigDecimalColumnCodec extends ColumnCodec {
     private final ColumnCodec mUnscaledCodec;
 
-    protected Variable mScaleVar;
-    protected Variable mUnscaledVar;
+    private Variable mScaleVar;
+    private Variable mUnscaledVar;
 
     /**
      * @param unscaledCodec supports BigInteger

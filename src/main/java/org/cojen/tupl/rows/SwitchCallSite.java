@@ -34,7 +34,6 @@ import org.cojen.maker.MethodMaker;
  * dynamically upon first use.
  *
  * @author Brian S O'Neill
- * @see LongSwitchCallSite
  */
 public class SwitchCallSite extends MutableCallSite {
     private static final int MAX_CASES = 100;

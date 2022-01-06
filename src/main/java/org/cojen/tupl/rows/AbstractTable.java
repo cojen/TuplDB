@@ -34,7 +34,6 @@ import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventType;
 import org.cojen.tupl.Index;
-import org.cojen.tupl.LockMode;
 import org.cojen.tupl.RowScanner;
 import org.cojen.tupl.RowUpdater;
 import org.cojen.tupl.Table;

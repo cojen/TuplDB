@@ -28,7 +28,6 @@ import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnpositionedCursorException;
 
 import org.cojen.tupl.core.RowPredicate;
-import org.cojen.tupl.core.RowPredicateLock;
 
 /**
  * 
