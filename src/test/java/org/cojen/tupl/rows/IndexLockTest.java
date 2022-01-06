@@ -750,6 +750,51 @@ public class IndexLockTest {
         replicaDb.close();
     }
 
+    @Test
+    public void coveringIndex() throws Exception {
+        // Test that a predicate lock guards updates to a covering index, when only the value
+        // portion changes. The "path" column is the covering portion.
+
+        // In the current index trigger implementation, new index entries are created with a
+        // "store" operation, and this always acquires the predicate lock. If a later
+        // optimization is implemented in which the predicate lock is acquired only when an
+        // entry is actually inserted, then this test should fail unless special attention is
+        // given to covering indexes.
+
+        Table<TestRow3> table = mDatabase.openTable(TestRow3.class);
+
+        for (int i=1; i<=3; i++) {
+            TestRow3 row = table.newRow();
+            row.id(-i);
+            row.name("name-" + i);
+            row.path("path-" + i);
+            table.store(null, row);
+        }
+
+        Table<TestRow3> ix = table.viewSecondaryIndex("name", "id", "path");
+        Transaction txn = mDatabase.newTransaction();
+        RowScanner<TestRow3> scanner = ix.newRowScanner(txn);
+
+        TestRow3 row = table.newRow();
+        row.id(-2);
+        row.path("newpath");
+        try {
+            table.merge(null, row);
+            fail();
+        } catch (LockTimeoutException e) {
+            predicateLockTimeout(e);
+        }
+
+        txn.reset();
+        
+        table.merge(null, row);
+
+        TestRow3 row2 = scanner.step();
+        assertEquals(row, row2);
+
+        scanner.close();
+    }
+
     private static <R extends TestRow> void fill(Table<R> table, int start, int end)
         throws Exception
     {
@@ -846,5 +891,12 @@ public class IndexLockTest {
     @PrimaryKey("id")
     @SecondaryIndex("name")
     public interface TestRow2 extends TestRow {
+    }
+
+    @PrimaryKey("id")
+    @SecondaryIndex({"name", "id", "path"})
+    public interface TestRow3 extends TestRow {
+        String path();
+        void path(String path);
     }
 }
