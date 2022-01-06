@@ -143,13 +143,6 @@ public class FilteredScanMaker<R> {
             mm.return_(mm.field("predicate"));
         }
 
-        // Define a singleton instance which serves as the factory.
-        {
-            mFilterMaker.addField(mFilterMaker, "factory").private_().static_().final_();
-            MethodMaker mm = mFilterMaker.addClinit();
-            mm.field("factory").set(mm.new_(mFilterMaker));
-        }
-
         // Define the factory methods.
         {
             MethodMaker mm = mFilterMaker.addMethod
@@ -165,8 +158,8 @@ public class FilteredScanMaker<R> {
         Class<?> filterClass = filterLookup.lookupClass();
 
         try {
-            var vh = filterLookup.findStaticVarHandle(filterClass, "factory", filterClass);
-            return (ScanControllerFactory<R>) vh.get();
+            return (ScanControllerFactory<R>) filterLookup.findConstructor
+                (filterClass, MethodType.methodType(void.class)).invoke();
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
