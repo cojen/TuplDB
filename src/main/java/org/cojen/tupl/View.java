@@ -547,7 +547,8 @@ public interface View {
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws IllegalStateException if transaction belongs to another database instance
      * @throws IllegalStateException if too many shared locks
-     * @throws DeadlockException if deadlock was detected after waiting full timeout
+     * @throws DeadlockException if deadlock was detected after waiting the full timeout,
+     * unless the timeout is zero
      * @throws ViewConstraintException if key is not allowed
      */
     public default LockResult tryLockShared(Transaction txn, byte[] key, long nanosTimeout)
@@ -572,7 +573,7 @@ public interface View {
      * @throws IllegalStateException if transaction belongs to another database instance
      * @throws IllegalStateException if too many shared locks
      * @throws LockFailureException if interrupted or timed out
-     * @throws DeadlockException if deadlock was detected after waiting full timeout
+     * @throws DeadlockException if deadlock was detected after waiting the full timeout
      * @throws ViewConstraintException if key is not allowed
      */
     public LockResult lockShared(Transaction txn, byte[] key)
@@ -595,7 +596,8 @@ public interface View {
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws IllegalStateException if transaction belongs to another database instance
-     * @throws DeadlockException if deadlock was detected after waiting full timeout
+     * @throws DeadlockException if deadlock was detected after waiting the full timeout,
+     * unless the timeout is zero
      * @throws ViewConstraintException if key is not allowed
      */
     public default LockResult tryLockUpgradable(Transaction txn, byte[] key, long nanosTimeout)
@@ -618,7 +620,7 @@ public interface View {
      * OWNED_UPGRADABLE}, or {@link LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws IllegalStateException if transaction belongs to another database instance
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
-     * @throws DeadlockException if deadlock was detected after waiting full timeout
+     * @throws DeadlockException if deadlock was detected after waiting the full timeout
      * @throws ViewConstraintException if key is not allowed
      */
     public LockResult lockUpgradable(Transaction txn, byte[] key)
@@ -641,7 +643,8 @@ public interface View {
      * LockResult#UPGRADED UPGRADED}, or {@link LockResult#OWNED_EXCLUSIVE
      * OWNED_EXCLUSIVE}
      * @throws IllegalStateException if transaction belongs to another database instance
-     * @throws DeadlockException if deadlock was detected after waiting full timeout
+     * @throws DeadlockException if deadlock was detected after waiting the full timeout,
+     * unless the timeout is zero
      * @throws ViewConstraintException if key is not allowed
      */
     public default LockResult tryLockExclusive(Transaction txn, byte[] key, long nanosTimeout)
@@ -664,7 +667,7 @@ public interface View {
      * {@link LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws IllegalStateException if transaction belongs to another database instance
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
-     * @throws DeadlockException if deadlock was detected after waiting full timeout
+     * @throws DeadlockException if deadlock was detected after waiting the full timeout
      * @throws ViewConstraintException if key is not allowed
      */
     public LockResult lockExclusive(Transaction txn, byte[] key)

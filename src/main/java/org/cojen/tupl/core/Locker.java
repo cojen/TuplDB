@@ -152,16 +152,16 @@ class Locker implements DatabaseAccess { // weak access to database
             .tryLock(lockType, this, indexId, key, hash, nanosTimeout);
 
         if (result == LockResult.TIMED_OUT_LOCK) {
-            Lock waitingFor = mWaitingFor;
-            if (waitingFor != null) {
-                try {
-                    // Perform deadlock detection except for the fast-fail case.
-                    if (nanosTimeout != 0) {
+            try {
+                // Perform deadlock detection except for the fast-fail case.
+                if (nanosTimeout != 0) {
+                    Lock waitingFor = mWaitingFor;
+                    if (waitingFor != null) {
                         waitingFor.detectDeadlock(this, lockType, nanosTimeout);
                     }
-                } finally {
-                    mWaitingFor = null;
                 }
+            } finally {
+                mWaitingFor = null;
             }
         }
 
@@ -198,7 +198,8 @@ class Locker implements DatabaseAccess { // weak access to database
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws IllegalStateException if too many shared locks
-     * @throws DeadlockException if deadlock was detected after waiting full timeout
+     * @throws DeadlockException if deadlock was detected after waiting the full timeout,
+     * unless the timeout is zero
      */
     final LockResult doTryLockShared(long indexId, byte[] key, long nanosTimeout)
         throws DeadlockException
@@ -228,7 +229,7 @@ class Locker implements DatabaseAccess { // weak access to database
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws IllegalStateException if too many shared locks
      * @throws LockFailureException if interrupted or timed out
-     * @throws DeadlockException if deadlock was detected after waiting full timeout
+     * @throws DeadlockException if deadlock was detected after waiting the full timeout
      */
     final LockResult doLockShared(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
@@ -259,7 +260,8 @@ class Locker implements DatabaseAccess { // weak access to database
      * TIMED_OUT_LOCK}, {@link LockResult#ACQUIRED ACQUIRED}, {@link
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     * @throws DeadlockException if deadlock was detected after waiting full timeout
+     * @throws DeadlockException if deadlock was detected after waiting the full timeout,
+     * unless the timeout is zero
      */
     final LockResult doTryLockUpgradable(long indexId, byte[] key, long nanosTimeout)
         throws DeadlockException
@@ -287,7 +289,7 @@ class Locker implements DatabaseAccess { // weak access to database
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
-     * @throws DeadlockException if deadlock was detected after waiting full timeout
+     * @throws DeadlockException if deadlock was detected after waiting the full timeout
      */
     final LockResult doLockUpgradable(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
@@ -317,7 +319,8 @@ class Locker implements DatabaseAccess { // weak access to database
      * TIMED_OUT_LOCK}, {@link LockResult#ACQUIRED ACQUIRED}, {@link
      * LockResult#UPGRADED UPGRADED}, or {@link LockResult#OWNED_EXCLUSIVE
      * OWNED_EXCLUSIVE}
-     * @throws DeadlockException if deadlock was detected after waiting full timeout
+     * @throws DeadlockException if deadlock was detected after waiting the full timeout,
+     * unless the timeout is zero
      */
     final LockResult doTryLockExclusive(long indexId, byte[] key, long nanosTimeout)
         throws DeadlockException
@@ -344,7 +347,7 @@ class Locker implements DatabaseAccess { // weak access to database
      * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link LockResult#UPGRADED
      * UPGRADED}, or {@link LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
-     * @throws DeadlockException if deadlock was detected after waiting full timeout
+     * @throws DeadlockException if deadlock was detected after waiting the full timeout
      */
     final LockResult doLockExclusive(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException

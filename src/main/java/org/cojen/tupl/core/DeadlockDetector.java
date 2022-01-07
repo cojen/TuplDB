@@ -44,7 +44,7 @@ final class DeadlockDetector extends HashMap<Locker, Boolean> {
     // Note: This code does not consider proper thread-safety and directly examines the
     // contents of locks and lockers. It never modifies anything, so it is relatively safe and
     // deadlocks are usually detectable. All involved threads had to acquire latches at some
-    // point, which implies a memory barrier.
+    // point, which implies memory barriers.
 
     private final Locker mOrigin;
     private final LinkedHashMap<Lock, Boolean> mLocks;

@@ -188,7 +188,7 @@ public interface Transaction extends Flushable {
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws IllegalStateException if too many shared locks
      * @throws LockFailureException if interrupted or timed out
-     * @throws DeadlockException if deadlock was detected after waiting full timeout
+     * @throws DeadlockException if deadlock was detected after waiting the full timeout
      */
     LockResult lockShared(long indexId, byte[] key) throws LockFailureException;
 
@@ -206,7 +206,7 @@ public interface Transaction extends Flushable {
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
-     * @throws DeadlockException if deadlock was detected after waiting full timeout
+     * @throws DeadlockException if deadlock was detected after waiting the full timeout
      */
     LockResult lockUpgradable(long indexId, byte[] key) throws LockFailureException;
 
@@ -222,7 +222,7 @@ public interface Transaction extends Flushable {
      * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link LockResult#UPGRADED
      * UPGRADED}, or {@link LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
-     * @throws DeadlockException if deadlock was detected after waiting full timeout
+     * @throws DeadlockException if deadlock was detected after waiting the full timeout
      */
     LockResult lockExclusive(long indexId, byte[] key) throws LockFailureException;
 
@@ -252,7 +252,8 @@ public interface Transaction extends Flushable {
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws IllegalStateException if too many shared locks
-     * @throws DeadlockException if deadlock was detected after waiting full timeout
+     * @throws DeadlockException if deadlock was detected after waiting the full timeout,
+     * unless the timeout is zero
      */
     LockResult tryLockShared(long indexId, byte[] key, long nanosTimeout)
         throws DeadlockException, LockFailureException;
@@ -273,7 +274,7 @@ public interface Transaction extends Flushable {
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws IllegalStateException if too many shared locks
      * @throws LockFailureException if interrupted or timed out
-     * @throws DeadlockException if deadlock was detected after waiting full timeout
+     * @throws DeadlockException if deadlock was detected after waiting the full timeout
      */
     LockResult lockShared(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException;
@@ -295,7 +296,8 @@ public interface Transaction extends Flushable {
      * TIMED_OUT_LOCK}, {@link LockResult#ACQUIRED ACQUIRED}, {@link
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
-     * @throws DeadlockException if deadlock was detected after waiting full timeout
+     * @throws DeadlockException if deadlock was detected after waiting the full timeout,
+     * unless the timeout is zero
      */
     LockResult tryLockUpgradable(long indexId, byte[] key, long nanosTimeout)
         throws DeadlockException, LockFailureException;
@@ -315,7 +317,7 @@ public interface Transaction extends Flushable {
      * LockResult#OWNED_UPGRADABLE OWNED_UPGRADABLE}, or {@link
      * LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
-     * @throws DeadlockException if deadlock was detected after waiting full timeout
+     * @throws DeadlockException if deadlock was detected after waiting the full timeout
      */
     LockResult lockUpgradable(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException;
@@ -337,7 +339,8 @@ public interface Transaction extends Flushable {
      * TIMED_OUT_LOCK}, {@link LockResult#ACQUIRED ACQUIRED}, {@link
      * LockResult#UPGRADED UPGRADED}, or {@link LockResult#OWNED_EXCLUSIVE
      * OWNED_EXCLUSIVE}
-     * @throws DeadlockException if deadlock was detected after waiting full timeout
+     * @throws DeadlockException if deadlock was detected after waiting the full timeout,
+     * unless the timeout is zero
      */
     LockResult tryLockExclusive(long indexId, byte[] key, long nanosTimeout)
         throws DeadlockException, LockFailureException;
@@ -355,7 +358,7 @@ public interface Transaction extends Flushable {
      * @return {@link LockResult#ACQUIRED ACQUIRED}, {@link LockResult#UPGRADED
      * UPGRADED}, or {@link LockResult#OWNED_EXCLUSIVE OWNED_EXCLUSIVE}
      * @throws LockFailureException if interrupted, timed out, or illegal upgrade
-     * @throws DeadlockException if deadlock was detected after waiting full timeout
+     * @throws DeadlockException if deadlock was detected after waiting the full timeout
      */
     LockResult lockExclusive(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException;

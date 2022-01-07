@@ -396,6 +396,10 @@ public class ViewUtils {
             txn.lockTimeout(nanosTimeout, TimeUnit.NANOSECONDS);
             return action.lock(txn, key);
         } catch (DeadlockException e) {
+            if (nanosTimeout == 0) {
+                // Do what the spec says.
+                return LockResult.TIMED_OUT_LOCK;
+            }
             throw e;
         } catch (IllegalUpgradeException e) {
             return LockResult.ILLEGAL;
