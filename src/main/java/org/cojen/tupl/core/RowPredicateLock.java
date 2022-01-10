@@ -36,8 +36,8 @@ public interface RowPredicateLock<R> {
      * acquired up to that point are still retained.
      *
      * @param row is passed to the {@code RowPredicate.test} method
-     * @return object which must be closed after the specific row lock has been acquired; call
-     * failed if an exception is thrown instead
+     * @return object which must be closed at most once after the associated row operation has
+     * been performed
      * @throws IllegalStateException if too many shared locks
      */
     Closer openAcquire(Transaction txn, R row) throws IOException;
@@ -110,9 +110,17 @@ public interface RowPredicateLock<R> {
         void close();
 
         /**
-         * Only expected to be used when using openAcquire(txn, row).
+         * Only expected to be used when using openAcquire(txn, row) when the associated row
+         * operation returns a boolean. When false, then no exclusive row lock was acquired.
          */
-        void failed(Throwable ex, Transaction txn, long indexId, byte[] key, byte[] value)
+        void close(Transaction txn, boolean result) throws IOException;
+
+        /**
+         * Only expected to be used when using openAcquire(txn, row) when the associated row
+         * operation threw with an exception. If a LockFailureException, then no exclusive row
+         * lock was acquired.
+         */
+        void close(Transaction txn, Throwable ex, long indexId, byte[] key, byte[] value)
             throws IOException;
     }
 
@@ -127,7 +135,11 @@ public interface RowPredicateLock<R> {
         }
 
         @Override
-        public void failed(Throwable ex, Transaction txn, long indexId, byte[] key, byte[] value) {
+        public void close(Transaction txn, boolean result) {
+        }
+
+        @Override
+        public void close(Transaction txn, Throwable ex, long indexId, byte[] key, byte[] value) {
         }
     }
 }

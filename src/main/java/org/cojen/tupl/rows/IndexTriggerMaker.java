@@ -770,11 +770,11 @@ public class IndexTriggerMaker<R> {
             if (!secondaryInfo.isAltKey) {
                 ixField.invoke("store", txnVar, secondaryKeyVar, secondaryValueVar);
                 TableMaker.finishAcquire(mm, closerVar, opStart, txnVar, ixField,
-                                         secondaryKeyVar, secondaryValueVar);
+                                         secondaryKeyVar, secondaryValueVar, null);
             } else {
                 var result = ixField.invoke("insert", txnVar, secondaryKeyVar, secondaryValueVar);
                 TableMaker.finishAcquire(mm, closerVar, opStart, txnVar, ixField,
-                                         secondaryKeyVar, secondaryValueVar);
+                                         secondaryKeyVar, secondaryValueVar, result);
                 Label pass = mm.label();
                 result.ifTrue(pass);
                 mm.new_(UniqueConstraintException.class, "Alternate key").throw_();
@@ -1107,11 +1107,11 @@ public class IndexTriggerMaker<R> {
             if (!secondaryInfo.isAltKey) {
                 ixField.invoke("store", txnVar, secondaryKeyVar, secondaryValueVar);
                 TableMaker.finishAcquire(mm, closerVar, opStart, txnVar, ixField,
-                                         secondaryKeyVar, secondaryValueVar);
+                                         secondaryKeyVar, secondaryValueVar, null);
             } else {
                 var result = ixField.invoke("insert", txnVar, secondaryKeyVar, secondaryValueVar);
                 TableMaker.finishAcquire(mm, closerVar, opStart, txnVar, ixField,
-                                         secondaryKeyVar, secondaryValueVar);
+                                         secondaryKeyVar, secondaryValueVar, result);
                 Label pass = mm.label();
                 result.ifTrue(pass);
                 mm.new_(UniqueConstraintException.class, "Alternate key").throw_();

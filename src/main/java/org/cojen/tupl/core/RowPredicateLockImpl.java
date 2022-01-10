@@ -552,16 +552,31 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
         @Override
         public void close() {
             if (((long) cIndexIdHandle.getAndAdd(this, -1L)) == 1L) {
-                var queue = (LatchCondition) cQueueUHandle.getAcquire(this);
-                if (queue != null) {
-                    LockManager.Bucket bucket = mBucket;
-                    bucket.acquireExclusive();
-                    try {
-                        queue.signalAll(bucket);
-                    } finally {
-                        bucket.releaseExclusive();
-                    }
+                signalQueueU();
+            }
+        }
+
+        private void signalQueueU() {
+            var queue = (LatchCondition) cQueueUHandle.getAcquire(this);
+            if (queue != null) {
+                LockManager.Bucket bucket = mBucket;
+                bucket.acquireExclusive();
+                try {
+                    queue.signalAll(bucket);
+                } finally {
+                    bucket.releaseExclusive();
                 }
+            }
+        }
+
+        /**
+         * Called when an openAcquire step returns a boolean.
+         */
+        @Override
+        public void close(Transaction txn, boolean result) throws IOException {
+            close();
+            if (!result) {
+                ((LocalTransaction) txn).redoPredicateLock(RedoOps.OP_TXN_PREDICATE_LOCK_CLOSE);
             }
         }
 
@@ -569,7 +584,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
          * Called when an openAcquire step didn't finish properly.
          */
         @Override
-        public void failed(Throwable ex, Transaction txn, long indexId, byte[] key, byte[] value)
+        public void close(Transaction txn, Throwable ex, long indexId, byte[] key, byte[] value)
             throws IOException
         {
             close();
@@ -866,7 +881,15 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
          * Not expected to be called.
          */
         @Override
-        public void failed(Throwable ex, Transaction txn, long indexId, byte[] key, byte[] value) {
+        public void close(Transaction txn, boolean result) {
+            close();
+        }
+
+        /**
+         * Not expected to be called.
+         */
+        @Override
+        public void close(Transaction txn, Throwable ex, long indexId, byte[] key, byte[] value) {
             close();
         }
     }

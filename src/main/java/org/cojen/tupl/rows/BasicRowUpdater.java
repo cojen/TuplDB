@@ -199,11 +199,11 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
                 RowPredicateLock.Closer closer = lock.openAcquire(txn, row);
                 try {
                     result = source.insert(txn, key, value);
-                    closer.close();
                 } catch (Throwable e) {
-                    closer.failed(e, txn, source.id(), key, value);
+                    closer.close(txn, e, source.id(), key, value);
                     throw e;
                 }
+                closer.close(txn, result);
             }
 
             if (!result) {

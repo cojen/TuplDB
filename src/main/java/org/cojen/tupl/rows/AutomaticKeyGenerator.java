@@ -288,14 +288,14 @@ public abstract class AutomaticKeyGenerator<R> {
                                 c.link(txn);
                                 try {
                                     c.store(value);
-                                    closer.close();
-                                    return key;
                                 } catch (Throwable e) {
-                                    closer.failed(e, txn, mIndex.id(), key, value);
+                                    closer.close(txn, e, mIndex.id(), key, value);
                                     throw e;
                                 } finally {
                                     c.link(Transaction.BOGUS);
                                 }
+                                closer.close();
+                                return key;
                             }
 
                             txn.unlock();
