@@ -850,6 +850,10 @@ public class RowStore {
     private boolean doDeleteSchema(Transaction txn, byte[] taskKey, byte[] indexKey)
         throws IOException
     {
+        long primaryIndexId = decodeLongBE(indexKey, 0);
+
+        removeIndexLock(primaryIndexId);
+
         List<Runnable> deleteTasks = null;
 
         try (Cursor c = mSchemata.viewPrefix(indexKey, 0).newCursor(Transaction.BOGUS)) {
@@ -865,7 +869,6 @@ public class RowStore {
                     if (value != null && value.length >= 8) {
                         Index secondaryIndex = mDatabase.indexById(decodeLongLE(c.value(), 0));
                         if (secondaryIndex != null) {
-                            long primaryIndexId = decodeLongBE(indexKey, 0);
                             byte[] descriptor = Arrays.copyOfRange(key, 8 + 4 + 4, key.length);
                             Runnable task = deleteIndex
                                 (primaryIndexId, 0, descriptor, secondaryIndex, null);
