@@ -21,7 +21,6 @@ import java.lang.reflect.Method;
 
 import java.util.Random;
 
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -29,6 +28,8 @@ import org.junit.*;
 import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
+
+import org.cojen.tupl.util.OneShot;
 
 import static org.cojen.tupl.TestUtils.*;
 
@@ -1318,14 +1319,14 @@ public class CursorTest {
 
         ix.store(null, key2, value2);
 
-        var waiter = new CountDownLatch(1);
+        var waiter = new OneShot();
 
         var t = new Thread(() -> {
             try {
                 Transaction txn = mDb.newTransaction();
                 try {
                     ix.store(txn, key, value);
-                    waiter.countDown();
+                    waiter.signal();
                     Thread.sleep(1000);
                     txn.commit();
                 } finally {

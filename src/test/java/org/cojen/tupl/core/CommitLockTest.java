@@ -25,6 +25,8 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.TestUtils;
 
+import org.cojen.tupl.util.OneShot;
+
 /**
  * 
  *
@@ -90,12 +92,12 @@ public class CommitLockTest {
     public void blocked() throws Exception {
         var lock = new CommitLock();
 
-        var waiter = new CountDownLatch(1);
+        var waiter = new OneShot();
 
         var ex = new Thread(() -> {
             try {
                 lock.acquireExclusive();
-                waiter.countDown();
+                waiter.signal();
                 while (true) {
                     Thread.sleep(100_000);
                 }
