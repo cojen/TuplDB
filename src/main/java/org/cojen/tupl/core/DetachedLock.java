@@ -40,8 +40,8 @@ public interface DetachedLock {
     /**
      * Any transaction can attempt to acquire the shared lock.
      *
-     * @return INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE, or
-     * OWNED_EXCLUSIVE
+     * @return INTERRUPTED, TIMED_OUT_LOCK, DEADLOCK, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE,
+     * or OWNED_EXCLUSIVE
      * @throws IllegalStateException if too many shared locks
      */
     LockResult tryAcquireShared(Transaction txn, long nanosTimeout);
@@ -54,7 +54,7 @@ public interface DetachedLock {
     /**
      * Only the owner can attempt to acquire the exclusive lock.
      *
-     * @return INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED, or OWNED_EXCLUSIVE
+     * @return INTERRUPTED, TIMED_OUT_LOCK, DEADLOCK, ACQUIRED, or OWNED_EXCLUSIVE
      */
     LockResult tryAcquireExclusive(long nanosTimeout);
 }

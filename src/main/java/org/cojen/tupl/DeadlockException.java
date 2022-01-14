@@ -22,9 +22,9 @@ import java.util.Set;
 
 /**
  * Thrown when a lock request by a {@linkplain Transaction transaction} timed out due to a
- * deadlock. Deadlocks can be prevented by locking records in a consistent order. Cases of
- * "self deadlock" when using multiple transactions in one thread are not detected, and a
- * regular timeout exception is thrown instead.
+ * deadlock, or a trivial deadlock was quickly detected. Deadlocks can be prevented by locking
+ * records in a consistent order. Cases of "self deadlock" when using multiple transactions in
+ * one thread are not detected, and a regular timeout exception is thrown instead.
  *
  * @author Brian S O'Neill
  */

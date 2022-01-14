@@ -18,6 +18,7 @@
 package org.cojen.tupl.core;
 
 import java.util.*;
+
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
 
@@ -26,7 +27,9 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
-import static org.cojen.tupl.TestUtils.startAndWaitUntilBlocked;
+import org.cojen.tupl.util.OneShot;
+
+import static org.cojen.tupl.TestUtils.*;
 
 /**
  * 
@@ -53,68 +56,87 @@ public class DeadlockTest {
         // Simple deadlock caused by two threads and two keys. Another thread
         // is a victim which timed out.
 
-        final long timeout = 5L * 1000 * 1000 * 1000;
+        final long timeout = 10L * 1000 * 1000 * 1000;
         final byte[][] keys = {"k0".getBytes(), "k1".getBytes(), "k2".getBytes()};
 
-        // Current thread locks k0, and helps cause the deadlock.
-        var locker = new Locker(mManager);
-        locker.doLockShared(1, keys[0], timeout);
+        // Hold a key until released.
+        var latch = new OneShot();
+        var stall = startTestTaskAndWaitUntilBlocked(() -> {
+            var locker = new Locker(mManager);
+            try {
+                locker.doLockExclusive(1, keys[1], -1);
+                latch.await();
+            } catch (Exception e) {
+                Utils.rethrow(e);
+            } finally {
+                locker.scopeUnlockAll();
+            }
+        });
+
+        // Current thread locks key0, and helps cause the deadlock.
+        var locker0 = new Locker(mManager);
+        locker0.doLockShared(1, keys[0], timeout);
 
         // Victim thread.
-        var victim = new Task() {
-                @Override
-                void doRun() throws Throwable {
-                    var locker = new Locker(mManager);
-                    try {
-                        // Lock k2 has does not participate in deadlock.
-                        locker.doLockExclusive(1, keys[2], timeout / 2);
-                        try {
-                            locker.doLockExclusive(1, keys[0], timeout / 2);
-                            fail();
-                        } catch (DeadlockException e) {
-                            // Deadlock observed, but this thread didn't create it.
-                            assertFalse(e.isGuilty());
-                        }
-                    } finally {
-                        locker.scopeUnlockAll();
-                    }
+        var victim = startTestTaskAndWaitUntilBlocked(() -> {
+            var locker = new Locker(mManager);
+            try {
+                try {
+                    // Lock key2 doesn't participate in deadlock.
+                    locker.doLockExclusive(1, keys[2], timeout / 2);
+                    locker.doLockExclusive(1, keys[0], timeout / 2);
+                    fail();
+                } catch (DeadlockException e) {
+                    // Deadlock observed, but this thread didn't create it.
+                    assertFalse(e.isGuilty());
+                } catch (Exception e) {
+                    Utils.rethrow(e);
                 }
-            };
+            } finally {
+                locker.scopeUnlockAll();
+            }
+        });
 
         // Culprit thread.
-        var culprit = new Task() {
-                @Override
-                void doRun() throws Throwable {
-                    var locker = new Locker(mManager);
-                    try {
-                        // Lock k1 and then k0, which is the opposite order of main thread.
-                        locker.doLockShared(1, keys[1], timeout);
-                        try {
-                            locker.doLockExclusive(1, keys[0], timeout);
-                            fail();
-                        } catch (DeadlockException e) {
-                            // This thread helped create the deadlock.
-                            assertTrue(e.isGuilty());
-                        }
-                    } finally {
-                        locker.scopeUnlockAll();
-                    }
+        var culprit = startTestTaskAndWaitUntilBlocked(() -> {
+            var locker = new Locker(mManager);
+            try {
+                try {
+                    // Lock key1 and then key0, which is the opposite order of main thread.
+                    locker.doLockShared(1, keys[1], timeout);
+                    locker.doLockExclusive(1, keys[0], timeout);
+                    fail();
+                } catch (DeadlockException e) {
+                    // This thread helped create the deadlock.
+                    assertTrue(e.isGuilty());
+                } catch (Exception e) {
+                    Utils.rethrow(e);
                 }
-            };
+            } finally {
+                locker.scopeUnlockAll();
+            }
+        });
 
-        startAndWaitUntilBlocked(culprit);
-        startAndWaitUntilBlocked(victim);
+        // Lock key1, creating a deadlock. Timeout is longer, and so deadlock will not be
+        // detected here. Must still hold the stall latch to prevent quick deadlock detection
+        // from defeating the test.
+        var deadlock = startTestTaskAndWaitUntilBlocked(() -> {
+            try {
+                locker0.doLockExclusive(1, keys[1], timeout * 2);
+            } catch (Exception e) {
+                Utils.rethrow(e);
+            } finally {
+                locker0.scopeUnlockAll();
+            }
+        });
 
-        // Lock k1, creating a deadlock. Timeout is longer, and so deadlock
-        // will not be detected here.
-        try {
-            locker.doLockExclusive(1, keys[1], timeout * 2);
-        } finally {
-            locker.scopeUnlockAll();
-        }
+        // Release the key, and go!
+        latch.signal();
 
         victim.join();
         culprit.join();
+        deadlock.join();
+        stall.join();
     }
 
     @Test
@@ -228,10 +250,14 @@ public class DeadlockTest {
 
         Index ix = db.openIndex("test");
 
-        // Create a deadlock with two threads.
+        // Create a deadlock among three threads.
 
-        var threads = new Thread[2];
+        var threads = new Thread[3];
         var cb = new CyclicBarrier(threads.length);
+
+        byte[] k1 = "k1".getBytes();
+        byte[] k2 = "k2".getBytes();
+        byte[] k3 = "k3".getBytes();
 
         for (int i=0; i<threads.length; i++) {
             final int fi = i;
@@ -242,17 +268,19 @@ public class DeadlockTest {
                     try {
                         txn.lockTimeout(10, TimeUnit.SECONDS);
 
-                        byte[] k1 = "k1".getBytes();
-                        byte[] k2 = "k2".getBytes();
-
                         if (fi == 0) {
                             txn.attach("txn1");
                             ix.lockExclusive(txn, k1);
                             cb.await();
                             ix.lockShared(txn, k2);
-                        } else {
+                        } else if (fi == 1) {
                             txn.attach("txn2");
                             ix.lockExclusive(txn, k2);
+                            cb.await();
+                            ix.lockUpgradable(txn, k3);
+                        } else {
+                            txn.attach("txn3");
+                            ix.lockExclusive(txn, k3);
                             cb.await();
                             ix.lockUpgradable(txn, k1);
                         }
@@ -280,7 +308,6 @@ public class DeadlockTest {
             fail("no deadlock after waiting");
         }
 
-        byte[] k1 = "k1".getBytes();
         Transaction txn = db.newTransaction();
 
         try {
@@ -291,20 +318,15 @@ public class DeadlockTest {
             assertEquals("txn1", e.ownerAttachment());
 
             Set<DeadlockInfo> set = e.deadlockSet();
-            assertEquals(2, set.size());
+            assertEquals(3, set.size());
 
-            Iterator<DeadlockInfo> it = set.iterator();
-            Object att1 = it.next().ownerAttachment();
-            Object att2 = it.next().ownerAttachment();
+            var expect = new HashSet<>(Set.of("txn1", "txn2", "txn3"));
 
-            assertTrue(att1 != null && att2 != null);
-
-            if (att1.equals("txn1")) {
-                assertEquals("txn2", att2);
-            } else if (att1.equals("txn2")) {
-                assertEquals("txn1", att2);
-            } else {
-                fail("Unknown attachments: " + att1 + ", " + att2);
+            for (DeadlockInfo info : set) {
+                Object att = info.ownerAttachment();
+                if (!expect.remove(att)) {
+                    fail("Unknown attachments: " + att);
+                }
             }
         }
 
@@ -449,6 +471,163 @@ public class DeadlockTest {
         } catch (LockTimeoutException e) {
             assertEquals("foo", e.ownerAttachment());
         }
+    }
+
+    @Test
+    public void trivialShared() throws Throwable {
+        trivialShared(false);
+    }
+
+    @Test
+    public void trivialSharedWithQueue() throws Throwable {
+        trivialShared(true);
+    }
+
+    private void trivialShared(boolean withQueue) throws Throwable {
+        // Detect a trivial deadlock when acquiring a shared lock.
+
+        final byte[] key1 = "key1".getBytes();
+        final byte[] key2 = "key2".getBytes();
+
+        var locker1 = new Locker(mManager);
+        locker1.doLockExclusive(1, key1, -1);
+
+        var task1 = startTestTaskAndWaitUntilBlocked(() -> {
+            var locker = new Locker(mManager);
+            try {
+                locker.doLockExclusive(1, key2, -1);
+                locker.doLockShared(1, key1, -1);
+            } catch (Throwable e) {
+                throw Utils.rethrow(e);
+            } finally {
+                locker.scopeUnlockAll();
+            }
+        });
+
+        TestTask<?> task2 = null;
+
+        if (withQueue) {
+            // Another thread is stuck waiting, as a victim.
+            task2 = startTestTaskAndWaitUntilBlocked(() -> {
+                var locker = new Locker(mManager);
+                try {
+                    locker.doLockShared(1, key2, -1);
+                } catch (Throwable e) {
+                    throw Utils.rethrow(e);
+                } finally {
+                    locker.scopeUnlockAll();
+                }
+            });
+        }
+
+        try {
+            locker1.doLockShared(1, key2, -1);
+            fail();
+        } catch (DeadlockException e) {
+        }
+
+        locker1.scopeUnlockAll();
+
+        task1.join();
+
+        if (task2 != null) {
+            task2.join();
+        }
+    }
+
+    @Test
+    public void trivialUpgradable() throws Throwable {
+        trivialUpgradable(false);
+    }
+
+    @Test
+    public void trivialUpgradableWithQueue() throws Throwable {
+        trivialUpgradable(true);
+    }
+
+    private void trivialUpgradable(boolean withQueue) throws Throwable {
+        // Detect a trivial deadlock when acquiring an upgradable lock.
+
+        final byte[] key1 = "key1".getBytes();
+        final byte[] key2 = "key2".getBytes();
+
+        var locker1 = new Locker(mManager);
+        locker1.doLockExclusive(1, key1, -1);
+
+        var task1 = startTestTaskAndWaitUntilBlocked(() -> {
+            var locker = new Locker(mManager);
+            try {
+                locker.doLockExclusive(1, key2, -1);
+                locker.doLockUpgradable(1, key1, -1);
+            } catch (Throwable e) {
+                throw Utils.rethrow(e);
+            } finally {
+                locker.scopeUnlockAll();
+            }
+        });
+
+        TestTask<?> task2 = null;
+
+        if (withQueue) {
+            // Another thread is stuck waiting, as a victim.
+            task2 = startTestTaskAndWaitUntilBlocked(() -> {
+                var locker = new Locker(mManager);
+                try {
+                    locker.doLockUpgradable(1, key2, -1);
+                } catch (Throwable e) {
+                    throw Utils.rethrow(e);
+                } finally {
+                    locker.scopeUnlockAll();
+                }
+            });
+        }
+
+        try {
+            locker1.doLockUpgradable(1, key2, -1);
+            fail();
+        } catch (DeadlockException e) {
+        }
+
+        locker1.scopeUnlockAll();
+
+        task1.join();
+
+        if (task2 != null) {
+            task2.join();
+        }
+    }
+
+    @Test
+    public void trivialExclusive() throws Throwable {
+        // Detect a trivial deadlock when acquiring an exclusive lock.
+
+        final byte[] key1 = "key1".getBytes();
+        final byte[] key2 = "key2".getBytes();
+
+        var locker1 = new Locker(mManager);
+        locker1.doLockShared(1, key1, -1);
+
+        var task1 = startTestTaskAndWaitUntilBlocked(() -> {
+            var locker = new Locker(mManager);
+            try {
+                locker.doLockShared(1, key2, -1);
+                locker.doLockExclusive(1, key1, -1);
+            } catch (Throwable e) {
+                throw Utils.rethrow(e);
+            } finally {
+                locker.scopeUnlockAll();
+            }
+        });
+
+        try {
+            locker1.doLockExclusive(1, key2, -1);
+            fail();
+        } catch (DeadlockException e) {
+        }
+
+        locker1.scopeUnlockAll();
+
+        task1.join();
     }
 
     private void startTasks() {

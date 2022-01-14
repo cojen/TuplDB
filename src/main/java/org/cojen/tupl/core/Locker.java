@@ -151,9 +151,10 @@ class Locker implements DatabaseAccess { // weak access to database
         LockResult result = manager().getBucket(hash)
             .tryLock(lockType, this, indexId, key, hash, nanosTimeout);
 
-        if (result == LockResult.TIMED_OUT_LOCK) {
+        if (!result.isHeld()) {
             try {
-                // Perform deadlock detection except for the fast-fail case.
+                // Perform deadlock detection except for the fast-fail case. The lock result
+                // shouldn't be DEADLOCK when the timeout is 0. See Lock class.
                 if (nanosTimeout != 0) {
                     Lock waitingFor = mWaitingFor;
                     if (waitingFor != null) {
@@ -437,12 +438,16 @@ class Locker implements DatabaseAccess { // weak access to database
     /**
      * @param lockType TYPE_SHARED, TYPE_UPGRADABLE, or TYPE_EXCLUSIVE
      */
+    @SuppressWarnings("fallthrough")
     LockFailureException failed(int lockType, LockResult result, long nanosTimeout)
         throws DeadlockException
     {
         Lock waitingFor;
 
         switch (result) {
+        case DEADLOCK:
+            nanosTimeout = 0;
+            // Fallthrough...
         case TIMED_OUT_LOCK:
             waitingFor = mWaitingFor;
             if (waitingFor != null) {
@@ -462,10 +467,14 @@ class Locker implements DatabaseAccess { // weak access to database
             mWaitingFor = null;
         }
 
-        if (result.isTimedOut()) {
+        if (result.isTimedOut() || result == LockResult.DEADLOCK) {
             Object att = waitingFor == null ? null
                 : waitingFor.findOwnerAttachment(this, false, lockType);
-            return new LockTimeoutException(nanosTimeout, att);
+            if (result.isTimedOut()) {
+                return new LockTimeoutException(nanosTimeout, att);
+            } else {
+                return new DeadlockException(nanosTimeout, att, true);
+            }
         }
 
         return new LockFailureException();

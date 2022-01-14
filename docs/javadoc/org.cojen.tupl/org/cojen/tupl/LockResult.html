@@ -119,37 +119,41 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color">
 <div class="block">Lock granted for the first time.</div>
 </div>
-<div class="col-first odd-row-color"><code><a href="#ILLEGAL" class="member-name-link">ILLEGAL</a></code></div>
+<div class="col-first odd-row-color"><code><a href="#DEADLOCK" class="member-name-link">DEADLOCK</a></code></div>
 <div class="col-last odd-row-color">
+<div class="block">Lock rejection caused by deadlock.</div>
+</div>
+<div class="col-first even-row-color"><code><a href="#ILLEGAL" class="member-name-link">ILLEGAL</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Lock rejection caused by illegal lock mode upgrade.</div>
 </div>
-<div class="col-first even-row-color"><code><a href="#INTERRUPTED" class="member-name-link">INTERRUPTED</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code><a href="#INTERRUPTED" class="member-name-link">INTERRUPTED</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Lock rejection caused by thread interruption.</div>
 </div>
-<div class="col-first odd-row-color"><code><a href="#OWNED_EXCLUSIVE" class="member-name-link">OWNED_EXCLUSIVE</a></code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code><a href="#OWNED_EXCLUSIVE" class="member-name-link">OWNED_EXCLUSIVE</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Exclusive lock is already owned, so no extra unlock should be performed.</div>
 </div>
-<div class="col-first even-row-color"><code><a href="#OWNED_SHARED" class="member-name-link">OWNED_SHARED</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code><a href="#OWNED_SHARED" class="member-name-link">OWNED_SHARED</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Shared lock is already owned, so no extra unlock should be performed.</div>
 </div>
-<div class="col-first odd-row-color"><code><a href="#OWNED_UPGRADABLE" class="member-name-link">OWNED_UPGRADABLE</a></code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code><a href="#OWNED_UPGRADABLE" class="member-name-link">OWNED_UPGRADABLE</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Upgradable lock is already owned, so no extra unlock should be
  performed.</div>
 </div>
-<div class="col-first even-row-color"><code><a href="#TIMED_OUT_LOCK" class="member-name-link">TIMED_OUT_LOCK</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code><a href="#TIMED_OUT_LOCK" class="member-name-link">TIMED_OUT_LOCK</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Lock rejection caused by wait timeout or deadlock.</div>
 </div>
-<div class="col-first odd-row-color"><code><a href="#UNOWNED" class="member-name-link">UNOWNED</a></code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code><a href="#UNOWNED" class="member-name-link">UNOWNED</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Indicates that the lock isn't owned, or that lock acquisition wasn't performed.</div>
 </div>
-<div class="col-first even-row-color"><code><a href="#UPGRADED" class="member-name-link">UPGRADED</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code><a href="#UPGRADED" class="member-name-link">UPGRADED</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Exclusive lock granted as an upgrade from an owned upgradable lock.</div>
 </div>
 </div>
@@ -261,6 +265,13 @@ the order they are declared.</div>
 </ul>
 </dd>
 </dl>
+</section>
+</li>
+<li>
+<section class="detail" id="DEADLOCK">
+<h3>DEADLOCK</h3>
+<div class="member-signature"><span class="modifiers">public static final</span>&nbsp;<span class="return-type"><a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></span>&nbsp;<span class="element-name">DEADLOCK</span></div>
+<div class="block">Lock rejection caused by deadlock.</div>
 </section>
 </li>
 <li>

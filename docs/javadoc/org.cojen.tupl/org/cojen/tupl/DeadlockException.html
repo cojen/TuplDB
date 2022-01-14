@@ -96,9 +96,9 @@ loadScripts(document, 'script');</script>
 <div class="type-signature"><span class="modifiers">public class </span><span class="element-name type-name-label">DeadlockException</span>
 <span class="extends-implements">extends <a href="LockTimeoutException.html" title="class in org.cojen.tupl">LockTimeoutException</a></span></div>
 <div class="block">Thrown when a lock request by a <a href="Transaction.html" title="interface in org.cojen.tupl">transaction</a> timed out due to a
- deadlock. Deadlocks can be prevented by locking records in a consistent order. Cases of
- "self deadlock" when using multiple transactions in one thread are not detected, and a
- regular timeout exception is thrown instead.</div>
+ deadlock, or a trivial deadlock was quickly detected. Deadlocks can be prevented by locking
+ records in a consistent order. Cases of "self deadlock" when using multiple transactions in
+ one thread are not detected, and a regular timeout exception is thrown instead.</div>
 <dl class="notes">
 <dt>See Also:</dt>
 <dd>

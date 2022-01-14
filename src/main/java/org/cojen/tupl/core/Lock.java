@@ -103,11 +103,12 @@ class Lock {
     }
 
     /**
-     * Called with exclusive latch held, which is retained. If return value is TIMED_OUT_LOCK,
-     * the locker's mWaitingFor field is set to this Lock as a side-effect.
+     * Called with exclusive latch held, which is retained. If return value is TIMED_OUT_LOCK
+     * or DEADLOCK, the locker's mWaitingFor field is set to this Lock as a side-effect.
+     * DEADLOCK is never returned when timeout is 0, but TIMED_OUT_LOCK is possible.
      *
-     * @return INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED, OWNED_SHARED,
-     * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     * @return INTERRUPTED, TIMED_OUT_LOCK, DEADLOCK, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE,
+     * or OWNED_EXCLUSIVE
      * @throws IllegalStateException if too many shared locks
      */
     final LockResult tryLockShared(Latch latch, Locker locker, long nanosTimeout) {
@@ -120,18 +121,29 @@ class Lock {
             if (isSharedLocker(locker)) {
                 return OWNED_SHARED;
             }
+            locker.mWaitingFor = this;
             if (nanosTimeout == 0) {
-                locker.mWaitingFor = this;
                 return TIMED_OUT_LOCK;
+            }
+            if (quickDeadlockCheck(locker)) {
+                return DEADLOCK;
             }
         } else {
             int count = mLockCount;
             if (count == ~0) {
+                locker.mWaitingFor = this;
                 if (nanosTimeout == 0) {
-                    locker.mWaitingFor = this;
                     return TIMED_OUT_LOCK;
                 }
-                mQueueSX = queueSX = new LatchCondition();
+                if (quickDeadlockCheck(locker)) {
+                    return DEADLOCK;
+                }
+                try {
+                    mQueueSX = queueSX = new LatchCondition();
+                } catch (Throwable e) {
+                    locker.mWaitingFor = null;
+                    throw e;
+                }
             } else if (count != 0 && isSharedLocker(locker)) {
                 return OWNED_SHARED;
             } else {
@@ -139,8 +151,6 @@ class Lock {
                 return ACQUIRED;
             }
         }
-
-        locker.mWaitingFor = this;
 
         // Await for shared lock.
         int w = queueSX.awaitShared(latch, nanosTimeout);
@@ -173,11 +183,12 @@ class Lock {
     }
 
     /**
-     * Called with exclusive latch held, which is retained. If return value is TIMED_OUT_LOCK,
-     * the locker's mWaitingFor field is set to this Lock as a side-effect.
+     * Called with exclusive latch held, which is retained. If return value is TIMED_OUT_LOCK
+     * or DEADLOCK, the locker's mWaitingFor field is set to this Lock as a side-effect.
+     * DEADLOCK is never returned when timeout is 0, but TIMED_OUT_LOCK is possible.
      *
-     * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED,
-     * OWNED_UPGRADABLE, or OWNED_EXCLUSIVE
+     * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, DEADLOCK, ACQUIRED, OWNED_UPGRADABLE, or
+     * OWNED_EXCLUSIVE
      */
     final LockResult tryLockUpgradable(Latch latch, Locker locker, long nanosTimeout) {
         if (mOwner == locker) {
@@ -200,9 +211,12 @@ class Lock {
 
         LatchCondition queueU = mQueueU;
         if (queueU != null) {
+            locker.mWaitingFor = this;
             if (nanosTimeout == 0) {
-                locker.mWaitingFor = this;
                 return TIMED_OUT_LOCK;
+            }
+            if (quickDeadlockCheck(locker)) {
+                return DEADLOCK;
             }
         } else {
             if (count >= 0) {
@@ -210,14 +224,20 @@ class Lock {
                 mOwner = locker;
                 return ACQUIRED;
             }
+            locker.mWaitingFor = this;
             if (nanosTimeout == 0) {
-                locker.mWaitingFor = this;
                 return TIMED_OUT_LOCK;
             }
-            mQueueU = queueU = new LatchCondition();
+            if (quickDeadlockCheck(locker)) {
+                return DEADLOCK;
+            }
+            try {
+                mQueueU = queueU = new LatchCondition();
+            } catch (Throwable e) {
+                locker.mWaitingFor = null;
+                throw e;
+            }
         }
-
-        locker.mWaitingFor = this;
 
         // Await for upgradable lock.
         int w = queueU.await(latch, nanosTimeout);
@@ -248,10 +268,11 @@ class Lock {
     }
 
     /**
-     * Called with exclusive latch held, which is retained. If return value is TIMED_OUT_LOCK,
-     * the locker's mWaitingFor field is set to this Lock as a side-effect.
+     * Called with exclusive latch held, which is retained. If return value is TIMED_OUT_LOCK
+     * or DEADLOCK, the locker's mWaitingFor field is set to this Lock as a side-effect.
+     * DEADLOCK is never returned when timeout is 0, but TIMED_OUT_LOCK is possible.
      *
-     * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, ACQUIRED, UPGRADED, or
+     * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, DEADLOCK, ACQUIRED, UPGRADED, or
      * OWNED_EXCLUSIVE
      */
     final LockResult tryLockExclusive(Latch latch, Locker locker, long nanosTimeout) {
@@ -263,14 +284,28 @@ class Lock {
         LatchCondition queueSX = mQueueSX;
         quick: {
             if (queueSX == null) {
-                if (mLockCount == 0x80000000) {
+                int lockCount = mLockCount;
+                if (lockCount == 0x80000000) {
                     mLockCount = ~0;
                     return ur == OWNED_UPGRADABLE ? UPGRADED : ACQUIRED;
                 } else if (nanosTimeout != 0) {
-                    mQueueSX = queueSX = new LatchCondition();
-                    break quick;
+                    locker.mWaitingFor = this;
+                    if (lockCount == 0x80000001 && quickDeadlockCheckExclusive()) {
+                        return DEADLOCK;
+                    }
+                    try {
+                        mQueueSX = queueSX = new LatchCondition();
+                        break quick;
+                    } catch (Throwable e) {
+                        locker.mWaitingFor = null;
+                        throw e;
+                    }
                 }
             } else if (nanosTimeout != 0) {
+                locker.mWaitingFor = this;
+                if (mLockCount == 0x80000001 && quickDeadlockCheckExclusive()) {
+                    return DEADLOCK;
+                }
                 break quick;
             }
             if (ur == ACQUIRED) {
@@ -279,8 +314,6 @@ class Lock {
             locker.mWaitingFor = this;
             return TIMED_OUT_LOCK;
         }
-
-        locker.mWaitingFor = this;
 
         // Await for exclusive lock.
         int w = queueSX.await(latch, nanosTimeout);
@@ -312,6 +345,44 @@ class Lock {
                 return INTERRUPTED;
             }
         }
+    }
+
+    /**
+     * Returns true if a trivial deadlock has been detected, to be called before waiting. The
+     * DeadlockDetector can be used to perform an exhaustive scan.
+     */
+    private boolean quickDeadlockCheck(Locker locker) {
+        Lock waitingFor;
+        return mOwner != null &&
+            ((waitingFor = mOwner.mWaitingFor) != null) && waitingFor.mOwner == locker;
+    }
+
+    /**
+     * Similar to quickDeadlockCheck except for exclusive acquisition, because this lock owner
+     * is the same as the locker. Caller must check that exactly one shared owner exists.
+     */
+    private boolean quickDeadlockCheckExclusive() {
+        Locker locker;
+        findLocker: {
+            Object sharedObj = mSharedLockersObj;
+            if (sharedObj instanceof Locker) {
+                locker = (Locker) sharedObj;
+            } else {
+                // Although multiple shared locks can be examined, doing so would make this
+                // check less "quick".
+                for (LockerHTEntry e : (LockerHTEntry[]) sharedObj) {
+                    if (e != null) {
+                        locker = e.mOwner;
+                        break findLocker;
+                    }
+                }
+                // Not expected.
+                return false;
+            }
+        }
+
+        Lock waitingFor = locker.mWaitingFor;
+        return waitingFor != null && waitingFor.isSharedLocker(mOwner);
     }
 
     /**

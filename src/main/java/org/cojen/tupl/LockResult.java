@@ -50,7 +50,7 @@ public enum LockResult {
     TIMED_OUT_LOCK(1),
 
     /** Lock rejection caused by deadlock. */
-    //DEADLOCK(0),
+    DEADLOCK(0),
 
     /** Lock granted for the first time. */
     ACQUIRED(2),
@@ -87,7 +87,7 @@ public enum LockResult {
      */
     UNOWNED(0);
 
-    // 1: timed out, 2: acquired, 3: owned
+    // 0: failed, 1: timed out, 2: acquired, 3: owned
     private final int mType;
 
     private LockResult(int type) {

@@ -407,7 +407,7 @@ public final class LockManager {
         }
 
         /**
-         * @param type defined in Lock class
+         * @param type TYPE_*
          */
         LockResult tryLock(int type,
                            Locker locker, long indexId, byte[] key, int hash,
