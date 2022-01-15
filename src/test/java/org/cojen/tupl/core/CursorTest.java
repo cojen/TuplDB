@@ -29,7 +29,7 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
-import org.cojen.tupl.util.OneShot;
+import org.cojen.tupl.util.Latch;
 
 import static org.cojen.tupl.TestUtils.*;
 
@@ -1319,14 +1319,14 @@ public class CursorTest {
 
         ix.store(null, key2, value2);
 
-        var waiter = new OneShot();
+        var waiter = new Latch(Latch.EXCLUSIVE);
 
         var t = new Thread(() -> {
             try {
                 Transaction txn = mDb.newTransaction();
                 try {
                     ix.store(txn, key, value);
-                    waiter.signal();
+                    waiter.releaseExclusive();
                     Thread.sleep(1000);
                     txn.commit();
                 } finally {
@@ -1339,7 +1339,7 @@ public class CursorTest {
 
         t.start();
         // Wait for thread to lock the key and store the updated value.
-        waiter.await(60, TimeUnit.SECONDS);
+        waiter.tryAcquireExclusiveNanos(60_000_000_000L);
 
         Transaction txn = mDb.newTransaction();
         try {

@@ -27,7 +27,7 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
-import org.cojen.tupl.util.OneShot;
+import org.cojen.tupl.util.Latch;
 
 import static org.cojen.tupl.TestUtils.*;
 
@@ -60,12 +60,12 @@ public class DeadlockTest {
         final byte[][] keys = {"k0".getBytes(), "k1".getBytes(), "k2".getBytes()};
 
         // Hold a key until released.
-        var latch = new OneShot();
+        var latch = new Latch(Latch.EXCLUSIVE);
         var stall = startTestTaskAndWaitUntilBlocked(() -> {
             var locker = new Locker(mManager);
             try {
                 locker.doLockExclusive(1, keys[1], -1);
-                latch.await();
+                latch.acquireExclusive();
             } catch (Exception e) {
                 Utils.rethrow(e);
             } finally {
@@ -131,7 +131,7 @@ public class DeadlockTest {
         });
 
         // Release the key, and go!
-        latch.signal();
+        latch.releaseExclusive();
 
         victim.join();
         culprit.join();

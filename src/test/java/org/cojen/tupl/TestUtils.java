@@ -27,7 +27,7 @@ import org.cojen.tupl.core.Utils;
 import org.cojen.tupl.io.MappedPageArray;
 import org.cojen.tupl.io.OpenOption;
 
-import org.cojen.tupl.util.OneShot;
+import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.Runner;
 
 /**
@@ -71,9 +71,9 @@ public class TestUtils {
     }
 
     public static void waitToBecomeLeader(Database db, int seconds) throws InterruptedException {
-        var latch = new OneShot();
-        db.uponLeader(() -> latch.signal(), null);
-        org.junit.Assert.assertEquals(1, latch.await(seconds, TimeUnit.SECONDS));
+        var latch = new Latch(Latch.EXCLUSIVE);
+        db.uponLeader(() -> latch.releaseExclusive(), null);
+        org.junit.Assert.assertEquals(true, latch.tryAcquireExclusiveNanos(1_000_000_000L));
     }
 
     public static enum OpenMode {NORMAL, DIRECT, DIRECT_MAPPED}
