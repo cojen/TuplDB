@@ -53,90 +53,60 @@ public class DeadlockTest {
 
     @Test
     public void test_1() throws Throwable {
-        // Simple deadlock caused by two threads and two keys. Another thread
-        // is a victim which timed out.
+        // Create a deadlock among three threads and a victim thread.
 
-        final long timeout = 10L * 1000 * 1000 * 1000;
+        final long timeout = 5L * 1000 * 1000 * 1000;
         final byte[][] keys = {"k0".getBytes(), "k1".getBytes(), "k2".getBytes()};
 
-        // Hold a key until released.
-        var latch = new Latch(Latch.EXCLUSIVE);
-        var stall = startTestTaskAndWaitUntilBlocked(() -> {
-            var locker = new Locker(mManager);
-            try {
-                locker.doLockExclusive(1, keys[1], -1);
-                latch.acquireExclusive();
-            } catch (Exception e) {
-                Utils.rethrow(e);
-            } finally {
-                locker.scopeUnlockAll();
-            }
-        });
+        var tasks = new TestTask[3];
+        var cb = new CyclicBarrier(tasks.length);
 
-        // Current thread locks key0, and helps cause the deadlock.
-        var locker0 = new Locker(mManager);
-        locker0.doLockShared(1, keys[0], timeout);
+        // Culprit threads.
+        for (int i=0; i<tasks.length; i++) {
+            final byte[] k1 = keys[i];
+            final byte[] k2 = keys[(i + 1) % keys.length];
 
-        // Victim thread.
-        var victim = startTestTaskAndWaitUntilBlocked(() -> {
-            var locker = new Locker(mManager);
-            try {
+            tasks[i] = startTestTaskAndWaitUntilBlocked(() -> {
+                var locker = new Locker(mManager);
                 try {
-                    // Lock key2 doesn't participate in deadlock.
-                    locker.doLockExclusive(1, keys[2], timeout / 2);
-                    locker.doLockExclusive(1, keys[0], timeout / 2);
-                    fail();
-                } catch (DeadlockException e) {
-                    // Deadlock observed, but this thread didn't create it.
-                    assertFalse(e.isGuilty());
-                } catch (Exception e) {
-                    Utils.rethrow(e);
-                }
-            } finally {
-                locker.scopeUnlockAll();
-            }
-        });
-
-        // Culprit thread.
-        var culprit = startTestTaskAndWaitUntilBlocked(() -> {
-            var locker = new Locker(mManager);
-            try {
-                try {
-                    // Lock key1 and then key0, which is the opposite order of main thread.
-                    locker.doLockShared(1, keys[1], timeout);
-                    locker.doLockExclusive(1, keys[0], timeout);
+                    locker.doLockShared(1, k1, timeout);
+                    cb.await();
+                    locker.doLockExclusive(1, k2, timeout);
                     fail();
                 } catch (DeadlockException e) {
                     // This thread helped create the deadlock.
                     assertTrue(e.isGuilty());
                 } catch (Exception e) {
                     Utils.rethrow(e);
+                } finally {
+                    locker.scopeUnlockAll();
                 }
+            });
+        }
+
+        // Victim thread.
+        var victim = startTestTaskAndWaitUntilBlocked(() -> {
+            var locker = new Locker(mManager);
+            try {
+                // The first lock doesn't participate in deadlock.
+                locker.doLockExclusive(1, "xxx".getBytes(), timeout / 2);
+                locker.doLockExclusive(1, keys[0], timeout / 2);
+                fail();
+            } catch (DeadlockException e) {
+                // Deadlock observed, but this thread didn't create it.
+                assertFalse(e.isGuilty());
+            } catch (Exception e) {
+                Utils.rethrow(e);
             } finally {
                 locker.scopeUnlockAll();
             }
         });
 
-        // Lock key1, creating a deadlock. Timeout is longer, and so deadlock will not be
-        // detected here. Must still hold the stall latch to prevent quick deadlock detection
-        // from defeating the test.
-        var deadlock = startTestTaskAndWaitUntilBlocked(() -> {
-            try {
-                locker0.doLockExclusive(1, keys[1], timeout * 2);
-            } catch (Exception e) {
-                Utils.rethrow(e);
-            } finally {
-                locker0.scopeUnlockAll();
-            }
-        });
-
-        // Release the key, and go!
-        latch.releaseExclusive();
-
         victim.join();
-        culprit.join();
-        deadlock.join();
-        stall.join();
+
+        for (TestTask task : tasks) {
+            task.join();
+        }
     }
 
     @Test
