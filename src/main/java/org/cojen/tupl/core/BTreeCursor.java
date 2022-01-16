@@ -2747,6 +2747,15 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
     }
 
     @Override
+    public final boolean exists() throws IOException {
+        CursorFrame leaf = frameSharedNotSplit();
+        Node node = leaf.mNode;
+        boolean result = leaf.mNodePos >= 0;
+        node.releaseShared();
+        return result;
+    }
+
+    @Override
     public final LockResult lock() throws IOException {
         final byte[] key = mKey;
         ViewUtils.positionCheck(key);

@@ -579,6 +579,13 @@ public interface Cursor extends ValueAccessor, Closeable {
                              byte[] highKey, boolean highInclusive) throws IOException;
 
     /**
+     * Quickly check if the value still exists without locking it.
+     *
+     * @throws UnpositionedCursorException if position is undefined at invocation time
+     */
+    public boolean exists() throws IOException;
+
+    /**
      * Locks the current entry, as if by calling load. Locking is performed automatically
      * within transactions, and so invocation of this method is necessary only when manually
      * tweaking the lock mode. If a lock was acquired (even if not retained), the cursor value

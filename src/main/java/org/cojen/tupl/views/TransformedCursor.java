@@ -483,6 +483,19 @@ public final class TransformedCursor extends CoreValueAccessor implements Scanne
     }
 
     @Override
+    public boolean exists() throws IOException {
+        final byte[] oValue = mValue;
+        final Transaction oTxn = link(Transaction.BOGUS);
+        try {
+            load();
+            return mValue != null;
+        } finally {
+            link(oTxn);
+            mValue = oValue;
+        }
+    }
+
+    @Override
     public LockResult lock() throws IOException {
         final byte[] tkey = mKey;
         ViewUtils.positionCheck(tkey);

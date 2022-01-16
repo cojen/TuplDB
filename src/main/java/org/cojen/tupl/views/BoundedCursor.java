@@ -580,6 +580,15 @@ final class BoundedCursor implements ScannerCursor {
     }
 
     @Override
+    public boolean exists() throws IOException {
+        if (mOutOfBounds) {
+            throw fail();
+        } else {
+            return mSource.exists();
+        }
+    }
+
+    @Override
     public LockResult lock() throws IOException {
         if (mOutOfBounds) {
             throw fail();

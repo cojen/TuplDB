@@ -158,6 +158,11 @@ class DefaultCursor implements Cursor {
     }
 
     @Override
+    public boolean exists() throws IOException {
+        return mSource.exists();
+    }
+
+    @Override
     public LockResult load() throws IOException {
         return mSource.load();
     }

@@ -34,6 +34,11 @@ final class IntersectionCursor extends MergeCursor {
     }
 
     @Override
+    public boolean exists() throws IOException {
+        return mFirst.exists() && mSecond.exists();
+    }
+
+    @Override
     protected MergeCursor newCursor(Cursor first, Cursor second) {
         return new IntersectionCursor(mTxn, mView, first, second);
     }

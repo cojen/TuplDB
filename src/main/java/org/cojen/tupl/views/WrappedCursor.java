@@ -394,6 +394,14 @@ abstract class WrappedCursor implements ScannerCursor {
      * {@inheritDoc}
      */
     @Override
+    public boolean exists() throws IOException {
+        return source.exists();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public LockResult lock() throws IOException {
         return source.lock();
     }
