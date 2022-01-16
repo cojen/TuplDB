@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.util;
 
+import java.util.Objects;
+
 import java.util.concurrent.TimeUnit;
 
 import static org.cojen.tupl.util.Latch.*;
@@ -93,52 +95,75 @@ public class LatchCondition {
      * @return -1 if interrupted, 0 if timed out, 1 if signaled
      */
     public final int await(Latch latch, long nanosTimeout, long nanosEnd) {
-        return await(latch, WaitNode.COND_WAIT, nanosTimeout, nanosEnd);
-    }
-
-    /**
-     * Blocks the current thread until a signal is received. Exclusive latch must be acquired
-     * by the caller, which is released and then re-acquired by this method.
-     *
-     * <p>A shared waiter intends to access a resource with shared access, and it can be
-     * signaled specially. After waiting, the caller is responsible for signaling the next
-     * shared waiter.
-     *
-     * @param latch latch being used by this condition
-     * @param nanosTimeout relative nanosecond time to wait; infinite if {@literal <0}
-     * @return -1 if interrupted, 0 if timed out, 1 if signaled
-     */
-    public final int awaitShared(Latch latch, long nanosTimeout) {
-        long nanosEnd = nanosTimeout <= 0 ? 0 : (System.nanoTime() + nanosTimeout);
-        return awaitShared(latch, nanosTimeout, nanosEnd);
-    }
-
-    /**
-     * Blocks the current thread until a signal is received. Exclusive latch must be acquired
-     * by the caller, which is released and then re-acquired by this method.
-     *
-     * <p>A shared waiter intends to access a resource with shared access, and it can be
-     * signaled specially. After waiting, the caller is responsible for signaling the next
-     * shared waiter.
-     *
-     * @param latch latch being used by this condition
-     * @param nanosTimeout relative nanosecond time to wait; infinite if {@literal <0}
-     * @param nanosEnd absolute nanosecond time to wait until; used only with {@literal >0} timeout
-     * @return -1 if interrupted, 0 if timed out, 1 if signaled
-     */
-    public final int awaitShared(Latch latch, long nanosTimeout, long nanosEnd) {
-        return await(latch, WaitNode.COND_WAIT_SHARED, nanosTimeout, nanosEnd);
-    }
-
-    private int await(Latch latch, int waitState, long nanosTimeout, long nanosEnd) {
         final WaitNode node;
         try {
-            node = new WaitNode(Thread.currentThread(), waitState);
+            node = new WaitNode(Thread.currentThread());
         } catch (Throwable e) {
             // Possibly an OutOfMemoryError. Latch must still be held.
             return -1;
         }
 
+        enqueue(node);
+
+        return node.condAwait(latch, this, nanosTimeout, nanosEnd);
+    }
+
+    /**
+     * Blocks the current thread until a signal is received. Exclusive latch must be acquired
+     * by the caller, which is released and then re-acquired by this method. If null is
+     * returned, the thread's interrupt status must be checked to determine if the wait was
+     * interupted or if it timed out.
+     *
+     * @param latch latch being used by this condition
+     * @param tag non-null tag to register
+     * @param nanosTimeout relative nanosecond time to wait; infinite if {@literal <0}
+     * @return null if interrupted or timed out, or else the tag or replacement object
+     * @see signalTagged
+     */
+    public final Object awaitTagged(Latch latch, Object tag, long nanosTimeout) {
+        long nanosEnd = nanosTimeout <= 0 ? 0 : (System.nanoTime() + nanosTimeout);
+        return awaitTagged(latch, tag, nanosTimeout, nanosEnd);
+    }
+
+    /**
+     * Blocks the current thread until a signal is received. Exclusive latch must be acquired
+     * by the caller, which is released and then re-acquired by this method. If null is
+     * returned, the thread's interrupt status must be checked to determine if the wait was
+     * interupted or if it timed out.
+     *
+     * @param latch latch being used by this condition
+     * @param tag non-null tag to register
+     * @param nanosTimeout relative nanosecond time to wait; infinite if {@literal <0}
+     * @param nanosEnd absolute nanosecond time to wait until; used only with {@literal >0} timeout
+     * @return null if interrupted or timed out, or else the tag or replacement object
+     * @see signalTagged
+     */
+    public final Object awaitTagged(Latch latch, Object tag, long nanosTimeout, long nanosEnd) {
+        Objects.requireNonNull(tag);
+
+        final Tagged node;
+        try {
+            node = new Tagged(Thread.currentThread(), tag);
+        } catch (Throwable e) {
+            // Possibly an OutOfMemoryError. Latch must still be held.
+            return -1;
+        }
+
+        enqueue(node);
+
+        int result = node.condAwait(latch, this, nanosTimeout, nanosEnd);
+
+        if (result <= 0) {
+            if (result < 0) {
+                Thread.currentThread().interrupt();
+            }
+            return null;
+        }
+
+        return node.mTag;
+    }
+
+    private void enqueue(WaitNode node) {
         WaitNode tail = mTail;
         if (tail == null) {
             mHead = node;
@@ -147,8 +172,6 @@ public class LatchCondition {
             cPrevHandle.set(node, tail);
         }
         mTail = node;
-
-        return node.condAwait(latch, this, nanosTimeout, nanosEnd);
     }
 
     /**
@@ -163,13 +186,9 @@ public class LatchCondition {
      * @return -1 if interrupted, 0 if timed out, 1 if signaled
      */
     public final int priorityAwait(Latch latch, long nanosTimeout, long nanosEnd) {
-        return priorityAwait(latch, WaitNode.COND_WAIT, nanosTimeout, nanosEnd);
-    }
-
-    private int priorityAwait(Latch latch, int waitState, long nanosTimeout, long nanosEnd) {
         final WaitNode node;
         try {
-            node = new WaitNode(Thread.currentThread(), waitState);
+            node = new WaitNode(Thread.currentThread());
         } catch (Throwable e) {
             // Possibly an OutOfMemoryError. Latch must still be held.
             return -1;
@@ -199,39 +218,7 @@ public class LatchCondition {
      * @param cont called with latch held
      */
     public final void uponSignal(Runnable cont) {
-        upon(cont, WaitNode.COND_WAIT);
-    }
-
-    /**
-     * Invokes the given continuation upon the condition being signaled. The exclusive latch
-     * must be acquired by the caller, which is retained. When the condition is signaled, the
-     * continuation is enqueued to be run by a thread which releases the exclusive latch. The
-     * releasing thread actually retains the latch and runs the continuation, effectively
-     * transferring latch ownership. The continuation must not explicitly release the latch,
-     * and any exception thrown by the continuation is passed to the uncaught exception handler
-     * of the running thread.
-     *
-     * <p>A shared waiter intends to access a resource with shared access, and it can be
-     * signaled specially. After waiting, the continuation is responsible for signaling the
-     * next shared waiter.
-     *
-     * @param cont called with latch held
-     */
-    public final void uponSignalShared(Runnable cont) {
-        upon(cont, WaitNode.COND_WAIT_SHARED);
-    }
-
-    private void upon(Runnable cont, int waitState) {
-        final var node = new WaitNode(cont, waitState);
-
-        WaitNode tail = mTail;
-        if (tail == null) {
-            mHead = node;
-        } else {
-            cNextHandle.set(tail, node);
-            cPrevHandle.set(node, tail);
-        }
-        mTail = node;
+        enqueue(new WaitNode(cont));
     }
 
     /**
@@ -258,14 +245,41 @@ public class LatchCondition {
     }
 
     /**
-     * Signals the first waiter, but only if it's a shared waiter. Caller must hold exclusive
+     * Signals the first waiter, but only if it's a tagged waiter. Caller must hold exclusive
      * latch.
+     *
+     * @param latch must be exclusively held
      */
-    public final void signalShared(Latch latch) {
+    public final void signalTagged(Latch latch) {
         WaitNode head = mHead;
-        if (head != null && ((int) cWaitStateHandle.get(head)) == WaitNode.COND_WAIT_SHARED) {
+        if (head instanceof Tagged) {
             head.condSignal(latch, this);
         }
+    }
+
+    /**
+     * Signals the first waiter which matches the given tag. A thread which is blocked on
+     * {@link #awaitTagged awaitTagged} receives the original tag or a replacement, if one is
+     * provided. Because the exclusive latch is held the whole time, the caller can choose to
+     * update the state of the original tag before the signaled thread wakes up.
+     *
+     * @param latch must be exclusively held
+     * @param tag non-null tag to match on, based on object equality
+     * @param replacement if non-null, replace the tag with this object
+     * @return the original tag that matched, or else null if nothing was found
+     */
+    public final Object signalTagged(Latch latch, Object tag, Object replacement) {
+        for (WaitNode node = mHead; node != null; node = (WaitNode) cNextHandle.get(node)) {
+            Object original;
+            if (node instanceof Tagged tagged && (original = tagged.mTag).equals(tag)) {
+                if (replacement != null) {
+                    tagged.mTag = replacement;
+                }
+                node.condSignal(latch, this);
+                return original;
+            }
+        }
+        return null;
     }
 
     /**

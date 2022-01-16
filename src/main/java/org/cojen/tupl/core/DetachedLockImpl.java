@@ -143,7 +143,7 @@ class DetachedLockImpl extends Lock implements DetachedLock {
             mLockCount = 0x80000000;
             LatchCondition queueSX = mQueueSX;
             if (queueSX != null) {
-                queueSX.signalShared(bucket);
+                queueSX.signalTagged(bucket);
             }
         }
 

@@ -153,7 +153,7 @@ class Lock {
         }
 
         // Await for shared lock.
-        int w = queueSX.awaitShared(latch, nanosTimeout);
+        Object result = queueSX.awaitTagged(latch, this, nanosTimeout);
         queueSX = mQueueSX;
 
         if (queueSX == null) {
@@ -167,18 +167,18 @@ class Lock {
             mQueueSX = null;
         }
 
-        if (w > 0) {
+        if (result != null) {
             locker.mWaitingFor = null;
             // After consuming one signal, next shared waiter must be signaled, and so on. Do
             // this before calling addSharedLocker, in case it throws an exception.
-            queueSX.signalShared(latch);
+            queueSX.signalTagged(latch);
             addSharedLocker(mLockCount, locker);
             return ACQUIRED;
-        } else if (w == 0) {
-            return TIMED_OUT_LOCK;
-        } else {
+        } else if (Thread.interrupted()) {
             locker.mWaitingFor = null;
             return INTERRUPTED;
+        } else {
+            return TIMED_OUT_LOCK;
         }
     }
 
@@ -240,7 +240,7 @@ class Lock {
         }
 
         // Await for upgradable lock.
-        int w = queueU.await(latch, nanosTimeout);
+        int result = queueU.await(latch, nanosTimeout);
         queueU = mQueueU;
 
         if (queueU == null) {
@@ -254,12 +254,12 @@ class Lock {
             mQueueU = null;
         }
 
-        if (w > 0) {
+        if (result > 0) {
             locker.mWaitingFor = null;
             mLockCount |= 0x80000000;
             mOwner = locker;
             return ACQUIRED;
-        } else if (w == 0) {
+        } else if (result == 0) {
             return TIMED_OUT_LOCK;
         } else {
             locker.mWaitingFor = null;
@@ -316,7 +316,7 @@ class Lock {
         }
 
         // Await for exclusive lock.
-        int w = queueSX.await(latch, nanosTimeout);
+        int result = queueSX.await(latch, nanosTimeout);
         queueSX = mQueueSX;
 
         if (queueSX == null) {
@@ -330,7 +330,7 @@ class Lock {
             mQueueSX = null;
         }
 
-        if (w > 0) {
+        if (result > 0) {
             locker.mWaitingFor = null;
             mLockCount = ~0;
             return ur == OWNED_UPGRADABLE ? UPGRADED : ACQUIRED;
@@ -338,7 +338,7 @@ class Lock {
             if (ur == ACQUIRED) {
                 unlockUpgradable(latch);
             }
-            if (w == 0) {
+            if (result == 0) {
                 return TIMED_OUT_LOCK;
             } else {
                 locker.mWaitingFor = null;
@@ -661,7 +661,7 @@ class Lock {
             mLockCount = 0x80000000;
             LatchCondition queueSX = mQueueSX;
             if (queueSX != null) {
-                queueSX.signalShared(latch);
+                queueSX.signalTagged(latch);
             }
         }
         latch.releaseExclusive();

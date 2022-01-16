@@ -216,11 +216,11 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Blocks the current thread until a signal is received.</div>
 </dd>
-<dt><a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html#awaitShared(org.cojen.tupl.util.Latch,long)" class="member-name-link">awaitShared(Latch, long)</a> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html#awaitTagged(org.cojen.tupl.util.Latch,java.lang.Object,long)" class="member-name-link">awaitTagged(Latch, Object, long)</a> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>
 <dd>
 <div class="block">Blocks the current thread until a signal is received.</div>
 </dd>
-<dt><a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html#awaitShared(org.cojen.tupl.util.Latch,long,long)" class="member-name-link">awaitShared(Latch, long, long)</a> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html#awaitTagged(org.cojen.tupl.util.Latch,java.lang.Object,long,long)" class="member-name-link">awaitTagged(Latch, Object, long, long)</a> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>
 <dd>
 <div class="block">Blocks the current thread until a signal is received.</div>
 </dd>
@@ -3319,9 +3319,13 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Signals all waiters, of any type.</div>
 </dd>
-<dt><a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html#signalShared(org.cojen.tupl.util.Latch)" class="member-name-link">signalShared(Latch)</a> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html#signalTagged(org.cojen.tupl.util.Latch)" class="member-name-link">signalTagged(Latch)</a> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>
 <dd>
-<div class="block">Signals the first waiter, but only if it's a shared waiter.</div>
+<div class="block">Signals the first waiter, but only if it's a tagged waiter.</div>
+</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html#signalTagged(org.cojen.tupl.util.Latch,java.lang.Object,java.lang.Object)" class="member-name-link">signalTagged(Latch, Object, Object)</a> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>
+<dd>
+<div class="block">Signals the first waiter which matches the given tag.</div>
 </dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/Cursor.html#skip(long)" class="member-name-link">skip(long)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
 <dd>
@@ -3875,10 +3879,6 @@ loadScripts(document, 'script');</script>
  become the leader.</div>
 </dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html#uponSignal(java.lang.Runnable)" class="member-name-link">uponSignal(Runnable)</a> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>
-<dd>
-<div class="block">Invokes the given continuation upon the condition being signaled.</div>
-</dd>
-<dt><a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html#uponSignalShared(java.lang.Runnable)" class="member-name-link">uponSignalShared(Runnable)</a> - Method in class org.cojen.tupl.util.<a href="org.cojen.tupl/org/cojen/tupl/util/LatchCondition.html" title="class in org.cojen.tupl.util">LatchCondition</a></dt>
 <dd>
 <div class="block">Invokes the given continuation upon the condition being signaled.</div>
 </dd>
