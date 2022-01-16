@@ -22,6 +22,8 @@ import java.util.*;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -59,21 +61,23 @@ public class DeadlockTest {
         final byte[][] keys = {"k0".getBytes(), "k1".getBytes(), "k2".getBytes()};
 
         var tasks = new TestTask[3];
-        var cb = new CyclicBarrier(tasks.length);
+        var cb = new CyclicBarrier(tasks.length + 1);
+
+        var numDeadlocks = new AtomicInteger();
 
         // Culprit threads.
         for (int i=0; i<tasks.length; i++) {
             final byte[] k1 = keys[i];
             final byte[] k2 = keys[(i + 1) % keys.length];
 
-            tasks[i] = startTestTaskAndWaitUntilBlocked(() -> {
+            tasks[i] = startTestTask(() -> {
                 var locker = new Locker(mManager);
                 try {
                     locker.doLockShared(1, k1, timeout);
                     cb.await();
                     locker.doLockExclusive(1, k2, timeout);
-                    fail();
                 } catch (DeadlockException e) {
+                    numDeadlocks.getAndAdd(1);
                     // This thread helped create the deadlock.
                     assertTrue(e.isGuilty());
                 } catch (Exception e) {
@@ -84,8 +88,10 @@ public class DeadlockTest {
             });
         }
 
+        cb.await();
+
         // Victim thread.
-        var victim = startTestTaskAndWaitUntilBlocked(() -> {
+        var victim = startTestTask(() -> {
             var locker = new Locker(mManager);
             try {
                 // The first lock doesn't participate in deadlock.
@@ -107,6 +113,8 @@ public class DeadlockTest {
         for (TestTask task : tasks) {
             task.join();
         }
+
+        assertTrue(numDeadlocks.get() > 0);
     }
 
     @Test
@@ -223,7 +231,7 @@ public class DeadlockTest {
         // Create a deadlock among three threads.
 
         var threads = new Thread[3];
-        var cb = new CyclicBarrier(threads.length);
+        var cb = new CyclicBarrier(threads.length + 1);
 
         byte[] k1 = "k1".getBytes();
         byte[] k2 = "k2".getBytes();
@@ -264,6 +272,8 @@ public class DeadlockTest {
 
             threads[i].start();
         }
+
+        cb.await();
 
         waitForDeadlock: {
             check: for (int i=0; i<100; i++) {
