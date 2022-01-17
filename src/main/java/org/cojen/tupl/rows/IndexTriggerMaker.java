@@ -56,7 +56,7 @@ public class IndexTriggerMaker<R> {
 
     // To be filled in by caller (TableManager).
     final byte[][] mSecondaryDescriptors;
-    final SecondaryInfo[] mSecondaryInfos;
+    final RowInfo[] mSecondaryInfos;
     final Index[] mSecondaryIndexes;
     final RowPredicateLock<R>[] mSecondaryLocks;
     final IndexBackfill<R>[] mBackfills;
@@ -82,7 +82,7 @@ public class IndexTriggerMaker<R> {
         mPrimaryGen = primaryInfo.rowGen();
 
         mSecondaryDescriptors = new byte[numIndexes][];
-        mSecondaryInfos = new SecondaryInfo[numIndexes];
+        mSecondaryInfos = new RowInfo[numIndexes];
         mSecondaryIndexes = new Index[numIndexes];
         mSecondaryLocks = new RowPredicateLock[numIndexes];
         mBackfills = new IndexBackfill[numIndexes];
@@ -97,7 +97,7 @@ public class IndexTriggerMaker<R> {
      */
     @SuppressWarnings("unchecked")
     private IndexTriggerMaker(Class<R> rowType, Class rowClass, RowInfo primaryInfo,
-                              SecondaryInfo[] secondaryInfos, Index[] secondaryIndexes,
+                              RowInfo[] secondaryInfos, Index[] secondaryIndexes,
                               RowPredicateLock<R>[] secondaryLocks)
     {
         mRowType = rowType;
@@ -339,11 +339,43 @@ public class IndexTriggerMaker<R> {
         return trigger;
     }
 
+    /**
+     * Makes code which does the reverse of what IndexTriggerMaker normally does. Given an
+     * encoded secondary index or alternate key, it produces a primary key.
+     *
+     * @param mm param(0) is the secondary key, and param(1) is the secondary value (only
+     * needed for alternate keys)
+     * @return a byte[] variable with the encoded primary key
+     */
+    static <R> Variable makeToPrimaryKey(MethodMaker mm, Class<R> rowType, Class rowClass,
+                                         RowInfo primaryInfo, RowInfo secondaryInfo)
+    {
+        // Construct the maker backwards such that the secondary is the primary, and the
+        // primary is the secondary. There's no need to actually pass the primary info to the
+        // constructor, since it only needs to be accessed within this method.
+        var maker = new IndexTriggerMaker<R>(rowType, rowClass, secondaryInfo, null, null, null);
+
+        var sources = new HashMap<String, ColumnSource>();
+        RowGen secondaryGen = secondaryInfo.rowGen();
+        ColumnCodec[] primaryKeyCodecs = primaryInfo.rowGen().keyCodecs();
+        maker.buildColumnSources(sources, secondaryGen.keyCodecMap(), true, primaryKeyCodecs);
+        maker.buildColumnSources(sources, secondaryGen.valueCodecMap(), false, primaryKeyCodecs);
+        maker.mColumnSources = sources;
+
+        var keyVar = mm.param(0);
+        var valueVar = secondaryInfo.isAltKey() ? mm.param(1) : null;
+        maker.findColumns(mm, keyVar, valueVar, 0, ROW_NONE);
+
+        ColumnCodec[] pkCodecs = ColumnCodec.bind(primaryKeyCodecs, mm);
+
+        return maker.encodeColumns(mm, sources, null, ROW_NONE, keyVar, valueVar, pkCodecs);
+    }
+
     private Map<String, ColumnSource> buildColumnSources() {
         return buildColumnSources(mSecondaryInfos);
     }
 
-    private Map<String, ColumnSource> buildColumnSources(SecondaryInfo... secondaryInfos) {
+    private Map<String, ColumnSource> buildColumnSources(RowInfo... secondaryInfos) {
         Map<String, ColumnCodec> keyCodecMap = mPrimaryGen.keyCodecMap();
         Map<String, ColumnCodec> valueCodecMap = mPrimaryGen.valueCodecMap();
 
@@ -745,7 +777,7 @@ public class IndexTriggerMaker<R> {
         // prior secondary indexes have a matching codec and copy from them.
 
         for (int i=0; i<mSecondaryInfos.length; i++) {
-            SecondaryInfo secondaryInfo = mSecondaryInfos[i];
+            RowInfo secondaryInfo = mSecondaryInfos[i];
             RowGen secondaryGen = secondaryInfo.rowGen();
 
             ColumnCodec[] secondaryKeyCodecs = ColumnCodec.bind(secondaryGen.keyCodecs(), mm);
@@ -767,7 +799,7 @@ public class IndexTriggerMaker<R> {
             Label opStart = mm.label().here();
             var ixField = mm.field("ix" + i);
 
-            if (!secondaryInfo.isAltKey) {
+            if (!secondaryInfo.isAltKey()) {
                 ixField.invoke("store", txnVar, secondaryKeyVar, secondaryValueVar);
                 TableMaker.finishAcquire(mm, closerVar, opStart, txnVar, ixField,
                                          secondaryKeyVar, secondaryValueVar, null);
@@ -1082,7 +1114,7 @@ public class IndexTriggerMaker<R> {
             // Index needs to be updated. Insert the new entry and delete the old one.
             modified.here();
 
-            SecondaryInfo secondaryInfo = mSecondaryInfos[i];
+            RowInfo secondaryInfo = mSecondaryInfos[i];
             RowGen secondaryGen = secondaryInfo.rowGen();
             Field ixField = mm.field("ix" + i);
 
@@ -1104,7 +1136,7 @@ public class IndexTriggerMaker<R> {
 
             Label opStart = mm.label().here();
 
-            if (!secondaryInfo.isAltKey) {
+            if (!secondaryInfo.isAltKey()) {
                 ixField.invoke("store", txnVar, secondaryKeyVar, secondaryValueVar);
                 TableMaker.finishAcquire(mm, closerVar, opStart, txnVar, ixField,
                                          secondaryKeyVar, secondaryValueVar, null);
@@ -1137,7 +1169,7 @@ public class IndexTriggerMaker<R> {
                 (mm, oldColumnSources, rowVar, ROW_KEY_ONLY,
                  keyVar, oldValueVar, secondaryKeyCodecs);
 
-            if (!secondaryInfo.isAltKey && !secondaryInfo.valueColumns.isEmpty()) {
+            if (!secondaryInfo.isAltKey() && !secondaryInfo.valueColumns.isEmpty()) {
                 // If this is a covering index, then the key might be the same. Don't delete it.
                 mm.var(Arrays.class).invoke("equals", secondaryKeyVar, deleteKeyVar).ifTrue(cont);
             }

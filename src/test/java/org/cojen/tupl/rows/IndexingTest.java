@@ -59,9 +59,9 @@ public class IndexingTest {
                                     lockTimeout(100, TimeUnit.MILLISECONDS));
         Table<TestRow> table = db.openTable(TestRow.class);
 
-        Table<TestRow> alt = table.viewAlternateKey("path");
-        Table<TestRow> ix1 = table.viewSecondaryIndex("name");
-        Table<TestRow> ix2 = table.viewSecondaryIndex("num", "name");
+        Table<TestRow> alt = table.viewAlternateKey("path").viewUnjoined();
+        Table<TestRow> ix1 = table.viewSecondaryIndex("name").viewUnjoined();
+        Table<TestRow> ix2 = table.viewSecondaryIndex("num", "name").viewUnjoined();
 
         try {
             ix1.viewAlternateKey("path");
@@ -450,8 +450,8 @@ public class IndexingTest {
         Table nameTable = null, numTable = null;
         for (int i=0; i<1000; i++) {
             try {
-                nameTable = table2.viewAlternateKey("name");
-                numTable = table2.viewSecondaryIndex("num");
+                nameTable = table2.viewAlternateKey("name").viewUnjoined();
+                numTable = table2.viewSecondaryIndex("num").viewUnjoined();
             } catch (IllegalStateException e) {
                 assertTrue(e.getMessage().contains("not found"));
             }
@@ -621,7 +621,7 @@ public class IndexingTest {
         Table nameTable = null;
         for (int i=0; i<1000; i++) {
             try {
-                nameTable = table2.viewSecondaryIndex("name");
+                nameTable = table2.viewSecondaryIndex("name").viewUnjoined();
             } catch (IllegalStateException e) {
                 assertTrue(e.getMessage().contains("not found"));
             }
@@ -709,7 +709,7 @@ public class IndexingTest {
         Table numTable = null;
         for (int i=0; i<1000; i++) {
             try {
-                numTable = table2.viewSecondaryIndex("num");
+                numTable = table2.viewSecondaryIndex("num").viewUnjoined();
             } catch (IllegalStateException e) {
                 assertTrue(e.getMessage().contains("not found"));
             }
@@ -742,7 +742,7 @@ public class IndexingTest {
         Table replicaNumTable = null;
         for (int i=0; i<1000; i++) {
             try {
-                replicaNumTable = replicaTable.viewSecondaryIndex("num");
+                replicaNumTable = replicaTable.viewSecondaryIndex("num").viewUnjoined();
             } catch (IllegalStateException e) {
                 assertTrue(e.getMessage().contains("not found"));
             }
@@ -852,7 +852,7 @@ public class IndexingTest {
         Table nameTable = null;
         for (int i=0; i<1000; i++) {
             try {
-                nameTable = table2.viewSecondaryIndex("name");
+                nameTable = table2.viewSecondaryIndex("name").viewUnjoined();
             } catch (IllegalStateException e) {
                 assertTrue(e.getMessage().contains("not found"));
             }
@@ -939,7 +939,7 @@ public class IndexingTest {
             table1.store(null, row);
         }
 
-        var nameTable = table1.viewSecondaryIndex("name");
+        var nameTable = table1.viewSecondaryIndex("name").viewUnjoined();
         verifyIndex(nameTable, table1, 0);
         assertEquals(fillAmount, nameTable.newStream(null).count());
         long nameTableId = ((AbstractTable) nameTable).mSource.id();
@@ -1072,7 +1072,7 @@ public class IndexingTest {
             table1.store(null, row);
         }
 
-        var nameTable = table1.viewSecondaryIndex("name");
+        var nameTable = table1.viewSecondaryIndex("name").viewUnjoined();
         verifyIndex(nameTable, table1, 0);
         assertEquals(fillAmount, nameTable.newStream(null).count());
         long nameTableId = ((AbstractTable) nameTable).mSource.id();
@@ -1083,7 +1083,7 @@ public class IndexingTest {
 
         Table replicaTable = replicaDb.openIndex("test").asTable(t1);
 
-        var replicaNameTable = replicaTable.viewSecondaryIndex("name");
+        var replicaNameTable = replicaTable.viewSecondaryIndex("name").viewUnjoined();
         assertEquals(nameTableId, ((AbstractTable) replicaNameTable).mSource.id());
 
         verifyIndex(replicaNameTable, replicaTable, 0);
@@ -1231,7 +1231,7 @@ public class IndexingTest {
 
         Database db = Database.open(new DatabaseConfig().directPageAccess(false));
         Table<TestRow2> table = db.openTable(TestRow2.class);
-        Table<TestRow2> ix = table.viewSecondaryIndex("name", "id", "num");
+        Table<TestRow2> ix = table.viewSecondaryIndex("name", "id", "num").viewUnjoined();
 
         TestRow2 row = table.newRow();
         row.id(1);

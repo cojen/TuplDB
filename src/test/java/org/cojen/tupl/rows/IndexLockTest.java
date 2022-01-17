@@ -147,7 +147,7 @@ public class IndexLockTest {
         if (!updater && type == TestRow2.class) {
             // Scans over a secondary index are also blocked.
 
-            var nameIx = table.viewSecondaryIndex("name");
+            var nameIx = table.viewSecondaryIndex("name").viewUnjoined();
 
             try {
                 nameIx.newRowScanner(scanTxn, "name >= ? && name <= ?", "name-3", "name-7");
@@ -202,7 +202,7 @@ public class IndexLockTest {
         if (!updater && type == TestRow2.class) {
             // Scans over a secondary index are blocked until txn1 finishes.
 
-            var nameIx = table.viewSecondaryIndex("name");
+            var nameIx = table.viewSecondaryIndex("name").viewUnjoined();
 
             w3 = start(() -> {
                 Transaction scanTxn2 = mDatabase.newTransaction();
@@ -771,7 +771,7 @@ public class IndexLockTest {
             table.store(null, row);
         }
 
-        Table<TestRow3> ix = table.viewSecondaryIndex("name", "id", "path");
+        Table<TestRow3> ix = table.viewSecondaryIndex("name", "id", "path").viewUnjoined();
         Transaction txn = mDatabase.newTransaction();
         RowScanner<TestRow3> scanner = ix.newRowScanner(txn);
 

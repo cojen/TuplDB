@@ -732,7 +732,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
 
                 if (mOwner == null) {
                     // Attempt to claim ownership. Otherwise, the shared count would never go
-                    // to zero, and so we'd never be signalled.
+                    // to zero, and so we'd never be signaled.
                     if (claimOwnership(txn) > 0) {
                         // No shared owners anymore or txn is the sole shared lock owner.
                         return true;

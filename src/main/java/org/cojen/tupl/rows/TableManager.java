@@ -45,7 +45,7 @@ import static org.cojen.tupl.rows.RowUtils.*;
  *
  * @author Brian S O'Neill
  */
-public class TableManager<R> {
+public final class TableManager<R> {
     final Index mPrimaryIndex;
 
     private final WeakClassCache<AbstractTable<R>> mTables;
@@ -63,6 +63,10 @@ public class TableManager<R> {
         mPrimaryIndex = primaryIndex;
         mTables = new WeakClassCache<>();
         mIndexInfos = new ConcurrentSkipListMap<>(Arrays::compareUnsigned);
+    }
+
+    public Index primaryIndex() {
+        return mPrimaryIndex;
     }
 
     Table<R> asTable(RowStore rs, Index ix, Class<R> type) throws IOException {

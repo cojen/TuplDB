@@ -110,7 +110,7 @@ public class AutoTest {
 
         assertEquals(1000, count);
 
-        Table<TestRow2> valIx = table.viewSecondaryIndex("val");
+        Table<TestRow2> valIx = table.viewSecondaryIndex("val").viewUnjoined();
         count = 0;
 
         try (var scanner = valIx.newRowScanner(null)) {
@@ -160,7 +160,7 @@ public class AutoTest {
 
         assertEquals(1000, count);
 
-        Table<TestRow3> valIx = table.viewSecondaryIndex("val");
+        Table<TestRow3> valIx = table.viewSecondaryIndex("val").viewUnjoined();
         count = 0;
 
         try (var scanner = valIx.newRowScanner(null)) {

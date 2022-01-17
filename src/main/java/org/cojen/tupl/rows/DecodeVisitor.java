@@ -41,7 +41,9 @@ import org.cojen.tupl.filter.Visitor;
  */
 class DecodeVisitor extends Visitor {
     private final MethodMaker mMaker;
+    private final Variable mKeyVar;
     private final Variable mValueVar;
+    private final Variable mCursorVar;
     private final int mValueOffset;
     private final RowGen mRowGen;
     private final Variable mPredicateVar;
@@ -63,6 +65,7 @@ class DecodeVisitor extends Visitor {
      *
      *     R decodeRow(byte[] key, byte[] value, ...)
      *     R decodeRow(byte[] key, Cursor c, ...)
+     *     R decodeRow(Cursor c, ...)
      *
      * If a stopColumn and stopArgument are provided, then the cursor method form is
      * required in order for the stop to actually work.
@@ -91,11 +94,25 @@ class DecodeVisitor extends Visitor {
         mStopColumn = stopColumn;
         mStopArgument = stopArgument;
 
-        var valueVar = mm.param(1);
-        if (valueVar.classType() == Cursor.class) {
-            valueVar = valueVar.invoke("value");
+        var keyVar = mm.param(0);
+        Variable valueVar;
+        Variable cursorVar = null;
+
+        if (keyVar.classType() == Cursor.class) {
+            cursorVar = keyVar;
+            keyVar = cursorVar.invoke("key");
+            valueVar = cursorVar.invoke("value");
+        } else {
+            valueVar = mm.param(1);
+            if (valueVar.classType() == Cursor.class) {
+                cursorVar = valueVar;
+                valueVar = cursorVar.invoke("value");
+            }
         }
+
+        mKeyVar = keyVar;
         mValueVar = valueVar;
+        mCursorVar = cursorVar;
 
         mKeyCodecs = ColumnCodec.bind(rowGen.keyCodecs(), mm);
         mValueCodecs = ColumnCodec.bind(rowGen.valueCodecs(), mm);
@@ -129,7 +146,7 @@ class DecodeVisitor extends Visitor {
         rowVar.ifNe(null, hasRow);
         rowVar.set(mMaker.new_(rowClass));
         hasRow.here();
-        tableVar.invoke("decodePrimaryKey", rowVar, mMaker.param(0));
+        tableVar.invoke("decodePrimaryKey", rowVar, mKeyVar);
 
         // Invoke the schema-specific decoder directly, instead of calling the decodeValue
         // method which redundantly examines the schema version and switches on it.
@@ -231,9 +248,7 @@ class DecodeVisitor extends Visitor {
         Integer colNum = columnNumberFor(colInfo.name);
 
         Label stop = null;
-        if (argNum == mStopArgument && colInfo.name.equals(mStopColumn)
-            && mMaker.param(1).classType() == Cursor.class)
-        {
+        if (argNum == mStopArgument && colInfo.name.equals(mStopColumn) && mCursorVar != null) {
             stop = mMaker.label();
             mFail = stop;
         }
@@ -269,7 +284,7 @@ class DecodeVisitor extends Visitor {
         if (stop != null) {
             stop.here();
             // Reset the cursor to stop scanning.
-            mMaker.param(1).invoke("reset");
+            mCursorVar.invoke("reset");
             mMaker.var(StoppedCursorException.class).field("THE").throw_();
             //mMaker.goto_(originalFail);
             mFail = originalFail;
@@ -354,7 +369,7 @@ class DecodeVisitor extends Visitor {
             if (colNum < codecs.length) {
                 // Key column.
                 highestNum = mHighestLocatedKey;
-                srcVar = mMaker.param(0);
+                srcVar = mKeyVar;
                 if ((located = mLocatedKeys) != null) {
                     break init;
                 }

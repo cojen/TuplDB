@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.Arrays;
 
 import org.cojen.tupl.Cursor;
+import org.cojen.tupl.LockResult;
 
 /**
  * 
@@ -106,18 +107,20 @@ final class MergedScanController<R> extends SingleScanController<R> {
     }
 
     @Override
-    public R decodeRow(byte[] key, Cursor c, R row) throws IOException {
+    public R decodeRow(Cursor c, LockResult result, R row) throws IOException {
         if (mMode == 2) {
-            return mLowDecoder.decodeRow(key, c, row);
+            return mLowDecoder.decodeRow(c, result, row);
         }
 
         if (mMode != 3) {
+            byte[] key = c.key();
+
             // Modes 0 and 1...
             if (mLow.isTooHigh(key)) {
                 // Fallthrough to mode 3.
                 mMode = 3;
             } else {
-                R decoded = mLowDecoder.decodeRow(key, c, row);
+                R decoded = mLowDecoder.decodeRow(c, result, row);
                 if (decoded != null) {
                     return decoded;
                 }
@@ -137,17 +140,17 @@ final class MergedScanController<R> extends SingleScanController<R> {
             }
         }
 
-        return mHighDecoder.decodeRow(key, c, row);
+        return mHighDecoder.decodeRow(c, result, row);
     }
 
     @Override
-    public byte[] encodeKey(R row) {
+    public byte[] encodeKey(R row) throws IOException {
         // Can call either decoder. They should do the same thing.
         return mLowDecoder.encodeKey(row);
     }
 
     @Override
-    public byte[] encodeValue(R row) {
+    public byte[] encodeValue(R row) throws IOException {
         // Can call either decoder. They should do the same thing.
         return mLowDecoder.encodeValue(row);
     }

@@ -20,6 +20,8 @@ package org.cojen.tupl.rows;
 import java.io.IOException;
 
 import org.cojen.tupl.Cursor;
+import org.cojen.tupl.LockResult;
+import org.cojen.tupl.UnmodifiableViewException;
 
 /**
  * See BasicRowScanner.
@@ -31,19 +33,23 @@ public interface RowDecoderEncoder<R> {
      * @param row can pass null to construct a new instance
      * @return null if row is filtered out
      */
-    R decodeRow(byte[] key, Cursor c, R row) throws IOException;
+    R decodeRow(Cursor c, LockResult result, R row) throws IOException;
 
     /**
      * Called by BasicRowUpdater.
      *
      * @return null if the key columns didn't change
      */
-    byte[] encodeKey(R row);
+    default byte[] encodeKey(R row) throws IOException {
+        throw new UnmodifiableViewException();
+    }
 
     /**
      * Called by BasicRowUpdater.
      *
      * @return non-null value
      */
-    byte[] encodeValue(R row);
+    default byte[] encodeValue(R row) throws IOException {
+        throw new UnmodifiableViewException();
+    }
 }

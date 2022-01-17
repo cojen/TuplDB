@@ -536,7 +536,10 @@ public class RowStore {
             var maker = new TableMaker(this, rowType, rowInfo.rowGen(), indexRowInfo.rowGen(),
                                        descriptor, ix.id(), indexLock != null);
             var mh = maker.finish();
-            table = (AbstractTable<R>) mh.invoke(primaryTable.mTableManager, ix, indexLock);
+            TableManager manager = primaryTable.mTableManager;
+            var unjoined = (AbstractTable<R>) mh.invoke(manager, ix, indexLock);
+            mh = maker.finishJoined(primaryTable.getClass(), unjoined.getClass());
+            table = (AbstractTable<R>) mh.invoke(manager, ix, indexLock, unjoined);
         } catch (Throwable e) {
             throw rethrow(e);
         }

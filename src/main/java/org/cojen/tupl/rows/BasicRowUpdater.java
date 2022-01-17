@@ -298,10 +298,10 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
     }
 
     @Override
-    protected R decodeRow(byte[] key, Cursor c, R row) throws IOException {
-        if (mKeysToSkip != null && mKeysToSkip.remove(key)) {
+    protected R decodeRow(Cursor c, LockResult result, R row) throws IOException {
+        if (mKeysToSkip != null && mKeysToSkip.remove(c.key())) {
             return null;
         }
-        return super.decodeRow(key, c, row);
+        return super.decodeRow(c, result, row);
     }
 }

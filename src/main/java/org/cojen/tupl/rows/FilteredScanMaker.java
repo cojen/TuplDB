@@ -35,6 +35,8 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DatabaseException;
+import org.cojen.tupl.Index;
+import org.cojen.tupl.LockResult;
 
 import org.cojen.tupl.core.RowPredicate;
 
@@ -52,6 +54,7 @@ import org.cojen.tupl.io.Utils;
 public class FilteredScanMaker<R> {
     private final WeakReference<RowStore> mStoreRef;
     private final Class<?> mTableClass;
+    private final SingleScanController<R> mUnfiltered;
     private final Class<?> mPredicateClass;
     private final Class<R> mRowType;
     private final RowGen mRowGen;
@@ -85,7 +88,7 @@ public class FilteredScanMaker<R> {
      * @param highBound pass null for open bound
      */
     public FilteredScanMaker(WeakReference<RowStore> storeRef, Class<?> tableClass,
-                             Class<? extends SingleScanController<R>> unfiltered,
+                             SingleScanController<R> unfiltered,
                              Class<? extends RowPredicate> predClass,
                              Class<R> rowType, RowInfo rowInfo, long indexId,
                              RowFilter filter, String filterStr,
@@ -93,6 +96,7 @@ public class FilteredScanMaker<R> {
     {
         mStoreRef = storeRef;
         mTableClass = tableClass;
+        mUnfiltered = unfiltered;
         mPredicateClass = predClass;
         mRowType = rowType;
 
@@ -108,21 +112,42 @@ public class FilteredScanMaker<R> {
         // Define in the same package as the predicate class, in order to access it, and to
         // facilitate class unloading.
         mFilterMaker = mRowGen.anotherClassMaker(getClass(), predClass, "Filter")
-            .final_().extend(unfiltered).implement(ScanControllerFactory.class);
+            .public_().final_()
+            .extend(unfiltered.getClass()).implement(ScanControllerFactory.class);
 
         mFilterMaker.addField(predClass, "predicate").private_().final_();
 
-        mFilterCtorMaker = mFilterMaker.addConstructor(predClass).private_();
-        mFilterCtorMaker.field("predicate").set(mFilterCtorMaker.param(0));
-
         // Need a constructor for the factory singleton instance.
-        mFilterMaker.addConstructor().private_().invokeSuperConstructor(null, false, null, false);
+        Object[] mainCtorParams;
+        if (unfiltered instanceof SingleScanController.Joined) {
+            MethodMaker ctor = mFilterMaker.addConstructor(Index.class).public_();
+            ctor.invokeSuperConstructor(null, false, null, false, ctor.param(0));
+            mainCtorParams = new Class[] {predClass, Index.class};
+        } else {
+            MethodMaker ctor = mFilterMaker.addConstructor().public_();
+            ctor.invokeSuperConstructor(null, false, null, false);
+            mainCtorParams = new Class[] {predClass};
+        }
+
+        mFilterCtorMaker = mFilterMaker.addConstructor(mainCtorParams).private_();
+        mFilterCtorMaker.field("predicate").set(mFilterCtorMaker.param(0));
     }
 
     public ScanControllerFactory<R> finish() {
         // Finish the filter class...
 
-        var ctorParams = new Object[] {null, false, null, false};
+        Object[] ctorParams;
+        if (mUnfiltered instanceof SingleScanController.Joined) {
+            ctorParams = new Object[5];
+            ctorParams[4] = mFilterCtorMaker.param(1);
+        } else {
+            ctorParams = new Object[4];
+        }
+
+        ctorParams[0] = null;
+        ctorParams[1] = false;
+        ctorParams[2] = null;
+        ctorParams[3] = false;
 
         if (mLowBound != null || mHighBound != null) {
             if (mLowBound != null) {
@@ -144,22 +169,25 @@ public class FilteredScanMaker<R> {
         }
 
         // Define the factory methods.
-        {
-            MethodMaker mm = mFilterMaker.addMethod
-                (ScanController.class, "newScanController", Object[].class).public_().varargs();
-            mm.return_(mm.new_(mFilterMaker, mm.new_(mPredicateClass, mm.param(0))));
+        addFactoryMethod(Object[].class);
+        addFactoryMethod(RowPredicate.class);
 
-            mm = mFilterMaker.addMethod
-                (ScanController.class, "newScanController", RowPredicate.class).public_();
-            mm.return_(mm.new_(mFilterMaker, mm.param(0).cast(mPredicateClass)));
-        }
+        return newFactory(mUnfiltered, mFilterMaker.finish());
+    }
 
-        MethodHandles.Lookup filterLookup = mFilterMaker.finishLookup();
-        Class<?> filterClass = filterLookup.lookupClass();
-
+    public static <R> ScanControllerFactory<R> newFactory(SingleScanController<R> unfiltered,
+                                                          Class<?> filterClass)
+    {
+        MethodHandles.Lookup lookup = MethodHandles.lookup();
         try {
-            return (ScanControllerFactory<R>) filterLookup.findConstructor
-                (filterClass, MethodType.methodType(void.class)).invoke();
+            if (unfiltered instanceof SingleScanController.Joined joined) {
+                return (ScanControllerFactory<R>) lookup.findConstructor
+                    (filterClass, MethodType.methodType(void.class, Index.class))
+                    .invoke(joined.mPrimaryIndex);
+            } else {
+                return (ScanControllerFactory<R>) lookup.findConstructor
+                    (filterClass, MethodType.methodType(void.class)).invoke();
+            }
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
@@ -332,6 +360,34 @@ public class FilteredScanMaker<R> {
         ctorParams[ctorParamOffset] = inclusive;
     }
 
+    /**
+     * @param which Object[] or RowPredicate class
+     */
+    private void addFactoryMethod(Class which) {
+        MethodMaker mm = mFilterMaker.addMethod
+            (ScanController.class, "newScanController", which).public_();
+
+        Variable predicateVar;
+        if (which == Object[].class) {
+            mm.varargs();
+            predicateVar = mm.new_(mPredicateClass, mm.param(0));
+        } else {
+            predicateVar = mm.param(0).cast(mPredicateClass);
+        }
+
+        Object[] params;
+        if (mUnfiltered instanceof SingleScanController.Joined) {
+            params = new Object[2];
+            params[1] = mm.field("mPrimaryIndex");
+        } else {
+            params = new Object[1];
+        }
+
+        params[0] = predicateVar;
+
+        mm.return_(mm.new_(mFilterMaker, params));
+    }
+
     private void addDecodeRowMethod() {
         if (mFilter == null) {
             // No remainder filter, so rely on inherited method.
@@ -341,7 +397,7 @@ public class FilteredScanMaker<R> {
         // Implement/override method as specified by RowDecoderEncoder.
 
         MethodMaker mm = mFilterMaker.addMethod
-            (Object.class, "decodeRow", byte[].class, Cursor.class, Object.class).public_();
+            (Object.class, "decodeRow", Cursor.class, LockResult.class, Object.class).public_();
 
         var predicateVar = mm.field("predicate");
 
@@ -352,12 +408,12 @@ public class FilteredScanMaker<R> {
                 ("indyDecodeRow", mStoreRef, mTableClass, mRowType, mIndexId,
                  new WeakReference<>(mFilter), mFilterStr, mStopColumn, mStopArgument);
 
-            var valueVar = mm.param(1).invoke("value");
+            var valueVar = mm.param(0).invoke("value");
 
             var schemaVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", valueVar);
 
             mm.return_(indy.invoke(Object.class, "decodeRow", null, schemaVersion,
-                                   mm.param(0), mm.param(1), mm.param(2), predicateVar));
+                                   mm.param(0), mm.param(2), predicateVar));
         } else {
             // Decoding a secondary index row is simpler because it has no schema version.
             var visitor = new DecodeVisitor
@@ -451,13 +507,13 @@ public class FilteredScanMaker<R> {
 
             RowGen rowGen = rowInfo.rowGen();
             int valueOffset = RowUtils.lengthPrefixPF(schemaVersion);
-            var predicateVar = mm.param(3);
+            var predicateVar = mm.param(2);
 
             var visitor = new DecodeVisitor
                 (mm, valueOffset, rowGen, predicateVar, mStopColumn, mStopArgument);
             filter.accept(visitor);
             Class<?> rowClass = RowMaker.find(mRowType);
-            Variable rowVar = mm.param(2);
+            Variable rowVar = mm.param(1);
             visitor.finishDecode(decoder, mTableClass, rowClass, rowVar);
 
             return mm.finish();

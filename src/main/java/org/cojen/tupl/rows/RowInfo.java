@@ -163,6 +163,10 @@ class RowInfo extends ColumnSet {
         this.name = name;
     }
 
+    boolean isAltKey() {
+        return false;
+    }
+
     /**
      * Returns a new or cached RowGen instance.
      */
@@ -198,6 +202,41 @@ class RowInfo extends ColumnSet {
         copy.secondaryIndexes = current.secondaryIndexes;
 
         return copy;
+    }
+
+    /**
+     * Returns a string suitable for EventListener messages when building or dropping indexes.
+     */
+    String eventString() {
+        StringBuilder bob = new StringBuilder();
+
+        if (this instanceof SecondaryInfo) {
+            bob.append(isAltKey() ? "alternate key" : "secondary index").append(' ');
+        }
+
+        bob.append(name).append('(');
+
+        appendNames(bob, keyColumns);
+
+        if (!isAltKey() && !valueColumns.isEmpty()) {
+            bob.append('|');
+            appendNames(bob, valueColumns);
+        }
+
+        return bob.append(')').toString();
+    }
+
+    private static void appendNames(StringBuilder bob, Map<String, ColumnInfo> map) {
+        boolean first = true;
+        for (ColumnInfo ci : map.values()) {
+            if (first) {
+                first = false;
+            } else {
+                bob.append(',');
+            }
+            bob.append(ci.isDescending() ? '-' : '+');
+            bob.append(ci.name);
+        }
     }
 
     @Override

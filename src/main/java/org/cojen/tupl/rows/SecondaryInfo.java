@@ -27,48 +27,23 @@ import java.util.Map;
  */
 class SecondaryInfo extends RowInfo {
     final RowInfo primaryInfo;
-    final boolean isAltKey;
+
+    private final boolean mIsAltKey;
 
     SecondaryInfo(RowInfo primaryInfo, boolean isAltKey) {
         super(primaryInfo.name);
         this.primaryInfo = primaryInfo;
-        this.isAltKey = isAltKey;
+        mIsAltKey = isAltKey;
     }
 
-    /**
-     * Returns a string suitable for EventListener messages.
-     */
-    String eventString() {
-        StringBuilder bob = new StringBuilder();
-        bob.append(isAltKey ? "alternate key" : "secondary index").append(' ');
-        bob.append(name).append('(');
-
-        appendNames(bob, keyColumns);
-
-        if (!isAltKey && !valueColumns.isEmpty()) {
-            bob.append('|');
-            appendNames(bob, valueColumns);
-        }
-
-        return bob.append(')').toString();
-    }
-
-    private static void appendNames(StringBuilder bob, Map<String, ColumnInfo> map) {
-        boolean first = true;
-        for (ColumnInfo ci : map.values()) {
-            if (first) {
-                first = false;
-            } else {
-                bob.append(',');
-            }
-            bob.append(ci.isDescending() ? '-' : '+');
-            bob.append(ci.name);
-        }
+    @Override
+    boolean isAltKey() {
+        return mIsAltKey;
     }
 
     @Override
     public String toString() {
         return "name: " + name + ", " + keyColumns.values() + " -> " + valueColumns.values() +
-            ", allColumns: " + allColumns.values() + ", isAltKey: " + isAltKey;
+            ", allColumns: " + allColumns.values() + ", isAltKey: " + mIsAltKey;
     }
 }

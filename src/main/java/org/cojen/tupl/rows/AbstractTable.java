@@ -276,6 +276,11 @@ public abstract class AbstractTable<R> implements Table<R> {
         return rs.indexTable(this, alt, columns);
     }
 
+    @Override
+    public Table<R> viewUnjoined() {
+        return this;
+    }
+
     private ScanController<R> filtered(String filter, Object... args) {
         return filteredFactory(filter).newScanController(args);
     }
@@ -406,7 +411,7 @@ public abstract class AbstractTable<R> implements Table<R> {
     private ScanControllerFactory<R> newFilteredFactory(RowInfo rowInfo, RowFilter[] range,
                                                         Class<? extends RowPredicate> predClass)
     {
-        Class unfilteredClass = unfiltered().getClass();
+        SingleScanController<R> unfiltered = unfiltered();
 
         RowFilter remainder = range[0];
         RowFilter lowBound = range[1];
@@ -415,7 +420,7 @@ public abstract class AbstractTable<R> implements Table<R> {
         String remainderStr = remainder == null ? null : remainder.toString();
 
         return new FilteredScanMaker<R>
-            (rowStoreRef(), getClass(), unfilteredClass, predClass, rowType(), rowInfo,
+            (rowStoreRef(), getClass(), unfiltered, predClass, rowType(), rowInfo,
              mSource.id(), remainder, remainderStr, lowBound, highBound).finish();
     }
 
