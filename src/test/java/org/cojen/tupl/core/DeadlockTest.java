@@ -80,6 +80,8 @@ public class DeadlockTest {
                     numDeadlocks.getAndAdd(1);
                     // This thread helped create the deadlock.
                     assertTrue(e.isGuilty());
+                } catch (LockTimeoutException e) {
+                    // Lost the race to detect the deadlock.
                 } catch (Exception e) {
                     Utils.rethrow(e);
                 } finally {
