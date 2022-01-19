@@ -152,7 +152,7 @@ public interface Table<R> {
     /**
      * Returns a new stream for all rows of this table. The stream must be explicitly closed
      * when no longer used, or else it must be used with a try-with-resources statement. If an
-     * underlying {@code IOException} is generated, it's thrown as-if it was unchecked.
+     * underlying {@code IOException} is generated, it's thrown as if it was unchecked.
      *
      * @param txn optional transaction for the stream to use; pass null for auto-commit mode
      * @return a new stream positioned at the first row in the table
@@ -164,7 +164,7 @@ public interface Table<R> {
      * Returns a new stream for a subset of rows of this table, as specified by the filter
      * expression. The stream must be explicitly closed when no longer used, or else it must be
      * used with a try-with-resources statement. If an underlying {@code IOException} is
-     * generated, it's thrown as-if it was unchecked.
+     * generated, it's thrown as if it was unchecked.
      *
      * @param txn optional transaction for the stream to use; pass null for auto-commit mode
      * @return a new stream positioned at the first row in the table accepted by the filter
