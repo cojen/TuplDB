@@ -471,14 +471,16 @@ public class DeadlockTest {
         final byte[] key1 = "key1".getBytes();
         final byte[] key2 = "key2".getBytes();
 
+        final long timeout = 100L * 1000 * 1000 * 1000;
+
         var locker1 = new Locker(mManager);
-        locker1.doLockExclusive(1, key1, -1);
+        locker1.doLockExclusive(1, key1, timeout);
 
         var task1 = startTestTaskAndWaitUntilBlocked(() -> {
             var locker = new Locker(mManager);
             try {
-                locker.doLockExclusive(1, key2, -1);
-                locker.doLockShared(1, key1, -1);
+                locker.doLockExclusive(1, key2, timeout);
+                locker.doLockShared(1, key1, timeout);
             } catch (Throwable e) {
                 throw Utils.rethrow(e);
             } finally {
@@ -493,7 +495,7 @@ public class DeadlockTest {
             task2 = startTestTaskAndWaitUntilBlocked(() -> {
                 var locker = new Locker(mManager);
                 try {
-                    locker.doLockShared(1, key2, -1);
+                    locker.doLockShared(1, key2, timeout);
                 } catch (Throwable e) {
                     throw Utils.rethrow(e);
                 } finally {
@@ -503,7 +505,7 @@ public class DeadlockTest {
         }
 
         try {
-            locker1.doLockShared(1, key2, -1);
+            locker1.doLockShared(1, key2, timeout);
             fail();
         } catch (DeadlockException e) {
         }
@@ -533,14 +535,16 @@ public class DeadlockTest {
         final byte[] key1 = "key1".getBytes();
         final byte[] key2 = "key2".getBytes();
 
+        final long timeout = 100L * 1000 * 1000 * 1000;
+
         var locker1 = new Locker(mManager);
-        locker1.doLockExclusive(1, key1, -1);
+        locker1.doLockExclusive(1, key1, timeout);
 
         var task1 = startTestTaskAndWaitUntilBlocked(() -> {
             var locker = new Locker(mManager);
             try {
-                locker.doLockExclusive(1, key2, -1);
-                locker.doLockUpgradable(1, key1, -1);
+                locker.doLockExclusive(1, key2, timeout);
+                locker.doLockUpgradable(1, key1, timeout);
             } catch (Throwable e) {
                 throw Utils.rethrow(e);
             } finally {
@@ -555,7 +559,7 @@ public class DeadlockTest {
             task2 = startTestTaskAndWaitUntilBlocked(() -> {
                 var locker = new Locker(mManager);
                 try {
-                    locker.doLockUpgradable(1, key2, -1);
+                    locker.doLockUpgradable(1, key2, timeout);
                 } catch (Throwable e) {
                     throw Utils.rethrow(e);
                 } finally {
@@ -565,7 +569,7 @@ public class DeadlockTest {
         }
 
         try {
-            locker1.doLockUpgradable(1, key2, -1);
+            locker1.doLockUpgradable(1, key2, timeout);
             fail();
         } catch (DeadlockException e) {
         }
@@ -586,14 +590,16 @@ public class DeadlockTest {
         final byte[] key1 = "key1".getBytes();
         final byte[] key2 = "key2".getBytes();
 
+        final long timeout = 100L * 1000 * 1000 * 1000;
+
         var locker1 = new Locker(mManager);
-        locker1.doLockShared(1, key1, -1);
+        locker1.doLockShared(1, key1, timeout);
 
         var task1 = startTestTaskAndWaitUntilBlocked(() -> {
             var locker = new Locker(mManager);
             try {
-                locker.doLockShared(1, key2, -1);
-                locker.doLockExclusive(1, key1, -1);
+                locker.doLockShared(1, key2, timeout);
+                locker.doLockExclusive(1, key1, timeout);
             } catch (Throwable e) {
                 throw Utils.rethrow(e);
             } finally {
@@ -602,7 +608,7 @@ public class DeadlockTest {
         });
 
         try {
-            locker1.doLockExclusive(1, key2, -1);
+            locker1.doLockExclusive(1, key2, timeout);
             fail();
         } catch (DeadlockException e) {
         }

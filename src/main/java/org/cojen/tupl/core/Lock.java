@@ -106,7 +106,8 @@ class Lock {
     /**
      * Called with exclusive latch held, which is retained. If return value is TIMED_OUT_LOCK
      * or DEADLOCK, the locker's mWaitingFor field is set to this Lock as a side-effect.
-     * DEADLOCK is never returned when timeout is 0, but TIMED_OUT_LOCK is possible.
+     * DEADLOCK is never returned when the timeout is less than or equal to zero, but
+     * TIMED_OUT_LOCK is possible when the timeout is zero.
      *
      * @param bucket latched exclusively
      * @return INTERRUPTED, TIMED_OUT_LOCK, DEADLOCK, ACQUIRED, OWNED_SHARED, OWNED_UPGRADABLE,
@@ -124,21 +125,25 @@ class Lock {
                 return OWNED_SHARED;
             }
             locker.mWaitingFor = this;
-            if (nanosTimeout == 0) {
-                return TIMED_OUT_LOCK;
-            }
-            if (quickDeadlockCheck(locker)) {
-                return DEADLOCK;
-            }
-        } else {
-            int count = mLockCount;
-            if (count == ~0) {
-                locker.mWaitingFor = this;
+            if (nanosTimeout >= 0) {
                 if (nanosTimeout == 0) {
                     return TIMED_OUT_LOCK;
                 }
                 if (quickDeadlockCheck(locker)) {
                     return DEADLOCK;
+                }
+            }
+        } else {
+            int count = mLockCount;
+            if (count == ~0) {
+                locker.mWaitingFor = this;
+                if (nanosTimeout >= 0) {
+                    if (nanosTimeout == 0) {
+                        return TIMED_OUT_LOCK;
+                    }
+                    if (quickDeadlockCheck(locker)) {
+                        return DEADLOCK;
+                    }
                 }
                 try {
                     mQueueSX = queueSX = new LatchCondition();
@@ -183,7 +188,8 @@ class Lock {
     /**
      * Called with exclusive latch held, which is retained. If return value is TIMED_OUT_LOCK
      * or DEADLOCK, the locker's mWaitingFor field is set to this Lock as a side-effect.
-     * DEADLOCK is never returned when timeout is 0, but TIMED_OUT_LOCK is possible.
+     * DEADLOCK is never returned when the timeout is less than or equal to zero, but
+     * TIMED_OUT_LOCK is possible when the timeout is zero.
      *
      * @param bucket latched exclusively
      * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, DEADLOCK, ACQUIRED, OWNED_UPGRADABLE, or
@@ -211,11 +217,13 @@ class Lock {
         LatchCondition queueU = mQueueU;
         if (queueU != null) {
             locker.mWaitingFor = this;
-            if (nanosTimeout == 0) {
-                return TIMED_OUT_LOCK;
-            }
-            if (quickDeadlockCheck(locker)) {
-                return DEADLOCK;
+            if (nanosTimeout >= 0) {
+                if (nanosTimeout == 0) {
+                    return TIMED_OUT_LOCK;
+                }
+                if (quickDeadlockCheck(locker)) {
+                    return DEADLOCK;
+                }
             }
         } else {
             if (count >= 0) {
@@ -224,11 +232,13 @@ class Lock {
                 return ACQUIRED;
             }
             locker.mWaitingFor = this;
-            if (nanosTimeout == 0) {
-                return TIMED_OUT_LOCK;
-            }
-            if (quickDeadlockCheck(locker)) {
-                return DEADLOCK;
+            if (nanosTimeout >= 0) {
+                if (nanosTimeout == 0) {
+                    return TIMED_OUT_LOCK;
+                }
+                if (quickDeadlockCheck(locker)) {
+                    return DEADLOCK;
+                }
             }
             try {
                 mQueueU = queueU = new LatchCondition();
@@ -265,7 +275,8 @@ class Lock {
     /**
      * Called with exclusive latch held, which is retained. If return value is TIMED_OUT_LOCK
      * or DEADLOCK, the locker's mWaitingFor field is set to this Lock as a side-effect.
-     * DEADLOCK is never returned when timeout is 0, but TIMED_OUT_LOCK is possible.
+     * DEADLOCK is never returned when the timeout is less than or equal to zero, but
+     * TIMED_OUT_LOCK is possible when the timeout is zero.
      *
      * @param bucket latched exclusively
      * @return ILLEGAL, INTERRUPTED, TIMED_OUT_LOCK, DEADLOCK, ACQUIRED, UPGRADED, or
@@ -286,7 +297,9 @@ class Lock {
                     return ur == OWNED_UPGRADABLE ? UPGRADED : ACQUIRED;
                 } else if (nanosTimeout != 0) {
                     locker.mWaitingFor = this;
-                    if (lockCount == 0x80000001 && quickDeadlockCheckExclusive()) {
+                    if (nanosTimeout > 0 && lockCount == 0x80000001 &&
+                        quickDeadlockCheckExclusive())
+                    {
                         return DEADLOCK;
                     }
                     try {
@@ -299,7 +312,7 @@ class Lock {
                 }
             } else if (nanosTimeout != 0) {
                 locker.mWaitingFor = this;
-                if (mLockCount == 0x80000001 && quickDeadlockCheckExclusive()) {
+                if (nanosTimeout > 0 && mLockCount == 0x80000001 && quickDeadlockCheckExclusive()) {
                     return DEADLOCK;
                 }
                 break quick;
