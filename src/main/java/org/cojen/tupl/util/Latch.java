@@ -196,7 +196,7 @@ public class Latch {
                 return;
             }
 
-            cWaiterHandle.setOpaque(node, null);
+            node.mWaiter = null;
 
             // Acquired while still in the queue. Remove the node now, releasing memory.
             if (mLatchFirst != node) {
@@ -948,7 +948,7 @@ public class Latch {
                 if (acquired) {
                     // Acquired, so no need to reference the waiter anymore.
                     if (!((boolean) cSignaledHandle.get(this))) {
-                        cWaiterHandle.setOpaque(this, null);
+                        mWaiter = null;
                     } else if (!cWaiterHandle.compareAndSet(this, waiter, null)) {
                         return 1;
                     }
@@ -993,7 +993,7 @@ public class Latch {
                     }
                     if (acquired) {
                         if ((boolean) cSignaledHandle.get(this)) {
-                            cWaiterHandle.setOpaque(this, null);
+                            mWaiter = null;
                             return 1;
                         }
                         break;
@@ -1033,7 +1033,6 @@ public class Latch {
                             // Break out to remove from queue and return -1 or 0.
                             break doAcquire;
                         }
-                        cWaiterHandle.setOpaque(this, null);
                     }
                     // Signaled, and so the node is no longer in the queue.
                     if (result < 0) {
