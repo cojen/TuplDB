@@ -155,33 +155,29 @@ class Lock {
         }
 
         // Await for shared lock.
-        Object result = queueSX.awaitTagged(bucket, this, nanosTimeout);
+        Object result = queueSX.awaitTagged(bucket, locker, nanosTimeout);
         queueSX = mQueueSX;
 
-        if (queueSX == null) {
-            // Assume LockManager was closed.
-            locker.mWaitingFor = null;
-            return INTERRUPTED;
+        if (queueSX != null) {
+            if (queueSX.isEmpty()) {
+                // Indicate that last signal has been consumed, and also free memory.
+                mQueueSX = null;
+            }
+            if (result != null) {
+                locker.mWaitingFor = null;
+                // After consuming one signal, next shared waiter must be signaled, and so on.
+                // Do this before calling addSharedLocker, in case it throws an exception.
+                queueSX.signalTagged(bucket);
+                addSharedLocker(mLockCount, locker);
+                return ACQUIRED;
+            } else if (!Thread.interrupted()) {
+                return TIMED_OUT_LOCK;
+            }
         }
 
-        if (queueSX.isEmpty()) {
-            // Indicate that last signal has been consumed, and also free memory.
-            mQueueSX = null;
-        }
-
-        if (result != null) {
-            locker.mWaitingFor = null;
-            // After consuming one signal, next shared waiter must be signaled, and so on. Do
-            // this before calling addSharedLocker, in case it throws an exception.
-            queueSX.signalTagged(bucket);
-            addSharedLocker(mLockCount, locker);
-            return ACQUIRED;
-        } else if (Thread.interrupted()) {
-            locker.mWaitingFor = null;
-            return INTERRUPTED;
-        } else {
-            return TIMED_OUT_LOCK;
-        }
+        // This point is reached if interrupted or if the LockManager was closed.
+        locker.mWaitingFor = null;
+        return INTERRUPTED;
     }
 
     /**
@@ -246,28 +242,24 @@ class Lock {
         int result = queueU.await(bucket, nanosTimeout);
         queueU = mQueueU;
 
-        if (queueU == null) {
-            // Assume LockManager was closed.
-            locker.mWaitingFor = null;
-            return INTERRUPTED;
+        if (queueU != null) {
+            if (queueU.isEmpty()) {
+                // Indicate that last signal has been consumed, and also free memory.
+                mQueueU = null;
+            }
+            if (result > 0) {
+                locker.mWaitingFor = null;
+                mLockCount |= 0x80000000;
+                mOwner = locker;
+                return ACQUIRED;
+            } else if (result == 0) {
+                return TIMED_OUT_LOCK;
+            }
         }
 
-        if (queueU.isEmpty()) {
-            // Indicate that last signal has been consumed, and also free memory.
-            mQueueU = null;
-        }
-
-        if (result > 0) {
-            locker.mWaitingFor = null;
-            mLockCount |= 0x80000000;
-            mOwner = locker;
-            return ACQUIRED;
-        } else if (result == 0) {
-            return TIMED_OUT_LOCK;
-        } else {
-            locker.mWaitingFor = null;
-            return INTERRUPTED;
-        }
+        // This point is reached if interrupted or if the LockManager was closed.
+        locker.mWaitingFor = null;
+        return INTERRUPTED;
     }
 
     /**
@@ -323,32 +315,28 @@ class Lock {
         int result = queueSX.await(bucket, nanosTimeout);
         queueSX = mQueueSX;
 
-        if (queueSX == null) {
-            // Assume LockManager was closed.
-            locker.mWaitingFor = null;
-            return INTERRUPTED;
-        }
-
-        if (queueSX.isEmpty()) {
-            // Indicate that last signal has been consumed, and also free memory.
-            mQueueSX = null;
-        }
-
-        if (result > 0) {
-            locker.mWaitingFor = null;
-            mLockCount = ~0;
-            return ur == OWNED_UPGRADABLE ? UPGRADED : ACQUIRED;
-        } else {
-            if (ur == ACQUIRED) {
-                unlockUpgradable(bucket);
+        if (queueSX != null) {
+            if (queueSX.isEmpty()) {
+                // Indicate that last signal has been consumed, and also free memory.
+                mQueueSX = null;
             }
-            if (result == 0) {
-                return TIMED_OUT_LOCK;
-            } else {
+            if (result > 0) {
                 locker.mWaitingFor = null;
-                return INTERRUPTED;
+                mLockCount = ~0;
+                return ur == OWNED_UPGRADABLE ? UPGRADED : ACQUIRED;
+            } else {
+                if (ur == ACQUIRED) {
+                    unlockUpgradable(bucket);
+                }
+                if (result == 0) {
+                    return TIMED_OUT_LOCK;
+                }
             }
         }
+
+        // This point is reached if interrupted or if the LockManager was closed.
+        locker.mWaitingFor = null;
+        return INTERRUPTED;
     }
 
     /**
