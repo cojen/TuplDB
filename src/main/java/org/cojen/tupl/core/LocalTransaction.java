@@ -565,6 +565,8 @@ public final class LocalTransaction extends Locker implements Transaction {
             parentScope.mLockTimeoutNanos = mLockTimeoutNanos;
             parentScope.mHasState = mHasState;
 
+            mLockMode = LockMode.UPGRADABLE_READ;
+
             UndoLog undo = mUndoLog;
             if (undo != null) {
                 parentScope.mSavepoint = mSavepoint;
