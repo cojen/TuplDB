@@ -111,16 +111,14 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color">
 <div class="block">Blocks the current thread until a signal is received.</div>
 </div>
-<div class="col-first even-row-color"><code>final <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">LatchCondition.</span><code><a href="../LatchCondition.html#awaitTagged(org.cojen.tupl.util.Latch,java.lang.Object,long)" class="member-name-link">awaitTagged</a><wbr>(<a href="../Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
- <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;tag,
+<div class="col-first even-row-color"><code>final int</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">LatchCondition.</span><code><a href="../LatchCondition.html#awaitTagged(org.cojen.tupl.util.Latch,long)" class="member-name-link">awaitTagged</a><wbr>(<a href="../Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
  long&nbsp;nanosTimeout)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Blocks the current thread until a signal is received.</div>
 </div>
-<div class="col-first odd-row-color"><code>final <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">LatchCondition.</span><code><a href="../LatchCondition.html#awaitTagged(org.cojen.tupl.util.Latch,java.lang.Object,long,long)" class="member-name-link">awaitTagged</a><wbr>(<a href="../Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
- <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;tag,
+<div class="col-first odd-row-color"><code>final int</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">LatchCondition.</span><code><a href="../LatchCondition.html#awaitTagged(org.cojen.tupl.util.Latch,long,long)" class="member-name-link">awaitTagged</a><wbr>(<a href="../Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
  long&nbsp;nanosTimeout,
  long&nbsp;nanosEnd)</code></div>
 <div class="col-last odd-row-color">
@@ -147,13 +145,6 @@ loadScripts(document, 'script');</script>
 <div class="col-second odd-row-color"><span class="type-name-label">LatchCondition.</span><code><a href="../LatchCondition.html#signalTagged(org.cojen.tupl.util.Latch)" class="member-name-link">signalTagged</a><wbr>(<a href="../Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch)</code></div>
 <div class="col-last odd-row-color">
 <div class="block">Signals the first waiter, but only if it's a tagged waiter.</div>
-</div>
-<div class="col-first even-row-color"><code>final <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">LatchCondition.</span><code><a href="../LatchCondition.html#signalTagged(org.cojen.tupl.util.Latch,java.lang.Object,java.lang.Object)" class="member-name-link">signalTagged</a><wbr>(<a href="../Latch.html" title="class in org.cojen.tupl.util">Latch</a>&nbsp;latch,
- <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;tag,
- <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;replacement)</code></div>
-<div class="col-last even-row-color">
-<div class="block">Signals the first waiter which matches the given tag.</div>
 </div>
 </div>
 </section>

@@ -160,7 +160,7 @@ class Lock {
         }
 
         // Await for shared lock.
-        Object result = queueSX.awaitTagged(bucket, locker, nanosTimeout);
+        int result = queueSX.awaitTagged(bucket, nanosTimeout);
         queueSX = mQueueSX;
 
         if (queueSX != null) {
@@ -168,14 +168,14 @@ class Lock {
                 // Indicate that last signal has been consumed, and also free memory.
                 mQueueSX = null;
             }
-            if (result != null) {
+            if (result > 0) {
                 locker.mWaitingFor = null;
                 // After consuming one signal, next shared waiter must be signaled, and so on.
                 // Do this before calling addSharedLocker, in case it throws an exception.
                 queueSX.signalTagged(bucket);
                 addSharedLocker(mLockCount, locker);
                 return ACQUIRED;
-            } else if (!Thread.interrupted()) {
+            } else if (result == 0) {
                 return TIMED_OUT_LOCK;
             }
         }

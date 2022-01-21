@@ -37,7 +37,7 @@ public class Latch {
     static final int SPIN_LIMIT = Runtime.getRuntime().availableProcessors() > 1 ? 1 << 10 : 1;
 
     static final VarHandle cStateHandle, cFirstHandle, cLastHandle,
-        cWaiterHandle, cSignaledHandle, cPrevHandle, cNextHandle;
+        cWaiterHandle, cWaitStateHandle, cPrevHandle, cNextHandle;
 
     static {
         try {
@@ -46,7 +46,7 @@ public class Latch {
             cFirstHandle = lookup.findVarHandle(Latch.class, "mLatchFirst", WaitNode.class);
             cLastHandle = lookup.findVarHandle(Latch.class, "mLatchLast", WaitNode.class);
             cWaiterHandle = lookup.findVarHandle(WaitNode.class, "mWaiter", Object.class);
-            cSignaledHandle = lookup.findVarHandle(WaitNode.class, "mSignaled", boolean.class);
+            cWaitStateHandle = lookup.findVarHandle(WaitNode.class, "mWaitState", int.class);
             cPrevHandle = lookup.findVarHandle(WaitNode.class, "mPrev", WaitNode.class);
             cNextHandle = lookup.findVarHandle(WaitNode.class, "mNext", WaitNode.class);
         } catch (Throwable e) {
@@ -172,8 +172,7 @@ public class Latch {
         if (!doTryAcquireExclusive()) enqueue: {
             WaitNode node;
             try {
-                node = new WaitNode(cont);
-                cSignaledHandle.set(node, true);
+                node = new WaitNode(cont, WaitNode.SIGNALED);
             } catch (Throwable e) {
                 // Possibly an OutOfMemoryError. Caller isn't expecting an exception, so spin.
                 doAcquireExclusiveSpin();
@@ -305,7 +304,7 @@ public class Latch {
                         continue;
                     }
 
-                    if (!first.mSignaled) {
+                    if (first.mWaitState != WaitNode.SIGNALED) {
                         // Unpark the waiter, but allow another thread to barge in.
                         mLatchState = 0;
                         Parker.unpark((Thread) waiter);
@@ -706,7 +705,7 @@ public class Latch {
                 // Lost the race. Request fair handoff.
 
                 if (denied++ == 0) {
-                    node.mSignaled = true;
+                    node.mWaitState = WaitNode.SIGNALED;
                 }
             }
         }
@@ -903,7 +902,16 @@ public class Latch {
     static class WaitNode {
         volatile Object mWaiter;
 
-        volatile boolean mSignaled;
+        /*
+          The COND states are only used when the node is associated with a LatchCondition,
+          and when such a node moves into the Latch, the state is always SIGNALED.
+          
+          0 -> SIGNALED
+          COND_WAIT -> SIGNALED
+          COND_WAIT_TAGGED -> SIGNALED
+         */
+        static final int SIGNALED = 1, COND_WAIT = 2, COND_WAIT_TAGGED = 3;
+        volatile int mWaitState;
 
         // Only set if node was deleted and must be bypassed when a new node is enqueued.
         volatile WaitNode mPrev;
@@ -918,8 +926,9 @@ public class Latch {
         /**
          * Constructor for condition wait. Caller must hold exclusive latch.
          */
-        WaitNode(Object waiter) {
+        WaitNode(Object waiter, int waitState) {
             cWaiterHandle.set(this, waiter);
+            cWaitStateHandle.set(this, waitState);
         }
 
         /**
@@ -947,7 +956,7 @@ public class Latch {
                 }
                 if (acquired) {
                     // Acquired, so no need to reference the waiter anymore.
-                    if (!((boolean) cSignaledHandle.get(this))) {
+                    if (((int) cWaitStateHandle.get(this)) != SIGNALED) {
                         mWaiter = null;
                     } else if (!cWaiterHandle.compareAndSet(this, waiter, null)) {
                         return 1;
@@ -964,7 +973,7 @@ public class Latch {
          */
         final void condSignal(Latch latch, LatchCondition queue) {
             condRemove(queue);
-            cSignaledHandle.set(this, true);
+            cWaitStateHandle.set(this, SIGNALED);
             latch.enqueue(this);
         }
 
@@ -992,7 +1001,7 @@ public class Latch {
                         return 1;
                     }
                     if (acquired) {
-                        if ((boolean) cSignaledHandle.get(this)) {
+                        if (((int) cWaitStateHandle.get(this)) == SIGNALED) {
                             mWaiter = null;
                             return 1;
                         }
@@ -1029,7 +1038,7 @@ public class Latch {
                     Object waiter = mWaiter;
                     if (waiter != null && cWaiterHandle.compareAndSet(this, waiter, null)) {
                         latch.acquireExclusive();
-                        if (!((boolean) cSignaledHandle.get(this))) {
+                        if (((int) cWaitStateHandle.get(this)) != SIGNALED) {
                             // Break out to remove from queue and return -1 or 0.
                             break doAcquire;
                         }
@@ -1075,7 +1084,7 @@ public class Latch {
             var b = new StringBuilder();
             appendMiniString(b, this);
             b.append('{').append("waiter=").append(mWaiter);
-            b.append(", signaled=").append(mSignaled);
+            b.append(", state=").append(mWaitState);
             b.append(", next="); appendMiniString(b, mNext);
             b.append(", prev="); appendMiniString(b, mPrev);
             return b.append('}').toString();
@@ -1181,18 +1190,6 @@ public class Latch {
                 }
                 return (mNanosTimeout = mEndNanos - System.nanoTime()) <= 0;
             }
-        }
-    }
-
-    static class Tagged extends WaitNode {
-        Object mTag;
-
-        /**
-         * Constructor for condition wait. Caller must hold exclusive latch.
-         */
-        Tagged(Object waiter, Object tag) {
-            super(waiter);
-            mTag = tag;
         }
     }
 }
