@@ -96,18 +96,12 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
         version.acquire(local);
 
         try {
-            local.redoPredicateLock(RedoOps.OP_TXN_PREDICATE_LOCK_OPEN);
-            try {
-                for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
-                    if (e.test(row)) {
-                        e.matchAcquire(local);
-                    }
+            for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
+                if (e.test(row)) {
+                    e.matchAcquire(local);
                 }
-                return version;
-            } catch (Throwable e) {
-                local.redoPredicateLock(RedoOps.OP_TXN_PREDICATE_LOCK_CLOSE);
-                throw e;
             }
+            return version;
         } catch (Throwable e) {
             version.close();
             throw e;
@@ -133,27 +127,21 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
         }
 
         try {
-            local.redoPredicateLock(RedoOps.OP_TXN_PREDICATE_LOCK_OPEN);
-            try {
-                for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
-                    if (e.test(row)) {
-                        LockResult result = e.tryMatchAcquire(local);
-                        if (result == LockResult.ACQUIRED) {
-                            txn.unlockCombine();
-                            closer = version;
-                        } else if (!result.isHeld()) {
-                            if (closer == version) {
-                                txn.unlock();
-                            }
-                            return null;
+            for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
+                if (e.test(row)) {
+                    LockResult result = e.tryMatchAcquire(local);
+                    if (result == LockResult.ACQUIRED) {
+                        txn.unlockCombine();
+                        closer = version;
+                    } else if (!result.isHeld()) {
+                        if (closer == version) {
+                            txn.unlock();
                         }
+                        return null;
                     }
                 }
-                return closer;
-            } catch (Throwable e) {
-                local.redoPredicateLock(RedoOps.OP_TXN_PREDICATE_LOCK_CLOSE);
-                throw e;
             }
+            return closer;
         } catch (Throwable e) {
             version.close();
             throw e;
@@ -570,38 +558,6 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
         }
 
         /**
-         * Called when an openAcquire step returns a boolean.
-         */
-        @Override
-        public void close(Transaction txn, boolean result) throws IOException {
-            close();
-            if (!result) {
-                ((LocalTransaction) txn).redoPredicateLock(RedoOps.OP_TXN_PREDICATE_LOCK_CLOSE);
-            }
-        }
-
-        /**
-         * Called when an openAcquire step didn't finish properly.
-         */
-        @Override
-        public void close(Transaction txn, Throwable ex, long indexId, byte[] key, byte[] value)
-            throws IOException
-        {
-            close();
-            try {
-                var local = (LocalTransaction) txn;
-                if (ex instanceof LockFailureException) {
-                    local.redoPredicateLock(RedoOps.OP_TXN_PREDICATE_LOCK_CLOSE);
-                } else {
-                    local.redoPredicateLockAcquire(indexId, key, value);
-                }
-            } catch (IOException e) {
-                Utils.suppress(e, ex);
-                throw e;
-            }
-        }
-
-        /**
          * Wait for transactions to finish which are using this version and have also locked
          * rows that are matched by the given evaluator.
          *
@@ -875,22 +831,6 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
             var bucket = mBucket;
             bucket.acquireExclusive();
             doUnlockOwnedUnrestricted(bucket);
-        }
-
-        /**
-         * Not expected to be called.
-         */
-        @Override
-        public void close(Transaction txn, boolean result) {
-            close();
-        }
-
-        /**
-         * Not expected to be called.
-         */
-        @Override
-        public void close(Transaction txn, Throwable ex, long indexId, byte[] key, byte[] value) {
-            close();
         }
     }
 }

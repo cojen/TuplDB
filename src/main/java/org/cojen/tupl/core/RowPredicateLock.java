@@ -36,8 +36,8 @@ public interface RowPredicateLock<R> {
      * acquired up to that point are still retained.
      *
      * @param row is passed to the {@code RowPredicate.test} method
-     * @return object which must be closed at most once after the associated row operation has
-     * been performed
+     * @return object which must be closed at most once after the associated row lock has
+     * been been acquired
      * @throws IllegalStateException if too many shared locks
      */
     Closer openAcquire(Transaction txn, R row) throws IOException;
@@ -50,6 +50,9 @@ public interface RowPredicateLock<R> {
      * Returns null if not acquired, or else a Closer instance. Returns NonCloser if accepted,
      * but all the necessary locks were already held. Call close on the Closer when the
      * specific row lock has been acquired, or else call failed if an exception is thrown.
+     *
+     * This method is primarily used in conjunction with automatic columns. If null is
+     * returned, another random number is generated.
      *
      * @param row is passed to the {@code RowPredicate.test} method
      * @return null if not acquired
@@ -106,22 +109,8 @@ public interface RowPredicateLock<R> {
      */
     Class<? extends RowPredicate<R>> evaluatorClass();
 
-    public static interface Closer {
+    public static interface Closer extends AutoCloseable {
         void close();
-
-        /**
-         * Only expected to be used when using openAcquire(txn, row) when the associated row
-         * operation returns a boolean. When false, then no exclusive row lock was acquired.
-         */
-        void close(Transaction txn, boolean result) throws IOException;
-
-        /**
-         * Only expected to be used when using openAcquire(txn, row) when the associated row
-         * operation threw with an exception. If a LockFailureException, then no exclusive row
-         * lock was acquired.
-         */
-        void close(Transaction txn, Throwable ex, long indexId, byte[] key, byte[] value)
-            throws IOException;
     }
 
     public static final class NonCloser implements Closer {
@@ -132,14 +121,6 @@ public interface RowPredicateLock<R> {
 
         @Override
         public void close() {
-        }
-
-        @Override
-        public void close(Transaction txn, boolean result) {
-        }
-
-        @Override
-        public void close(Transaction txn, Throwable ex, long indexId, byte[] key, byte[] value) {
         }
     }
 }

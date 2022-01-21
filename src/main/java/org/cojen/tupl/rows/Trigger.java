@@ -39,7 +39,7 @@ public class Trigger<R> extends WideLatch {
     int mMode;
 
     /**
-     * Called after a row has been stored, but before the row has been marked clean. By
+     * Called after a row has been locked, but before the row has been marked clean. By
      * default, this method always throws an exception.
      *
      * @param txn never null, although can be BOGUS
@@ -55,7 +55,7 @@ public class Trigger<R> extends WideLatch {
     }
 
     /**
-     * Called after a row has been inserted, but before the row has been marked clean. By
+     * Called after a row has been locked, but before the row has been marked clean. By
      * default, this method always throws an exception.
      *
      * @param txn never null, although can be BOGUS
@@ -68,7 +68,7 @@ public class Trigger<R> extends WideLatch {
     }
 
     /**
-     * Called after a row has been deleted, but before the row has been marked clean. By
+     * Called after a row has been locked, but before the row has been marked clean. By
      * default, this method always throws an exception.
      *
      * @param txn never null, although can be BOGUS
@@ -81,7 +81,7 @@ public class Trigger<R> extends WideLatch {
     }
 
     /**
-     * Called after a row has been updated, but before the row has been marked undirty. This
+     * Called after a row has been locked, but before the row has been marked undirty. This
      * variant is only called from the "update" method when the row is partially dirtied. The
      * oldValue and newValue are fully specified, but the row object remains partial. When the
      * "merge" method is called (or any other), or when all columns are dirty, the regular

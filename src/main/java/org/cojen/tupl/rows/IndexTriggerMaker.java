@@ -801,12 +801,14 @@ public class IndexTriggerMaker<R> {
 
             if (!secondaryInfo.isAltKey()) {
                 ixField.invoke("store", txnVar, secondaryKeyVar, secondaryValueVar);
-                TableMaker.finishAcquire(mm, closerVar, opStart, txnVar, ixField,
-                                         secondaryKeyVar, secondaryValueVar, null);
+                if (closerVar != null) {
+                    mm.finally_(opStart, () -> closerVar.invoke("close"));
+                }
             } else {
                 var result = ixField.invoke("insert", txnVar, secondaryKeyVar, secondaryValueVar);
-                TableMaker.finishAcquire(mm, closerVar, opStart, txnVar, ixField,
-                                         secondaryKeyVar, secondaryValueVar, result);
+                if (closerVar != null) {
+                    mm.finally_(opStart, () -> closerVar.invoke("close"));
+                }
                 Label pass = mm.label();
                 result.ifTrue(pass);
                 mm.new_(UniqueConstraintException.class, "Alternate key").throw_();
@@ -1138,12 +1140,14 @@ public class IndexTriggerMaker<R> {
 
             if (!secondaryInfo.isAltKey()) {
                 ixField.invoke("store", txnVar, secondaryKeyVar, secondaryValueVar);
-                TableMaker.finishAcquire(mm, closerVar, opStart, txnVar, ixField,
-                                         secondaryKeyVar, secondaryValueVar, null);
+                if (closerVar != null) {
+                    mm.finally_(opStart, () -> closerVar.invoke("close"));
+                }
             } else {
                 var result = ixField.invoke("insert", txnVar, secondaryKeyVar, secondaryValueVar);
-                TableMaker.finishAcquire(mm, closerVar, opStart, txnVar, ixField,
-                                         secondaryKeyVar, secondaryValueVar, result);
+                if (closerVar != null) {
+                    mm.finally_(opStart, () -> closerVar.invoke("close"));
+                }
                 Label pass = mm.label();
                 result.ifTrue(pass);
                 mm.new_(UniqueConstraintException.class, "Alternate key").throw_();

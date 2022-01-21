@@ -837,14 +837,19 @@ public class TableMaker {
             txnVar.set(mm.var(ViewUtils.class).invoke("enterScope", source, txnVar));
             Label txnStart = mm.label().here();
 
-            var oldValueVar = source.invoke("exchange", txnVar, keyVar, null);
+            var cursorVar = source.invoke("newCursor", txnVar);
+            Label cursorStart = mm.label().here();
+
+            cursorVar.invoke("find", keyVar);
+            var oldValueVar = cursorVar.invoke("value");
             Label commit = mm.label();
             oldValueVar.ifEq(null, commit);
             triggerVar.invoke("delete", txnVar, rowVar, keyVar, oldValueVar);
             commit.here();
-            txnVar.invoke("commit");
+            cursorVar.invoke("commit", (Object) null);
             mm.return_(oldValueVar.ne(null));
 
+            mm.finally_(cursorStart, () -> cursorVar.invoke("reset"));
             mm.finally_(txnStart, () -> txnVar.invoke("exit"));
 
             skipLabel.here();
@@ -921,19 +926,22 @@ public class TableMaker {
             txnVar.set(mm.var(ViewUtils.class).invoke("enterScope", source, txnVar));
             Label txnStart = mm.label().here();
 
+            // Always use a cursor to acquire the upgradable row lock before updating
+            // secondaries. This prevents deadlocks with a concurrent index scan which joins
+            // against the row. The row lock is acquired exclusively after all secondaries have
+            // been updated. At that point, shared lock acquisition against the row is blocked.
+            var cursorVar = source.invoke("newCursor", txnVar);
+            Label cursorStart = mm.label().here();
+
             if (variant == "replace") {
-                var cursorVar = source.invoke("newCursor", txnVar);
-                Label cursorStart = mm.label().here();
                 cursorVar.invoke("find", keyVar);
                 var oldValueVar = cursorVar.invoke("value");
                 Label passed = mm.label();
                 oldValueVar.ifNe(null, passed);
                 mm.return_(false);
                 passed.here();
-                cursorVar.invoke("store", valueVar);
-                mm.finally_(cursorStart, () -> cursorVar.invoke("reset"));
                 triggerVar.invoke("store", txnVar, rowVar, keyVar, oldValueVar, valueVar);
-                txnVar.invoke("commit");
+                cursorVar.invoke("commit", valueVar);
                 markAllClean(rowVar);
                 mm.return_(true);
             } else {
@@ -948,20 +956,25 @@ public class TableMaker {
                 }
 
                 if (variant == "insert") {
-                    var insertResultVar = source.invoke(variant, txnVar, keyVar, valueVar);
-                    finishAcquire(mm, closerVar, opStart, txnVar, source,
-                                  keyVar, valueVar, insertResultVar);
+                    cursorVar.invoke("autoload", false);
+                    cursorVar.invoke("find", keyVar);
+                    if (closerVar != null) {
+                        mm.finally_(opStart, () -> closerVar.invoke("close"));
+                    }
                     Label passed = mm.label();
-                    insertResultVar.ifTrue(passed);
+                    cursorVar.invoke("value").ifEq(null, passed);
                     mm.return_(false);
                     passed.here();
                     triggerVar.invoke("insert", txnVar, rowVar, keyVar, valueVar);
-                    txnVar.invoke("commit");
+                    cursorVar.invoke("commit", valueVar);
                     markAllClean(rowVar);
                     mm.return_(true);
                 } else {
-                    var oldValueVar = source.invoke("exchange", txnVar, keyVar, valueVar);
-                    finishAcquire(mm, closerVar, opStart, txnVar, source, keyVar, valueVar, null);
+                    cursorVar.invoke("find", keyVar);
+                    if (closerVar != null) {
+                        mm.finally_(opStart, () -> closerVar.invoke("close"));
+                    }
+                    var oldValueVar = cursorVar.invoke("value");
                     Label wasNull = mm.label();
                     oldValueVar.ifEq(null, wasNull);
                     triggerVar.invoke("store", txnVar, rowVar, keyVar, oldValueVar, valueVar);
@@ -970,7 +983,7 @@ public class TableMaker {
                     wasNull.here();
                     triggerVar.invoke("insert", txnVar, rowVar, keyVar, valueVar);
                     commit.here();
-                    txnVar.invoke("commit");
+                    cursorVar.invoke("commit", valueVar);
                     if (variant == "store") {
                         markAllClean(rowVar);
                         mm.return_();
@@ -981,6 +994,7 @@ public class TableMaker {
                 }
             }
 
+            mm.finally_(cursorStart, () -> cursorVar.invoke("reset"));
             mm.finally_(txnStart, () -> txnVar.invoke("exit"));
 
             skipLabel.here();
@@ -1055,7 +1069,7 @@ public class TableMaker {
         var closerVar = mm.field("mIndexLock").invoke("openAcquire", txnVar, rowVar);
         Label opStart = mm.label().here();
         var resultVar = source.invoke(variant, txnVar, keyVar, valueVar);
-        finishAcquire(mm, closerVar, opStart, txnVar, source, keyVar, valueVar, resultVar);
+        mm.finally_(opStart, () -> closerVar.invoke("close"));
         txnVar.invoke("commit");
         mm.finally_(txnStart, () -> txnVar.invoke("exit"));
 
@@ -1125,30 +1139,6 @@ public class TableMaker {
     }
 
     /**
-     * To be called after invoking the operation associated with an openAcquire call.
-     *
-     * @param closerVar if null, then no close code is added
-     * @param resultVar can be null, but only does something different when type is boolean
-     */
-    static void finishAcquire(MethodMaker mm, Variable closerVar, Label opStart, Variable txnVar,
-                              Variable indexVar, Variable keyVar, Variable valueVar,
-                              Variable resultVar)
-    {
-        if (closerVar != null) {
-            mm.catch_(opStart, Throwable.class, exVar -> {
-                var indexIdVar = indexVar.invoke("id");
-                closerVar.invoke("close", txnVar, exVar, indexIdVar, keyVar, valueVar);
-                exVar.throw_();
-            });
-            if (resultVar == null || resultVar.classType() != boolean.class) {
-                closerVar.invoke("close");
-            } else {
-                closerVar.invoke("close", txnVar, resultVar);
-            }
-        }
-    }
-
-    /**
      * Adds a method which does most of the work for the update and merge methods. The
      * transaction parameter must not be null, which is committed when changes are made.
      *
@@ -1211,9 +1201,8 @@ public class TableMaker {
                 mm.return_(false);
                 replace.here();
                 var valueVar = mm.invoke("encodeValue", rowVar);
-                cursorVar.invoke("store", valueVar);
                 triggerVar.invoke("store", txnVar, rowVar, keyVar, oldValueVar, valueVar);
-                txnVar.invoke("commit");
+                cursorVar.invoke("commit", valueVar);
                 markAllClean(rowVar);
                 mm.return_(true);
 
@@ -1432,11 +1421,10 @@ public class TableMaker {
             prepareForTrigger(mm, tableVar, triggerVar, skipLabel);
             Label triggerStart = mm.label().here();
 
-            cursorVar.invoke("store", newValueVar);
             var txnVar = cursorVar.invoke("link");
             var keyVar = cursorVar.invoke("key");
             triggerVar.invoke("update", txnVar, rowVar, keyVar, valueVar, newValueVar);
-            txnVar.invoke("commit");
+            cursorVar.invoke("commit", newValueVar);
             Label cont = mm.label();
             mm.goto_(cont);
 
@@ -1476,11 +1464,10 @@ public class TableMaker {
             prepareForTrigger(mm, tableVar, triggerVar, skipLabel);
             Label triggerStart = mm.label().here();
 
-            cursorVar.invoke("store", newValueVar);
             var txnVar = cursorVar.invoke("link");
             var keyVar = cursorVar.invoke("key");
             triggerVar.invoke("store", txnVar, rowVar, keyVar, valueVar, newValueVar);
-            txnVar.invoke("commit");
+            cursorVar.invoke("commit", newValueVar);
             Label cont = mm.label();
             mm.goto_(cont);
 

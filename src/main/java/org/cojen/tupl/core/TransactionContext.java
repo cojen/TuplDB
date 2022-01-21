@@ -716,18 +716,6 @@ final class TransactionContext extends Latch implements Flushable {
         }
     }
 
-    void redoPredicateLock(RedoWriter redo, byte op, long txnId) throws IOException {
-        redo.opWriteCheck(null);
-
-        acquireRedoLatch();
-        try {
-            redoWriteTxnOp(redo, op, txnId);
-            redoWriteTerminator(redo);
-        } finally {
-            releaseRedoLatch();
-        }
-    }
-
     void redoCustom(RedoWriter redo, long txnId, int handlerId, byte[] message) throws IOException {
         if (message == null) {
             throw new NullPointerException("Message is null");

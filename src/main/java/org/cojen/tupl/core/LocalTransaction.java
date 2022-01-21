@@ -1620,52 +1620,6 @@ public final class LocalTransaction extends Locker implements Transaction {
     }
 
     /**
-     * Called after a predicate lock has been acquired, but before the associated row operation
-     * begins.
-     */
-    final void redoPredicateLock(byte op) throws IOException {
-        check();
-
-        if (mRedo == null) {
-            return;
-        }
-
-        long txnId = mTxnId;
-
-        final CommitLock.Shared shared = mDatabase.commitLock().acquireShared();
-        try {
-            if (txnId == 0) {
-                txnId = doAssignTransactionId();
-            }
-        } finally {
-            shared.release();
-        }
-
-        try {
-            mContext.redoPredicateLock(mRedo, op, txnId);
-        } catch (Throwable e) {
-            borked(e);
-        }
-    }
-
-    /**
-     * Called to complete an open predicate lock acquisition when the associated row operation
-     * failed.
-     */
-    final void redoPredicateLockAcquire(long indexId, byte[] key, byte[] value) throws IOException {
-        long txnId;
-        if (mBorked != null || mRedo == null || (txnId = mTxnId) == 0) {
-            return;
-        }
-
-        try {
-            mContext.redoStore(mRedo, OP_TXN_PREDICATE_LOCK_ACQUIRE, txnId, indexId, key, value);
-        } catch (Throwable e) {
-            borked(e);
-        }
-    }
-
-    /**
      * Caller must hold commit lock.
      *
      * @param op OP_UNUPDATE or OP_UNDELETE

@@ -166,16 +166,6 @@ class RedoOps {
         /** txnId: delta, prepareTxnId: long */
         OP_TXN_PREPARE_ROLLBACK = 52,
 
-        /** txnId: delta */
-        OP_TXN_PREDICATE_LOCK_OPEN = 53,
-
-        /** txnId: delta */
-        OP_TXN_PREDICATE_LOCK_CLOSE = 54,
-
-        /** txnId: delta, indexId: long, keyLength: varInt, key: bytes,
-            valueLength: varInt, value: bytes */
-        OP_TXN_PREDICATE_LOCK_ACQUIRE = 55,
-
         /** txnId: delta, handlerId: varInt, messageLength: varInt, message: bytes */
         OP_TXN_CUSTOM = 56,
 
