@@ -20,7 +20,6 @@ package org.cojen.tupl.rows;
 import java.io.IOException;
 
 import org.cojen.tupl.Cursor;
-import org.cojen.tupl.LockResult;
 import org.cojen.tupl.UnmodifiableViewException;
 
 /**
@@ -33,7 +32,7 @@ public interface RowDecoderEncoder<R> {
      * @param row can pass null to construct a new instance
      * @return null if row is filtered out
      */
-    R decodeRow(Cursor c, LockResult result, R row) throws IOException;
+    R decodeRow(Cursor c, R row) throws IOException;
 
     /**
      * Called by BasicRowUpdater.

@@ -799,10 +799,24 @@ public class IndexLockTest {
     
     @Test
     public void noDeadlockWithScanner() throws Exception {
+        tryDeadlockWithScanner(LockMode.READ_COMMITTED, false);
+    }
+
+    @Test
+    public void noDeadlockWithScanner2() throws Exception {
+        tryDeadlockWithScanner(LockMode.REPEATABLE_READ, false);
+    }
+
+    @Test
+    public void deadlockWithScanner() throws Exception {
+        tryDeadlockWithScanner(LockMode.UPGRADABLE_READ, true);
+    }
+
+    private void tryDeadlockWithScanner(LockMode mode, boolean deadlock) throws Exception {
         // Verifies that a writer doesn't deadlock with a scanner against a secondary index
         // when the writer leads the scanner. The writer should acquire an upgradable row lock
         // before updating secondaries, and then acquire an exclusive row lock at the end.
-        // FIXME: test with an updater; it should deadlock unless special steps are taken
+        // This technique doesn't prevent deadlocks when using UPGRADABLE_READ, however.
 
         Table<TestRow2> table = mDatabase.openTable(TestRow2.class);
         Table<TestRow2> ix = table.viewSecondaryIndex("name");
@@ -832,10 +846,8 @@ public class IndexLockTest {
         // Cannot read a row because it's blocked by w1.
         Waiter w2 = start(() -> {
             Transaction txn = mDatabase.newTransaction();
-            txn.lockMode(LockMode.READ_COMMITTED);
+            txn.lockMode(mode);
             txn.lockTimeout(2, TimeUnit.SECONDS);
-            // FIXME: test this filter too, but it needs the two step logic to be implemented
-            //var scanner = ix.newRowScanner(txn, "id >= ?", 5);
             var scanner = ix.newRowScanner(txn, "name >= ?", "name-5");
             scanner.step();
             scanner.close();
@@ -844,7 +856,16 @@ public class IndexLockTest {
 
         txn0.reset();
 
-        w1.await();
+        if (!deadlock) {
+            w1.await();
+        } else {
+            try {
+                w1.await();
+                fail();
+            } catch (DeadlockException e) {
+            }
+        }
+
         w2.await();
     }
 

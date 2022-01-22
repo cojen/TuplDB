@@ -397,7 +397,7 @@ public class FilteredScanMaker<R> {
         // Implement/override method as specified by RowDecoderEncoder.
 
         MethodMaker mm = mFilterMaker.addMethod
-            (Object.class, "decodeRow", Cursor.class, LockResult.class, Object.class).public_();
+            (Object.class, "decodeRow", Cursor.class, Object.class).public_();
 
         var predicateVar = mm.field("predicate");
 
@@ -413,14 +413,14 @@ public class FilteredScanMaker<R> {
             var schemaVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", valueVar);
 
             mm.return_(indy.invoke(Object.class, "decodeRow", null, schemaVersion,
-                                   mm.param(0), mm.param(2), predicateVar));
+                                   mm.param(0), mm.param(1), predicateVar));
         } else {
             // Decoding a secondary index row is simpler because it has no schema version.
             var visitor = new DecodeVisitor
                 (mm, 0, mRowGen, predicateVar, mStopColumn, mStopArgument);
             mFilter.accept(visitor);
             Class<?> rowClass = RowMaker.find(mRowType);
-            Variable rowVar = mm.param(2);
+            Variable rowVar = mm.param(1);
             visitor.finishDecode(null, mTableClass, rowClass, rowVar);
         }
     }
