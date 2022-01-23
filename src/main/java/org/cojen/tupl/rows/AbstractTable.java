@@ -52,6 +52,8 @@ import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.util.Latch;
 
+import org.cojen.tupl.views.ViewUtils;
+
 /**
  * Base class for all generated table classes.
  *
@@ -457,6 +459,81 @@ public abstract class AbstractTable<R> implements Table<R> {
      * Returns a singleton instance.
      */
     protected abstract SingleScanController<R> unfiltered();
+
+    /**
+     * Called when no trigger is installed.
+     */
+    protected void store(Transaction txn, R row, byte[] key, byte[] value)
+        throws IOException
+    {
+        Index source = mSource;
+
+        // RowPredicateLock requires a non-null transaction.
+        txn = ViewUtils.enterScope(source, txn);
+        try {
+            RowPredicateLock.Closer closer = mIndexLock.openAcquire(txn, row);
+            try {
+                source.store(txn, key, value);
+            } finally {
+                closer.close();
+            }
+            txn.commit();
+        } finally {
+            txn.exit();
+        }
+    }
+
+    /**
+     * Called when no trigger is installed.
+     */
+    protected byte[] exchange(Transaction txn, R row, byte[] key, byte[] value)
+        throws IOException
+    {
+        Index source = mSource;
+
+        // RowPredicateLock requires a non-null transaction.
+        txn = ViewUtils.enterScope(source, txn);
+        byte[] oldValue;
+        try {
+            RowPredicateLock.Closer closer = mIndexLock.openAcquire(txn, row);
+            try {
+                oldValue = source.exchange(txn, key, value);
+            } finally {
+                closer.close();
+            }
+            txn.commit();
+        } finally {
+            txn.exit();
+        }
+
+        return oldValue;
+    }
+
+    /**
+     * Called when no trigger is installed.
+     */
+    protected boolean insert(Transaction txn, R row, byte[] key, byte[] value)
+        throws IOException
+    {
+        Index source = mSource;
+
+        // RowPredicateLock requires a non-null transaction.
+        txn = ViewUtils.enterScope(source, txn);
+        boolean result;
+        try {
+            RowPredicateLock.Closer closer = mIndexLock.openAcquire(txn, row);
+            try {
+                result = source.insert(txn, key, value);
+            } finally {
+                closer.close();
+            }
+            txn.commit();
+        } finally {
+            txn.exit();
+        }
+
+        return result;
+    }
 
     /**
      * Override if this table implements a secondary index.

@@ -983,25 +983,11 @@ public class TableMaker {
                                     Variable txnVar, Variable rowVar,
                                     Variable keyVar, Variable valueVar)
     {
-        Variable source = mm.field("mSource");
-
         if (variant == "replace" || !mSupportsIndexLock) {
-            return source.invoke(variant, txnVar, keyVar, valueVar);
+            return mm.field("mSource").invoke(variant, txnVar, keyVar, valueVar);
+        } else {
+            return mm.invoke(variant, txnVar, rowVar, keyVar, valueVar);
         }
-
-        source = mm.field("mSource").get();
-
-        // RowPredicateLock requires a non-null transaction.
-        txnVar.set(mm.var(ViewUtils.class).invoke("enterScope", source, txnVar));
-        Label txnStart = mm.label().here();
-        var closerVar = mm.field("mIndexLock").invoke("openAcquire", txnVar, rowVar);
-        Label opStart = mm.label().here();
-        var resultVar = source.invoke(variant, txnVar, keyVar, valueVar);
-        finishAcquire(mm, closerVar, opStart, txnVar, source, keyVar, valueVar, resultVar);
-        txnVar.invoke("commit");
-        mm.finally_(txnStart, () -> txnVar.invoke("exit"));
-
-        return resultVar;
     }
 
     private void addStoreAutoMethod() {
