@@ -926,6 +926,8 @@ public class TableMaker {
             txnVar.set(mm.var(ViewUtils.class).invoke("enterScope", source, txnVar));
             Label txnStart = mm.label().here();
 
+            mm.invoke("redoPredicateMode", txnVar);
+
             // Always use a cursor to acquire the upgradable row lock before updating
             // secondaries. This prevents deadlocks with a concurrent index scan which joins
             // against the row. The row lock is acquired exclusively after all secondaries have
@@ -1058,6 +1060,7 @@ public class TableMaker {
         if (variant == "replace" || !mSupportsIndexLock) {
             return mm.field("mSource").invoke(variant, txnVar, keyVar, valueVar);
         } else {
+            // Call protected method inherited from AbstractTable.
             return mm.invoke(variant, txnVar, rowVar, keyVar, valueVar);
         }
     }
@@ -1074,6 +1077,8 @@ public class TableMaker {
         // Call enterScopex because bogus transaction doesn't work with AutomaticKeyGenerator.
         txnVar.set(mm.var(ViewUtils.class).invoke("enterScopex", mm.field("mSource"), txnVar));
         Label txnStart = mm.label().here();
+
+        mm.invoke("redoPredicateMode", txnVar);
 
         if (!supportsTriggers()) {
             mm.field("autogen").invoke("store", txnVar, rowVar, keyVar, valueVar);
@@ -1480,6 +1485,7 @@ public class TableMaker {
         Variable source = mm.field("mSource");
         txnVar.set(mm.var(ViewUtils.class).invoke("enterScope", source, txnVar));
         Label tryStart = mm.label().here();
+        mm.invoke("redoPredicateMode", txnVar);
         mm.return_(mm.invoke("doUpdate", txnVar, rowVar, merge));
         mm.finally_(tryStart, () -> txnVar.invoke("exit"));
     }

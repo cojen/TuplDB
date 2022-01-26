@@ -659,6 +659,17 @@ abstract class RedoDecoder {
                 }
                 break;
 
+            case OP_TXN_PREDICATE_MODE:
+                try {
+                    txnId = readTxnId(in);
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in) || !visitor.txnPredicateMode(txnId)) {
+                    return false;
+                }
+                break;
+
             case OP_TXN_CUSTOM:
                 try {
                     txnId = readTxnId(in);

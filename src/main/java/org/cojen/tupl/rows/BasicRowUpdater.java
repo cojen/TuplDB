@@ -196,6 +196,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
             if (lock == null) {
                 result = source.insert(txn, key, value);
             } else {
+                lock.redoPredicateMode(txn);
                 try (RowPredicateLock.Closer closer = lock.openAcquire(txn, row)) {
                     result = source.insert(txn, key, value);
                 }
@@ -252,6 +253,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
     {
         Transaction txn = ViewUtils.enterScope(mTable.mSource, c.link());
         try {
+            mTable.redoPredicateMode(txn);
             byte[] oldValue = c.value();
             c.store(value);
             if (oldValue == null) {

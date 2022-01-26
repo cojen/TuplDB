@@ -75,6 +75,11 @@ public interface RowPredicateLock<R> {
         throws LockFailureException;
 
     /**
+     * Enables predicate locking for the current transaction scope.
+     */
+    void redoPredicateMode(Transaction txn) throws IOException;
+
+    /**
      * Adds a predicate lock into the set, and waits for all existing transactions which match
      * on it to finish. Once added, the lock remains in the set for the entire scope of the
      * given transaction, held exclusively. If the add operation times out, the lock is removed

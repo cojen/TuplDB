@@ -235,6 +235,11 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
     }
 
     @Override
+    public void redoPredicateMode(Transaction txn) throws IOException {
+        ((LocalTransaction) txn).redoPredicateMode();
+    }
+
+    @Override
     public Closer addPredicate(Transaction txn, RowPredicate<R> predicate)
         throws LockFailureException
     {

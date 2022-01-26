@@ -1615,6 +1615,23 @@ public final class LocalTransaction extends Locker implements Transaction {
         }
     }
 
+    final void redoPredicateMode() throws IOException {
+        // Note: Not critical that check() be called.
+
+        RedoWriter redo = mRedo;
+        if (redo != null) {
+            long txnId = mTxnId;
+            if (txnId == 0) {
+                txnId = assignTransactionId();
+            }
+            try {
+                mContext.redoPredicateMode(redo, txnId);
+            } catch (Throwable e) {
+                borked(e);
+            }
+        }
+    }
+
     final void setHasTrash() {
         mHasState |= HAS_TRASH;
     }

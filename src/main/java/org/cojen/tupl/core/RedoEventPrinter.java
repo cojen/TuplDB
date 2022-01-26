@@ -297,6 +297,12 @@ class RedoEventPrinter implements RedoVisitor {
     }
 
     @Override
+    public boolean txnPredicateMode(long txnId) {
+        mListener.notify(mType, "Redo %1$s: txnId=%2$d", "txnPredicateMode", txnId);
+        return true;
+    }
+
+    @Override
     public boolean txnCustom(long txnId, int handlerId, byte[] message) {
         mListener.notify(mType, "Redo %1$s: txnId=%2$d, handlerId=%3$d, message=%4$s",
                          "txnCustom", txnId, handlerId, valueStr(message));

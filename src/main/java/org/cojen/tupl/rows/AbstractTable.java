@@ -465,10 +465,17 @@ public abstract class AbstractTable<R> implements Table<R> {
      */
     protected abstract SingleScanController<R> unfiltered();
 
+    protected final void redoPredicateMode(Transaction txn) throws IOException {
+        RowPredicateLock<R> lock = mIndexLock;
+        if (lock != null) {
+            lock.redoPredicateMode(txn);
+        }
+    }
+
     /**
      * Called when no trigger is installed.
      */
-    protected void store(Transaction txn, R row, byte[] key, byte[] value)
+    protected final void store(Transaction txn, R row, byte[] key, byte[] value)
         throws IOException
     {
         Index source = mSource;
@@ -476,6 +483,7 @@ public abstract class AbstractTable<R> implements Table<R> {
         // RowPredicateLock requires a non-null transaction.
         txn = ViewUtils.enterScope(source, txn);
         try {
+            redoPredicateMode(txn);
             RowPredicateLock.Closer closer = mIndexLock.openAcquire(txn, row);
             try {
                 source.store(txn, key, value);
@@ -491,7 +499,7 @@ public abstract class AbstractTable<R> implements Table<R> {
     /**
      * Called when no trigger is installed.
      */
-    protected byte[] exchange(Transaction txn, R row, byte[] key, byte[] value)
+    protected final byte[] exchange(Transaction txn, R row, byte[] key, byte[] value)
         throws IOException
     {
         Index source = mSource;
@@ -500,6 +508,7 @@ public abstract class AbstractTable<R> implements Table<R> {
         txn = ViewUtils.enterScope(source, txn);
         byte[] oldValue;
         try {
+            redoPredicateMode(txn);
             RowPredicateLock.Closer closer = mIndexLock.openAcquire(txn, row);
             try {
                 oldValue = source.exchange(txn, key, value);
@@ -517,7 +526,7 @@ public abstract class AbstractTable<R> implements Table<R> {
     /**
      * Called when no trigger is installed.
      */
-    protected boolean insert(Transaction txn, R row, byte[] key, byte[] value)
+    protected final boolean insert(Transaction txn, R row, byte[] key, byte[] value)
         throws IOException
     {
         Index source = mSource;
@@ -526,6 +535,7 @@ public abstract class AbstractTable<R> implements Table<R> {
         txn = ViewUtils.enterScope(source, txn);
         boolean result;
         try {
+            redoPredicateMode(txn);
             RowPredicateLock.Closer closer = mIndexLock.openAcquire(txn, row);
             try {
                 result = source.insert(txn, key, value);

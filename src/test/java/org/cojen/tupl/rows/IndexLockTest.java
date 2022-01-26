@@ -570,7 +570,6 @@ public class IndexLockTest {
     }
 
     @Test
-    @Ignore
     public void replicaScanStall() throws Exception {
         // A replica RowScanner cannot start when an open transaction has inserted a row into
         // the range that will be scanned.
@@ -638,7 +637,6 @@ public class IndexLockTest {
     }
 
     @Test
-    @Ignore
     public void replicaBlockedByScanner() throws Exception {
         // An incoming replica insert or store operation must wait for a dependent scan to
         // finish. Unfortunately, this stalls replication, but at least it's safe.

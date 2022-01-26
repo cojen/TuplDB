@@ -616,6 +616,8 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     public boolean txnRollback(long txnId) {
         TxnEntry te = getTxnEntry(txnId);
 
+        te.mPredicateMode = false;
+
         runTask(te, new Worker.Task() {
             public void run() {
                 te.mTxn.exit();
@@ -643,43 +645,31 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     @Override
     public boolean txnCommit(long txnId) {
         TxnEntry te = getTxnEntry(txnId);
-        runTask(te, new CommitTask(te));
+
+        te.mPredicateMode = false;
+
+        runTask(te, new Worker.Task() {
+            public void run() throws IOException {
+                te.mTxn.commit();
+            }
+        });
+
         return true;
-    }
-
-    private static final class CommitTask extends Worker.Task {
-        private final TxnEntry mEntry;
-
-        CommitTask(TxnEntry entry) {
-            mEntry = entry;
-        }
-
-        @Override
-        public void run() throws IOException {
-            mEntry.mTxn.commit();
-        }
     }
 
     @Override
     public boolean txnCommitFinal(long txnId) {
         TxnEntry te = removeTxnEntry(txnId);
+
         if (te != null) {
-            runTask(te, new CommitFinalTask(te));
+            runTask(te, new Worker.Task() {
+                public void run() throws IOException {
+                    te.mTxn.commitAll();
+                }
+            });
         }
+
         return true;
-    }
-
-    private static final class CommitFinalTask extends Worker.Task {
-        private final TxnEntry mEntry;
-
-        CommitFinalTask(TxnEntry entry) {
-            mEntry = entry;
-        }
-
-        @Override
-        public void run() throws IOException {
-            mEntry.mTxn.commitAll();
-        }
     }
 
     @Override
@@ -711,6 +701,21 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         // Enter nested scope of an existing transaction.
         LocalTransaction txn = te.mTxn;
 
+        if (te.mPredicateMode) {
+            // Acquire locks on behalf of the transaction, but push them using the correct thread.
+            Object locks = mDatabase.rowStore().acquireLocksNoPush(txn, indexId, key, value);
+
+            runTask(te, new Worker.Task() {
+                public void run() throws IOException {
+                    txn.enter();
+                    pushPredicateLocks(txn, locks);
+                    doStore(txn, indexId, key, value);
+                }
+            });
+
+            return true;
+        }
+
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
         Lock lock = txn.doLockUpgradableNoPush(indexId, key);
 
@@ -734,6 +739,20 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         TxnEntry te = getTxnEntry(txnId);
         LocalTransaction txn = te.mTxn;
 
+        if (te.mPredicateMode) {
+            // Acquire locks on behalf of the transaction, but push them using the correct thread.
+            Object locks = mDatabase.rowStore().acquireLocksNoPush(txn, indexId, key, value);
+
+            runTask(te, new Worker.Task() {
+                public void run() throws IOException {
+                    pushPredicateLocks(txn, locks);
+                    doStore(txn, indexId, key, value);
+                }
+            });
+
+            return true;
+        }
+
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
         Lock lock = txn.doLockUpgradableNoPush(indexId, key);
 
@@ -755,6 +774,24 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     {
         TxnEntry te = getTxnEntry(txnId);
         LocalTransaction txn = te.mTxn;
+
+
+        if (te.mPredicateMode) {
+            te.mPredicateMode = false;
+
+            // Acquire locks on behalf of the transaction, but push them using the correct thread.
+            Object locks = mDatabase.rowStore().acquireLocksNoPush(txn, indexId, key, value);
+
+            runTask(te, new Worker.Task() {
+                public void run() throws IOException {
+                    pushPredicateLocks(txn, locks);
+                    doStore(txn, indexId, key, value);
+                    txn.commit();
+                }
+            });
+
+            return true;
+        }
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
         Lock lock = txn.doLockUpgradableNoPush(indexId, key);
@@ -800,6 +837,24 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         }
 
         LocalTransaction txn = te.mTxn;
+
+        if (te.mPredicateMode) {
+            // Acquire locks on behalf of the transaction, but push them using the correct thread.
+            Object locks = mDatabase.rowStore().acquireLocksNoPush(txn, indexId, key, value);
+
+            runTask(te, new Worker.Task() {
+                public void run() throws IOException {
+                    pushPredicateLocks(txn, locks);
+                    // Manually lock and store with a bogus transaction to avoid creating an
+                    // unnecessary undo log entry.
+                    txn.doLockExclusive(indexId, key, INFINITE_TIMEOUT);
+                    doStore(Transaction.BOGUS, indexId, key, value);
+                    txn.commitAll();
+                }
+            });
+
+            return true;
+        }
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
         Lock lock = txn.doLockUpgradableNoPush(indexId, key);
@@ -892,6 +947,8 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
 
         TxnEntry te = getTxnEntry(txnId);
         LocalTransaction txn = te.mTxn;
+
+        // FIXME: check mPredicateMode
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
         ce.mKey = key;
@@ -1211,6 +1268,12 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     }
 
     @Override
+    public boolean txnPredicateMode(long txnId) {
+        getTxnEntry(txnId).mPredicateMode = true;
+        return true;
+    }
+
+    @Override
     public boolean txnCustom(long txnId, int handlerId, byte[] message) throws IOException {
         CustomHandler handler = mDatabase.findCustomRecoveryHandler(handlerId);
         TxnEntry te = getTxnEntry(txnId);
@@ -1518,6 +1581,25 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         return mTransactions.remove(scrambledTxnId);
     }
 
+    private void pushPredicateLocks(LocalTransaction txn, Object locks) {
+        if (locks != null) {
+            if (locks instanceof Lock lock) {
+                txn.push(lock);
+            } else {
+                pushPredicateLockArray(txn, locks);
+            }
+        }
+    }
+
+    private void pushPredicateLockArray(LocalTransaction txn, Object locks) {
+        for (Lock lock : (Lock[]) locks) {
+            if (lock == null) {
+                break;
+            }
+            txn.push(lock);
+        }
+    }
+
     /**
      * Returns the index from the local cache, opening it if necessary.
      *
@@ -1780,6 +1862,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     static final class TxnEntry extends LHashTable.Entry<TxnEntry> {
         LocalTransaction mTxn;
         Worker mWorker;
+        boolean mPredicateMode;
     }
 
     static final class TxnTable extends LHashTable<TxnEntry> {

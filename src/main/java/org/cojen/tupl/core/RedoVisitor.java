@@ -261,6 +261,11 @@ interface RedoVisitor {
 
     /**
      * @param txnId non-zero transaction id
+     */
+    public boolean txnPredicateMode(long txnId) throws IOException;
+
+    /**
+     * @param txnId non-zero transaction id
      * @param message custom message
      */
     public boolean txnCustom(long txnId, int handlerId, byte[] message) throws IOException;
