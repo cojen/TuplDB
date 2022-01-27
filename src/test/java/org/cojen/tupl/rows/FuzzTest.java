@@ -61,7 +61,9 @@ public class FuzzTest {
             try {
                 fuzz(seed);
             } catch (Throwable e) {
-                throw new AssertionError("seed: " + seed, e);
+                var err = new AssertionError("seed: " + seed, e);
+                err.printStackTrace(System.out);
+                throw err;
             }
         }
     }
