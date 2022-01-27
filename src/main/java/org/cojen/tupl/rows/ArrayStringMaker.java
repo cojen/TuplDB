@@ -149,8 +149,7 @@ class ArrayStringMaker {
                 Label elementNotNull = mm.label();
                 elementVar.ifNe(null, elementNotNull);
                 builderVar.invoke("append", "null");
-                cont = mm.label();
-                mm.goto_(cont);
+                cont = mm.label().goto_();
                 elementNotNull.here();
                 try {
                     elementVar = elementVar.unbox();

@@ -453,8 +453,7 @@ public class Converter {
                     Label L1 = mm.label();
                     srcVar.invoke("isEmpty").ifFalse(L1);
                     setDefault(mm, dstInfo, dstVar);
-                    Label cont = mm.label();
-                    mm.goto_(cont);
+                    Label cont = mm.label().goto_();
                     L1.here();
                     dstVar.set(srcVar.invoke("charAt", 0));
                     cont.here();
@@ -584,8 +583,7 @@ public class Converter {
         Label isFalse = mm.label();
         srcVar.ifFalse(isFalse);
         dstVar.set(1);
-        Label cont = mm.label();
-        mm.goto_(cont);
+        Label cont = mm.label().goto_();
         isFalse.here();
         dstVar.set(0);
         cont.here();

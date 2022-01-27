@@ -146,8 +146,7 @@ abstract class BytesColumnCodec extends ColumnCodec {
         Label notNull = mMaker.label();
         lengthVar.ifNe(0, notNull);
         isNullVar.set(true);
-        Label cont = mMaker.label();
-        mMaker.goto_(cont);
+        Label cont = mMaker.label().goto_();
         notNull.here();
         isNullVar.set(false);
         lengthVar.inc(-1);

@@ -81,8 +81,7 @@ abstract class PrimitiveArrayColumnCodec extends BytesColumnCodec {
             Label notNull = mMaker.label();
             argVar.ifNe(null, notNull);
             bytesVar.set(null);
-            cont = mMaker.label();
-            mMaker.goto_(cont);
+            cont = mMaker.label().goto_();
             notNull.here();
         }
 

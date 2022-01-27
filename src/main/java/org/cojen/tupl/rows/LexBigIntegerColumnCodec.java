@@ -71,8 +71,7 @@ final class LexBigIntegerColumnCodec extends BigIntegerColumnCodec {
         Label notNull = mMaker.label();
         srcVar.ifNe(null, notNull);
         bytesVar.set(null);
-        Label cont = mMaker.label();
-        mMaker.goto_(cont);
+        Label cont = mMaker.label().goto_();
         notNull.here();
         bytesVar.set(srcVar.invoke("toByteArray"));
         var lengthVar = bytesVar.alength();
@@ -106,8 +105,7 @@ final class LexBigIntegerColumnCodec extends BigIntegerColumnCodec {
             Label notNull = mMaker.label();
             lengthVar.ifNe(0, notNull);
             dstVar.set(null);
-            Label cont = mMaker.label();
-            mMaker.goto_(cont);
+            Label cont = mMaker.label().goto_();
             notNull.here();
             if (mInfo.isDescending()) {
                 rowUtils.invoke("flip", srcVar, offsetVar, lengthVar);

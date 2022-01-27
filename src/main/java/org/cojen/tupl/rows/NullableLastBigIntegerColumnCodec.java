@@ -55,8 +55,7 @@ final class NullableLastBigIntegerColumnCodec extends NonNullLastBigIntegerColum
         Label notNull = mMaker.label();
         srcVar.ifNe(null, notNull);
         mBytesVar.set(null);
-        Label cont = mMaker.label();
-        mMaker.goto_(cont);
+        Label cont = mMaker.label().goto_();
         notNull.here();
         mBytesVar.set(srcVar.invoke("toByteArray"));
         totalVar.inc(mBytesVar.alength());
@@ -96,8 +95,7 @@ final class NullableLastBigIntegerColumnCodec extends NonNullLastBigIntegerColum
         Label notNull = mMaker.label();
         isNullVar.ifFalse(notNull);
         lengthVar.set(0);
-        Label cont = mMaker.label();
-        mMaker.goto_(cont);
+        Label cont = mMaker.label().goto_();
         notNull.here();
         super.decodeHeader(srcVar, offsetVar, endVar, lengthVar, null);
         cont.here();

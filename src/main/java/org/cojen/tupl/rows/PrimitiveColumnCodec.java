@@ -260,8 +260,7 @@ final class PrimitiveColumnCodec extends ColumnCodec {
                             Label notNull = mMaker.label();
                             byteVar.ifNe(n, notNull);
                             valueVar.set(null);
-                            cont = mMaker.label();
-                            mMaker.goto_(cont);
+                            cont = mMaker.label().goto_();
                             notNull.here();
                         }
 

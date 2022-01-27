@@ -623,8 +623,7 @@ public class RowPredicateMaker {
                 Label notNull = mMaker.label();
                 argValue.ifNe(null, notNull);
                 strValue.set("null");
-                cont = mMaker.label();
-                mMaker.goto_(cont);
+                cont = mMaker.label().goto_();
                 notNull.here();
             }
 

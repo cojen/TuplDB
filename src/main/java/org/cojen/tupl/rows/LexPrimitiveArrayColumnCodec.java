@@ -63,8 +63,7 @@ final class LexPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
             Label notNull = mMaker.label();
             srcVar.ifNe(null, notNull);
             lengthVar.set(1);
-            cont = mMaker.label();
-            mMaker.goto_(cont);
+            cont = mMaker.label().goto_();
             notNull.here();
         }
 

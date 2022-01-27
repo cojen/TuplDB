@@ -94,8 +94,7 @@ final class NullableLastStringColumnCodec extends NonNullLastStringColumnCodec {
         Label notNull = mMaker.label();
         isNullVar.ifFalse(notNull);
         lengthVar.set(0);
-        Label cont = mMaker.label();
-        mMaker.goto_(cont);
+        Label cont = mMaker.label().goto_();
         notNull.here();
         super.decodeHeader(srcVar, offsetVar, endVar, lengthVar, null);
         cont.here();

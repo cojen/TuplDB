@@ -588,8 +588,7 @@ abstract class ColumnCodec {
             argVar.ifEq(null, match);
         }
 
-        Label cont = mMaker.label();
-        mMaker.goto_(cont);
+        Label cont = mMaker.label().goto_();
 
         // Column is null...
 

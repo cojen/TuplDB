@@ -63,8 +63,7 @@ final class NullablePrimitiveArrayColumnCodec extends NonNullPrimitiveArrayColum
         srcVar.ifNe(null, notNull);
         mBytesLengthVar.set(0);
         mLengthVar.set(0); // zero means null
-        Label cont = mMaker.label();
-        mMaker.goto_(cont);
+        Label cont = mMaker.label().goto_();
         notNull.here();
         mBytesLengthVar.set(byteArrayLength(srcVar));
         mLengthVar.set(mBytesLengthVar.add(1)); // add one for non-null array
@@ -108,8 +107,7 @@ final class NullablePrimitiveArrayColumnCodec extends NonNullPrimitiveArrayColum
         Label notNull = mMaker.label();
         lengthVar.ifNe(0, notNull);
         dstVar.set(null);
-        Label cont = mMaker.label();
-        mMaker.goto_(cont);
+        Label cont = mMaker.label().goto_();
         notNull.here();
         super.finishDecode(dstVar, srcVar, offsetVar, lengthVar.sub(1));
         cont.here();

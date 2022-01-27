@@ -1110,8 +1110,7 @@ public class IndexTriggerMaker<R> {
                 bitMap[j].and(masks[j]).ifNe(0L, modified);
             }
 
-            Label cont = mm.label();
-            mm.goto_(cont);
+            Label cont = mm.label().goto_();
 
             // Index needs to be updated. Insert the new entry and delete the old one.
             modified.here();

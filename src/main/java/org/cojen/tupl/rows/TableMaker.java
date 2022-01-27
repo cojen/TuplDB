@@ -980,8 +980,7 @@ public class TableMaker {
                     Label wasNull = mm.label();
                     oldValueVar.ifEq(null, wasNull);
                     triggerVar.invoke("store", txnVar, rowVar, keyVar, oldValueVar, valueVar);
-                    Label commit = mm.label();
-                    mm.goto_(commit);
+                    Label commit = mm.label().goto_();
                     wasNull.here();
                     triggerVar.invoke("insert", txnVar, rowVar, keyVar, valueVar);
                     commit.here();
@@ -1092,8 +1091,7 @@ public class TableMaker {
             Label triggerStart = mm.label().here();
             mm.field("autogen").invoke("store", txnVar, rowVar, keyVar, valueVar);
             triggerVar.invoke("insert", txnVar, rowVar, keyVar, valueVar);
-            Label commitLabel = mm.label();
-            mm.goto_(commitLabel);
+            Label commitLabel = mm.label().goto_();
             skipLabel.here();
             mm.field("autogen").invoke("store", txnVar, rowVar, keyVar, valueVar);
             commitLabel.here();
@@ -1416,8 +1414,7 @@ public class TableMaker {
             var keyVar = cursorVar.invoke("key");
             triggerVar.invoke("update", txnVar, rowVar, keyVar, valueVar, newValueVar);
             cursorVar.invoke("commit", newValueVar);
-            Label cont = mm.label();
-            mm.goto_(cont);
+            Label cont = mm.label().goto_();
 
             skipLabel.here();
 
@@ -1459,8 +1456,7 @@ public class TableMaker {
             var keyVar = cursorVar.invoke("key");
             triggerVar.invoke("store", txnVar, rowVar, keyVar, valueVar, newValueVar);
             cursorVar.invoke("commit", newValueVar);
-            Label cont = mm.label();
-            mm.goto_(cont);
+            Label cont = mm.label().goto_();
 
             skipLabel.here();
 
