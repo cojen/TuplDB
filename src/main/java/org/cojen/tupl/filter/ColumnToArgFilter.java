@@ -78,8 +78,8 @@ public class ColumnToArgFilter extends ColumnFilter {
     }
 
     @Override
-    public RowFilter retain(Map<String, ColumnInfo> columns, RowFilter undecided) {
-        return columns.containsKey(mColumn.name) ? this : undecided;
+    public boolean onlyUses(Map<String, ColumnInfo> columns) {
+        return columns.containsKey(mColumn.name);
     }
 
     @Override

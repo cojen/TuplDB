@@ -111,6 +111,16 @@ public abstract class GroupFilter extends RowFilter {
         return newInstance(subFilters);
     }
 
+    @Override
+    public boolean onlyUses(Map<String, ColumnInfo> columns) {
+        for (RowFilter sub : mSubFilters) {
+            if (!sub.onlyUses(columns)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /**
      * Assumes that the given filter has been prioritized already.
      *

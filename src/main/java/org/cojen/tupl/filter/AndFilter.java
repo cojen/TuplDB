@@ -169,6 +169,20 @@ public class AndFilter extends GroupFilter {
     }
 
     @Override
+    public RowFilter[] extract(Map<String, ColumnInfo> columns) {
+        RowFilter[] result = {TrueFilter.THE, TrueFilter.THE};
+        extractMerge(columns, result);
+        return result;
+    }
+
+    @Override
+    protected void extractMerge(Map<String, ColumnInfo> columns, RowFilter[] result) {
+        for (RowFilter sub : mSubFilters) {
+            sub.extractMerge(columns, result);
+        }
+    }
+
+    @Override
     public RowFilter[] rangeExtract(ColumnInfo... keyColumns) {
         if (!mReduced) {
             return reduce().rangeExtract(keyColumns);

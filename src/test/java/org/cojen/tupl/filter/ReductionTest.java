@@ -169,8 +169,12 @@ public class ReductionTest {
         assertFalse(filter.isDnf());
         assertFalse(filter.isCnf());
 
-        for (int i=0; i<2; i++) {
-            RowFilter reduced = i == 0 ? filter.dnf() : filter.cnf();
+        for (int i=1; i<=3; i++) {
+            RowFilter reduced = switch (i) {
+            case 1 -> filter.dnf();
+            case 2 -> filter.cnf();
+            default -> filter.reduceMore();
+            };
             assertEquals(2, reduced.numTerms());
             assertEquals("a > ?1 && a > ?2", reduced.toString());
         }

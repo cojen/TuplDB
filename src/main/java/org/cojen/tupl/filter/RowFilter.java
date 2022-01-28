@@ -45,6 +45,36 @@ public abstract class RowFilter implements Comparable<RowFilter> {
     public abstract RowFilter reduce();
 
     /**
+     * Attempt a more aggressive reduction.
+     */
+    public RowFilter reduceMore() {
+        RowFilter filter = reduce();
+        int numTerms = -1;
+
+        try {
+            RowFilter dnf = filter.dnf();
+            numTerms = filter.numTerms();
+            if (dnf.numTerms() < numTerms) {
+                return dnf;
+            }
+        } catch (ComplexFilterException e) {
+        }
+
+        try {
+            RowFilter cnf = filter.cnf();
+            if (numTerms < 0) {
+                numTerms = filter.numTerms();
+            }
+            if (cnf.numTerms() < numTerms) {
+                return cnf;
+            }
+        } catch (ComplexFilterException e) {
+        }
+
+        return filter;
+    }
+
+    /**
      * @return true if this filter is in disjunctive normal form
      */
     public abstract boolean isDnf();
@@ -117,6 +147,11 @@ public abstract class RowFilter implements Comparable<RowFilter> {
     public abstract RowFilter prioritize(Map<String, ColumnInfo> columns);
 
     /**
+     * Returns true if this filter only uses the given columns.
+     */
+    public abstract boolean onlyUses(Map<String, ColumnInfo> columns);
+
+    /**
      * Remove terms which refer to columns which aren't in the given set.
      *
      * @param columns columns to retain (not remove)
@@ -124,6 +159,41 @@ public abstract class RowFilter implements Comparable<RowFilter> {
      * match (usually TRUE or FALSE)
      */
     public abstract RowFilter retain(Map<String, ColumnInfo> columns, RowFilter undecided);
+
+    /**
+     * Extract columns from the filter such that the first returned filter only references
+     * those columns. The second returned filter references the remaining columns, but it also
+     * may reference the given columns if they couldn't be fully extracted. For best results,
+     * this method should be called on a conjunctive normal form filter.
+     *
+     * <p>The two returned filters can always be recombined with the 'and' method. If nothing
+     * could be extracted, the first filter is TrueFilter, and the remainder is this filter. If
+     * there's no remainder, it's represented by TrueFilter.
+     *
+     * <p>Note: No attempt is made to reduce the returned filters.
+     *
+     * @param columns columns to extract
+     * @return the extracted filter and the remainder
+     */
+    public RowFilter[] extract(Map<String, ColumnInfo> columns) {
+        var result = new RowFilter[2];
+        if (onlyUses(columns)) {
+            result[0] = this;
+            result[1] = TrueFilter.THE;
+        } else {
+            result[0] = TrueFilter.THE;
+            result[1] = this;
+        }
+        return result;
+    }
+
+    /**
+     * Merge the extract result into the other with 'and'.
+     */
+    protected void extractMerge(Map<String, ColumnInfo> columns, RowFilter[] result) {
+        int ix = onlyUses(columns) ? 0 : 1;
+        result[ix] = result[ix].and(this);
+    }
 
     /**
      * Given a set of columns corresponding to the primary key of an index, extract a suitable
