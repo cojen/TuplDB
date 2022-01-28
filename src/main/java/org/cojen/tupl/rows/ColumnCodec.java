@@ -455,11 +455,11 @@ abstract class ColumnCodec {
         return argFieldName(info.name, argNum);
     }
 
-    protected String argFieldName(int argNum) {
+    protected final String argFieldName(int argNum) {
         return argFieldName(mInfo, argNum);
     }
 
-    protected String argFieldName(int argNum, String suffix) {
+    protected final String argFieldName(int argNum, String suffix) {
         return argFieldName(argFieldName(argNum), suffix);
     }
 
@@ -472,7 +472,7 @@ abstract class ColumnCodec {
      *
      * @param initVar initial and final value to assign
      */
-    protected void defineArgField(Object type, String name, Variable initVar) {
+    protected final void defineArgField(Object type, String name, Variable initVar) {
         mMaker.classMaker().addField(type, name).final_();
         mMaker.field(name).set(initVar);
     }
@@ -480,14 +480,14 @@ abstract class ColumnCodec {
     /**
      * Define a non-final arg field, to be lazily initialzied.
      */
-    protected void defineArgField(Object type, String name) {
+    protected final void defineArgField(Object type, String name) {
         mMaker.classMaker().addField(type, name);
     }
 
     /**
      * @return new or existing accumulator variable
      */
-    protected Variable accum(Variable accumVar, Object amount) {
+    protected final Variable accum(Variable accumVar, Object amount) {
         if (accumVar == null) {
             accumVar = mMaker.var(int.class).set(amount);
         } else {
@@ -502,8 +502,8 @@ abstract class ColumnCodec {
      * @param offsetVar int type; is incremented as a side-effect
      * @param end required
      */
-    protected void encodeNullHeader(Label end, Variable srcVar,
-                                    Variable dstVar, Variable offsetVar)
+    protected final void encodeNullHeader(Label end, Variable srcVar,
+                                          Variable dstVar, Variable offsetVar)
     {
         Label notNull = mMaker.label();
         srcVar.ifNe(null, notNull);
@@ -532,8 +532,8 @@ abstract class ColumnCodec {
      * @param dstVar optional; if boolean, assigns true/false as null/not-null
      * @param offsetVar int type; is incremented as a side-effect
      */
-    protected void decodeNullHeader(Label end, Variable dstVar,
-                                    Variable srcVar, Variable offsetVar)
+    protected final void decodeNullHeader(Label end, Variable dstVar,
+                                          Variable srcVar, Variable offsetVar)
     {
         var header = srcVar.aget(offsetVar);
         offsetVar.inc(1);
@@ -568,8 +568,8 @@ abstract class ColumnCodec {
      * @param pass branch here when comparison passes
      * @param fail branch here when comparison fails
      */
-    protected void compareNullHeader(Variable srcVar, Variable offsetVar,
-                                     Variable argVar, int op, Label pass, Label fail)
+    protected final void compareNullHeader(Variable srcVar, Variable offsetVar,
+                                           Variable argVar, int op, Label pass, Label fail)
     {
         Label isColumnNull = mMaker.label();
         if (srcVar.classType() == boolean.class) {

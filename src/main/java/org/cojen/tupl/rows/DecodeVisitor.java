@@ -126,11 +126,12 @@ class DecodeVisitor extends Visitor {
      *
      * @param decoder performs full decoding of the value columns; pass null to invoke the full
      * decode method in the generated table class
-     * @param tableClass current table implementation class
+     * @param primaryTableClass current table implementation class
+     * @param tableClass same as primaryTableClass except for secondary indexes and alternate keys
      * @param rowClass current row implementation
      * @param rowVar refers to the row parameter to allocate or fill in
      */
-    void finishDecode(MethodHandle decoder,
+    void finishDecode(MethodHandle decoder, Class<?> primaryTableClass,
                       Class<?> tableClass, Class<?> rowClass, Variable rowVar)
     {
         mFail.here();
@@ -140,23 +141,55 @@ class DecodeVisitor extends Visitor {
 
         // FIXME: Some columns may have already been decoded, so don't double decode them.
 
-        var tableVar = mMaker.var(tableClass);
+        Variable tableVar, keyVar, valueVar;
+
+        if (primaryTableClass == tableClass ||
+            !SingleScanController.Joined.class.isAssignableFrom(mMaker.super_().classType()))
+        {
+            tableVar = mMaker.var(tableClass);
+            keyVar = mKeyVar;
+            valueVar = mValueVar;
+        } else {
+            assert decoder == null;
+            assert mCursorVar != null;
+            var secInfo = (SecondaryInfo) mRowGen.info; // assert
+
+            Variable primaryKeyVar;
+            if (secInfo.isAltKey()) {
+                primaryKeyVar = mMaker.invoke("toPrimaryKey", mKeyVar, mValueVar);
+            } else {
+                primaryKeyVar = mMaker.invoke("toPrimaryKey", mKeyVar);
+            }
+
+            var primaryValueVar = mMaker.invoke("join", mCursorVar, primaryKeyVar);
+
+            Label pass = mMaker.label();
+            primaryKeyVar.ifNe(null, pass);
+            mMaker.return_(null);
+            pass.here();
+
+            tableVar = mMaker.var(primaryTableClass);
+            keyVar = primaryKeyVar;
+            valueVar = primaryValueVar;
+        }
+
         rowVar = rowVar.cast(rowClass);
         Label hasRow = mMaker.label();
         rowVar.ifNe(null, hasRow);
         rowVar.set(mMaker.new_(rowClass));
         hasRow.here();
-        tableVar.invoke("decodePrimaryKey", rowVar, mKeyVar);
+
+        tableVar.invoke("decodePrimaryKey", rowVar, keyVar);
 
         // Invoke the schema-specific decoder directly, instead of calling the decodeValue
         // method which redundantly examines the schema version and switches on it.
         if (decoder != null) {
-            mMaker.invoke(decoder, rowVar, mValueVar);
+            mMaker.invoke(decoder, rowVar, valueVar);
         } else {
-            mMaker.var(tableClass).invoke("decodeValue", rowVar, mValueVar);
+            tableVar.invoke("decodeValue", rowVar, valueVar);
         }
 
-        mMaker.var(tableClass).invoke("markAllClean", rowVar);
+        tableVar.invoke("markAllClean", rowVar);
 
         mMaker.return_(rowVar);
     }

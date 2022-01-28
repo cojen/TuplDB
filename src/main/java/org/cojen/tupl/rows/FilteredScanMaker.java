@@ -53,6 +53,7 @@ import org.cojen.tupl.io.Utils;
  */
 public class FilteredScanMaker<R> {
     private final WeakReference<RowStore> mStoreRef;
+    private final Class<?> mPrimaryTableClass;
     private final Class<?> mTableClass;
     private final SingleScanController<R> mUnfiltered;
     private final Class<?> mPredicateClass;
@@ -87,7 +88,8 @@ public class FilteredScanMaker<R> {
      * @param lowBound pass null for open bound
      * @param highBound pass null for open bound
      */
-    public FilteredScanMaker(WeakReference<RowStore> storeRef, Class<?> tableClass,
+    public FilteredScanMaker(WeakReference<RowStore> storeRef,
+                             Class<?> primaryTableClass, Class<?> tableClass,
                              SingleScanController<R> unfiltered,
                              Class<? extends RowPredicate> predClass,
                              Class<R> rowType, RowInfo rowInfo, long indexId,
@@ -95,6 +97,7 @@ public class FilteredScanMaker<R> {
                              RowFilter lowBound, RowFilter highBound)
     {
         mStoreRef = storeRef;
+        mPrimaryTableClass = primaryTableClass;
         mTableClass = tableClass;
         mUnfiltered = unfiltered;
         mPredicateClass = predClass;
@@ -421,7 +424,7 @@ public class FilteredScanMaker<R> {
             mFilter.accept(visitor);
             Class<?> rowClass = RowMaker.find(mRowType);
             Variable rowVar = mm.param(1);
-            visitor.finishDecode(null, mTableClass, rowClass, rowVar);
+            visitor.finishDecode(null, mPrimaryTableClass, mTableClass, rowClass, rowVar);
         }
     }
 
@@ -514,7 +517,7 @@ public class FilteredScanMaker<R> {
             filter.accept(visitor);
             Class<?> rowClass = RowMaker.find(mRowType);
             Variable rowVar = mm.param(1);
-            visitor.finishDecode(decoder, mTableClass, rowClass, rowVar);
+            visitor.finishDecode(decoder, mTableClass, mTableClass, rowClass, rowVar);
 
             return mm.finish();
         }

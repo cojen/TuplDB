@@ -421,8 +421,16 @@ public abstract class AbstractTable<R> implements Table<R> {
 
         String remainderStr = remainder == null ? null : remainder.toString();
 
+        Class<?> tableClass = getClass();
+
+        Class<?> primaryTableClass = primaryTableClass();
+        if (primaryTableClass == null) {
+            primaryTableClass = tableClass;
+        }
+
         return new FilteredScanMaker<R>
-            (rowStoreRef(), getClass(), unfiltered, predClass, rowType(), rowInfo,
+            (rowStoreRef(), primaryTableClass, tableClass,
+             unfiltered, predClass, rowType(), rowInfo,
              mSource.id(), remainder, remainderStr, lowBound, highBound).finish();
     }
 
@@ -554,6 +562,13 @@ public abstract class AbstractTable<R> implements Table<R> {
      * Override if this table implements a secondary index.
      */
     protected byte[] secondaryDescriptor() {
+        return null;
+    }
+
+    /**
+     * Override if this table implements a secondary index.
+     */
+    protected Class<?> primaryTableClass() {
         return null;
     }
 

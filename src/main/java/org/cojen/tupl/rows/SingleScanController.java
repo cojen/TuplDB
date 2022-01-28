@@ -113,6 +113,11 @@ public abstract class SingleScanController<R> implements ScanController<R>, RowD
             mPrimaryIndex = primaryIndex;
         }
 
+        // Subclass should implement one of these methods. The secondaryValue param is required
+        // for alternate keys.
+        //protected static byte[] toPrimaryKey(byte[] secondaryKey);
+        //protected static byte[] toPrimaryKey(byte[] secondaryKey, byte[] secondaryValue);
+
         /**
          * Given a positioned cursor over the secondary index and a decoded primary key, return
          * the associated primary value, or null if not found.

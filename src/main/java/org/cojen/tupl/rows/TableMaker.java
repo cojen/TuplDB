@@ -54,6 +54,7 @@ import org.cojen.tupl.views.ViewUtils;
 public class TableMaker {
     private final RowStore mStore;
     private final Class<?> mRowType;
+    private final Class<?> mPrimaryTableClass;
     private final RowGen mRowGen;
     private final RowInfo mRowInfo;
     private final RowGen mCodecGen;
@@ -74,22 +75,25 @@ public class TableMaker {
     TableMaker(RowStore store, Class<?> type, RowGen rowGen,
                long indexId, boolean supportsIndexLock)
     {
-        this(store, type, rowGen, rowGen, null, indexId, supportsIndexLock);
+        this(store, type, null, rowGen, rowGen, null, indexId, supportsIndexLock);
     }
 
     /**
      * Constructor for secondary index view table.
      *
      * @param store generated class is pinned to this specific instance
+     * @param primaryTableClass the primary table implementation class
      * @param rowGen describes row encoding
      * @param codecGen describes key and value codecs (different than rowGen)
      * @param secondaryDesc secondary index descriptor
      */
-    TableMaker(RowStore store, Class<?> type, RowGen rowGen, RowGen codecGen,
+    TableMaker(RowStore store, Class<?> type, Class<?> primaryTableClass,
+               RowGen rowGen, RowGen codecGen,
                byte[] secondaryDesc, long indexId, boolean supportsIndexLock)
     {
         mStore = store;
         mRowType = type;
+        mPrimaryTableClass = primaryTableClass;
         mRowGen = rowGen;
         mRowInfo = rowGen.info;
         mCodecGen = codecGen;
@@ -259,6 +263,7 @@ public class TableMaker {
 
         if (!isPrimaryTable()) {
             addSecondaryDescriptorMethod();
+            addPrimaryTableClassMethod();
         }
 
         return doFinish(mt);
@@ -268,11 +273,14 @@ public class TableMaker {
      * Return a constructor which accepts a (TableManager, Index, RowPredicateLock,
      * AbstractTable) and returns an AbstractTable implementation.
      *
-     * @param tableClass the primary table class
      * @param unjoinedClass the table implementation which is passed as the last constructor
      * parameter
      */
-    MethodHandle finishJoined(Class<?> tableClass, Class<?> unjoinedClass) {
+    MethodHandle finishJoined(Class<?> unjoinedClass) {
+        if (mPrimaryTableClass == null) {
+            throw new IllegalStateException();
+        }
+
         mClassMaker = mCodecGen.beginClassMaker(getClass(), mRowType, "Joined").public_()
             .extend(unjoinedClass);
 
@@ -302,7 +310,7 @@ public class TableMaker {
 
         // Define the class that implements the unfiltered SingleScanController and construct a
         // singleton instance.
-        var scanControllerClass = makeUnfilteredSecondaryScanControllerClass(tableClass);
+        var scanControllerClass = makeUnfilteredSecondaryScanControllerClass();
         mClassMaker.addField(scanControllerClass, "unfiltered").private_().final_();
         ctor.field("unfiltered").set
             (ctor.new_(scanControllerClass, null, false, null, false, ctor.field("primary")));
@@ -325,7 +333,7 @@ public class TableMaker {
     }
 
     private boolean isPrimaryTable() {
-        return mRowGen == mCodecGen;
+        return mPrimaryTableClass == null;
     }
 
     private boolean supportsTriggers() {
@@ -1632,6 +1640,11 @@ public class TableMaker {
         mm.return_(mm.var(byte[].class).setExact(mSecondaryDescriptor));
     }
 
+    private void addPrimaryTableClassMethod() {
+        MethodMaker mm = mClassMaker.addMethod(Class.class, "primaryTableClass").protected_();
+        mm.return_(mPrimaryTableClass);
+    }
+
     /**
      * Defines a method which returns a singleton SingleScanController instance.
      */
@@ -1725,7 +1738,7 @@ public class TableMaker {
      * Returns a subclass of SingleScanController that accepts the same four parameters and a
      * fifth one which refers to the primary index.
      */
-    private Class<?> makeUnfilteredSecondaryScanControllerClass(Class<?> tableClass) {
+    private Class<?> makeUnfilteredSecondaryScanControllerClass() {
         ClassMaker cm = RowGen.beginClassMaker
             (TableMaker.class, mRowType, mRowInfo, null, "Unfiltered")
             .extend(SingleScanController.Joined.class).public_();
@@ -1786,7 +1799,7 @@ public class TableMaker {
             rowVar.set(mm.new_(mRowClass));
             hasRow.here();
 
-            var tableVar = mm.var(tableClass);
+            var tableVar = mm.var(mPrimaryTableClass);
             tableVar.invoke("decodePrimaryKey", rowVar, primaryKeyVar);
             tableVar.invoke("decodeValue", rowVar, primaryValueVar);
             tableVar.invoke("markAllClean", rowVar);
