@@ -53,8 +53,8 @@ import org.cojen.tupl.io.Utils;
  */
 public class FilteredScanMaker<R> {
     private final WeakReference<RowStore> mStoreRef;
-    private final Class<?> mPrimaryTableClass;
     private final Class<?> mTableClass;
+    private final Class<?> mPrimaryTableClass;
     private final SingleScanController<R> mUnfiltered;
     private final Class<?> mPredicateClass;
     private final Class<R> mRowType;
@@ -81,6 +81,7 @@ public class FilteredScanMaker<R> {
      * the RowFilter goes away, the filterStr is needed to create it again.
      *
      * @param storeRef is passed along to the generated code
+     * @param primaryTableClass only required if joining a secondary to a primary
      * @param unfiltered defines the encode methods; the decode method will be overridden
      * @param predClass contains references to the argument fields
      * @param filter the filter to apply to all rows which are in bounds, or null if none
@@ -89,7 +90,7 @@ public class FilteredScanMaker<R> {
      * @param highBound pass null for open bound
      */
     public FilteredScanMaker(WeakReference<RowStore> storeRef,
-                             Class<?> primaryTableClass, Class<?> tableClass,
+                             Class<?> tableClass, Class<?> primaryTableClass,
                              SingleScanController<R> unfiltered,
                              Class<? extends RowPredicate> predClass,
                              Class<R> rowType, RowInfo rowInfo, long indexId,
@@ -97,8 +98,8 @@ public class FilteredScanMaker<R> {
                              RowFilter lowBound, RowFilter highBound)
     {
         mStoreRef = storeRef;
-        mPrimaryTableClass = primaryTableClass;
         mTableClass = tableClass;
+        mPrimaryTableClass = primaryTableClass;
         mUnfiltered = unfiltered;
         mPredicateClass = predClass;
         mRowType = rowType;
@@ -424,7 +425,14 @@ public class FilteredScanMaker<R> {
             mFilter.accept(visitor);
             Class<?> rowClass = RowMaker.find(mRowType);
             Variable rowVar = mm.param(1);
-            visitor.finishDecode(null, mPrimaryTableClass, mTableClass, rowClass, rowVar);
+
+            Class<?> primaryTableClass = mPrimaryTableClass;
+            if (!(mUnfiltered instanceof SingleScanController.Joined)) {
+                // Don't join to the primary.
+                primaryTableClass = null;
+            }
+
+            visitor.finishDecode(null, mTableClass, primaryTableClass, rowClass, rowVar);
         }
     }
 
@@ -517,7 +525,7 @@ public class FilteredScanMaker<R> {
             filter.accept(visitor);
             Class<?> rowClass = RowMaker.find(mRowType);
             Variable rowVar = mm.param(1);
-            visitor.finishDecode(decoder, mTableClass, mTableClass, rowClass, rowVar);
+            visitor.finishDecode(decoder, mTableClass, null, rowClass, rowVar);
 
             return mm.finish();
         }

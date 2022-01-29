@@ -102,7 +102,7 @@ abstract class BytesColumnCodec extends ColumnCodec {
 
     @Override
     boolean canFilterQuick(ColumnInfo dstInfo) {
-        return dstInfo.plainTypeCode() == mInfo.plainTypeCode();
+        return dstInfo.unorderedTypeCode() == mInfo.unorderedTypeCode();
     }
 
     @Override
@@ -233,10 +233,10 @@ abstract class BytesColumnCodec extends ColumnCodec {
      * @param pass branch here when comparison passes
      * @param fail branch here when comparison fails
      */
-    protected void filterQuickCompareLex(ColumnInfo dstInfo,
-                                         Variable srcVar, Variable offsetVar, Variable endVar,
-                                         int op, Variable argObjVar, int argNum,
-                                         Label pass, Label fail)
+    protected final void filterQuickCompareLex(ColumnInfo dstInfo,
+                                               Variable srcVar, Variable offsetVar, Variable endVar,
+                                               int op, Variable argObjVar, int argNum,
+                                               Label pass, Label fail)
     {
         var argVar = bytesField(argObjVar, argNum);
 
@@ -263,7 +263,7 @@ abstract class BytesColumnCodec extends ColumnCodec {
      * @param argObjVar object which contains fields prepared earlier
      * @param argNum zero-based filter argument number
      */
-    protected Variable bytesField(Variable argObjVar, int argNum) {
+    private Variable bytesField(Variable argObjVar, int argNum) {
         String name = argFieldName(argNum, "bytes");
 
         boolean isFinal = true;

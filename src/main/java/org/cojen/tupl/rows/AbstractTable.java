@@ -343,7 +343,9 @@ public abstract class AbstractTable<R> implements Table<R> {
                 break obtain;
             }
 
-            RowInfo rowInfo = RowInfo.find(rowType);
+            RowInfo primaryRowInfo = RowInfo.find(rowType);
+            RowInfo rowInfo = primaryRowInfo;
+
             byte[] secondaryDesc = secondaryDescriptor();
             if (secondaryDesc != null) {
                 rowInfo = RowStore.indexRowInfo(rowInfo, secondaryDesc);
@@ -429,7 +431,7 @@ public abstract class AbstractTable<R> implements Table<R> {
         }
 
         return new FilteredScanMaker<R>
-            (rowStoreRef(), primaryTableClass, tableClass,
+            (rowStoreRef(), tableClass, primaryTableClass,
              unfiltered, predClass, rowType(), rowInfo,
              mSource.id(), remainder, remainderStr, lowBound, highBound).finish();
     }

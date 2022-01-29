@@ -455,11 +455,11 @@ abstract class ColumnCodec {
         return argFieldName(info.name, argNum);
     }
 
-    protected final String argFieldName(int argNum) {
+    final String argFieldName(int argNum) {
         return argFieldName(mInfo, argNum);
     }
 
-    protected final String argFieldName(int argNum, String suffix) {
+    final String argFieldName(int argNum, String suffix) {
         return argFieldName(argFieldName(argNum), suffix);
     }
 
@@ -472,7 +472,7 @@ abstract class ColumnCodec {
      *
      * @param initVar initial and final value to assign
      */
-    protected final void defineArgField(Object type, String name, Variable initVar) {
+    final void defineArgField(Object type, String name, Variable initVar) {
         mMaker.classMaker().addField(type, name).final_();
         mMaker.field(name).set(initVar);
     }
@@ -480,7 +480,7 @@ abstract class ColumnCodec {
     /**
      * Define a non-final arg field, to be lazily initialzied.
      */
-    protected final void defineArgField(Object type, String name) {
+    final void defineArgField(Object type, String name) {
         mMaker.classMaker().addField(type, name);
     }
 

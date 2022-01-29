@@ -61,15 +61,15 @@ abstract class PrimitiveArrayColumnCodec extends BytesColumnCodec {
         int typeCode = mInfo.typeCode;
         int otherTypeCode = other.mInfo.typeCode;
         if (!mLex) {
-            typeCode &= ~TYPE_DESCENDING;
-            otherTypeCode &= ~TYPE_DESCENDING;
+            typeCode = ColumnInfo.unorderedTypeCode(typeCode);
+            otherTypeCode = ColumnInfo.unorderedTypeCode(otherTypeCode);
         }
         return typeCode == otherTypeCode;
     }
 
     @Override
     public final int doHashCode() {
-        return mInfo.typeCode & ~TYPE_DESCENDING;
+        return mInfo.unorderedTypeCode();
     }
 
     @Override

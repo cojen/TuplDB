@@ -62,8 +62,8 @@ public class ConvertUtils {
      * @return null if a common type cannot be inferred or is ambiguous
      */
     public static ColumnInfo commonType(ColumnInfo aInfo, ColumnInfo bInfo, int op) {
-        int aTypeCode = aInfo.typeCode & ~TYPE_DESCENDING;
-        int bTypeCode = bInfo.typeCode & ~TYPE_DESCENDING;
+        int aTypeCode = aInfo.unorderedTypeCode();
+        int bTypeCode = bInfo.unorderedTypeCode();
 
         if (aTypeCode == bTypeCode) {
             return aInfo;

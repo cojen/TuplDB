@@ -357,7 +357,7 @@ class RowInfo extends ColumnSet {
                     messages.add("illegal automatic range [" + min + ", " + max + ']');
                 }
 
-                switch (info.typeCode & ~TYPE_DESCENDING) {
+                switch (info.unorderedTypeCode()) {
                 case TYPE_UINT: case TYPE_ULONG: case TYPE_INT: case TYPE_LONG:
                     if (!info.isAutomatic()) {
                         if (autoColumn == null) {

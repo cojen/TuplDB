@@ -121,6 +121,14 @@ public class ColumnInfo implements Cloneable {
         return typeCode & 0b000_11111;
     }
 
+    public int unorderedTypeCode() {
+        return unorderedTypeCode(typeCode);
+    }
+
+    static int unorderedTypeCode(int typeCode) {
+        return typeCode & ~TYPE_DESCENDING;
+    }
+
     boolean isUnsigned() {
         return isUnsigned(typeCode);
     }

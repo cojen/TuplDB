@@ -126,13 +126,14 @@ class DecodeVisitor extends Visitor {
      *
      * @param decoder performs full decoding of the value columns; pass null to invoke the full
      * decode method in the generated table class
-     * @param primaryTableClass current table implementation class
-     * @param tableClass same as primaryTableClass except for secondary indexes and alternate keys
+     * @param tableClass current table implementation class
+     * @param primaryTableClass pass non-null to join a secondary to a primary
      * @param rowClass current row implementation
      * @param rowVar refers to the row parameter to allocate or fill in
      */
-    void finishDecode(MethodHandle decoder, Class<?> primaryTableClass,
-                      Class<?> tableClass, Class<?> rowClass, Variable rowVar)
+    void finishDecode(MethodHandle decoder,
+                      Class<?> tableClass, Class<?> primaryTableClass,
+                      Class<?> rowClass, Variable rowVar)
     {
         mFail.here();
         mMaker.return_(null);
@@ -143,9 +144,7 @@ class DecodeVisitor extends Visitor {
 
         Variable tableVar, keyVar, valueVar;
 
-        if (primaryTableClass == tableClass ||
-            !SingleScanController.Joined.class.isAssignableFrom(mMaker.super_().classType()))
-        {
+        if (primaryTableClass == null) {
             tableVar = mMaker.var(tableClass);
             keyVar = mKeyVar;
             valueVar = mValueVar;
