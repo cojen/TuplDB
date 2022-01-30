@@ -343,8 +343,13 @@ public abstract class AbstractTable<R> implements Table<R> {
                 break obtain;
             }
 
-            RowInfo primaryRowInfo = RowInfo.find(rowType);
-            RowInfo rowInfo = primaryRowInfo;
+            RowInfo rowInfo = RowInfo.find(rowType);
+
+            RowGen primaryRowGen = null;
+            if (joinedPrimaryTableClass() != null) {
+                // Join to the primary.
+                primaryRowGen = rowInfo.rowGen();
+            }
 
             byte[] secondaryDesc = secondaryDescriptor();
             if (secondaryDesc != null) {
@@ -365,7 +370,7 @@ public abstract class AbstractTable<R> implements Table<R> {
             }
 
             Class<? extends RowPredicate> predClass = new RowPredicateMaker
-                (rowStoreRef(), baseClass, rowType, rowInfo.rowGen(),
+                (rowStoreRef(), baseClass, rowType, rowInfo.rowGen(), primaryRowGen,
                  mTableManager.mPrimaryIndex.id(), mSource.id(), rf, filter, ranges).finish();
 
             if (ranges.length > 1) {
@@ -421,19 +426,10 @@ public abstract class AbstractTable<R> implements Table<R> {
         RowFilter lowBound = range[1];
         RowFilter highBound = range[2];
 
-        String remainderStr = remainder == null ? null : remainder.toString();
-
-        Class<?> tableClass = getClass();
-
-        Class<?> primaryTableClass = primaryTableClass();
-        if (primaryTableClass == null) {
-            primaryTableClass = tableClass;
-        }
-
         return new FilteredScanMaker<R>
-            (rowStoreRef(), tableClass, primaryTableClass,
+            (rowStoreRef(), getClass(), joinedPrimaryTableClass(),
              unfiltered, predClass, rowType(), rowInfo,
-             mSource.id(), remainder, remainderStr, lowBound, highBound).finish();
+             mSource.id(), remainder, lowBound, highBound).finish();
     }
 
     private RowFilter[][] multiRangeExtract(RowInfo rowInfo, RowFilter rf,
@@ -568,9 +564,9 @@ public abstract class AbstractTable<R> implements Table<R> {
     }
 
     /**
-     * Override if this table implements a secondary index.
+     * Override if this table implements a secondary index and joins to the primary.
      */
-    protected Class<?> primaryTableClass() {
+    protected Class<?> joinedPrimaryTableClass() {
         return null;
     }
 

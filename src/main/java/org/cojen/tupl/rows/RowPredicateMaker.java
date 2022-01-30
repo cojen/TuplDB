@@ -77,6 +77,7 @@ public class RowPredicateMaker {
     private final Class<? extends RowPredicate> mBaseClass;
     private final Class<?> mRowType;
     private final RowGen mRowGen;
+    private final RowGen mPrimaryRowGen;
     private final long mPrimaryIndexId;
     private final long mIndexId;
     private final RowFilter mFilter;
@@ -87,18 +88,20 @@ public class RowPredicateMaker {
     private final ClassMaker mClassMaker;
     private final MethodMaker mCtorMaker;
 
-    private final ColumnCodec[] mKeyCodecs, mValueCodecs;
+    private final ColumnCodec[] mCodecs;
+    private ColumnCodec[] mPrimaryCodecs;
 
     /**
      * @param storeRef is passed along to the generated code
      * @param baseClass pass null if predicate locking isn't supported
+     * @param primaryRowGen pass non-null to when joining a secondary to a primary
      * @param filter the complete scan filter, not broken down into ranges
      * @param ranges filter broken down into ranges, or null if not applicable. See
      * RowFilter.multiRangeExtract
      */
     RowPredicateMaker(WeakReference<RowStore> storeRef,
-                      Class<? extends RowPredicate> baseClass, Class<?> rowType, RowGen rowGen,
-                      long primaryIndexId, long indexId,
+                      Class<? extends RowPredicate> baseClass, Class<?> rowType,
+                      RowGen rowGen, RowGen primaryRowGen, long primaryIndexId, long indexId,
                       RowFilter filter, String filterStr, RowFilter[][] ranges)
     {
         mStoreRef = storeRef;
@@ -110,6 +113,7 @@ public class RowPredicateMaker {
         mBaseClass = baseClass;
         mRowType = rowType;
         mRowGen = rowGen;
+        mPrimaryRowGen = primaryRowGen;
         mPrimaryIndexId = primaryIndexId;
         mIndexId = indexId;
         mFilter = filter;
@@ -126,8 +130,7 @@ public class RowPredicateMaker {
         mCtorMaker = mClassMaker.addConstructor(Object[].class).varargs();
         mCtorMaker.invokeSuperConstructor();
 
-        mKeyCodecs = rowGen.keyCodecs();
-        mValueCodecs = rowGen.valueCodecs();
+        mCodecs = rowGen.codecsCopy();
     }
 
     /**
@@ -220,22 +223,25 @@ public class RowPredicateMaker {
     }
 
     private ColumnCodec codecFor(String colName) {
-        int colNum;
-        {
-            Integer num = mRowGen.columnNumbers().get(colName);
-            if (num == null) {
-                throw new IllegalStateException("Column is unavailable for filtering: " + colName);
+        ColumnCodec[] codecs = mCodecs;
+
+        Integer num = mRowGen.columnNumbers().get(colName);
+        if (num == null) notFound: {
+            if (mPrimaryRowGen != null) {
+                num = mPrimaryRowGen.columnNumbers().get(colName);
+                if (num != null) {
+                    codecs = mPrimaryCodecs;
+                    if (codecs == null) {
+                        mPrimaryCodecs = codecs = mPrimaryRowGen.codecsCopy();
+                    }
+                }
+                break notFound;
             }
-            colNum = num;
+
+            throw new IllegalStateException("Column is unavailable for filtering: " + colName);
         }
 
-        ColumnCodec[] codecs = mKeyCodecs;
-
-        if (colNum >= codecs.length) {
-            colNum -= codecs.length;
-            codecs = mValueCodecs;
-        }
-
+        int colNum = num;
         ColumnCodec codec = codecs[colNum];
 
         if (codec.mMaker != mCtorMaker) { // check if not bound
@@ -441,7 +447,7 @@ public class RowPredicateMaker {
                 RowGen rowGen = rowInfo.rowGen();
                 var predicateVar = mm.param(2);
                 var visitor = new DecodeVisitor(mm, valueOffset, rowGen, predicateVar, null, 0);
-                filter.accept(visitor);
+                visitor.applyFilter(filter);
                 visitor.finishPredicate();
             }
 
@@ -513,7 +519,7 @@ public class RowPredicateMaker {
 
                 var predicateVar = mm.param(mt.parameterCount() - 1);
                 var visitor = new DecodeVisitor(mm, 0, rowInfo.rowGen(), predicateVar, null, 0);
-                filter.accept(visitor);
+                visitor.applyFilter(filter);
                 visitor.finishPredicate();
             }
 

@@ -25,6 +25,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
 
+import org.cojen.maker.FieldMaker;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
@@ -473,15 +474,15 @@ abstract class ColumnCodec {
      * @param initVar initial and final value to assign
      */
     final void defineArgField(Object type, String name, Variable initVar) {
-        mMaker.classMaker().addField(type, name).final_();
+        defineArgField(type, name).final_();
         mMaker.field(name).set(initVar);
     }
 
     /**
      * Define a non-final arg field, to be lazily initialzied.
      */
-    final void defineArgField(Object type, String name) {
-        mMaker.classMaker().addField(type, name);
+    final FieldMaker defineArgField(Object type, String name) {
+        return mMaker.classMaker().addField(type, name);
     }
 
     /**

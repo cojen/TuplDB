@@ -19,6 +19,7 @@ package org.cojen.tupl.rows;
 
 import java.lang.reflect.Modifier;
 
+import org.cojen.maker.FieldMaker;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
@@ -52,14 +53,22 @@ abstract class BytesColumnCodec extends ColumnCodec {
     @Override
     void filterDefineExtraFields(boolean in, Variable argVar, String argFieldName, boolean init) {
         Class<?> fieldType = in ? byte[][].class : byte[].class;
-        String fieldName = argFieldName(argFieldName, "bytes");
+        String fieldName = argFieldName(argFieldName, bytesFieldSuffix());
 
-        if (init) {
-            defineArgField(fieldType, fieldName, filterPrepareBytes(argVar, in));
+        FieldMaker fm;
+        try {
+            fm = defineArgField(fieldType, fieldName);
+        } catch (IllegalStateException e) {
+            // Already defined. Assume this is okay and that the string returned by
+            // bytesFieldSuffix() ensures that unique encodings have unique field names.
             return;
         }
 
-        defineArgField(fieldType, fieldName);
+        if (init) { 
+            fm.final_();
+            mMaker.field(fieldName).set(filterPrepareBytes(argVar, in));
+            return;
+        }
 
         // Define a method for accessing the field, which lazily initializes it.
 
@@ -264,7 +273,7 @@ abstract class BytesColumnCodec extends ColumnCodec {
      * @param argNum zero-based filter argument number
      */
     private Variable bytesField(Variable argObjVar, int argNum) {
-        String name = argFieldName(argNum, "bytes");
+        String name = argFieldName(argNum, bytesFieldSuffix());
 
         boolean isFinal = true;
         try {
@@ -279,5 +288,20 @@ abstract class BytesColumnCodec extends ColumnCodec {
             // Invoke the lazy init method.
             return argObjVar.invoke(name);
         }
+    }
+
+    /**
+     * Should return a unique string among all the subclasses. This allows extra fields to be
+     * shared when filtering against a secondary index and the column must be decoded against
+     * the secondary and the primary. If this method always returned the same string for all
+     * subclasses, then this might create field name conflicts.
+     */
+    private String bytesFieldSuffix() {
+        String name = getClass().getSimpleName();
+        if (!name.endsWith("ColumnCodec")) {
+            throw new AssertionError();
+        }
+        name = name.substring(0, name.length() - 11);
+        return name;
     }
 }

@@ -42,6 +42,7 @@ import org.cojen.tupl.core.RowPredicate;
 
 import org.cojen.tupl.filter.ColumnToArgFilter;
 import org.cojen.tupl.filter.RowFilter;
+import org.cojen.tupl.filter.TrueFilter;
 import org.cojen.tupl.filter.Visitor;
 
 import org.cojen.tupl.io.Utils;
@@ -61,8 +62,7 @@ public class FilteredScanMaker<R> {
     private final RowGen mRowGen;
     private final boolean mIsPrimaryTable;
     private final long mIndexId;
-    private final RowFilter mFilter, mLowBound, mHighBound;
-    private final String mFilterStr;
+    private final RowFilter mFilter, mLowBound, mHighBound, mJoinFilter;
     private final ClassMaker mFilterMaker;
     private final MethodMaker mFilterCtorMaker;
 
@@ -81,11 +81,10 @@ public class FilteredScanMaker<R> {
      * the RowFilter goes away, the filterStr is needed to create it again.
      *
      * @param storeRef is passed along to the generated code
-     * @param primaryTableClass only required if joining a secondary to a primary
+     * @param primaryTableClass pass non-null to when joining a secondary to a primary
      * @param unfiltered defines the encode methods; the decode method will be overridden
      * @param predClass contains references to the argument fields
      * @param filter the filter to apply to all rows which are in bounds, or null if none
-     * @param filterStr the canonical string for the filter param, or null if none
      * @param lowBound pass null for open bound
      * @param highBound pass null for open bound
      */
@@ -94,8 +93,7 @@ public class FilteredScanMaker<R> {
                              SingleScanController<R> unfiltered,
                              Class<? extends RowPredicate> predClass,
                              Class<R> rowType, RowInfo rowInfo, long indexId,
-                             RowFilter filter, String filterStr,
-                             RowFilter lowBound, RowFilter highBound)
+                             RowFilter filter, RowFilter lowBound, RowFilter highBound)
     {
         mStoreRef = storeRef;
         mTableClass = tableClass;
@@ -107,11 +105,20 @@ public class FilteredScanMaker<R> {
         mRowGen = rowInfo.rowGen();
         mIsPrimaryTable = RowInfo.find(rowType) == rowInfo;
 
+        RowFilter joinFilter = null;
+
+        if (filter != null && unfiltered instanceof SingleScanController.Joined) {
+            // First filter on the secondary entry, and then filter on the joined primary entry.
+            RowFilter[] extracted = filter.extract(mRowGen.info.keyColumns);
+            filter = extracted[0];
+            joinFilter = extracted[1];
+        }
+
         mIndexId = indexId;
         mFilter = filter;
         mLowBound = lowBound;
         mHighBound = highBound;
-        mFilterStr = filterStr;
+        mJoinFilter = joinFilter;
 
         // Define in the same package as the predicate class, in order to access it, and to
         // facilitate class unloading.
@@ -393,7 +400,7 @@ public class FilteredScanMaker<R> {
     }
 
     private void addDecodeRowMethod() {
-        if (mFilter == null) {
+        if (mFilter == null || (mIsPrimaryTable && mFilter == TrueFilter.THE)) {
             // No remainder filter, so rely on inherited method.
             return;
         }
@@ -403,52 +410,79 @@ public class FilteredScanMaker<R> {
         MethodMaker mm = mFilterMaker.addMethod
             (Object.class, "decodeRow", Cursor.class, Object.class).public_();
 
+        var cursorVar = mm.param(0);
+        var rowVar = mm.param(1);
         var predicateVar = mm.field("predicate");
 
         if (mIsPrimaryTable) {
             // The decode method is implemented using indy, to support multiple schema versions.
 
             var indy = mm.var(FilteredScanMaker.class).indy
-                ("indyDecodeRow", mStoreRef, mTableClass, mRowType, mIndexId,
-                 new WeakReference<>(mFilter), mFilterStr, mStopColumn, mStopArgument);
+                ("indyFilter", mStoreRef, mTableClass, mRowType, mIndexId,
+                 new WeakReference<>(mFilter), mFilter.toString(), mStopColumn, mStopArgument);
 
-            var valueVar = mm.param(0).invoke("value");
+            var valueVar = cursorVar.invoke("value");
 
             var schemaVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", valueVar);
 
             mm.return_(indy.invoke(Object.class, "decodeRow", null, schemaVersion,
-                                   mm.param(0), mm.param(1), predicateVar));
-        } else {
-            // Decoding a secondary index row is simpler because it has no schema version.
-            var visitor = new DecodeVisitor
-                (mm, 0, mRowGen, predicateVar, mStopColumn, mStopArgument);
-            mFilter.accept(visitor);
-            Class<?> rowClass = RowMaker.find(mRowType);
-            Variable rowVar = mm.param(1);
-
-            Class<?> primaryTableClass = mPrimaryTableClass;
-            if (!(mUnfiltered instanceof SingleScanController.Joined)) {
-                // Don't join to the primary.
-                primaryTableClass = null;
-            }
-
-            visitor.finishDecode(null, mTableClass, primaryTableClass, rowClass, rowVar);
+                                   cursorVar, rowVar, predicateVar));
+            return;
         }
+
+        // Decoding a secondary index row is simpler because it has no schema version.
+
+        var visitor = new DecodeVisitor(mm, 0, mRowGen, predicateVar, mStopColumn, mStopArgument);
+
+        visitor.applyFilter(mFilter);
+
+        if (mPrimaryTableClass == null) {
+            // Not joined to a primary.
+            Class<?> rowClass = RowMaker.find(mRowType);
+            visitor.finishDecode(null, mTableClass, rowClass, rowVar);
+            return;
+        }
+
+        Variable[] primaryVars = visitor.joinToPrimary();
+
+        var primaryKeyVar = primaryVars[0];
+        var primaryValueVar = primaryVars[1];
+
+        // Finish filter and decode using indy, to support multiple schema versions.
+
+        long primaryIndexId = ((SingleScanController.Joined) mUnfiltered).mPrimaryIndex.id();
+
+        WeakReference<RowFilter> filterRef = null;
+        String filterStr = null;
+
+        if (mJoinFilter != null && mJoinFilter != TrueFilter.THE) {
+            filterRef = new WeakReference<>(mJoinFilter);
+            filterStr = mJoinFilter.toString();
+        }
+
+        var indy = mm.var(FilteredScanMaker.class).indy
+            ("indyFilter", mStoreRef, mPrimaryTableClass, mRowType, primaryIndexId,
+             filterRef, filterStr, null, 0);
+
+        var schemaVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", primaryValueVar);
+
+        mm.return_(indy.invoke(Object.class, "decodeRow", null, schemaVersion,
+                               primaryKeyVar, primaryValueVar, rowVar, predicateVar));
     }
 
-    public static CallSite indyDecodeRow(MethodHandles.Lookup lookup, String name, MethodType mt,
-                                         WeakReference<RowStore> storeRef,
-                                         Class<?> tableClass, Class<?> rowType, long indexId,
-                                         WeakReference<RowFilter> filterRef, String filterStr,
-                                         String stopColumn, int stopArgument)
+    public static CallSite indyFilter(MethodHandles.Lookup lookup, String name, MethodType mt,
+                                      WeakReference<RowStore> storeRef,
+                                      Class<?> tableClass, Class<?> rowType, long indexId,
+                                      WeakReference<RowFilter> filterRef, String filterStr,
+                                      String stopColumn, int stopArgument)
     {
-        var dm = new DecodeMaker
+        var dm = new FilterMaker
             (lookup, mt, storeRef, tableClass, rowType, indexId,
              filterRef, filterStr, stopColumn, stopArgument);
         return new SwitchCallSite(lookup, mt, dm);
     }
 
-    private static class DecodeMaker implements IntFunction<Object> {
+    private static class FilterMaker implements IntFunction<Object> {
         private final MethodHandles.Lookup mLookup;
         private final MethodType mMethodType;
         private final WeakReference<RowStore> mStoreRef;
@@ -462,7 +496,7 @@ public class FilteredScanMaker<R> {
         // This class isn't defined as a lambda function because this field cannot be final.
         private WeakReference<RowFilter> mFilterRef;
 
-        DecodeMaker(MethodHandles.Lookup lookup, MethodType mt,
+        FilterMaker(MethodHandles.Lookup lookup, MethodType mt,
                     WeakReference<RowStore> storeRef, Class<?> tableClass,
                     Class<?> rowType, long indexId,
                     WeakReference<RowFilter> filterRef, String filterStr,
@@ -489,10 +523,15 @@ public class FilteredScanMaker<R> {
         public Object apply(int schemaVersion) {
             MethodMaker mm = MethodMaker.begin(mLookup, "case", mMethodType);
 
-            RowFilter filter = mFilterRef.get();
-            if (filter == null) {
-                filter = AbstractTable.parse(mRowType, mFilterStr);
-                mFilterRef = new WeakReference<>(filter);
+            RowFilter filter;
+            if (mFilterRef == null) {
+                filter = TrueFilter.THE;
+            } else {
+                filter = mFilterRef.get();
+                if (filter == null) {
+                    filter = AbstractTable.parse(mRowType, mFilterStr);
+                    mFilterRef = new WeakReference<>(filter);
+                }
             }
 
             RowStore store = mStoreRef.get();
@@ -518,14 +557,16 @@ public class FilteredScanMaker<R> {
 
             RowGen rowGen = rowInfo.rowGen();
             int valueOffset = RowUtils.lengthPrefixPF(schemaVersion);
-            var predicateVar = mm.param(2);
+            var predicateVar = mm.param(mMethodType.parameterCount() - 1);
 
             var visitor = new DecodeVisitor
                 (mm, valueOffset, rowGen, predicateVar, mStopColumn, mStopArgument);
-            filter.accept(visitor);
+
+            visitor.applyFilter(filter);
+
             Class<?> rowClass = RowMaker.find(mRowType);
-            Variable rowVar = mm.param(1);
-            visitor.finishDecode(decoder, mTableClass, null, rowClass, rowVar);
+            Variable rowVar = mm.param(mMethodType.parameterCount() - 2);
+            visitor.finishDecode(decoder, mTableClass, rowClass, rowVar);
 
             return mm.finish();
         }

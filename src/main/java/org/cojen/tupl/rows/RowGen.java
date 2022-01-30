@@ -231,6 +231,18 @@ class RowGen {
     }
 
     /**
+     * Returns a new array consisting of the key codecs followed by the value codecs.
+     */
+    public ColumnCodec[] codecsCopy() {
+        ColumnCodec[] keyCodecs = keyCodecs();
+        ColumnCodec[] valueCodecs = valueCodecs();
+        var all = new ColumnCodec[keyCodecs.length + valueCodecs.length];
+        System.arraycopy(keyCodecs, 0, all, 0, keyCodecs.length);
+        System.arraycopy(valueCodecs, 0, all, keyCodecs.length, valueCodecs.length);
+        return all;
+    }
+
+    /**
      * Returns the key codecs in the order in which they should be encoded, which is the same
      * as RowInfo.keyColumns order (declaration order).
      */

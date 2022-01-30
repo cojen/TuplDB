@@ -30,6 +30,7 @@ import org.cojen.tupl.filter.ColumnToArgFilter;
 import org.cojen.tupl.filter.ColumnToColumnFilter;
 import org.cojen.tupl.filter.OrFilter;
 import org.cojen.tupl.filter.RowFilter;
+import org.cojen.tupl.filter.TrueFilter;
 import org.cojen.tupl.filter.Visitor;
 
 /**
@@ -41,9 +42,7 @@ import org.cojen.tupl.filter.Visitor;
  */
 class DecodeVisitor extends Visitor {
     private final MethodMaker mMaker;
-    private final Variable mKeyVar;
-    private final Variable mValueVar;
-    private final Variable mCursorVar;
+    private Variable mKeyVar, mValueVar, mCursorVar;
     private final int mValueOffset;
     private final RowGen mRowGen;
     private final Variable mPredicateVar;
@@ -94,83 +93,106 @@ class DecodeVisitor extends Visitor {
         mStopColumn = stopColumn;
         mStopArgument = stopArgument;
 
-        var keyVar = mm.param(0);
-        Variable valueVar;
-        Variable cursorVar = null;
-
-        if (keyVar.classType() == Cursor.class) {
-            cursorVar = keyVar;
-            keyVar = cursorVar.invoke("key");
-            valueVar = cursorVar.invoke("value");
-        } else {
-            valueVar = mm.param(1);
-            if (valueVar.classType() == Cursor.class) {
-                cursorVar = valueVar;
-                valueVar = cursorVar.invoke("value");
-            }
-        }
-
-        mKeyVar = keyVar;
-        mValueVar = valueVar;
-        mCursorVar = cursorVar;
-
         mKeyCodecs = ColumnCodec.bind(rowGen.keyCodecs(), mm);
         mValueCodecs = ColumnCodec.bind(rowGen.valueCodecs(), mm);
-
-        mPass = mm.label();
-        mFail = mm.label();
     }
 
     /**
-     * Must be called after visiting when making a full decoder.
+     * Initialize the key, value, and cursor variables.
+     */
+    private void initVars(boolean requireValue) {
+        if (mKeyVar != null) {
+            return;
+        }
+
+        mKeyVar = mMaker.param(0);
+
+        if (mKeyVar.classType() == Cursor.class) {
+            mCursorVar = mKeyVar;
+            mKeyVar = mCursorVar.invoke("key");
+            if (requireValue) {
+                mValueVar = mCursorVar.invoke("value");
+            }
+        } else {
+            mValueVar = mMaker.param(1);
+            if (mValueVar.classType() == Cursor.class) {
+                mCursorVar = mValueVar;
+                if (requireValue) {
+                    mValueVar = mCursorVar.invoke("value");
+                } else {
+                    mValueVar = null;
+                }
+            }
+        }
+    }
+
+    /**
+     * Call to generate filtering code. If called more than once, each additional filter
+     * behaves as-if it was combined with the 'and' operator.
+     */
+    void applyFilter(RowFilter filter) {
+        if (filter != TrueFilter.THE) {
+            mPass = mMaker.label();
+            mFail = mMaker.label();
+            initVars(true);
+            filter.accept(this);
+        }
+    }
+
+    /**
+     * Join a secondary to a primary, returning the primary key and value. If the join returns
+     * null, then the generated method returns null. After calling this method, this visitor
+     * cannot be used again.
+     */
+    Variable[] joinToPrimary() {
+        if (mCursorVar != null) {
+            throw new IllegalStateException();
+        }
+
+        var secInfo = (SecondaryInfo) mRowGen.info; // cast as an assertion
+        boolean isAltKey = secInfo.isAltKey();
+
+        passFail(null);
+
+        // Must call this in case applyFilter wasn't called, or it did nothing.
+        initVars(isAltKey);
+
+        Variable primaryKeyVar;
+        if (isAltKey) {
+            primaryKeyVar = mMaker.invoke("toPrimaryKey", mKeyVar, mValueVar);
+        } else {
+            primaryKeyVar = mMaker.invoke("toPrimaryKey", mKeyVar);
+        }
+
+        var primaryValueVar = mMaker.invoke("join", mCursorVar, primaryKeyVar);
+
+        Label hasValue = mMaker.label();
+        primaryValueVar.ifNe(null, hasValue);
+        mMaker.return_(null);
+        hasValue.here();
+
+        return new Variable[] {primaryKeyVar, primaryValueVar};
+    }
+
+    /**
+     * Finishes the method by returning a decoded row. After calling this method, this visitor
+     * cannot be used again.
      *
      * @param decoder performs full decoding of the value columns; pass null to invoke the full
      * decode method in the generated table class
      * @param tableClass current table implementation class
-     * @param primaryTableClass pass non-null to join a secondary to a primary
      * @param rowClass current row implementation
      * @param rowVar refers to the row parameter to allocate or fill in
      */
     void finishDecode(MethodHandle decoder,
-                      Class<?> tableClass, Class<?> primaryTableClass,
-                      Class<?> rowClass, Variable rowVar)
+                      Class<?> tableClass, Class<?> rowClass, Variable rowVar)
     {
-        mFail.here();
-        mMaker.return_(null);
+        passFail(null);
 
-        mPass.here();
+        // Must call this in case applyFilter wasn't called, or it did nothing.
+        initVars(true);
 
         // FIXME: Some columns may have already been decoded, so don't double decode them.
-
-        Variable tableVar, keyVar, valueVar;
-
-        if (primaryTableClass == null) {
-            tableVar = mMaker.var(tableClass);
-            keyVar = mKeyVar;
-            valueVar = mValueVar;
-        } else {
-            assert decoder == null;
-            assert mCursorVar != null;
-            var secInfo = (SecondaryInfo) mRowGen.info; // assert
-
-            Variable primaryKeyVar;
-            if (secInfo.isAltKey()) {
-                primaryKeyVar = mMaker.invoke("toPrimaryKey", mKeyVar, mValueVar);
-            } else {
-                primaryKeyVar = mMaker.invoke("toPrimaryKey", mKeyVar);
-            }
-
-            var primaryValueVar = mMaker.invoke("join", mCursorVar, primaryKeyVar);
-
-            Label pass = mMaker.label();
-            primaryKeyVar.ifNe(null, pass);
-            mMaker.return_(null);
-            pass.here();
-
-            tableVar = mMaker.var(primaryTableClass);
-            keyVar = primaryKeyVar;
-            valueVar = primaryValueVar;
-        }
 
         rowVar = rowVar.cast(rowClass);
         Label hasRow = mMaker.label();
@@ -178,14 +200,15 @@ class DecodeVisitor extends Visitor {
         rowVar.set(mMaker.new_(rowClass));
         hasRow.here();
 
-        tableVar.invoke("decodePrimaryKey", rowVar, keyVar);
+        var tableVar = mMaker.var(tableClass);
+        tableVar.invoke("decodePrimaryKey", rowVar, mKeyVar);
 
         // Invoke the schema-specific decoder directly, instead of calling the decodeValue
         // method which redundantly examines the schema version and switches on it.
         if (decoder != null) {
-            mMaker.invoke(decoder, rowVar, valueVar);
+            mMaker.invoke(decoder, rowVar, mValueVar);
         } else {
-            tableVar.invoke("decodeValue", rowVar, valueVar);
+            tableVar.invoke("decodeValue", rowVar, mValueVar);
         }
 
         tableVar.invoke("markAllClean", rowVar);
@@ -194,13 +217,20 @@ class DecodeVisitor extends Visitor {
     }
 
     /**
-     * Must be called after visiting when making a predicate.
+     * Must be called after visiting when making a predicate. After calling this method, this
+     * visitor cannot be used again.
      */
     void finishPredicate() {
-        mFail.here();
-        mMaker.return_(false);
-        mPass.here();
+        passFail(false);
         mMaker.return_(true);
+    }
+
+    private void passFail(Object failResult) {
+        if (mFail != null) {
+            mFail.here();
+            mMaker.return_(failResult);
+            mPass.here();
+        }
     }
 
     @Override

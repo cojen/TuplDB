@@ -533,13 +533,12 @@ public class RowStore {
         RowPredicateLock<R> indexLock = indexLock(ix);
 
         try {
-            var maker = new TableMaker(this, rowType, primaryTable.getClass(),
-                                       rowInfo.rowGen(), indexRowInfo.rowGen(),
+            var maker = new TableMaker(this, rowType, rowInfo.rowGen(), indexRowInfo.rowGen(),
                                        descriptor, ix.id(), indexLock != null);
             var mh = maker.finish();
             TableManager manager = primaryTable.mTableManager;
             var unjoined = (AbstractTable<R>) mh.invoke(manager, ix, indexLock);
-            mh = maker.finishJoined(unjoined.getClass());
+            mh = maker.finishJoined(unjoined.getClass(), primaryTable.getClass());
             table = (AbstractTable<R>) mh.invoke(manager, ix, indexLock, unjoined);
         } catch (Throwable e) {
             throw rethrow(e);
