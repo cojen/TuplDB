@@ -224,7 +224,7 @@ implements <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#enableJMX(boolean)" class="member-name-link">enableJMX</a><wbr>(boolean&nbsp;enable)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#encrypt(org.cojen.tupl.Crypto)" class="member-name-link">encrypt</a><wbr>(<a href="Crypto.html" title="interface in org.cojen.tupl">Crypto</a>&nbsp;crypto)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#encrypt(org.cojen.tupl.ext.Crypto)" class="member-name-link">encrypt</a><wbr>(<a href="ext/Crypto.html" title="interface in org.cojen.tupl.ext">Crypto</a>&nbsp;crypto)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Enable full encryption of the data files, transaction logs, snapshots, and cache priming
  sets.</div>
@@ -627,9 +627,9 @@ implements <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base
 </section>
 </li>
 <li>
-<section class="detail" id="encrypt(org.cojen.tupl.Crypto)">
+<section class="detail" id="encrypt(org.cojen.tupl.ext.Crypto)">
 <h3>encrypt</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></span>&nbsp;<span class="element-name">encrypt</span><wbr><span class="parameters">(<a href="Crypto.html" title="interface in org.cojen.tupl">Crypto</a>&nbsp;crypto)</span></div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></span>&nbsp;<span class="element-name">encrypt</span><wbr><span class="parameters">(<a href="ext/Crypto.html" title="interface in org.cojen.tupl.ext">Crypto</a>&nbsp;crypto)</span></div>
 <div class="block">Enable full encryption of the data files, transaction logs, snapshots, and cache priming
  sets. Option has no effect if database is non-durable. If replication is enabled,
  encryption is not applied to the replication stream. A <a href="repl/StreamReplicator.html" title="interface in org.cojen.tupl.repl"><code>StreamReplicator</code></a>

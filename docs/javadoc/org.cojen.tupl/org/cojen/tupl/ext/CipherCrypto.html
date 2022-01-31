@@ -78,12 +78,12 @@ loadScripts(document, 'script');</script>
 <section class="class-description" id="class-description">
 <dl class="notes">
 <dt>All Implemented Interfaces:</dt>
-<dd><code><a href="../Crypto.html" title="interface in org.cojen.tupl">Crypto</a></code></dd>
+<dd><code><a href="Crypto.html" title="interface in org.cojen.tupl.ext">Crypto</a></code></dd>
 </dl>
 <hr>
 <div class="type-signature"><span class="modifiers">public class </span><span class="element-name type-name-label">CipherCrypto</span>
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>
-implements <a href="../Crypto.html" title="interface in org.cojen.tupl">Crypto</a></span></div>
+implements <a href="Crypto.html" title="interface in org.cojen.tupl.ext">Crypto</a></span></div>
 <div class="block">Crypto implementation which uses <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/javax/crypto/Cipher.html" title="class or interface in javax.crypto" class="external-link"><code>Cipher</code></a> and defaults to the AES algorithm. An
  encrypted salt-sector initialization vector <a href="https://en.wikipedia.org/wiki/Disk_encryption_theory#ESSIV">(ESSIV)</a> scheme is
  applied to all data pages in the main database file, where the initialization vector is
@@ -257,8 +257,8 @@ implements <a href="../Crypto.html" title="interface in org.cojen.tupl">Crypto</
 <h3 id="methods-inherited-from-class-java.lang.Object">Methods inherited from class&nbsp;java.lang.<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></h3>
 <code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#clone()" title="class or interface in java.lang" class="external-link">clone</a>, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#equals(java.lang.Object)" title="class or interface in java.lang" class="external-link">equals</a>, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#finalize()" title="class or interface in java.lang" class="external-link">finalize</a>, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#getClass()" title="class or interface in java.lang" class="external-link">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#hashCode()" title="class or interface in java.lang" class="external-link">hashCode</a>, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#notify()" title="class or interface in java.lang" class="external-link">notify</a>, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#notifyAll()" title="class or interface in java.lang" class="external-link">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#toString()" title="class or interface in java.lang" class="external-link">toString</a>, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#wait()" title="class or interface in java.lang" class="external-link">wait</a>, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#wait(long)" title="class or interface in java.lang" class="external-link">wait</a>, <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html#wait(long,int)" title="class or interface in java.lang" class="external-link">wait</a></code></div>
 <div class="inherited-list">
-<h3 id="methods-inherited-from-class-org.cojen.tupl.Crypto">Methods inherited from interface&nbsp;org.cojen.tupl.<a href="../Crypto.html" title="interface in org.cojen.tupl">Crypto</a></h3>
-<code><a href="../Crypto.html#decryptPage(long,int,byte%5B%5D,int)">decryptPage</a>, <a href="../Crypto.html#decryptPage(long,int,long,int)">decryptPage</a>, <a href="../Crypto.html#encryptPage(long,int,byte%5B%5D,int)">encryptPage</a>, <a href="../Crypto.html#encryptPage(long,int,long,int)">encryptPage</a></code></div>
+<h3 id="methods-inherited-from-class-org.cojen.tupl.ext.Crypto">Methods inherited from interface&nbsp;org.cojen.tupl.ext.<a href="Crypto.html" title="interface in org.cojen.tupl.ext">Crypto</a></h3>
+<code><a href="Crypto.html#decryptPage(long,int,byte%5B%5D,int)">decryptPage</a>, <a href="Crypto.html#decryptPage(long,int,long,int)">decryptPage</a>, <a href="Crypto.html#encryptPage(long,int,byte%5B%5D,int)">encryptPage</a>, <a href="Crypto.html#encryptPage(long,int,long,int)">encryptPage</a></code></div>
 </section>
 </li>
 </ul>
@@ -355,12 +355,12 @@ implements <a href="../Crypto.html" title="interface in org.cojen.tupl">Crypto</
  byte[]&nbsp;dst,
  int&nbsp;dstOffset)</span>
                        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/security/GeneralSecurityException.html" title="class or interface in java.security" class="external-link">GeneralSecurityException</a></span></div>
-<div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="../Crypto.html#encryptPage(long,int,byte%5B%5D,int,byte%5B%5D,int)">Crypto</a></code></span></div>
+<div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="Crypto.html#encryptPage(long,int,byte%5B%5D,int,byte%5B%5D,int)">Crypto</a></code></span></div>
 <div class="block">Called by multiple threads to encrypt a fixed-size database
  page. Encrypted length must exactly match original length.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
-<dd><code><a href="../Crypto.html#encryptPage(long,int,byte%5B%5D,int,byte%5B%5D,int)">encryptPage</a></code>&nbsp;in interface&nbsp;<code><a href="../Crypto.html" title="interface in org.cojen.tupl">Crypto</a></code></dd>
+<dd><code><a href="Crypto.html#encryptPage(long,int,byte%5B%5D,int,byte%5B%5D,int)">encryptPage</a></code>&nbsp;in interface&nbsp;<code><a href="Crypto.html" title="interface in org.cojen.tupl.ext">Crypto</a></code></dd>
 <dt>Parameters:</dt>
 <dd><code>pageIndex</code> - page index within database</dd>
 <dd><code>src</code> - original unencrypted page</dd>
@@ -382,12 +382,12 @@ implements <a href="../Crypto.html" title="interface in org.cojen.tupl">Crypto</
  long&nbsp;dstPtr,
  int&nbsp;dstOffset)</span>
                        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/security/GeneralSecurityException.html" title="class or interface in java.security" class="external-link">GeneralSecurityException</a></span></div>
-<div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="../Crypto.html#encryptPage(long,int,long,int,long,int)">Crypto</a></code></span></div>
+<div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="Crypto.html#encryptPage(long,int,long,int,long,int)">Crypto</a></code></span></div>
 <div class="block">Called by multiple threads to encrypt a fixed-size database
  page. Encrypted length must exactly match original length.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
-<dd><code><a href="../Crypto.html#encryptPage(long,int,long,int,long,int)">encryptPage</a></code>&nbsp;in interface&nbsp;<code><a href="../Crypto.html" title="interface in org.cojen.tupl">Crypto</a></code></dd>
+<dd><code><a href="Crypto.html#encryptPage(long,int,long,int,long,int)">encryptPage</a></code>&nbsp;in interface&nbsp;<code><a href="Crypto.html" title="interface in org.cojen.tupl.ext">Crypto</a></code></dd>
 <dt>Parameters:</dt>
 <dd><code>pageIndex</code> - page index within database</dd>
 <dd><code>srcPtr</code> - original unencrypted page</dd>
@@ -409,12 +409,12 @@ implements <a href="../Crypto.html" title="interface in org.cojen.tupl">Crypto</
  byte[]&nbsp;dst,
  int&nbsp;dstOffset)</span>
                        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/security/GeneralSecurityException.html" title="class or interface in java.security" class="external-link">GeneralSecurityException</a></span></div>
-<div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="../Crypto.html#decryptPage(long,int,byte%5B%5D,int,byte%5B%5D,int)">Crypto</a></code></span></div>
+<div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="Crypto.html#decryptPage(long,int,byte%5B%5D,int,byte%5B%5D,int)">Crypto</a></code></span></div>
 <div class="block">Called by multiple threads to decrypt a fixed-size database
  page. Decrypted length must exactly match encrypted length.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
-<dd><code><a href="../Crypto.html#decryptPage(long,int,byte%5B%5D,int,byte%5B%5D,int)">decryptPage</a></code>&nbsp;in interface&nbsp;<code><a href="../Crypto.html" title="interface in org.cojen.tupl">Crypto</a></code></dd>
+<dd><code><a href="Crypto.html#decryptPage(long,int,byte%5B%5D,int,byte%5B%5D,int)">decryptPage</a></code>&nbsp;in interface&nbsp;<code><a href="Crypto.html" title="interface in org.cojen.tupl.ext">Crypto</a></code></dd>
 <dt>Parameters:</dt>
 <dd><code>pageIndex</code> - page index within database</dd>
 <dd><code>src</code> - encrypted page</dd>
@@ -436,12 +436,12 @@ implements <a href="../Crypto.html" title="interface in org.cojen.tupl">Crypto</
  long&nbsp;dstPtr,
  int&nbsp;dstOffset)</span>
                        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/security/GeneralSecurityException.html" title="class or interface in java.security" class="external-link">GeneralSecurityException</a></span></div>
-<div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="../Crypto.html#decryptPage(long,int,long,int,long,int)">Crypto</a></code></span></div>
+<div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="Crypto.html#decryptPage(long,int,long,int,long,int)">Crypto</a></code></span></div>
 <div class="block">Called by multiple threads to decrypt a fixed-size database
  page. Decrypted length must exactly match encrypted length.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
-<dd><code><a href="../Crypto.html#decryptPage(long,int,long,int,long,int)">decryptPage</a></code>&nbsp;in interface&nbsp;<code><a href="../Crypto.html" title="interface in org.cojen.tupl">Crypto</a></code></dd>
+<dd><code><a href="Crypto.html#decryptPage(long,int,long,int,long,int)">decryptPage</a></code>&nbsp;in interface&nbsp;<code><a href="Crypto.html" title="interface in org.cojen.tupl.ext">Crypto</a></code></dd>
 <dt>Parameters:</dt>
 <dd><code>pageIndex</code> - page index within database</dd>
 <dd><code>srcPtr</code> - encrypted page</dd>
@@ -459,12 +459,12 @@ implements <a href="../Crypto.html" title="interface in org.cojen.tupl">Crypto</
 <div class="member-signature"><span class="modifiers">public final</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/OutputStream.html" title="class or interface in java.io" class="external-link">OutputStream</a></span>&nbsp;<span class="element-name">newEncryptingStream</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/OutputStream.html" title="class or interface in java.io" class="external-link">OutputStream</a>&nbsp;out)</span>
                                        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/security/GeneralSecurityException.html" title="class or interface in java.security" class="external-link">GeneralSecurityException</a>,
 <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="../Crypto.html#newEncryptingStream(java.io.OutputStream)">Crypto</a></code></span></div>
+<div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="Crypto.html#newEncryptingStream(java.io.OutputStream)">Crypto</a></code></span></div>
 <div class="block">Called to wrap an OutputStream for supporting encryption. Implementation
  of this method must be thread-safe, but the stream doesn't need to be.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
-<dd><code><a href="../Crypto.html#newEncryptingStream(java.io.OutputStream)">newEncryptingStream</a></code>&nbsp;in interface&nbsp;<code><a href="../Crypto.html" title="interface in org.cojen.tupl">Crypto</a></code></dd>
+<dd><code><a href="Crypto.html#newEncryptingStream(java.io.OutputStream)">newEncryptingStream</a></code>&nbsp;in interface&nbsp;<code><a href="Crypto.html" title="interface in org.cojen.tupl.ext">Crypto</a></code></dd>
 <dt>Parameters:</dt>
 <dd><code>out</code> - encrypted data destination</dd>
 <dt>Returns:</dt>
@@ -481,12 +481,12 @@ implements <a href="../Crypto.html" title="interface in org.cojen.tupl">Crypto</
 <div class="member-signature"><span class="modifiers">public final</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/InputStream.html" title="class or interface in java.io" class="external-link">InputStream</a></span>&nbsp;<span class="element-name">newDecryptingStream</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/InputStream.html" title="class or interface in java.io" class="external-link">InputStream</a>&nbsp;in)</span>
                                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/security/GeneralSecurityException.html" title="class or interface in java.security" class="external-link">GeneralSecurityException</a>,
 <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="../Crypto.html#newDecryptingStream(java.io.InputStream)">Crypto</a></code></span></div>
+<div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="Crypto.html#newDecryptingStream(java.io.InputStream)">Crypto</a></code></span></div>
 <div class="block">Called to wrap an InputStream for supporting decryption. Implementation
  of this method must be thread-safe, but the stream doesn't need to be.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
-<dd><code><a href="../Crypto.html#newDecryptingStream(java.io.InputStream)">newDecryptingStream</a></code>&nbsp;in interface&nbsp;<code><a href="../Crypto.html" title="interface in org.cojen.tupl">Crypto</a></code></dd>
+<dd><code><a href="Crypto.html#newDecryptingStream(java.io.InputStream)">newDecryptingStream</a></code>&nbsp;in interface&nbsp;<code><a href="Crypto.html" title="interface in org.cojen.tupl.ext">Crypto</a></code></dd>
 <dt>Parameters:</dt>
 <dd><code>in</code> - encrypted data source</dd>
 <dt>Returns:</dt>
