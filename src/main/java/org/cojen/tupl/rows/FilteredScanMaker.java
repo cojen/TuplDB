@@ -62,7 +62,7 @@ public class FilteredScanMaker<R> {
     private final RowGen mRowGen;
     private final boolean mIsPrimaryTable;
     private final long mIndexId;
-    private final RowFilter mFilter, mLowBound, mHighBound, mJoinFilter;
+    private final RowFilter mLowBound, mHighBound, mFilter, mJoinFilter;
     private final ClassMaker mFilterMaker;
     private final MethodMaker mFilterCtorMaker;
 
@@ -87,13 +87,15 @@ public class FilteredScanMaker<R> {
      * @param lowBound pass null for open bound
      * @param highBound pass null for open bound
      * @param filter the filter to apply to all rows which are in bounds, or null if none
+     * @param joinFilter the filter to apply after joining, or null if none
      */
     public FilteredScanMaker(WeakReference<RowStore> storeRef,
                              Class<?> tableClass, Class<?> primaryTableClass,
                              SingleScanController<R> unfiltered,
                              Class<? extends RowPredicate> predClass,
-                             Class<R> rowType, RowInfo rowInfo, long indexId,
-                             RowFilter lowBound, RowFilter highBound, RowFilter filter)
+                             Class<R> rowType, RowGen rowGen, long indexId,
+                             RowFilter lowBound, RowFilter highBound,
+                             RowFilter filter, RowFilter joinFilter)
     {
         mStoreRef = storeRef;
         mTableClass = tableClass;
@@ -102,22 +104,13 @@ public class FilteredScanMaker<R> {
         mPredicateClass = predClass;
         mRowType = rowType;
 
-        mRowGen = rowInfo.rowGen();
-        mIsPrimaryTable = RowInfo.find(rowType) == rowInfo;
-
-        RowFilter joinFilter = null;
-
-        if (filter != null && unfiltered instanceof SingleScanController.Joined) {
-            // First filter on the secondary entry, and then filter on the joined primary entry.
-            RowFilter[] extracted = filter.extract(mRowGen.info.keyColumns);
-            filter = extracted[0];
-            joinFilter = extracted[1];
-        }
+        mRowGen = rowGen;
+        mIsPrimaryTable = RowInfo.find(rowType) == rowGen.info;
 
         mIndexId = indexId;
-        mFilter = filter;
         mLowBound = lowBound;
         mHighBound = highBound;
+        mFilter = filter;
         mJoinFilter = joinFilter;
 
         // Define in the same package as the predicate class, in order to access it, and to
@@ -161,6 +154,8 @@ public class FilteredScanMaker<R> {
         ctorParams[3] = false;
 
         if (mLowBound != null || mHighBound != null) {
+            // TODO: Optimize if bounds are the same strings (name >= ? && name <= ?) by
+            // avoiding duplicate calls to perform lex encoding.
             if (mLowBound != null) {
                 encodeBound(ctorParams, mLowBound, true);
             }

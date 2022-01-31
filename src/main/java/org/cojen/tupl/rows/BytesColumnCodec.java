@@ -51,7 +51,7 @@ abstract class BytesColumnCodec extends ColumnCodec {
      * then the field is a byte[][].
      */
     @Override
-    void filterDefineExtraFields(boolean in, Variable argVar, String argFieldName, boolean init) {
+    void filterDefineExtraFields(boolean in, Variable argVar, String argFieldName) {
         Class<?> fieldType = in ? byte[][].class : byte[].class;
         String fieldName = argFieldName(argFieldName, bytesFieldSuffix());
 
@@ -64,7 +64,7 @@ abstract class BytesColumnCodec extends ColumnCodec {
             return;
         }
 
-        if (init) { 
+        if (argVar != null) { 
             fm.final_();
             mMaker.field(fieldName).set(filterPrepareBytes(argVar, in));
             return;

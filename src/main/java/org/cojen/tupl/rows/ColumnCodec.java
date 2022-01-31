@@ -379,10 +379,10 @@ abstract class ColumnCodec {
      * should only consider the column type and not the specific encoding format.
      *
      * @param in true if argument is a collection for "in" filtering
-     * @param argVar argument value to compare against, converted to the the column type
-     * @param init if false, extra fields aren't final and aren't initialized
+     * @param argVar argument value to compare against, converted to the the column type; if null,
+     * extra fields aren't final and are lazily initialized
      */
-    void filterDefineExtraFields(boolean in, Variable argVar, String argFieldName, boolean init) {
+    void filterDefineExtraFields(boolean in, Variable argVar, String argFieldName) {
     }
 
     /**

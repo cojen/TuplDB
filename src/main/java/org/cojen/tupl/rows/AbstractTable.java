@@ -357,7 +357,8 @@ public abstract class AbstractTable<R> implements Table<R> {
             }
 
             var keyColumns = rowInfo.keyColumns.values().toArray(ColumnInfo[]::new);
-            RowFilter[][] ranges = multiRangeExtract(rowInfo, rf, keyColumns);
+            RowFilter[][] ranges = multiRangeExtract(rf, keyColumns);
+            splitRemainders(rowInfo, ranges);
 
             Class<? extends RowPredicate> baseClass;
 
@@ -369,14 +370,16 @@ public abstract class AbstractTable<R> implements Table<R> {
                 baseClass = mIndexLock == null ? null : mIndexLock.evaluatorClass();
             }
 
+            RowGen rowGen = rowInfo.rowGen();
+
             Class<? extends RowPredicate> predClass = new RowPredicateMaker
-                (rowStoreRef(), baseClass, rowType, rowInfo.rowGen(), primaryRowGen,
+                (rowStoreRef(), baseClass, rowType, rowGen, primaryRowGen,
                  mTableManager.mPrimaryIndex.id(), mSource.id(), rf, filter, ranges).finish();
 
             if (ranges.length > 1) {
                 var rangeFactories = new ScanControllerFactory[ranges.length];
                 for (int i=0; i<ranges.length; i++) {
-                    rangeFactories[i] = newFilteredFactory(rowInfo, ranges[i], predClass);
+                    rangeFactories[i] = newFilteredFactory(rowGen, ranges[i], predClass);
                 }
                 factory = new MultiScanControllerFactory(rangeFactories);
                 break obtain;
@@ -391,9 +394,10 @@ public abstract class AbstractTable<R> implements Table<R> {
                 // let the user define the order in which the filter terms are examined.
                 range[2] = rf;
                 range[3] = null;
+                splitRemainders(rowInfo, range);
             }
 
-            factory = newFilteredFactory(rowInfo, range, predClass);
+            factory = newFilteredFactory(rowGen, range, predClass);
         } catch (Throwable e) {
             factory = null;
             ex = e;
@@ -419,24 +423,23 @@ public abstract class AbstractTable<R> implements Table<R> {
     }
 
     @SuppressWarnings("unchecked")
-    private ScanControllerFactory<R> newFilteredFactory(RowInfo rowInfo, RowFilter[] range,
+    private ScanControllerFactory<R> newFilteredFactory(RowGen rowGen, RowFilter[] range,
                                                         Class<? extends RowPredicate> predClass)
     {
         SingleScanController<R> unfiltered = unfiltered();
 
         RowFilter lowBound = range[0];
         RowFilter highBound = range[1];
-        RowFilter remainder = range[2];
+        RowFilter filter = range[2];
+        RowFilter joinFilter = range[3];
 
         return new FilteredScanMaker<R>
             (rowStoreRef(), getClass(), joinedPrimaryTableClass(),
-             unfiltered, predClass, rowType(), rowInfo,
-             mSource.id(), lowBound, highBound, remainder).finish();
+             unfiltered, predClass, rowType(), rowGen,
+             mSource.id(), lowBound, highBound, filter, joinFilter).finish();
     }
 
-    private RowFilter[][] multiRangeExtract(RowInfo rowInfo, RowFilter rf,
-                                            ColumnInfo... keyColumns)
-    {
+    private RowFilter[][] multiRangeExtract(RowFilter rf, ColumnInfo... keyColumns) {
         try {
             return rf.dnf().multiRangeExtract(false, false, keyColumns);
         } catch (ComplexFilterException e) {
@@ -446,6 +449,13 @@ public abstract class AbstractTable<R> implements Table<R> {
             } catch (ComplexFilterException e2) {
                 return new RowFilter[][] {new RowFilter[] {null, null, rf, null}};
             }
+        }
+    }
+
+    private void splitRemainders(RowInfo rowInfo, RowFilter[]... ranges) {
+        if (unfiltered() instanceof SingleScanController.Joined) {
+            // First filter on the secondary entry, and then filter on the joined primary entry.
+            RowFilter.splitRemainders(rowInfo.keyColumns, ranges);
         }
     }
 

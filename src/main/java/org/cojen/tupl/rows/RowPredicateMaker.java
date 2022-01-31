@@ -26,7 +26,7 @@ import java.lang.invoke.VarHandle;
 
 import java.lang.ref.WeakReference;
 
-import java.util.HashSet;
+import java.util.HashMap;
 
 import java.util.function.IntFunction;
 
@@ -139,19 +139,29 @@ public class RowPredicateMaker {
      */
     @SuppressWarnings("unchecked")
     Class<? extends RowPredicate> finish() {
-        var defined = new HashSet<String>();
+        var defined = new HashMap<String, ColumnCodec>();
 
         if (mRanges == null) {
-            makeAllFields(defined, mFilter, true);
+            makeAllFields(defined, mFilter, false, true);
         } else {
+            // Make fields for the remainders. Initialize any extra fields, under the
+            // assumption that they'll always be needed.
             for (RowFilter[] range : mRanges) {
-                makeAllFields(defined, range[2], true);
+                makeAllFields(defined, range[2], false, true);
             }
-            // Make fields for those not yet defined, which should all be key columns. Extra
+
+            // Make fields for the low/high ranges, which should all be key columns. Extra
             // fields are lazily initialized when this predicate is tested with an encoded key.
             for (RowFilter[] range : mRanges) {
-                makeAllFields(defined, range[0], false);
-                makeAllFields(defined, range[1], false);
+                makeAllFields(defined, range[0], false, false);
+                makeAllFields(defined, range[1], false, false);
+            }
+
+            // Make fields for any remainders that are applied after joining a secondary to a
+            // primary. If there are any of these remainders, then mPrimaryRowGen must not be
+            // null. Otherwise, the joined columns won't be found.
+            for (RowFilter[] range : mRanges) {
+                makeAllFields(defined, range[3], true, false);
             }
         }
 
@@ -175,19 +185,29 @@ public class RowPredicateMaker {
     /**
      * For all codecs of the given filter, makes all the necessary fields and optionally
      * initializes them.
+     *
+     * @param primaryOnly only use primary codec; mPrimaryRowGen must not be null
+     * @param init true to initialize extra fields in the constructor
      */
-    private void makeAllFields(HashSet<String> defined, RowFilter filter, boolean init) {
+    private void makeAllFields(HashMap<String, ColumnCodec> defined,
+                               RowFilter filter,  boolean primaryOnly, boolean init)
+    {
         if (filter != null) {
-            filter.accept(new FieldMaker(defined, init));
+            filter.accept(new FieldMaker(defined, primaryOnly, init));
         }
     }
 
     private class FieldMaker extends Visitor {
-        private final HashSet<String> mDefined;
-        private final boolean mInit;
+        private final HashMap<String, ColumnCodec> mDefined;
+        private final boolean mPrimaryOnly, mInit;
 
-        FieldMaker(HashSet<String> defined, boolean init) {
+        /**
+         * @param primaryOnly only use primary codec; mPrimaryRowGen must not be null
+         * @param init true to initialize extra fields in the constructor
+         */
+        FieldMaker(HashMap<String, ColumnCodec> defined, boolean primaryOnly, boolean init) {
             mDefined = defined;
+            mPrimaryOnly = primaryOnly;
             mInit = init;
         }
 
@@ -196,7 +216,15 @@ public class RowPredicateMaker {
             String colName = filter.column().name;
             String argFieldName = ColumnCodec.argFieldName(colName, filter.argument());
 
-            if (mDefined.contains(argFieldName)) {
+            boolean hasField = mDefined.containsKey(argFieldName);
+
+            if (!mPrimaryOnly && hasField) {
+                return;
+            }
+
+            ColumnCodec codec = codecFor(colName, mPrimaryOnly);
+
+            if (mPrimaryOnly && codec.equals(mDefined.get(argFieldName))) {
                 return;
             }
 
@@ -213,20 +241,25 @@ public class RowPredicateMaker {
             Variable argVar = mCtorMaker.param(0).aget(filter.argument());
             argVar = ConvertCallSite.make(mCtorMaker, argType, argVar);
 
-            ColumnCodec codec = codecFor(colName);
-            codec.defineArgField(argVar, argFieldName, argVar);
+            if (!hasField) {
+                codec.defineArgField(argVar, argFieldName, argVar);
+            }
 
-            codec.filterDefineExtraFields(in, argVar, argFieldName, mInit);
+            codec.filterDefineExtraFields(in, mInit ? argVar : null, argFieldName);
 
-            mDefined.add(argFieldName);
+            mDefined.put(argFieldName, codec);
         }
     }
 
-    private ColumnCodec codecFor(String colName) {
+    /**
+     * @param primaryOnly only use primary codec; mPrimaryRowGen must not be null
+     */
+    private ColumnCodec codecFor(String colName, boolean primaryOnly) {
         ColumnCodec[] codecs = mCodecs;
 
-        Integer num = mRowGen.columnNumbers().get(colName);
-        if (num == null) notFound: {
+        Integer num;
+
+        if (primaryOnly || (num = mRowGen.columnNumbers().get(colName)) == null) notFound: {
             if (mPrimaryRowGen != null) {
                 num = mPrimaryRowGen.columnNumbers().get(colName);
                 if (num != null) {

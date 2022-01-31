@@ -161,10 +161,10 @@ public abstract class RowFilter implements Comparable<RowFilter> {
     public abstract RowFilter retain(Map<String, ColumnInfo> columns, RowFilter undecided);
 
     /**
-     * Extract columns from the filter such that the first returned filter only references
-     * those columns. The second returned filter references the remaining columns, but it also
-     * may reference the given columns if they couldn't be fully extracted. For best results,
-     * this method should be called on a conjunctive normal form filter.
+     * Split this filter by extracting columns such that the first returned filter only
+     * references those columns. The second returned filter references the remaining columns,
+     * but it also may reference the given columns if they couldn't be fully extracted. For
+     * best results, this method should be called on a conjunctive normal form filter.
      *
      * <p>The two returned filters can always be recombined with the 'and' method. If nothing
      * could be extracted, the first filter is TrueFilter, and the remainder is this filter. If
@@ -173,9 +173,9 @@ public abstract class RowFilter implements Comparable<RowFilter> {
      * <p>Note: No attempt is made to reduce the returned filters.
      *
      * @param columns columns to extract
-     * @return the extracted filter and the remainder
+     * @return two filters: the first doesn't reference the extracted columns and the second does
      */
-    public RowFilter[] extract(Map<String, ColumnInfo> columns) {
+    public RowFilter[] split(Map<String, ColumnInfo> columns) {
         var result = new RowFilter[2];
         if (onlyUses(columns)) {
             result[0] = this;
@@ -188,9 +188,9 @@ public abstract class RowFilter implements Comparable<RowFilter> {
     }
 
     /**
-     * Merge the extract result into the other with 'and'.
+     * Combine the split result together with 'and'.
      */
-    protected void extractMerge(Map<String, ColumnInfo> columns, RowFilter[] result) {
+    protected void splitCombine(Map<String, ColumnInfo> columns, RowFilter[] result) {
         int ix = onlyUses(columns) ? 0 : 1;
         result[ix] = result[ix].and(this);
     }
@@ -204,7 +204,7 @@ public abstract class RowFilter implements Comparable<RowFilter> {
      * <li>A range low filter, or null if open
      * <li>A range high filter, or null if open
      * <li>The remaining filter that must be applied, or null if none
-     * <li>A null array element, which the caller can use if extracting more from the remainder
+     * <li>A null array element, which the caller can use if splitting the remainder
      * </ul>
      *
      * If no optimization is possible, then the remaining filter is the same as this, and the
@@ -234,7 +234,7 @@ public abstract class RowFilter implements Comparable<RowFilter> {
      * cannot be known until actual argument values are specified.
      *
      * <p>An array of arrays is returned, where each range is described by the
-     * {@see #rangeExtract} method.
+     * {@link #rangeExtract} method.
      *
      * @param disjoint pass true to extract disjoint ranges
      * @param reverse pass true if scan is to be performed in reverse order; note that the
@@ -247,6 +247,41 @@ public abstract class RowFilter implements Comparable<RowFilter> {
     {
         RowFilter[] range = rangeExtract(keyColumns);
         return range == null ? null : new RowFilter[][] {range};
+    }
+
+    /**
+     * For each result from the {@link multiRangeExtract} method with a remainder, {@link
+     * split} it into the last two elements of the range array.
+     *
+     * @param columns columns to extract
+     * @param ranges result from calling multiRangeExtract
+     */
+    public static void splitRemainders(Map<String, ColumnInfo> columns, RowFilter[]... ranges) {
+        for (RowFilter[] range : ranges) {
+            RowFilter remainder = range[2];
+            if (remainder != null) {
+                RowFilter original = remainder;
+                try {
+                    remainder = remainder.cnf();
+                } catch (ComplexFilterException e) {
+                }
+
+                RowFilter[] split = remainder.split(columns);
+
+                if (split[0] == TrueFilter.THE && !isReduced(original, remainder)) {
+                    split[1] = original;
+                } else if (split[1] == TrueFilter.THE && !isReduced(original, remainder)) {
+                    split[0] = original;
+                }
+                
+                range[2] = split[0];
+                range[3] = split[1];
+            }
+        }
+    }
+
+    private static boolean isReduced(RowFilter from, RowFilter to) {
+        return to.numTerms() < from.numTerms();
     }
 
     /**

@@ -145,17 +145,17 @@ class DecodeVisitor extends Visitor {
      * cannot be used again.
      */
     Variable[] joinToPrimary() {
-        if (mCursorVar != null) {
-            throw new IllegalStateException();
-        }
-
         var secInfo = (SecondaryInfo) mRowGen.info; // cast as an assertion
         boolean isAltKey = secInfo.isAltKey();
 
-        passFail(null);
-
         // Must call this in case applyFilter wasn't called, or it did nothing.
         initVars(isAltKey);
+
+        if (mCursorVar == null) {
+            throw new IllegalStateException();
+        }
+
+        passFail(null);
 
         Variable primaryKeyVar;
         if (isAltKey) {
