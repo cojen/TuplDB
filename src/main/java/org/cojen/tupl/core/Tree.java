@@ -21,10 +21,11 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
-import org.cojen.tupl.CompactionObserver;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.Index;
-import org.cojen.tupl.VerificationObserver;
+
+import org.cojen.tupl.diag.CompactionObserver;
+import org.cojen.tupl.diag.VerificationObserver;
 
 import org.cojen.tupl.views.ViewUtils;
 

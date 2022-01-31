@@ -17,7 +17,11 @@
 
 package org.cojen.tupl.tools;
 
-import org.cojen.tupl.*;
+import org.cojen.tupl.Database;
+import org.cojen.tupl.DatabaseConfig;
+import org.cojen.tupl.EventListener;
+
+import org.cojen.tupl.diag.DatabaseStats;
 
 /**
  * Opens a database and then calls {@link Database#shutdown shutdown}.
@@ -39,7 +43,7 @@ public class Shutdown {
         }
 
         Database db = Database.open(config);
-        Database.Stats stats = db.stats();
+        DatabaseStats stats = db.stats();
         db.shutdown();
 
         System.out.println(stats);

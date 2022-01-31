@@ -24,6 +24,8 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
+import org.cojen.tupl.diag.DatabaseStats;
+
 import static org.cojen.tupl.TestUtils.*;
 
 /**
@@ -365,11 +367,11 @@ public class CloseTest {
 
         Runnable task = mDb.deleteIndex(ix);
 
-        Database.Stats stats1 = mDb.stats();
+        DatabaseStats stats1 = mDb.stats();
 
         task.run();
 
-        Database.Stats stats2 = mDb.stats();
+        DatabaseStats stats2 = mDb.stats();
 
         assertEquals(0, stats1.freePages);
         assertTrue(60 <= stats2.freePages && stats2.freePages <= 70);

@@ -29,6 +29,9 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
+import org.cojen.tupl.diag.CompactionObserver;
+import org.cojen.tupl.diag.DatabaseStats;
+
 import static org.cojen.tupl.TestUtils.*;
 
 /**
@@ -91,11 +94,11 @@ public class CompactTest {
             }
         }
 
-        Database.Stats stats1 = mDb.stats();
+        DatabaseStats stats1 = mDb.stats();
 
         mDb.compactFile(null, 0.9);
 
-        Database.Stats stats2 = mDb.stats();
+        DatabaseStats stats2 = mDb.stats();
 
         try {
             assertTrue(stats2.freePages < stats1.freePages);
@@ -125,7 +128,7 @@ public class CompactTest {
             mDb.compactFile(null, i / 100.0);
         }
 
-        Database.Stats stats3 = mDb.stats();
+        DatabaseStats stats3 = mDb.stats();
 
         assertTrue(stats3.freePages < stats2.freePages);
         assertTrue(stats3.totalPages < stats2.totalPages);
@@ -249,11 +252,11 @@ public class CompactTest {
             prepare.run();
         }
 
-        Database.Stats stats1 = mDb.stats();
+        DatabaseStats stats1 = mDb.stats();
 
         mDb.compactFile(null, 0.9);
 
-        Database.Stats stats2 = mDb.stats();
+        DatabaseStats stats2 = mDb.stats();
 
         try {
             assertTrue(stats2.freePages < stats1.freePages);
@@ -294,7 +297,7 @@ public class CompactTest {
             mDb.compactFile(null, i / 100.0);
         }
 
-        Database.Stats stats3 = mDb.stats();
+        DatabaseStats stats3 = mDb.stats();
 
         assertTrue(stats3.freePages < stats2.freePages);
         assertTrue(stats3.totalPages < stats2.totalPages);
@@ -365,11 +368,11 @@ public class CompactTest {
             }
         }
 
-        Database.Stats stats1 = mDb.stats();
+        DatabaseStats stats1 = mDb.stats();
 
         mDb.compactFile(null, 0.9);
 
-        Database.Stats stats2 = mDb.stats();
+        DatabaseStats stats2 = mDb.stats();
 
         try {
             assertTrue(stats2.freePages < stats1.freePages);
@@ -411,7 +414,7 @@ public class CompactTest {
         }
 
         mDb.checkpoint();
-        Database.Stats stats1 = mDb.stats();
+        DatabaseStats stats1 = mDb.stats();
 
         var obs = new CompactionObserver() {
             private int count;
@@ -424,7 +427,7 @@ public class CompactTest {
 
         mDb.compactFile(obs, 0.5);
 
-        Database.Stats stats2 = mDb.stats();
+        DatabaseStats stats2 = mDb.stats();
         assertEqualStats(stats1, stats2);
 
         assertTrue(mDb.verify(null));
@@ -484,9 +487,9 @@ public class CompactTest {
             @Override
             public void run() {
                 try {
-                    Database.Stats stats1 = mDb.stats();
+                    DatabaseStats stats1 = mDb.stats();
                     mDb.compactFile(obs, 0.5);
-                    Database.Stats stats2 = mDb.stats();
+                    DatabaseStats stats2 = mDb.stats();
                     result = stats2.totalPages < stats1.totalPages;
                 } catch (Exception e) {
                     result = e;
@@ -554,9 +557,9 @@ public class CompactTest {
             public void run() {
                 try {
                     while (!stop) {
-                        Database.Stats stats1 = mDb.stats();
+                        DatabaseStats stats1 = mDb.stats();
                         mDb.compactFile(null, 0.5);
-                        Database.Stats stats2 = mDb.stats();
+                        DatabaseStats stats2 = mDb.stats();
                         if (stats2.totalPages < stats1.totalPages) {
                             success++;
                         } else {
@@ -632,7 +635,7 @@ public class CompactTest {
         }
 
         mDb.checkpoint();
-        Database.Stats stats1 = mDb.stats();
+        DatabaseStats stats1 = mDb.stats();
 
         assertEquals(0, stats1.freePages);
 
@@ -643,7 +646,7 @@ public class CompactTest {
         }
 
         mDb.checkpoint();
-        Database.Stats stats2 = mDb.stats();
+        DatabaseStats stats2 = mDb.stats();
         assertTrue(stats2.freePages > 100);
 
         mDb.compactFile(null, 0.9);
@@ -656,7 +659,7 @@ public class CompactTest {
         for (int i=10; --i>=0; ) {
             // Compact will work this time now that undo log is gone.
             mDb.compactFile(null, 0.9);
-            Database.Stats stats3 = mDb.stats();
+            DatabaseStats stats3 = mDb.stats();
 
             try {
                 assertTrue(stats3.freePages < stats2.freePages);
@@ -689,21 +692,21 @@ public class CompactTest {
         ix.store(Transaction.BOGUS, key, value);
         
         mDb.checkpoint();
-        Database.Stats stats1 = mDb.stats();
+        DatabaseStats stats1 = mDb.stats();
 
         Transaction txn = mDb.newTransaction();
         ix.delete(txn, key);
 
         mDb.compactFile(null, 0.9);
 
-        Database.Stats stats2 = mDb.stats();
+        DatabaseStats stats2 = mDb.stats();
         assertTrue(stats2.totalPages - stats2.freePages > 200);
 
         txn.commit();
 
         mDb.compactFile(null, 0.9);
 
-        Database.Stats stats3 = mDb.stats();
+        DatabaseStats stats3 = mDb.stats();
         assertTrue(stats3.totalPages - stats3.freePages < 50);
     }
 
@@ -736,11 +739,11 @@ public class CompactTest {
 
         mDb.checkpoint();
 
-        Database.Stats stats1 = mDb.stats();
+        DatabaseStats stats1 = mDb.stats();
 
         assertTrue(mDb.compactFile(null, 0.95));
 
-        Database.Stats stats2 = mDb.stats();
+        DatabaseStats stats2 = mDb.stats();
 
         assertTrue(stats1.totalPages > stats2.totalPages * 2);
 
@@ -808,12 +811,12 @@ public class CompactTest {
         mDb.close();
 
         // Verify that this doesn't fail after database is closed.
-        Database.Stats stats = mDb.stats();
+        DatabaseStats stats = mDb.stats();
         assertEquals(0, stats.cachePages);
         assertEquals(0, stats.dirtyPages);
     }
 
-    private static void assertEqualStats(Database.Stats stats1, Database.Stats stats2) {
+    private static void assertEqualStats(DatabaseStats stats1, DatabaseStats stats2) {
         // Ignore these.
         stats1.checkpointDuration = 0;
         stats2.checkpointDuration = 0;

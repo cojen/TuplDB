@@ -29,8 +29,9 @@ import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DatabaseFullException;
-import org.cojen.tupl.VerificationObserver;
 import org.cojen.tupl.WriteFailureException;
+
+import org.cojen.tupl.diag.VerificationObserver;
 
 import org.cojen.tupl.util.Clutch;
 

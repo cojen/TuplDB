@@ -17,7 +17,12 @@
 
 package org.cojen.tupl.tools;
 
-import org.cojen.tupl.*;
+import org.cojen.tupl.Database;
+import org.cojen.tupl.DatabaseConfig;
+import org.cojen.tupl.EventListener;
+import org.cojen.tupl.Index;
+
+import org.cojen.tupl.diag.VerificationObserver;
 
 /**
  * Simple database verification utility. Main method requires a single argument &mdash; a base

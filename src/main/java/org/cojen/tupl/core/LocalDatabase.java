@@ -68,7 +68,6 @@ import static java.util.Arrays.fill;
 
 import org.cojen.tupl.CacheExhaustedException;
 import org.cojen.tupl.ClosedIndexException;
-import org.cojen.tupl.CompactionObserver;
 import org.cojen.tupl.ConfirmationInterruptedException;
 import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.Crypto;
@@ -90,8 +89,11 @@ import org.cojen.tupl.Snapshot;
 import org.cojen.tupl.Sorter;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnmodifiableReplicaException;
-import org.cojen.tupl.VerificationObserver;
 import org.cojen.tupl.View;
+
+import org.cojen.tupl.diag.CompactionObserver;
+import org.cojen.tupl.diag.DatabaseStats;
+import org.cojen.tupl.diag.VerificationObserver;
 
 import org.cojen.tupl.ev.SafeEventListener;
 
@@ -2488,15 +2490,15 @@ final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
-    public Stats stats() {
+    public DatabaseStats stats() {
         return stats(true);
     }
 
     /**
      * @param strict pass false to fail-fast when trying to latch nodes, preventing deadlocks
      */
-    private Stats stats(boolean strict) {
-        var stats = new Stats();
+    private DatabaseStats stats(boolean strict) {
+        var stats = new DatabaseStats();
 
         stats.pageSize = mPageSize;
 

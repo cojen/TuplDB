@@ -24,6 +24,8 @@ import java.io.IOException;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DurabilityMode;
 
+import org.cojen.tupl.diag.DatabaseStats;
+
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.Runner;
 
@@ -74,7 +76,7 @@ abstract class RedoWriter extends Latch implements Closeable, Flushable {
         return false;
     }
 
-    void addStats(Database.Stats stats) {
+    void addStats(DatabaseStats stats) {
     }
 
     /**

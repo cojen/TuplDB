@@ -15,7 +15,10 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl;
+package org.cojen.tupl.diag;
+
+import org.cojen.tupl.Database;
+import org.cojen.tupl.Index;
 
 /**
  * Index compaction observer. Implementation does not need to be thread-safe, but instances

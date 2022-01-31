@@ -31,6 +31,8 @@ import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.UnmodifiableReplicaException;
 
+import org.cojen.tupl.diag.DatabaseStats;
+
 import org.cojen.tupl.repl.StreamReplicator;
 
 import org.cojen.tupl.util.LatchCondition;
@@ -324,7 +326,7 @@ final class ReplController extends ReplWriter {
     }
 
     @Override
-    void addStats(Database.Stats stats) {
+    void addStats(DatabaseStats stats) {
         if (!isLeader()) {
             try {
                 // Capture this first, to avoid reporting a negative backlog.

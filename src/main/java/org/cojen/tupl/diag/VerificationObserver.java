@@ -15,7 +15,10 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl;
+package org.cojen.tupl.diag;
+
+import org.cojen.tupl.Database;
+import org.cojen.tupl.Index;
 
 /**
  * Index verification observer. Implementation does not need to be thread-safe, but instances
@@ -26,7 +29,7 @@ package org.cojen.tupl;
  * @see Index#verify Index.verify
  */
 public class VerificationObserver {
-    /** Index currently being verified.  */
+    /** Index currently being verified. */
     protected Index index;
 
     /** Index height; is zero for empty indexes. */

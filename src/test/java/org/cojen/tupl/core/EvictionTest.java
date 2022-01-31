@@ -35,6 +35,8 @@ import org.junit.runners.Parameterized.Parameters;
 
 import org.cojen.tupl.*;
 
+import org.cojen.tupl.diag.VerificationObserver;
+
 @RunWith(Parameterized.class)
 @net.jcip.annotations.NotThreadSafe
 public class EvictionTest {

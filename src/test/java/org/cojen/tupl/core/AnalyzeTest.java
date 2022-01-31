@@ -24,6 +24,8 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
+import org.cojen.tupl.diag.IndexStats;
+
 import static org.cojen.tupl.TestUtils.*;
 
 /**
@@ -64,7 +66,7 @@ public class AnalyzeTest {
         Index ix = openIndex("stuff");
 
         {
-            Index.Stats stats = ix.analyze(null, null);
+            IndexStats stats = ix.analyze(null, null);
             assertEquals(0, stats.entryCount, 0);
             assertEquals(0, stats.keyBytes, 0);
             assertEquals(0, stats.valueBytes, 0);
@@ -92,10 +94,10 @@ public class AnalyzeTest {
         }
 
         final int probeCount = 10000;
-        Index.Stats total = null;
+        IndexStats total = null;
 
         for (int i=0; i<probeCount; i++) {
-            Index.Stats stats = ix.analyze(null, null);
+            IndexStats stats = ix.analyze(null, null);
             if (total == null) {
                 total = stats;
             } else {
@@ -103,7 +105,7 @@ public class AnalyzeTest {
             }
         }
 
-        Index.Stats average = total.divideAndRound(probeCount);
+        IndexStats average = total.divideAndRound(probeCount);
 
         assertEquals(count, average.entryCount, count * 0.1);
         assertEquals(keyBytes, average.keyBytes, keyBytes * 0.1);
@@ -123,7 +125,7 @@ public class AnalyzeTest {
 
         ix.store(Transaction.BOGUS, key, value);
 
-        Index.Stats stats = ix.analyze(null, null);
+        IndexStats stats = ix.analyze(null, null);
         assertEquals(1, stats.entryCount, 0);
         assertEquals(key.length, stats.keyBytes, 0);
         assertEquals(value.length, stats.valueBytes, 0);

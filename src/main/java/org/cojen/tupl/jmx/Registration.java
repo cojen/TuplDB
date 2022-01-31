@@ -31,6 +31,8 @@ import javax.management.StandardMBean;
 
 import org.cojen.tupl.Database;
 
+import org.cojen.tupl.diag.DatabaseStats;
+
 import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.util.Runner;
@@ -93,7 +95,7 @@ public class Registration {
     private static class DbBean extends WeakReference<Database> implements DatabaseMBean {
         private final String mBase;
 
-        private Database.Stats mStats;
+        private DatabaseStats mStats;
         private long mStatsTimestamp;
 
         private boolean mAsyncRunning;
@@ -178,9 +180,9 @@ public class Registration {
             asyncOp(Database::checkpoint);
         }
 
-        private Database.Stats stats() {
+        private DatabaseStats stats() {
             synchronized (this) {
-                Database.Stats stats = mStats;
+                DatabaseStats stats = mStats;
                 if (stats != null && (System.nanoTime() - mStatsTimestamp) < 1_000_000) { // 1ms
                     return stats;
                 }

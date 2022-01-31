@@ -26,7 +26,6 @@ import java.util.Comparator;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.cojen.tupl.ClosedIndexException;
-import org.cojen.tupl.CompactionObserver;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.EventListener;
@@ -39,8 +38,11 @@ import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Ordering;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
-import org.cojen.tupl.VerificationObserver;
 import org.cojen.tupl.View;
+
+import org.cojen.tupl.diag.CompactionObserver;
+import org.cojen.tupl.diag.IndexStats;
+import org.cojen.tupl.diag.VerificationObserver;
 
 import org.cojen.tupl.views.BoundedView;
 import org.cojen.tupl.views.UnmodifiableView;
@@ -777,12 +779,12 @@ class BTree extends Tree implements View, Index {
     }
 
     @Override
-    public Stats analyze(byte[] lowKey, byte[] highKey) throws IOException {
+    public IndexStats analyze(byte[] lowKey, byte[] highKey) throws IOException {
         BTreeCursor cursor = newCursor(Transaction.BOGUS);
         try {
             cursor.mKeyOnly = true;
             cursor.random(lowKey, highKey);
-            return cursor.key() == null ? new Stats() : cursor.analyze();
+            return cursor.key() == null ? new IndexStats() : cursor.analyze();
         } catch (Throwable e) {
             cursor.reset();
             throw e;

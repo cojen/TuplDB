@@ -38,6 +38,8 @@ import org.junit.Test;
 
 import org.cojen.tupl.*;
 
+import org.cojen.tupl.diag.VerificationObserver;
+
 public class EnduranceTest {
     public static void main(String[] args) {
         org.junit.runner.JUnitCore.main(EnduranceTest.class.getName());

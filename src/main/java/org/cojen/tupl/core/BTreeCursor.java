@@ -24,7 +24,6 @@ import java.util.Comparator;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.cojen.tupl.ClosedIndexException;
-import org.cojen.tupl.CompactionObserver;
 import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DatabaseException;
@@ -37,7 +36,10 @@ import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Ordering;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnmodifiableReplicaException;
-import org.cojen.tupl.VerificationObserver;
+
+import org.cojen.tupl.diag.CompactionObserver;
+import org.cojen.tupl.diag.IndexStats;
+import org.cojen.tupl.diag.VerificationObserver;
 
 import org.cojen.tupl.views.ScannerCursor;
 import org.cojen.tupl.views.ViewUtils;
@@ -2681,7 +2683,7 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
     /**
      * Analyze at the current position. Cursor is reset as a side-effect.
      */
-    Index.Stats analyze() throws IOException {
+    IndexStats analyze() throws IOException {
         double entryCount, keyBytes, valueBytes, freeBytes, totalBytes;
 
         CursorFrame frame = frameSharedNotSplit();
@@ -2743,7 +2745,7 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
             totalBytes += pageSize;
         }
 
-        return new Index.Stats(entryCount, keyBytes, valueBytes, freeBytes, totalBytes);
+        return new IndexStats(entryCount, keyBytes, valueBytes, freeBytes, totalBytes);
     }
 
     @Override

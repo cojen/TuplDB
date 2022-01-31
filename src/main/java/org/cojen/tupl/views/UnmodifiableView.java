@@ -33,9 +33,11 @@ import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.Transformer;
 import org.cojen.tupl.UnmodifiableViewException;
-import org.cojen.tupl.VerificationObserver;
 import org.cojen.tupl.View;
 import org.cojen.tupl.ViewConstraintException;
+
+import org.cojen.tupl.diag.IndexStats;
+import org.cojen.tupl.diag.VerificationObserver;
 
 /**
  * View implementation vended by {@link View#viewUnmodifiable}.
@@ -293,7 +295,7 @@ public final class UnmodifiableView implements Index {
     }
 
     @Override
-    public Stats analyze(byte[] lowKey, byte[] highKey) throws IOException {
+    public IndexStats analyze(byte[] lowKey, byte[] highKey) throws IOException {
         if (mSource instanceof Index ix) {
             return ix.analyze(lowKey, highKey);
         }

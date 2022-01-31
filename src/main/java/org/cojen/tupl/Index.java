@@ -19,9 +19,11 @@ package org.cojen.tupl;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.Serializable;
 
 import org.cojen.tupl.core.Utils;
+
+import org.cojen.tupl.diag.IndexStats;
+import org.cojen.tupl.diag.VerificationObserver;
 
 /**
  * Mapping of keys to values, ordered by key, in lexicographical
@@ -81,181 +83,7 @@ public interface Index extends View, Closeable {
      * @param lowKey inclusive lowest key in the analysis range; pass null for open range
      * @param highKey exclusive highest key in the analysis range; pass null for open range
      */
-    public abstract Stats analyze(byte[] lowKey, byte[] highKey) throws IOException;
-
-    /**
-     * Collection of stats from the {@link Index#analyze analyze} method.
-     */
-    public static class Stats implements Cloneable, Serializable {
-        private static final long serialVersionUID = 3L;
-
-        /**
-         * The estimated number of index entries.
-         */
-        public double entryCount;
-
-        /**
-         * The estimated amount of bytes occupied by keys in the index.
-         */
-        public double keyBytes;
-
-        /**
-         * The estimated amount of bytes occupied by values in the index.
-         */
-        public double valueBytes;
-
-        /**
-         * The estimated amount of free bytes in the index.
-         */
-        public double freeBytes;
-
-        /**
-         * The estimated total amount of bytes in the index.
-         */
-        public double totalBytes;
-
-        public Stats() {
-        }
-
-        public Stats(double entryCount,
-                     double keyBytes,
-                     double valueBytes,
-                     double freeBytes,
-                     double totalBytes)
-        {
-            this.entryCount = entryCount;
-            this.keyBytes = keyBytes;
-            this.valueBytes = valueBytes;
-            this.freeBytes = freeBytes;
-            this.totalBytes = totalBytes;
-        } 
-
-        /**
-         * Adds stats into a new object.
-         */
-        public Stats add(Stats augend) {
-            return new Stats(entryCount + augend.entryCount,
-                             keyBytes + augend.keyBytes,
-                             valueBytes + augend.valueBytes,
-                             freeBytes + augend.freeBytes,
-                             totalBytes + augend.totalBytes);
-        }
-
-        /**
-         * Subtract stats into a new object.
-         */
-        public Stats subtract(Stats subtrahend) {
-            return new Stats(entryCount - subtrahend.entryCount,
-                             keyBytes - subtrahend.keyBytes,
-                             valueBytes - subtrahend.valueBytes,
-                             freeBytes - subtrahend.freeBytes,
-                             totalBytes - subtrahend.totalBytes);
-        }
-
-        /**
-         * Divide the stats by a scalar into a new object.
-         */
-        public Stats divide(double scalar) {
-            return new Stats(entryCount / scalar,
-                             keyBytes / scalar,
-                             valueBytes / scalar,
-                             freeBytes / scalar,
-                             totalBytes / scalar);
-        }
-
-        /**
-         * Round the stats to whole numbers into a new object.
-         */
-        public Stats round() {
-            return new Stats(Math.round(entryCount),
-                             Math.round(keyBytes),
-                             Math.round(valueBytes),
-                             Math.round(freeBytes),
-                             Math.round(totalBytes));
-        }
-
-        /**
-         * Divide the stats by a scalar and round to whole numbers into a new object.
-         */
-        public Stats divideAndRound(double scalar) {
-            return new Stats(Math.round(entryCount / scalar),
-                             Math.round(keyBytes / scalar),
-                             Math.round(valueBytes / scalar),
-                             Math.round(freeBytes / scalar),
-                             Math.round(totalBytes / scalar));
-        }
-
-        @Override
-        public Stats clone() {
-            try {
-                return (Stats) super.clone();
-            } catch (CloneNotSupportedException e) {
-                throw Utils.rethrow(e);
-            }
-        }
-
-        @Override
-        public int hashCode() {
-            long hash = Double.doubleToLongBits(entryCount);
-            hash = hash * 31 + Double.doubleToLongBits(keyBytes);
-            hash = hash * 31 + Double.doubleToLongBits(valueBytes);
-            hash = hash * 31 + Double.doubleToLongBits(freeBytes);
-            hash = hash * 31 + Double.doubleToLongBits(totalBytes);
-            return (int) Utils.scramble(hash);
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj != null && obj.getClass() == Stats.class) {
-                var other = (Stats) obj;
-                return entryCount == other.entryCount
-                    && keyBytes == other.keyBytes
-                    && valueBytes == other.valueBytes
-                    && freeBytes == other.freeBytes
-                    && totalBytes == other.totalBytes;
-            }
-            return false;
-        }
-
-        @Override
-        public String toString() {
-            var b = new StringBuilder("Index.Stats{");
-
-            boolean any = false;
-            any = append(b, any, "entryCount", entryCount);
-            any = append(b, any, "keyBytes", keyBytes);
-            any = append(b, any, "valueBytes", valueBytes);
-            any = append(b, any, "freeBytes", freeBytes);
-            any = append(b, any, "totalBytes", totalBytes);
-
-            b.append('}');
-            return b.toString();
-        }
-
-        private static boolean append(StringBuilder b, boolean any, String name, double value) {
-            if (!Double.isNaN(value)) {
-                if (any) {
-                    b.append(", ");
-                }
-
-                b.append(name).append('=');
-
-                long v = (long) value;
-                if (v == value) {
-                    b.append(v);
-                } else {
-                    b.append(value);
-                }
-                
-                any = true;
-            }
-
-            return any;
-        }
-    }
+    public abstract IndexStats analyze(byte[] lowKey, byte[] highKey) throws IOException;
 
     /**
      * Verifies the integrity of the index.

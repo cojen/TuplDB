@@ -24,6 +24,8 @@ import static org.cojen.tupl.TestUtils.*;
 
 import org.cojen.tupl.*;
 
+import org.cojen.tupl.diag.DatabaseStats;
+
 /**
  * 
  *
@@ -80,7 +82,7 @@ public class LimitCapacityTest {
 
         mDb.compactFile(null, 0.95);
 
-        Database.Stats stats = mDb.stats();
+        DatabaseStats stats = mDb.stats();
         long size = stats.totalPages * stats.pageSize;
 
         assertTrue(size + " < " + mDb.capacityLimit(), size < mDb.capacityLimit());
@@ -134,7 +136,7 @@ public class LimitCapacityTest {
         // Allocate the root node.
         ix.store(null, "hello".getBytes(), "world".getBytes());
 
-        Database.Stats stats = mDb.stats();
+        DatabaseStats stats = mDb.stats();
         long total = stats.totalPages;
 
         // Value is too large.

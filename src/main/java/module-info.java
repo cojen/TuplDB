@@ -4,6 +4,7 @@
  */
 module org.cojen.tupl {
     exports org.cojen.tupl;
+    exports org.cojen.tupl.diag;
     exports org.cojen.tupl.ext;
     exports org.cojen.tupl.io;
     exports org.cojen.tupl.repl;

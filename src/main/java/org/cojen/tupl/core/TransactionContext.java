@@ -29,6 +29,8 @@ import org.cojen.tupl.Database;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.UnmodifiableReplicaException;
 
+import org.cojen.tupl.diag.DatabaseStats;
+
 import org.cojen.tupl.util.Latch;
 
 import static org.cojen.tupl.core.RedoOps.*;
@@ -86,7 +88,7 @@ final class TransactionContext extends Latch implements Flushable {
         mRedoBuffer = new byte[redoBufferSize];
     }
 
-    synchronized void addStats(Database.Stats stats) {
+    synchronized void addStats(DatabaseStats stats) {
         stats.transactionCount += mUndoLogCount;
     }
 
