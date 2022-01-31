@@ -382,13 +382,15 @@ public abstract class AbstractTable<R> implements Table<R> {
                 break obtain;
             }
 
+            // Only one range to scan.
             RowFilter[] range = ranges[0];
 
-            if (range[1] == null && range[2] == null) {
+            if (range[0] == null && range[1] == null) {
                 // Full scan, so just use the original reduced filter. It's possible that
                 // the dnf/cnf form is reduced even further, but when doing a full scan,
                 // let the user define the order in which the filter terms are examined.
-                range[0] = rf;
+                range[2] = rf;
+                range[3] = null;
             }
 
             factory = newFilteredFactory(rowInfo, range, predClass);
@@ -422,14 +424,14 @@ public abstract class AbstractTable<R> implements Table<R> {
     {
         SingleScanController<R> unfiltered = unfiltered();
 
-        RowFilter remainder = range[0];
-        RowFilter lowBound = range[1];
-        RowFilter highBound = range[2];
+        RowFilter lowBound = range[0];
+        RowFilter highBound = range[1];
+        RowFilter remainder = range[2];
 
         return new FilteredScanMaker<R>
             (rowStoreRef(), getClass(), joinedPrimaryTableClass(),
              unfiltered, predClass, rowType(), rowInfo,
-             mSource.id(), remainder, lowBound, highBound).finish();
+             mSource.id(), lowBound, highBound, remainder).finish();
     }
 
     private RowFilter[][] multiRangeExtract(RowInfo rowInfo, RowFilter rf,
@@ -442,7 +444,7 @@ public abstract class AbstractTable<R> implements Table<R> {
             try {
                 return new RowFilter[][] {rf.cnf().rangeExtract(keyColumns)};
             } catch (ComplexFilterException e2) {
-                return new RowFilter[][] {new RowFilter[] {rf, null, null}};
+                return new RowFilter[][] {new RowFilter[] {null, null, rf, null}};
             }
         }
     }

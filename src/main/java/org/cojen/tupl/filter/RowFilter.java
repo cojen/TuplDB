@@ -201,9 +201,10 @@ public abstract class RowFilter implements Comparable<RowFilter> {
      * method should be called on a conjunctive normal form filter.
      *
      * <ul>
-     * <li>The remaining filter that must be applied, or null if none
      * <li>A range low filter, or null if open
      * <li>A range high filter, or null if open
+     * <li>The remaining filter that must be applied, or null if none
+     * <li>A null array element, which the caller can use if extracting more from the remainder
      * </ul>
      *
      * If no optimization is possible, then the remaining filter is the same as this, and the
@@ -220,7 +221,7 @@ public abstract class RowFilter implements Comparable<RowFilter> {
      * @param keyColumns must provide at least one
      */
     public RowFilter[] rangeExtract(ColumnInfo... keyColumns) {
-        return new RowFilter[] {this, null, null};
+        return new RowFilter[] {null, null, this, null};
     }
 
     /**

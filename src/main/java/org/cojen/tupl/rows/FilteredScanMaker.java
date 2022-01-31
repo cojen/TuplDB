@@ -84,16 +84,16 @@ public class FilteredScanMaker<R> {
      * @param primaryTableClass pass non-null to when joining a secondary to a primary
      * @param unfiltered defines the encode methods; the decode method will be overridden
      * @param predClass contains references to the argument fields
-     * @param filter the filter to apply to all rows which are in bounds, or null if none
      * @param lowBound pass null for open bound
      * @param highBound pass null for open bound
+     * @param filter the filter to apply to all rows which are in bounds, or null if none
      */
     public FilteredScanMaker(WeakReference<RowStore> storeRef,
                              Class<?> tableClass, Class<?> primaryTableClass,
                              SingleScanController<R> unfiltered,
                              Class<? extends RowPredicate> predClass,
                              Class<R> rowType, RowInfo rowInfo, long indexId,
-                             RowFilter filter, RowFilter lowBound, RowFilter highBound)
+                             RowFilter lowBound, RowFilter highBound, RowFilter filter)
     {
         mStoreRef = storeRef;
         mTableClass = tableClass;

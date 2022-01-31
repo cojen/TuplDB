@@ -194,7 +194,7 @@ public class OrFilter extends GroupFilter {
 
             RowFilter[] range = sub.rangeExtract(keyColumns);
 
-            if (range[1] == null && range[2] == null && sub.equals(range[0])) {
+            if (range[0] == null && range[1] == null && sub.equals(range[2])) {
                 // Full scan.
                 return super.multiRangeExtract(disjoint, reverse, keyColumns);
             }
@@ -212,7 +212,7 @@ public class OrFilter extends GroupFilter {
             // the high range if a reverse scan is to be performed.
 
             for (int j=0; j<numRanges; j++) {
-                int which = reverse ? 2 : 1;
+                int which = reverse ? 1 : 0;
                 RowFilter check = ranges[j][which];
                 if (check == null || range[which] == null) {
                     continue;

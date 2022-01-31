@@ -84,7 +84,7 @@ public class ColumnToArgFilter extends ColumnFilter {
 
     @Override
     public RowFilter[] rangeExtract(ColumnInfo... keyColumns) {
-        ColumnToArgFilter remaining, low, high;
+        ColumnToArgFilter low, high, remaining;
 
         match: {
             if (keyColumns[0].equals(mColumn)) {
@@ -121,7 +121,7 @@ public class ColumnToArgFilter extends ColumnFilter {
             low = newLow;
         }
 
-        return new RowFilter[] {remaining, low, high};
+        return new RowFilter[] {low, high, remaining, null};
     }
 
     static ColumnToArgFilter descending(ColumnToArgFilter filter) {

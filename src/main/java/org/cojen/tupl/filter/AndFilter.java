@@ -268,7 +268,7 @@ public class AndFilter extends GroupFilter {
             }
         }
 
-        return new RowFilter[] {remaining, lowRange, highRange};
+        return new RowFilter[] {lowRange, highRange, remaining, null};
     }
 
     private RowFilter[] removeSub(RowFilter[] subFilters, int s) {

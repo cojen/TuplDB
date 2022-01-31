@@ -145,13 +145,13 @@ public class RowPredicateMaker {
             makeAllFields(defined, mFilter, true);
         } else {
             for (RowFilter[] range : mRanges) {
-                makeAllFields(defined, range[0], true);
+                makeAllFields(defined, range[2], true);
             }
             // Make fields for those not yet defined, which should all be key columns. Extra
             // fields are lazily initialized when this predicate is tested with an encoded key.
             for (RowFilter[] range : mRanges) {
+                makeAllFields(defined, range[0], false);
                 makeAllFields(defined, range[1], false);
-                makeAllFields(defined, range[2], false);
             }
         }
 

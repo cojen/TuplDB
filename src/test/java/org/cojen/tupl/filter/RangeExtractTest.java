@@ -46,8 +46,9 @@ public class RangeExtractTest {
         RowFilter[] range = f0.cnf().rangeExtract(colMap.get("a"), colMap.get("b"));
 
         check(range, new String[] {
+            "a >= ?0", "a <= ?0",
             "(b > ?1 || b > ?2) && (b > ?3 || b > ?4) && (b > ?5 || b > ?6)",
-            "a >= ?0", "a <= ?0"
+            null
         });
 
         RowFilter f1 = f0.dnf();
@@ -55,19 +56,19 @@ public class RangeExtractTest {
             (false, false, colMap.get("a"), colMap.get("b"));
 
         check(ranges, new String[][] {
-            {"(b > ?4 || b > ?3) && (b > ?6 || b > ?5)",
-             "a == ?0 && b > ?1", "a <= ?0"},
-            {"(b > ?4 || b > ?3) && (b > ?6 || b > ?5)",
-             "a == ?0 && b > ?2", "a <= ?0"}
+            {"a == ?0 && b > ?1", "a <= ?0",
+             "(b > ?4 || b > ?3) && (b > ?6 || b > ?5)", null},
+            {"a == ?0 && b > ?2", "a <= ?0",
+             "(b > ?4 || b > ?3) && (b > ?6 || b > ?5)", null}
         });
 
         ranges = f1.multiRangeExtract(true, false, colMap.get("a"), colMap.get("b"));
 
         check(ranges, new String[][] {
-            {"(b > ?4 || b > ?3) && (b > ?6 || b > ?5)",
-             "a == ?0 && b > ?1", "a <= ?0"},
-            {"(b > ?4 || b > ?3) && (b > ?6 || b > ?5)",
-             "a == ?0 && b > ?2", "a == ?0 && b <= ?1"}
+            {"a == ?0 && b > ?1", "a <= ?0",
+             "(b > ?4 || b > ?3) && (b > ?6 || b > ?5)", null},
+            {"a == ?0 && b > ?2", "a == ?0 && b <= ?1",
+             "(b > ?4 || b > ?3) && (b > ?6 || b > ?5)", null}
         });
 
         // Switch the direction of a few operators.
@@ -75,27 +76,27 @@ public class RangeExtractTest {
         range = f2.cnf().rangeExtract(colMap.get("a"), colMap.get("b"));
 
         check(range, new String[] {
-            "(b < ?1 || b < ?2) && (b > ?3 || b > ?4) && (b > ?5 || b > ?6)",
-            "a >= ?0", "a <= ?0"
+            "a >= ?0", "a <= ?0", 
+            "(b < ?1 || b < ?2) && (b > ?3 || b > ?4) && (b > ?5 || b > ?6)", null
         });
 
         RowFilter f3 = f2.dnf();
         ranges = f3.multiRangeExtract(false, true, colMap.get("a"), colMap.get("b"));
 
         check(ranges, new String[][] {
-            {"(b > ?4 || b > ?3) && (b > ?6 || b > ?5)",
-             "a >= ?0", "a == ?0 && b < ?1"},
-            {"(b > ?4 || b > ?3) && (b > ?6 || b > ?5)",
-             "a >= ?0", "a == ?0 && b < ?2"}
+            {"a >= ?0", "a == ?0 && b < ?1",
+             "(b > ?4 || b > ?3) && (b > ?6 || b > ?5)", null},
+            {"a >= ?0", "a == ?0 && b < ?2",
+             "(b > ?4 || b > ?3) && (b > ?6 || b > ?5)", null}
         });
 
         ranges = f3.multiRangeExtract(true, true, colMap.get("a"), colMap.get("b"));
 
         check(ranges, new String[][] {
-            {"(b > ?4 || b > ?3) && (b > ?6 || b > ?5)",
-             "a >= ?0", "a == ?0 && b < ?1"},
-            {"(b > ?4 || b > ?3) && (b > ?6 || b > ?5)",
-             "a == ?0 && b >= ?1", "a == ?0 && b < ?2"}
+            {"a >= ?0", "a == ?0 && b < ?1",
+             "(b > ?4 || b > ?3) && (b > ?6 || b > ?5)", null},
+            {"a == ?0 && b >= ?1", "a == ?0 && b < ?2",
+             "(b > ?4 || b > ?3) && (b > ?6 || b > ?5)", null}
         });
     }
 
@@ -117,7 +118,7 @@ public class RangeExtractTest {
 
             if (ranges.length == 1) {
                 RowFilter[] range = ranges[0];
-                if (range[1] == null && range[2] == null) {
+                if (range[0] == null && range[1] == null) {
                     // Full scan or FalseFilter.
                     continue;
                 }
@@ -160,7 +161,11 @@ public class RangeExtractTest {
     private static void check(RowFilter[] range, String[] expect) {
         assertEquals(expect.length, range.length);
         for (int i=0; i<expect.length; i++) {
-            assertEquals(expect[i], range[i].toString());
+            if (expect[i] == null) {
+                assertNull(range[i]);
+            } else {
+                assertEquals(expect[i], range[i].toString());
+            }
         }
     }
 
