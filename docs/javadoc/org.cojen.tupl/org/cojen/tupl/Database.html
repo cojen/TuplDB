@@ -44,7 +44,7 @@ loadScripts(document, 'script');</script>
 <div>
 <ul class="sub-nav-list">
 <li>Summary:&nbsp;</li>
-<li><a href="#nested-class-summary">Nested</a>&nbsp;|&nbsp;</li>
+<li>Nested&nbsp;|&nbsp;</li>
 <li>Field&nbsp;|&nbsp;</li>
 <li>Constr&nbsp;|&nbsp;</li>
 <li><a href="#method-summary">Method</a></li>
@@ -125,23 +125,6 @@ extends <a href="io/CauseCloseable.html" title="interface in org.cojen.tupl.io">
 </section>
 <section class="summary">
 <ul class="summary-list">
-<!-- ======== NESTED CLASS SUMMARY ======== -->
-<li>
-<section class="nested-class-summary" id="nested-class-summary">
-<h2>Nested Class Summary</h2>
-<div class="caption"><span>Nested Classes</span></div>
-<div class="summary-table three-column-summary">
-<div class="table-header col-first">Modifier and Type</div>
-<div class="table-header col-second">Interface</div>
-<div class="table-header col-last">Description</div>
-<div class="col-first even-row-color"><code>static class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="Database.Stats.html" class="type-name-link" title="class in org.cojen.tupl">Database.Stats</a></code></div>
-<div class="col-last even-row-color">
-<div class="block">Collection of database <a href="#stats()">statistics</a>.</div>
-</div>
-</div>
-</section>
-</li>
 <!-- ========== METHOD SUMMARY =========== -->
 <li>
 <section class="method-summary" id="method-summary">
@@ -203,7 +186,7 @@ extends <a href="io/CauseCloseable.html" title="interface in org.cojen.tupl.io">
  capturing a safe commit point.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#compactFile(org.cojen.tupl.CompactionObserver,double)" class="member-name-link">compactFile</a><wbr>(<a href="CompactionObserver.html" title="class in org.cojen.tupl">CompactionObserver</a>&nbsp;observer,
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#compactFile(org.cojen.tupl.diag.CompactionObserver,double)" class="member-name-link">compactFile</a><wbr>(<a href="diag/CompactionObserver.html" title="class in org.cojen.tupl.diag">CompactionObserver</a>&nbsp;observer,
  double&nbsp;target)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Compacts the database by shrinking the database file.</div>
@@ -370,7 +353,7 @@ extends <a href="io/CauseCloseable.html" title="interface in org.cojen.tupl.io">
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Cleanly closes the database, ensuring durability of all modifications.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="diag/DatabaseStats.html" title="class in org.cojen.tupl.diag">DatabaseStats</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#stats()" class="member-name-link">stats</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Returns a collection of database statistics.</div>
@@ -394,7 +377,7 @@ extends <a href="io/CauseCloseable.html" title="interface in org.cojen.tupl.io">
  become the leader.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#verify(org.cojen.tupl.VerificationObserver)" class="member-name-link">verify</a><wbr>(<a href="VerificationObserver.html" title="class in org.cojen.tupl">VerificationObserver</a>&nbsp;observer)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#verify(org.cojen.tupl.diag.VerificationObserver)" class="member-name-link">verify</a><wbr>(<a href="diag/VerificationObserver.html" title="class in org.cojen.tupl.diag">VerificationObserver</a>&nbsp;observer)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Verifies the integrity of the database and all indexes.</div>
 </div>
@@ -767,7 +750,7 @@ extends <a href="io/CauseCloseable.html" title="interface in org.cojen.tupl.io">
 
  <p>Even with a capacity limit, the database file can still slowly grow in size.
  Explicit overrides and critical operations can allocate space which can only be
- reclaimed by <a href="#compactFile(org.cojen.tupl.CompactionObserver,double)">compaction</a>.</div>
+ reclaimed by <a href="#compactFile(org.cojen.tupl.diag.CompactionObserver,double)">compaction</a>.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>bytes</code> - maximum capacity, in bytes; pass -1 for no limit</dd>
@@ -887,7 +870,7 @@ extends <a href="io/CauseCloseable.html" title="interface in org.cojen.tupl.io">
 <li>
 <section class="detail" id="stats()">
 <h3>stats</h3>
-<div class="member-signature"><span class="return-type"><a href="Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></span>&nbsp;<span class="element-name">stats</span>()</div>
+<div class="member-signature"><span class="return-type"><a href="diag/DatabaseStats.html" title="class in org.cojen.tupl.diag">DatabaseStats</a></span>&nbsp;<span class="element-name">stats</span>()</div>
 <div class="block">Returns a collection of database statistics.</div>
 </section>
 </li>
@@ -976,9 +959,9 @@ extends <a href="io/CauseCloseable.html" title="interface in org.cojen.tupl.io">
 </section>
 </li>
 <li>
-<section class="detail" id="compactFile(org.cojen.tupl.CompactionObserver,double)">
+<section class="detail" id="compactFile(org.cojen.tupl.diag.CompactionObserver,double)">
 <h3>compactFile</h3>
-<div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">compactFile</span><wbr><span class="parameters">(<a href="CompactionObserver.html" title="class in org.cojen.tupl">CompactionObserver</a>&nbsp;observer,
+<div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">compactFile</span><wbr><span class="parameters">(<a href="diag/CompactionObserver.html" title="class in org.cojen.tupl.diag">CompactionObserver</a>&nbsp;observer,
  double&nbsp;target)</span>
              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Compacts the database by shrinking the database file. The compaction target is the
@@ -1010,9 +993,9 @@ extends <a href="io/CauseCloseable.html" title="interface in org.cojen.tupl.io">
 </section>
 </li>
 <li>
-<section class="detail" id="verify(org.cojen.tupl.VerificationObserver)">
+<section class="detail" id="verify(org.cojen.tupl.diag.VerificationObserver)">
 <h3>verify</h3>
-<div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">verify</span><wbr><span class="parameters">(<a href="VerificationObserver.html" title="class in org.cojen.tupl">VerificationObserver</a>&nbsp;observer)</span>
+<div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">verify</span><wbr><span class="parameters">(<a href="diag/VerificationObserver.html" title="class in org.cojen.tupl.diag">VerificationObserver</a>&nbsp;observer)</span>
         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Verifies the integrity of the database and all indexes.</div>
 <dl class="notes">

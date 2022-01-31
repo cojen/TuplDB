@@ -58,8 +58,12 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color">
 <div class="block">See <a href="../Database.html" title="interface in org.cojen.tupl"><code>Database</code></a> to get started with Tupl.</div>
 </div>
-<div class="col-first odd-row-color"><a href="#org.cojen.tupl.tools">org.cojen.tupl.tools</a></div>
+<div class="col-first odd-row-color"><a href="#org.cojen.tupl.diag">org.cojen.tupl.diag</a></div>
 <div class="col-last odd-row-color">
+<div class="block">Diagnostics support.</div>
+</div>
+<div class="col-first even-row-color"><a href="#org.cojen.tupl.tools">org.cojen.tupl.tools</a></div>
+<div class="col-last even-row-color">
 <div class="block">Command-line tools for performing database maintenance.</div>
 </div>
 </div>
@@ -68,22 +72,6 @@ loadScripts(document, 'script');</script>
 <li>
 <section class="detail" id="org.cojen.tupl">
 <h2>Uses of <a href="../Index.html" title="interface in org.cojen.tupl">Index</a> in <a href="../package-summary.html">org.cojen.tupl</a></h2>
-<div class="caption"><span>Fields in <a href="../package-summary.html">org.cojen.tupl</a> declared as <a href="../Index.html" title="interface in org.cojen.tupl">Index</a></span></div>
-<div class="summary-table three-column-summary">
-<div class="table-header col-first">Modifier and Type</div>
-<div class="table-header col-second">Field</div>
-<div class="table-header col-last">Description</div>
-<div class="col-first even-row-color"><code>protected <a href="../Index.html" title="interface in org.cojen.tupl">Index</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">CompactionObserver.</span><code><a href="../CompactionObserver.html#index" class="member-name-link">index</a></code></div>
-<div class="col-last even-row-color">
-<div class="block">Index currently being compacted.</div>
-</div>
-<div class="col-first odd-row-color"><code>protected <a href="../Index.html" title="interface in org.cojen.tupl">Index</a></code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">VerificationObserver.</span><code><a href="../VerificationObserver.html#index" class="member-name-link">index</a></code></div>
-<div class="col-last odd-row-color">
-<div class="block">Index currently being verified.</div>
-</div>
-</div>
 <div class="caption"><span>Methods in <a href="../package-summary.html">org.cojen.tupl</a> that return <a href="../Index.html" title="interface in org.cojen.tupl">Index</a></span></div>
 <div class="summary-table three-column-summary">
 <div class="table-header col-first">Modifier and Type</div>
@@ -141,29 +129,6 @@ loadScripts(document, 'script');</script>
 <div class="block">Fully closes and deletes the given index, but does not immediately reclaim the pages it
  occupied.</div>
 </div>
-<div class="col-first odd-row-color"><code>boolean</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">CompactionObserver.</span><code><a href="../CompactionObserver.html#indexBegin(org.cojen.tupl.Index)" class="member-name-link">indexBegin</a><wbr>(<a href="../Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index)</code></div>
-<div class="col-last odd-row-color">
-<div class="block">Called before full index compaction begins.</div>
-</div>
-<div class="col-first even-row-color"><code>boolean</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">VerificationObserver.</span><code><a href="../VerificationObserver.html#indexBegin(org.cojen.tupl.Index,int)" class="member-name-link">indexBegin</a><wbr>(<a href="../Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
- int&nbsp;height)</code></div>
-<div class="col-last even-row-color">
-<div class="block">Called before full index verification begins.</div>
-</div>
-<div class="col-first odd-row-color"><code>boolean</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">CompactionObserver.</span><code><a href="../CompactionObserver.html#indexComplete(org.cojen.tupl.Index)" class="member-name-link">indexComplete</a><wbr>(<a href="../Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index)</code></div>
-<div class="col-last odd-row-color">
-<div class="block">Called after index compaction has finished.</div>
-</div>
-<div class="col-first even-row-color"><code>boolean</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">VerificationObserver.</span><code><a href="../VerificationObserver.html#indexComplete(org.cojen.tupl.Index,boolean,java.lang.String)" class="member-name-link">indexComplete</a><wbr>(<a href="../Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
- boolean&nbsp;passed,
- <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;message)</code></div>
-<div class="col-last even-row-color">
-<div class="block">Called after index verification has finished.</div>
-</div>
 <div class="col-first odd-row-color"><code>void</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">Database.</span><code><a href="../Database.html#renameIndex(org.cojen.tupl.Index,byte%5B%5D)" class="member-name-link">renameIndex</a><wbr>(<a href="../Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
  byte[]&nbsp;newName)</code></div>
@@ -175,6 +140,56 @@ loadScripts(document, 'script');</script>
  <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;newName)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Renames the given index to the one given.</div>
+</div>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="org.cojen.tupl.diag">
+<h2>Uses of <a href="../Index.html" title="interface in org.cojen.tupl">Index</a> in <a href="../diag/package-summary.html">org.cojen.tupl.diag</a></h2>
+<div class="caption"><span>Fields in <a href="../diag/package-summary.html">org.cojen.tupl.diag</a> declared as <a href="../Index.html" title="interface in org.cojen.tupl">Index</a></span></div>
+<div class="summary-table three-column-summary">
+<div class="table-header col-first">Modifier and Type</div>
+<div class="table-header col-second">Field</div>
+<div class="table-header col-last">Description</div>
+<div class="col-first even-row-color"><code>protected <a href="../Index.html" title="interface in org.cojen.tupl">Index</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">CompactionObserver.</span><code><a href="../diag/CompactionObserver.html#index" class="member-name-link">index</a></code></div>
+<div class="col-last even-row-color">
+<div class="block">Index currently being compacted.</div>
+</div>
+<div class="col-first odd-row-color"><code>protected <a href="../Index.html" title="interface in org.cojen.tupl">Index</a></code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">VerificationObserver.</span><code><a href="../diag/VerificationObserver.html#index" class="member-name-link">index</a></code></div>
+<div class="col-last odd-row-color">
+<div class="block">Index currently being verified.</div>
+</div>
+</div>
+<div class="caption"><span>Methods in <a href="../diag/package-summary.html">org.cojen.tupl.diag</a> with parameters of type <a href="../Index.html" title="interface in org.cojen.tupl">Index</a></span></div>
+<div class="summary-table three-column-summary">
+<div class="table-header col-first">Modifier and Type</div>
+<div class="table-header col-second">Method</div>
+<div class="table-header col-last">Description</div>
+<div class="col-first even-row-color"><code>boolean</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">CompactionObserver.</span><code><a href="../diag/CompactionObserver.html#indexBegin(org.cojen.tupl.Index)" class="member-name-link">indexBegin</a><wbr>(<a href="../Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index)</code></div>
+<div class="col-last even-row-color">
+<div class="block">Called before full index compaction begins.</div>
+</div>
+<div class="col-first odd-row-color"><code>boolean</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">VerificationObserver.</span><code><a href="../diag/VerificationObserver.html#indexBegin(org.cojen.tupl.Index,int)" class="member-name-link">indexBegin</a><wbr>(<a href="../Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
+ int&nbsp;height)</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Called before full index verification begins.</div>
+</div>
+<div class="col-first even-row-color"><code>boolean</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">CompactionObserver.</span><code><a href="../diag/CompactionObserver.html#indexComplete(org.cojen.tupl.Index)" class="member-name-link">indexComplete</a><wbr>(<a href="../Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index)</code></div>
+<div class="col-last even-row-color">
+<div class="block">Called after index compaction has finished.</div>
+</div>
+<div class="col-first odd-row-color"><code>boolean</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">VerificationObserver.</span><code><a href="../diag/VerificationObserver.html#indexComplete(org.cojen.tupl.Index,boolean,java.lang.String)" class="member-name-link">indexComplete</a><wbr>(<a href="../Index.html" title="interface in org.cojen.tupl">Index</a>&nbsp;index,
+ boolean&nbsp;passed,
+ <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;message)</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Called after index verification has finished.</div>
 </div>
 </div>
 </section>

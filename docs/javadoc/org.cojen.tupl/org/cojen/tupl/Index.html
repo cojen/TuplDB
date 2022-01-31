@@ -44,7 +44,7 @@ loadScripts(document, 'script');</script>
 <div>
 <ul class="sub-nav-list">
 <li>Summary:&nbsp;</li>
-<li><a href="#nested-class-summary">Nested</a>&nbsp;|&nbsp;</li>
+<li>Nested&nbsp;|&nbsp;</li>
 <li>Field&nbsp;|&nbsp;</li>
 <li>Constr&nbsp;|&nbsp;</li>
 <li><a href="#method-summary">Method</a></li>
@@ -94,23 +94,6 @@ extends <a href="View.html" title="interface in org.cojen.tupl">View</a>, <a hre
 </section>
 <section class="summary">
 <ul class="summary-list">
-<!-- ======== NESTED CLASS SUMMARY ======== -->
-<li>
-<section class="nested-class-summary" id="nested-class-summary">
-<h2>Nested Class Summary</h2>
-<div class="caption"><span>Nested Classes</span></div>
-<div class="summary-table three-column-summary">
-<div class="table-header col-first">Modifier and Type</div>
-<div class="table-header col-second">Interface</div>
-<div class="table-header col-last">Description</div>
-<div class="col-first even-row-color"><code>static class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="Index.Stats.html" class="type-name-link" title="class in org.cojen.tupl">Index.Stats</a></code></div>
-<div class="col-last even-row-color">
-<div class="block">Collection of stats from the <a href="#analyze(byte%5B%5D,byte%5B%5D)"><code>analyze</code></a> method.</div>
-</div>
-</div>
-</section>
-</li>
 <!-- ========== METHOD SUMMARY =========== -->
 <li>
 <section class="method-summary" id="method-summary">
@@ -122,7 +105,7 @@ extends <a href="View.html" title="interface in org.cojen.tupl">View</a>, <a hre
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="diag/IndexStats.html" title="class in org.cojen.tupl.diag">IndexStats</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#analyze(byte%5B%5D,byte%5B%5D)" class="member-name-link">analyze</a><wbr>(byte[]&nbsp;lowKey,
  byte[]&nbsp;highKey)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
@@ -165,7 +148,7 @@ extends <a href="View.html" title="interface in org.cojen.tupl">View</a>, <a hre
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#nameString()" class="member-name-link">nameString</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#verify(org.cojen.tupl.VerificationObserver)" class="member-name-link">verify</a><wbr>(<a href="VerificationObserver.html" title="class in org.cojen.tupl">VerificationObserver</a>&nbsp;observer)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#verify(org.cojen.tupl.diag.VerificationObserver)" class="member-name-link">verify</a><wbr>(<a href="diag/VerificationObserver.html" title="class in org.cojen.tupl.diag">VerificationObserver</a>&nbsp;observer)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Verifies the integrity of the index.</div>
 </div>
@@ -261,9 +244,9 @@ extends <a href="View.html" title="interface in org.cojen.tupl">View</a>, <a hre
 <li>
 <section class="detail" id="analyze(byte[],byte[])">
 <h3>analyze</h3>
-<div class="member-signature"><span class="return-type"><a href="Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></span>&nbsp;<span class="element-name">analyze</span><wbr><span class="parameters">(byte[]&nbsp;lowKey,
+<div class="member-signature"><span class="return-type"><a href="diag/IndexStats.html" title="class in org.cojen.tupl.diag">IndexStats</a></span>&nbsp;<span class="element-name">analyze</span><wbr><span class="parameters">(byte[]&nbsp;lowKey,
  byte[]&nbsp;highKey)</span>
-             throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Estimates the size of this index with a single random probe. To improve the estimate,
  average several analysis results together.</div>
 <dl class="notes">
@@ -276,9 +259,9 @@ extends <a href="View.html" title="interface in org.cojen.tupl">View</a>, <a hre
 </section>
 </li>
 <li>
-<section class="detail" id="verify(org.cojen.tupl.VerificationObserver)">
+<section class="detail" id="verify(org.cojen.tupl.diag.VerificationObserver)">
 <h3>verify</h3>
-<div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">verify</span><wbr><span class="parameters">(<a href="VerificationObserver.html" title="class in org.cojen.tupl">VerificationObserver</a>&nbsp;observer)</span>
+<div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">verify</span><wbr><span class="parameters">(<a href="diag/VerificationObserver.html" title="class in org.cojen.tupl.diag">VerificationObserver</a>&nbsp;observer)</span>
         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Verifies the integrity of the index.</div>
 <dl class="notes">

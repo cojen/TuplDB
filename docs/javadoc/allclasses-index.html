@@ -78,7 +78,7 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color all-classes-table all-classes-table-tab1">
 <div class="block">Closeable interface which allows a failure cause to be specified.</div>
 </div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="org.cojen.tupl/org/cojen/tupl/CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></div>
+<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="org.cojen.tupl/org/cojen/tupl/ext/CipherCrypto.html" title="class in org.cojen.tupl.ext">CipherCrypto</a></div>
 <div class="col-last even-row-color all-classes-table all-classes-table-tab2">
 <div class="block">Crypto implementation which uses <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/javax/crypto/Cipher.html" title="class or interface in javax.crypto" class="external-link"><code>Cipher</code></a> and defaults to the AES algorithm.</div>
 </div>
@@ -108,7 +108,7 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color all-classes-table all-classes-table-tab2">
 <div class="block">Simple database file compaction utility.</div>
 </div>
-<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="org.cojen.tupl/org/cojen/tupl/CompactionObserver.html" title="class in org.cojen.tupl">CompactionObserver</a></div>
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="org.cojen.tupl/org/cojen/tupl/diag/CompactionObserver.html" title="class in org.cojen.tupl.diag">CompactionObserver</a></div>
 <div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
 <div class="block">Index compaction observer.</div>
 </div>
@@ -145,22 +145,22 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color all-classes-table all-classes-table-tab1">
 <div class="block">Primary database interface, containing a collection of transactional indexes.</div>
 </div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="org.cojen.tupl/org/cojen/tupl/Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></div>
+<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></div>
 <div class="col-last even-row-color all-classes-table all-classes-table-tab2">
-<div class="block">Collection of database <a href="org.cojen.tupl/org/cojen/tupl/Database.html#stats()">statistics</a>.</div>
-</div>
-<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></div>
-<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
 <div class="block">Configuration options used when <a href="org.cojen.tupl/org/cojen/tupl/Database.html#open(org.cojen.tupl.DatabaseConfig)">opening</a> a database.</div>
 </div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab5"><a href="org.cojen.tupl/org/cojen/tupl/DatabaseException.html" title="class in org.cojen.tupl">DatabaseException</a></div>
-<div class="col-last even-row-color all-classes-table all-classes-table-tab5">
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab5"><a href="org.cojen.tupl/org/cojen/tupl/DatabaseException.html" title="class in org.cojen.tupl">DatabaseException</a></div>
+<div class="col-last odd-row-color all-classes-table all-classes-table-tab5">
 <div class="block">Exception thrown which indicates a <a href="org.cojen.tupl/org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">database</a> problem not due to general
  I/O problems.</div>
 </div>
-<div class="col-first odd-row-color all-classes-table all-classes-table-tab5"><a href="org.cojen.tupl/org/cojen/tupl/DatabaseFullException.html" title="class in org.cojen.tupl">DatabaseFullException</a></div>
-<div class="col-last odd-row-color all-classes-table all-classes-table-tab5">
+<div class="col-first even-row-color all-classes-table all-classes-table-tab5"><a href="org.cojen.tupl/org/cojen/tupl/DatabaseFullException.html" title="class in org.cojen.tupl">DatabaseFullException</a></div>
+<div class="col-last even-row-color all-classes-table all-classes-table-tab5">
 <div class="block">Thrown when database is full and no more data can be stored into it.</div>
+</div>
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="org.cojen.tupl/org/cojen/tupl/diag/DatabaseStats.html" title="class in org.cojen.tupl.diag">DatabaseStats</a></div>
+<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
+<div class="block">Collection of database <a href="org.cojen.tupl/org/cojen/tupl/Database.html#stats()">statistics</a>.</div>
 </div>
 <div class="col-first even-row-color all-classes-table all-classes-table-tab5"><a href="org.cojen.tupl/org/cojen/tupl/DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></div>
 <div class="col-last even-row-color all-classes-table all-classes-table-tab5">
@@ -239,7 +239,7 @@ loadScripts(document, 'script');</script>
 <div class="block">Mapping of keys to values, ordered by key, in lexicographical
  order.</div>
 </div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="org.cojen.tupl/org/cojen/tupl/Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></div>
+<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="org.cojen.tupl/org/cojen/tupl/diag/IndexStats.html" title="class in org.cojen.tupl.diag">IndexStats</a></div>
 <div class="col-last even-row-color all-classes-table all-classes-table-tab2">
 <div class="block">Collection of stats from the <a href="org.cojen.tupl/org/cojen/tupl/Index.html#analyze(byte%5B%5D,byte%5B%5D)"><code>analyze</code></a> method.</div>
 </div>
@@ -507,7 +507,7 @@ loadScripts(document, 'script');</script>
 <div class="block">Accesses database values without requiring that they be fully loaded or stored in a single
  operation.</div>
 </div>
-<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="org.cojen.tupl/org/cojen/tupl/VerificationObserver.html" title="class in org.cojen.tupl">VerificationObserver</a></div>
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="org.cojen.tupl/org/cojen/tupl/diag/VerificationObserver.html" title="class in org.cojen.tupl.diag">VerificationObserver</a></div>
 <div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
 <div class="block">Index verification observer.</div>
 </div>

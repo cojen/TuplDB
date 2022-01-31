@@ -76,25 +76,29 @@ loadScripts(document, 'script');</script>
 <div class="summary-table two-column-summary">
 <div class="table-header col-first">Package</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color"><a href="ext/package-summary.html">org.cojen.tupl.ext</a></div>
+<div class="col-first even-row-color"><a href="diag/package-summary.html">org.cojen.tupl.diag</a></div>
 <div class="col-last even-row-color">
+<div class="block">Diagnostics support.</div>
+</div>
+<div class="col-first odd-row-color"><a href="ext/package-summary.html">org.cojen.tupl.ext</a></div>
+<div class="col-last odd-row-color">
 <div class="block">Support for database extensions.</div>
 </div>
-<div class="col-first odd-row-color"><a href="io/package-summary.html">org.cojen.tupl.io</a></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><a href="io/package-summary.html">org.cojen.tupl.io</a></div>
+<div class="col-last even-row-color">
 <div class="block">Low-level I/O abstraction layer.</div>
 </div>
-<div class="col-first even-row-color"><a href="repl/package-summary.html">org.cojen.tupl.repl</a></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><a href="repl/package-summary.html">org.cojen.tupl.repl</a></div>
+<div class="col-last odd-row-color">
 <div class="block">General-purpose <a href="https://raft.github.io/">Raft-based</a> replication system,
  intended for supporting fully replicated <a href="Database.html" title="interface in org.cojen.tupl">databases</a>.</div>
 </div>
-<div class="col-first odd-row-color"><a href="tools/package-summary.html">org.cojen.tupl.tools</a></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><a href="tools/package-summary.html">org.cojen.tupl.tools</a></div>
+<div class="col-last even-row-color">
 <div class="block">Command-line tools for performing database maintenance.</div>
 </div>
-<div class="col-first even-row-color"><a href="util/package-summary.html">org.cojen.tupl.util</a></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><a href="util/package-summary.html">org.cojen.tupl.util</a></div>
+<div class="col-last odd-row-color">
 <div class="block">Low-level utility classes for managing concurrency, caching, and task scheduling.</div>
 </div>
 </div>
@@ -121,26 +125,18 @@ loadScripts(document, 'script');</script>
 <div class="block">Thrown when the database cache is full and no more data can be loaded into
  it.</div>
 </div>
-<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="CipherCrypto.html" title="class in org.cojen.tupl">CipherCrypto</a></div>
-<div class="col-last odd-row-color class-summary class-summary-tab2">
-<div class="block">Crypto implementation which uses <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/javax/crypto/Cipher.html" title="class or interface in javax.crypto" class="external-link"><code>Cipher</code></a> and defaults to the AES algorithm.</div>
-</div>
-<div class="col-first even-row-color class-summary class-summary-tab5"><a href="ClosedIndexException.html" title="class in org.cojen.tupl">ClosedIndexException</a></div>
-<div class="col-last even-row-color class-summary class-summary-tab5">
+<div class="col-first odd-row-color class-summary class-summary-tab5"><a href="ClosedIndexException.html" title="class in org.cojen.tupl">ClosedIndexException</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab5">
 <div class="block">Thrown when attempting to modify the contents of an index through a closed
  reference.</div>
 </div>
-<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="Combiner.html" title="interface in org.cojen.tupl">Combiner</a></div>
-<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="col-first even-row-color class-summary class-summary-tab1"><a href="Combiner.html" title="interface in org.cojen.tupl">Combiner</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab1">
 <div class="block">Represents an operation which combines two values that map to the same key.</div>
 </div>
-<div class="col-first even-row-color class-summary class-summary-tab1"><a href="CommitCallback.html" title="interface in org.cojen.tupl">CommitCallback</a></div>
-<div class="col-last even-row-color class-summary class-summary-tab1">
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="CommitCallback.html" title="interface in org.cojen.tupl">CommitCallback</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
 <div class="block">Defines a callback which is notified when a pending transaction has finished.</div>
-</div>
-<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="CompactionObserver.html" title="class in org.cojen.tupl">CompactionObserver</a></div>
-<div class="col-last odd-row-color class-summary class-summary-tab2">
-<div class="block">Index compaction observer.</div>
 </div>
 <div class="col-first even-row-color class-summary class-summary-tab5"><a href="ConfirmationFailureException.html" title="class in org.cojen.tupl">ConfirmationFailureException</a></div>
 <div class="col-last even-row-color class-summary class-summary-tab5">
@@ -171,87 +167,79 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color class-summary class-summary-tab1">
 <div class="block">Primary database interface, containing a collection of transactional indexes.</div>
 </div>
-<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="Database.Stats.html" title="class in org.cojen.tupl">Database.Stats</a></div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></div>
 <div class="col-last odd-row-color class-summary class-summary-tab2">
-<div class="block">Collection of database <a href="Database.html#stats()">statistics</a>.</div>
-</div>
-<div class="col-first even-row-color class-summary class-summary-tab2"><a href="DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></div>
-<div class="col-last even-row-color class-summary class-summary-tab2">
 <div class="block">Configuration options used when <a href="Database.html#open(org.cojen.tupl.DatabaseConfig)">opening</a> a database.</div>
 </div>
-<div class="col-first odd-row-color class-summary class-summary-tab5"><a href="DatabaseException.html" title="class in org.cojen.tupl">DatabaseException</a></div>
-<div class="col-last odd-row-color class-summary class-summary-tab5">
+<div class="col-first even-row-color class-summary class-summary-tab5"><a href="DatabaseException.html" title="class in org.cojen.tupl">DatabaseException</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab5">
 <div class="block">Exception thrown which indicates a <a href="Database.html" title="interface in org.cojen.tupl">database</a> problem not due to general
  I/O problems.</div>
 </div>
-<div class="col-first even-row-color class-summary class-summary-tab5"><a href="DatabaseFullException.html" title="class in org.cojen.tupl">DatabaseFullException</a></div>
-<div class="col-last even-row-color class-summary class-summary-tab5">
+<div class="col-first odd-row-color class-summary class-summary-tab5"><a href="DatabaseFullException.html" title="class in org.cojen.tupl">DatabaseFullException</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab5">
 <div class="block">Thrown when database is full and no more data can be stored into it.</div>
 </div>
-<div class="col-first odd-row-color class-summary class-summary-tab5"><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></div>
-<div class="col-last odd-row-color class-summary class-summary-tab5">
+<div class="col-first even-row-color class-summary class-summary-tab5"><a href="DeadlockException.html" title="class in org.cojen.tupl">DeadlockException</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab5">
 <div class="block">Thrown when a lock request by a <a href="Transaction.html" title="interface in org.cojen.tupl">transaction</a> timed out due to a
  deadlock, or a trivial deadlock was quickly detected.</div>
 </div>
-<div class="col-first even-row-color class-summary class-summary-tab1"><a href="DeadlockInfo.html" title="interface in org.cojen.tupl">DeadlockInfo</a></div>
-<div class="col-last even-row-color class-summary class-summary-tab1">
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="DeadlockInfo.html" title="interface in org.cojen.tupl">DeadlockInfo</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
 <div class="block">Lock request which was in a deadlock.</div>
 </div>
-<div class="col-first odd-row-color class-summary class-summary-tab5"><a href="DeletedIndexException.html" title="class in org.cojen.tupl">DeletedIndexException</a></div>
-<div class="col-last odd-row-color class-summary class-summary-tab5">
+<div class="col-first even-row-color class-summary class-summary-tab5"><a href="DeletedIndexException.html" title="class in org.cojen.tupl">DeletedIndexException</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab5">
 <div class="block">Thrown when attempting to modify the contents of an index which was deleted.</div>
 </div>
-<div class="col-first even-row-color class-summary class-summary-tab3"><a href="DurabilityMode.html" title="enum class in org.cojen.tupl">DurabilityMode</a></div>
-<div class="col-last even-row-color class-summary class-summary-tab3">
+<div class="col-first odd-row-color class-summary class-summary-tab3"><a href="DurabilityMode.html" title="enum class in org.cojen.tupl">DurabilityMode</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab3">
 <div class="block">Various <a href="Transaction.html" title="interface in org.cojen.tupl">transaction</a> durability modes, which control the durability
  strength of committed transactions.</div>
 </div>
-<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="EntryConsumer.html" title="interface in org.cojen.tupl">EntryConsumer</a></div>
-<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="col-first even-row-color class-summary class-summary-tab1"><a href="EntryConsumer.html" title="interface in org.cojen.tupl">EntryConsumer</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab1">
 <div class="block">Represents an operation that accepts a key and value, just like a <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/function/BiConsumer.html" title="class or interface in java.util.function" class="external-link"><code>BiConsumer</code></a>.</div>
 </div>
-<div class="col-first even-row-color class-summary class-summary-tab1"><a href="EntryFunction.html" title="interface in org.cojen.tupl">EntryFunction</a></div>
-<div class="col-last even-row-color class-summary class-summary-tab1">
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="EntryFunction.html" title="interface in org.cojen.tupl">EntryFunction</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
 <div class="block">Represents an operation that applies a key and value, just like a <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/function/BiFunction.html" title="class or interface in java.util.function" class="external-link"><code>BiFunction</code></a>.</div>
 </div>
-<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="EventListener.html" title="interface in org.cojen.tupl">EventListener</a></div>
-<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="col-first even-row-color class-summary class-summary-tab1"><a href="EventListener.html" title="interface in org.cojen.tupl">EventListener</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab1">
 <div class="block">Listener which receives notifications of actions being performed by the
  database.</div>
 </div>
-<div class="col-first even-row-color class-summary class-summary-tab3"><a href="EventType.html" title="enum class in org.cojen.tupl">EventType</a></div>
-<div class="col-last even-row-color class-summary class-summary-tab3">
+<div class="col-first odd-row-color class-summary class-summary-tab3"><a href="EventType.html" title="enum class in org.cojen.tupl">EventType</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab3">
 <div class="block">Defines the various types of events that an <a href="EventListener.html" title="interface in org.cojen.tupl"><code>EventListener</code></a> can receive.</div>
 </div>
-<div class="col-first odd-row-color class-summary class-summary-tab3"><a href="EventType.Category.html" title="enum class in org.cojen.tupl">EventType.Category</a></div>
-<div class="col-last odd-row-color class-summary class-summary-tab3">
+<div class="col-first even-row-color class-summary class-summary-tab3"><a href="EventType.Category.html" title="enum class in org.cojen.tupl">EventType.Category</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab3">
 <div class="block">Event type category.</div>
 </div>
-<div class="col-first even-row-color class-summary class-summary-tab1"><a href="Filter.html" title="interface in org.cojen.tupl">Filter</a></div>
-<div class="col-last even-row-color class-summary class-summary-tab1">
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="Filter.html" title="interface in org.cojen.tupl">Filter</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
 <div class="block">View transformer which filters out entries which don't belong.</div>
 </div>
-<div class="col-first odd-row-color class-summary class-summary-tab7"><a href="Hidden.html" title="annotation interface in org.cojen.tupl">Hidden</a></div>
-<div class="col-last odd-row-color class-summary class-summary-tab7">
+<div class="col-first even-row-color class-summary class-summary-tab7"><a href="Hidden.html" title="annotation interface in org.cojen.tupl">Hidden</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab7">
 <div class="block">Annotation which hides a column from a row's generated <code>toString</code> method.</div>
 </div>
-<div class="col-first even-row-color class-summary class-summary-tab5"><a href="IllegalUpgradeException.html" title="class in org.cojen.tupl">IllegalUpgradeException</a></div>
-<div class="col-last even-row-color class-summary class-summary-tab5">
+<div class="col-first odd-row-color class-summary class-summary-tab5"><a href="IllegalUpgradeException.html" title="class in org.cojen.tupl">IllegalUpgradeException</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab5">
 <div class="block">Thrown when attempting to acquire an upgradable or exclusive lock when a
  shared lock is already held.</div>
 </div>
-<div class="col-first odd-row-color class-summary class-summary-tab5"><a href="IncompleteRestoreException.html" title="class in org.cojen.tupl">IncompleteRestoreException</a></div>
-<div class="col-last odd-row-color class-summary class-summary-tab5">
+<div class="col-first even-row-color class-summary class-summary-tab5"><a href="IncompleteRestoreException.html" title="class in org.cojen.tupl">IncompleteRestoreException</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab5">
 <div class="block">Thrown when opening a database which wasn't completely <a href="Database.html#restoreFromSnapshot(org.cojen.tupl.DatabaseConfig,java.io.InputStream)">restored</a>.</div>
 </div>
-<div class="col-first even-row-color class-summary class-summary-tab1"><a href="Index.html" title="interface in org.cojen.tupl">Index</a></div>
-<div class="col-last even-row-color class-summary class-summary-tab1">
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="Index.html" title="interface in org.cojen.tupl">Index</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">
 <div class="block">Mapping of keys to values, ordered by key, in lexicographical
  order.</div>
-</div>
-<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="Index.Stats.html" title="class in org.cojen.tupl">Index.Stats</a></div>
-<div class="col-last odd-row-color class-summary class-summary-tab2">
-<div class="block">Collection of stats from the <a href="Index.html#analyze(byte%5B%5D,byte%5B%5D)"><code>analyze</code></a> method.</div>
 </div>
 <div class="col-first even-row-color class-summary class-summary-tab5"><a href="InvalidTransactionException.html" title="class in org.cojen.tupl">InvalidTransactionException</a></div>
 <div class="col-last even-row-color class-summary class-summary-tab5">
@@ -377,20 +365,16 @@ loadScripts(document, 'script');</script>
 <div class="block">Accesses database values without requiring that they be fully loaded or stored in a single
  operation.</div>
 </div>
-<div class="col-first even-row-color class-summary class-summary-tab2"><a href="VerificationObserver.html" title="class in org.cojen.tupl">VerificationObserver</a></div>
-<div class="col-last even-row-color class-summary class-summary-tab2">
-<div class="block">Index verification observer.</div>
-</div>
-<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="View.html" title="interface in org.cojen.tupl">View</a></div>
-<div class="col-last odd-row-color class-summary class-summary-tab1">
+<div class="col-first even-row-color class-summary class-summary-tab1"><a href="View.html" title="interface in org.cojen.tupl">View</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab1">
 <div class="block">Mapping of keys to values, in no particular order.</div>
 </div>
-<div class="col-first even-row-color class-summary class-summary-tab5"><a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></div>
-<div class="col-last even-row-color class-summary class-summary-tab5">
+<div class="col-first odd-row-color class-summary class-summary-tab5"><a href="ViewConstraintException.html" title="class in org.cojen.tupl">ViewConstraintException</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab5">
 <div class="block">Thrown when attempting to perform an illegal view alteration.</div>
 </div>
-<div class="col-first odd-row-color class-summary class-summary-tab5"><a href="WriteFailureException.html" title="class in org.cojen.tupl">WriteFailureException</a></div>
-<div class="col-last odd-row-color class-summary class-summary-tab5">
+<div class="col-first even-row-color class-summary class-summary-tab5"><a href="WriteFailureException.html" title="class in org.cojen.tupl">WriteFailureException</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab5">
 <div class="block">Thrown when writing to the underlying storage device failed.</div>
 </div>
 </div>

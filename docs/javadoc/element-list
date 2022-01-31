@@ -1,5 +1,6 @@
 module:org.cojen.tupl
 org.cojen.tupl
+org.cojen.tupl.diag
 org.cojen.tupl.ext
 org.cojen.tupl.io
 org.cojen.tupl.repl

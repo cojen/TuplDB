@@ -133,88 +133,6 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
-<section class="serialized-class-details" id="org.cojen.tupl.Database.Stats">
-<h3>Class&nbsp;<a href="org.cojen.tupl/org/cojen/tupl/Database.Stats.html" title="class in org.cojen.tupl">org.cojen.tupl.Database.Stats</a></h3>
-<div class="type-signature">class Stats extends <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a> implements <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/Serializable.html" title="class or interface in java.io" class="external-link">Serializable</a></div>
-<dl class="name-value">
-<dt>serialVersionUID:</dt>
-<dd>6L</dd>
-</dl>
-<ul class="block-list">
-<li>
-<section class="detail">
-<h4>Serialized Fields</h4>
-<ul class="block-list">
-<li class="block-list">
-<h5>cachePages</h5>
-<pre>long cachePages</pre>
-<div class="block">The current size of the cache, in pages.</div>
-</li>
-<li class="block-list">
-<h5>checkpointDuration</h5>
-<pre>long checkpointDuration</pre>
-<div class="block">The time duration required for the last checkpoint to complete, in milliseconds. If
- no checkpoints are running, then zero is returned.</div>
-</li>
-<li class="block-list">
-<h5>cursorCount</h5>
-<pre>long cursorCount</pre>
-<div class="block">The amount of cursors which are in a non-reset state. An accumulation of cursors can
- indicate that they are not being reset properly.</div>
-</li>
-<li class="block-list">
-<h5>dirtyPages</h5>
-<pre>long dirtyPages</pre>
-<div class="block">The count of pages which are dirty (need to be written with a checkpoint).</div>
-</li>
-<li class="block-list">
-<h5>freePages</h5>
-<pre>long freePages</pre>
-<div class="block">The amount of unused pages in the database.</div>
-</li>
-<li class="block-list">
-<h5>lockCount</h5>
-<pre>long lockCount</pre>
-<div class="block">The amount of locks currently allocated. Locks are created as transactions access or
- modify records, and they are destroyed when transactions exit or reset. An
- accumulation of locks can indicate that transactions are not being reset properly.</div>
-</li>
-<li class="block-list">
-<h5>openIndexes</h5>
-<pre>int openIndexes</pre>
-<div class="block">The amount of indexes currently open.</div>
-</li>
-<li class="block-list">
-<h5>pageSize</h5>
-<pre>int pageSize</pre>
-<div class="block">The allocation page size</div>
-</li>
-<li class="block-list">
-<h5>replicationBacklog</h5>
-<pre>long replicationBacklog</pre>
-<div class="block">The amount of log bytes that a replica must apply to be fully caught up to the
- leader. If the member is currently the leader, then the backlog is zero.</div>
-</li>
-<li class="block-list">
-<h5>totalPages</h5>
-<pre>long totalPages</pre>
-<div class="block">The total amount of pages in the database.</div>
-</li>
-<li class="block-list">
-<h5>transactionCount</h5>
-<pre>long transactionCount</pre>
-<div class="block">The amount of fully-established transactions which are in a non-reset state. This
- value is unaffected by transactions which make no changes, and it is also unaffected
- by auto-commit transactions. An accumulation of transactions can indicate that they
- are not being reset properly.</div>
-</li>
-</ul>
-</section>
-</li>
-</ul>
-</section>
-</li>
-<li>
 <section class="serialized-class-details" id="org.cojen.tupl.DatabaseException">
 <h3>Exception&nbsp;<a href="org.cojen.tupl/org/cojen/tupl/DatabaseException.html" title="class in org.cojen.tupl">org.cojen.tupl.DatabaseException</a></h3>
 <div class="type-signature">class DatabaseException extends <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a> implements <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/Serializable.html" title="class or interface in java.io" class="external-link">Serializable</a></div>
@@ -289,50 +207,6 @@ loadScripts(document, 'script');</script>
 <dt>serialVersionUID:</dt>
 <dd>1L</dd>
 </dl>
-</section>
-</li>
-<li>
-<section class="serialized-class-details" id="org.cojen.tupl.Index.Stats">
-<h3>Class&nbsp;<a href="org.cojen.tupl/org/cojen/tupl/Index.Stats.html" title="class in org.cojen.tupl">org.cojen.tupl.Index.Stats</a></h3>
-<div class="type-signature">class Stats extends <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a> implements <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/Serializable.html" title="class or interface in java.io" class="external-link">Serializable</a></div>
-<dl class="name-value">
-<dt>serialVersionUID:</dt>
-<dd>3L</dd>
-</dl>
-<ul class="block-list">
-<li>
-<section class="detail">
-<h4>Serialized Fields</h4>
-<ul class="block-list">
-<li class="block-list">
-<h5>entryCount</h5>
-<pre>double entryCount</pre>
-<div class="block">The estimated number of index entries.</div>
-</li>
-<li class="block-list">
-<h5>freeBytes</h5>
-<pre>double freeBytes</pre>
-<div class="block">The estimated amount of free bytes in the index.</div>
-</li>
-<li class="block-list">
-<h5>keyBytes</h5>
-<pre>double keyBytes</pre>
-<div class="block">The estimated amount of bytes occupied by keys in the index.</div>
-</li>
-<li class="block-list">
-<h5>totalBytes</h5>
-<pre>double totalBytes</pre>
-<div class="block">The estimated total amount of bytes in the index.</div>
-</li>
-<li class="block-list">
-<h5>valueBytes</h5>
-<pre>double valueBytes</pre>
-<div class="block">The estimated amount of bytes occupied by values in the index.</div>
-</li>
-</ul>
-</section>
-</li>
-</ul>
 </section>
 </li>
 <li>
@@ -516,6 +390,139 @@ loadScripts(document, 'script');</script>
 <dt>serialVersionUID:</dt>
 <dd>1L</dd>
 </dl>
+</section>
+</li>
+</ul>
+</section>
+</li>
+<li>
+<section class="serialized-package-container">
+<h2 title="Package">Package&nbsp;<a href="org.cojen.tupl/org/cojen/tupl/diag/package-summary.html">org.cojen.tupl.diag</a></h2>
+<ul class="block-list">
+<li>
+<section class="serialized-class-details" id="org.cojen.tupl.diag.DatabaseStats">
+<h3>Class&nbsp;<a href="org.cojen.tupl/org/cojen/tupl/diag/DatabaseStats.html" title="class in org.cojen.tupl.diag">org.cojen.tupl.diag.DatabaseStats</a></h3>
+<div class="type-signature">class DatabaseStats extends <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a> implements <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/Serializable.html" title="class or interface in java.io" class="external-link">Serializable</a></div>
+<dl class="name-value">
+<dt>serialVersionUID:</dt>
+<dd>1L</dd>
+</dl>
+<ul class="block-list">
+<li>
+<section class="detail">
+<h4>Serialized Fields</h4>
+<ul class="block-list">
+<li class="block-list">
+<h5>cachePages</h5>
+<pre>long cachePages</pre>
+<div class="block">The current size of the cache, in pages.</div>
+</li>
+<li class="block-list">
+<h5>checkpointDuration</h5>
+<pre>long checkpointDuration</pre>
+<div class="block">The time duration required for the last checkpoint to complete, in milliseconds. If
+ no checkpoints are running, then zero is returned.</div>
+</li>
+<li class="block-list">
+<h5>cursorCount</h5>
+<pre>long cursorCount</pre>
+<div class="block">The amount of cursors which are in a non-reset state. An accumulation of cursors can
+ indicate that they are not being reset properly.</div>
+</li>
+<li class="block-list">
+<h5>dirtyPages</h5>
+<pre>long dirtyPages</pre>
+<div class="block">The count of pages which are dirty (need to be written with a checkpoint).</div>
+</li>
+<li class="block-list">
+<h5>freePages</h5>
+<pre>long freePages</pre>
+<div class="block">The amount of unused pages in the database.</div>
+</li>
+<li class="block-list">
+<h5>lockCount</h5>
+<pre>long lockCount</pre>
+<div class="block">The amount of locks currently allocated. Locks are created as transactions access or
+ modify records, and they are destroyed when transactions exit or reset. An
+ accumulation of locks can indicate that transactions are not being reset properly.</div>
+</li>
+<li class="block-list">
+<h5>openIndexes</h5>
+<pre>int openIndexes</pre>
+<div class="block">The amount of indexes currently open.</div>
+</li>
+<li class="block-list">
+<h5>pageSize</h5>
+<pre>int pageSize</pre>
+<div class="block">The allocation page size</div>
+</li>
+<li class="block-list">
+<h5>replicationBacklog</h5>
+<pre>long replicationBacklog</pre>
+<div class="block">The amount of log bytes that a replica must apply to be fully caught up to the
+ leader. If the member is currently the leader, then the backlog is zero.</div>
+</li>
+<li class="block-list">
+<h5>totalPages</h5>
+<pre>long totalPages</pre>
+<div class="block">The total amount of pages in the database.</div>
+</li>
+<li class="block-list">
+<h5>transactionCount</h5>
+<pre>long transactionCount</pre>
+<div class="block">The amount of fully-established transactions which are in a non-reset state. This
+ value is unaffected by transactions which make no changes, and it is also unaffected
+ by auto-commit transactions. An accumulation of transactions can indicate that they
+ are not being reset properly.</div>
+</li>
+</ul>
+</section>
+</li>
+</ul>
+</section>
+</li>
+<li>
+<section class="serialized-class-details" id="org.cojen.tupl.diag.IndexStats">
+<h3>Class&nbsp;<a href="org.cojen.tupl/org/cojen/tupl/diag/IndexStats.html" title="class in org.cojen.tupl.diag">org.cojen.tupl.diag.IndexStats</a></h3>
+<div class="type-signature">class IndexStats extends <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a> implements <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/Serializable.html" title="class or interface in java.io" class="external-link">Serializable</a></div>
+<dl class="name-value">
+<dt>serialVersionUID:</dt>
+<dd>1L</dd>
+</dl>
+<ul class="block-list">
+<li>
+<section class="detail">
+<h4>Serialized Fields</h4>
+<ul class="block-list">
+<li class="block-list">
+<h5>entryCount</h5>
+<pre>double entryCount</pre>
+<div class="block">The estimated number of index entries.</div>
+</li>
+<li class="block-list">
+<h5>freeBytes</h5>
+<pre>double freeBytes</pre>
+<div class="block">The estimated amount of free bytes in the index.</div>
+</li>
+<li class="block-list">
+<h5>keyBytes</h5>
+<pre>double keyBytes</pre>
+<div class="block">The estimated amount of bytes occupied by keys in the index.</div>
+</li>
+<li class="block-list">
+<h5>totalBytes</h5>
+<pre>double totalBytes</pre>
+<div class="block">The estimated total amount of bytes in the index.</div>
+</li>
+<li class="block-list">
+<h5>valueBytes</h5>
+<pre>double valueBytes</pre>
+<div class="block">The estimated amount of bytes occupied by values in the index.</div>
+</li>
+</ul>
+</section>
+</li>
+</ul>
 </section>
 </li>
 </ul>

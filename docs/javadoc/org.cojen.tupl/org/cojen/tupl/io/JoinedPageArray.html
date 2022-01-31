@@ -89,7 +89,7 @@ loadScripts(document, 'script');</script>
  supporting overflow capacity when the first array fills up. In an emergency when all drives
  are full, a joined page array can be defined such that the second array is a remote file, or
  a <a href="OpenOption.html#NON_DURABLE"><code>non-durable</code></a> file, or an anonymous <a href="MappedPageArray.html" title="class in org.cojen.tupl.io"><code>MappedPageArray</code></a>.
- With this configuration in place, delete non-essential entries and then <a href="../Database.html#compactFile(org.cojen.tupl.CompactionObserver,double)"><code>compact</code></a> the database. After verifying that space is
+ With this configuration in place, delete non-essential entries and then <a href="../Database.html#compactFile(org.cojen.tupl.diag.CompactionObserver,double)"><code>compact</code></a> the database. After verifying that space is
  available again, the original page array configuration can be swapped back in.</div>
 </section>
 <section class="summary">
