@@ -23,8 +23,9 @@ import java.nio.ByteBuffer;
 
 import java.security.GeneralSecurityException;
 
-import org.cojen.tupl.Crypto;
 import org.cojen.tupl.DatabaseException;
+
+import org.cojen.tupl.ext.Crypto;
 
 import org.cojen.tupl.io.PageArray;
 import org.cojen.tupl.io.Utils;

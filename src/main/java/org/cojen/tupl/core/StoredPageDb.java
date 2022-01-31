@@ -36,12 +36,13 @@ import java.util.function.Supplier;
 import java.util.zip.Checksum;
 
 import org.cojen.tupl.CorruptDatabaseException;
-import org.cojen.tupl.Crypto;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventType;
 import org.cojen.tupl.IncompleteRestoreException;
 import org.cojen.tupl.Snapshot;
+
+import org.cojen.tupl.ext.Crypto;
 
 import org.cojen.tupl.io.FilePageArray;
 import org.cojen.tupl.io.OpenOption;

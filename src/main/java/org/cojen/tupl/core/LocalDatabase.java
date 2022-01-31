@@ -70,7 +70,6 @@ import org.cojen.tupl.CacheExhaustedException;
 import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.ConfirmationInterruptedException;
 import org.cojen.tupl.CorruptDatabaseException;
-import org.cojen.tupl.Crypto;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DatabaseFullException;
@@ -97,6 +96,7 @@ import org.cojen.tupl.diag.VerificationObserver;
 
 import org.cojen.tupl.ev.SafeEventListener;
 
+import org.cojen.tupl.ext.Crypto;
 import org.cojen.tupl.ext.CustomHandler;
 import org.cojen.tupl.ext.Handler;
 import org.cojen.tupl.ext.PrepareHandler;

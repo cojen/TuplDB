@@ -35,8 +35,6 @@ import javax.crypto.ShortBufferException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-import org.cojen.tupl.Crypto;
-
 import org.cojen.tupl.core.DirectPageOps;
 import org.cojen.tupl.core.Utils;
 

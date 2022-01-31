@@ -35,7 +35,6 @@ import java.util.function.Supplier;
 
 import java.util.zip.Checksum;
 
-import org.cojen.tupl.Crypto;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.EventListener;
@@ -43,6 +42,7 @@ import org.cojen.tupl.LockUpgradeRule;
 
 import org.cojen.tupl.ev.ChainedEventListener;
 
+import org.cojen.tupl.ext.Crypto;
 import org.cojen.tupl.ext.CustomHandler;
 import org.cojen.tupl.ext.PrepareHandler;
 

@@ -26,7 +26,7 @@ import java.util.function.Supplier;
 
 import java.util.zip.Checksum;
 
-import org.cojen.tupl.Crypto;
+import org.cojen.tupl.ext.Crypto;
 
 import org.cojen.tupl.io.CauseCloseable;
 

@@ -19,9 +19,10 @@ package org.cojen.tupl.core;
 
 import java.nio.charset.StandardCharsets;
 
-import org.cojen.tupl.Crypto;
 import org.cojen.tupl.EventListener;
 import org.cojen.tupl.EventType;
+
+import org.cojen.tupl.ext.Crypto;
 
 import org.cojen.tupl.util.WeakPool;
 

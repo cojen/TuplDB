@@ -15,13 +15,15 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl;
+package org.cojen.tupl.ext;
 
 import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
 import java.security.GeneralSecurityException;
+
+import org.cojen.tupl.DatabaseConfig;
 
 /**
  * Support for encrypting an entire database.

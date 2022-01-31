@@ -23,11 +23,12 @@ import java.util.function.Supplier;
 
 import java.util.zip.Checksum;
 
-import org.cojen.tupl.Crypto;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.EventListener;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.Transaction;
+
+import org.cojen.tupl.ext.Crypto;
 
 import org.cojen.tupl.rows.RowStore;
 
