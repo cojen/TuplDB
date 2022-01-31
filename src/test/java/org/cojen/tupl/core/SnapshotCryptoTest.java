@@ -19,6 +19,8 @@ package org.cojen.tupl.core;
 
 import org.cojen.tupl.*;
 
+import org.cojen.tupl.ext.CipherCrypto;
+
 /**
  * 
  *

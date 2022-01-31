@@ -15,7 +15,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl;
+package org.cojen.tupl.ext;
 
 import java.io.EOFException;
 import java.io.InputStream;
@@ -34,6 +34,8 @@ import javax.crypto.ShortBufferException;
 
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+
+import org.cojen.tupl.Crypto;
 
 import org.cojen.tupl.core.DirectPageOps;
 import org.cojen.tupl.core.Utils;
