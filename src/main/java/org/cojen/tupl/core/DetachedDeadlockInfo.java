@@ -17,7 +17,7 @@
 
 package org.cojen.tupl.core;
 
-import org.cojen.tupl.DeadlockInfo;
+import org.cojen.tupl.diag.DeadlockInfo;
 
 /**
  * 

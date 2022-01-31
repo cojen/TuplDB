@@ -24,8 +24,9 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Set;
 
-import org.cojen.tupl.DeadlockInfo;
 import org.cojen.tupl.Index;
+
+import org.cojen.tupl.diag.DeadlockInfo;
 
 import org.cojen.tupl.rows.RowStore;
 

@@ -26,6 +26,8 @@ import org.cojen.tupl.*;
 
 import org.cojen.tupl.core.Utils;
 
+import org.cojen.tupl.diag.DeadlockInfo;
+
 import static org.cojen.tupl.TestUtils.*;
 
 /**

@@ -15,9 +15,11 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl;
+package org.cojen.tupl.diag;
 
 import java.io.Serializable;
+
+import org.cojen.tupl.DeadlockException;
 
 import org.cojen.tupl.core.Utils;
 

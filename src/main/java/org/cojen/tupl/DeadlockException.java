@@ -20,6 +20,8 @@ package org.cojen.tupl;
 import java.util.Collections;
 import java.util.Set;
 
+import org.cojen.tupl.diag.DeadlockInfo;
+
 /**
  * Thrown when a lock request by a {@linkplain Transaction transaction} timed out due to a
  * deadlock, or a trivial deadlock was quickly detected. Deadlocks can be prevented by locking

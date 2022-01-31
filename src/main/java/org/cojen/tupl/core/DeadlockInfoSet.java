@@ -23,7 +23,7 @@ import java.util.AbstractSet;
 import java.util.Arrays;
 import java.util.Iterator;
 
-import org.cojen.tupl.DeadlockInfo;
+import org.cojen.tupl.diag.DeadlockInfo;
 
 /**
  * Use a special class instead of Set.of(...) to avoid duplicate entry detection, which throws

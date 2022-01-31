@@ -29,6 +29,8 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
+import org.cojen.tupl.diag.DeadlockInfo;
+
 import org.cojen.tupl.util.Latch;
 
 import static org.cojen.tupl.TestUtils.*;

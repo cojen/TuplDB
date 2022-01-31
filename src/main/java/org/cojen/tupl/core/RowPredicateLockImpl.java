@@ -25,13 +25,14 @@ import java.lang.invoke.VarHandle;
 import java.util.concurrent.TimeUnit;
 
 import org.cojen.tupl.DeadlockException;
-import org.cojen.tupl.DeadlockInfo;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockInterruptedException;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.LockTimeoutException;
 import org.cojen.tupl.Transaction;
+
+import org.cojen.tupl.diag.DeadlockInfo;
 
 import org.cojen.tupl.util.LatchCondition;
 
