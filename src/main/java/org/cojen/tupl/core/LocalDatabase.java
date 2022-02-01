@@ -693,7 +693,7 @@ final class LocalDatabase extends CoreDatabase {
                     try {
                         for (c.first(); c.key() != null; c.next()) {
                             long indexId = decodeLongBE(c.key(), 0);
-                            var nameStr = new String(c.value(), StandardCharsets.UTF_8);
+                            String nameStr = utf8(c.value());
                             debugListener.notify(EventType.DEBUG, "Index: id=%1$d, name=%2$s",
                                                  indexId, nameStr);
                         }
@@ -2138,7 +2138,7 @@ final class LocalDatabase extends CoreDatabase {
             }
         }
 
-        return nameBytes == null ? null : new String(nameBytes, StandardCharsets.UTF_8);
+        return utf8(nameBytes);
     }
 
     /**

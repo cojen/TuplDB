@@ -227,7 +227,7 @@ public class RowUtils extends Utils {
      * @param length number of bytes to decode
      */
     public static String decodeStringUTF(byte[] src, int srcOffset, int length) {
-        return length == 0 ? "" : new String(src, srcOffset, length, StandardCharsets.UTF_8);
+        return utf8(src, srcOffset, length);
     }
 
     /**

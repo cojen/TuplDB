@@ -738,14 +738,11 @@ public class Utils extends org.cojen.tupl.io.Utils {
     }
 
     public static String utf8(byte[] str) {
-        if (str == null) {
-            return null;
-        }
-        return new String(str, StandardCharsets.UTF_8);
+        return str == null ? null : utf8(str, 0, str.length);
     }
 
     public static String utf8(byte[] str, int off, int len) {
-        return new String(str, off, len, StandardCharsets.UTF_8);
+        return len == 0 ? "" : new String(str, off, len, StandardCharsets.UTF_8);
     }
 
     public static String toHex(byte[] key) {

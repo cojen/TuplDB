@@ -17,8 +17,6 @@
 
 package org.cojen.tupl.core;
 
-import java.nio.charset.StandardCharsets;
-
 import org.cojen.tupl.diag.EventListener;
 import org.cojen.tupl.diag.EventType;
 
@@ -324,7 +322,7 @@ class RedoEventPrinter implements RedoVisitor {
             return "null";
         }
 
-        var chars = new String(key, StandardCharsets.UTF_8).toCharArray();
+        var chars = Utils.utf8(key).toCharArray();
 
         for (int i=0; i<chars.length; i++) {
             if (Character.isISOControl(chars[i])) {
