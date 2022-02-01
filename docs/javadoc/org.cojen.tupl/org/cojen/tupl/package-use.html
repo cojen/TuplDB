@@ -66,13 +66,8 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color">
 <div class="block">Support for database extensions.</div>
 </div>
-<div class="col-first odd-row-color"><a href="#org.cojen.tupl.repl">org.cojen.tupl.repl</a></div>
+<div class="col-first odd-row-color"><a href="#org.cojen.tupl.tools">org.cojen.tupl.tools</a></div>
 <div class="col-last odd-row-color">
-<div class="block">General-purpose <a href="https://raft.github.io/">Raft-based</a> replication system,
- intended for supporting fully replicated <a href="Database.html" title="interface in org.cojen.tupl">databases</a>.</div>
-</div>
-<div class="col-first even-row-color"><a href="#org.cojen.tupl.tools">org.cojen.tupl.tools</a></div>
-<div class="col-last even-row-color">
 <div class="block">Command-line tools for performing database maintenance.</div>
 </div>
 </div>
@@ -141,108 +136,95 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color">
 <div class="block">Represents an operation that applies a key and value, just like a <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/function/BiFunction.html" title="class or interface in java.util.function" class="external-link"><code>BiFunction</code></a>.</div>
 </div>
-<div class="col-first odd-row-color"><a href="class-use/EventListener.html#org.cojen.tupl">EventListener</a></div>
+<div class="col-first odd-row-color"><a href="class-use/Filter.html#org.cojen.tupl">Filter</a></div>
 <div class="col-last odd-row-color">
-<div class="block">Listener which receives notifications of actions being performed by the
- database.</div>
-</div>
-<div class="col-first even-row-color"><a href="class-use/EventType.html#org.cojen.tupl">EventType</a></div>
-<div class="col-last even-row-color">
-<div class="block">Defines the various types of events that an <a href="EventListener.html" title="interface in org.cojen.tupl"><code>EventListener</code></a> can receive.</div>
-</div>
-<div class="col-first odd-row-color"><a href="class-use/EventType.Category.html#org.cojen.tupl">EventType.Category</a></div>
-<div class="col-last odd-row-color">
-<div class="block">Event type category.</div>
-</div>
-<div class="col-first even-row-color"><a href="class-use/Filter.html#org.cojen.tupl">Filter</a></div>
-<div class="col-last even-row-color">
 <div class="block">View transformer which filters out entries which don't belong.</div>
 </div>
-<div class="col-first odd-row-color"><a href="class-use/Index.html#org.cojen.tupl">Index</a></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><a href="class-use/Index.html#org.cojen.tupl">Index</a></div>
+<div class="col-last even-row-color">
 <div class="block">Mapping of keys to values, ordered by key, in lexicographical
  order.</div>
 </div>
-<div class="col-first even-row-color"><a href="class-use/LockFailureException.html#org.cojen.tupl">LockFailureException</a></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><a href="class-use/LockFailureException.html#org.cojen.tupl">LockFailureException</a></div>
+<div class="col-last odd-row-color">
 <div class="block">Thrown when a lock request by a <a href="Transaction.html" title="interface in org.cojen.tupl">transaction</a> failed.</div>
 </div>
-<div class="col-first odd-row-color"><a href="class-use/LockMode.html#org.cojen.tupl">LockMode</a></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><a href="class-use/LockMode.html#org.cojen.tupl">LockMode</a></div>
+<div class="col-last even-row-color">
 <div class="block">Various lock modes for use within <a href="Transaction.html" title="interface in org.cojen.tupl">transactions</a>.</div>
 </div>
-<div class="col-first even-row-color"><a href="class-use/LockResult.html#org.cojen.tupl">LockResult</a></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><a href="class-use/LockResult.html#org.cojen.tupl">LockResult</a></div>
+<div class="col-last odd-row-color">
 <div class="block">Result code returned by transactional operations which acquire locks.</div>
 </div>
-<div class="col-first odd-row-color"><a href="class-use/LockTimeoutException.html#org.cojen.tupl">LockTimeoutException</a></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><a href="class-use/LockTimeoutException.html#org.cojen.tupl">LockTimeoutException</a></div>
+<div class="col-last even-row-color">
 <div class="block">Thrown when a lock request by a <a href="Transaction.html" title="interface in org.cojen.tupl">transaction</a> timed out.</div>
 </div>
-<div class="col-first even-row-color"><a href="class-use/LockUpgradeRule.html#org.cojen.tupl">LockUpgradeRule</a></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><a href="class-use/LockUpgradeRule.html#org.cojen.tupl">LockUpgradeRule</a></div>
+<div class="col-last odd-row-color">
 <div class="block">Defines transaction lock upgrade behavior when using the <a href="LockMode.html#REPEATABLE_READ"><code>REPEATABLE_READ</code></a> lock mode.</div>
 </div>
-<div class="col-first odd-row-color"><a href="class-use/Ordering.html#org.cojen.tupl">Ordering</a></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><a href="class-use/Ordering.html#org.cojen.tupl">Ordering</a></div>
+<div class="col-last even-row-color">
 <div class="block">Describes entry ordering in <a href="View.html" title="interface in org.cojen.tupl">views</a> and <a href="Cursor.html" title="interface in org.cojen.tupl">cursors</a>.</div>
 </div>
-<div class="col-first even-row-color"><a href="class-use/RowScanner.html#org.cojen.tupl">RowScanner</a></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><a href="class-use/RowScanner.html#org.cojen.tupl">RowScanner</a></div>
+<div class="col-last odd-row-color">
 <div class="block">Support for scanning through all rows in a table.</div>
 </div>
-<div class="col-first odd-row-color"><a href="class-use/RowUpdater.html#org.cojen.tupl">RowUpdater</a></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><a href="class-use/RowUpdater.html#org.cojen.tupl">RowUpdater</a></div>
+<div class="col-last even-row-color">
 <div class="block">Support for scanning through all rows in a table, updating them along the way.</div>
 </div>
-<div class="col-first even-row-color"><a href="class-use/Scanner.html#org.cojen.tupl">Scanner</a></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><a href="class-use/Scanner.html#org.cojen.tupl">Scanner</a></div>
+<div class="col-last odd-row-color">
 <div class="block">Scans through all entries in a view and passes them to a consumer.</div>
 </div>
-<div class="col-first odd-row-color"><a href="class-use/Snapshot.html#org.cojen.tupl">Snapshot</a></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><a href="class-use/Snapshot.html#org.cojen.tupl">Snapshot</a></div>
+<div class="col-last even-row-color">
 <div class="block">Control object used to capture a database snapshot.</div>
 </div>
-<div class="col-first even-row-color"><a href="class-use/Sorter.html#org.cojen.tupl">Sorter</a></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><a href="class-use/Sorter.html#org.cojen.tupl">Sorter</a></div>
+<div class="col-last odd-row-color">
 <div class="block">Utility for sorting and filling up new indexes.</div>
 </div>
-<div class="col-first odd-row-color"><a href="class-use/Table.html#org.cojen.tupl">Table</a></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><a href="class-use/Table.html#org.cojen.tupl">Table</a></div>
+<div class="col-last even-row-color">
 <div class="block">Defines a relational collection of persistent rows.</div>
 </div>
-<div class="col-first even-row-color"><a href="class-use/Transaction.html#org.cojen.tupl">Transaction</a></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><a href="class-use/Transaction.html#org.cojen.tupl">Transaction</a></div>
+<div class="col-last odd-row-color">
 <div class="block">Defines a logical unit of work.</div>
 </div>
-<div class="col-first odd-row-color"><a href="class-use/Transformer.html#org.cojen.tupl">Transformer</a></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><a href="class-use/Transformer.html#org.cojen.tupl">Transformer</a></div>
+<div class="col-last even-row-color">
 <div class="block">Interface which supports filtering and transforming the entries within a <a href="View.html" title="interface in org.cojen.tupl"><code>View</code></a>.</div>
 </div>
-<div class="col-first even-row-color"><a href="class-use/UnmodifiableViewException.html#org.cojen.tupl">UnmodifiableViewException</a></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><a href="class-use/UnmodifiableViewException.html#org.cojen.tupl">UnmodifiableViewException</a></div>
+<div class="col-last odd-row-color">
 <div class="block">Thrown when attempting to make a change to an index or view which doesn't
  permit modifications.</div>
 </div>
-<div class="col-first odd-row-color"><a href="class-use/Updater.html#org.cojen.tupl">Updater</a></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><a href="class-use/Updater.html#org.cojen.tupl">Updater</a></div>
+<div class="col-last even-row-color">
 <div class="block">Scans through all entries in a view, updating them along the way.</div>
 </div>
-<div class="col-first even-row-color"><a href="class-use/ValueAccessor.html#org.cojen.tupl">ValueAccessor</a></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><a href="class-use/ValueAccessor.html#org.cojen.tupl">ValueAccessor</a></div>
+<div class="col-last odd-row-color">
 <div class="block">Accesses database values without requiring that they be fully loaded or stored in a single
  operation.</div>
 </div>
-<div class="col-first odd-row-color"><a href="class-use/View.html#org.cojen.tupl">View</a></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><a href="class-use/View.html#org.cojen.tupl">View</a></div>
+<div class="col-last even-row-color">
 <div class="block">Mapping of keys to values, in no particular order.</div>
 </div>
-<div class="col-first even-row-color"><a href="class-use/ViewConstraintException.html#org.cojen.tupl">ViewConstraintException</a></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><a href="class-use/ViewConstraintException.html#org.cojen.tupl">ViewConstraintException</a></div>
+<div class="col-last odd-row-color">
 <div class="block">Thrown when attempting to perform an illegal view alteration.</div>
 </div>
-<div class="col-first odd-row-color"><a href="class-use/WriteFailureException.html#org.cojen.tupl">WriteFailureException</a></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><a href="class-use/WriteFailureException.html#org.cojen.tupl">WriteFailureException</a></div>
+<div class="col-last even-row-color">
 <div class="block">Thrown when writing to the underlying storage device failed.</div>
 </div>
 </div>
@@ -275,20 +257,6 @@ loadScripts(document, 'script');</script>
 <div class="col-first odd-row-color"><a href="class-use/Transaction.html#org.cojen.tupl.ext">Transaction</a></div>
 <div class="col-last odd-row-color">
 <div class="block">Defines a logical unit of work.</div>
-</div>
-</div>
-</section>
-</li>
-<li>
-<section class="detail" id="org.cojen.tupl.repl">
-<div class="caption"><span>Classes in <a href="package-summary.html">org.cojen.tupl</a> used by <a href="repl/package-summary.html">org.cojen.tupl.repl</a></span></div>
-<div class="summary-table two-column-summary">
-<div class="table-header col-first">Class</div>
-<div class="table-header col-last">Description</div>
-<div class="col-first even-row-color"><a href="class-use/EventListener.html#org.cojen.tupl.repl">EventListener</a></div>
-<div class="col-last even-row-color">
-<div class="block">Listener which receives notifications of actions being performed by the
- database.</div>
 </div>
 </div>
 </section>

@@ -62,8 +62,13 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color">
 <div class="block">Diagnostics support.</div>
 </div>
-<div class="col-first even-row-color"><a href="#org.cojen.tupl.tools">org.cojen.tupl.tools</a></div>
+<div class="col-first even-row-color"><a href="#org.cojen.tupl.repl">org.cojen.tupl.repl</a></div>
 <div class="col-last even-row-color">
+<div class="block">General-purpose <a href="https://raft.github.io/">Raft-based</a> replication system,
+ intended for supporting fully replicated <a href="../Database.html" title="interface in org.cojen.tupl">databases</a>.</div>
+</div>
+<div class="col-first odd-row-color"><a href="#org.cojen.tupl.tools">org.cojen.tupl.tools</a></div>
+<div class="col-last odd-row-color">
 <div class="block">Command-line tools for performing database maintenance.</div>
 </div>
 </div>
@@ -87,12 +92,17 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color">
 <div class="block">Lock request which was in a deadlock.</div>
 </div>
-<div class="col-first odd-row-color"><a href="class-use/IndexStats.html#org.cojen.tupl">IndexStats</a></div>
+<div class="col-first odd-row-color"><a href="class-use/EventListener.html#org.cojen.tupl">EventListener</a></div>
 <div class="col-last odd-row-color">
+<div class="block">Listener which receives notifications of actions being performed by the
+ database.</div>
+</div>
+<div class="col-first even-row-color"><a href="class-use/IndexStats.html#org.cojen.tupl">IndexStats</a></div>
+<div class="col-last even-row-color">
 <div class="block">Collection of stats from the <a href="../Index.html#analyze(byte%5B%5D,byte%5B%5D)"><code>analyze</code></a> method.</div>
 </div>
-<div class="col-first even-row-color"><a href="class-use/VerificationObserver.html#org.cojen.tupl">VerificationObserver</a></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><a href="class-use/VerificationObserver.html#org.cojen.tupl">VerificationObserver</a></div>
+<div class="col-last odd-row-color">
 <div class="block">Index verification observer.</div>
 </div>
 </div>
@@ -108,9 +118,36 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color">
 <div class="block">Collection of database <a href="../Database.html#stats()">statistics</a>.</div>
 </div>
-<div class="col-first odd-row-color"><a href="class-use/IndexStats.html#org.cojen.tupl.diag">IndexStats</a></div>
+<div class="col-first odd-row-color"><a href="class-use/EventListener.html#org.cojen.tupl.diag">EventListener</a></div>
 <div class="col-last odd-row-color">
+<div class="block">Listener which receives notifications of actions being performed by the
+ database.</div>
+</div>
+<div class="col-first even-row-color"><a href="class-use/EventType.html#org.cojen.tupl.diag">EventType</a></div>
+<div class="col-last even-row-color">
+<div class="block">Defines the various types of events that an <a href="EventListener.html" title="interface in org.cojen.tupl.diag"><code>EventListener</code></a> can receive.</div>
+</div>
+<div class="col-first odd-row-color"><a href="class-use/EventType.Category.html#org.cojen.tupl.diag">EventType.Category</a></div>
+<div class="col-last odd-row-color">
+<div class="block">Event type category.</div>
+</div>
+<div class="col-first even-row-color"><a href="class-use/IndexStats.html#org.cojen.tupl.diag">IndexStats</a></div>
+<div class="col-last even-row-color">
 <div class="block">Collection of stats from the <a href="../Index.html#analyze(byte%5B%5D,byte%5B%5D)"><code>analyze</code></a> method.</div>
+</div>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="org.cojen.tupl.repl">
+<div class="caption"><span>Classes in <a href="package-summary.html">org.cojen.tupl.diag</a> used by <a href="../repl/package-summary.html">org.cojen.tupl.repl</a></span></div>
+<div class="summary-table two-column-summary">
+<div class="table-header col-first">Class</div>
+<div class="table-header col-last">Description</div>
+<div class="col-first even-row-color"><a href="class-use/EventListener.html#org.cojen.tupl.repl">EventListener</a></div>
+<div class="col-last even-row-color">
+<div class="block">Listener which receives notifications of actions being performed by the
+ database.</div>
 </div>
 </div>
 </section>
