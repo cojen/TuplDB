@@ -20,8 +20,8 @@ package org.cojen.tupl.ev;
 import java.util.Objects;
 import java.util.Set;
 
-import org.cojen.tupl.EventListener;
-import org.cojen.tupl.EventType;
+import org.cojen.tupl.diag.EventListener;
+import org.cojen.tupl.diag.EventType;
 
 /**
  * Base class for EventListeners which will filter notifications based on category and level.

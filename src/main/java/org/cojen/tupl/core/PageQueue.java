@@ -22,9 +22,10 @@ import java.io.IOException;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.cojen.tupl.CorruptDatabaseException;
-import org.cojen.tupl.EventListener;
-import org.cojen.tupl.EventType;
 import org.cojen.tupl.WriteFailureException;
+
+import org.cojen.tupl.diag.EventListener;
+import org.cojen.tupl.diag.EventType;
 
 import static org.cojen.tupl.core.PageOps.*;
 import static org.cojen.tupl.core.Utils.scramble;

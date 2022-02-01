@@ -31,9 +31,10 @@ import java.util.zip.Checksum;
 import java.util.zip.CRC32C;
 
 import org.cojen.tupl.Database;
-import org.cojen.tupl.EventListener;
-import org.cojen.tupl.EventType;
 import org.cojen.tupl.Snapshot;
+
+import org.cojen.tupl.diag.EventListener;
+import org.cojen.tupl.diag.EventType;
 
 import org.cojen.tupl.io.Utils;
 

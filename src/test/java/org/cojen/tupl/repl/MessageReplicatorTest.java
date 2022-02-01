@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit;
 import org.junit.*;
 import static org.junit.Assert.*;
 
-import org.cojen.tupl.EventListener;
+import org.cojen.tupl.diag.EventListener;
 
 import org.cojen.tupl.TestUtils;
 

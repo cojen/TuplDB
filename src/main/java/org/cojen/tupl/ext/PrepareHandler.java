@@ -21,9 +21,10 @@ import java.io.IOException;
 
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseConfig;
-import org.cojen.tupl.EventType;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnmodifiableReplicaException;
+
+import org.cojen.tupl.diag.EventType;
 
 /**
  * Handler for prepared transactions. Instances which are passed to the {@link

@@ -17,7 +17,11 @@
 
 package org.cojen.tupl.tools;
 
-import org.cojen.tupl.*;
+import org.cojen.tupl.Database;
+import org.cojen.tupl.DatabaseConfig;
+
+import org.cojen.tupl.diag.EventListener;
+import org.cojen.tupl.diag.EventType;
 
 /**
  * Simple database file compaction utility. Main method accepts two arguments &mdash; a base

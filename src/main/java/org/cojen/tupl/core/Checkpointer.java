@@ -32,8 +32,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.cojen.tupl.DatabaseException;
-import org.cojen.tupl.EventListener;
-import org.cojen.tupl.EventType;
+
+import org.cojen.tupl.diag.EventListener;
+import org.cojen.tupl.diag.EventType;
 
 import org.cojen.tupl.util.Latch;
 

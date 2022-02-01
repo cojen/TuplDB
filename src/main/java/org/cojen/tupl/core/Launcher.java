@@ -37,8 +37,9 @@ import java.util.zip.Checksum;
 
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
-import org.cojen.tupl.EventListener;
 import org.cojen.tupl.LockUpgradeRule;
+
+import org.cojen.tupl.diag.EventListener;
 
 import org.cojen.tupl.ev.ChainedEventListener;
 

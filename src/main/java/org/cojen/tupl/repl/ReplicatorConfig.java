@@ -31,7 +31,7 @@ import java.util.Set;
 import javax.net.ServerSocketFactory;
 import javax.net.SocketFactory;
 
-import org.cojen.tupl.EventListener;
+import org.cojen.tupl.diag.EventListener;
 
 import org.cojen.tupl.io.Utils;
 

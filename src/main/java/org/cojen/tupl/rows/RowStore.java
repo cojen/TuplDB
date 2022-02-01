@@ -45,8 +45,6 @@ import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DeletedIndexException;
 import org.cojen.tupl.DurabilityMode;
-import org.cojen.tupl.EventListener;
-import org.cojen.tupl.EventType;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockMode;
@@ -59,6 +57,9 @@ import org.cojen.tupl.core.CoreDatabase;
 import org.cojen.tupl.core.LHashTable;
 import org.cojen.tupl.core.RowPredicateLock;
 import org.cojen.tupl.core.ScanVisitor;
+
+import org.cojen.tupl.diag.EventListener;
+import org.cojen.tupl.diag.EventType;
 
 import org.cojen.tupl.util.Runner;
 

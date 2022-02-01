@@ -28,6 +28,9 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
+import org.cojen.tupl.diag.EventListener;
+import org.cojen.tupl.diag.EventType;
+
 /**
  * 
  *

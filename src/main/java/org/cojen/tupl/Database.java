@@ -28,6 +28,8 @@ import java.nio.charset.StandardCharsets;
 
 import org.cojen.tupl.diag.CompactionObserver;
 import org.cojen.tupl.diag.DatabaseStats;
+import org.cojen.tupl.diag.EventListener;
+import org.cojen.tupl.diag.EventType;
 import org.cojen.tupl.diag.VerificationObserver;
 
 import org.cojen.tupl.ext.CustomHandler;

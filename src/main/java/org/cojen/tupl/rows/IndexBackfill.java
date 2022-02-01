@@ -28,8 +28,6 @@ import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DurabilityMode;
-import org.cojen.tupl.EventListener;
-import org.cojen.tupl.EventType;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.Sorter;
@@ -37,6 +35,9 @@ import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.core.CoreDatabase;
 import org.cojen.tupl.core.RedoListener;
+
+import org.cojen.tupl.diag.EventListener;
+import org.cojen.tupl.diag.EventType;
 
 import org.cojen.tupl.util.Runner;
 import org.cojen.tupl.util.Worker;

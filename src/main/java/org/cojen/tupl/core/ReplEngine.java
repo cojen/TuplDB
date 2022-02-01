@@ -34,13 +34,14 @@ import java.util.concurrent.TimeUnit;
 
 import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.Cursor;
-import org.cojen.tupl.EventListener;
-import org.cojen.tupl.EventType;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnmodifiableReplicaException;
+
+import org.cojen.tupl.diag.EventListener;
+import org.cojen.tupl.diag.EventType;
 
 import org.cojen.tupl.ext.CustomHandler;
 

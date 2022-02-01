@@ -23,8 +23,9 @@ import java.lang.invoke.VarHandle;
 import java.io.IOException;
 
 import org.cojen.tupl.CommitCallback;
-import org.cojen.tupl.EventListener;
-import org.cojen.tupl.EventType;
+
+import org.cojen.tupl.diag.EventListener;
+import org.cojen.tupl.diag.EventType;
 
 /**
  * References an UndoLog and a set of exclusive locks from a transaction ready to be committed.

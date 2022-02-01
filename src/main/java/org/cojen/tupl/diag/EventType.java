@@ -15,9 +15,11 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl;
+package org.cojen.tupl.diag;
 
 import static java.lang.System.Logger.Level;
+
+import org.cojen.tupl.DatabaseConfig;
 
 /**
  * Defines the various types of events that an {@link EventListener EventListener} can receive.

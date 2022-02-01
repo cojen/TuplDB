@@ -17,8 +17,8 @@
 
 package org.cojen.tupl.ev;
 
-import org.cojen.tupl.EventListener;
-import org.cojen.tupl.EventType;
+import org.cojen.tupl.diag.EventListener;
+import org.cojen.tupl.diag.EventType;
 
 /**
  * Calls a chain of EventListeners, in sequential order.

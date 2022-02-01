@@ -37,10 +37,11 @@ import java.util.zip.Checksum;
 
 import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.DatabaseException;
-import org.cojen.tupl.EventListener;
-import org.cojen.tupl.EventType;
 import org.cojen.tupl.IncompleteRestoreException;
 import org.cojen.tupl.Snapshot;
+
+import org.cojen.tupl.diag.EventListener;
+import org.cojen.tupl.diag.EventType;
 
 import org.cojen.tupl.ext.Crypto;
 

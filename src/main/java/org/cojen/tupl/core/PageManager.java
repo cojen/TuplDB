@@ -23,9 +23,10 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.DatabaseFullException;
-import org.cojen.tupl.EventListener;
-import org.cojen.tupl.EventType;
 import org.cojen.tupl.WriteFailureException;
+
+import org.cojen.tupl.diag.EventListener;
+import org.cojen.tupl.diag.EventType;
 
 import org.cojen.tupl.io.PageArray;
 

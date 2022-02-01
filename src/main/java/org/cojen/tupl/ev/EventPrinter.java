@@ -19,8 +19,8 @@ package org.cojen.tupl.ev;
 
 import java.io.PrintStream;
 
-import org.cojen.tupl.EventListener;
-import org.cojen.tupl.EventType;
+import org.cojen.tupl.diag.EventListener;
+import org.cojen.tupl.diag.EventType;
 
 /**
  * Event listener implementation which prints events to an output stream.

@@ -28,8 +28,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DurabilityMode;
-import org.cojen.tupl.EventListener;
-import org.cojen.tupl.EventType;
 import org.cojen.tupl.Filter;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockFailureException;
@@ -41,6 +39,8 @@ import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
 
 import org.cojen.tupl.diag.CompactionObserver;
+import org.cojen.tupl.diag.EventListener;
+import org.cojen.tupl.diag.EventType;
 import org.cojen.tupl.diag.IndexStats;
 import org.cojen.tupl.diag.VerificationObserver;
 

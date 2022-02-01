@@ -31,8 +31,6 @@ import java.util.stream.Stream;
 
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
-import org.cojen.tupl.EventListener;
-import org.cojen.tupl.EventType;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.RowScanner;
 import org.cojen.tupl.RowUpdater;
@@ -41,6 +39,9 @@ import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.core.RowPredicate;
 import org.cojen.tupl.core.RowPredicateLock;
+
+import org.cojen.tupl.diag.EventListener;
+import org.cojen.tupl.diag.EventType;
 
 import org.cojen.tupl.filter.ComplexFilterException;
 import org.cojen.tupl.filter.FalseFilter;

@@ -21,8 +21,8 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.cojen.tupl.EventListener;
-import org.cojen.tupl.EventType;
+import org.cojen.tupl.diag.EventListener;
+import org.cojen.tupl.diag.EventType;
 
 /**
  * Wraps an EventListener and disallows notifications for specific event categories and

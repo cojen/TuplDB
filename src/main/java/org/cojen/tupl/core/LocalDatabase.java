@@ -75,8 +75,6 @@ import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DatabaseFullException;
 import org.cojen.tupl.DeletedIndexException;
 import org.cojen.tupl.DurabilityMode;
-import org.cojen.tupl.EventListener;
-import org.cojen.tupl.EventType;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LargeKeyException;
 import org.cojen.tupl.LargeValueException;
@@ -92,6 +90,8 @@ import org.cojen.tupl.View;
 
 import org.cojen.tupl.diag.CompactionObserver;
 import org.cojen.tupl.diag.DatabaseStats;
+import org.cojen.tupl.diag.EventListener;
+import org.cojen.tupl.diag.EventType;
 import org.cojen.tupl.diag.VerificationObserver;
 
 import org.cojen.tupl.ev.SafeEventListener;

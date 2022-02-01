@@ -19,8 +19,8 @@ package org.cojen.tupl.core;
 
 import java.nio.charset.StandardCharsets;
 
-import org.cojen.tupl.EventListener;
-import org.cojen.tupl.EventType;
+import org.cojen.tupl.diag.EventListener;
+import org.cojen.tupl.diag.EventType;
 
 import org.cojen.tupl.ext.Crypto;
 

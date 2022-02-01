@@ -19,9 +19,9 @@ package org.cojen.tupl.tools;
 
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseConfig;
-import org.cojen.tupl.EventListener;
 
 import org.cojen.tupl.diag.DatabaseStats;
+import org.cojen.tupl.diag.EventListener;
 
 /**
  * Opens a database and then calls {@link Database#shutdown shutdown}.

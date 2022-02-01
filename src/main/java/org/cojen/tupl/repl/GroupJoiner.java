@@ -38,7 +38,7 @@ import java.util.TreeSet;
 
 import java.util.function.Consumer;
 
-import org.cojen.tupl.EventListener;
+import org.cojen.tupl.diag.EventListener;
 
 import org.cojen.tupl.io.Utils;
 

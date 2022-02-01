@@ -19,9 +19,9 @@ package org.cojen.tupl.tools;
 
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseConfig;
-import org.cojen.tupl.EventListener;
 import org.cojen.tupl.Index;
 
+import org.cojen.tupl.diag.EventListener;
 import org.cojen.tupl.diag.VerificationObserver;
 
 /**

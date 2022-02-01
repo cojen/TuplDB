@@ -35,9 +35,10 @@ import java.security.GeneralSecurityException;
 
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
-import org.cojen.tupl.EventListener;
-import org.cojen.tupl.EventType;
 import org.cojen.tupl.WriteFailureException;
+
+import org.cojen.tupl.diag.EventListener;
+import org.cojen.tupl.diag.EventType;
 
 import org.cojen.tupl.ext.Crypto;
 

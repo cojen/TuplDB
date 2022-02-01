@@ -17,7 +17,7 @@
 
 package org.cojen.tupl.repl;
 
-import org.cojen.tupl.EventType;
+import org.cojen.tupl.diag.EventType;
 
 /**
  * 

@@ -32,11 +32,12 @@ import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DatabaseException;
-import org.cojen.tupl.EventListener;
-import org.cojen.tupl.EventType;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.Transaction;
+
+import org.cojen.tupl.diag.EventListener;
+import org.cojen.tupl.diag.EventType;
 
 import static org.cojen.tupl.core.PageOps.*;
 import static org.cojen.tupl.core.Utils.*;

@@ -15,7 +15,9 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl;
+package org.cojen.tupl.diag;
+
+import org.cojen.tupl.DatabaseConfig;
 
 import org.cojen.tupl.ev.AllowEventListener;
 import org.cojen.tupl.ev.DisallowEventListener;

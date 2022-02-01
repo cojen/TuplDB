@@ -31,6 +31,8 @@ import java.util.zip.Checksum;
 
 import org.cojen.tupl.core.Launcher;
 
+import org.cojen.tupl.diag.EventListener;
+
 import org.cojen.tupl.ext.Crypto;
 import org.cojen.tupl.ext.CustomHandler;
 import org.cojen.tupl.ext.PrepareHandler;

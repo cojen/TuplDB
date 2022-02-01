@@ -27,9 +27,12 @@ import java.util.concurrent.TimeUnit;
 import org.junit.*;
 import static org.junit.Assert.*;
 
-import org.cojen.tupl.ext.PrepareHandler;
-
 import org.cojen.tupl.*;
+
+import org.cojen.tupl.diag.EventListener;
+import org.cojen.tupl.diag.EventType;
+
+import org.cojen.tupl.ext.PrepareHandler;
 
 import static org.cojen.tupl.TestUtils.*;
 

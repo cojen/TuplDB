@@ -37,12 +37,13 @@ import java.util.function.Supplier;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseConfig;
-import org.cojen.tupl.EventListener;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.LockTimeoutException;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnmodifiableReplicaException;
+
+import org.cojen.tupl.diag.EventListener;
 
 import org.cojen.tupl.ext.PrepareHandler;
 
