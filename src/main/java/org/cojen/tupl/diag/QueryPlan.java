@@ -21,6 +21,9 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.io.Serializable;
 
+import java.util.Arrays;
+import java.util.Objects;
+
 /**
  * A query plan tree structure.
  *
@@ -99,6 +102,12 @@ public abstract sealed class QueryPlan implements Serializable {
 
             return a;
         }
+
+
+        boolean matches(Table other) {
+            return Objects.equals(table, other.table) && Objects.equals(which, other.which) &&
+                Arrays.equals(keyColumns, other.keyColumns);
+        }
     }
 
     /**
@@ -126,6 +135,10 @@ public abstract sealed class QueryPlan implements Serializable {
                 .append(": ").append(table).append('\n');
             appendKeyColumns(a, in2).append('\n');
         }
+
+        boolean matches(Scan other) {
+            return super.matches(other) && reverse == other.reverse;
+        }
     }
 
     /**
@@ -146,6 +159,11 @@ public abstract sealed class QueryPlan implements Serializable {
         @Override
         void appendTo(Appendable a, String in1, String in2) throws IOException {
             appendTo(a, in1, in2, "full");
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof FullScan scan && matches(scan);
         }
     }
 
@@ -188,6 +206,16 @@ public abstract sealed class QueryPlan implements Serializable {
 
             a.append('\n');
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof RangeScan scan && matches(scan);
+        }
+
+        boolean matches(RangeScan other) {
+            return super.matches(other) &&
+                Objects.equals(low, other.low) && Objects.equals(high, other.high);
+        }
     }
 
     /**
@@ -215,6 +243,15 @@ public abstract sealed class QueryPlan implements Serializable {
             appendKeyColumns(a, in2).append('\n');
             appendItem(a, in2, "expression").append(expression).append('\n');
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof LoadOne load && matches(load);
+        }
+
+        boolean matches(LoadOne other) {
+            return super.matches(other) && Objects.equals(expression, other.expression);
+        }
     }
 
     /**
@@ -240,6 +277,16 @@ public abstract sealed class QueryPlan implements Serializable {
             a.append(in1).append("filter").append(": ").append(expression).append('\n');
             in2 += "  ";
             source.appendTo(a, in2, in2);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof Filter filter && matches(filter);
+        }
+
+        boolean matches(Filter other) {
+            return Objects.equals(expression, other.expression) &&
+                Objects.equals(source, other.source);
         }
     }
 
@@ -269,6 +316,15 @@ public abstract sealed class QueryPlan implements Serializable {
             in2 += "  ";
             source.appendTo(a, in2, in2);
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof NaturalJoin join && matches(join);
+        }
+
+        boolean matches(NaturalJoin other) {
+            return super.matches(other) && Objects.equals(source, other.source);
+        }
     }
 
     /**
@@ -295,6 +351,10 @@ public abstract sealed class QueryPlan implements Serializable {
                 sources[i].appendTo(a, subIn1, subIn2);
             }
         }
+
+        boolean matches(Set other) {
+            return Arrays.equals(sources, other.sources);
+        }
     }
 
     /**
@@ -307,6 +367,11 @@ public abstract sealed class QueryPlan implements Serializable {
         @Override
         void appendTo(Appendable a, String in1, String in2) throws IOException {
             appendTo(a, in1, in2, "empty");
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof Empty;
         }
     }
 
@@ -340,6 +405,11 @@ public abstract sealed class QueryPlan implements Serializable {
         void appendTo(Appendable a, String in1, String in2) throws IOException {
             appendTo(a, in1, in2, "disjoint union");
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof DisjointUnion union && matches(union);
+        }
     }
 
     /**
@@ -359,6 +429,11 @@ public abstract sealed class QueryPlan implements Serializable {
         @Override
         void appendTo(Appendable a, String in1, String in2) throws IOException {
             appendTo(a, in1, in2, "range union");
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof RangeUnion union && matches(union);
         }
     }
 }
