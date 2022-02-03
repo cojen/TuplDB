@@ -125,7 +125,6 @@ final class MultiScanController<R> implements ScanController<R> {
         for (int i=0; i<plans.length; i++) {
             plans[i] = mControllers[i].plan();
         }
-        // TODO: need a union type that describes the exact behavior
-        return new QueryPlan.Union(plans);
+        return new QueryPlan.RangeUnion(plans);
     }
 }

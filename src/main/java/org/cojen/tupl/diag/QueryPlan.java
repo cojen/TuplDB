@@ -158,8 +158,8 @@ public abstract sealed class QueryPlan implements Serializable {
          * @param which primary key, alternate key, or secondary index
          * @param keyColumns columns with '+' or '-' prefix
          * @param reverse true if a reverse scan
-         * @param low filter expression (or null if open)
-         * @param high filter expression (or null if open)
+         * @param low low bound filter expression (or null if open)
+         * @param high high bound filter expression (or null if open)
          */
         public RangeScan(String table, String which, String[] keyColumns, boolean reverse,
                          String low, String high)
@@ -308,40 +308,54 @@ public abstract sealed class QueryPlan implements Serializable {
     }
 
     /**
-     * Query plan node which represents a set of plans executed sequentially.
-     */
-    public static final class Sequence extends Set {
-        private static final long serialVersionUID = 1L;
-
-        /**
-         * @param sources child plan nodes
-         */
-        public Sequence(QueryPlan... sources) {
-            super(sources);
-        }
-
-        @Override
-        void appendTo(Appendable a, String in1, String in2) throws IOException {
-            appendTo(a, in1, in2, "sequence");
-        }
-    }
-
-    /**
      * Query plan node which represents a union set of plans.
      */
-    public static final class Union extends Set {
-        private static final long serialVersionUID = 1L;
-
+    public static abstract sealed class Union extends Set {
         /**
          * @param sources child plan nodes
          */
         public Union(QueryPlan... sources) {
             super(sources);
         }
+    }
+
+    /**
+     * Query plan node which represents a union set of plans, where each source plan only
+     * produces rows which aren't produced by the other sources.
+     */
+    public static final class DisjointUnion extends Union {
+        private static final long serialVersionUID = 1L;
+
+        /**
+         * @param sources child plan nodes
+         */
+        public DisjointUnion(QueryPlan... sources) {
+            super(sources);
+        }
 
         @Override
         void appendTo(Appendable a, String in1, String in2) throws IOException {
-            appendTo(a, in1, in2, "union");
+            appendTo(a, in1, in2, "disjoint union");
+        }
+    }
+
+    /**
+     * Query plan node which represents a union set of plans, where each source plan is limited
+     * to a range, and all sources produce rows in the same order.
+     */
+    public static final class RangeUnion extends Set {
+        private static final long serialVersionUID = 1L;
+
+        /**
+         * @param sources child plan nodes
+         */
+        public RangeUnion(QueryPlan... sources) {
+            super(sources);
+        }
+
+        @Override
+        void appendTo(Appendable a, String in1, String in2) throws IOException {
+            appendTo(a, in1, in2, "range union");
         }
     }
 }

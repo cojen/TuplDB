@@ -44,8 +44,7 @@ final class MultiScanControllerFactory<R> implements ScanControllerFactory<R> {
         for (int i=0; i<plans.length; i++) {
             plans[i] = mRanges[i].plan(args);
         }
-        // TODO: need a union type that describes the exact behavior
-        return new QueryPlan.Union(plans);
+        return new QueryPlan.RangeUnion(plans);
     }
 
     @Override

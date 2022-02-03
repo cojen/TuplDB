@@ -158,7 +158,6 @@ final class MergedScanController<R> extends SingleScanController<R> {
 
     @Override
     public QueryPlan plan() {
-        // TODO: need a union type that describes the exact behavior
-        return new QueryPlan.Union(mLow.plan(), mHigh.plan());
+        return new QueryPlan.RangeUnion(mLow.plan(), mHigh.plan());
     }
 }
