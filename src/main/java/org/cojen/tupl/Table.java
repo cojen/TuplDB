@@ -105,7 +105,7 @@ public interface Table<R> {
      * @param txn optional transaction for the scanner to use; pass null for auto-commit mode
      * @return a new scanner positioned at the first row in the table
      * @throws IllegalStateException if transaction belongs to another database instance
-     * @see #rowScannerPlan rowScannerPlan
+     * @see #queryPlan queryPlan
      */
     public RowScanner<R> newRowScanner(Transaction txn) throws IOException;
 
@@ -116,7 +116,7 @@ public interface Table<R> {
      * @param txn optional transaction for the scanner to use; pass null for auto-commit mode
      * @return a new scanner positioned at the first row in the table accepted by the filter
      * @throws IllegalStateException if transaction belongs to another database instance
-     * @see #rowScannerPlan rowScannerPlan
+     * @see #queryPlan queryPlan
      */
     public RowScanner<R> newRowScanner(Transaction txn, String filter, Object... args)
         throws IOException;
@@ -366,10 +366,10 @@ public interface Table<R> {
 
     /**
      * Returns a query plan used by {@link #newRowScanner(Transaction, String, Object...)
-     * newRowScanner}.
+     * newRowScanner} et al.
      *
      * @param filter optional filter expression
      * @param args optional filter arguments
      */
-    public QueryPlan rowScannerPlan(String filter, Object... args);
+    public QueryPlan queryPlan(String filter, Object... args);
 }

@@ -286,7 +286,7 @@ public abstract class AbstractTable<R> implements Table<R> {
     }
 
     @Override
-    public QueryPlan rowScannerPlan(String filter, Object... args) {
+    public QueryPlan queryPlan(String filter, Object... args) {
         return filter == null ? unfiltered().plan() : filteredFactory(filter).plan(args);
     }
 
