@@ -525,6 +525,219 @@ loadScripts(document, 'script');</script>
 </ul>
 </section>
 </li>
+<li>
+<section class="serialized-class-details" id="org.cojen.tupl.diag.QueryPlan">
+<h3>Class&nbsp;<a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.html" title="class in org.cojen.tupl.diag">org.cojen.tupl.diag.QueryPlan</a></h3>
+<div class="type-signature">class QueryPlan extends <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a> implements <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/Serializable.html" title="class or interface in java.io" class="external-link">Serializable</a></div>
+</section>
+</li>
+<li>
+<section class="serialized-class-details" id="org.cojen.tupl.diag.QueryPlan.DisjointUnion">
+<h3>Class&nbsp;<a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.DisjointUnion.html" title="class in org.cojen.tupl.diag">org.cojen.tupl.diag.QueryPlan.DisjointUnion</a></h3>
+<div class="type-signature">class DisjointUnion extends <a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Union.html" title="class in org.cojen.tupl.diag">QueryPlan.Union</a> implements <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/Serializable.html" title="class or interface in java.io" class="external-link">Serializable</a></div>
+<dl class="name-value">
+<dt>serialVersionUID:</dt>
+<dd>1L</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="serialized-class-details" id="org.cojen.tupl.diag.QueryPlan.Empty">
+<h3>Class&nbsp;<a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Empty.html" title="class in org.cojen.tupl.diag">org.cojen.tupl.diag.QueryPlan.Empty</a></h3>
+<div class="type-signature">class Empty extends <a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Set.html" title="class in org.cojen.tupl.diag">QueryPlan.Set</a> implements <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/Serializable.html" title="class or interface in java.io" class="external-link">Serializable</a></div>
+</section>
+</li>
+<li>
+<section class="serialized-class-details" id="org.cojen.tupl.diag.QueryPlan.Filter">
+<h3>Class&nbsp;<a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Filter.html" title="class in org.cojen.tupl.diag">org.cojen.tupl.diag.QueryPlan.Filter</a></h3>
+<div class="type-signature">class Filter extends <a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a> implements <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/Serializable.html" title="class or interface in java.io" class="external-link">Serializable</a></div>
+<dl class="name-value">
+<dt>serialVersionUID:</dt>
+<dd>1L</dd>
+</dl>
+<ul class="block-list">
+<li>
+<section class="detail">
+<h4>Serialized Fields</h4>
+<ul class="block-list">
+<li class="block-list">
+<h5>expression</h5>
+<pre><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a> expression</pre>
+</li>
+<li class="block-list">
+<h5>source</h5>
+<pre><a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a> source</pre>
+</li>
+</ul>
+</section>
+</li>
+</ul>
+</section>
+</li>
+<li>
+<section class="serialized-class-details" id="org.cojen.tupl.diag.QueryPlan.FullScan">
+<h3>Class&nbsp;<a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.FullScan.html" title="class in org.cojen.tupl.diag">org.cojen.tupl.diag.QueryPlan.FullScan</a></h3>
+<div class="type-signature">class FullScan extends <a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Scan.html" title="class in org.cojen.tupl.diag">QueryPlan.Scan</a> implements <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/Serializable.html" title="class or interface in java.io" class="external-link">Serializable</a></div>
+<dl class="name-value">
+<dt>serialVersionUID:</dt>
+<dd>1L</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="serialized-class-details" id="org.cojen.tupl.diag.QueryPlan.LoadOne">
+<h3>Class&nbsp;<a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.LoadOne.html" title="class in org.cojen.tupl.diag">org.cojen.tupl.diag.QueryPlan.LoadOne</a></h3>
+<div class="type-signature">class LoadOne extends <a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Table.html" title="class in org.cojen.tupl.diag">QueryPlan.Table</a> implements <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/Serializable.html" title="class or interface in java.io" class="external-link">Serializable</a></div>
+<dl class="name-value">
+<dt>serialVersionUID:</dt>
+<dd>1L</dd>
+</dl>
+<ul class="block-list">
+<li>
+<section class="detail">
+<h4>Serialized Fields</h4>
+<ul class="block-list">
+<li class="block-list">
+<h5>expression</h5>
+<pre><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a> expression</pre>
+</li>
+</ul>
+</section>
+</li>
+</ul>
+</section>
+</li>
+<li>
+<section class="serialized-class-details" id="org.cojen.tupl.diag.QueryPlan.NaturalJoin">
+<h3>Class&nbsp;<a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.NaturalJoin.html" title="class in org.cojen.tupl.diag">org.cojen.tupl.diag.QueryPlan.NaturalJoin</a></h3>
+<div class="type-signature">class NaturalJoin extends <a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Table.html" title="class in org.cojen.tupl.diag">QueryPlan.Table</a> implements <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/Serializable.html" title="class or interface in java.io" class="external-link">Serializable</a></div>
+<dl class="name-value">
+<dt>serialVersionUID:</dt>
+<dd>1L</dd>
+</dl>
+<ul class="block-list">
+<li>
+<section class="detail">
+<h4>Serialized Fields</h4>
+<ul class="block-list">
+<li class="block-list">
+<h5>source</h5>
+<pre><a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a> source</pre>
+</li>
+</ul>
+</section>
+</li>
+</ul>
+</section>
+</li>
+<li>
+<section class="serialized-class-details" id="org.cojen.tupl.diag.QueryPlan.RangeScan">
+<h3>Class&nbsp;<a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.RangeScan.html" title="class in org.cojen.tupl.diag">org.cojen.tupl.diag.QueryPlan.RangeScan</a></h3>
+<div class="type-signature">class RangeScan extends <a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Scan.html" title="class in org.cojen.tupl.diag">QueryPlan.Scan</a> implements <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/Serializable.html" title="class or interface in java.io" class="external-link">Serializable</a></div>
+<dl class="name-value">
+<dt>serialVersionUID:</dt>
+<dd>1L</dd>
+</dl>
+<ul class="block-list">
+<li>
+<section class="detail">
+<h4>Serialized Fields</h4>
+<ul class="block-list">
+<li class="block-list">
+<h5>high</h5>
+<pre><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a> high</pre>
+</li>
+<li class="block-list">
+<h5>low</h5>
+<pre><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a> low</pre>
+</li>
+</ul>
+</section>
+</li>
+</ul>
+</section>
+</li>
+<li>
+<section class="serialized-class-details" id="org.cojen.tupl.diag.QueryPlan.RangeUnion">
+<h3>Class&nbsp;<a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.RangeUnion.html" title="class in org.cojen.tupl.diag">org.cojen.tupl.diag.QueryPlan.RangeUnion</a></h3>
+<div class="type-signature">class RangeUnion extends <a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Union.html" title="class in org.cojen.tupl.diag">QueryPlan.Union</a> implements <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/Serializable.html" title="class or interface in java.io" class="external-link">Serializable</a></div>
+<dl class="name-value">
+<dt>serialVersionUID:</dt>
+<dd>1L</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="serialized-class-details" id="org.cojen.tupl.diag.QueryPlan.Scan">
+<h3>Class&nbsp;<a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Scan.html" title="class in org.cojen.tupl.diag">org.cojen.tupl.diag.QueryPlan.Scan</a></h3>
+<div class="type-signature">class Scan extends <a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Table.html" title="class in org.cojen.tupl.diag">QueryPlan.Table</a> implements <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/Serializable.html" title="class or interface in java.io" class="external-link">Serializable</a></div>
+<ul class="block-list">
+<li>
+<section class="detail">
+<h4>Serialized Fields</h4>
+<ul class="block-list">
+<li class="block-list">
+<h5>reverse</h5>
+<pre>boolean reverse</pre>
+</li>
+</ul>
+</section>
+</li>
+</ul>
+</section>
+</li>
+<li>
+<section class="serialized-class-details" id="org.cojen.tupl.diag.QueryPlan.Set">
+<h3>Class&nbsp;<a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Set.html" title="class in org.cojen.tupl.diag">org.cojen.tupl.diag.QueryPlan.Set</a></h3>
+<div class="type-signature">class Set extends <a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a> implements <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/Serializable.html" title="class or interface in java.io" class="external-link">Serializable</a></div>
+<ul class="block-list">
+<li>
+<section class="detail">
+<h4>Serialized Fields</h4>
+<ul class="block-list">
+<li class="block-list">
+<h5>sources</h5>
+<pre><a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a>[] sources</pre>
+</li>
+</ul>
+</section>
+</li>
+</ul>
+</section>
+</li>
+<li>
+<section class="serialized-class-details" id="org.cojen.tupl.diag.QueryPlan.Table">
+<h3>Class&nbsp;<a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Table.html" title="class in org.cojen.tupl.diag">org.cojen.tupl.diag.QueryPlan.Table</a></h3>
+<div class="type-signature">class Table extends <a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a> implements <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/Serializable.html" title="class or interface in java.io" class="external-link">Serializable</a></div>
+<ul class="block-list">
+<li>
+<section class="detail">
+<h4>Serialized Fields</h4>
+<ul class="block-list">
+<li class="block-list">
+<h5>keyColumns</h5>
+<pre><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[] keyColumns</pre>
+</li>
+<li class="block-list">
+<h5>table</h5>
+<pre><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a> table</pre>
+</li>
+<li class="block-list">
+<h5>which</h5>
+<pre><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a> which</pre>
+</li>
+</ul>
+</section>
+</li>
+</ul>
+</section>
+</li>
+<li>
+<section class="serialized-class-details" id="org.cojen.tupl.diag.QueryPlan.Union">
+<h3>Class&nbsp;<a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Union.html" title="class in org.cojen.tupl.diag">org.cojen.tupl.diag.QueryPlan.Union</a></h3>
+<div class="type-signature">class Union extends <a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Set.html" title="class in org.cojen.tupl.diag">QueryPlan.Set</a> implements <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/Serializable.html" title="class or interface in java.io" class="external-link">Serializable</a></div>
+</section>
+</li>
 </ul>
 </section>
 </li>
