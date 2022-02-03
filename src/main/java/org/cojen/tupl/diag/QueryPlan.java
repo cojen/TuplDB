@@ -343,7 +343,7 @@ public abstract sealed class QueryPlan implements Serializable {
      * Query plan node which represents a union set of plans, where each source plan is limited
      * to a range, and all sources produce rows in the same order.
      */
-    public static final class RangeUnion extends Set {
+    public static final class RangeUnion extends Union {
         private static final long serialVersionUID = 1L;
 
         /**
