@@ -27,6 +27,9 @@ import java.io.Serializable;
  * @author Brian S O'Neill
  */
 public abstract sealed class QueryPlan implements Serializable {
+    QueryPlan() {
+    }
+
     @Override
     public final String toString() {
         var b = new StringBuilder();
@@ -78,7 +81,7 @@ public abstract sealed class QueryPlan implements Serializable {
          * @param which primary key, alternate key, or secondary index
          * @param keyColumns columns with '+' or '-' prefixes
          */
-        public Table(String table, String which, String[] keyColumns) {
+        Table(String table, String which, String[] keyColumns) {
             this.table = table;
             this.which = which;
             this.keyColumns = keyColumns;
@@ -109,7 +112,7 @@ public abstract sealed class QueryPlan implements Serializable {
          * @param keyColumns columns with '+' or '-' prefix
          * @param reverse true if a reverse scan
          */
-        public Scan(String table, String which, String[] keyColumns, boolean reverse) {
+        Scan(String table, String which, String[] keyColumns, boolean reverse) {
             super(table, which, keyColumns);
             this.reverse = reverse;
         }
@@ -277,7 +280,7 @@ public abstract sealed class QueryPlan implements Serializable {
         /**
          * @param sources child plan nodes
          */
-        public Set(QueryPlan... sources) {
+        Set(QueryPlan... sources) {
             this.sources = sources;
         }
 
@@ -314,7 +317,7 @@ public abstract sealed class QueryPlan implements Serializable {
         /**
          * @param sources child plan nodes
          */
-        public Union(QueryPlan... sources) {
+        Union(QueryPlan... sources) {
             super(sources);
         }
     }
