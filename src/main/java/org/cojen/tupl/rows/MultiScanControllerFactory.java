@@ -21,6 +21,8 @@ import java.util.Arrays;
 
 import org.cojen.tupl.core.RowPredicate;
 
+import org.cojen.tupl.diag.QueryPlan;
+
 /**
  * 
  *
@@ -34,6 +36,16 @@ final class MultiScanControllerFactory<R> implements ScanControllerFactory<R> {
             throw new IllegalArgumentException();
         }
         mRanges = ranges;
+    }
+
+    @Override
+    public QueryPlan plan(Object... args) {
+        var plans = new QueryPlan[mRanges.length];
+        for (int i=0; i<plans.length; i++) {
+            plans[i] = mRanges[i].plan(args);
+        }
+        // TODO: need a union type that describes the exact behavior
+        return new QueryPlan.Union(plans);
     }
 
     @Override

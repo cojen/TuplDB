@@ -21,6 +21,8 @@ import java.io.IOException;
 
 import java.util.stream.Stream;
 
+import org.cojen.tupl.diag.QueryPlan;
+
 /**
  * Defines a relational collection of persistent rows. A row is defined by an interface
  * consisting of accessor/mutator methods corresponding to each column:
@@ -103,6 +105,7 @@ public interface Table<R> {
      * @param txn optional transaction for the scanner to use; pass null for auto-commit mode
      * @return a new scanner positioned at the first row in the table
      * @throws IllegalStateException if transaction belongs to another database instance
+     * @see #rowScannerPlan rowScannerPlan
      */
     public RowScanner<R> newRowScanner(Transaction txn) throws IOException;
 
@@ -113,6 +116,7 @@ public interface Table<R> {
      * @param txn optional transaction for the scanner to use; pass null for auto-commit mode
      * @return a new scanner positioned at the first row in the table accepted by the filter
      * @throws IllegalStateException if transaction belongs to another database instance
+     * @see #rowScannerPlan rowScannerPlan
      */
     public RowScanner<R> newRowScanner(Transaction txn, String filter, Object... args)
         throws IOException;
@@ -359,4 +363,13 @@ public interface Table<R> {
     //public Table<R> viewUnmodifiable();
 
     //public boolean isUnmodifiable();
+
+    /**
+     * Returns a query plan used by {@link #newRowScanner(Transaction, String, Object...)
+     * newRowScanner}.
+     *
+     * @param filter optional filter expression
+     * @param args optional filter arguments
+     */
+    public QueryPlan rowScannerPlan(String filter, Object... args);
 }

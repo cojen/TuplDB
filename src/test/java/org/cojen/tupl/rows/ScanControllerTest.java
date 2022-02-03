@@ -26,6 +26,8 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
+import org.cojen.tupl.diag.QueryPlan;
+
 /**
  * 
  *
@@ -138,6 +140,11 @@ public class ScanControllerTest {
                        byte[] highBound, boolean highInclusive)
         {
             super(lowBound, lowInclusive, highBound, highInclusive);
+        }
+
+        @Override
+        public QueryPlan plan() {
+            throw new UnsupportedOperationException();
         }
 
         @Override

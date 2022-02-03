@@ -45,6 +45,8 @@ import org.cojen.tupl.UnmodifiableViewException;
 
 import org.cojen.tupl.core.RowPredicateLock;
 
+import org.cojen.tupl.diag.QueryPlan;
+
 import org.cojen.tupl.views.ViewUtils;
 
 /**
@@ -316,7 +318,7 @@ public class TableMaker {
         ctor.field("unfiltered").set
             (ctor.new_(scanControllerClass, null, false, null, false, ctor.field("primary")));
 
-        // Override the method inherited from the unjoined class and defined in AbstractTable.
+        // Override the method inherited from the unjoined class as defined in AbstractTable.
         MethodMaker mm = mClassMaker.addMethod
             (SingleScanController.class, "unfiltered").protected_();
         mm.return_(mm.field("unfiltered"));
@@ -1717,6 +1719,13 @@ public class TableMaker {
             mm.return_(tableVar.invoke("encodeValue", rowVar));
         }
 
+        {
+            // Specified by ScanController.
+            MethodMaker mm = cm.addMethod(QueryPlan.class, "plan").public_();
+            var condy = mm.var(TableMaker.class).condy("condyPlan", rowType, secondaryDesc, 0);
+            mm.return_(condy.invoke(QueryPlan.class, "plan"));
+        }
+
         if (rowGen == codecGen) { // isPrimaryTable, so a schema must be decoded
             // Used by filter subclasses. The int param is the schema version.
             MethodMaker mm = cm.addMethod
@@ -1728,6 +1737,32 @@ public class TableMaker {
         var clazz = cm.finish();
 
         return lookup.findConstructor(clazz, ctorType).invoke(null, false, null, false);
+    }
+
+    public static QueryPlan condyPlan(MethodHandles.Lookup lookup, String name, Class type,
+                                      Class rowType, byte[] secondaryDesc, int joinOption)
+    {
+        RowInfo primaryRowInfo = RowInfo.find(rowType);
+
+        RowInfo rowInfo;
+        String which;
+
+        if (secondaryDesc == null) {
+            rowInfo = primaryRowInfo;
+            which = "primary key";
+        } else {
+            rowInfo = RowStore.indexRowInfo(primaryRowInfo, secondaryDesc);
+            which = rowInfo.isAltKey() ? "alternate key" : "secondary index";
+        }
+
+        QueryPlan plan = new QueryPlan.FullScan(rowInfo.name, which, rowInfo.keySpec(), false);
+    
+        if (joinOption != 0) {
+            rowInfo = primaryRowInfo;
+            plan = new QueryPlan.NaturalJoin(rowInfo.name, "primary key", rowInfo.keySpec(), plan);
+        }
+
+        return plan;
     }
 
     /**
@@ -1800,6 +1835,14 @@ public class TableMaker {
             tableVar.invoke("decodeValue", rowVar, primaryValueVar);
             tableVar.invoke("markAllClean", rowVar);
             mm.return_(rowVar);
+        }
+
+        {
+            // Specified by ScanController.
+            MethodMaker mm = cm.addMethod(QueryPlan.class, "plan").public_();
+            var condy = mm.var(TableMaker.class).condy
+                ("condyPlan", mRowType, mSecondaryDescriptor, 1);
+            mm.return_(condy.invoke(QueryPlan.class, "plan"));
         }
 
         {

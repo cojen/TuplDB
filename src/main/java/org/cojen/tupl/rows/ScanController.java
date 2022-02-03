@@ -27,6 +27,8 @@ import org.cojen.tupl.View;
 
 import org.cojen.tupl.core.RowPredicate;
 
+import org.cojen.tupl.diag.QueryPlan;
+
 /**
  * 
  *
@@ -35,6 +37,8 @@ import org.cojen.tupl.core.RowPredicate;
  */
 public interface ScanController<R> {
     static final byte[] EMPTY = new byte[0];
+
+    QueryPlan plan();
 
     /**
      * Returns a predicate which is shared by all scan batches.

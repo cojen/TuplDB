@@ -21,6 +21,8 @@ import org.cojen.tupl.Cursor;
 
 import org.cojen.tupl.core.RowPredicate;
 
+import org.cojen.tupl.diag.QueryPlan;
+
 /**
  * Scan of nothing.
  *
@@ -36,6 +38,16 @@ final class EmptyScanController extends SingleScanController implements ScanCont
 
     private EmptyScanController() {
         super(EMPTY, false, null, false);
+    }
+
+    @Override
+    public QueryPlan plan() {
+        return new QueryPlan.Empty();
+    }
+
+    @Override
+    public QueryPlan plan(Object... args) {
+        return new QueryPlan.Empty();
     }
 
     @Override

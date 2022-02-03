@@ -40,6 +40,8 @@ import org.cojen.tupl.LockResult;
 
 import org.cojen.tupl.core.RowPredicate;
 
+import org.cojen.tupl.diag.QueryPlan;
+
 import org.cojen.tupl.filter.ColumnToArgFilter;
 import org.cojen.tupl.filter.RowFilter;
 import org.cojen.tupl.filter.TrueFilter;
@@ -54,13 +56,13 @@ import org.cojen.tupl.io.Utils;
  */
 public class FilteredScanMaker<R> {
     private final WeakReference<RowStore> mStoreRef;
+    private final byte[] mSecondaryDescriptor;
     private final Class<?> mTableClass;
     private final Class<?> mPrimaryTableClass;
     private final SingleScanController<R> mUnfiltered;
     private final Class<?> mPredicateClass;
     private final Class<R> mRowType;
     private final RowGen mRowGen;
-    private final boolean mIsPrimaryTable;
     private final long mIndexId;
     private final RowFilter mLowBound, mHighBound, mFilter, mJoinFilter;
     private final ClassMaker mFilterMaker;
@@ -81,6 +83,7 @@ public class FilteredScanMaker<R> {
      * the RowFilter goes away, the filterStr is needed to create it again.
      *
      * @param storeRef is passed along to the generated code
+     * @param secondaryDescriptor non-null if table refers to a secondary index or alternate key
      * @param primaryTableClass pass non-null to when joining a secondary to a primary
      * @param unfiltered defines the encode methods; the decode method will be overridden
      * @param predClass contains references to the argument fields
@@ -89,7 +92,7 @@ public class FilteredScanMaker<R> {
      * @param filter the filter to apply to all rows which are in bounds, or null if none
      * @param joinFilter the filter to apply after joining, or null if none
      */
-    public FilteredScanMaker(WeakReference<RowStore> storeRef,
+    public FilteredScanMaker(WeakReference<RowStore> storeRef, byte[] secondaryDescriptor,
                              Class<?> tableClass, Class<?> primaryTableClass,
                              SingleScanController<R> unfiltered,
                              Class<? extends RowPredicate> predClass,
@@ -98,6 +101,7 @@ public class FilteredScanMaker<R> {
                              RowFilter filter, RowFilter joinFilter)
     {
         mStoreRef = storeRef;
+        mSecondaryDescriptor = secondaryDescriptor;
         mTableClass = tableClass;
         mPrimaryTableClass = primaryTableClass;
         mUnfiltered = unfiltered;
@@ -105,7 +109,6 @@ public class FilteredScanMaker<R> {
         mRowType = rowType;
 
         mRowGen = rowGen;
-        mIsPrimaryTable = RowInfo.find(rowType) == rowGen.info;
 
         mIndexId = indexId;
         mLowBound = lowBound;
@@ -168,10 +171,32 @@ public class FilteredScanMaker<R> {
 
         addDecodeRowMethod();
 
-        // Override and return the predicate object.
         {
+            // Override and return the predicate object.
             MethodMaker mm = mFilterMaker.addMethod(RowPredicate.class, "predicate").public_();
             mm.return_(mm.field("predicate"));
+        }
+
+        {
+            // Override the plan method specified by ScanController.
+            MethodMaker mm = mFilterMaker.addMethod(QueryPlan.class, "plan").public_();
+
+            int joinOption = mPrimaryTableClass == null ? 0 : 1;
+
+            var condy = mm.var(FilteredScanMaker.class).condy
+                ("condyPlan", mRowType, mSecondaryDescriptor, joinOption,
+                 toString(mLowBound), toString(mHighBound),
+                 toString(mFilter), toString(mJoinFilter));
+
+            mm.return_(condy.invoke(QueryPlan.class, "plan"));
+        }
+
+        {
+            // Specified by ScanControllerFactory.
+            MethodMaker mm = mFilterMaker.addMethod
+                (QueryPlan.class, "plan", Object[].class).public_();
+            // FIXME: substitute non-hidden arguments into query plan
+            mm.return_(mm.invoke("plan"));
         }
 
         // Define the factory methods.
@@ -395,7 +420,7 @@ public class FilteredScanMaker<R> {
     }
 
     private void addDecodeRowMethod() {
-        if (mFilter == null || (mIsPrimaryTable && mFilter == TrueFilter.THE)) {
+        if (mFilter == null || (mSecondaryDescriptor == null && mFilter == TrueFilter.THE)) {
             // No remainder filter, so rely on inherited method.
             return;
         }
@@ -409,7 +434,7 @@ public class FilteredScanMaker<R> {
         var rowVar = mm.param(1);
         var predicateVar = mm.field("predicate");
 
-        if (mIsPrimaryTable) {
+        if (mSecondaryDescriptor == null) {
             // The decode method is implemented using indy, to support multiple schema versions.
 
             var indy = mm.var(FilteredScanMaker.class).indy
@@ -565,5 +590,52 @@ public class FilteredScanMaker<R> {
 
             return mm.finish();
         }
+    }
+
+    private static String toString(RowFilter filter) {
+        return (filter == null || filter == TrueFilter.THE) ? null : filter.toString();
+    }
+
+    public static QueryPlan condyPlan(MethodHandles.Lookup lookup, String name, Class type,
+                                      Class rowType, byte[] secondaryDesc, int joinOption,
+                                      String lowBoundStr, String highBoundStr,
+                                      String filterStr, String joinFilterStr)
+    {
+        RowInfo primaryRowInfo = RowInfo.find(rowType);
+
+        RowInfo rowInfo;
+        String which;
+
+        if (secondaryDesc == null) {
+            rowInfo = primaryRowInfo;
+            which = "primary key";
+        } else {
+            rowInfo = RowStore.indexRowInfo(primaryRowInfo, secondaryDesc);
+            which = rowInfo.isAltKey() ? "alternate key" : "secondary index";
+        }
+
+        QueryPlan plan;
+
+        if (lowBoundStr == null && highBoundStr == null) {
+            plan = new QueryPlan.FullScan(rowInfo.name, which, rowInfo.keySpec(), false);
+        } else {
+            plan = new QueryPlan.RangeScan(rowInfo.name, which, rowInfo.keySpec(), false,
+                                           lowBoundStr, highBoundStr);
+        }
+    
+        if (filterStr != null) {
+            plan = new QueryPlan.Filter(filterStr, plan);
+        }
+
+        if (joinOption != 0) {
+            rowInfo = primaryRowInfo;
+            plan = new QueryPlan.NaturalJoin(rowInfo.name, "primary key", rowInfo.keySpec(), plan);
+
+            if (joinFilterStr != null) {
+                plan = new QueryPlan.Filter(joinFilterStr, plan);
+            }
+        }
+
+        return plan;
     }
 }

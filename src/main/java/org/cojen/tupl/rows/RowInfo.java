@@ -23,6 +23,7 @@ import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.HashMap;
@@ -202,6 +203,22 @@ class RowInfo extends ColumnSet {
         copy.secondaryIndexes = current.secondaryIndexes;
 
         return copy;
+    }
+
+    /**
+     * Returns each key prefixed with a '+' or '-' character.
+     */
+    String[] keySpec() {
+        Collection<ColumnInfo> columns = keyColumns.values();
+        var spec = new String[columns.size()];
+        Iterator<ColumnInfo> it = columns.iterator();
+        for (int i=0; i<spec.length; i++) {
+            ColumnInfo column = it.next();
+            String name = column.name;
+            name = (column.isDescending() ? '-' : '+') + name;
+            spec[i] = name;
+        }
+        return spec;
     }
 
     /**

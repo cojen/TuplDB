@@ -23,6 +23,8 @@ import java.util.Arrays;
 
 import org.cojen.tupl.Cursor;
 
+import org.cojen.tupl.diag.QueryPlan;
+
 /**
  * 
  *
@@ -78,7 +80,7 @@ final class MergedScanController<R> extends SingleScanController<R> {
         int mode = low.compareLow(high) == 0 ? 1 : 0;
 
         return new MergedScanController<>
-                (lowLow, low.lowInclusive(), highBound, highInclusive, low, high, mode);
+            (lowLow, low.lowInclusive(), highBound, highInclusive, low, high, mode);
     }
 
     private final ScanController<R> mLow, mHigh;
@@ -152,5 +154,11 @@ final class MergedScanController<R> extends SingleScanController<R> {
     public byte[] encodeValue(R row) throws IOException {
         // Can call either decoder. They should do the same thing.
         return mLowDecoder.encodeValue(row);
+    }
+
+    @Override
+    public QueryPlan plan() {
+        // TODO: need a union type that describes the exact behavior
+        return new QueryPlan.Union(mLow.plan(), mHigh.plan());
     }
 }

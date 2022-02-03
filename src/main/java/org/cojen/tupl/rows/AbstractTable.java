@@ -42,6 +42,7 @@ import org.cojen.tupl.core.RowPredicateLock;
 
 import org.cojen.tupl.diag.EventListener;
 import org.cojen.tupl.diag.EventType;
+import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.filter.ComplexFilterException;
 import org.cojen.tupl.filter.FalseFilter;
@@ -284,6 +285,11 @@ public abstract class AbstractTable<R> implements Table<R> {
         return this;
     }
 
+    @Override
+    public QueryPlan rowScannerPlan(String filter, Object... args) {
+        return filter == null ? unfiltered().plan() : filteredFactory(filter).plan(args);
+    }
+
     private ScanController<R> filtered(String filter, Object... args) {
         return filteredFactory(filter).newScanController(args);
     }
@@ -334,7 +340,19 @@ public abstract class AbstractTable<R> implements Table<R> {
 
             if (rf instanceof TrueFilter) {
                 SingleScanController<R> unfiltered = unfiltered();
-                factory = (Object... args) -> unfiltered;
+
+                factory = new ScanControllerFactory<>() {
+                    @Override
+                    public ScanController<R> newScanController(Object... args) {
+                        return unfiltered;
+                    }
+
+                    @Override
+                    public QueryPlan plan(Object... args) {
+                        return unfiltered.plan();
+                    }
+                };
+
                 break obtain;
             }
 
@@ -435,7 +453,7 @@ public abstract class AbstractTable<R> implements Table<R> {
         RowFilter joinFilter = range[3];
 
         return new FilteredScanMaker<R>
-            (rowStoreRef(), getClass(), joinedPrimaryTableClass(),
+            (rowStoreRef(), secondaryDescriptor(), getClass(), joinedPrimaryTableClass(),
              unfiltered, predClass, rowType(), rowGen,
              mSource.id(), lowBound, highBound, filter, joinFilter).finish();
     }
