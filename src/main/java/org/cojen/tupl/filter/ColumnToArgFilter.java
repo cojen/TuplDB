@@ -87,7 +87,7 @@ public class ColumnToArgFilter extends ColumnFilter {
         ColumnToArgFilter low, high, remaining;
 
         match: {
-            if (keyColumns[0].equals(mColumn)) {
+            if (keyColumns[0].name.equals(mColumn.name)) {
                 remaining = null;
                 switch (mOperator) {
                 case OP_EQ:
@@ -115,7 +115,7 @@ public class ColumnToArgFilter extends ColumnFilter {
             high = null;
         }
 
-        if (mColumn.isDescending()) {
+        if (keyColumns[0].isDescending()) {
             var newLow = descending(high);
             high = descending(low);
             low = newLow;
@@ -143,8 +143,8 @@ public class ColumnToArgFilter extends ColumnFilter {
     boolean matchesOne(RowFilter high, ColumnInfo... keyColumns) {
         return (high instanceof ColumnToArgFilter highCol) &&
             mOperator == OP_GE && highCol.mOperator == OP_LE &&
-            mArgNum == highCol.mArgNum && mColumn.equals(highCol.mColumn) &&
-            keyColumns.length == 1 && keyColumns[0].equals(mColumn);
+            mArgNum == highCol.mArgNum && mColumn.name.equals(highCol.mColumn.name) &&
+            keyColumns.length == 1 && keyColumns[0].name.equals(mColumn.name);
     }
 
     public int argument() {

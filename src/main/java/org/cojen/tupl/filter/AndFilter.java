@@ -196,7 +196,8 @@ public class AndFilter extends GroupFilter {
         boolean fuzzy = false;
 
         keys: for (int k = 0; k < keyColumns.length; k++) {
-            String keyName = keyColumns[k].name;
+            ColumnInfo keyColumn = keyColumns[k];
+            String keyName = keyColumn.name;
 
             for (int match = 0; match <= 1; match++) {
                 for (int s = 0; s < subFilters.length; s++) {
@@ -224,7 +225,7 @@ public class AndFilter extends GroupFilter {
                             // against the original term. Cannot continue after a range match.
                             fuzzy = true;
                         }
-                    } else if (!term.mColumn.isDescending()) {
+                    } else if (!keyColumn.isDescending()) {
                         if (op == OP_GT || op == OP_GE) {
                             if (lowTerms[k] == null) {
                                 lowTerms[k] = term;
@@ -318,7 +319,7 @@ public class AndFilter extends GroupFilter {
             }
 
             if (lowSubCol.mArgNum != highSubCol.mArgNum ||
-                !lowSubCol.mColumn.equals(highSubCol.mColumn))
+                !lowSubCol.mColumn.name.equals(highSubCol.mColumn.name))
             {
                 return false;
             }
