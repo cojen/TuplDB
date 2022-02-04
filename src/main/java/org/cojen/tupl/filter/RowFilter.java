@@ -310,8 +310,8 @@ public abstract class RowFilter implements Comparable<RowFilter> {
         if (range[0] != null) {
             return false;
         }
-        RowFilter low = range[1];
-        RowFilter high = range[2];
+        RowFilter low = range[0];
+        RowFilter high = range[1];
         return low != null && high != null && low.matchesOne(high, keyColumns);
     }
 
