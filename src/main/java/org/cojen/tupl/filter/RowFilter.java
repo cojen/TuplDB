@@ -268,10 +268,10 @@ public abstract class RowFilter implements Comparable<RowFilter> {
 
                 RowFilter[] split = remainder.split(columns);
 
-                if (split[0] == TrueFilter.THE && !isReduced(original, remainder)) {
-                    split[1] = original;
-                } else if (split[1] == TrueFilter.THE && !isReduced(original, remainder)) {
-                    split[0] = original;
+                if (split[0] == TrueFilter.THE) {
+                    split[1] = reduceFromCnf(original, remainder);
+                } else if (split[1] == TrueFilter.THE) {
+                    split[0] = reduceFromCnf(original, remainder);
                 }
                 
                 range[2] = split[0];
@@ -280,8 +280,26 @@ public abstract class RowFilter implements Comparable<RowFilter> {
         }
     }
 
-    private static boolean isReduced(RowFilter from, RowFilter to) {
-        return to.numTerms() < from.numTerms();
+    /**
+     * @param cnf the cnf version of the from filter
+     */
+    private static RowFilter reduceFromCnf(RowFilter from, RowFilter cnf) {
+        int fromTerms = from.numTerms();
+        if (cnf.numTerms() < fromTerms) {
+            // Reduced enough already.
+            return cnf;
+        }
+
+        // Try converting to dnf to see if that reduces it.
+        try {
+            RowFilter dnf = cnf.dnf();
+            if (dnf.numTerms() < fromTerms) {
+                return dnf;
+            }
+        } catch (ComplexFilterException e) {
+        }
+
+        return from;
     }
 
     /**
