@@ -596,12 +596,15 @@ public class RowStore {
                 if (nameLength != decodePrefixPF(found, offset)) {
                     return false;
                 }
+
+                offset += lengthPrefixPF(nameLength);
+
                 if (!Arrays.equals(search, offset, offset + nameLength,
                                    found, offset, offset + nameLength))
                 {
                     return false;
                 }
-                offset += lengthPrefixPF(nameLength);
+
                 offset += nameLength;
             }
         }
