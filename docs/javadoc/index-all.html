@@ -1191,6 +1191,22 @@ loadScripts(document, 'script');</script>
 <dd>&nbsp;</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/diag/IndexStats.html#equals(java.lang.Object)" class="member-name-link">equals(Object)</a> - Method in class org.cojen.tupl.diag.<a href="org.cojen.tupl/org/cojen/tupl/diag/IndexStats.html" title="class in org.cojen.tupl.diag">IndexStats</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.DisjointUnion.html#equals(java.lang.Object)" class="member-name-link">equals(Object)</a> - Method in class org.cojen.tupl.diag.<a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.DisjointUnion.html" title="class in org.cojen.tupl.diag">QueryPlan.DisjointUnion</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Empty.html#equals(java.lang.Object)" class="member-name-link">equals(Object)</a> - Method in class org.cojen.tupl.diag.<a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Empty.html" title="class in org.cojen.tupl.diag">QueryPlan.Empty</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Filter.html#equals(java.lang.Object)" class="member-name-link">equals(Object)</a> - Method in class org.cojen.tupl.diag.<a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Filter.html" title="class in org.cojen.tupl.diag">QueryPlan.Filter</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.FullScan.html#equals(java.lang.Object)" class="member-name-link">equals(Object)</a> - Method in class org.cojen.tupl.diag.<a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.FullScan.html" title="class in org.cojen.tupl.diag">QueryPlan.FullScan</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.LoadOne.html#equals(java.lang.Object)" class="member-name-link">equals(Object)</a> - Method in class org.cojen.tupl.diag.<a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.LoadOne.html" title="class in org.cojen.tupl.diag">QueryPlan.LoadOne</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.NaturalJoin.html#equals(java.lang.Object)" class="member-name-link">equals(Object)</a> - Method in class org.cojen.tupl.diag.<a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.NaturalJoin.html" title="class in org.cojen.tupl.diag">QueryPlan.NaturalJoin</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.RangeScan.html#equals(java.lang.Object)" class="member-name-link">equals(Object)</a> - Method in class org.cojen.tupl.diag.<a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.RangeScan.html" title="class in org.cojen.tupl.diag">QueryPlan.RangeScan</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.RangeUnion.html#equals(java.lang.Object)" class="member-name-link">equals(Object)</a> - Method in class org.cojen.tupl.diag.<a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.RangeUnion.html" title="class in org.cojen.tupl.diag">QueryPlan.RangeUnion</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#eventListener(org.cojen.tupl.diag.EventListener)" class="member-name-link">eventListener(EventListener)</a> - Method in class org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
 <dd>
 <div class="block">Set a listener which receives notifications of actions being performed by the
@@ -2860,6 +2876,10 @@ loadScripts(document, 'script');</script>
 </dl>
 <h2 class="title" id="I:Q">Q</h2>
 <dl class="index">
+<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#queryPlan(java.lang.String,java.lang.Object...)" class="member-name-link">queryPlan(String, Object...)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
+<dd>
+<div class="block">Returns a query plan used by <a href="org.cojen.tupl/org/cojen/tupl/Table.html#newRowScanner(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>newRowScanner</code></a> et al.</div>
+</dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan</a> - Class in <a href="org.cojen.tupl/org/cojen/tupl/diag/package-summary.html">org.cojen.tupl.diag</a></dt>
 <dd>
 <div class="block">A query plan tree structure.</div>
@@ -3339,10 +3359,6 @@ loadScripts(document, 'script');</script>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/RowScanner.html" class="type-name-link" title="interface in org.cojen.tupl">RowScanner</a>&lt;<a href="org.cojen.tupl/org/cojen/tupl/RowScanner.html" title="type parameter in RowScanner">R</a>&gt; - Interface in <a href="org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
 <div class="block">Support for scanning through all rows in a table.</div>
-</dd>
-<dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#rowScannerPlan(java.lang.String,java.lang.Object...)" class="member-name-link">rowScannerPlan(String, Object...)</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
-<dd>
-<div class="block">Returns a query plan used by <a href="org.cojen.tupl/org/cojen/tupl/Table.html#newRowScanner(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>newRowScanner</code></a>.</div>
 </dd>
 <dt><a href="org.cojen.tupl/org/cojen/tupl/Table.html#rowType()" class="member-name-link">rowType()</a> - Method in interface org.cojen.tupl.<a href="org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
 <dd>
