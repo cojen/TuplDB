@@ -196,12 +196,13 @@ public abstract sealed class QueryPlan implements Serializable {
             appendItem(a, in2, "range");
 
             if (low != null) {
-                a.append(low);
-                if (high != null) {
-                    a.append(" .. ").append(high);
-                }
-            } else if (high != null) {
-                a.append(high);
+                a.append(low).append(' ');
+            }
+
+            a.append("..");
+
+            if (high != null) {
+                a.append(' ').append(high);
             }
 
             a.append('\n');
