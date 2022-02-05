@@ -237,7 +237,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
 
     @Override
     public void redoPredicateMode(Transaction txn) throws IOException {
-        ((LocalTransaction) txn).redoPredicateMode();
+        ((CoreTransaction) txn).redoPredicateMode();
     }
 
     @Override

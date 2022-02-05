@@ -40,7 +40,7 @@ import static org.cojen.tupl.core.Utils.*;
  *
  * @author Brian S O'Neill
  */
-public final class LocalTransaction extends Locker implements Transaction {
+public final class LocalTransaction extends Locker implements CoreTransaction {
     public static final LocalTransaction BOGUS = new LocalTransaction();
 
     // When set, scope has been entered and logged.
@@ -1615,7 +1615,8 @@ public final class LocalTransaction extends Locker implements Transaction {
         }
     }
 
-    final void redoPredicateMode() throws IOException {
+    @Override
+    public final void redoPredicateMode() throws IOException {
         // Note: Not critical that check() be called.
 
         RedoWriter redo = mRedo;
