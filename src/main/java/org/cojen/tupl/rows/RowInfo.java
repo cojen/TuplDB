@@ -244,13 +244,7 @@ class RowInfo extends ColumnSet {
     }
 
     private static void appendNames(StringBuilder bob, Map<String, ColumnInfo> map) {
-        boolean first = true;
         for (ColumnInfo ci : map.values()) {
-            if (first) {
-                first = false;
-            } else {
-                bob.append(',');
-            }
             bob.append(ci.isDescending() ? '-' : '+');
             bob.append(ci.name);
         }
