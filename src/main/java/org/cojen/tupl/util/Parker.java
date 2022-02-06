@@ -413,7 +413,7 @@ public abstract class Parker {
         }
 
         private int hash(Thread thread) {
-            int hash = thread.hashCode();
+            int hash = Long.hashCode(thread.getId());
             hash ^= (hash >>> 20) ^ (hash >>> 12);
             hash ^= (hash >>> 7) ^ (hash >>> 4);
             return hash;
