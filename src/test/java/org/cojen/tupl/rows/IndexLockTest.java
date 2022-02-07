@@ -860,6 +860,7 @@ public class IndexLockTest {
             w1.await();
         } else {
             try {
+                // FIXME: Sometimes throws LockTimeoutException instead.
                 w1.await();
                 fail();
             } catch (DeadlockException e) {
