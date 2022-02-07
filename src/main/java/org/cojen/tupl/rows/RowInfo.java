@@ -450,9 +450,9 @@ class RowInfo extends ColumnSet {
             }
         } else if (type.isArray()) {
             Class<?> subType = type.getComponentType();
-            if (!subType.isArray()) {
+            if (subType.isPrimitive()) {
                 int typeCode = selectTypeCode(null, name, subType);
-                if (typeCode != -1 && isPrimitive(typeCode)) {
+                if (typeCode != -1) {
                     return typeCode | TYPE_ARRAY;
                 }
             }
