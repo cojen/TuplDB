@@ -847,7 +847,7 @@ public class IndexLockTest {
         Waiter w2 = start(() -> {
             Transaction txn = mDatabase.newTransaction();
             txn.lockMode(mode);
-            txn.lockTimeout(2, TimeUnit.SECONDS);
+            txn.lockTimeout(3, TimeUnit.SECONDS);
             var scanner = ix.newRowScanner(txn, "name >= ?", "name-5");
             scanner.step();
             scanner.close();
@@ -860,7 +860,6 @@ public class IndexLockTest {
             w1.await();
         } else {
             try {
-                // FIXME: Sometimes throws LockTimeoutException instead.
                 w1.await();
                 fail();
             } catch (DeadlockException e) {
