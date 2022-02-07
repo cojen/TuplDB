@@ -81,7 +81,8 @@ public class RowMaker {
         mRowGen = gen;
         mRowInfo = gen.info;
         mClassMaker = gen.beginClassMaker(getClass(), type, "")
-            .implement(type).implement(Cloneable.class).final_().public_();
+            .implement(type).implement(Cloneable.class).implement(Comparable.class)
+            .final_().public_();
     }
 
     private Class<?> finish() {
@@ -114,6 +115,9 @@ public class RowMaker {
         addEquals();
         addToString();
         addClone();
+
+        // Add Comparable methods.
+        addCompareTo();
 
         return mClassMaker.finish();
     }
@@ -374,6 +378,28 @@ public class RowMaker {
         // Now implement the bridge method.
         mm = mClassMaker.addMethod(Object.class, "clone").public_().bridge();
         mm.return_(mm.this_().invoke(mRowType, "clone", null));
+    }
+
+    private void addCompareTo() {
+        MethodMaker mm = mClassMaker.addMethod(int.class, "compareTo", mClassMaker).public_();
+        var indy = mm.var(RowMaker.class).indy("indyCompare", mRowType);
+        mm.return_(indy.invoke(int.class, "compare", null, mm.this_(), mm.param(0)));
+
+        // Now implement the bridge methods.
+
+        mm = mClassMaker.addMethod(int.class, "compareTo", mRowType).public_().bridge();
+        mm.return_(mm.this_().invoke("compareTo", mm.param(0).cast(mClassMaker)));
+
+        mm = mClassMaker.addMethod(int.class, "compareTo", Object.class).public_().bridge();
+        mm.return_(mm.this_().invoke("compareTo", mm.param(0).cast(mClassMaker)));
+    }
+
+    public static CallSite indyCompare(MethodHandles.Lookup lookup, String name, MethodType mt,
+                                       Class<?> rowType)
+    {
+        MethodMaker mm = MethodMaker.begin(lookup, name, mt);
+        new ComparatorMaker<>(rowType).makeCompare(mm);
+        return new ConstantCallSite(mm.finish());
     }
 
     private Field stateField(MethodMaker mm, int columnNum) {

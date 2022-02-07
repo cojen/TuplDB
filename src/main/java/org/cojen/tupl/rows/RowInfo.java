@@ -319,6 +319,13 @@ class RowInfo extends ColumnSet {
                             // Inherited non-final method declared in Object.
                             continue;
                         }
+                        if (name.equals("compareTo") && type == int.class &&
+                            params[0] == Object.class &&
+                            Comparable.class.isAssignableFrom(rowType))
+                        {
+                            // Inherited method from Comparable interface.
+                            continue;
+                        }
                     }
                 } else {
                     if (params.length == 1) {

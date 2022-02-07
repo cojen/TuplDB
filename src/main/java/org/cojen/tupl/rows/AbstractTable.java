@@ -24,6 +24,7 @@ import java.lang.invoke.VarHandle;
 
 import java.lang.ref.WeakReference;
 
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Objects;
 
@@ -74,13 +75,19 @@ public abstract class AbstractTable<R> implements Table<R> {
     private Trigger<R> mTrigger;
     private static final VarHandle cTriggerHandle;
 
+    private WeakCache<String, Comparator<R>> mComparatorCache;
+    private static final VarHandle cComparatorCacheHandle;
+
     // Is null if unsupported.
     protected final RowPredicateLock<R> mIndexLock;
 
     static {
         try {
-            cTriggerHandle = MethodHandles.lookup().findVarHandle
+            MethodHandles.Lookup lookup = MethodHandles.lookup();
+            cTriggerHandle = lookup.findVarHandle
                 (AbstractTable.class, "mTrigger", Trigger.class);
+            cComparatorCacheHandle = lookup.findVarHandle
+                (AbstractTable.class, "mComparatorCache", WeakCache.class);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
@@ -260,6 +267,48 @@ public abstract class AbstractTable<R> implements Table<R> {
     @Override
     public boolean isEmpty() throws IOException {
         return mSource.isEmpty();
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public Comparator<R> comparator(String spec) {
+        WeakCache<String, Comparator<R>> cache = mComparatorCache;
+
+        if (cache == null) {
+            cache = new WeakCache<>();
+            var existing = (WeakCache<String, Comparator<R>>)
+                cComparatorCacheHandle.compareAndExchange(this, null, cache);
+            if (existing != null) {
+                cache = existing;
+            }
+        }
+
+        Comparator<R> comparator = cache.get(spec);
+
+        if (comparator == null) {
+            synchronized (cache) {
+                comparator = makeComparator(cache, spec);
+            }
+        }
+
+        return comparator;
+    }
+
+    private Comparator<R> makeComparator(WeakCache<String, Comparator<R>> cache, String spec) {
+        Comparator<R> comparator = cache.get(spec);
+
+        if (comparator == null) {
+            var maker = new ComparatorMaker<R>(rowType(), spec);
+            String clean = maker.cleanRules();
+            if (spec.equals(clean)) {
+                comparator = maker.finish();
+            } else {
+                comparator = makeComparator(cache, clean);
+            }
+            cache.put(spec, comparator);
+        }
+
+        return comparator;
     }
 
     @Override

@@ -19,6 +19,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import java.util.Comparator;
+
 import java.util.stream.Stream;
 
 import org.cojen.tupl.diag.QueryPlan;
@@ -305,6 +307,18 @@ public interface Table<R> {
      * @throws IllegalStateException if no primary or alternate key is fully specified
      */
     //public boolean remove(Transaction txn, R match) throws IOException;
+
+    /**
+     * Returns a row comparator based on the given specification, which defines the ordering
+     * columns. Each column name is prefixed with '+' or '-', to indicate ascending or
+     * descending order. For example: {@code "+lastName+firstName-birthdate"}. By default,
+     * nulls are treated as higher non-nulls, but a '!' after the '+'/'-' character causes
+     * nulls to be treated as lower than non-nulls.
+     *
+     * @throws IllegalArgumentException if the specification is malformed
+     * @throws IllegalStateException if the specification refers to non-existent columns
+     */
+    public Comparator<R> comparator(String spec);
 
     // FIXME: Define a viewPrimaryKey method which disables automatic index selection.
 
