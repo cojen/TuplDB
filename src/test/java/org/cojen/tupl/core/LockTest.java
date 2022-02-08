@@ -1995,11 +1995,8 @@ public class LockTest {
     public void unlockCombine() throws Exception {
         var locker = new Locker(mManager);
 
-        try {
-            locker.unlockCombine();
-            fail();
-        } catch (IllegalStateException e) {
-        }
+        // Should do nothing.
+        locker.unlockCombine();
 
         assertEquals(ACQUIRED, locker.doLockShared(0, k1, -1));
         locker.unlockCombine();

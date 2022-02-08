@@ -380,8 +380,7 @@ public interface Transaction extends Flushable {
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @return locked index id
-     * @throws IllegalStateException if no locks held
+     * @return locked index id, 0 if no locks are held
      */
     long lastLockedIndex();
 
@@ -390,8 +389,7 @@ public interface Transaction extends Flushable {
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @return locked key; instance is not cloned
-     * @throws IllegalStateException if no locks held
+     * @return locked key (not cloned), or null if no locks are held
      */
     byte[] lastLockedKey();
 
@@ -402,7 +400,7 @@ public interface Transaction extends Flushable {
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @throws IllegalStateException if no locks held, or if unlocking an exclusive lock, or if
+     * @throws IllegalStateException if no locks are held, or if unlocking an exclusive lock, or if
      * crossing a scope boundary, or if unlocking a non-immediate upgrade
      */
     void unlock();
@@ -414,7 +412,7 @@ public interface Transaction extends Flushable {
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @throws IllegalStateException if no locks held, or if unlocking an exclusive lock, or if
+     * @throws IllegalStateException if no locks are held, or if unlocking an exclusive lock, or if
      * crossing a scope boundary, or if too many shared locks, or if unlocking a non-immediate
      * upgrade
      */
@@ -425,8 +423,7 @@ public interface Transaction extends Flushable {
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @throws IllegalStateException if no locks held, or if combining an acquire with an
-     * upgrade
+     * @throws IllegalStateException if combining an acquire with an upgrade
      */
     void unlockCombine();
 

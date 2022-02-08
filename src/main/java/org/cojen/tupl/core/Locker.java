@@ -499,11 +499,14 @@ class Locker implements DatabaseAccess { // weak access to database
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @return locked index id
-     * @throws IllegalStateException if no locks held
+     * @return locked index id, 0 if no locks are held
      */
     public final long lastLockedIndex() {
-        return peek().mIndexId;
+        Object tailObj = mTailBlock;
+        if (tailObj == null) {
+            return 0;
+        }
+        return peek(tailObj).mIndexId;
     }
 
     /**
@@ -511,19 +514,18 @@ class Locker implements DatabaseAccess { // weak access to database
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @return locked key; instance is not cloned
-     * @throws IllegalStateException if no locks held
+     * @return locked key (not cloned), or null if no locks are held
      */
     public final byte[] lastLockedKey() {
-        return peek().mKey;
-    }
-
-    private Lock peek() {
         Object tailObj = mTailBlock;
         if (tailObj == null) {
-            throw new IllegalStateException("No locks held");
+            return null;
         }
-        return (tailObj instanceof Lock lock) ? lock : (((Block) tailObj).last());
+        return peek(tailObj).mKey;
+    }
+
+    private static Lock peek(Object tailObj) {
+        return (tailObj instanceof Lock lock) ? lock : ((Block) tailObj).last();
     }
 
     /**
@@ -663,18 +665,11 @@ class Locker implements DatabaseAccess { // weak access to database
      *
      * <p><i>Note: This method is intended for advanced use cases.</i>
      *
-     * @throws IllegalStateException if no locks held, or if combining an acquire with an
-     * upgrade
+     * @throws IllegalStateException if combining an acquire with an upgrade
      */
     public final void unlockCombine() {
-        Object tailObj = mTailBlock;
-        if (tailObj == null) {
-            throw new IllegalStateException("No locks held");
-        }
-        if (tailObj instanceof Lock) {
-            // Group of one, so nothing to do.
-        } else {
-            Block.unlockCombine((Block) tailObj);
+        if (mTailBlock instanceof Block block) {
+            Block.unlockCombine(block);
         }
     }
 
