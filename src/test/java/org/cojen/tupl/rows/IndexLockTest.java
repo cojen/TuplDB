@@ -763,21 +763,21 @@ public class IndexLockTest {
         // entry is actually inserted, then this test should fail unless special attention is
         // given to covering indexes.
 
-        Table<TestRow3> table = mDatabase.openTable(TestRow3.class);
+        Table<TestRow4> table = mDatabase.openTable(TestRow4.class);
 
         for (int i=1; i<=3; i++) {
-            TestRow3 row = table.newRow();
+            TestRow4 row = table.newRow();
             row.id(-i);
             row.name("name-" + i);
             row.path("path-" + i);
             table.store(null, row);
         }
 
-        Table<TestRow3> ix = table.viewSecondaryIndex("name", "id", "path").viewUnjoined();
+        Table<TestRow4> ix = table.viewSecondaryIndex("name", "id", "path").viewUnjoined();
         Transaction txn = mDatabase.newTransaction();
-        RowScanner<TestRow3> scanner = ix.newRowScanner(txn);
+        RowScanner<TestRow4> scanner = ix.newRowScanner(txn);
 
-        TestRow3 row = table.newRow();
+        TestRow4 row = table.newRow();
         row.id(-2);
         row.path("newpath");
         try {
@@ -791,7 +791,7 @@ public class IndexLockTest {
         
         table.merge(null, row);
 
-        TestRow3 row2 = scanner.step();
+        TestRow4 row2 = scanner.step();
         assertEquals(row, row2);
 
         scanner.close();
@@ -867,6 +867,138 @@ public class IndexLockTest {
         }
 
         w2.await();
+    }
+
+    @Test
+    public void filterLockRelease() throws Exception {
+        // Test that secondary and primary row locks are released when row is filtered out.
+
+        Table<TestRow3> table = mDatabase.openTable(TestRow3.class);
+        Table<TestRow3> nameIx = table.viewSecondaryIndex("name");
+
+        for (int i=1; i<=3; i++) {
+            TestRow3 row = table.newRow();
+            row.id(i);
+            row.name("name-" + i);
+            row.path("path-" + i);
+            table.store(null, row);
+        }
+
+        Transaction txn = mDatabase.newTransaction();
+        RowScanner<TestRow3> scanner = nameIx.newRowScanner(txn, "path != ?", "path-2");
+        assertEquals(1, scanner.row().id());
+        scanner.step();
+        assertEquals(3, scanner.row().id());
+        scanner.step();
+        assertEquals(null, scanner.row());
+
+        // All locks for id/name 1 and 3 should still be held.
+        Transaction txn2 = mDatabase.newTransaction();
+        TestRow3 row = table.newRow();
+        row.id(1);
+        try {
+            table.load(txn2, row);
+            fail();
+        } catch (LockTimeoutException e) {
+        }
+        row.id(3);
+        try {
+            table.load(txn2, row);
+            fail();
+        } catch (LockTimeoutException e) {
+        }
+        try {
+            nameIx.newRowScanner(txn2, "name == ?", "name-1");
+            fail();
+        } catch (LockTimeoutException e) {
+        }
+        try {
+            nameIx.newRowScanner(txn2, "name == ?", "name-3");
+            fail();
+        } catch (LockTimeoutException e) {
+        }
+
+        // Locks for id/name 2 should have been released.
+        row.id(2);
+        table.load(txn2, row);
+        assertEquals("name-2", row.name());
+        RowScanner<TestRow3> scanner2 = nameIx.newRowScanner(txn2, "name == ?", "name-2");
+        assertEquals(2, scanner2.row().id());
+
+        txn2.reset();
+        txn.reset();
+
+        // All locks should be available now.
+        table.newStream(txn).toList();
+        nameIx.newStream(txn).toList();
+    }
+
+    @Test
+    public void filterLockRetainPrimary() throws Exception {
+        filterLockRetain(false);
+    }
+
+    @Test
+    public void filterLockRetainSecondary() throws Exception {
+        filterLockRetain(true);
+    }
+
+    private void filterLockRetain(boolean lockSecondary) throws Exception {
+        // Similar test as filterLockRelease, except the locks were already held before the
+        // scanner started. They should be retained even when filtered out.
+
+        Table<TestRow3> table = mDatabase.openTable(TestRow3.class);
+        Table<TestRow3> nameIx = table.viewSecondaryIndex("name");
+
+        for (int i=1; i<=3; i++) {
+            TestRow3 row = table.newRow();
+            row.id(i);
+            row.name("name-" + i);
+            row.path("path-" + i);
+            table.store(null, row);
+        }
+
+        Transaction txn = mDatabase.newTransaction();
+
+        // Acquire the row lock beforehand.
+        if (lockSecondary) {
+            nameIx.newRowScanner(txn, "name == ?", "name-2").close();
+        } else {
+            TestRow3 row = table.newRow();
+            row.id(2);
+            table.load(txn, row);
+        }
+
+        RowScanner<TestRow3> scanner = nameIx.newRowScanner(txn, "path != ?", "path-2");
+        assertEquals(1, scanner.row().id());
+        scanner.step();
+        assertEquals(3, scanner.row().id());
+        scanner.step();
+        assertEquals(null, scanner.row());
+
+        // All locks should still be held.
+        Transaction txn2 = mDatabase.newTransaction();
+        for (int i=1; i<=3; i++) {
+            TestRow3 row = table.newRow();
+            row.id(i);
+            try {
+                table.load(txn2, row);
+                fail();
+            } catch (LockTimeoutException e) {
+            }
+            try {
+                nameIx.newRowScanner(txn2, "name == ?", "name-" + i);
+                fail();
+            } catch (LockTimeoutException e) {
+            }
+        }
+
+        txn2.reset();
+        txn.reset();
+
+        // All locks should be available now.
+        table.newStream(txn).toList();
+        nameIx.newStream(txn).toList();
     }
 
     private static <R extends TestRow> void fill(Table<R> table, int start, int end)
@@ -968,8 +1100,15 @@ public class IndexLockTest {
     }
 
     @PrimaryKey("id")
-    @SecondaryIndex({"name", "id", "path"})
+    @SecondaryIndex("name")
     public interface TestRow3 extends TestRow {
+        String path();
+        void path(String path);
+    }
+
+    @PrimaryKey("id")
+    @SecondaryIndex({"name", "id", "path"})
+    public interface TestRow4 extends TestRow3 {
         String path();
         void path(String path);
     }

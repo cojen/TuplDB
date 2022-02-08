@@ -428,10 +428,11 @@ public class FilteredScanMaker<R> {
         // Implement/override method as specified by RowDecoderEncoder.
 
         MethodMaker mm = mFilterMaker.addMethod
-            (Object.class, "decodeRow", Cursor.class, Object.class).public_();
+            (Object.class, "decodeRow", Cursor.class, LockResult.class, Object.class).public_();
 
         var cursorVar = mm.param(0);
-        var rowVar = mm.param(1);
+        var resultVar = mm.param(1);
+        var rowVar = mm.param(2);
         var predicateVar = mm.field("predicate");
 
         if (mSecondaryDescriptor == null) {
@@ -463,7 +464,7 @@ public class FilteredScanMaker<R> {
             return;
         }
 
-        Variable[] primaryVars = visitor.joinToPrimary();
+        Variable[] primaryVars = visitor.joinToPrimary(resultVar);
 
         var primaryKeyVar = primaryVars[0];
         var primaryValueVar = primaryVars[1];

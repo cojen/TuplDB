@@ -70,7 +70,7 @@ class BasicRowScanner<R> implements RowScanner<R> {
                     continue a;
                 }
                 try {
-                    R decoded = mDecoder.decodeRow(c, null);
+                    R decoded = mDecoder.decodeRow(c, result, null);
                     if (decoded != null) {
                         mRow = decoded;
                         return;
@@ -144,7 +144,7 @@ class BasicRowScanner<R> implements RowScanner<R> {
                         toFirst(c);
                     }
                     try {
-                        R decoded = decodeRow(c, row);
+                        R decoded = decodeRow(c, result, row);
                         if (decoded != null) {
                             mRow = decoded;
                             return decoded;
@@ -172,8 +172,8 @@ class BasicRowScanner<R> implements RowScanner<R> {
         return null;
     }
 
-    protected R decodeRow(Cursor c, R row) throws IOException {
-        return mDecoder.decodeRow(c, row);
+    protected R decodeRow(Cursor c, LockResult result, R row) throws IOException {
+        return mDecoder.decodeRow(c, result, row);
     }
 
     @Override

@@ -122,9 +122,19 @@ public abstract class SingleScanController<R> implements ScanController<R>, RowD
          * Given a positioned cursor over the secondary index and a decoded primary key, return
          * the associated primary value, or null if not found.
          */
-        protected byte[] join(Cursor secondaryCursor, byte[] primaryKey) throws IOException {
+        protected byte[] join(Cursor secondaryCursor, LockResult result, byte[] primaryKey)
+            throws IOException
+        {
             Transaction txn = secondaryCursor.link();
             byte[] primaryValue = mPrimaryIndex.load(txn, primaryKey);
+
+            if (result == LockResult.ACQUIRED && txn.lastLockedKey() == primaryKey &&
+                txn.lastLockedIndex() == mPrimaryIndex.id())
+            {
+                // Combine the secondary and primary locks together, so that they can be
+                // released together if the row is filtered out.
+                txn.unlockCombine();
+            }
 
             if (primaryValue != null) {
                 LockMode mode;

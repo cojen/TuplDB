@@ -1685,9 +1685,9 @@ public class TableMaker {
         {
             // Specified by RowDecoderEncoder.
             MethodMaker mm = cm.addMethod
-                (Object.class, "decodeRow", Cursor.class, Object.class).public_();
+                (Object.class, "decodeRow", Cursor.class, LockResult.class, Object.class).public_();
             var tableVar = mm.var(lookup.lookupClass());
-            var rowVar = mm.param(1).cast(rowClass);
+            var rowVar = mm.param(2).cast(rowClass);
             Label hasRow = mm.label();
             rowVar.ifNe(null, hasRow);
             rowVar.set(mm.new_(rowClass));
@@ -1804,9 +1804,10 @@ public class TableMaker {
         {
             // Specified by RowDecoderEncoder.
             MethodMaker mm = cm.addMethod
-                (Object.class, "decodeRow", Cursor.class, Object.class).public_();
+                (Object.class, "decodeRow", Cursor.class, LockResult.class, Object.class).public_();
 
             var cursorVar = mm.param(0);
+            var resultVar = mm.param(1);
             var keyVar = cursorVar.invoke("key");
 
             Variable primaryKeyVar;
@@ -1817,14 +1818,14 @@ public class TableMaker {
                 primaryKeyVar = mm.invoke("toPrimaryKey", keyVar);
             }
 
-            var primaryValueVar = mm.invoke("join", cursorVar, primaryKeyVar);
+            var primaryValueVar = mm.invoke("join", cursorVar, resultVar, primaryKeyVar);
 
             Label hasValue = mm.label();
             primaryValueVar.ifNe(null, hasValue);
             mm.return_(null);
             hasValue.here();
 
-            var rowVar = mm.param(1).cast(mRowClass);
+            var rowVar = mm.param(2).cast(mRowClass);
             Label hasRow = mm.label();
             rowVar.ifNe(null, hasRow);
             rowVar.set(mm.new_(mRowClass));

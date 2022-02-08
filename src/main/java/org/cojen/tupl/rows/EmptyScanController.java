@@ -18,6 +18,7 @@
 package org.cojen.tupl.rows;
 
 import org.cojen.tupl.Cursor;
+import org.cojen.tupl.LockResult;
 
 import org.cojen.tupl.core.RowPredicate;
 
@@ -61,7 +62,7 @@ final class EmptyScanController extends SingleScanController implements ScanCont
     }
 
     @Override
-    public Object decodeRow(Cursor c, Object row) {
+    public Object decodeRow(Cursor c, LockResult result, Object row) {
         throw new AssertionError();
     }
 
