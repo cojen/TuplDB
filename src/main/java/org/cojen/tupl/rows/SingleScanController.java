@@ -121,44 +121,40 @@ public abstract class SingleScanController<R> implements ScanController<R>, RowD
         /**
          * Given a positioned cursor over the secondary index and a decoded primary key, return
          * the associated primary value, or null if not found.
-         *
-         * @param secondaryCursor must have a non-null transaction
          */
         protected byte[] join(Cursor secondaryCursor, byte[] primaryKey) throws IOException {
-            // FIXME: The double check logic must perform a full check against the primary
-            // value, based on the predicate for this scan batch.
-
             Transaction txn = secondaryCursor.link();
+            byte[] primaryValue = mPrimaryIndex.load(txn, primaryKey);
 
-            if (txn == null) {
-                // FIXME: has no predicate lock, and so must double check
-                throw new IllegalStateException("FIXME: txn: " + txn);
-            }
-
-            // FIXME: The filtered subclass overrides decodeRow and filters based on two levels
-            // of encoding. That code won't go here, but I don't feel like moving the comment.
-
-            switch (txn.lockMode()) {
-            case READ_COMMITTED:
-                // The scanner relies on predicate locking, and so the double check that the
-                // secondary is still valid only needs to verify that the secondary entry still
-                // exists. The predicate lock prevents against inserts and stores against the
-                // secondary index, but it doesn't prevent deletes. If it did, then no double
-                // check would be needed at all.
-                byte[] value = mPrimaryIndex.load(txn, primaryKey);
-                if (value != null && !secondaryCursor.exists()) {
-                    // Was concurrently deleted. Note that the exixts call doesn't observe an
-                    // uncommitted delete because it would store a ghost.
-                    value = null;
+            if (primaryValue != null) {
+                LockMode mode;
+                if (txn == null || (mode = txn.lockMode()) == LockMode.READ_UNCOMMITTED) {
+                    primaryValue = validate(secondaryCursor, primaryValue);
+                } else if (mode == LockMode.READ_COMMITTED) {
+                    // The scanner relies on predicate locking, and so validation only needs to
+                    // check that the secondary entry still exists. The predicate lock prevents
+                    // against inserts and stores against the secondary index, but it doesn't
+                    // prevent deletes. If it did, then no validation would be needed at all.
+                    if (!secondaryCursor.exists()) {
+                        // Was concurrently deleted. Note that the exists call doesn't observe
+                        // an uncommitted delete because it would store a ghost.
+                        primaryValue = null;
+                    }
                 }
-                return value;
-
-            case READ_UNCOMMITTED:
-                // FIXME: has no predicate lock, and so must double check
-                throw new IllegalStateException("FIXME: READ_UNCOMMITTED");
             }
 
-            return mPrimaryIndex.load(txn, primaryKey);
+            return primaryValue;
         }
+
+        /**
+         * Validate that the given primary value refers to the secondary entry. Return the
+         * primary value if validation passes, or else return null.
+         *
+         * @param primaryValue non-null
+         */
+        // FIXME: The validation logic must perform a full check against the primary value,
+        // based on the predicate for this scan batch. Need to check by schema version.
+        protected abstract byte[] validate(Cursor secondaryCursor, byte[] primaryValue)
+            throws IOException;
     }
 }
