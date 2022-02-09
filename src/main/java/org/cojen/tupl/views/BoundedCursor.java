@@ -521,6 +521,92 @@ final class BoundedCursor implements ScannerCursor {
     }
 
     @Override
+    public LockResult findNearbyGe(byte[] key) throws IOException {
+        final BoundedView view = mView;
+        if (view.startRangeCompare(key) < 0) {
+            return first();
+        }
+
+        LockResult result;
+
+        final Cursor source = mSource;
+        if (view.mEnd == null) {
+            result = source.findNearbyGe(key);
+        } else if (view.endRangeCompare(view.mEnd, key) > 0) {
+            source.reset();
+            result = LockResult.UNOWNED;
+        } else {
+            // If isolation level is read committed, then the first key must be
+            // locked. Otherwise, an uncommitted delete could be observed.
+            result = source.findNearby(key);
+            if (source.value() == null) {
+                if (result == LockResult.ACQUIRED) {
+                    source.link().unlock();
+                }
+                return next();
+            }
+        }
+
+        mOutOfBounds = false;
+        return result;
+    }
+
+    @Override
+    public LockResult findNearbyGt(byte[] key) throws IOException {
+        BoundedView view = mView;
+        if (view.startRangeCompare(key) < 0) {
+            return first();
+        }
+
+        LockResult result;
+
+        final Cursor source = mSource;
+        if (view.mEnd == null) {
+            result = source.findNearbyGt(key);
+        } else if (view.endRangeCompare(view.mEnd, key) > 0) {
+            source.reset();
+            result = LockResult.UNOWNED;
+        } else {
+            ViewUtils.findNearbyNoLock(source, key);
+            return next();
+        }
+
+        mOutOfBounds = false;
+        return result;
+    }
+
+    @Override
+    public LockResult findNearbyLe(byte[] key) throws IOException {
+        BoundedView view = mView;
+        if (view.endRangeCompare(key) > 0) {
+            return last();
+        }
+
+        LockResult result;
+
+        final Cursor source = mSource;
+        if (view.mStart == null) {
+            result = source.findNearbyLe(key);
+        } else if (view.startRangeCompare(view.mStart, key) < 0) {
+            source.reset();
+            result = LockResult.UNOWNED;
+        } else {
+            // If isolation level is read committed, then the last key must be
+            // locked. Otherwise, an uncommitted delete could be observed.
+            result = source.findNearby(key);
+            if (source.value() == null) {
+                if (result == LockResult.ACQUIRED) {
+                    source.link().unlock();
+                }
+                return previous();
+            }
+        }
+
+        mOutOfBounds = false;
+        return result;
+     }
+
+    @Override
     public LockResult findNearbyLt(byte[] key) throws IOException {
         BoundedView view = mView;
         if (view.endRangeCompare(key) > 0) {
