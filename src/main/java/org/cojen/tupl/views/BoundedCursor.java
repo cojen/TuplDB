@@ -153,49 +153,50 @@ final class BoundedCursor implements ScannerCursor {
 
     @Override
     public LockResult first() throws IOException {
-        BoundedView view = mView;
-        if (view.mEnd == null) {
-            return toFirst();
-        }
-
-        // If first is after the source end, then no key must be locked. Switch
-        // how the source cursor behaves for this to function correctly.
-
-        final Cursor source = mSource;
-        final Transaction txn = source.link(Transaction.BOGUS);
-        final boolean autoload = source.autoload(false);
-        try {
-            toFirst();
-
-            byte[] key = source.key();
-            if (key == null) {
-                return LockResult.UNOWNED;
-            }
-            if (view.endRangeCompare(key) > 0) {
-                source.reset();
-                return LockResult.UNOWNED;
-            }
-        } finally {
-            autoload(autoload);
-            link(txn);
-        }
-
-        // This performs any required lock acquisition.
-        return autoload ? source.load() : source.lock();
-    }
-
-    private LockResult toFirst() throws IOException {
         LockResult result;
 
-        BoundedView view = mView;
-        byte[] start = view.mStart;
-        Cursor source = mSource;
-        if (start == null) {
+        final BoundedView view = mView;
+        final byte[] start = view.mStart;
+        final Cursor source = mSource;
+
+        if (view.mEnd == null) {
+            if (start == null) {
+                result = source.first();
+            } else if ((view.mMode & START_EXCLUSIVE) == 0) {
+                result = source.findGe(start);
+            } else {
+                result = source.findGt(start);
+            }
+        } else if (start == null) {
+            // If isolation level is read committed, then the first key must be
+            // locked. Otherwise, an uncommitted delete could be observed.
             result = source.first();
+            byte[] key = source.key();
+            if (key == null) {
+                result = LockResult.UNOWNED;
+            } else if (view.endRangeCompare(view.mEnd, key) > 0) {
+                if (result == LockResult.ACQUIRED) {
+                    source.link().unlock();
+                }
+                source.reset();
+                result = LockResult.UNOWNED;
+            }
+        } else if (view.endRangeCompare(view.mEnd, start) > 0) {
+            source.reset();
+            result = LockResult.UNOWNED;
         } else if ((view.mMode & START_EXCLUSIVE) == 0) {
-            result = source.findGe(start);
+            // If isolation level is read committed, then the first key must be
+            // locked. Otherwise, an uncommitted delete could be observed.
+            result = source.find(start);
+            if (source.value() == null) {
+                if (result == LockResult.ACQUIRED) {
+                    source.link().unlock();
+                }
+                return next();
+            }
         } else {
-            result = source.findGt(start);
+            ViewUtils.findNoLock(source, start);
+            return next();
         }
 
         mOutOfBounds = false;
@@ -204,49 +205,50 @@ final class BoundedCursor implements ScannerCursor {
 
     @Override
     public LockResult last() throws IOException {
-        BoundedView view = mView;
-        if (view.mStart == null) {
-            return toLast();
-        }
-
-        // If last is before the source start, then no key must be locked.
-        // Switch how the source cursor behaves for this to function correctly.
-
-        final Cursor source = mSource;
-        final Transaction txn = source.link(Transaction.BOGUS);
-        final boolean autoload = source.autoload(false);
-        try {
-            toLast();
-
-            byte[] key = source.key();
-            if (key == null) {
-                return LockResult.UNOWNED;
-            }
-            if (view.startRangeCompare(key) < 0) {
-                source.reset();
-                return LockResult.UNOWNED;
-            }
-        } finally {
-            autoload(autoload);
-            link(txn);
-        }
-
-        // This performs any required lock acquisition.
-        return autoload ? source.load() : source.lock();
-    }
-
-    private LockResult toLast() throws IOException {
         LockResult result;
 
-        BoundedView view = mView;
-        byte[] end = view.mEnd;
-        Cursor source = mSource;
-        if (end == null) {
-            result = mSource.last();
+        final BoundedView view = mView;
+        final byte[] end = view.mEnd;
+        final Cursor source = mSource;
+
+        if (view.mStart == null) {
+            if (end == null) {
+                result = source.last();
+            } else if ((view.mMode & END_EXCLUSIVE) == 0) {
+                result = source.findLe(end);
+            } else {
+                result = source.findLt(end);
+            }
+        } else if (end == null) {
+            // If isolation level is read committed, then the last key must be
+            // locked. Otherwise, an uncommitted delete could be observed.
+            result = source.last();
+            byte[] key = source.key();
+            if (key == null) {
+                result = LockResult.UNOWNED;
+            } else if (view.startRangeCompare(view.mStart, key) < 0) {
+                if (result == LockResult.ACQUIRED) {
+                    source.link().unlock();
+                }
+                source.reset();
+                result = LockResult.UNOWNED;
+            }
+        } else if (view.startRangeCompare(view.mStart, end) < 0) {
+            source.reset();
+            result = LockResult.UNOWNED;
         } else if ((view.mMode & END_EXCLUSIVE) == 0) {
-            result = source.findLe(end);
+            // If isolation level is read committed, then the last key must be
+            // locked. Otherwise, an uncommitted delete could be observed.
+            result = source.find(end);
+            if (source.value() == null) {
+                if (result == LockResult.ACQUIRED) {
+                    source.link().unlock();
+                }
+                return previous();
+            }
         } else {
-            result = source.findLt(end);
+            ViewUtils.findNoLock(source, end);
+            return previous();
         }
 
         mOutOfBounds = false;
@@ -397,39 +399,33 @@ final class BoundedCursor implements ScannerCursor {
 
     @Override
     public LockResult findGe(byte[] key) throws IOException {
-        BoundedView view = mView;
+        final BoundedView view = mView;
         if (view.startRangeCompare(key) < 0) {
             return first();
         }
 
+        LockResult result;
+
         final Cursor source = mSource;
         if (view.mEnd == null) {
-            LockResult result = source.findGe(key);
-            mOutOfBounds = false;
-            return result;
+            result = source.findGe(key);
+        } else if (view.endRangeCompare(view.mEnd, key) > 0) {
+            source.reset();
+            result = LockResult.UNOWNED;
+        } else {
+            // If isolation level is read committed, then the first key must be
+            // locked. Otherwise, an uncommitted delete could be observed.
+            result = source.find(key);
+            if (source.value() == null) {
+                if (result == LockResult.ACQUIRED) {
+                    source.link().unlock();
+                }
+                return next();
+            }
         }
 
-        final Transaction txn = source.link(Transaction.BOGUS);
-        final boolean autoload = source.autoload(false);
-        try {
-            source.findGe(key);
-            mOutOfBounds = false;
-
-            key = source.key();
-            if (key == null) {
-                return LockResult.UNOWNED;
-            }
-            if (view.endRangeCompare(key) > 0) {
-                source.reset();
-                return LockResult.UNOWNED;
-            }
-        } finally {
-            autoload(autoload);
-            link(txn);
-        }
-
-        // This performs any required lock acquisition.
-        return autoload ? source.load() : source.lock();
+        mOutOfBounds = false;
+        return result;
     }
 
     @Override
@@ -439,34 +435,21 @@ final class BoundedCursor implements ScannerCursor {
             return first();
         }
 
+        LockResult result;
+
         final Cursor source = mSource;
         if (view.mEnd == null) {
-            LockResult result = source.findGt(key);
-            mOutOfBounds = false;
-            return result;
+            result = source.findGt(key);
+        } else if (view.endRangeCompare(view.mEnd, key) > 0) {
+            source.reset();
+            result = LockResult.UNOWNED;
+        } else {
+            ViewUtils.findNoLock(source, key);
+            return next();
         }
 
-        final Transaction txn = source.link(Transaction.BOGUS);
-        final boolean autoload = source.autoload(false);
-        try {
-            source.findGt(key);
-            mOutOfBounds = false;
-
-            key = source.key();
-            if (key == null) {
-                return LockResult.UNOWNED;
-            }
-            if (view.endRangeCompare(key) > 0) {
-                source.reset();
-                return LockResult.UNOWNED;
-            }
-        } finally {
-            autoload(autoload);
-            link(txn);
-        }
-
-        // This performs any required lock acquisition.
-        return autoload ? source.load() : source.lock();
+        mOutOfBounds = false;
+        return result;
     }
 
     @Override
@@ -476,34 +459,28 @@ final class BoundedCursor implements ScannerCursor {
             return last();
         }
 
+        LockResult result;
+
         final Cursor source = mSource;
         if (view.mStart == null) {
-            LockResult result = source.findLe(key);
-            mOutOfBounds = false;
-            return result;
+            result = source.findLe(key);
+        } else if (view.startRangeCompare(view.mStart, key) < 0) {
+            source.reset();
+            result = LockResult.UNOWNED;
+        } else {
+            // If isolation level is read committed, then the last key must be
+            // locked. Otherwise, an uncommitted delete could be observed.
+            result = source.find(key);
+            if (source.value() == null) {
+                if (result == LockResult.ACQUIRED) {
+                    source.link().unlock();
+                }
+                return previous();
+            }
         }
 
-        final Transaction txn = source.link(Transaction.BOGUS);
-        final boolean autoload = source.autoload(false);
-        try {
-            source.findLe(key);
-            mOutOfBounds = false;
-
-            key = source.key();
-            if (key == null) {
-                return LockResult.UNOWNED;
-            }
-            if (view.startRangeCompare(key) < 0) {
-                source.reset();
-                return LockResult.UNOWNED;
-            }
-        } finally {
-            autoload(autoload);
-            link(txn);
-        }
-
-        // This performs any required lock acquisition.
-        return autoload ? source.load() : source.lock();
+        mOutOfBounds = false;
+        return result;
     }
 
     @Override
@@ -513,34 +490,21 @@ final class BoundedCursor implements ScannerCursor {
             return last();
         }
 
+        LockResult result;
+
         final Cursor source = mSource;
         if (view.mStart == null) {
-            LockResult result = source.findLt(key);
-            mOutOfBounds = false;
-            return result;
+            result = source.findLt(key);
+        } else if (view.startRangeCompare(view.mStart, key) < 0) {
+            source.reset();
+            result = LockResult.UNOWNED;
+        } else {
+            ViewUtils.findNoLock(source, key);
+            return previous();
         }
 
-        final Transaction txn = source.link(Transaction.BOGUS);
-        final boolean autoload = source.autoload(false);
-        try {
-            source.findLt(key);
-            mOutOfBounds = false;
-
-            key = source.key();
-            if (key == null) {
-                return LockResult.UNOWNED;
-            }
-            if (view.startRangeCompare(key) < 0) {
-                source.reset();
-                return LockResult.UNOWNED;
-            }
-        } finally {
-            autoload(autoload);
-            link(txn);
-        }
-
-        // This performs any required lock acquisition.
-        return autoload ? source.load() : source.lock();
+        mOutOfBounds = false;
+        return result;
     }
 
     @Override
@@ -554,6 +518,30 @@ final class BoundedCursor implements ScannerCursor {
             ViewUtils.findNearbyNoLock(mSource, key);
             return LockResult.UNOWNED;
         }
+    }
+
+    @Override
+    public LockResult findNearbyLt(byte[] key) throws IOException {
+        BoundedView view = mView;
+        if (view.endRangeCompare(key) > 0) {
+            return last();
+        }
+
+        LockResult result;
+
+        final Cursor source = mSource;
+        if (view.mStart == null) {
+            result = source.findNearbyLt(key);
+        } else if (view.startRangeCompare(view.mStart, key) < 0) {
+            source.reset();
+            result = LockResult.UNOWNED;
+        } else {
+            ViewUtils.findNearbyNoLock(source, key);
+            return previous();
+        }
+
+        mOutOfBounds = false;
+        return result;
     }
 
     @Override
