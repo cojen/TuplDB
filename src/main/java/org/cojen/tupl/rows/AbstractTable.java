@@ -33,6 +33,7 @@ import java.util.stream.Stream;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Index;
+import org.cojen.tupl.LockMode;
 import org.cojen.tupl.RowScanner;
 import org.cojen.tupl.RowUpdater;
 import org.cojen.tupl.Table;
@@ -127,18 +128,28 @@ public abstract class AbstractTable<R> implements Table<R> {
     private RowScanner<R> newRowScanner(Transaction txn, ScanController<R> controller)
         throws IOException
     {
-        final var scanner = new BasicRowScanner<>(this, controller);
+        final BasicRowScanner<R> scanner;
         RowPredicateLock.Closer closer = null;
 
-        if (txn != null && !txn.lockMode().noReadLock) {
-            RowPredicateLock<R> lock = mIndexLock;
-            if (lock != null) {
-                // This case is reached when a transaction was provided which is read committed
-                // or higher. Adding a predicate lock prevents new rows from being inserted
-                // into the scan range for the duration of the transaction scope. If the lock
-                // mode is repeatable read, then rows which have been read cannot be deleted,
-                // effectively making the transaction serializable.
-                closer = lock.addPredicate(txn, controller.predicate());
+        // FIXME: If joined and READ_UNCOMMITTED, perform validation with an extra filter step.
+
+        if (controller instanceof SingleScanController.Joined && txn == null) {
+            txn = mSource.newTransaction(null);
+            txn.lockMode(LockMode.REPEATABLE_READ);
+            scanner = new AutoCommitRowScanner<>(this, controller);
+        } else {
+            scanner = new BasicRowScanner<>(this, controller);
+
+            if (txn != null && !txn.lockMode().noReadLock) {
+                RowPredicateLock<R> lock = mIndexLock;
+                if (lock != null) {
+                    // This case is reached when a transaction was provided which is read
+                    // committed or higher. Adding a predicate lock prevents new rows from
+                    // being inserted into the scan range for the duration of the transaction
+                    // scope. If the lock mode is repeatable read, then rows which have been
+                    // read cannot be deleted, effectively making the transaction serializable.
+                    closer = lock.addPredicate(txn, controller.predicate());
+                }
             }
         }
 

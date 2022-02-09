@@ -1001,6 +1001,79 @@ public class IndexLockTest {
         nameIx.newStream(txn).toList();
     }
 
+    @Test
+    public void joinNullTxn() throws Exception {
+        // Test that a scanner over a secondary index with a null transaction acquires the
+        // secondary lock first, and then acquires the primary lock while the secondary lock is
+        // still held.
+
+        teardown();
+        mDatabase = Database.open(new DatabaseConfig().lockTimeout(2, TimeUnit.SECONDS));
+
+        Index tableSource = mDatabase.openIndex("test");
+        Table<TestRow2> table = tableSource.asTable(TestRow2.class);
+        Table<TestRow2> nameIx = table.viewSecondaryIndex("name");
+
+        Index nameIxSouce = ((AbstractTable) nameIx).mSource;
+
+        fill(table, 1, 3);
+
+        byte[] pk2;
+        try (Cursor c = tableSource.newCursor(null)) {
+            c.first();
+            c.next();
+            pk2 = c.key();
+        }
+
+        byte[] sk2;
+        try (Cursor c = nameIxSouce.newCursor(null)) {
+            c.first();
+            c.next();
+            sk2 = c.key();
+        }
+
+        Transaction txn1 = mDatabase.newTransaction();
+        TestRow2 row = table.newRow();
+        row.id(2);
+        table.delete(txn1, row);
+
+        Transaction txn2 = mDatabase.newTransaction();
+
+        // Blocked on primary key lock until txn1 rolls back.
+        Waiter w2 = start(() -> {
+            tableSource.lockExclusive(txn2, pk2);
+        });
+
+        // Blocked on secondary key lock until txn1 rolls back.
+        Waiter w3 = start(() -> {
+            var scanner = nameIx.newRowScanner(null, "name == ?", "name-2");
+        });
+
+        // This causes w2 to acquire the primary key lock, and now w3 should be waiting on w2.
+        txn1.reset();
+
+        w2.await();
+
+        // This should cause a deadlock with w3, indicating that it still holds sk2.
+        boolean deadlock = false;
+        txn2.lockTimeout(1, TimeUnit.SECONDS);
+        try {
+            nameIxSouce.lockExclusive(txn2, sk2);
+        } catch (DeadlockException e) {
+            deadlock = true;
+        } catch (LockTimeoutException e) {
+        }
+
+        try {
+            w3.await();
+        } catch (DeadlockException e) {
+            deadlock = true;
+        } catch (LockTimeoutException e) {
+        }
+
+        assertTrue(deadlock);
+    }
+
     private static <R extends TestRow> void fill(Table<R> table, int start, int end)
         throws Exception
     {

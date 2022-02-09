@@ -121,6 +121,8 @@ public abstract class SingleScanController<R> implements ScanController<R>, RowD
         /**
          * Given a positioned cursor over the secondary index and a decoded primary key, return
          * the associated primary value, or null if not found.
+         *
+         * @param secondaryCursor must have a non-null transaction
          */
         protected byte[] join(Cursor secondaryCursor, LockResult result, byte[] primaryKey)
             throws IOException
@@ -136,35 +138,19 @@ public abstract class SingleScanController<R> implements ScanController<R>, RowD
                 txn.unlockCombine();
             }
 
-            if (primaryValue != null) {
-                LockMode mode;
-                if (txn == null || (mode = txn.lockMode()) == LockMode.READ_UNCOMMITTED) {
-                    primaryValue = validate(secondaryCursor, primaryValue);
-                } else if (mode == LockMode.READ_COMMITTED) {
-                    // The scanner relies on predicate locking, and so validation only needs to
-                    // check that the secondary entry still exists. The predicate lock prevents
-                    // against inserts and stores against the secondary index, but it doesn't
-                    // prevent deletes. If it did, then no validation would be needed at all.
-                    if (!secondaryCursor.exists()) {
-                        // Was concurrently deleted. Note that the exists call doesn't observe
-                        // an uncommitted delete because it would store a ghost.
-                        primaryValue = null;
-                    }
+            if (primaryValue != null && txn.lockMode() == LockMode.READ_COMMITTED) {
+                // The scanner relies on predicate locking, and so validation only needs to
+                // check that the secondary entry still exists. The predicate lock prevents
+                // against inserts and stores against the secondary index, but it doesn't
+                // prevent deletes. If it did, then no validation would be needed at all.
+                if (!secondaryCursor.exists()) {
+                    // Was concurrently deleted. Note that the exists call doesn't observe
+                    // an uncommitted delete because it would store a ghost.
+                    primaryValue = null;
                 }
             }
 
             return primaryValue;
         }
-
-        /**
-         * Validate that the given primary value refers to the secondary entry. Return the
-         * primary value if validation passes, or else return null.
-         *
-         * @param primaryValue non-null
-         */
-        // FIXME: The validation logic must perform a full check against the primary value,
-        // based on the predicate for this scan batch. Need to check by schema version.
-        protected abstract byte[] validate(Cursor secondaryCursor, byte[] primaryValue)
-            throws IOException;
     }
 }
