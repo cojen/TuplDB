@@ -304,6 +304,8 @@ public class TableMaker {
             mm.return_(mm.field("unjoined"));
         }
 
+        addToPrimaryKeyMethod(mClassMaker, true);
+
         {
             // FIXME: custom load method
             MethodMaker mm = mClassMaker.addMethod
@@ -1766,6 +1768,41 @@ public class TableMaker {
     }
 
     /**
+     * Define a static method which encodes a primary key when given an encoded secondary key.
+     *
+     * @param define true to actually define, false to delegate to it
+     */
+    private void addToPrimaryKeyMethod(ClassMaker cm, boolean define) {
+        RowInfo info = mCodecGen.info;
+
+        Object[] params;
+        if (info.isAltKey()) {
+            // Needs the secondary key and value.
+            params = new Object[] {byte[].class, byte[].class};
+        } else {
+            // Only needs the secondary key.
+            params = new Object[] {byte[].class};
+        }
+
+        MethodMaker mm = cm.addMethod(byte[].class, "toPrimaryKey", params).static_();
+        Variable pkVar;
+
+        if (define) {
+            pkVar = IndexTriggerMaker.makeToPrimaryKey(mm, mRowType, mRowClass, mRowInfo, info);
+        } else {
+            mm.protected_();
+            var tableVar = mm.var(mClassMaker);
+            if (params.length == 2) {
+                pkVar = tableVar.invoke("toPrimaryKey", mm.param(0), mm.param(1));
+            } else {
+                pkVar = tableVar.invoke("toPrimaryKey", mm.param(0));
+            }
+        }
+
+        mm.return_(pkVar);
+    }
+
+    /**
      * Returns a subclass of SingleScanController that accepts the same four parameters and a
      * fifth one which refers to the primary index.
      */
@@ -1783,23 +1820,9 @@ public class TableMaker {
                 (mm.param(0), mm.param(1), mm.param(2), mm.param(3), mm.param(4));
         }
 
-        // Define a method which encodes a primary key when given an encoded secondary key. It
-        // must be protected to be accessible by filter implementation subclasses.
-        RowInfo codecInfo = mCodecGen.info;
-        {
-            MethodMaker mm;
-            if (codecInfo.isAltKey()) {
-                // Needs the secondary key and value.
-                mm = cm.addMethod(byte[].class, "toPrimaryKey", byte[].class, byte[].class);
-            } else {
-                // Only needs the secondary key.
-                mm = cm.addMethod(byte[].class, "toPrimaryKey", byte[].class);
-            }
-            mm.protected_().static_();
-            var primaryKeyVar = IndexTriggerMaker.makeToPrimaryKey
-                (mm, mRowType, mRowClass, mRowInfo, codecInfo);
-            mm.return_(primaryKeyVar);
-        }
+        // Provide access to the toPrimaryKey method to be accessible by filter implementation
+        // subclasses, which are defined in a different package.
+        addToPrimaryKeyMethod(cm, false);
 
         {
             // Specified by RowDecoderEncoder.
@@ -1811,11 +1834,14 @@ public class TableMaker {
             var keyVar = cursorVar.invoke("key");
 
             Variable primaryKeyVar;
-            if (codecInfo.isAltKey()) {
-                var valueVar = cursorVar.invoke("value");
-                primaryKeyVar = mm.invoke("toPrimaryKey", keyVar, valueVar);
-            } else {
-                primaryKeyVar = mm.invoke("toPrimaryKey", keyVar);
+            {
+                var tableVar = mm.var(mClassMaker);
+                if (mCodecGen.info.isAltKey()) {
+                    var valueVar = cursorVar.invoke("value");
+                    primaryKeyVar = tableVar.invoke("toPrimaryKey", keyVar, valueVar);
+                } else {
+                    primaryKeyVar = tableVar.invoke("toPrimaryKey", keyVar);
+                }
             }
 
             var primaryValueVar = mm.invoke("join", cursorVar, resultVar, primaryKeyVar);
