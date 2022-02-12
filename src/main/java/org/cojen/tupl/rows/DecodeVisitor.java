@@ -60,14 +60,14 @@ class DecodeVisitor extends Visitor {
     private int mHighestLocatedValue;
 
     /**
-     * Supports two forms of decode methods and two forms of predicate methods.
+     * Supports three forms of decode methods and two forms of predicate methods.
      *
      *     R decodeRow(byte[] key, byte[] value, ...)
      *     R decodeRow(byte[] key, Cursor c, ...)
      *     R decodeRow(Cursor c, ...)
      *
-     * If a stopColumn and stopArgument are provided, then the cursor method form is
-     * required in order for the stop to actually work.
+     * If a stopColumn and stopArgument are provided, then a cursor method form is required in
+     * order for the stop to actually work.
      *
      *     boolean test(byte[] key, byte[] value, ...)
      *     boolean test(R row, byte[] value, ...)

@@ -878,7 +878,7 @@ public class TableMaker {
         } else {
             Label notNull = mm.label();
             valueVar.ifNe(null, notNull);
-            resetValueColumns(rowVar);
+            markValuesUnset(rowVar);
             mm.return_(false);
             notNull.here();
             mm.invoke("decodeValue", rowVar, valueVar);
@@ -1499,35 +1499,6 @@ public class TableMaker {
         mm.finally_(tryStart, () -> txnVar.invoke("exit"));
     }
 
-    private void resetValueColumns(Variable rowVar) {
-        // Clear the value column fields that refer to objects.
-        for (ColumnInfo info : mRowInfo.valueColumns.values()) {
-            Field field = rowVar.field(info.name);
-            if (!info.type.isPrimitive()) {
-                field.set(null);
-            }
-        }
-
-        // Clear the value column state fields. Skip the key columns, which are numbered first.
-        // Note that the codecs are accessed, to match encoding order.
-        int num = mRowInfo.keyColumns.size();
-        int mask = 0;
-        for (ColumnCodec codec : mRowGen.valueCodecs()) {
-            mask |= RowGen.stateFieldMask(num);
-            if (isMaskReady(++num, mask)) {
-                mask = maskRemainder(num, mask);
-                Field field = stateField(rowVar, num - 1);
-                mask = ~mask;
-                if (mask == 0) {
-                    field.set(mask);
-                } else {
-                    field.set(field.and(mask));
-                    mask = 0;
-                }
-            }
-        }
-    }
-
     /**
      * Makes code which obtains the current trigger and acquires the lock which must be held
      * for the duration of the operation. The lock must be held even if no trigger must be run.
@@ -1571,7 +1542,7 @@ public class TableMaker {
     }
 
     /**
-     * Mark only the given columns as clean. All others are unset.
+     * Mark only the given columns as CLEAN. All others are UNSET.
      */
     private static void markClean(final Variable rowVar, final RowGen rowGen,
                                   final Map<String, ColumnInfo> columns)
@@ -1618,6 +1589,60 @@ public class TableMaker {
         mask >>>= (32 - ((info.allColumns.size() & 0b1111) << 1));
         var field = rowVar.field(stateFields[i]);
         field.set(field.and(mask));
+    }
+
+    /**
+     * Mark all the value columns as UNSET without modifying the key column states.
+     */
+    private void markValuesUnset(Variable rowVar) {
+        if (isPrimaryTable()) {
+            // Clear the value column state fields. Skip the key columns, which are numbered
+            // first. Note that the codecs are accessed, to match encoding order.
+            int num = mRowInfo.keyColumns.size();
+            int mask = 0;
+            for (ColumnCodec codec : mRowGen.valueCodecs()) {
+                mask |= RowGen.stateFieldMask(num);
+                if (isMaskReady(++num, mask)) {
+                    mask = maskRemainder(num, mask);
+                    Field field = stateField(rowVar, num - 1);
+                    mask = ~mask;
+                    if (mask == 0) {
+                        field.set(mask);
+                    } else {
+                        field.set(field.and(mask));
+                        mask = 0;
+                    }
+                }
+            }
+            return;
+        }
+
+        final Map<String, ColumnInfo> keyColumns = mCodecGen.info.keyColumns;
+        final int maxNum = mRowInfo.allColumns.size();
+
+        int num = 0, mask = 0;
+
+        for (int step = 0; step < 2; step++) {
+            // Key columns are numbered before value columns. Add checks in two steps.
+            // Note that the codecs are accessed, to match encoding order.
+            var baseCodecs = step == 0 ? mRowGen.keyCodecs() : mRowGen.valueCodecs();
+
+            for (ColumnCodec codec : baseCodecs) {
+                if (!keyColumns.containsKey(codec.mInfo.name)) {
+                    mask |= RowGen.stateFieldMask(num);
+                }
+                if ((++num & 0b1111) == 0 || num >= maxNum) {
+                    Field field = rowVar.field(mRowGen.stateField(num - 1));
+                    mask = ~mask;
+                    if (mask == 0) {
+                        field.set(mask);
+                    } else {
+                        field.set(field.and(mask));
+                        mask = 0;
+                    }
+                }
+            }
+        }
     }
 
     private Field stateField(Variable rowVar, int columnNum) {

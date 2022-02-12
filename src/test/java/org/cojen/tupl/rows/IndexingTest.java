@@ -128,6 +128,15 @@ public class IndexingTest {
 
         {
             TestRow row = table.newRow();
+            row.path("pathx");
+            row.name("xxx");
+            row.id(2);
+            assertFalse(alt.load(null, row));
+            assertTrue(row.toString().contains("TestRow{path=pathx}"));
+        }
+
+        {
+            TestRow row = table.newRow();
             row.id(3);
             try {
                 ix1.load(null, row);
@@ -147,6 +156,15 @@ public class IndexingTest {
                 ix1.insert(null, row);
             } catch (UnmodifiableViewException e) {
             }
+        }
+
+        {
+            TestRow row = table.newRow();
+            row.name("namex");
+            row.path("xxx");
+            row.id(2);
+            assertFalse(ix1.load(null, row));
+            assertTrue(row.toString().contains("TestRow{id=2, name=namex}"));
         }
 
         {
@@ -171,6 +189,16 @@ public class IndexingTest {
                 ix2.delete(null, row);
             } catch (UnmodifiableViewException e) {
             }
+        }
+
+        {
+            TestRow row = table.newRow();
+            row.num(new BigDecimal("999"));
+            row.name("namex");
+            row.path("xxx");
+            row.id(2);
+            assertFalse(ix2.load(null, row));
+            assertTrue(row.toString().contains("TestRow{id=2, name=namex, num=999}"));
         }
 
         try {
