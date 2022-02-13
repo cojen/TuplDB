@@ -214,6 +214,24 @@ public class RowCrudTest {
     }
 
     @Test
+    public void loadSideEffect() throws Exception {
+        // When a load operation returns false, the state of all non-key fields must be unset,
+        // but all the fields must remain unchanged.
+
+        TestRow row = mTable.newRow();
+        row.id(10);
+        row.str1("hello");
+        row.str2("world");
+        row.num1(123);
+        TestRow copy = mTable.cloneRow(row);
+        assertFalse(mTable.load(null, row));
+        assertTrue(row.toString().contains("TestRow{id=10}"));
+
+        assertNotEquals(row.toString(), copy.toString());
+        assertEquals(0, mTable.comparator("+id+str1+str2+num1").compare(row, copy));
+    }
+
+    @Test
     public void basicUpdaterDeleteAutoCommit() throws Exception {
         basicUpdaterDelete(null);
     }
