@@ -161,7 +161,7 @@ loadScripts(document, 'script');</script>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#delete(org.cojen.tupl.Transaction,R)" class="member-name-link">delete</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Unconditionally removes an existing row by a primary or alternate key.</div>
+<div class="block">Unconditionally removes an existing row by primary key.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Table.html" title="type parameter in Table">R</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#exchange(org.cojen.tupl.Transaction,R)" class="member-name-link">exchange</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
@@ -174,7 +174,7 @@ loadScripts(document, 'script');</script>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#exists(org.cojen.tupl.Transaction,R)" class="member-name-link">exists</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Checks if a row exists by searching against a primary or alternate key.</div>
+<div class="block">Checks if a row exists by searching against the primary key.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#insert(org.cojen.tupl.Transaction,R)" class="member-name-link">insert</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
@@ -191,7 +191,7 @@ loadScripts(document, 'script');</script>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#load(org.cojen.tupl.Transaction,R)" class="member-name-link">load</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Fully loads the row by a primary or alternate key.</div>
+<div class="block">Fully loads the row by primary key.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#merge(org.cojen.tupl.Transaction,R)" class="member-name-link">merge</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
@@ -507,12 +507,12 @@ loadScripts(document, 'script');</script>
 <div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">load</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</span>
       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Fully loads the row by a primary or alternate key.</div>
+<div class="block">Fully loads the row by primary key.</div>
 <dl class="notes">
 <dt>Returns:</dt>
 <dd>false if a corresponding row doesn't exist</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if no primary or alternate key is fully specified</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if primary key isn't fully specified</dd>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
@@ -523,15 +523,15 @@ loadScripts(document, 'script');</script>
 <div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">exists</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</span>
         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Checks if a row exists by searching against a primary or alternate key. This method
- should be called only if the row doesn't need to be loaded or stored &mdash; calling
- exists and then calling a load or store method is typically less efficient than skipping
- the exists check entirely.</div>
+<div class="block">Checks if a row exists by searching against the primary key. This method should be
+ called only if the row doesn't need to be loaded or stored &mdash; calling exists and
+ then calling a load or store method is typically less efficient than skipping the exists
+ check entirely.</div>
 <dl class="notes">
 <dt>Returns:</dt>
 <dd>false if a corresponding row doesn't exist</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if no primary or alternate key is fully specified</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if primary key isn't fully specified</dd>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
@@ -616,7 +616,7 @@ loadScripts(document, 'script');</script>
 <dt>Returns:</dt>
 <dd>false if a corresponding row doesn't exist</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if no primary or alternate key is fully specified</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if primary key isn't fully specified</dd>
 <dd><code><a href="UniqueConstraintException.html" title="class in org.cojen.tupl">UniqueConstraintException</a></code> - if a conflicting alternate key exists</dd>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
@@ -634,7 +634,7 @@ loadScripts(document, 'script');</script>
 <dt>Returns:</dt>
 <dd>false if a corresponding row doesn't exist</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if no primary or alternate key is fully specified</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if primary key isn't fully specified</dd>
 <dd><code><a href="UniqueConstraintException.html" title="class in org.cojen.tupl">UniqueConstraintException</a></code> - if a conflicting alternate key exists</dd>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
@@ -646,12 +646,12 @@ loadScripts(document, 'script');</script>
 <div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">delete</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</span>
         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Unconditionally removes an existing row by a primary or alternate key.</div>
+<div class="block">Unconditionally removes an existing row by primary key.</div>
 <dl class="notes">
 <dt>Returns:</dt>
 <dd>false if a corresponding row doesn't exist</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if no primary or alternate key is fully specified</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if primary key isn't fully specified</dd>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>

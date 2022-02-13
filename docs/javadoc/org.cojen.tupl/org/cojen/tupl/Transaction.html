@@ -835,9 +835,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/ja
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl class="notes">
 <dt>Returns:</dt>
-<dd>locked index id</dd>
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if no locks held</dd>
+<dd>locked index id, 0 if no locks are held</dd>
 </dl>
 </section>
 </li>
@@ -850,9 +848,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/ja
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl class="notes">
 <dt>Returns:</dt>
-<dd>locked key; instance is not cloned</dd>
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if no locks held</dd>
+<dd>locked key (not cloned), or null if no locks are held</dd>
 </dl>
 </section>
 </li>
@@ -867,7 +863,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/ja
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl class="notes">
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if no locks held, or if unlocking an exclusive lock, or if
+<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if no locks are held, or if unlocking an exclusive lock, or if
  crossing a scope boundary, or if unlocking a non-immediate upgrade</dd>
 </dl>
 </section>
@@ -883,7 +879,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/ja
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl class="notes">
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if no locks held, or if unlocking an exclusive lock, or if
+<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if no locks are held, or if unlocking an exclusive lock, or if
  crossing a scope boundary, or if too many shared locks, or if unlocking a non-immediate
  upgrade</dd>
 </dl>
@@ -898,8 +894,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/ja
  <p><i>Note: This method is intended for advanced use cases.</i></div>
 <dl class="notes">
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if no locks held, or if combining an acquire with an
- upgrade</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if combining an acquire with an upgrade</dd>
 </dl>
 </section>
 </li>
