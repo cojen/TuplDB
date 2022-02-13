@@ -25,6 +25,7 @@ import java.lang.invoke.MethodType;
 import java.lang.ref.WeakReference;
 
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
@@ -46,6 +47,8 @@ import org.cojen.tupl.UnmodifiableViewException;
 import org.cojen.tupl.core.RowPredicateLock;
 
 import org.cojen.tupl.diag.QueryPlan;
+
+import org.cojen.tupl.filter.ColumnFilter;
 
 import org.cojen.tupl.views.ViewUtils;
 
@@ -294,8 +297,8 @@ public class TableMaker {
         MethodMaker ctor = mClassMaker.addConstructor(mt);
         ctor.invokeSuperConstructor(ctor.param(0), ctor.param(1), ctor.param(2));
 
-        mClassMaker.addField(Index.class, "primary").private_().final_();
-        ctor.field("primary").set(ctor.param(0).invoke("primaryIndex"));
+        mClassMaker.addField(Index.class, "primaryIndex").private_().final_();
+        ctor.field("primaryIndex").set(ctor.param(0).invoke("primaryIndex"));
         mClassMaker.addField(AbstractTable.class, "unjoined").private_().final_();
         ctor.field("unjoined").set(ctor.param(3));
 
@@ -304,21 +307,17 @@ public class TableMaker {
             mm.return_(mm.field("unjoined"));
         }
 
-        addToPrimaryKeyMethod(mClassMaker, true);
+        addToPrimaryKeyMethod(mClassMaker, false, true);
+        addToPrimaryKeyMethod(mClassMaker, true, true);
 
-        {
-            // FIXME: custom load method
-            MethodMaker mm = mClassMaker.addMethod
-                (boolean.class, "load", Transaction.class, Object.class).public_();
-            mm.new_(Exception.class, "FIXME").throw_();
-        }
+        addJoinedLoadMethod(primaryTableClass);
 
         // Define the class that implements the unfiltered SingleScanController and construct a
         // singleton instance.
         var scanControllerClass = makeUnfilteredSecondaryScanControllerClass(primaryTableClass);
         mClassMaker.addField(scanControllerClass, "unfiltered").private_().final_();
         ctor.field("unfiltered").set
-            (ctor.new_(scanControllerClass, null, false, null, false, ctor.field("primary")));
+            (ctor.new_(scanControllerClass, null, false, null, false, ctor.field("primaryIndex")));
 
         // Override the method inherited from the unjoined class as defined in AbstractTable.
         MethodMaker mm = mClassMaker.addMethod
@@ -326,6 +325,130 @@ public class TableMaker {
         mm.return_(mm.field("unfiltered"));
 
         return doFinish(mt);
+    }
+
+    private void addJoinedLoadMethod(Class<?> primaryTableClass) {
+        MethodMaker mm = mClassMaker.addMethod
+            (boolean.class, "load", Transaction.class, Object.class).public_();
+
+        Variable txnVar = mm.param(0);
+        Variable rowVar = mm.param(1).cast(mRowClass);
+
+        {
+            Label ready = mm.label();
+            mm.invoke("checkPrimaryKeySet", rowVar).ifTrue(ready);
+            mm.new_(IllegalStateException.class, "Primary key isn't fully specified").throw_();
+            ready.here();
+        }
+
+        Variable valueVar = null;
+        Variable repeatableVar = null;
+        Variable joinedPkVar;
+
+        Label notFound = mm.label();
+
+        if (mCodecGen.info.isAltKey()) {
+            var keyVar = mm.invoke("encodePrimaryKey", rowVar);
+            valueVar = mm.field("mSource").invoke("load", txnVar, keyVar);
+            valueVar.ifEq(null, notFound);
+            joinedPkVar = mm.invoke("toPrimaryKey", rowVar, valueVar);
+        } else {
+            repeatableVar = mm.var(RowUtils.class).invoke("isRepeatable", txnVar);
+            Label ready = mm.label();
+            repeatableVar.ifFalse(ready);
+            var keyVar = mm.invoke("encodePrimaryKey", rowVar);
+            // Calling exists is necessary for proper lock acquisition order.
+            var resultVar = mm.field("mSource").invoke("exists", txnVar, keyVar);
+            resultVar.ifFalse(notFound);
+            ready.here();
+            joinedPkVar = mm.invoke("toPrimaryKey", rowVar);
+        }
+
+        var joinedValueVar = mm.field("primaryIndex").invoke("load", txnVar, joinedPkVar);
+
+        Label notNull = mm.label();
+        joinedValueVar.ifNe(null, notNull);
+
+        notFound.here();
+        markValuesUnset(rowVar);
+        mm.return_(false);
+
+        notNull.here();
+
+        if (repeatableVar == null) {
+            repeatableVar = mm.var(RowUtils.class).invoke("isRepeatable", txnVar);
+        }
+
+        Label checked = mm.label();
+        repeatableVar.ifFalse(checked);
+
+        if (valueVar != null) {
+            // Decode the primary key columns (required by alt key only).
+            mm.invoke("decodeValue", rowVar, valueVar);
+        }
+
+        mm.var(primaryTableClass).invoke("decodeValue", rowVar, joinedValueVar);
+
+        Label success = mm.label().here();
+        markAllClean(rowVar, mRowGen, mRowGen);
+        mm.return_(true);
+
+        // This point is reached for double checking that the joined row matches to the
+        // secondary row, which is required when a lock isn't held.
+        checked.here();
+
+        // Copy of all the columns which will be modified by decodeValue.
+        Map<String, ColumnInfo> copiedColumns;
+        if (valueVar != null) {
+            // For alt key, the primary key columns will be modified too.
+            copiedColumns = mRowInfo.allColumns;
+        } else {
+            copiedColumns = mRowInfo.valueColumns;
+        }
+        Map<String, Variable> copiedVars = new LinkedHashMap<>(copiedColumns.size());
+        for (String name : copiedColumns.keySet()) {
+            copiedVars.put(name, rowVar.field(name).get());
+        }
+
+        if (valueVar != null) {
+            // For alt key, decode the primary key columns too.
+            mm.invoke("decodeValue", rowVar, valueVar);
+        }
+
+        mm.var(primaryTableClass).invoke("decodeValue", rowVar, joinedValueVar);
+
+        // Check all the secondary columns, except those that refer to the primary key, which
+        // won't have changed.
+        Label fail = mm.label();
+        Map<String, ColumnInfo> pkColumns = mRowInfo.keyColumns;
+        for (ColumnInfo column : mCodecGen.info.allColumns.values()) {
+            String name = column.name;
+            if (pkColumns.containsKey(name)) {
+                continue;
+            }
+            Label pass = mm.label();
+            // Note that the secondary columns are passed as the compare arguments, because
+            // that's what they effectively are -- a type of filter expression. This is
+            // important because the comparison isn't necessarily symmetrical. See
+            // BigDecimalUtils.matches.
+            CompareUtils.compare(mm, column, rowVar.field(name),
+                                 copiedColumns.get(name), copiedVars.get(name),
+                                 ColumnFilter.OP_EQ, pass, fail);
+            pass.here();
+        }
+
+        mm.goto_(success);
+
+        fail.here();
+
+        // Restore all the columns back to their original values, preventing any side-effects.
+        // When the load method returns false, it's not supposed to modify any columns,
+        // regardless of their state.
+        for (Map.Entry<String, Variable> e : copiedVars.entrySet()) {
+            rowVar.field(e.getKey()).set(e.getValue());
+        }
+
+        mm.goto_(notFound);
     }
 
     private MethodHandle doFinish(MethodType mt) {
@@ -1795,9 +1918,10 @@ public class TableMaker {
     /**
      * Define a static method which encodes a primary key when given an encoded secondary key.
      *
+     * @param hasRow true to pass a row with a fully specified key instead of an encoded key
      * @param define true to actually define, false to delegate to it
      */
-    private void addToPrimaryKeyMethod(ClassMaker cm, boolean define) {
+    private void addToPrimaryKeyMethod(ClassMaker cm, boolean hasRow, boolean define) {
         RowInfo info = mCodecGen.info;
 
         Object[] params;
@@ -1807,6 +1931,10 @@ public class TableMaker {
         } else {
             // Only needs the secondary key.
             params = new Object[] {byte[].class};
+        }
+
+        if (hasRow) {
+            params[0] = mRowClass;
         }
 
         MethodMaker mm = cm.addMethod(byte[].class, "toPrimaryKey", params).static_();
@@ -1847,7 +1975,7 @@ public class TableMaker {
 
         // Provide access to the toPrimaryKey method to be accessible by filter implementation
         // subclasses, which are defined in a different package.
-        addToPrimaryKeyMethod(cm, false);
+        addToPrimaryKeyMethod(cm, false, false);
 
         {
             // Specified by RowDecoderEncoder.

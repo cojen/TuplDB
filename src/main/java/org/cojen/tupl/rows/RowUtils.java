@@ -21,6 +21,8 @@ import java.math.BigInteger;
 
 import java.nio.charset.StandardCharsets;
 
+import org.cojen.tupl.Transaction;
+
 import org.cojen.tupl.core.Utils;
 
 /**
@@ -723,5 +725,9 @@ public class RowUtils extends Utils {
 
     public static IllegalArgumentException nullColumnException(String name) {
         return new IllegalArgumentException("Cannot be null: " + name);
+    }
+
+    public static boolean isRepeatable(Transaction txn) {
+        return txn != null && txn.lockMode().isRepeatable();
     }
 }

@@ -343,6 +343,14 @@ public class IndexTriggerMaker<R> {
      * Makes code which does the reverse of what IndexTriggerMaker normally does. Given an
      * encoded secondary index or alternate key, it produces a primary key.
      *
+     *     byte[] toPrimaryKey(byte[] key)
+     *     byte[] toPrimaryKey(byte[] key, byte[] value)
+     *     byte[] toPrimaryKey(R row)
+     *     byte[] toPrimaryKey(R row, byte[] value)
+     *
+     * If this method is called for a secondary key, the value param is required. When a row
+     * param is provided, the key columns must be fully specified.
+     *
      * @param mm param(0) is the secondary key, and param(1) is the secondary value (only
      * needed for alternate keys)
      * @return a byte[] variable with the encoded primary key
@@ -362,13 +370,22 @@ public class IndexTriggerMaker<R> {
         maker.buildColumnSources(sources, secondaryGen.valueCodecMap(), false, primaryKeyCodecs);
         maker.mColumnSources = sources;
 
+        Variable rowVar = null;
+        int rowMode = ROW_NONE;
         var keyVar = mm.param(0);
         var valueVar = secondaryInfo.isAltKey() ? mm.param(1) : null;
-        maker.findColumns(mm, keyVar, valueVar, 0, ROW_NONE);
+
+        if (keyVar.classType() != byte[].class) {
+            rowVar = keyVar;
+            rowMode = ROW_KEY_ONLY;
+            keyVar = null; // shouldn't be needed
+        }
+
+        maker.findColumns(mm, keyVar, valueVar, 0, rowMode);
 
         ColumnCodec[] pkCodecs = ColumnCodec.bind(primaryKeyCodecs, mm);
 
-        return maker.encodeColumns(mm, sources, null, ROW_NONE, keyVar, valueVar, pkCodecs);
+        return maker.encodeColumns(mm, sources, rowVar, rowMode, keyVar, valueVar, pkCodecs);
     }
 
     private Map<String, ColumnSource> buildColumnSources() {

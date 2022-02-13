@@ -1292,4 +1292,194 @@ public class IndexingTest {
         int num();
         void num(int num);
     }
+
+    @Test
+    public void loadJoin() throws Exception {
+        Database db = Database.open(new DatabaseConfig().directPageAccess(false));
+        Table<TestRow> table = db.openTable(TestRow.class);
+
+        Table<TestRow> alt = table.viewAlternateKey("path");
+        Table<TestRow> ix1 = table.viewSecondaryIndex("name");
+        Table<TestRow> ix2 = table.viewSecondaryIndex("num", "name");
+
+        for (int i=1; i<=3; i++) {
+            TestRow row = table.newRow();
+            row.id(i);
+            row.path("path-" + i);
+            row.name("name-" + i);
+            row.num(BigDecimal.valueOf(i));
+            table.insert(null, row);
+        }
+
+        // Test successful loads.
+
+        for (int i=1; i<=3; i++) {
+            TestRow expect = table.newRow();
+            expect.id(2);
+            assertTrue(table.load(null, expect));
+            
+            Transaction txn = switch (i) {
+                case 1 -> db.newTransaction(); case 2 -> Transaction.BOGUS; default -> null;
+            };
+
+            {
+                TestRow row = alt.newRow();
+                row.path("path-2");
+                row.id(999); // should be ignored
+                assertTrue(alt.load(txn, row));
+                assertEquals(expect, row);
+            }
+
+            if (i == 1) {
+                txn.reset();
+            }
+
+            {
+                TestRow row = ix1.newRow();
+                row.name("name-2");
+                row.id(2);
+                assertTrue(ix1.load(txn, row));
+                assertEquals(expect, row);
+            }
+
+            if (i == 1) {
+                txn.reset();
+            }
+
+            {
+                TestRow row = ix2.newRow();
+                row.num(BigDecimal.valueOf(2));
+                row.name("name-2");
+                row.id(2);
+                assertTrue(ix2.load(txn, row));
+                assertEquals(expect, row);
+            }
+
+            if (i == 1) {
+                txn.reset();
+            }
+        }
+
+        // Test simple failed loads.
+
+        for (int i=1; i<=3; i++) {
+            TestRow expect = table.newRow();
+            expect.id(2);
+            assertTrue(table.load(null, expect));
+            
+            Transaction txn = switch (i) {
+                case 1 -> db.newTransaction(); case 2 -> Transaction.BOGUS; default -> null;
+            };
+
+            {
+                TestRow row = alt.newRow();
+                row.path("path-x");
+                row.id(999); // should be ignored
+                TestRow copy = alt.cloneRow(row);
+                assertFalse(alt.load(txn, row));
+                assertTrue(row.toString().contains("TestRow{path=path-x}"));
+                // Fields must remain unchanged.
+                assertEquals(0, alt.comparator("+path+id").compare(row, copy));
+            }
+
+            if (i == 1) {
+                txn.reset();
+            }
+
+            {
+                TestRow row = ix1.newRow();
+                row.name("name-x");
+                row.id(2);
+                assertFalse(ix1.load(txn, row));
+                assertTrue(row.toString().contains("TestRow{id=2, name=name-x}"));
+            }
+
+            if (i == 1) {
+                txn.reset();
+            }
+
+            {
+                TestRow row = ix2.newRow();
+                row.num(BigDecimal.valueOf(2));
+                row.name("name-x");
+                row.id(2);
+                assertFalse(ix2.load(txn, row));
+                assertTrue(row.toString().contains("TestRow{id=2, name=name-x, num=2}"));
+            }
+
+            if (i == 1) {
+                txn.reset();
+            }
+        }
+    }
+
+    @Test
+    public void loadJoinRace() throws Exception {
+        // Test the join double check.
+
+        Database db = Database.open(new DatabaseConfig().lockTimeout(2, TimeUnit.SECONDS));
+        Index ix = db.openIndex("test");
+        Table<TestRow> table = ix.asTable(TestRow.class);
+        Table<TestRow> alt = table.viewAlternateKey("path");
+
+        {
+            TestRow row = table.newRow();
+            row.id(1);
+            row.path("path");
+            row.name("name");
+            row.num(BigDecimal.ZERO);
+            table.insert(null, row);
+        }
+
+        byte[] key;
+        try (Cursor c = ix.newCursor(null)) {
+            c.first();
+            key = c.key();
+        }
+
+        Transaction txn1 = db.newTransaction();
+        ix.lockExclusive(txn1, key);
+
+        try {
+            TestRow row = alt.newRow();
+            row.path("path");
+            alt.load(null, row);
+            fail();
+        } catch (LockTimeoutException e) {
+            // Cannot load the primary row, which is locked by txn1.
+        }
+
+        {
+            TestRow row = alt.newRow();
+            row.path("path");
+            // Unjoined load isn't blocked.
+            alt.viewUnjoined().load(null, row);
+            assertEquals(1, row.id());
+        }
+
+        // Block in a background thread.
+        var task = startTestTaskAndWaitUntilBlocked(() -> {
+            try {
+                TestRow row = alt.newRow();
+                row.path("path");
+                row.id(999); // should be ignored
+                TestRow copy = alt.cloneRow(row);
+                assertFalse(alt.load(null, row));
+                assertTrue(row.toString().contains("TestRow{path=path}"));
+                // Fields must remain unchanged.
+                assertEquals(0, alt.comparator("+path+id").compare(row, copy));
+            } catch (Throwable e) {
+                RowUtils.rethrow(e);
+            }
+        });
+
+        // Now update the row such that the double check fails.
+        TestRow row = table.newRow();
+        row.id(1);
+        row.path("xxx");
+        assertTrue(table.update(txn1, row));
+        txn1.commit();
+
+        task.join();
+    }
 }
