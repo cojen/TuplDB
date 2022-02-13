@@ -944,14 +944,7 @@ public class TableMaker {
 
         Label ready = mm.label();
         mm.invoke("checkPrimaryKeySet", rowVar).ifTrue(ready);
-
-        if (mCodecGen.info.alternateKeys.isEmpty()) {
-            mm.new_(IllegalStateException.class, "Primary key isn't fully specified").throw_();
-        } else {
-            // FIXME: check alternate keys too, and load using a join
-            mm.new_(IllegalStateException.class,
-                    "Primary or alternate key isn't fully specified").throw_();
-        }
+        mm.new_(IllegalStateException.class, "Primary key isn't fully specified").throw_();
 
         ready.here();
 
@@ -1279,14 +1272,7 @@ public class TableMaker {
 
         Label ready = mm.label();
         mm.invoke("checkPrimaryKeySet", rowVar).ifTrue(ready);
-
-        if (mCodecGen.info.alternateKeys.isEmpty()) {
-            mm.new_(IllegalStateException.class, "Primary key isn't fully specified").throw_();
-        } else {
-            // FIXME: check alternate keys too, and load using a join
-            mm.new_(IllegalStateException.class,
-                    "Primary or alternate key isn't fully specified").throw_();
-        }
+        mm.new_(IllegalStateException.class, "Primary key isn't fully specified").throw_();
 
         ready.here();
 
