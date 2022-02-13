@@ -1457,8 +1457,9 @@ public class RowStore {
         } else {
             offset += lengthPrefixPF(numValues);
             info.valueColumns = new TreeMap<>();
-
-            offset = decodeIndexColumn(primaryInfo, desc, offset, info.valueColumns);
+            do {
+                offset = decodeIndexColumn(primaryInfo, desc, offset, info.valueColumns);
+            } while (--numValues > 0);
         }
 
         info.allColumns = new TreeMap<>(info.keyColumns);
