@@ -122,7 +122,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
 
     private final CursorTable mCursors;
 
-    private ReplDecoder mDecoder;
+    private volatile ReplDecoder mDecoder;
 
     private volatile Throwable mDecodeException;
 
@@ -1318,6 +1318,8 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
 
     /**
      * Returns the position of the next operation to decode.
+     *
+     * @throws IllegalStateException if decoder hasn't been assigned yet
      */
     long decodePosition() {
         return decoder().decodePositionOpaque();

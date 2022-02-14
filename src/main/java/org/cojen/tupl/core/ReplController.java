@@ -169,6 +169,9 @@ final class ReplController extends ReplWriter {
             StreamReplicator.Writer writer = mTxnRedoWriter.mReplWriter;
             long pos = writer == null ? mEngine.decodePosition() : writer.position();
             return (pos - checkpointPosition()) >= sizeThreshold;
+        } catch (IllegalStateException e) {
+            // Decoder hasn't been assigned yet.
+            return false;
         } finally {
             releaseShared();
         }
