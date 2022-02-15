@@ -250,7 +250,8 @@ loadScripts(document, 'script');</script>
 <div class="block">Returns a new transaction which is compatible with this table.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#queryPlan(java.lang.String,java.lang.Object...)" class="member-name-link">queryPlan</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;filter,
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#queryPlan(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">queryPlan</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;filter,
  <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Returns a query plan used by <a href="#newRowScanner(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>newRowScanner</code></a> et al.</div>
@@ -362,7 +363,7 @@ loadScripts(document, 'script');</script>
 <dt>See Also:</dt>
 <dd>
 <ul class="see-list-long">
-<li><a href="#queryPlan(java.lang.String,java.lang.Object...)"><code>queryPlan</code></a></li>
+<li><a href="#queryPlan(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>queryPlan</code></a></li>
 </ul>
 </dd>
 </dl>
@@ -388,7 +389,7 @@ loadScripts(document, 'script');</script>
 <dt>See Also:</dt>
 <dd>
 <ul class="see-list-long">
-<li><a href="#queryPlan(java.lang.String,java.lang.Object...)"><code>queryPlan</code></a></li>
+<li><a href="#queryPlan(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>queryPlan</code></a></li>
 </ul>
 </dd>
 </dl>
@@ -726,13 +727,15 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
-<section class="detail" id="queryPlan(java.lang.String,java.lang.Object...)">
+<section class="detail" id="queryPlan(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)">
 <h3>queryPlan</h3>
-<div class="member-signature"><span class="return-type"><a href="diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></span>&nbsp;<span class="element-name">queryPlan</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;filter,
+<div class="member-signature"><span class="return-type"><a href="diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></span>&nbsp;<span class="element-name">queryPlan</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;filter,
  <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</span></div>
 <div class="block">Returns a query plan used by <a href="#newRowScanner(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>newRowScanner</code></a> et al.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
+<dd><code>txn</code> - optional transaction to be used; pass null for auto-commit mode</dd>
 <dd><code>filter</code> - optional filter expression</dd>
 <dd><code>args</code> - optional filter arguments</dd>
 </dl>
