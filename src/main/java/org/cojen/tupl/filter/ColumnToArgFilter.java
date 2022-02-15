@@ -78,7 +78,7 @@ public class ColumnToArgFilter extends ColumnFilter {
     }
 
     @Override
-    public boolean onlyUses(Map<String, ColumnInfo> columns) {
+    public boolean isSufficient(Map<String, ColumnInfo> columns) {
         return columns.containsKey(mColumn.name);
     }
 

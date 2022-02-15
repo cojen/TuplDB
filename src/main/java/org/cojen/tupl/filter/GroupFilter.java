@@ -112,9 +112,9 @@ public abstract class GroupFilter extends RowFilter {
     }
 
     @Override
-    public boolean onlyUses(Map<String, ColumnInfo> columns) {
+    public boolean isSufficient(Map<String, ColumnInfo> columns) {
         for (RowFilter sub : mSubFilters) {
-            if (!sub.onlyUses(columns)) {
+            if (!sub.isSufficient(columns)) {
                 return false;
             }
         }

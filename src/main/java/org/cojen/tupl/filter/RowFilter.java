@@ -147,9 +147,9 @@ public abstract class RowFilter implements Comparable<RowFilter> {
     public abstract RowFilter prioritize(Map<String, ColumnInfo> columns);
 
     /**
-     * Returns true if this filter only uses the given columns.
+     * Returns true if all the columns required by this filter can be found in the given map.
      */
-    public abstract boolean onlyUses(Map<String, ColumnInfo> columns);
+    public abstract boolean isSufficient(Map<String, ColumnInfo> columns);
 
     /**
      * Remove terms which refer to columns which aren't in the given set.
@@ -177,7 +177,7 @@ public abstract class RowFilter implements Comparable<RowFilter> {
      */
     public RowFilter[] split(Map<String, ColumnInfo> columns) {
         var result = new RowFilter[2];
-        if (onlyUses(columns)) {
+        if (isSufficient(columns)) {
             result[0] = this;
             result[1] = TrueFilter.THE;
         } else {
@@ -191,7 +191,7 @@ public abstract class RowFilter implements Comparable<RowFilter> {
      * Combine the split result together with 'and'.
      */
     protected void splitCombine(Map<String, ColumnInfo> columns, RowFilter[] result) {
-        int ix = onlyUses(columns) ? 0 : 1;
+        int ix = isSufficient(columns) ? 0 : 1;
         result[ix] = result[ix].and(this);
     }
 
