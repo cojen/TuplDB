@@ -152,13 +152,17 @@ public abstract class RowFilter implements Comparable<RowFilter> {
     public abstract boolean isSufficient(Map<String, ColumnInfo> columns);
 
     /**
-     * Remove terms which refer to columns which aren't in the given set.
+     * Remove terms which refer to columns which aren't in the given set. A strict parameter
+     * controls the behavior of column-to-column terms. When true, both columns must be
+     * retained columns. When false, at least one column must be a retained column.
      *
      * @param columns columns to retain (not remove)
+     * @param strict true if returned filter must only refer to the given columns
      * @param undecided default filter to use when the resulting filter cannot be certain of a
      * match (usually TRUE or FALSE)
      */
-    public abstract RowFilter retain(Map<String, ColumnInfo> columns, RowFilter undecided);
+    public abstract RowFilter retain(Map<String, ColumnInfo> columns,
+                                     boolean strict, RowFilter undecided);
 
     /**
      * Split this filter by extracting columns such that the first returned filter only

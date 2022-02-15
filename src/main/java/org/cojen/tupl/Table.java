@@ -382,8 +382,9 @@ public interface Table<R> {
      * Returns a query plan used by {@link #newRowScanner(Transaction, String, Object...)
      * newRowScanner} et al.
      *
+     * @param txn optional transaction to be used; pass null for auto-commit mode
      * @param filter optional filter expression
      * @param args optional filter arguments
      */
-    public QueryPlan queryPlan(String filter, Object... args);
+    public QueryPlan queryPlan(Transaction txn, String filter, Object... args);
 }

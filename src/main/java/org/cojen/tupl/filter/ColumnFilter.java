@@ -124,11 +124,6 @@ public abstract class ColumnFilter extends RowFilter {
         return this;
     }
 
-    @Override
-    public RowFilter retain(Map<String, ColumnInfo> columns, RowFilter undecided) {
-        return isSufficient(columns) ? this : undecided;
-    }
-
     public ColumnInfo column() {
         return mColumn;
     }

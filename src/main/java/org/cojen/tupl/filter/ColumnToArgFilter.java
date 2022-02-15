@@ -83,6 +83,11 @@ public class ColumnToArgFilter extends ColumnFilter {
     }
 
     @Override
+    public RowFilter retain(Map<String, ColumnInfo> columns, boolean strict, RowFilter undecided) {
+        return columns.containsKey(mColumn.name) ? this : undecided;
+    }
+
+    @Override
     public RowFilter[] rangeExtract(ColumnInfo... keyColumns) {
         ColumnToArgFilter low, high, remaining;
 

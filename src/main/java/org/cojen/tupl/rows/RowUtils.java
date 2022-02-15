@@ -21,6 +21,7 @@ import java.math.BigInteger;
 
 import java.nio.charset.StandardCharsets;
 
+import org.cojen.tupl.LockMode;
 import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.core.Utils;
@@ -727,7 +728,24 @@ public class RowUtils extends Utils {
         return new IllegalArgumentException("Cannot be null: " + name);
     }
 
+    /**
+     * Returns true for REPEATABLE_READ and UPGRADABLE_READ.
+     */
     public static boolean isRepeatable(Transaction txn) {
         return txn != null && txn.lockMode().isRepeatable();
+    }
+
+    /**
+     * Returns true for UNSAFE.
+     */
+    public static boolean isUnsafe(Transaction txn) {
+        return txn != null && txn.lockMode() == LockMode.UNSAFE;
+    }
+
+    /**
+     * Returns true for UNSAFE and READ_UNCOMMITTED.
+     */
+    public static boolean isUnlocked(Transaction txn) {
+        return txn != null && txn.lockMode().noReadLock;
     }
 }

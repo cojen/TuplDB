@@ -85,6 +85,20 @@ public final class ColumnToColumnFilter extends ColumnFilter {
         return columns.containsKey(mColumn.name) && columns.containsKey(mOtherColumn.name);
     }
 
+    @Override
+    public RowFilter retain(Map<String, ColumnInfo> columns, boolean strict, RowFilter undecided) {
+        if (columns.containsKey(mColumn.name)) {
+            if (strict && !columns.containsKey(mOtherColumn.name)) {
+                return undecided;
+            }
+        } else {
+            if (strict || !columns.containsKey(mOtherColumn.name)) {
+                return undecided;
+            }
+        }
+        return this;
+    }
+
     public ColumnInfo otherColumn() {
         return mOtherColumn;
     }

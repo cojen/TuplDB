@@ -70,6 +70,7 @@ public abstract class AbstractTable<R> implements Table<R> {
     protected final Index mSource;
 
     private final SoftCache<String, ScanControllerFactory<R>> mFilterFactoryCache;
+    private final SoftCache<String, ScanControllerFactory<R>> mFilterFactoryCacheDoubleCheck;
 
     private HashMap<String, Latch> mFilterLatchMap;
 
@@ -103,6 +104,7 @@ public abstract class AbstractTable<R> implements Table<R> {
         mSource = Objects.requireNonNull(source);
 
         mFilterFactoryCache = new SoftCache<>();
+        mFilterFactoryCacheDoubleCheck = new SoftCache<>();
 
         if (supportsSecondaries()) {
             var trigger = new Trigger<R>();
@@ -122,7 +124,7 @@ public abstract class AbstractTable<R> implements Table<R> {
     public final RowScanner<R> newRowScanner(Transaction txn, String filter, Object... args)
         throws IOException
     {
-        return newRowScanner(txn, filtered(filter, args));
+        return newRowScanner(txn, scannerFilteredFactory(txn, filter).newScanController(args));
     }
 
     private RowScanner<R> newRowScanner(Transaction txn, ScanController<R> controller)
@@ -130,8 +132,6 @@ public abstract class AbstractTable<R> implements Table<R> {
     {
         final BasicRowScanner<R> scanner;
         RowPredicateLock.Closer closer = null;
-
-        // FIXME: If joined and READ_UNCOMMITTED, perform validation with an extra filter step.
 
         if (controller instanceof SingleScanController.Joined && txn == null) {
             txn = mSource.newTransaction(null);
@@ -164,6 +164,22 @@ public abstract class AbstractTable<R> implements Table<R> {
         }
     }
 
+    private ScanControllerFactory<R> scannerFilteredFactory(Transaction txn, String filter) {
+        SoftCache<String, ScanControllerFactory<R>> cache;
+        if (RowUtils.isUnlocked(txn) && joinedPrimaryTableClass() != null) {
+            // Need to double check the filter after joining to the primary, in case there were
+            // any changes after the secondary entry was loaded.
+            cache = mFilterFactoryCacheDoubleCheck;
+        } else {
+            cache = mFilterFactoryCache;
+        }
+        ScanControllerFactory<R> factory = cache.get(filter);
+        if (factory == null) {
+            factory = findFilteredFactory(cache, filter);
+        }
+        return factory;
+    }
+
     @Override
     public final RowUpdater<R> newRowUpdater(Transaction txn) throws IOException {
         return newRowUpdater(txn, unfiltered());
@@ -173,7 +189,7 @@ public abstract class AbstractTable<R> implements Table<R> {
     public final RowUpdater<R> newRowUpdater(Transaction txn, String filter, Object... args)
         throws IOException
     {
-        return newRowUpdater(txn, filtered(filter, args));
+        return newRowUpdater(txn, updaterFilteredFactory(txn, filter).newScanController(args));
     }
 
     protected RowUpdater<R> newRowUpdater(Transaction txn, ScanController<R> controller)
@@ -245,6 +261,23 @@ public abstract class AbstractTable<R> implements Table<R> {
             }
             throw e;
         }
+    }
+
+    private ScanControllerFactory<R> updaterFilteredFactory(Transaction txn, String filter) {
+        SoftCache<String, ScanControllerFactory<R>> cache;
+        if (RowUtils.isUnsafe(txn) && joinedPrimaryTableClass() != null) {
+            // Need to double check the filter after joining to the primary, in case there were
+            // any changes after the secondary entry was loaded. Note that no double check is
+            // needed with READ_UNCOMMITTED, because the updater for it still acquires locks.
+            cache = mFilterFactoryCacheDoubleCheck;
+        } else {
+            cache = mFilterFactoryCache;
+        }
+        ScanControllerFactory<R> factory = cache.get(filter);
+        if (factory == null) {
+            factory = findFilteredFactory(cache, filter);
+        }
+        return factory;
     }
 
     @Override
@@ -346,28 +379,22 @@ public abstract class AbstractTable<R> implements Table<R> {
     }
 
     @Override
-    public QueryPlan queryPlan(String filter, Object... args) {
-        return filter == null ? unfiltered().plan() : filteredFactory(filter).plan(args);
-    }
-
-    private ScanController<R> filtered(String filter, Object... args) {
-        return filteredFactory(filter).newScanController(args);
-    }
-
-    private ScanControllerFactory<R> filteredFactory(String filter) {
-        ScanControllerFactory<R> factory = mFilterFactoryCache.get(filter);
-        if (factory == null) {
-            factory = findFilteredFactory(filter);
+    public QueryPlan queryPlan(Transaction txn, String filter, Object... args) {
+        if (filter == null) {
+            return unfiltered().plan();
+        } else {
+            return scannerFilteredFactory(txn, filter).plan(args);
         }
-        return factory;
     }
 
     @SuppressWarnings("unchecked")
-    private ScanControllerFactory<R> findFilteredFactory(final String filter) {
+    private ScanControllerFactory<R> findFilteredFactory
+        (SoftCache<String, ScanControllerFactory<R>> cache, String filter)
+    {
         Latch latch;
         while (true) {
-            check: synchronized (mFilterFactoryCache) {
-                ScanControllerFactory<R> factory = mFilterFactoryCache.get(filter);
+            check: synchronized (cache) {
+                ScanControllerFactory<R> factory = cache.get(filter);
                 if (factory != null) {
                     return factory;
                 }
@@ -418,7 +445,7 @@ public abstract class AbstractTable<R> implements Table<R> {
 
             String canonical = rf.toString();
             if (!canonical.equals(filter)) {
-                factory = findFilteredFactory(canonical);
+                factory = findFilteredFactory(cache, canonical);
                 break obtain;
             }
 
@@ -438,6 +465,10 @@ public abstract class AbstractTable<R> implements Table<R> {
             var keyColumns = rowInfo.keyColumns.values().toArray(ColumnInfo[]::new);
             RowFilter[][] ranges = multiRangeExtract(rf, keyColumns);
             splitRemainders(rowInfo, ranges);
+
+            if (cache == mFilterFactoryCacheDoubleCheck && primaryRowGen != null) {
+                doubleCheckRemainder(ranges, primaryRowGen.info);
+            }
 
             Class<? extends RowPredicate> baseClass;
 
@@ -482,9 +513,9 @@ public abstract class AbstractTable<R> implements Table<R> {
             ex = e;
         }
 
-        synchronized (mFilterFactoryCache) {
+        synchronized (cache) {
             if (factory != null) {
-                mFilterFactoryCache.put(filter, factory);
+                cache.put(filter, factory);
             }
             mFilterLatchMap.remove(filter, latch);
             if (mFilterLatchMap.isEmpty()) {
@@ -535,6 +566,26 @@ public abstract class AbstractTable<R> implements Table<R> {
         if (unfiltered() instanceof SingleScanController.Joined) {
             // First filter on the secondary entry, and then filter on the joined primary entry.
             RowFilter.splitRemainders(rowInfo.keyColumns, ranges);
+        }
+    }
+
+    /**
+     * Applies a double check of the remainder filter, applicable only to joins.
+     */
+    private static void doubleCheckRemainder(RowFilter[][] ranges, RowInfo rowInfo) {
+        for (RowFilter[] r : ranges) {
+            // Build up a complete remainder that does full fully redundant filtering. Order
+            // the terms such that ones most likely to have any effect come first.
+            RowFilter remainder = r[3].and(r[2]);
+            if (r[0] != null) {
+                remainder = remainder.and(r[0]);
+            }
+            if (r[1] != null) {
+                remainder = remainder.and(r[1]);
+            }
+            // Remove terms that only check the primary key, because the won't change with a join.
+            remainder = remainder.retain(rowInfo.valueColumns, false, TrueFilter.THE);
+            r[3] = remainder.reduceMore();
         }
     }
 

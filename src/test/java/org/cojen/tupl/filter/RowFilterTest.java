@@ -105,64 +105,70 @@ public class RowFilterTest {
         {
             RowFilter f1 = new Parser(colMap, "a < ?").parse();
 
-            RowFilter f2 = f1.retain(subMap(colMap, "a"), TrueFilter.THE);
+            RowFilter f2 = f1.retain(subMap(colMap, "a"), true, TrueFilter.THE);
             assertEquals(f1, f2);
 
-            RowFilter f3 = f1.retain(subMap(colMap, "b"), TrueFilter.THE);
+            RowFilter f3 = f1.retain(subMap(colMap, "b"), true, TrueFilter.THE);
             assertEquals(TrueFilter.THE, f3);
 
-            RowFilter f4 = f1.retain(subMap(colMap, "b"), FalseFilter.THE);
+            RowFilter f4 = f1.retain(subMap(colMap, "b"), true, FalseFilter.THE);
             assertEquals(FalseFilter.THE, f4);
 
-            RowFilter f5 = f1.retain(subMap(colMap), TrueFilter.THE);
+            RowFilter f5 = f1.retain(subMap(colMap), true, TrueFilter.THE);
             assertEquals(TrueFilter.THE, f3);
         }
 
         {
             RowFilter f1 = new Parser(colMap, "(a == ? || (b == ? && a != ?)) && (c == ?)").parse();
 
-            RowFilter f2 = f1.retain(subMap(colMap, "a", "b", "c"), TrueFilter.THE);
+            RowFilter f2 = f1.retain(subMap(colMap, "a", "b", "c"), true, TrueFilter.THE);
             assertEquals(f1, f2);
 
-            RowFilter f3 = f1.retain(subMap(colMap, "b", "c"), TrueFilter.THE);
+            RowFilter f3 = f1.retain(subMap(colMap, "b", "c"), true, TrueFilter.THE);
             assertEquals("c == ?3", f3.toString());
             
-            RowFilter f4 = f1.retain(subMap(colMap, "a", "c"), TrueFilter.THE);
+            RowFilter f4 = f1.retain(subMap(colMap, "a", "c"), true, TrueFilter.THE);
             assertEquals("(a == ?0 || a != ?2) && c == ?3", f4.toString());
 
-            RowFilter f5 = f1.retain(subMap(colMap, "a", "b"), TrueFilter.THE);
+            RowFilter f5 = f1.retain(subMap(colMap, "a", "b"), true, TrueFilter.THE);
             assertEquals("a == ?0 || (b == ?1 && a != ?2)", f5.toString());
 
-            RowFilter f6 = f1.retain(subMap(colMap, "a"), TrueFilter.THE);
+            RowFilter f6 = f1.retain(subMap(colMap, "a"), true, TrueFilter.THE);
             assertEquals("a == ?0 || a != ?2", f6.toString());
 
-            RowFilter f7 = f1.retain(subMap(colMap, "b"), TrueFilter.THE);
+            RowFilter f7 = f1.retain(subMap(colMap, "b"), true, TrueFilter.THE);
             assertEquals(TrueFilter.THE, f7);
 
-            RowFilter f8 = f1.retain(subMap(colMap, "c"), TrueFilter.THE);
+            RowFilter f8 = f1.retain(subMap(colMap, "c"), true, TrueFilter.THE);
             assertEquals("c == ?3", f8.toString());
         }
 
         {
             RowFilter f1 = new Parser(colMap, "(a == ? && (b == ? || a != ?)) || (c == ?)").parse();
 
-            RowFilter f3 = f1.retain(subMap(colMap, "b", "c"), TrueFilter.THE);
+            RowFilter f3 = f1.retain(subMap(colMap, "b", "c"), true, TrueFilter.THE);
             assertEquals(TrueFilter.THE, f3);
             
-            RowFilter f4 = f1.retain(subMap(colMap, "a", "c"), TrueFilter.THE);
+            RowFilter f4 = f1.retain(subMap(colMap, "a", "c"), true, TrueFilter.THE);
             assertEquals("a == ?0 || c == ?3", f4.toString());
 
-            RowFilter f5 = f1.retain(subMap(colMap, "a", "b"), TrueFilter.THE);
+            RowFilter f5 = f1.retain(subMap(colMap, "a", "b"), true, TrueFilter.THE);
             assertEquals(TrueFilter.THE, f5);
 
-            RowFilter f6 = f1.retain(subMap(colMap, "a"), TrueFilter.THE);
+            RowFilter f6 = f1.retain(subMap(colMap, "a"), true, TrueFilter.THE);
             assertEquals(TrueFilter.THE, f6);
 
-            RowFilter f7 = f1.retain(subMap(colMap, "b"), TrueFilter.THE);
+            RowFilter f7 = f1.retain(subMap(colMap, "b"), true, TrueFilter.THE);
             assertEquals(TrueFilter.THE, f7);
 
-            RowFilter f8 = f1.retain(subMap(colMap, "c"), TrueFilter.THE);
+            RowFilter f8 = f1.retain(subMap(colMap, "c"), true, TrueFilter.THE);
             assertEquals(TrueFilter.THE, f8);
+        }
+
+        {
+            RowFilter f1 = new Parser(colMap, "(a == ? && b == a) || c == ?").parse();
+            RowFilter f2 = f1.retain(subMap(colMap, "b", "c"), false, TrueFilter.THE);
+            assertEquals("b == a || c == ?1", f2.toString());
         }
     }
 

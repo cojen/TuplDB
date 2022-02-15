@@ -490,7 +490,7 @@ public class RowPredicateMaker {
 
     private void addKeyTestMethod() {
         // Can only check the key columns. If undecided, assume that the predicate matches.
-        RowFilter filter = mFilter.retain(mRowGen.info.keyColumns, TrueFilter.THE);
+        RowFilter filter = mFilter.retain(mRowGen.info.keyColumns, true, TrueFilter.THE);
 
         if (filter == TrueFilter.THE) {
             // Rely on the default implementation, which always returns true.

@@ -58,78 +58,78 @@ public class QueryPlanTest {
 
     @Test
     public void primaryKey() throws Exception {
-        QueryPlan plan = mTable.queryPlan("id == ?0 && id != ?0");
+        QueryPlan plan = mTable.queryPlan(null, "id == ?0 && id != ?0");
         assertEquals(new QueryPlan.Empty(), plan);
 
-        plan = mTable.queryPlan("id == ?0 && id != ?0 && a == ?");
+        plan = mTable.queryPlan(null, "id == ?0 && id != ?0 && a == ?");
         assertEquals(new QueryPlan.Empty(), plan);
 
-        plan = mTable.queryPlan(null);
+        plan = mTable.queryPlan(null, null);
         assertEquals(new QueryPlan.FullScan
                      (TestRow.class.getName(), "primary key",
                       new String[] {"+id"}, false),
                      plan);
 
-        plan = mTable.queryPlan("id == ?0 || id != ?0");
+        plan = mTable.queryPlan(null, "id == ?0 || id != ?0");
         assertEquals(new QueryPlan.FullScan
                      (TestRow.class.getName(), "primary key",
                       new String[] {"+id"}, false),
                      plan);
 
-        plan = mTable.queryPlan("id < ?");
+        plan = mTable.queryPlan(null, "id < ?");
         assertEquals(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "primary key",
                       new String[] {"+id"}, false, null, "id < ?0"),
                      plan);
 
-        plan = mTable.queryPlan("id >= ?");
+        plan = mTable.queryPlan(null, "id >= ?");
         assertEquals(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "primary key",
                       new String[] {"+id"}, false, "id >= ?0", null),
                      plan);
 
-        plan = mTable.queryPlan("id >= ? && id < ?");
+        plan = mTable.queryPlan(null, "id >= ? && id < ?");
         assertEquals(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "primary key",
                       new String[] {"+id"}, false, "id >= ?0", "id < ?1"),
                      plan);
 
         // This test should fail when LoadOne is supported.
-        plan = mTable.queryPlan("id == ?");
+        plan = mTable.queryPlan(null, "id == ?");
         assertEquals(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "primary key",
                       new String[] {"+id"}, false, "id >= ?0", "id <= ?0"),
                      plan);
 
-        plan = mTable.queryPlan("a == ?");
+        plan = mTable.queryPlan(null, "a == ?");
         assertEquals(new QueryPlan.Filter
                      ("a == ?0", new QueryPlan.FullScan
                       (TestRow.class.getName(), "primary key",
                        new String[] {"+id"}, false)),
                      plan);
 
-        plan = mTable.queryPlan("id == ?0 && id != ?0 || b == ?1");
+        plan = mTable.queryPlan(null, "id == ?0 && id != ?0 || b == ?1");
         assertEquals(new QueryPlan.Filter
                      ("b == ?1", new QueryPlan.FullScan
                       (TestRow.class.getName(), "primary key",
                        new String[] {"+id"}, false)),
                      plan);
 
-        plan = mTable.queryPlan("a == ? && id > ?");
+        plan = mTable.queryPlan(null, "a == ? && id > ?");
         assertEquals(new QueryPlan.Filter
                      ("a == ?0", new QueryPlan.RangeScan
                       (TestRow.class.getName(), "primary key",
                        new String[] {"+id"}, false, "id > ?1", null)),
                      plan);
 
-        plan = mTable.queryPlan("id != ?");
+        plan = mTable.queryPlan(null, "id != ?");
         assertEquals(new QueryPlan.Filter
                      ("id != ?0", new QueryPlan.FullScan
                       (TestRow.class.getName(), "primary key",
                        new String[] {"+id"}, false)),
                      plan);
 
-        plan = mTable.queryPlan("id >= ? && id < ? || id > ? && id <= ?");
+        plan = mTable.queryPlan(null, "id >= ? && id < ? || id > ? && id <= ?");
         assertEquals(new QueryPlan.RangeUnion
                      (new QueryPlan.RangeScan
                       (TestRow.class.getName(), "primary key",
@@ -139,7 +139,7 @@ public class QueryPlanTest {
                        new String[] {"+id"}, false, "id > ?2", "id <= ?3")
                       ), plan);
 
-        plan = mTable.queryPlan("id >= ? && id < ? || !(id > ? && id <= ?)");
+        plan = mTable.queryPlan(null, "id >= ? && id < ? || !(id > ? && id <= ?)");
         assertEquals(new QueryPlan.RangeUnion
                      (new QueryPlan.RangeScan
                       (TestRow.class.getName(), "primary key",
@@ -152,7 +152,7 @@ public class QueryPlanTest {
                        new String[] {"+id"}, false, "id > ?3", null)
                       ), plan);
                      
-        plan = mTable.queryPlan("id >= ? && id < ? || (id > ? && id <= ? && c != ?)");
+        plan = mTable.queryPlan(null, "id >= ? && id < ? || (id > ? && id <= ? && c != ?)");
         assertEquals(new QueryPlan.RangeUnion
                      (new QueryPlan.RangeScan
                       (TestRow.class.getName(), "primary key",
@@ -162,7 +162,7 @@ public class QueryPlanTest {
                        new String[] {"+id"}, false, "id > ?2", "id <= ?3"))
                       ), plan);
 
-        plan = mTable.queryPlan("(id >= ? && id < ? || id > ? && id <= ?) && c != ?");
+        plan = mTable.queryPlan(null, "(id >= ? && id < ? || id > ? && id <= ?) && c != ?");
         assertEquals(new QueryPlan.RangeUnion
                      (new QueryPlan.Filter("c != ?4", new QueryPlan.RangeScan
                       (TestRow.class.getName(), "primary key",
@@ -177,85 +177,85 @@ public class QueryPlanTest {
     public void alternateKeyUnjoined() throws Exception {
         Table<TestRow> indexA = mIndexA.viewUnjoined();
 
-        QueryPlan plan = indexA.queryPlan("a == ?0 && a != ?0");
+        QueryPlan plan = indexA.queryPlan(null, "a == ?0 && a != ?0");
         assertEquals(new QueryPlan.Empty(), plan);
 
-        plan = indexA.queryPlan("a == ?0 && a != ?0 && id == ?");
+        plan = indexA.queryPlan(null, "a == ?0 && a != ?0 && id == ?");
         assertEquals(new QueryPlan.Empty(), plan);
 
-        plan = indexA.queryPlan(null);
+        plan = indexA.queryPlan(null, null);
         assertEquals(new QueryPlan.FullScan
                      (TestRow.class.getName(), "alternate key",
                       new String[] {"+a"}, false),
                      plan);
 
-        plan = indexA.queryPlan("a == ?0 || a != ?0");
+        plan = indexA.queryPlan(null, "a == ?0 || a != ?0");
         assertEquals(new QueryPlan.FullScan
                      (TestRow.class.getName(), "alternate key",
                       new String[] {"+a"}, false),
                      plan);
 
-        plan = indexA.queryPlan("a < ?");
+        plan = indexA.queryPlan(null, "a < ?");
         assertEquals(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "alternate key",
                       new String[] {"+a"}, false, null, "a < ?0"),
                      plan);
 
-        plan = indexA.queryPlan("a >= ?");
+        plan = indexA.queryPlan(null, "a >= ?");
         assertEquals(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "alternate key",
                       new String[] {"+a"}, false, "a >= ?0", null),
                      plan);
 
-        plan = indexA.queryPlan("a >= ? && a < ?");
+        plan = indexA.queryPlan(null, "a >= ? && a < ?");
         assertEquals(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "alternate key",
                       new String[] {"+a"}, false, "a >= ?0", "a < ?1"),
                      plan);
 
         // This test should fail when LoadOne is supported.
-        plan = indexA.queryPlan("a == ?");
+        plan = indexA.queryPlan(null, "a == ?");
         assertEquals(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "alternate key",
                       new String[] {"+a"}, false, "a >= ?0", "a <= ?0"),
                      plan);
 
         try {
-            indexA.queryPlan("b == ?");
+            indexA.queryPlan(null, "b == ?");
             fail();
         } catch (IllegalStateException e) {
             assertTrue(e.getMessage().contains("unavailable for filtering: b"));
         }
 
-        plan = indexA.queryPlan("id == ?");
+        plan = indexA.queryPlan(null, "id == ?");
         assertEquals(new QueryPlan.Filter
                      ("id == ?0", new QueryPlan.FullScan
                       (TestRow.class.getName(), "alternate key",
                        new String[] {"+a"}, false)),
                      plan);
 
-        plan = indexA.queryPlan("a == ?0 && a != ?0 || id == ?1");
+        plan = indexA.queryPlan(null, "a == ?0 && a != ?0 || id == ?1");
         assertEquals(new QueryPlan.Filter
                      ("id == ?1", new QueryPlan.FullScan
                       (TestRow.class.getName(), "alternate key",
                        new String[] {"+a"}, false)),
                      plan);
 
-        plan = indexA.queryPlan("id == ? && a > ?");
+        plan = indexA.queryPlan(null, "id == ? && a > ?");
         assertEquals(new QueryPlan.Filter
                      ("id == ?0", new QueryPlan.RangeScan
                       (TestRow.class.getName(), "alternate key",
                        new String[] {"+a"}, false, "a > ?1", null)),
                      plan);
 
-        plan = indexA.queryPlan("a != ?");
+        plan = indexA.queryPlan(null, "a != ?");
         assertEquals(new QueryPlan.Filter
                      ("a != ?0", new QueryPlan.FullScan
                       (TestRow.class.getName(), "alternate key",
                        new String[] {"+a"}, false)),
                      plan);
 
-        plan = indexA.queryPlan("a >= ? && a < ? || a > ? && a <= ?");
+        plan = indexA.queryPlan(null, "a >= ? && a < ? || a > ? && a <= ?");
         assertEquals(new QueryPlan.RangeUnion
                      (new QueryPlan.RangeScan
                       (TestRow.class.getName(), "alternate key",
@@ -265,7 +265,7 @@ public class QueryPlanTest {
                        new String[] {"+a"}, false, "a > ?2", "a <= ?3")
                       ), plan);
 
-        plan = indexA.queryPlan("a >= ? && a < ? || !(a > ? && a <= ?)");
+        plan = indexA.queryPlan(null, "a >= ? && a < ? || !(a > ? && a <= ?)");
         assertEquals(new QueryPlan.RangeUnion
                      (new QueryPlan.RangeScan
                       (TestRow.class.getName(), "alternate key",
@@ -278,7 +278,7 @@ public class QueryPlanTest {
                        new String[] {"+a"}, false, "a > ?3", null)
                       ), plan);
                      
-        plan = indexA.queryPlan("a >= ? && a < ? || (a > ? && a <= ? && id != ?)");
+        plan = indexA.queryPlan(null, "a >= ? && a < ? || (a > ? && a <= ? && id != ?)");
         assertEquals(new QueryPlan.RangeUnion
                      (new QueryPlan.RangeScan
                       (TestRow.class.getName(), "alternate key",
@@ -288,7 +288,7 @@ public class QueryPlanTest {
                        new String[] {"+a"}, false, "a > ?2", "a <= ?3"))
                       ), plan);
 
-        plan = indexA.queryPlan("(a >= ? && a < ? || a > ? && a <= ?) && id != ?");
+        plan = indexA.queryPlan(null, "(a >= ? && a < ? || a > ? && a <= ?) && id != ?");
         assertEquals(new QueryPlan.RangeUnion
                      (new QueryPlan.Filter("id != ?4", new QueryPlan.RangeScan
                       (TestRow.class.getName(), "alternate key",
@@ -301,13 +301,13 @@ public class QueryPlanTest {
 
     @Test
     public void alternateKey() throws Exception {
-        QueryPlan plan = mIndexA.queryPlan("a == ?0 && a != ?0");
+        QueryPlan plan = mIndexA.queryPlan(null, "a == ?0 && a != ?0");
         assertEquals(new QueryPlan.Empty(), plan);
 
-        plan = mIndexA.queryPlan("a == ?0 && a != ?0 && id == ?");
+        plan = mIndexA.queryPlan(null, "a == ?0 && a != ?0 && id == ?");
         assertEquals(new QueryPlan.Empty(), plan);
 
-        plan = mIndexA.queryPlan(null);
+        plan = mIndexA.queryPlan(null, null);
         assertEquals(new QueryPlan.NaturalJoin
                      (TestRow.class.getName(), "primary key", new String[] {"+id"},
                       new QueryPlan.FullScan
@@ -315,7 +315,7 @@ public class QueryPlanTest {
                        new String[] {"+a"}, false)),
                      plan);
 
-        plan = mIndexA.queryPlan("b == ?");
+        plan = mIndexA.queryPlan(null, "b == ?");
         assertEquals(new QueryPlan.Filter
                      ("b == ?0", new QueryPlan.NaturalJoin
                       (TestRow.class.getName(), "primary key", new String[] {"+id"},
@@ -324,7 +324,7 @@ public class QueryPlanTest {
                         new String[] {"+a"}, false))),
                      plan);
 
-        plan = mIndexA.queryPlan("a >= ? && a < ? && b == ?");
+        plan = mIndexA.queryPlan(null, "a >= ? && a < ? && b == ?");
         assertEquals(new QueryPlan.Filter
                      ("b == ?2", new QueryPlan.NaturalJoin
                       (TestRow.class.getName(), "primary key", new String[] {"+id"},
@@ -338,49 +338,49 @@ public class QueryPlanTest {
     public void secondaryIndexUnjoined() throws Exception {
         Table<TestRow> indexB = mIndexB.viewUnjoined();
 
-        QueryPlan plan = indexB.queryPlan("b == ?0 && b != ?0");
+        QueryPlan plan = indexB.queryPlan(null, "b == ?0 && b != ?0");
         assertEquals(new QueryPlan.Empty(), plan);
 
-        plan = indexB.queryPlan("b == ?0 && b != ?0 && id == ?");
+        plan = indexB.queryPlan(null, "b == ?0 && b != ?0 && id == ?");
         assertEquals(new QueryPlan.Empty(), plan);
 
-        plan = indexB.queryPlan(null);
+        plan = indexB.queryPlan(null, null);
         assertEquals(new QueryPlan.FullScan
                      (TestRow.class.getName(), "secondary index",
                       new String[] {"+b", "+id"}, false),
                      plan);
 
-        plan = indexB.queryPlan("b == ?0 || b != ?0");
+        plan = indexB.queryPlan(null, "b == ?0 || b != ?0");
         assertEquals(new QueryPlan.FullScan
                      (TestRow.class.getName(), "secondary index",
                       new String[] {"+b", "+id"}, false),
                      plan);
 
-        plan = indexB.queryPlan("b < ?");
+        plan = indexB.queryPlan(null, "b < ?");
         assertEquals(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "secondary index",
                       new String[] {"+b", "+id"}, false, null, "b < ?0"),
                      plan);
 
-        plan = indexB.queryPlan("b >= ?");
+        plan = indexB.queryPlan(null, "b >= ?");
         assertEquals(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "secondary index",
                       new String[] {"+b", "+id"}, false, "b >= ?0", null),
                      plan);
 
-        plan = indexB.queryPlan("b >= ? && b < ?");
+        plan = indexB.queryPlan(null, "b >= ? && b < ?");
         assertEquals(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "secondary index",
                       new String[] {"+b", "+id"}, false, "b >= ?0", "b < ?1"),
                      plan);
 
-        plan = indexB.queryPlan("b == ?");
+        plan = indexB.queryPlan(null, "b == ?");
         assertEquals(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "secondary index",
                       new String[] {"+b", "+id"}, false, "b >= ?0", "b <= ?0"),
                      plan);
 
-        plan = indexB.queryPlan("b == ? && id > ?");
+        plan = indexB.queryPlan(null, "b == ? && id > ?");
         assertEquals(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "secondary index",
                       new String[] {"+b", "+id"}, false, "b == ?0 && id > ?1", "b <= ?0"),
@@ -411,7 +411,7 @@ public class QueryPlanTest {
         }
 
         // This test should fail when LoadOne is supported.
-        plan = indexB.queryPlan("b == ? && id == ?");
+        plan = indexB.queryPlan(null, "b == ? && id == ?");
         assertEquals(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "secondary index",
                       new String[] {"+b", "+id"}, false,
@@ -419,48 +419,48 @@ public class QueryPlanTest {
                      plan);
 
         try {
-            indexB.queryPlan("a == ?");
+            indexB.queryPlan(null, "a == ?");
             fail();
         } catch (IllegalStateException e) {
             assertTrue(e.getMessage().contains("unavailable for filtering: a"));
         }
 
-        plan = indexB.queryPlan("id == ?");
+        plan = indexB.queryPlan(null, "id == ?");
         assertEquals(new QueryPlan.Filter
                      ("id == ?0", new QueryPlan.FullScan
                       (TestRow.class.getName(), "secondary index",
                        new String[] {"+b", "+id"}, false)),
                      plan);
 
-        plan = indexB.queryPlan("b == ?0 && b != ?0 || id == ?1");
+        plan = indexB.queryPlan(null, "b == ?0 && b != ?0 || id == ?1");
         assertEquals(new QueryPlan.Filter
                      ("id == ?1", new QueryPlan.FullScan
                       (TestRow.class.getName(), "secondary index",
                        new String[] {"+b", "+id"}, false)),
                      plan);
 
-        plan = indexB.queryPlan("id == ? && b > ?");
+        plan = indexB.queryPlan(null, "id == ? && b > ?");
         assertEquals(new QueryPlan.Filter
                      ("id == ?0", new QueryPlan.RangeScan
                       (TestRow.class.getName(), "secondary index",
                        new String[] {"+b", "+id"}, false, "b > ?1", null)),
                      plan);
 
-        plan = indexB.queryPlan("b != ?");
+        plan = indexB.queryPlan(null, "b != ?");
         assertEquals(new QueryPlan.Filter
                      ("b != ?0", new QueryPlan.FullScan
                       (TestRow.class.getName(), "secondary index",
                        new String[] {"+b", "+id"}, false)),
                      plan);
 
-        plan = indexB.queryPlan("b < ?0 || b > ?0");
+        plan = indexB.queryPlan(null, "b < ?0 || b > ?0");
         assertEquals(new QueryPlan.Filter
                      ("b != ?0", new QueryPlan.FullScan
                       (TestRow.class.getName(), "secondary index",
                        new String[] {"+b", "+id"}, false)),
                      plan);
 
-        plan = indexB.queryPlan("b >= ? && b < ? || b > ? && b <= ?");
+        plan = indexB.queryPlan(null, "b >= ? && b < ? || b > ? && b <= ?");
         assertEquals(new QueryPlan.RangeUnion
                      (new QueryPlan.RangeScan
                       (TestRow.class.getName(), "secondary index",
@@ -470,7 +470,7 @@ public class QueryPlanTest {
                        new String[] {"+b", "+id"}, false, "b > ?2", "b <= ?3")
                       ), plan);
 
-        plan = indexB.queryPlan("b >= ? && b < ? || !(b > ? && b <= ?)");
+        plan = indexB.queryPlan(null, "b >= ? && b < ? || !(b > ? && b <= ?)");
         assertEquals(new QueryPlan.RangeUnion
                      (new QueryPlan.RangeScan
                       (TestRow.class.getName(), "secondary index",
@@ -483,7 +483,7 @@ public class QueryPlanTest {
                        new String[] {"+b", "+id"}, false, "b > ?3", null)
                       ), plan);
                      
-        plan = indexB.queryPlan("b >= ? && b < ? || (b > ? && b <= ? && id != ?)");
+        plan = indexB.queryPlan(null, "b >= ? && b < ? || (b > ? && b <= ? && id != ?)");
         assertEquals(new QueryPlan.RangeUnion
                      (new QueryPlan.RangeScan
                       (TestRow.class.getName(), "secondary index",
@@ -493,7 +493,7 @@ public class QueryPlanTest {
                        new String[] {"+b", "+id"}, false, "b > ?2", "b <= ?3"))
                       ), plan);
 
-        plan = indexB.queryPlan("(b >= ? && b < ? || b > ? && b <= ?) && id != ?");
+        plan = indexB.queryPlan(null, "(b >= ? && b < ? || b > ? && b <= ?) && id != ?");
         assertEquals(new QueryPlan.RangeUnion
                      (new QueryPlan.Filter("id != ?4", new QueryPlan.RangeScan
                       (TestRow.class.getName(), "secondary index",
@@ -506,7 +506,7 @@ public class QueryPlanTest {
 
     @Test
     public void secondaryIndex() throws Exception {
-        QueryPlan plan = mIndexB.queryPlan("(c > ? || c <= ?) && b != ? && a != ?");
+        QueryPlan plan = mIndexB.queryPlan(null, "(c > ? || c <= ?) && b != ? && a != ?");
 
         assertEquals(new QueryPlan.Filter
                      ("(c > ?0 || c <= ?1) && a != ?3", new QueryPlan.NaturalJoin
@@ -517,7 +517,7 @@ public class QueryPlanTest {
                          false)))),
                      plan);
 
-        plan = mIndexB.queryPlan("(b == ? && id != ? && c != ?) || (b == ? && c > ?)");
+        plan = mIndexB.queryPlan(null, "(b == ? && id != ? && c != ?) || (b == ? && c > ?)");
 
         //System.out.println(plan);
 
@@ -539,7 +539,7 @@ public class QueryPlanTest {
 
         // With this plan, the range over 'b' is the same, and so it doesn't open multiple
         // cursors which do the exact same thing.
-        plan = mIndexB.queryPlan("(b == ? && id != ? && c != ?) || (b == ?0 && c > ?)");
+        plan = mIndexB.queryPlan(null, "(b == ? && id != ? && c != ?) || (b == ?0 && c > ?)");
 
         //System.out.println(plan);
 
@@ -556,19 +556,19 @@ public class QueryPlanTest {
     public void secondaryIndex2Unjoined() throws Exception {
         Table<TestRow> indexC = mIndexC.viewUnjoined();
 
-        QueryPlan plan = indexC.queryPlan("c >= ?");
+        QueryPlan plan = indexC.queryPlan(null, "c >= ?");
         assertEquals(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "secondary index",
                       new String[] {"-c", "+b", "+id"}, false, null, "c <= ?0"),
                      plan);
 
-        plan = indexC.queryPlan("c > ?");
+        plan = indexC.queryPlan(null, "c > ?");
         assertEquals(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "secondary index",
                       new String[] {"-c", "+b", "+id"}, false, null, "c < ?0"),
                      plan);
 
-        plan = indexC.queryPlan("b == ? && c > ? && c <= ?");
+        plan = indexC.queryPlan(null, "b == ? && c > ? && c <= ?");
         assertEquals(new QueryPlan.Filter
                      ("b == ?0", new QueryPlan.RangeScan
                       (TestRow.class.getName(), "secondary index",
@@ -602,7 +602,7 @@ public class QueryPlanTest {
         }
 
         plan = indexC.queryPlan
-            ("c == ?6 && b == ?5 && id <= ?4 || c == ?3 && b >= ?2 && b <= ?1 || c == ?0");
+            (null, "c == ?6 && b == ?5 && id <= ?4 || c == ?3 && b >= ?2 && b <= ?1 || c == ?0");
         assertEquals(new QueryPlan.RangeUnion
                      (new QueryPlan.RangeScan
                       (TestRow.class.getName(), "secondary index",
@@ -618,7 +618,7 @@ public class QueryPlanTest {
                        "c >= ?0", "c <= ?0")
                       ), plan);
 
-        plan = indexC.queryPlan("c < ? && b == ?");
+        plan = indexC.queryPlan(null, "c < ? && b == ?");
         assertEquals(new QueryPlan.Filter
                      ("b == ?1", new QueryPlan.RangeScan
                       (TestRow.class.getName(), "secondary index",
@@ -628,7 +628,7 @@ public class QueryPlanTest {
 
     @Test
     public void secondaryIndex2() throws Exception {
-        QueryPlan plan = mIndexC.queryPlan("(c > ? || c <= ?) && b != ? && a != ?");
+        QueryPlan plan = mIndexC.queryPlan(null, "(c > ? || c <= ?) && b != ? && a != ?");
 
         //System.out.println(plan);
 
@@ -669,6 +669,50 @@ public class QueryPlanTest {
             assertEquals(5, results.get(0).id());
             assertEquals(1, results.get(1).id());
         }
+    }
+
+    @Test
+    public void joinedDoubleCheck() throws Exception {
+        QueryPlan plan = mIndexB.queryPlan
+            (Transaction.BOGUS, "(b == ? && id != ? && c != ?) || (b == ? && c > ?)");
+
+        //System.out.println(plan);
+       
+        assertEquals(new QueryPlan.RangeUnion
+                     (new QueryPlan.Filter
+                      ("c != ?2 && b == ?0", new QueryPlan.NaturalJoin
+                       (TestRow.class.getName(), "primary key", new String[] {"+id"},
+                        new QueryPlan.Filter
+                        ("id != ?1", new QueryPlan.RangeScan
+                         (TestRow.class.getName(), "secondary index", new String[] { "+b", "+id"},
+                          false, "b >= ?0", "b <= ?0")))),
+                      new QueryPlan.Filter
+                      ("c > ?4 && b == ?3", new QueryPlan.NaturalJoin
+                       (TestRow.class.getName(), "primary key", new String[] {"+id"},
+                        new QueryPlan.RangeScan
+                        (TestRow.class.getName(), "secondary index", new String[] { "+b", "+id"},
+                         false, "b >= ?3", "b <= ?3")))),
+                     plan);
+
+        plan = mIndexB.queryPlan
+            (Transaction.BOGUS, "(b == ? && id != c && c != ?) || (b == ? && c > ?)");
+
+        //System.out.println(plan);
+
+        assertEquals(new QueryPlan.RangeUnion
+                     (new QueryPlan.Filter
+                      ("id != c && c != ?1 && b == ?0", new QueryPlan.NaturalJoin
+                       (TestRow.class.getName(), "primary key", new String[] {"+id"},
+                        new QueryPlan.RangeScan
+                        (TestRow.class.getName(), "secondary index", new String[] { "+b", "+id"},
+                         false, "b >= ?0", "b <= ?0"))),
+                      new QueryPlan.Filter
+                      ("c > ?3 && b == ?2", new QueryPlan.NaturalJoin
+                       (TestRow.class.getName(), "primary key", new String[] {"+id"},
+                        new QueryPlan.RangeScan
+                        (TestRow.class.getName(), "secondary index", new String[] { "+b", "+id"},
+                         false, "b >= ?2", "b <= ?2")))),
+                     plan);
     }
 
     @PrimaryKey("id")

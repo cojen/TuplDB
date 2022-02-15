@@ -146,7 +146,7 @@ public class AndFilter extends GroupFilter {
     }
 
     @Override
-    public RowFilter retain(Map<String, ColumnInfo> columns, RowFilter undecided) {
+    public RowFilter retain(Map<String, ColumnInfo> columns, boolean strict, RowFilter undecided) {
         RowFilter[] subFilters = mSubFilters;
         if (subFilters.length == 0) {
             return this;
@@ -156,7 +156,7 @@ public class AndFilter extends GroupFilter {
 
         int len = 0;
         for (int i=0; i<subFilters.length; i++) {
-            RowFilter sub = subFilters[i].retain(columns, undecided);
+            RowFilter sub = subFilters[i].retain(columns, strict, undecided);
             if (sub == FalseFilter.THE) {
                 return sub;
             }
