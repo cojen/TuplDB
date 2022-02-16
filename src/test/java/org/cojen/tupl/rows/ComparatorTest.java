@@ -19,8 +19,6 @@ package org.cojen.tupl.rows;
 
 import java.math.BigInteger;
 
-import java.util.Comparator;
-
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -183,7 +181,7 @@ public class ComparatorTest {
         var cmp2 = mTable.comparator("+id+str1+id");
         var cmp3 = mTable.comparator("+!id+str1");
 
-        assertTrue(cmp1 == cmp2);
-        assertTrue(cmp2 == cmp3);
+        assertSame(cmp1, cmp2);
+        assertSame(cmp2, cmp3);
     }
 }

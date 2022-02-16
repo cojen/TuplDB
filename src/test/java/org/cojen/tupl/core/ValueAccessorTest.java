@@ -590,7 +590,7 @@ public class ValueAccessorTest {
         byte[] loaded = ix.load(Transaction.BOGUS, key);
         assertEquals(50 + 512 + 1, loaded.length);
         for (int i=0; i<loaded.length; i++) {
-            assertTrue(value[i] == loaded[i]);
+            assertEquals(value[i], loaded[i]);
         }
 
         // Extend the value enough to force the inline content to move into the fragment pages.
@@ -600,7 +600,7 @@ public class ValueAccessorTest {
         byte[] loaded2 = ix.load(Transaction.BOGUS, key);
         assertEquals(newLen, loaded2.length);
         for (int i=0; i<loaded.length; i++) {
-            assertTrue(loaded[i] == loaded2[i]);
+            assertEquals(loaded[i], loaded2[i]);
         }
         for (int i=loaded.length; i<loaded2.length; i++) {
             assertEquals(0, loaded2[i]);

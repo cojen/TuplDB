@@ -890,7 +890,7 @@ public class IndexLockTest {
         scanner.step();
         assertEquals(3, scanner.row().id());
         scanner.step();
-        assertEquals(null, scanner.row());
+        assertNull(scanner.row());
 
         // All locks for id/name 1 and 3 should still be held.
         Transaction txn2 = mDatabase.newTransaction();
@@ -974,7 +974,7 @@ public class IndexLockTest {
         scanner.step();
         assertEquals(3, scanner.row().id());
         scanner.step();
-        assertEquals(null, scanner.row());
+        assertNull(scanner.row());
 
         // All locks should still be held.
         Transaction txn2 = mDatabase.newTransaction();

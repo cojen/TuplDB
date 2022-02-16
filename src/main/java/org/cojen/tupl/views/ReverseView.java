@@ -184,7 +184,7 @@ public final class ReverseView implements View {
     }
 
     @Override
-    public final LockResult lockCheck(Transaction txn, byte[] key) throws ViewConstraintException {
+    public LockResult lockCheck(Transaction txn, byte[] key) throws ViewConstraintException {
         return mSource.lockCheck(txn, key);
     }
 

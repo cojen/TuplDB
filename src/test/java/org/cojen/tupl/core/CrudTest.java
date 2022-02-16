@@ -585,7 +585,6 @@ public class CrudTest {
         byte[] key = "hello".getBytes();
         byte[] key2 = "howdy".getBytes();
         byte[] value = "everyone".getBytes();
-        byte[] value2 = "world".getBytes();
 
         assertFalse(ix.delete(txn, key));
         assertTrue(ix.insert(txn, key, value));

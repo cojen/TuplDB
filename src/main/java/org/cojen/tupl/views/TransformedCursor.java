@@ -91,12 +91,12 @@ public final class TransformedCursor extends CoreValueAccessor implements Scanne
     }
 
     @Override
-    public final int compareKeyTo(byte[] rkey) {
+    public int compareKeyTo(byte[] rkey) {
         return mSource.compareKeyTo(mTransformer.inverseTransformKey(rkey));
     }
 
     @Override
-    public final int compareKeyTo(byte[] rkey, int offset, int length) {
+    public int compareKeyTo(byte[] rkey, int offset, int length) {
         if (offset != 0 || length != rkey.length) {
             var newRkey = new byte[length];
             System.arraycopy(rkey, offset, newRkey, 0, length);

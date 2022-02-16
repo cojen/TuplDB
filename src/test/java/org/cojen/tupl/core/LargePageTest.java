@@ -75,7 +75,6 @@ public class LargePageTest {
         assertEquals(28, root.availableBytes());
 
         byte[] key = "key-200000xx".getBytes();
-        byte[] value = key;
         ix.store(Transaction.BOGUS, key, key);
 
         // Leaf node is now packed, and the search vector is at the tail.

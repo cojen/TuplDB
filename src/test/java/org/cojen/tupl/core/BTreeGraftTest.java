@@ -52,8 +52,8 @@ public class BTreeGraftTest {
 
     @Test
     public void basic() throws Exception {
-        BTree t1 = (BTree) mDatabase.newTemporaryIndex();
-        BTree t2 = (BTree) mDatabase.newTemporaryIndex();
+        BTree t1 = mDatabase.newTemporaryIndex();
+        BTree t2 = mDatabase.newTemporaryIndex();
 
         byte[] k = "hello".getBytes();
         byte[] v = "world".getBytes();
@@ -104,8 +104,8 @@ public class BTreeGraftTest {
             final long seed = 123 + count1 + count2;
             var rnd = new Random(seed);
 
-            BTree t1 = (BTree) mDatabase.newTemporaryIndex();
-            BTree t2 = (BTree) mDatabase.newTemporaryIndex();
+            BTree t1 = mDatabase.newTemporaryIndex();
+            BTree t2 = mDatabase.newTemporaryIndex();
 
             fillTree(t1, count1, rnd, (byte) 0);
             fillTree(t2, count2, rnd, (byte) 1);
@@ -142,7 +142,7 @@ public class BTreeGraftTest {
 
         var trees = new BTree[256];
         for (int i=0; i<trees.length; i++) {
-            trees[i] = (BTree) mDatabase.newTemporaryIndex();
+            trees[i] = mDatabase.newTemporaryIndex();
             fillTree(trees[i], 100, rnd, (byte) i);
         }
 

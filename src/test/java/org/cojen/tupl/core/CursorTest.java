@@ -663,7 +663,7 @@ public class CursorTest {
 
     private void nextLt(int count) throws Exception {
         View ix = openIndex("test");
-        for (int i=0; i<4; i++) {
+        for (int i=0; i<count; i++) {
             ix.store(Transaction.BOGUS, key(i), value(i));
         }
         Cursor c = ix.newCursor(Transaction.BOGUS);
@@ -1207,8 +1207,6 @@ public class CursorTest {
             var buckets = new int[10];
 
             Cursor c = ix.newCursor(null);
-            byte[] lowKey = key(0);
-            byte[] highKey = key(10000);
             for (int i=0; i<1000000; i++) {
                 c.random(null, null);
                 int key = Utils.decodeIntBE(c.key(), 0);
@@ -1427,7 +1425,6 @@ public class CursorTest {
         }
 
         for (; c2.key() != null; c2.next()) {
-            int actualKey = Utils.decodeIntBE(c2.key(), 0);
             fastAssertArrayEquals(key(mid), c2.key());
             fastAssertArrayEquals(value(mid), c2.value());
             mid++;

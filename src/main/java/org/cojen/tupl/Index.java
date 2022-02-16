@@ -20,8 +20,6 @@ package org.cojen.tupl;
 import java.io.Closeable;
 import java.io.IOException;
 
-import org.cojen.tupl.core.Utils;
-
 import org.cojen.tupl.diag.IndexStats;
 import org.cojen.tupl.diag.VerificationObserver;
 

@@ -133,8 +133,7 @@ class BasicRowScanner<R> implements RowScanner<R> {
             a: while (true) {
                 LockResult result = toNext(c);
                 b: while (true) {
-                    byte[] key;
-                    while ((key = c.key()) == null) {
+                    while (c.key() == null) {
                         if (!mController.next()) {
                             break a;
                         }

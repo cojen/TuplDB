@@ -24,7 +24,6 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
-import org.cojen.tupl.diag.CompactionObserver;
 import org.cojen.tupl.diag.VerificationObserver;
 
 import static org.cojen.tupl.TestUtils.*;

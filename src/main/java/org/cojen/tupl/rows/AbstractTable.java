@@ -632,11 +632,8 @@ public abstract class AbstractTable<R> implements Table<R> {
         txn = ViewUtils.enterScope(source, txn);
         try {
             redoPredicateMode(txn);
-            RowPredicateLock.Closer closer = mIndexLock.openAcquire(txn, row);
-            try {
+            try (RowPredicateLock.Closer closer = mIndexLock.openAcquire(txn, row)) {
                 source.store(txn, key, value);
-            } finally {
-                closer.close();
             }
             txn.commit();
         } finally {
@@ -657,11 +654,8 @@ public abstract class AbstractTable<R> implements Table<R> {
         byte[] oldValue;
         try {
             redoPredicateMode(txn);
-            RowPredicateLock.Closer closer = mIndexLock.openAcquire(txn, row);
-            try {
+            try (RowPredicateLock.Closer closer = mIndexLock.openAcquire(txn, row)) {
                 oldValue = source.exchange(txn, key, value);
-            } finally {
-                closer.close();
             }
             txn.commit();
         } finally {
@@ -684,11 +678,8 @@ public abstract class AbstractTable<R> implements Table<R> {
         boolean result;
         try {
             redoPredicateMode(txn);
-            RowPredicateLock.Closer closer = mIndexLock.openAcquire(txn, row);
-            try {
+            try (RowPredicateLock.Closer closer = mIndexLock.openAcquire(txn, row)) {
                 result = source.insert(txn, key, value);
-            } finally {
-                closer.close();
             }
             txn.commit();
         } finally {

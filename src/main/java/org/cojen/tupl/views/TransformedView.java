@@ -289,7 +289,7 @@ public final class TransformedView implements View {
     }
 
     @Override
-    public final LockResult tryLockShared(Transaction txn, byte[] tkey, long nanosTimeout)
+    public LockResult tryLockShared(Transaction txn, byte[] tkey, long nanosTimeout)
         throws LockFailureException, ViewConstraintException
     {
         byte[] key = inverseTransformKey(tkey);
@@ -300,7 +300,7 @@ public final class TransformedView implements View {
     }
 
     @Override
-    public final LockResult lockShared(Transaction txn, byte[] tkey)
+    public LockResult lockShared(Transaction txn, byte[] tkey)
         throws LockFailureException, ViewConstraintException
     {
         byte[] key = inverseTransformKey(tkey);
@@ -311,7 +311,7 @@ public final class TransformedView implements View {
     }
 
     @Override
-    public final LockResult tryLockUpgradable(Transaction txn, byte[] tkey, long nanosTimeout)
+    public LockResult tryLockUpgradable(Transaction txn, byte[] tkey, long nanosTimeout)
         throws LockFailureException, ViewConstraintException
     {
         byte[] key = inverseTransformKey(tkey);
@@ -322,7 +322,7 @@ public final class TransformedView implements View {
     }
 
     @Override
-    public final LockResult lockUpgradable(Transaction txn, byte[] tkey)
+    public LockResult lockUpgradable(Transaction txn, byte[] tkey)
         throws LockFailureException, ViewConstraintException
     {
         byte[] key = inverseTransformKey(tkey);
@@ -333,7 +333,7 @@ public final class TransformedView implements View {
     }
 
     @Override
-    public final LockResult tryLockExclusive(Transaction txn, byte[] tkey, long nanosTimeout)
+    public LockResult tryLockExclusive(Transaction txn, byte[] tkey, long nanosTimeout)
         throws LockFailureException, ViewConstraintException
     {
         byte[] key = inverseTransformKey(tkey);
@@ -344,7 +344,7 @@ public final class TransformedView implements View {
     }
 
     @Override
-    public final LockResult lockExclusive(Transaction txn, byte[] tkey)
+    public LockResult lockExclusive(Transaction txn, byte[] tkey)
         throws LockFailureException, ViewConstraintException
     {
         byte[] key = inverseTransformKey(tkey);
@@ -355,7 +355,7 @@ public final class TransformedView implements View {
     }
 
     @Override
-    public final LockResult lockCheck(Transaction txn, byte[] tkey)
+    public LockResult lockCheck(Transaction txn, byte[] tkey)
         throws ViewConstraintException
     {
         byte[] key = inverseTransformKey(tkey);

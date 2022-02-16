@@ -63,7 +63,7 @@ public interface View {
      * Returns a new cursor over this view.
      *
      * <p>Note that passing null for the transaction doesn't provide cursor stability with
-     * respect to updates. Either use an {@link newUpdater Updater}, or pass an explicit
+     * respect to updates. Either use an {@link #newUpdater Updater}, or pass an explicit
      * transaction and call {@link Cursor#commit commit} to apply each update.
      *
      * @param txn optional transaction for Cursor to {@link Cursor#link link} to; pass null for

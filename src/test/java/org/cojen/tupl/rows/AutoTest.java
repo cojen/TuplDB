@@ -388,7 +388,7 @@ public class AutoTest {
                     for (int i=0; i<100_000; i++) {
                         var row = table.newRow();
                         row.val("val-" + i);
-                        assertEquals(null, table.exchange(null, row));
+                        assertNull(table.exchange(null, row));
                     }
                 } catch (Throwable e) {
                     throw RowUtils.rethrow(e);

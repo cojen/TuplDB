@@ -103,8 +103,8 @@ public class FileStateLogTest {
 
         // Allow follower to define a higher term.
         TermLog term = mLog.defineTermLog(11, 15, 3000);
-        assertTrue(term != null);
-        assertTrue(term == mLog.defineTermLog(11, 15, 3000));
+        assertNotNull(term);
+        assertSame(term, mLog.defineTermLog(11, 15, 3000));
 
         // Validate the term.
         {
@@ -145,8 +145,8 @@ public class FileStateLogTest {
 
         // Mustn't define a term if position as the highest, although it's not usable.
         term = mLog.defineTermLog(15, 15, 10000);
-        assertTrue(term != null);
-        assertTrue(term == mLog.defineTermLog(15, 15, Long.MAX_VALUE));
+        assertNotNull(term);
+        assertSame(term, mLog.defineTermLog(15, 15, Long.MAX_VALUE));
 
         int[] countRef = {0};
 

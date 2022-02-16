@@ -73,7 +73,6 @@ public class LimitCapacityTest {
                 fill.store(value);
             } catch (DatabaseFullException e) {
                 trim(mDb, ix);
-                continue;
             }
         }
 

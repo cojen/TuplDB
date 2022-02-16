@@ -725,7 +725,7 @@ public class ViewTest {
 
         c = view.newCursor(null);
         for (c.first(); c.key() != null; c.next()) {
-            assertFalse(new String(c.key()).equals("hello"));
+            assertNotEquals("hello", new String(c.key()));
         }
         c.reset();
 
@@ -1030,7 +1030,7 @@ public class ViewTest {
         Cursor c = view.newCursor(null);
         long actual = 0;
         for (c.first(); c.key() != null; c.next()) {
-            assertTrue(c.value() == Cursor.NOT_LOADED);
+            assertSame(c.value(), Cursor.NOT_LOADED);
             actual++;
         }
 
@@ -1044,8 +1044,8 @@ public class ViewTest {
         c.first();
         byte[] key = c.key();
 
-        assertTrue(view.load(null, "foo".getBytes()) == null);
-        assertTrue(view.load(null, key) == Cursor.NOT_LOADED);
+        assertNull(view.load(null, "foo".getBytes()));
+        assertSame(view.load(null, key), Cursor.NOT_LOADED);
 
         try {
             view.exchange(null, "foo".getBytes(), "bar".getBytes());
@@ -1055,13 +1055,13 @@ public class ViewTest {
         }
 
         assertNull(view.exchange(null, "foo".getBytes(), null));
-        assertTrue(view.exchange(null, key, null) == Cursor.NOT_LOADED);
+        assertSame(view.exchange(null, key, null), Cursor.NOT_LOADED);
         assertNull(view.exchange(null, key, null));
 
         c.next();
         key = c.key();
         c.load();
-        assertTrue(c.value() == Cursor.NOT_LOADED);
+        assertSame(c.value(), Cursor.NOT_LOADED);
 
         try {
             c.store("value".getBytes());

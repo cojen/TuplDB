@@ -58,14 +58,12 @@ public class ContentionTest {
 
         class Runner extends Thread {
             private final int start;
-            private final int inc;
 
             private volatile Throwable fail;
             private boolean finished;
 
-            Runner(int start, int inc) {
+            Runner(int start) {
                 this.start = start;
-                this.inc = inc;
             }
 
             @Override
@@ -103,7 +101,7 @@ public class ContentionTest {
         var runners = new Runner[threadCount];
 
         for (int i=0; i<threadCount; i++) {
-            runners[i] = new Runner(i, threadCount);
+            runners[i] = new Runner(i);
         }
 
         for (Runner r : runners) {

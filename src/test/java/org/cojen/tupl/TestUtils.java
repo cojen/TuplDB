@@ -30,6 +30,8 @@ import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.Runner;
 
+import org.junit.Assert;
+
 /**
  * 
  *
@@ -72,8 +74,8 @@ public class TestUtils {
 
     public static void waitToBecomeLeader(Database db, int seconds) throws InterruptedException {
         var latch = new Latch(Latch.EXCLUSIVE);
-        db.uponLeader(() -> latch.releaseExclusive(), null);
-        org.junit.Assert.assertEquals(true, latch.tryAcquireExclusiveNanos(1_000_000_000L));
+        db.uponLeader(latch::releaseExclusive, null);
+        Assert.assertTrue(latch.tryAcquireExclusiveNanos(seconds * 1_000_000_000L));
     }
 
     public static enum OpenMode {NORMAL, DIRECT, DIRECT_MAPPED}
@@ -326,23 +328,6 @@ public class TestUtils {
     public static boolean is64bit() {
         return "amd64".equals(System.getProperty("os.arch"))
             || "64".equals(System.getProperty("sun.arch.data.model"));
-    }
-
-    private static volatile Object cForceGcRef;
-
-    public static void forceGc() {
-        for (int x=0; x<10; x++) {
-            System.gc();
-        }
-        var list = new ArrayList<String>();
-        for (int x=0; x<1000; x++) {
-            list.add("" + x);
-        }
-        cForceGcRef = list;
-        for (int x=0; x<10; x++) {
-            System.gc();
-        }
-        cForceGcRef = null;
     }
 
     public static ServerSocket newServerSocket() throws IOException {

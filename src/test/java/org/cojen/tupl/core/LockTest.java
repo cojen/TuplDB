@@ -24,23 +24,18 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
-import java.util.Set;
 
-import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.*;
 import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
-
-import org.cojen.tupl.util.Runner;
 
 import static org.cojen.tupl.LockResult.*;
 import static org.cojen.tupl.TestUtils.startAndWaitUntilBlocked;
@@ -892,7 +887,7 @@ public class LockTest {
                 fifo(10);
                 return;
             } catch (AssertionError e) {
-                if (i == 10 || e.getMessage().indexOf("TIMED") < 0) {
+                if (i == 10 || !e.getMessage().contains("TIMED")) {
                     throw e;
                 }
                 // Tolerate unexpected long stalls which cause timeouts.

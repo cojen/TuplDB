@@ -25,8 +25,6 @@ import org.cojen.tupl.core.CoreDatabase;
 
 import static org.cojen.tupl.TestUtils.*;
 
-import static org.cojen.tupl.rows.RowTestUtils.*;
-
 /**
  * 
  *

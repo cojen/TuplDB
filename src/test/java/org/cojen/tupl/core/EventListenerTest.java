@@ -26,8 +26,6 @@ import static java.lang.System.Logger.Level;
 import org.junit.*;
 import static org.junit.Assert.*;
 
-import org.cojen.tupl.*;
-
 import org.cojen.tupl.diag.EventListener;
 import org.cojen.tupl.diag.EventType;
 

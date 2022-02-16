@@ -17,8 +17,6 @@
 
 package org.cojen.tupl.rows;
 
-import java.util.Map;
-
 /**
  * Decoded RowInfo for a secondary index.
  *
