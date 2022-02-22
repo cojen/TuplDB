@@ -233,21 +233,18 @@ class RowInfo extends ColumnSet {
 
         bob.append(name).append('(');
 
-        appendNames(bob, keyColumns);
+        for (ColumnInfo ci : keyColumns.values()) {
+            bob.append(ci.isDescending() ? '-' : '+').append(ci.name);
+        }
 
         if (!isAltKey() && !valueColumns.isEmpty()) {
             bob.append('|');
-            appendNames(bob, valueColumns);
+            for (ColumnInfo ci : valueColumns.values()) {
+                bob.append('~').append(ci.name);
+            }
         }
 
         return bob.append(')').toString();
-    }
-
-    private static void appendNames(StringBuilder bob, Map<String, ColumnInfo> map) {
-        for (ColumnInfo ci : map.values()) {
-            bob.append(ci.isDescending() ? '-' : '+');
-            bob.append(ci.name);
-        }
     }
 
     @Override
