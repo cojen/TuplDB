@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 import org.cojen.tupl.DeadlockException;
@@ -46,8 +47,12 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
     private final LockManager mManager;
     private final long mIndexId;
 
+    private final ThreadLocal<Integer> mVersionStripe;
+
+    private static final int cNumStripes = Runtime.getRuntime().availableProcessors();
+
     // Linked stack of VersionLocks.
-    private volatile VersionLock mNewestVersion;
+    private volatile StripedVersionLock mNewestVersion;
 
     private static final VarHandle cNewestVersionHandle, cLockNextHandle;
 
@@ -61,7 +66,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
             var lookup = MethodHandles.lookup();
 
             cNewestVersionHandle = lookup.findVarHandle
-                (RowPredicateLockImpl.class, "mNewestVersion", VersionLock.class);
+                (RowPredicateLockImpl.class, "mNewestVersion", StripedVersionLock.class);
 
             cLockNextHandle = lookup.findVarHandle(Lock.class, "mLockNext", Lock.class);
 
@@ -77,11 +82,19 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
     RowPredicateLockImpl(LockManager manager, long indexId) {
         mManager = manager;
         mIndexId = indexId;
+
+        mVersionStripe = new ThreadLocal<>() {
+            @Override
+            protected Integer initialValue() {
+                return ThreadLocalRandom.current().nextInt(cNumStripes);
+            }
+        };
+
         mNewestVersion = newVersion();
     }
 
-    private VersionLock newVersion() {
-        var version = new VersionLock();
+    private StripedVersionLock newVersion() {
+        var version = new StripedVersionLock();
         mManager.initDetachedLock(version, null); // initially unowned
         return version;
     }
@@ -93,8 +106,11 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
         }
 
         var local = (LocalTransaction) txn;
-        VersionLock version = mNewestVersion;
-        version.acquire(local);
+        VersionLock version = mNewestVersion.select(this);
+
+        if (version.acquireNoPush(local)) {
+            local.push(version);
+        }
 
         try {
             for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
@@ -116,10 +132,11 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
         }
 
         var local = (LocalTransaction) txn;
-        VersionLock version = mNewestVersion;
+        VersionLock version = mNewestVersion.select(this);
 
         Closer closer;
-        if (version.acquire(local)) {
+        if (version.acquireNoPush(local)) {
+            local.push(version);
             // Indicate that at least one lock was acquired.
             closer = version;
         } else {
@@ -160,7 +177,8 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
         Object locks = null;
         int numLocks = 0;
 
-        VersionLock version = mNewestVersion;
+        VersionLock version = mNewestVersion.select(this);
+
         if (version.acquireNoPush(local)) {
             locks = version;
             numLocks = 1;
@@ -327,7 +345,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
             // isn't performed out of order, it doesn't need to be strict, and the list is
             // never empty. Overall, this makes it simpler than how evaluators are added.
 
-            VersionLock version;
+            StripedVersionLock version;
             {
                 var newVersion = newVersion();
                 while (true) {
@@ -343,11 +361,11 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
             // Sweep through the versions, from newest to oldest, and wait for all matching
             // transactions to finish.
 
-            VersionLock newerVersion = null;
+            StripedVersionLock newerVersion = null;
 
             while (true) {
                 boolean discard = version.await(mIndexId, evaluator, local);
-                var olderVersion = (VersionLock) version.mLockNext;
+                var olderVersion = version.mLockNext;
                 if (discard && newerVersion != null) {
                     cLockNextHandle.weakCompareAndSet(newerVersion, version, olderVersion);
                 }
@@ -355,7 +373,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
                     break;
                 }
                 newerVersion = version;
-                version = olderVersion;
+                version = (StripedVersionLock) olderVersion;
             }
 
             evaluator.acquireExclusive();
@@ -379,8 +397,11 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
 
             // Holding the version lock blocks addPredicate calls once they call version.await.
             // They won't acquire the exclusive evaluator lock until this step completes.
-            final VersionLock version = mNewestVersion;
-            version.acquire(local);
+            final VersionLock version = mNewestVersion.select(this);
+
+            if (version.acquireNoPush(local)) {
+                local.push(version);
+            }
 
             try {
                 // Wait for existing row scan operations to finish.
@@ -470,8 +491,117 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
         }
     }
 
-    // TODO: Define a striped variant for improved concurrency.
-    private static final class VersionLock extends DetachedLockImpl implements Closer {
+    private static final class StripedVersionLock extends VersionLock {
+        private VersionLock[] mStripes;
+
+        private static final VarHandle cStripesHandle;
+        private static final VarHandle cStripesElementHandle;
+
+        static {
+            try {
+                var lookup = MethodHandles.lookup();
+
+                cStripesHandle = lookup.findVarHandle
+                    (StripedVersionLock.class, "mStripes", VersionLock[].class);
+
+                cStripesElementHandle = MethodHandles.arrayElementVarHandle(VersionLock[].class);
+            } catch (Throwable e) {
+                throw Utils.rethrow(e);
+            }
+        }
+
+        /**
+         * Select a VersionLock lock, latched exclusively.
+         */
+        VersionLock select(RowPredicateLockImpl<?> parent) {
+            VersionLock lock;
+            int which;
+            {
+                var stripes = (VersionLock[]) cStripesHandle.getOpaque(this);
+                if (stripes == null) {
+                    if (mBucket.tryAcquireExclusive()) {
+                        return this;
+                    }
+                    which = parent.mVersionStripe.get();
+                } else {
+                    which = parent.mVersionStripe.get();
+                    lock = (VersionLock) cStripesElementHandle.getAcquire(stripes, which);
+                    if (lock != null && lock.mBucket.tryAcquireExclusive()) {
+                        return lock;
+                    }
+                    which = ThreadLocalRandom.current().nextInt(cNumStripes);
+                    parent.mVersionStripe.set(which);
+                    lock = (VersionLock) cStripesElementHandle.getAcquire(stripes, which);
+                    if (lock != null) {
+                        lock.mBucket.acquireExclusive();
+                        return lock;
+                    }
+                }
+            }
+
+            while (true) {
+                LockManager.Bucket bucket = mBucket;
+                bucket.acquireExclusive();
+
+                VersionLock[] stripes = mStripes;
+
+                obtainLock: try {
+                    if (stripes == null) {
+                        stripes = new VersionLock[cNumStripes];
+                        cStripesHandle.setRelease(this, stripes);
+                    } else {
+                        lock = stripes[which];
+                        if (lock != null) {
+                            break obtainLock;
+                        }
+                    }
+                    lock = new VersionLock();
+                    parent.mManager.initDetachedLock(lock, null);
+                    cStripesElementHandle.setRelease(stripes, which, lock);
+                } finally {
+                    bucket.releaseExclusive();
+                }
+
+                if (lock.mBucket.tryAcquireExclusive()) {
+                    return lock;
+                }
+
+                which = ThreadLocalRandom.current().nextInt(cNumStripes);
+                parent.mVersionStripe.set(which);
+                lock = (VersionLock) cStripesElementHandle.getAcquire(stripes, which);
+
+                if (lock != null) {
+                    lock.mBucket.acquireExclusive();
+                    return lock;
+                }
+            }
+        }
+
+        /**
+         * Wait for transactions to finish which are using this version and have also locked
+         * rows that are matched by the given evaluator.
+         *
+         * @return true if should discard
+         */
+        boolean await(long indexId, Evaluator<?> evaluator, LocalTransaction txn)
+            throws LockFailureException
+        {
+            var stripes = (VersionLock[]) cStripesHandle.getOpaque(this);
+
+            if (stripes != null) {
+                for (int i=0; i<stripes.length; i++) {
+                    var lock = (VersionLock) cStripesElementHandle.getAcquire(stripes, i);
+                    if (lock != null) {
+                        lock.doAwait(indexId, evaluator, txn);
+                    }
+                }
+            }
+
+            return doAwait(indexId, evaluator, txn);
+        }
+    }
+
+    private static class VersionLock extends DetachedLockImpl implements Closer {
 
         private static final VarHandle cIndexIdHandle, cQueueUHandle;
 
@@ -489,14 +619,13 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
         }
 
         /**
-         * Similar to acquireShared except it doesn't block if a queue exists.
+         * Similar to acquireShared except it doesn't block if a queue exists. Caller must
+         * acquire exclusive bucket latch.
          *
          * @return true if just acquired
          * @throws IllegalStateException if an exclusive lock is held
          */
-        boolean acquire(Locker locker) {
-            LockManager.Bucket bucket = mBucket;
-            bucket.acquireExclusive();
+        final boolean acquireNoPush(Locker locker) {
             try {
                 int count = mLockCount;
                 if (count == ~0) {
@@ -508,33 +637,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
                 }
                 addSharedLocker(count, locker);
             } finally {
-                bucket.releaseExclusive();
-            }
-
-            locker.push(this);
-            return true;
-        }
-
-        /**
-         * Similar to acquireShared except it doesn't block if a queue exists.
-         *
-         * @throws IllegalStateException if an exclusive lock is held
-         */
-        boolean acquireNoPush(Locker locker) {
-            LockManager.Bucket bucket = mBucket;
-            bucket.acquireExclusive();
-            try {
-                int count = mLockCount;
-                if (count == ~0) {
-                    throw new IllegalStateException();
-                }
-                cIndexIdHandle.getAndAdd(this, 1L);
-                if (count != 0 && isSharedLocker(locker)) {
-                    return false;
-                }
-                addSharedLocker(count, locker);
-            } finally {
-                bucket.releaseExclusive();
+                mBucket.releaseExclusive();
             }
 
             return true;
@@ -544,7 +647,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
          * Called when an openAcquire step finishes successfully.
          */
         @Override
-        public void close() {
+        public final void close() {
             if (((long) cIndexIdHandle.getAndAdd(this, -1L)) == 1L) {
                 signalQueueU();
             }
@@ -569,7 +672,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
          *
          * @return true if should discard
          */
-        boolean await(long indexId, Evaluator<?> evaluator, LocalTransaction txn)
+        final boolean doAwait(long indexId, Evaluator<?> evaluator, LocalTransaction txn)
             throws LockFailureException
         {
             if (((int) cLockCountHandle.getAcquire(this)) == 0x80000000) {
