@@ -271,14 +271,14 @@ public class TableMaker {
     }
 
     /**
-     * Return a constructor which accepts a (TableManager, Index, RowPredicateLock,
-     * AbstractTable) and returns an AbstractTable implementation.
+     * Return a constructor which accepts a (Index, RowPredicateLock, TableImpl primary,
+     * TableImpl unjoined) and returns an AbstractTable implementation.
      *
+     * @param primaryTableClass the primary table implementation class
      * @param unjoinedClass the table implementation which is passed as the last constructor
      * parameter
-     * @param primaryTableClass the primary table implementation class
      */
-    MethodHandle finishJoined(Class<?> unjoinedClass, Class<?> primaryTableClass) {
+    MethodHandle finishJoined(Class<?> primaryTableClass, Class<?> unjoinedClass) {
         Objects.requireNonNull(primaryTableClass);
 
         mClassMaker = mCodecGen.beginClassMaker(getClass(), mRowType, "Joined").public_()
@@ -291,16 +291,27 @@ public class TableMaker {
         }
 
         MethodType mt = MethodType.methodType
-            (void.class, TableManager.class, Index.class, RowPredicateLock.class,
-             AbstractTable.class); // the unjoined table
+            (void.class, Index.class, RowPredicateLock.class, primaryTableClass, unjoinedClass);
 
         MethodMaker ctor = mClassMaker.addConstructor(mt);
-        ctor.invokeSuperConstructor(ctor.param(0), ctor.param(1), ctor.param(2));
+
+        var indexVar = ctor.param(0);
+        var lockVar = ctor.param(1);
+        var primaryVar = ctor.param(2);
+        var unjoinedVar = ctor.param(3);
+        var managerVar = primaryVar.invoke("tableManager");
+
+        ctor.invokeSuperConstructor(managerVar, indexVar, lockVar);
+
+        // TODO: not needed yet
+        //mClassMaker.addField(primaryTableClass, "primaryTable").private_().final_();
+        //ctor.field("primaryTable").set(primaryVar);
 
         mClassMaker.addField(Index.class, "primaryIndex").private_().final_();
-        ctor.field("primaryIndex").set(ctor.param(0).invoke("primaryIndex"));
-        mClassMaker.addField(AbstractTable.class, "unjoined").private_().final_();
-        ctor.field("unjoined").set(ctor.param(3));
+        ctor.field("primaryIndex").set(managerVar.invoke("primaryIndex"));
+
+        mClassMaker.addField(unjoinedClass, "unjoined").private_().final_();
+        ctor.field("unjoined").set(unjoinedVar);
 
         {
             MethodMaker mm = mClassMaker.addMethod(Table.class, "viewUnjoined").public_();

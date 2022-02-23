@@ -115,6 +115,10 @@ public abstract class AbstractTable<R> implements Table<R> {
         mIndexLock = indexLock;
     }
 
+    public final TableManager<R> tableManager() {
+        return mTableManager;
+    }
+
     @Override
     public final RowScanner<R> newRowScanner(Transaction txn) throws IOException {
         return newRowScanner(txn, unfiltered());
