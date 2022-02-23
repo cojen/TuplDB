@@ -17,16 +17,19 @@
 
 package org.cojen.tupl.core;
 
+import java.util.function.Predicate;
+
 /**
  * Defines an interface intended for locking rows based on a rule that matches on a row.
  *
  * @author Brian S O'Neill
  * @see RowPredicateLock
  */
-public interface RowPredicate<R> {
+public interface RowPredicate<R> extends Predicate<R> {
     /**
      * Test against a completely filled in row.
      */
+    @Override
     public boolean test(R row);
 
     /**
@@ -54,7 +57,7 @@ public interface RowPredicate<R> {
     /**
      * Defines a predicate that always evaluates to false.
      */
-    public abstract class None<R> implements RowPredicate<R> {
+    public static class None<R> implements RowPredicate<R> {
         @Override
         public final boolean test(R row) {
             return false;

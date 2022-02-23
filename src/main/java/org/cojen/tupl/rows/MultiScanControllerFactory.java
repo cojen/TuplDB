@@ -48,6 +48,11 @@ final class MultiScanControllerFactory<R> implements ScanControllerFactory<R> {
     }
 
     @Override
+    public RowPredicate<R> predicate(Object... args) {
+        return mRanges[0].predicate(args);
+    }
+
+    @Override
     @SuppressWarnings("unchecked")
     public ScanController<R> newScanController(Object... args) {
         var ranges = mRanges;

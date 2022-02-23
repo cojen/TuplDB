@@ -21,6 +21,8 @@ import java.io.IOException;
 
 import java.util.Comparator;
 
+import java.util.function.Predicate;
+
 import java.util.stream.Stream;
 
 import org.cojen.tupl.diag.QueryPlan;
@@ -319,6 +321,11 @@ public interface Table<R> {
      * @throws IllegalStateException if the specification refers to non-existent columns
      */
     public Comparator<R> comparator(String spec);
+
+    /**
+     * Returns a row predicate for the given filter expression and arguments.
+     */
+    public Predicate<R> predicate(String filter, Object... args);
 
     // FIXME: Define a viewPrimaryKey method which disables automatic index selection.
 

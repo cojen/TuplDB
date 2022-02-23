@@ -31,6 +31,7 @@ import org.cojen.tupl.diag.QueryPlan;
  */
 final class EmptyScanController extends SingleScanController implements ScanControllerFactory {
     private static final EmptyScanController THE = new EmptyScanController();
+    private static RowPredicate cPredicate;
 
     @SuppressWarnings("unchecked")
     static <R> ScanControllerFactory<R> factory() {
@@ -53,7 +54,16 @@ final class EmptyScanController extends SingleScanController implements ScanCont
 
     @Override
     public RowPredicate predicate() {
-        return null;
+        RowPredicate predicate = cPredicate;
+        if (predicate == null) {
+            cPredicate = predicate = new RowPredicate.None();
+        }
+        return predicate;
+    }
+
+    @Override
+    public RowPredicate predicate(Object... args) {
+        return predicate();
     }
 
     @Override

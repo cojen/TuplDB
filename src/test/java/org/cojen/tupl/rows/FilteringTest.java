@@ -656,6 +656,9 @@ public class FilteringTest {
         }
         assertEquals(5, count);
 
+        assertEquals(5, table.newStream(null, "name1 == name2").count());
+        assertEquals(5, table.newStream(null).filter(table.predicate("name1 == name2")).count());
+
         scanner = table.newRowScanner(null, "name1 != name2 && id >= ? && name1 != name2", 6);
         count = 0;
         for (MyRow2 row = scanner.row(); row != null; row = scanner.step(row)) {

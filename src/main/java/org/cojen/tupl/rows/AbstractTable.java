@@ -356,6 +356,18 @@ public abstract class AbstractTable<R> implements Table<R> {
     }
 
     @Override
+    public RowPredicate<R> predicate(String filter, Object... args) {
+        if (filter == null) {
+            return RowPredicate.all();
+        }
+        ScanControllerFactory<R> factory = mFilterFactoryCache.get(filter);
+        if (factory == null) {
+            factory = findFilteredFactory(mFilterFactoryCache, filter);
+        }
+        return factory.predicate(args);
+    }
+
+    @Override
     public Table<R> viewAlternateKey(String... columns) throws IOException {
         return viewIndexTable(true, columns);
     }
@@ -430,13 +442,18 @@ public abstract class AbstractTable<R> implements Table<R> {
 
                 factory = new ScanControllerFactory<>() {
                     @Override
-                    public ScanController<R> newScanController(Object... args) {
-                        return unfiltered;
+                    public QueryPlan plan(Object... args) {
+                        return unfiltered.plan();
                     }
 
                     @Override
-                    public QueryPlan plan(Object... args) {
-                        return unfiltered.plan();
+                    public RowPredicate<R> predicate(Object... args) {
+                        return RowPredicate.all();
+                    }
+
+                    @Override
+                    public ScanController<R> newScanController(Object... args) {
+                        return unfiltered;
                     }
                 };
 

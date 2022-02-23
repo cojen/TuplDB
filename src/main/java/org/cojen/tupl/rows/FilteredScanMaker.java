@@ -178,6 +178,13 @@ public class FilteredScanMaker<R> {
         }
 
         {
+            // Specified by ScanControllerFactory.
+            MethodMaker mm = mFilterMaker.addMethod
+                (RowPredicate.class, "predicate", Object[].class).public_();
+            mm.return_(mm.new_(mPredicateClass, mm.param(0)));
+        }
+
+        {
             // Override the plan method specified by ScanController.
             MethodMaker mm = mFilterMaker.addMethod(QueryPlan.class, "plan").public_();
 

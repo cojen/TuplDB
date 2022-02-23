@@ -30,6 +30,11 @@ public interface ScanControllerFactory<R> {
     QueryPlan plan(Object... args);
 
     /**
+     * Returns a predicate which is shared by all scan batches.
+     */
+    RowPredicate<R> predicate(Object... args);
+
+    /**
      * Return a ScanController which constructs a RowPredicate from the given filter arguments.
      */
     ScanController<R> newScanController(Object... args);
