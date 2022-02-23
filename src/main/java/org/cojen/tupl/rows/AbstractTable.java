@@ -133,7 +133,7 @@ public abstract class AbstractTable<R> implements Table<R> {
         final BasicRowScanner<R> scanner;
         RowPredicateLock.Closer closer = null;
 
-        if (controller instanceof SingleScanController.Joined && txn == null) {
+        if (controller instanceof JoinedScanController && txn == null) {
             txn = mSource.newTransaction(null);
             txn.lockMode(LockMode.REPEATABLE_READ);
             scanner = new AutoCommitRowScanner<>(this, controller);
@@ -580,7 +580,7 @@ public abstract class AbstractTable<R> implements Table<R> {
     }
 
     private void splitRemainders(RowInfo rowInfo, RowFilter[]... ranges) {
-        if (unfiltered() instanceof SingleScanController.Joined) {
+        if (unfiltered() instanceof JoinedScanController) {
             // First filter on the secondary entry, and then filter on the joined primary entry.
             RowFilter.splitRemainders(rowInfo.keyColumns, ranges);
         }

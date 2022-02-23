@@ -20,9 +20,6 @@ package org.cojen.tupl.rows;
 import java.io.IOException;
 
 import org.cojen.tupl.Cursor;
-import org.cojen.tupl.Index;
-import org.cojen.tupl.LockMode;
-import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
 
@@ -97,60 +94,5 @@ public abstract class SingleScanController<R> implements ScanController<R>, RowD
     @Override
     public final boolean highInclusive() {
         return mHighInclusive;
-    }
-
-    /**
-     * Expected to be subclassed for supporting secondary index scans.
-     */
-    public abstract static class Joined<R> extends SingleScanController<R> {
-        protected final Index mPrimaryIndex;
-
-        protected Joined(byte[] lowBound, boolean lowInclusive,
-                         byte[] highBound, boolean highInclusive,
-                         Index primaryIndex)
-        {
-            super(lowBound, lowInclusive, highBound, highInclusive);
-            mPrimaryIndex = primaryIndex;
-        }
-
-        // Subclass should implement one of these methods. The secondaryValue param is required
-        // for alternate keys.
-        //protected static byte[] toPrimaryKey(byte[] secondaryKey);
-        //protected static byte[] toPrimaryKey(byte[] secondaryKey, byte[] secondaryValue);
-
-        /**
-         * Given a positioned cursor over the secondary index and a decoded primary key, return
-         * the associated primary value, or null if not found.
-         *
-         * @param secondaryCursor must have a non-null transaction
-         */
-        protected byte[] join(Cursor secondaryCursor, LockResult result, byte[] primaryKey)
-            throws IOException
-        {
-            Transaction txn = secondaryCursor.link();
-            byte[] primaryValue = mPrimaryIndex.load(txn, primaryKey);
-
-            if (result == LockResult.ACQUIRED && txn.lastLockedKey() == primaryKey &&
-                txn.lastLockedIndex() == mPrimaryIndex.id())
-            {
-                // Combine the secondary and primary locks together, so that they can be
-                // released together if the row is filtered out.
-                txn.unlockCombine();
-            }
-
-            if (primaryValue != null && txn.lockMode() == LockMode.READ_COMMITTED) {
-                // The scanner relies on predicate locking, and so validation only needs to
-                // check that the secondary entry still exists. The predicate lock prevents
-                // against inserts and stores against the secondary index, but it doesn't
-                // prevent deletes. If it did, then no validation would be needed at all.
-                if (!secondaryCursor.exists()) {
-                    // Was concurrently deleted. Note that the exists call doesn't observe
-                    // an uncommitted delete because it would store a ghost.
-                    primaryValue = null;
-                }
-            }
-
-            return primaryValue;
-        }
     }
 }

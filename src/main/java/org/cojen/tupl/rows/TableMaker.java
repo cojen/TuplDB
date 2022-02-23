@@ -1948,7 +1948,7 @@ public class TableMaker {
     private Class<?> makeUnfilteredSecondaryScanControllerClass(Class<?> primaryTableClass) {
         ClassMaker cm = RowGen.beginClassMaker
             (TableMaker.class, mRowType, mRowInfo, null, "Unfiltered")
-            .extend(SingleScanController.Joined.class).public_();
+            .extend(JoinedScanController.class).public_();
 
         // Constructor is protected, for use by filter implementation subclasses.
         {

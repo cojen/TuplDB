@@ -126,7 +126,7 @@ public class FilteredScanMaker<R> {
 
         // Need a constructor for the factory singleton instance.
         Object[] mainCtorParams;
-        if (unfiltered instanceof SingleScanController.Joined) {
+        if (unfiltered instanceof JoinedScanController) {
             MethodMaker ctor = mFilterMaker.addConstructor(Index.class).public_();
             ctor.invokeSuperConstructor(null, false, null, false, ctor.param(0));
             mainCtorParams = new Class[] {predClass, Index.class};
@@ -144,7 +144,7 @@ public class FilteredScanMaker<R> {
         // Finish the filter class...
 
         Object[] ctorParams;
-        if (mUnfiltered instanceof SingleScanController.Joined) {
+        if (mUnfiltered instanceof JoinedScanController) {
             ctorParams = new Object[5];
             ctorParams[4] = mFilterCtorMaker.param(1);
         } else {
@@ -218,7 +218,7 @@ public class FilteredScanMaker<R> {
     {
         MethodHandles.Lookup lookup = MethodHandles.lookup();
         try {
-            if (unfiltered instanceof SingleScanController.Joined joined) {
+            if (unfiltered instanceof JoinedScanController joined) {
                 return (ScanControllerFactory<R>) lookup.findConstructor
                     (filterClass, MethodType.methodType(void.class, Index.class))
                     .invoke(joined.mPrimaryIndex);
@@ -414,7 +414,7 @@ public class FilteredScanMaker<R> {
         }
 
         Object[] params;
-        if (mUnfiltered instanceof SingleScanController.Joined) {
+        if (mUnfiltered instanceof JoinedScanController) {
             params = new Object[2];
             params[1] = mm.field("mPrimaryIndex");
         } else {
@@ -478,7 +478,7 @@ public class FilteredScanMaker<R> {
 
         // Finish filter and decode using indy, to support multiple schema versions.
 
-        long primaryIndexId = ((SingleScanController.Joined) mUnfiltered).mPrimaryIndex.id();
+        long primaryIndexId = ((JoinedScanController) mUnfiltered).mPrimaryIndex.id();
 
         WeakReference<RowFilter> filterRef = null;
         String filterStr = null;
