@@ -61,8 +61,10 @@ import org.cojen.tupl.diag.QueryPlan;
  * <p>The actual row implementation class is generated at runtime, and the standard {@code
  * equals}, {@code hashCode}, {@code toString}, and {@code clone} methods are automatically
  * generated as well. If the row interface declares a {@code clone} method which returns the
- * exact row type, then the row can be cloned without requiring an explicit cast. Note that any
- * default methods defined in the row interface are never overridden by the generated class.
+ * exact row type, then the row can be cloned without requiring an explicit cast. If the row
+ * interface extends {@link Comparable}, then rows are comparable by primary key. Any default
+ * methods defined in the row interface are never overridden by the generated class, unless the
+ * method is defined in the {@link Object} class.
  *
  * <p>Scans over the rows of the table can be reduced by a filter, described by this syntax:
  *

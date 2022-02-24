@@ -317,7 +317,7 @@ class RowInfo extends ColumnSet {
                             continue;
                         }
                         if (name.equals("compareTo") && type == int.class &&
-                            params[0] == Object.class &&
+                            (params[0] == Object.class || params[0] == rowType) &&
                             Comparable.class.isAssignableFrom(rowType))
                         {
                             // Inherited method from Comparable interface.

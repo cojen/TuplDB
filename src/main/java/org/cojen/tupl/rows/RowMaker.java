@@ -381,6 +381,12 @@ public class RowMaker {
     }
 
     private void addCompareTo() {
+        if (!Comparable.class.isAssignableFrom(mRowType) ||
+            isDefaultMethod("compareTo", Object.class) || isDefaultMethod("compareTo", mRowType))
+        {
+            return;
+        }
+
         MethodMaker mm = mClassMaker.addMethod(int.class, "compareTo", mClassMaker).public_();
         var indy = mm.var(RowMaker.class).indy("indyCompare", mRowType);
         mm.return_(indy.invoke(int.class, "compare", null, mm.this_(), mm.param(0)));
@@ -409,5 +415,13 @@ public class RowMaker {
     private MethodMaker addMethod(Method m) {
         return mClassMaker.addMethod(m.getReturnType(), m.getName(),
                                      (Object[]) m.getParameterTypes());
+    }
+
+    private boolean isDefaultMethod(String name, Class<?>... paramTypes) {
+        try {
+            return mRowType.getMethod(name, paramTypes).isDefault();
+        } catch (NoSuchMethodException e) {
+            return false;
+        }
     }
 }

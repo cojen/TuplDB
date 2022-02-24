@@ -20,11 +20,7 @@ package org.cojen.tupl.rows;
 import org.junit.*;
 import static org.junit.Assert.*;
 
-import org.cojen.tupl.AlternateKey;
-import org.cojen.tupl.Nullable;
-import org.cojen.tupl.PrimaryKey;
-import org.cojen.tupl.SecondaryIndex;
-import org.cojen.tupl.Unsigned;
+import org.cojen.tupl.*;
 
 /**
  * 
@@ -216,10 +212,16 @@ public class RowInfoTest {
     @Test
     public void ignoreDefaults() throws Exception {
         RowInfo info = RowInfo.find(Test100.class);
+
+        Database db = Database.open(new DatabaseConfig());
+
+        Test100 row = db.openTable(Test100.class).newRow();
+        assertEquals(123, row.compareTo(""));
+        assertEquals(234, row.compareTo(row));
     }
 
     @PrimaryKey("a")
-    public interface Test100 {
+    public interface Test100 extends Comparable {
         int a();
         void a(int x);
 
@@ -237,6 +239,14 @@ public class RowInfoTest {
         boolean equals(Object obj);
 
         Test100 clone();
+
+        default int compareTo(Object obj) {
+            return 123;
+        }
+
+        default int compareTo(Test100 obj) {
+            return 234;
+        }
     }
 
     @Test
