@@ -107,8 +107,10 @@ loadScripts(document, 'script');</script>
  <p>The actual row implementation class is generated at runtime, and the standard <code>
  equals</code>, <code>hashCode</code>, <code>toString</code>, and <code>clone</code> methods are automatically
  generated as well. If the row interface declares a <code>clone</code> method which returns the
- exact row type, then the row can be cloned without requiring an explicit cast. Note that any
- default methods defined in the row interface are never overridden by the generated class.
+ exact row type, then the row can be cloned without requiring an explicit cast. If the row
+ interface extends <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Comparable.html" title="class or interface in java.lang" class="external-link"><code>Comparable</code></a>, then rows are comparable by primary key. Any default
+ methods defined in the row interface are never overridden by the generated class, unless the
+ method is defined in the <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link"><code>Object</code></a> class.
 
  <p>Scans over the rows of the table can be reduced by a filter, described by this syntax:
 
