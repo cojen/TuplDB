@@ -482,4 +482,36 @@ public class RowCrudTest {
 
         assertEquals(4, count);
     }
+
+    @Test
+    public void updateFiltered() throws Exception {
+        // Test updating a row's scanner position when a predicate is checked.
+
+        for (int i=1; i<=5; i++) {
+            TestRow row = mTable.newRow();
+            row.id(i);
+            row.num1(1000 + i);
+            row.str1("s1-" + i);
+            row.str2("s2-" + i);
+            mTable.store(null, row);
+        }
+
+        RowUpdater<TestRow> updater = mTable.newRowUpdater(null, "id == ? || id == ?", 2, 4);
+
+        for (TestRow row = updater.row(); row != null; ) {
+            if (row.id() == 2) {
+                row.id(30);
+            } else if (row.id() == 4) {
+                row.id(-40);
+            } else {
+                fail();
+            }
+            row = updater.update();
+        }
+
+        mTable.newStream(null).forEach(row -> {
+            long id = row.id();
+            assertTrue(id == 1 || id == 3 || id == 5 || id == 30 || id == -40);
+        });
+    }
 }

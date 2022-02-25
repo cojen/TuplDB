@@ -173,16 +173,21 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
         // is higher, it's added to a remembered set and not observed again by this updater.
 
         if (cmp < 0) {
-            if (mKeysToSkip == null) {
-                // TODO: Consider designing a more memory efficient set or hashtable.
-                mKeysToSkip = new TreeSet<>(Arrays::compareUnsigned);
-            }
-            // FIXME: For AutoCommitRowUpdater, consider limiting the size of the set and
-            // use a temporary index. All other updaters maintain locks, and so the key
-            // objects cannot be immediately freed anyhow.
-            if (!mKeysToSkip.add(key)) {
-                // Won't be removed from the set in case of UniqueConstraintException.
+            if (!mController.predicate().test(row)) {
+                // No need to remember it because the updated row is filtered out.
                 cmp = 0;
+            } else {
+                if (mKeysToSkip == null) {
+                    // TODO: Consider designing a more memory efficient set or hashtable.
+                    mKeysToSkip = new TreeSet<>(Arrays::compareUnsigned);
+                }
+                // FIXME: For AutoCommitRowUpdater, consider limiting the size of the set and
+                // use a temporary index. All other updaters maintain locks, and so the key
+                // objects cannot be immediately freed anyhow.
+                if (!mKeysToSkip.add(key)) {
+                    // Won't be removed from the set in case of UniqueConstraintException.
+                    cmp = 0;
+                }
             }
         }
 
