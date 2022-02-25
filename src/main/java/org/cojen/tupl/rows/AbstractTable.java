@@ -137,7 +137,7 @@ public abstract class AbstractTable<R> implements Table<R> {
         final BasicRowScanner<R> scanner;
         RowPredicateLock.Closer closer = null;
 
-        if (controller instanceof JoinedScanController && txn == null) {
+        if (txn == null && controller instanceof JoinedScanController) {
             txn = mSource.newTransaction(null);
             txn.lockMode(LockMode.REPEATABLE_READ);
             scanner = new AutoCommitRowScanner<>(this, controller);
@@ -304,7 +304,12 @@ public abstract class AbstractTable<R> implements Table<R> {
 
     @Override
     public final String toString() {
-        return mSource.toString();
+        var b = new StringBuilder();
+        RowUtils.appendMiniString(b, this);
+        b.append('{');
+        b.append("rowType").append(": ").append(rowType().getName());
+        b.append(", ").append("primaryIndex").append(": ").append(mSource);
+        return b.append('}').toString();
     }
 
     @Override
