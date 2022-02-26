@@ -70,7 +70,7 @@ class BasicRowScanner<R> implements RowScanner<R> {
                     continue a;
                 }
                 try {
-                    R decoded = mDecoder.decodeRow(c, result, null);
+                    R decoded = decodeRow(c, result, null);
                     if (decoded != null) {
                         mRow = decoded;
                         return;
