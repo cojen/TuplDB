@@ -102,7 +102,11 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
                         break doDelete;
                     }
                     if (mode != Trigger.DISABLED) {
-                        doDelete(trigger, mRow);
+                        R current = mRow;
+                        if (current == null) {
+                            throw new IllegalStateException("No current row");
+                        }
+                        doDelete(trigger, current);
                         break doDelete;
                     }
                 } finally {
@@ -129,7 +133,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
         return result;
     }
 
-    protected final void doUpdate(R row) throws IOException {
+    private void doUpdate(R row) throws IOException {
         byte[] key, value;
         {
             RowDecoderEncoder<R> encoder = mDecoder;
@@ -300,7 +304,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
     }
 
     @Override
-    protected R decodeRow(Cursor c, LockResult result, R row) throws IOException {
+    protected final R decodeRow(Cursor c, LockResult result, R row) throws IOException {
         if (mKeysToSkip != null && mKeysToSkip.remove(c.key())) {
             return null;
         }
