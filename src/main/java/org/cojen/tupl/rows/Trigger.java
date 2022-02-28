@@ -81,6 +81,13 @@ public class Trigger<R> extends WideLatch {
     }
 
     /**
+     * Variant which is called when no row object is available.
+     */
+    public void delete(Transaction txn, byte[] key, byte[] oldValue) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * Called after a row has been locked, but before the row has been marked undirty. This
      * variant is only called from the "update" method when the row is partially dirtied. The
      * oldValue and newValue are fully specified, but the row object remains partial. When the

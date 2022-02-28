@@ -201,6 +201,9 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
         doUpdate: try {
             boolean result;
 
+            // FIXME: Revise sequence of trigger operations. Trigger must be called before
+            // primary is changed, because then acquires an exclusive lock.
+
             RowPredicateLock<R> lock = mTable.mIndexLock;
             if (lock == null) {
                 result = source.insert(txn, key, value);
@@ -230,7 +233,11 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
                         break doUpdate;
                     }
                     if (mode != Trigger.DISABLED) {
+                        byte[] oldValue = c.value();
                         c.delete();
+                        if (oldValue != null) {
+                            trigger.delete(txn, c.key(), oldValue);
+                        }
                         trigger.insert(txn, mRow, c.key(), value);
                         txn.commit();
                         break doUpdate;

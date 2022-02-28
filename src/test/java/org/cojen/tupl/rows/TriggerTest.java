@@ -603,6 +603,15 @@ public class TriggerTest {
         }
 
         @Override
+        public void delete(Transaction txn, byte[] key, byte[] oldValue) {
+            assertNotNull(txn);
+            assertNotNull(key);
+            this.oldValue = oldValue;
+            this.newValue = newValue;
+            update = false;
+        }
+
+        @Override
         public void update(Transaction txn, TestRow row, byte[] key,
                            byte[] oldValue, byte[] newValue)
         {

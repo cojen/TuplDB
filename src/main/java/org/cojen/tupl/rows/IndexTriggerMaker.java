@@ -179,8 +179,7 @@ public class IndexTriggerMaker<R> {
     {
         return new SwitchCallSite(lookup, mt, schemaVersion -> {
             // Drop the schemaVersion parameter.
-            var mtx = MethodType.methodType
-                (void.class, byte[].class, byte[].class, byte[][].class, int.class);
+            var mtx = mt.dropParameterTypes(0, 1);
 
             RowStore store = storeRef.get();
             if (store == null) {
@@ -298,7 +297,8 @@ public class IndexTriggerMaker<R> {
 
         addInsertMethod();
 
-        addDeleteMethod(rs, primaryIndexId, hasBackfills);
+        addDeleteMethod(rs, primaryIndexId, true, hasBackfills);
+        addDeleteMethod(rs, primaryIndexId, false, hasBackfills);
 
         addStoreMethod("store");
 
@@ -844,18 +844,33 @@ public class IndexTriggerMaker<R> {
     }
 
     @SuppressWarnings("unchecked")
-    private void addDeleteMethod(RowStore rs, long primaryIndexId, boolean hasBackfills) {
-        MethodMaker mm = mClassMaker.addMethod
-            (null, "delete", Transaction.class, Object.class, byte[].class, byte[].class).public_();
+    private void addDeleteMethod(RowStore rs, long primaryIndexId,
+                                 boolean hasRow, boolean hasBackfills)
+    {
+        Object[] params;
+        if (hasRow) {
+            params = new Object[] {Transaction.class, Object.class, byte[].class, byte[].class};
+        } else {
+            params = new Object[] {Transaction.class, byte[].class, byte[].class};
+        }
+
+        MethodMaker mm = mClassMaker.addMethod(null, "delete", params).public_();
 
         // The deletion of secondary indexes typically requires that the old value be
         // decoded. Given that the schema version can vary, don't fully implement this method
         // until needed. Create a new delegate for each schema version encountered.
 
-        var txnVar = mm.param(0);
-        var rowVar = mm.param(1).cast(mRowClass);
-        var keyVar = mm.param(2);
-        var oldValueVar = mm.param(3);
+        Variable txnVar = mm.param(0), rowVar, keyVar, oldValueVar;
+
+        if (hasRow) {
+            rowVar = mm.param(1).cast(mRowClass);
+            keyVar = mm.param(2);
+            oldValueVar = mm.param(3);
+        } else {
+            rowVar = null;
+            keyVar = mm.param(1);
+            oldValueVar = mm.param(2);
+        }
 
         var schemaVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", oldValueVar);
 
@@ -879,15 +894,20 @@ public class IndexTriggerMaker<R> {
             ("indyDelete", rs.ref(), mRowType, primaryIndexId,
              mSecondaryDescriptors, secondaryIndexIds, backfillRefs);
 
-        indy.invoke(null, "delete", null, schemaVersion, txnVar, rowVar, keyVar, oldValueVar);
+        if (hasRow) {
+            indy.invoke(null, "delete", null, schemaVersion, txnVar, rowVar, keyVar, oldValueVar);
+        } else {
+            indy.invoke(null, "delete", null, schemaVersion, txnVar, keyVar, oldValueVar);
+        }
     }
 
     /**
      * Bootstrap method for the trigger delete method.
      *
-     * MethodType is:
+     * MethodType is either of these:
      *
      *     void (int schemaVersion, Transaction txn, Row row, byte[] key, byte[] oldValueVar)
+     *     void (int schemaVersion, Transaction txn, byte[] key, byte[] oldValueVar)
      */
     @SuppressWarnings("unchecked")
     public static SwitchCallSite indyDelete(MethodHandles.Lookup lookup, String name,
@@ -896,12 +916,16 @@ public class IndexTriggerMaker<R> {
                                             byte[][] secondaryDescs, long[] secondaryIndexIds,
                                             WeakReference<IndexBackfill>[] backfillRefs)
     {
-        Class<?> rowClass = mt.parameterType(2);
+        Class<?> rowClass;
+        if (mt.parameterCount() == 5) {
+            rowClass = mt.parameterType(2);
+        } else {
+            rowClass = null;
+        }
 
         return new SwitchCallSite(lookup, mt, schemaVersion -> {
             // Drop the schemaVersion parameter.
-            var mtx = MethodType.methodType
-                (void.class, Transaction.class, rowClass, byte[].class, byte[].class);
+            var mtx = mt.dropParameterTypes(0, 1);
 
             RowStore store = storeRef.get();
             if (store == null) {
@@ -970,13 +994,23 @@ public class IndexTriggerMaker<R> {
 
         mColumnSources = buildColumnSources();
 
-        var txnVar = mm.param(0);
-        var rowVar = mm.param(1);
-        var keyVar = mm.param(2);
-        var oldValueVar = mm.param(3);
+        Variable txnVar = mm.param(0), rowVar, keyVar, oldValueVar;
+        int rowMode;
+
+        if (mRowClass != null) {
+            rowVar = mm.param(1);
+            keyVar = mm.param(2);
+            oldValueVar = mm.param(3);
+            rowMode = ROW_KEY_ONLY;
+        } else {
+            rowVar = null;
+            keyVar = mm.param(1);
+            oldValueVar = mm.param(2);
+            rowMode = ROW_NONE;
+        }
 
         int valueOffset = schemaVersion == 0 ? 0 : (schemaVersion < 128 ? 1 : 4);
-        findColumns(mm, keyVar, oldValueVar, valueOffset, ROW_KEY_ONLY);
+        findColumns(mm, keyVar, oldValueVar, valueOffset, rowMode);
 
         // FIXME: As an optimization, when encoding complex columns (non-primitive), check if
         // prior secondary indexes have a matching codec and copy from them.
@@ -1006,7 +1040,7 @@ public class IndexTriggerMaker<R> {
             ColumnCodec[] secondaryKeyCodecs = ColumnCodec.bind(secondaryGen.keyCodecs(), mm);
 
             var secondaryKeyVar = encodeColumns
-                (mm, mColumnSources, rowVar, ROW_KEY_ONLY, keyVar, oldValueVar, secondaryKeyCodecs);
+                (mm, mColumnSources, rowVar, rowMode, keyVar, oldValueVar, secondaryKeyCodecs);
 
             Label opStart = mm.label().here();
 
