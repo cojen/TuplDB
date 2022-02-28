@@ -2752,9 +2752,26 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
     public final boolean exists() throws IOException {
         CursorFrame leaf = frameSharedNotSplit();
         Node node = leaf.mNode;
-        boolean result = leaf.mNodePos >= 0;
-        node.releaseShared();
-        return result;
+        try {
+            int pos = leaf.mNodePos;
+            if (pos < 0) {
+                // Definitely doesn't exist.
+                return false;
+            }
+            // Perform additional checks in case the value is a ghost.
+            LockManager manager;
+            if (mTxn == null || (manager = mTxn.mManager) == null
+                || node.hasLeafValue(pos) != null)
+            {
+                // Value isn't a ghost, or without a transaction holding a lock, can't check.
+                return true;
+            }
+            // Value is a ghost, but only treat it as a visible delete if the transaction owns
+            // the lock, implying that it performed the delete.
+            return !manager.check(mTxn, mTree.mId, mKey, keyHash()).isHeld();
+        } finally {
+            node.releaseShared();
+        }
     }
 
     @Override
