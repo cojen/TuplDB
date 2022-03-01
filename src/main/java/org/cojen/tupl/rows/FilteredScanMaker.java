@@ -523,7 +523,7 @@ public class FilteredScanMaker<R> {
             (Object.class, "decodeRow", Cursor.class, LockResult.class, Object.class,
              Cursor.class).public_();
 
-        var cursorVar = mm.param(0);
+        //var cursorVar = mm.param(0);
         var resultVar = mm.param(1);
         var rowVar = mm.param(2);
         var primaryCursorVar = mm.param(3);

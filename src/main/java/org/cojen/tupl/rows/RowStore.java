@@ -667,7 +667,7 @@ public class RowStore {
         Runner.start(() -> {
             try {
                 try {
-                    doNotifySchema(null, null, indexId);
+                    doNotifySchema(null, indexId);
                     mSchemata.delete(txn, taskKey);
                 } finally {
                     txn.reset();
@@ -679,11 +679,10 @@ public class RowStore {
     }
 
     /**
-     * @param txn if non-null, pass to mSchemata.delete when false is returned
      * @param taskKey is non-null if this is a recovered workflow task
      * @return true if workflow task (if any) can be immediately deleted
      */
-    private boolean doNotifySchema(Transaction txn, byte[] taskKey, long indexId)
+    private boolean doNotifySchema(byte[] taskKey, long indexId)
         throws IOException
     {
         Index ix = mDatabase.indexById(indexId);
@@ -1006,7 +1005,7 @@ public class RowStore {
         return switch (taskType) {
         default -> throw new CorruptDatabaseException("Unknown task: " + taskType);
         case TASK_DELETE_SCHEMA -> doDeleteSchema(txn, taskKey, indexKey);
-        case TASK_NOTIFY_SCHEMA -> doNotifySchema(txn, taskKey, decodeLongBE(indexKey, 0));
+        case TASK_NOTIFY_SCHEMA -> doNotifySchema(taskKey, decodeLongBE(indexKey, 0));
         };
     }
 

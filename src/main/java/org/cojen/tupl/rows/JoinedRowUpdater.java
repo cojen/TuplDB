@@ -25,9 +25,6 @@ import org.cojen.tupl.Cursor;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.RowUpdater;
 import org.cojen.tupl.Transaction;
-import org.cojen.tupl.UnpositionedCursorException;
-
-import org.cojen.tupl.views.ViewUtils;
 
 /**
  * Expected to be used only when updating via a secondary index.

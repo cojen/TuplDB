@@ -601,14 +601,14 @@ public class IndexTriggerMaker<R> {
      * slot. Some variables in the array will be null, which implies that the bit map is all
      * zero for that particular range.
      *
-     * @param bitMap set of long varibles representing a bit map
+     * @param bitMap set of long variables representing a bit map
      * @param oldSrcVar primary value byte array
      * @param newSrcVar primary value byte array
      */
-    private Variable[] diffColumns(MethodMaker mm, Variable[] bitMap,
-                                   Map<String, ColumnSource> oldColumnSources,
-                                   Map<String, ColumnSource> newColumnSources,
-                                   Variable oldSrcVar, Variable newSrcVar)
+    private void diffColumns(MethodMaker mm, Variable[] bitMap,
+                             Map<String, ColumnSource> oldColumnSources,
+                             Map<String, ColumnSource> newColumnSources,
+                             Variable oldSrcVar, Variable newSrcVar)
     {
         if (oldColumnSources.size() != newColumnSources.size()) {
             throw new AssertionError();
@@ -633,8 +633,6 @@ public class IndexTriggerMaker<R> {
 
         diffColumns(mm, oldColumnSources, newColumnSources,
                     oldSrcVar, newSrcVar, bitMap, false, numValues);
-
-        return bitMap;
     }
 
     private void diffColumns(MethodMaker mm,

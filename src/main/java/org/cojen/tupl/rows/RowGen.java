@@ -90,7 +90,7 @@ class RowGen {
             if (subPackage != null) {
                 int ix = info.name.lastIndexOf('.');
                 if (ix > 0) {
-                    bob.append(info.name.substring(0, ix)).append('.');
+                    bob.append(info.name, 0, ix).append('.');
                     infoName = info.name.substring(ix + 1);
                 }
                 bob.append(subPackage).append('.');
