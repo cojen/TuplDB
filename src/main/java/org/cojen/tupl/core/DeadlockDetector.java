@@ -105,7 +105,7 @@ final class DeadlockDetector extends HashMap<Locker, Boolean> {
             if (db != null) {
                 RowStore rs = db.tryRowStore();
                 if (rs != null) {
-                    info.mRow = rs.asRow(ix, key);
+                    info.mRow = rs.toRow(ix, key);
                 }
             }
         }

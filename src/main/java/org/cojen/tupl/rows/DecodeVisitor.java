@@ -145,8 +145,9 @@ class DecodeVisitor extends Visitor {
      * cannot be used again.
      *
      * @param resultVar LockResult from cursor access
+     * @param primaryCursorVar non-null if should be passed to join method which accepts it
      */
-    Variable[] joinToPrimary(Variable resultVar) {
+    Variable[] joinToPrimary(Variable resultVar, Variable primaryCursorVar) {
         var secInfo = (SecondaryInfo) mRowGen.info; // cast as an assertion
         boolean isAltKey = secInfo.isAltKey();
 
@@ -166,7 +167,14 @@ class DecodeVisitor extends Visitor {
             primaryKeyVar = mMaker.invoke("toPrimaryKey", mKeyVar);
         }
 
-        var primaryValueVar = mMaker.invoke("join", mCursorVar, resultVar, primaryKeyVar);
+        Variable primaryValueVar;
+        if (primaryCursorVar == null) {
+            primaryValueVar = mMaker.invoke
+                ("join", mCursorVar, resultVar, primaryKeyVar);
+        } else {
+            primaryValueVar = mMaker.invoke
+                ("join", mCursorVar, resultVar, primaryKeyVar, primaryCursorVar);
+        }
 
         Label hasValue = mMaker.label();
         primaryValueVar.ifNe(null, hasValue);

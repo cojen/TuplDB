@@ -471,12 +471,30 @@ public class FilteredScanMaker<R> {
             return;
         }
 
-        Variable[] primaryVars = visitor.joinToPrimary(resultVar);
+        Variable[] primaryVars = visitor.joinToPrimary(resultVar, null);
 
         var primaryKeyVar = primaryVars[0];
         var primaryValueVar = primaryVars[1];
 
-        // Finish filter and decode using indy, to support multiple schema versions.
+        // Finish filter and decode using a shared private method.
+        addJoinedDecode();
+        mm.return_(mm.invoke("joinedDecode", primaryKeyVar, primaryValueVar, rowVar));
+
+        // Also define the other decodeRow method which takes a primary cursor.
+        addDecodeRowWithPrimaryCursorMethod();
+    }
+
+    private void addJoinedDecode() {
+        MethodMaker mm = mFilterMaker.addMethod
+            (Object.class, "joinedDecode", byte[].class, byte[].class, Object.class)
+            .private_();
+
+        var primaryKeyVar = mm.param(0);
+        var primaryValueVar = mm.param(1);
+        var rowVar = mm.param(2);
+        var predicateVar = mm.field("predicate");
+
+        // Use indy, to support multiple schema versions.
 
         long primaryIndexId = ((JoinedScanController) mUnfiltered).mPrimaryIndex.id();
 
@@ -496,6 +514,30 @@ public class FilteredScanMaker<R> {
 
         mm.return_(indy.invoke(Object.class, "decodeRow", null, schemaVersion,
                                primaryKeyVar, primaryValueVar, rowVar, predicateVar));
+    }
+
+    private void addDecodeRowWithPrimaryCursorMethod() {
+        // Implement/override method as specified by RowDecoderEncoder.
+
+        MethodMaker mm = mFilterMaker.addMethod
+            (Object.class, "decodeRow", Cursor.class, LockResult.class, Object.class,
+             Cursor.class).public_();
+
+        var cursorVar = mm.param(0);
+        var resultVar = mm.param(1);
+        var rowVar = mm.param(2);
+        var primaryCursorVar = mm.param(3);
+        var predicateVar = mm.field("predicate");
+
+        var visitor = new DecodeVisitor(mm, 0, mRowGen, predicateVar, mStopColumn, mStopArgument);
+        visitor.applyFilter(mFilter);
+
+        Variable[] primaryVars = visitor.joinToPrimary(resultVar, primaryCursorVar);
+
+        var primaryKeyVar = primaryVars[0];
+        var primaryValueVar = primaryVars[1];
+
+        mm.return_(mm.invoke("joinedDecode", primaryKeyVar, primaryValueVar, rowVar));
     }
 
     public static CallSite indyFilter(MethodHandles.Lookup lookup, String name, MethodType mt,

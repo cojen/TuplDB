@@ -40,6 +40,7 @@ import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockResult;
+import org.cojen.tupl.RowUpdater;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnmodifiableViewException;
@@ -259,7 +260,8 @@ public class TableMaker {
         }
 
         addMarkAllCleanMethod();
-        addAsRowMethod();
+        addToRowMethod();
+        addToKeyMethod();
         addRowStoreRefMethod();
         addUnfilteredMethod();
 
@@ -303,9 +305,8 @@ public class TableMaker {
 
         ctor.invokeSuperConstructor(managerVar, indexVar, lockVar);
 
-        // TODO: not needed yet
-        //mClassMaker.addField(primaryTableClass, "primaryTable").private_().final_();
-        //ctor.field("primaryTable").set(primaryVar);
+        mClassMaker.addField(primaryTableClass, "primaryTable").private_().final_();
+        ctor.field("primaryTable").set(primaryVar);
 
         mClassMaker.addField(Index.class, "primaryIndex").private_().final_();
         ctor.field("primaryIndex").set(managerVar.invoke("primaryIndex"));
@@ -314,7 +315,7 @@ public class TableMaker {
         ctor.field("unjoined").set(unjoinedVar);
 
         {
-            MethodMaker mm = mClassMaker.addMethod(Table.class, "viewUnjoined").public_();
+            MethodMaker mm = mClassMaker.addMethod(AbstractTable.class, "viewUnjoined").public_();
             mm.return_(mm.field("unjoined"));
         }
 
@@ -323,9 +324,9 @@ public class TableMaker {
 
         addJoinedLoadMethod(primaryTableClass);
 
-        // Define the class that implements the unfiltered SingleScanController and construct a
+        // Define the class that implements the unfiltered JoinedScanController and construct a
         // singleton instance.
-        var scanControllerClass = makeUnfilteredSecondaryScanControllerClass(primaryTableClass);
+        var scanControllerClass = makeUnfilteredJoinedScanControllerClass(primaryTableClass);
         mClassMaker.addField(scanControllerClass, "unfiltered").private_().final_();
         ctor.field("unfiltered").set
             (ctor.new_(scanControllerClass, null, false, null, false, ctor.field("primaryIndex")));
@@ -334,6 +335,12 @@ public class TableMaker {
         MethodMaker mm = mClassMaker.addMethod
             (SingleScanController.class, "unfiltered").protected_();
         mm.return_(mm.field("unfiltered"));
+
+        // Override the method inherited from AbstractTableView.
+        mm = mClassMaker.addMethod(RowUpdater.class, "newRowUpdater",
+                                   Transaction.class, ScanController.class).protected_();
+        mm.return_(mm.invoke("newJoinedRowUpdater", mm.param(0), mm.param(1),
+                             mm.field("primaryTable")));
 
         return doFinish(mt);
     }
@@ -1769,15 +1776,20 @@ public class TableMaker {
         return rowVar.field(mRowGen.stateField(columnNum));
     }
 
-    private void addAsRowMethod() {
-        MethodMaker mm = mClassMaker.addMethod(mRowType, "asRow", byte[].class).protected_();
+    private void addToRowMethod() {
+        MethodMaker mm = mClassMaker.addMethod(mRowType, "toRow", byte[].class).protected_();
         var rowVar = mm.new_(mRowClass);
         mm.invoke("decodePrimaryKey", rowVar, mm.param(0));
         markClean(rowVar, mRowGen, mCodecGen.info.keyColumns);
         mm.return_(rowVar);
 
-        mm = mClassMaker.addMethod(Object.class, "asRow", byte[].class).protected_().bridge();
-        mm.return_(mm.this_().invoke(mRowType, "asRow", null, mm.param(0)));
+        mm = mClassMaker.addMethod(Object.class, "toRow", byte[].class).protected_().bridge();
+        mm.return_(mm.this_().invoke(mRowType, "toRow", null, mm.param(0)));
+    }
+
+    private void addToKeyMethod() {
+        MethodMaker mm = mClassMaker.addMethod(byte[].class, "toKey", Object.class).protected_();
+        mm.return_(mm.invoke("encodePrimaryKey", mm.param(0).cast(mRowClass)));
     }
 
     private void addRowStoreRefMethod() {
@@ -1953,10 +1965,9 @@ public class TableMaker {
     }
 
     /**
-     * Returns a subclass of SingleScanController that accepts the same four parameters and a
-     * fifth one which refers to the primary index.
+     * Returns a subclass of JoinedScanController with the same constructor.
      */
-    private Class<?> makeUnfilteredSecondaryScanControllerClass(Class<?> primaryTableClass) {
+    private Class<?> makeUnfilteredJoinedScanControllerClass(Class<?> primaryTableClass) {
         ClassMaker cm = RowGen.beginClassMaker
             (TableMaker.class, mRowType, mRowInfo, null, "Unfiltered")
             .extend(JoinedScanController.class).public_();
@@ -1974,44 +1985,28 @@ public class TableMaker {
         // subclasses, which are defined in a different package.
         addToPrimaryKeyMethod(cm, false, false);
 
+        // Note regarding the RowDecoderEncoder methods: The decode methods fully resolve rows
+        // by joining to the primary table, and the encode methods return bytes for storing
+        // into the primary table.
+
+        // Specified by RowDecoderEncoder.
+        addJoinedDecodeRow(cm, primaryTableClass, false);
+        addJoinedDecodeRow(cm, primaryTableClass, true);
+
         {
             // Specified by RowDecoderEncoder.
-            MethodMaker mm = cm.addMethod
-                (Object.class, "decodeRow", Cursor.class, LockResult.class, Object.class).public_();
-
-            var cursorVar = mm.param(0);
-            var resultVar = mm.param(1);
-            var keyVar = cursorVar.invoke("key");
-
-            Variable primaryKeyVar;
-            {
-                var tableVar = mm.var(mClassMaker);
-                if (mCodecGen.info.isAltKey()) {
-                    var valueVar = cursorVar.invoke("value");
-                    primaryKeyVar = tableVar.invoke("toPrimaryKey", keyVar, valueVar);
-                } else {
-                    primaryKeyVar = tableVar.invoke("toPrimaryKey", keyVar);
-                }
-            }
-
-            var primaryValueVar = mm.invoke("join", cursorVar, resultVar, primaryKeyVar);
-
-            Label hasValue = mm.label();
-            primaryValueVar.ifNe(null, hasValue);
-            mm.return_(null);
-            hasValue.here();
-
-            var rowVar = mm.param(2).cast(mRowClass);
-            Label hasRow = mm.label();
-            rowVar.ifNe(null, hasRow);
-            rowVar.set(mm.new_(mRowClass));
-            hasRow.here();
-
+            MethodMaker mm = cm.addMethod(byte[].class, "encodeKey", Object.class).public_();
+            var rowVar = mm.param(0).cast(mRowClass);
             var tableVar = mm.var(primaryTableClass);
-            tableVar.invoke("decodePrimaryKey", rowVar, primaryKeyVar);
-            tableVar.invoke("decodeValue", rowVar, primaryValueVar);
-            tableVar.invoke("markAllClean", rowVar);
-            mm.return_(rowVar);
+            mm.return_(tableVar.invoke("encodePrimaryKey", rowVar));
+        }
+
+        {
+            // Specified by RowDecoderEncoder.
+            MethodMaker mm = cm.addMethod(byte[].class, "encodeValue", Object.class).public_();
+            var rowVar = mm.param(0).cast(mRowClass);
+            var tableVar = mm.var(primaryTableClass);
+            mm.return_(tableVar.invoke("encodeValue", rowVar));
         }
 
         {
@@ -2032,5 +2027,58 @@ public class TableMaker {
         }
 
         return cm.finish();
+    }
+
+    private void addJoinedDecodeRow(ClassMaker cm, Class<?> primaryTableClass,
+                                    boolean withPrimaryCursor)
+    {
+        Object[] params;
+        if (!withPrimaryCursor) {
+            params = new Object[] {Cursor.class, LockResult.class, Object.class};
+        } else {
+            params = new Object[] {Cursor.class, LockResult.class, Object.class, Cursor.class};
+        }
+
+        MethodMaker mm = cm.addMethod(Object.class, "decodeRow", params).public_();
+
+        var cursorVar = mm.param(0);
+        var resultVar = mm.param(1);
+        var keyVar = cursorVar.invoke("key");
+
+        Variable primaryKeyVar;
+        {
+            var tableVar = mm.var(mClassMaker);
+            if (mCodecGen.info.isAltKey()) {
+                var valueVar = cursorVar.invoke("value");
+                primaryKeyVar = tableVar.invoke("toPrimaryKey", keyVar, valueVar);
+            } else {
+                primaryKeyVar = tableVar.invoke("toPrimaryKey", keyVar);
+            }
+        }
+
+        if (!withPrimaryCursor) {
+            params = new Object[] {cursorVar, resultVar, primaryKeyVar};
+        } else {
+            params = new Object[] {cursorVar, resultVar, primaryKeyVar, mm.param(3)};
+        }
+
+        var primaryValueVar = mm.invoke("join", params);
+
+        Label hasValue = mm.label();
+        primaryValueVar.ifNe(null, hasValue);
+        mm.return_(null);
+        hasValue.here();
+
+        var rowVar = mm.param(2).cast(mRowClass);
+        Label hasRow = mm.label();
+        rowVar.ifNe(null, hasRow);
+        rowVar.set(mm.new_(mRowClass));
+        hasRow.here();
+
+        var tableVar = mm.var(primaryTableClass);
+        tableVar.invoke("decodePrimaryKey", rowVar, primaryKeyVar);
+        tableVar.invoke("decodeValue", rowVar, primaryValueVar);
+        tableVar.invoke("markAllClean", rowVar);
+        mm.return_(rowVar);
     }
 }

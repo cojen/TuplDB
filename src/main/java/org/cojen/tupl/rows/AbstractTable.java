@@ -199,6 +199,16 @@ public abstract class AbstractTable<R> implements Table<R> {
     protected RowUpdater<R> newRowUpdater(Transaction txn, ScanController<R> controller)
         throws IOException
     {
+        return newRowUpdater(txn, controller, null);
+    }
+
+    /**
+     * @param secondary non-null if joining from a secondary index to this primary table
+     */
+    protected RowUpdater<R> newRowUpdater(Transaction txn, ScanController<R> controller,
+                                          AbstractTableView<R> secondary)
+        throws IOException
+    {
         final BasicRowUpdater<R> updater;
         RowPredicateLock.Closer closer = null;
 
@@ -257,8 +267,14 @@ public abstract class AbstractTable<R> implements Table<R> {
         }
 
         try {
-            updater.init(txn);
-            return updater;
+            if (secondary == null) {
+                updater.init(txn);
+                return updater;
+            } else {
+                var joined = new JoinedRowUpdater<>(secondary, controller, updater);
+                joined.init(txn);
+                return joined;
+            }
         } catch (Throwable e) {
             if (closer != null) {
                 closer.close();
@@ -395,7 +411,7 @@ public abstract class AbstractTable<R> implements Table<R> {
     }
 
     @Override
-    public Table<R> viewUnjoined() {
+    public AbstractTable<R> viewUnjoined() {
         return this;
     }
 
@@ -630,7 +646,12 @@ public abstract class AbstractTable<R> implements Table<R> {
     /**
      * Partially decodes a row from a key.
      */
-    protected abstract R asRow(byte[] key);
+    protected abstract R toRow(byte[] key);
+
+    /**
+     * Encodes a key from a row.
+     */
+    protected abstract byte[] toKey(R row);
 
     protected abstract WeakReference<RowStore> rowStoreRef();
 

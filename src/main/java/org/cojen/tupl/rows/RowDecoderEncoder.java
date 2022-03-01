@@ -37,6 +37,21 @@ public interface RowDecoderEncoder<R> {
     R decodeRow(Cursor c, LockResult result, R row) throws IOException;
 
     /**
+     * Decode variant used when updating via a secondary index. By positioning a cursor over
+     * the primary table, it can be updated directly without the cost of an additional search.
+     *
+     * @param result LockResult from secondary cursor access
+     * @param row can pass null to construct a new instance
+     * @param primary cursor is positioned as a side effect
+     * @return null if row is filtered out
+     */
+    default R decodeRow(Cursor secondary, LockResult result, R row, Cursor primary)
+        throws IOException
+    {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * Called by BasicRowUpdater.
      *
      * @return null if the key columns didn't change

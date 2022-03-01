@@ -95,4 +95,11 @@ public abstract class AbstractTableView<R> extends AbstractTable<R> {
     {
         throw new UnmodifiableViewException();
     }
+
+    protected RowUpdater<R> newJoinedRowUpdater(Transaction txn, ScanController<R> controller,
+                                                AbstractTable<R> primaryTable)
+        throws IOException
+    {
+        return primaryTable.newRowUpdater(txn, controller, this);
+    }
 }

@@ -47,8 +47,8 @@ public abstract class JoinedScanController<R> extends SingleScanController<R> {
     //protected static byte[] toPrimaryKey(byte[] secondaryKey, byte[] secondaryValue);
 
     /**
-     * Given a positioned cursor over the secondary index and a decoded primary key, return
-     * the associated primary value, or null if not found.
+     * Given a positioned cursor over the secondary index and a decoded primary key, return the
+     * associated primary value, or null if not found.
      *
      * @param secondaryCursor must have a non-null transaction
      */
@@ -61,23 +61,51 @@ public abstract class JoinedScanController<R> extends SingleScanController<R> {
         if (result == LockResult.ACQUIRED && txn.lastLockedKey() == primaryKey &&
             txn.lastLockedIndex() == mPrimaryIndex.id())
         {
-            // Combine the secondary and primary locks together, so that they can be
-            // released together if the row is filtered out.
+            // Combine the secondary and primary locks together, so that they can be released
+            // together if the row is filtered out.
             txn.unlockCombine();
         }
 
+        return validate(secondaryCursor, txn, primaryValue);
+    }
+
+    /**
+     * Given a positioned cursor over the secondary index and a decoded primary key, position
+     * the primary cursor, and return the associated primary value, or null if not found.
+     *
+     * @param secondaryCursor must have a non-null transaction
+     * @param primaryCursor must be linked to the same transaction as secondaryCursor
+     */
+    protected final byte[] join(Cursor secondaryCursor, LockResult secondaryResult,
+                                byte[] primaryKey, Cursor primaryCursor)
+        throws IOException
+    {
+        LockResult primaryResult = primaryCursor.find(primaryKey);
+        Transaction txn = primaryCursor.link();
+
+        if (primaryResult == LockResult.ACQUIRED && secondaryResult == LockResult.ACQUIRED) {
+            // Combine the secondary and primary locks together, so that they can be released
+            // together if the row is filtered out.
+            txn.unlockCombine();
+        }
+
+        return validate(secondaryCursor, txn, primaryCursor.value());
+    }
+
+    private static byte[] validate(Cursor secondaryCursor, Transaction txn, byte[] primaryValue)
+        throws IOException
+    {
         if (primaryValue != null && txn.lockMode() == LockMode.READ_COMMITTED) {
-            // The scanner relies on predicate locking, and so validation only needs to
-            // check that the secondary entry still exists. The predicate lock prevents
-            // against inserts and stores against the secondary index, but it doesn't
-            // prevent deletes. If it did, then no validation would be needed at all.
+            // The scanner relies on predicate locking, and so validation only needs to check
+            // that the secondary entry still exists. The predicate lock prevents against
+            // inserts and stores against the secondary index, but it doesn't prevent
+            // deletes. If it did, then validation wouldn't be needed at all.
             if (!secondaryCursor.exists()) {
-                // Was concurrently deleted. Note that the exists call doesn't observe
-                // an uncommitted delete because it would store a ghost.
+                // Was concurrently deleted. Note that the exists call doesn't observe an
+                // uncommitted delete because it would store a ghost.
                 primaryValue = null;
             }
         }
-
         return primaryValue;
     }
 }

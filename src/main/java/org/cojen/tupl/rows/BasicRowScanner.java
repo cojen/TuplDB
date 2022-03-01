@@ -53,9 +53,9 @@ class BasicRowScanner<R> implements RowScanner<R> {
      *
      * @param txn can be null
      */
-    final void init(Transaction txn) throws IOException {
+    void init(Transaction txn) throws IOException {
         a: while (true) {
-            mDecoder = mController.decoder();
+            setDecoder(mController.decoder());
 
             Cursor c = mController.newCursor(mTable.mSource, txn);
             mCursor = c;
@@ -137,7 +137,7 @@ class BasicRowScanner<R> implements RowScanner<R> {
                         if (!mController.next()) {
                             break a;
                         }
-                        mDecoder = mController.decoder();
+                        setDecoder(mController.decoder());
                         Transaction txn = c.link();
                         mCursor = c = mController.newCursor(mTable.mSource, txn);
                         toFirst(c);
@@ -171,6 +171,10 @@ class BasicRowScanner<R> implements RowScanner<R> {
         return null;
     }
 
+    protected void setDecoder(RowDecoderEncoder<R> decoder) {
+        mDecoder = decoder;
+    }
+
     protected R decodeRow(Cursor c, LockResult result, R row) throws IOException {
         return mDecoder.decodeRow(c, result, row);
     }
@@ -189,6 +193,9 @@ class BasicRowScanner<R> implements RowScanner<R> {
         return c.next();
     }
 
+    /**
+     * Called to inform subclasses that they shouldn't attempt to unlock the current row.
+     */
     protected void unlocked() {
     }
 
