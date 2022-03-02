@@ -214,6 +214,7 @@
           <author>false</author>
           <nodeprecatedlist>true</nodeprecatedlist>
           <notimestamp>true</notimestamp>
+          <splitindex>true</splitindex>
           <reportOutputDirectory>${basedir}/docs</reportOutputDirectory>
           <destDir>javadoc</destDir>
           <excludePackageNames>org.cojen.tupl.core:org.cojen.tupl.ev:org.cojen.tupl.jmx:org.cojen.tupl.views:org.cojen.tupl.filter:org.cojen.tupl.rows</excludePackageNames>
