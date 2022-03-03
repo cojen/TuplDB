@@ -19,7 +19,7 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
-import java.util.Arrays;
+import java.util.Comparator;
 
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Transaction;
@@ -37,6 +37,8 @@ import org.cojen.tupl.diag.QueryPlan;
  */
 public interface ScanController<R> {
     static final byte[] EMPTY = new byte[0];
+
+    Comparator<byte[]> comparator();
 
     QueryPlan plan();
 
@@ -83,7 +85,7 @@ public interface ScanController<R> {
      * Returns true if the given key is lower than the low bounding range.
      */
     default boolean isTooLow(byte[] key) {
-        int cmp = Arrays.compareUnsigned(key, lowBound());
+        int cmp = comparator().compare(key, lowBound());
         return cmp < 0 || (cmp == 0 && !lowInclusive());
     }
 
@@ -91,7 +93,7 @@ public interface ScanController<R> {
      * Returns true if the given key is higher than the high bounding range.
      */
     default boolean isTooHigh(byte[] key) {
-        int cmp = Arrays.compareUnsigned(key, highBound());
+        int cmp = comparator().compare(key, highBound());
         return cmp > 0 || (cmp == 0 && !highInclusive());
     }
 
@@ -105,7 +107,7 @@ public interface ScanController<R> {
         byte[] thisLow = this.lowBound();
         byte[] otherLow = other.lowBound();
 
-        int cmp = Arrays.compareUnsigned(thisLow, otherLow);
+        int cmp = comparator().compare(thisLow, otherLow);
 
         if (cmp == 0 && thisLow != null) {
             cmp = -Boolean.compare(this.lowInclusive(), other.lowInclusive());
@@ -131,7 +133,7 @@ public interface ScanController<R> {
         } else if (otherHigh == null) {
             cmp = -1;
         } else {
-            cmp = Arrays.compareUnsigned(thisHigh, otherHigh);
+            cmp = comparator().compare(thisHigh, otherHigh);
             if (cmp == 0) {
                 cmp = Boolean.compare(this.highInclusive(), other.highInclusive());
             }

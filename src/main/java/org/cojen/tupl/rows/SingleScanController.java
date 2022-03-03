@@ -19,6 +19,8 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
+import java.util.Comparator;
+
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
@@ -39,6 +41,11 @@ public abstract class SingleScanController<R> implements ScanController<R>, RowD
         mLowInclusive = lowInclusive;
         mHighBound = highBound;
         mHighInclusive = highInclusive;
+    }
+
+    @Override
+    public Comparator<byte[]> comparator() {
+        return RowUtils.KEY_COMPARATOR;
     }
 
     @Override

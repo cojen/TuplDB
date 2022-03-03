@@ -19,6 +19,8 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
+import java.util.Comparator;
+
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
@@ -44,6 +46,11 @@ final class MultiScanController<R> implements ScanController<R> {
     MultiScanController(ScanController<R>[] controllers) {
         mControllers = controllers;
         assignCurrent(0);
+    }
+
+    @Override
+    public Comparator<byte[]> comparator() {
+        return mControllers[0].comparator();
     }
 
     @Override
@@ -100,6 +107,7 @@ final class MultiScanController<R> implements ScanController<R> {
 
     private void assignCurrent(int pos) {
         ScanController<R> current = mControllers[pos];
+        Comparator<byte[]> comparator = current.comparator();
 
         while (true) {
             int nextPos = pos + 1;
@@ -107,7 +115,8 @@ final class MultiScanController<R> implements ScanController<R> {
                 break;
             }
             ScanController<R> next = mControllers[nextPos];
-            MergedScanController<R> merged = MergedScanController.tryMerge(current, next);
+            MergedScanController<R> merged =
+                MergedScanController.tryMerge(comparator, current, next);
             if (merged == null) {
                 break;
             }

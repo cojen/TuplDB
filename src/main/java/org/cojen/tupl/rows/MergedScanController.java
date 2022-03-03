@@ -19,7 +19,7 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
-import java.util.Arrays;
+import java.util.Comparator;
 
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.LockResult;
@@ -40,7 +40,9 @@ final class MergedScanController<R> extends SingleScanController<R> {
      *
      * @return null if cannot merge
      */
-    static <R> MergedScanController<R> tryMerge(ScanController<R> low, ScanController<R> high) {
+    static <R> MergedScanController<R> tryMerge(Comparator<byte[]> comparator,
+                                                ScanController<R> low, ScanController<R> high)
+    {
         if (!low.isSingleBatch() || !high.isSingleBatch()) {
             return null;
         }
@@ -58,7 +60,7 @@ final class MergedScanController<R> extends SingleScanController<R> {
         byte[] lowHigh = low.highBound();
 
         if (lowHigh != null && highLow != null) {
-            int cmp = Arrays.compareUnsigned(lowHigh, highLow);
+            int cmp = comparator.compare(lowHigh, highLow);
             if (cmp < 0 || (cmp == 0 && !(low.highInclusive() && high.lowInclusive()))) {
                 return null;
             }
@@ -155,6 +157,11 @@ final class MergedScanController<R> extends SingleScanController<R> {
     public byte[] encodeValue(R row) throws IOException {
         // Can call either decoder. They should do the same thing.
         return mLowDecoder.encodeValue(row);
+    }
+
+    @Override
+    public Comparator<byte[]> comparator() {
+        return mLow.comparator();
     }
 
     @Override
