@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.lang.ref.WeakReference;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.TreeMap;
 
@@ -62,7 +61,7 @@ public final class TableManager<R> {
     TableManager(Index primaryIndex) {
         mPrimaryIndex = primaryIndex;
         mTables = new WeakClassCache<>();
-        mIndexInfos = new ConcurrentSkipListMap<>(Arrays::compareUnsigned);
+        mIndexInfos = new ConcurrentSkipListMap<>(KEY_COMPARATOR);
     }
 
     public Index primaryIndex() {
@@ -262,7 +261,7 @@ public final class TableManager<R> {
 
                 if (state == 'B') { // "backfill" state
                     if (mIndexBackfills == null) {
-                        mIndexBackfills = new TreeMap<>(Arrays::compareUnsigned);
+                        mIndexBackfills = new TreeMap<>(KEY_COMPARATOR);
                     }
 
                     IndexBackfill<R> backfill = mIndexBackfills.get(desc);

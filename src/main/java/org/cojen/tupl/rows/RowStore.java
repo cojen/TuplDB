@@ -425,7 +425,7 @@ public class RowStore {
     private static NavigableMap<byte[], ColumnSet> indexMap(char type, Encoder encoder,
                                                             NavigableSet<ColumnSet> set)
     {
-        var map = new TreeMap<byte[], ColumnSet>(Arrays::compareUnsigned);
+        var map = new TreeMap<byte[], ColumnSet>(KEY_COMPARATOR);
         for (ColumnSet cs : set) {
             map.put(EncodedRowInfo.encodeDescriptor(type, encoder, cs), cs);
         }
@@ -1780,7 +1780,7 @@ public class RowStore {
 
             currentData = encoder.toByteArray();
 
-            secondaries = new TreeSet<>(Arrays::compareUnsigned);
+            secondaries = new TreeSet<>(KEY_COMPARATOR);
             info.alternateKeys.forEach(cs -> secondaries.add(encodeDescriptor('A', encoder, cs)));
             info.secondaryIndexes.forEach(cs -> secondaries.add(encodeDescriptor('I', encoder,cs)));
         }

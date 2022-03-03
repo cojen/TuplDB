@@ -119,7 +119,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
     boolean addKeyToSkip(byte[] key) {
         if (mKeysToSkip == null) {
             // TODO: Consider designing a more memory efficient set or hashtable.
-            mKeysToSkip = new TreeSet<>(Arrays::compareUnsigned);
+            mKeysToSkip = new TreeSet<>(RowUtils.KEY_COMPARATOR);
         }
         // FIXME: For AutoCommitRowUpdater, consider limiting the size of the set and
         // use a temporary index. All other updaters maintain locks, and so the key
