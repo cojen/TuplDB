@@ -548,7 +548,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
                 obtainLock: try {
                     if (stripes == null) {
                         stripes = new VersionLock[cNumStripes];
-                        cStripesHandle.setRelease(this, stripes);
+                        cStripesHandle.setOpaque(this, stripes);
                     } else {
                         lock = stripes[which];
                         if (lock != null) {
@@ -586,18 +586,19 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
         boolean await(long indexId, Evaluator<?> evaluator, LocalTransaction txn)
             throws LockFailureException
         {
+            boolean result = true;
             var stripes = (VersionLock[]) cStripesHandle.getOpaque(this);
 
             if (stripes != null) {
                 for (int i=0; i<stripes.length; i++) {
                     var lock = (VersionLock) cStripesElementHandle.getAcquire(stripes, i);
                     if (lock != null) {
-                        lock.doAwait(indexId, evaluator, txn);
+                        result &= lock.doAwait(indexId, evaluator, txn);
                     }
                 }
             }
 
-            return doAwait(indexId, evaluator, txn);
+            return result & doAwait(indexId, evaluator, txn);
         }
     }
 
