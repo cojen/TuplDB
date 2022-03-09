@@ -839,7 +839,7 @@ public class IndexLockTest {
             TestRow2 row = table.newRow();
             row.id(5);
             row.name("newname");
-            table.store(txn, row);
+            table.store(txn, row); // FIXME: Times out here sometimes (deadlock = false).
             txn.commit();
         });
 
@@ -861,7 +861,7 @@ public class IndexLockTest {
         } else {
             try {
                 w1.await();
-                fail();
+                fail(); // FIXME: Fails here sometimes (deadlock = false).
             } catch (DeadlockException e) {
             }
         }

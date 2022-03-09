@@ -433,8 +433,8 @@ public class RowUtils extends Utils {
             int c = (src[srcOffset++] ^ xorMask) & 0xff;
             switch (c >> 5) {
                 case 0, 1, 2, 3 ->
-                        // 0xxxxxxx
-                        chars[charLen++] = (char) (c - 2);
+                    // 0xxxxxxx
+                    chars[charLen++] = (char) (c - 2);
                 case 4, 5 -> {
                     // 10xxxxxx xxxxxxxx
                     c = c & 0x3f;

@@ -171,12 +171,30 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
         Index source = mTable.mSource;
 
         Transaction txn = ViewUtils.enterScope(source, c.link());
-        doUpdate: try {
+        try {
+            Trigger<R> trigger = mTable.getTrigger();
+            if (trigger != null) while (true) {
+                trigger.acquireShared();
+                try {
+                    int mode = trigger.mode();
+                    if (mode == Trigger.SKIP) {
+                        break;
+                    }
+                    if (mode != Trigger.DISABLED) {
+                        byte[] oldValue = c.value();
+                        if (oldValue != null) {
+                            trigger.delete(txn, c.key(), oldValue);
+                        }
+                        trigger.insert(txn, row, c.key(), value);
+                        break;
+                    }
+                } finally {
+                    trigger.releaseShared();
+                }
+                trigger = mTable.trigger();
+            }
+
             boolean result;
-
-            // FIXME: Revise sequence of trigger operations. Trigger must be called before
-            // primary is changed, because then acquires an exclusive lock.
-
             RowPredicateLock<R> lock = mTable.mIndexLock;
             if (lock == null) {
                 result = source.insert(txn, key, value);
@@ -191,32 +209,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
                 throw new UniqueConstraintException("Primary key");
             }
 
-            Trigger<R> trigger = mTable.getTrigger();
-            if (trigger == null) {
-                c.commit(null);
-            } else while (true) {
-                trigger.acquireShared();
-                try {
-                    int mode = trigger.mode();
-                    if (mode == Trigger.SKIP) {
-                        c.commit(null);
-                        break doUpdate;
-                    }
-                    if (mode != Trigger.DISABLED) {
-                        byte[] oldValue = c.value();
-                        c.delete();
-                        if (oldValue != null) {
-                            trigger.delete(txn, c.key(), oldValue);
-                        }
-                        trigger.insert(txn, row, c.key(), value);
-                        txn.commit();
-                        break doUpdate;
-                    }
-                } finally {
-                    trigger.releaseShared();
-                }
-                trigger = mTable.trigger();
-            }
+            c.commit(null);
         } finally {
             txn.exit();
         }
@@ -334,13 +327,12 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
         try {
             mTable.redoPredicateMode(txn);
             byte[] oldValue = c.value();
-            c.store(value);
             if (oldValue == null) {
                 trigger.insert(txn, row, c.key(), value);
             } else {
                 trigger.store(txn, row, c.key(), oldValue, value);
             }
-            txn.commit();
+            c.commit(value);
         } finally {
             txn.exit();
         }
@@ -364,10 +356,9 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
         try {
             byte[] oldValue = c.value();
             if (oldValue != null) {
-                c.delete();
                 trigger.delete(txn, row, c.key(), oldValue);
+                c.commit(null);
             }
-            txn.commit();
         } finally {
             txn.exit();
         }
