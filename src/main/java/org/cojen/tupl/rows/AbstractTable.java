@@ -104,7 +104,8 @@ public abstract class AbstractTable<R> implements Table<R> {
         mSource = Objects.requireNonNull(source);
 
         mFilterFactoryCache = new SoftCache<>();
-        mFilterFactoryCacheDoubleCheck = new SoftCache<>();
+        mFilterFactoryCacheDoubleCheck =
+            joinedPrimaryTableClass() == null ? null : new SoftCache<>();
 
         if (supportsSecondaries()) {
             var trigger = new Trigger<R>();
@@ -170,11 +171,9 @@ public abstract class AbstractTable<R> implements Table<R> {
 
     private ScanControllerFactory<R> scannerFilteredFactory(Transaction txn, String filter) {
         SoftCache<String, ScanControllerFactory<R>> cache;
-        if (RowUtils.isUnlocked(txn) && joinedPrimaryTableClass() != null) {
-            // Need to double check the filter after joining to the primary, in case there were
-            // any changes after the secondary entry was loaded.
-            cache = mFilterFactoryCacheDoubleCheck;
-        } else {
+        // Need to double check the filter after joining to the primary, in case there were any
+        // changes after the secondary entry was loaded.
+        if (!RowUtils.isUnlocked(txn) || (cache = mFilterFactoryCacheDoubleCheck) == null) {
             cache = mFilterFactoryCache;
         }
         ScanControllerFactory<R> factory = cache.get(filter);
@@ -285,12 +284,10 @@ public abstract class AbstractTable<R> implements Table<R> {
 
     private ScanControllerFactory<R> updaterFilteredFactory(Transaction txn, String filter) {
         SoftCache<String, ScanControllerFactory<R>> cache;
-        if (RowUtils.isUnsafe(txn) && joinedPrimaryTableClass() != null) {
-            // Need to double check the filter after joining to the primary, in case there were
-            // any changes after the secondary entry was loaded. Note that no double check is
-            // needed with READ_UNCOMMITTED, because the updater for it still acquires locks.
-            cache = mFilterFactoryCacheDoubleCheck;
-        } else {
+        // Need to double check the filter after joining to the primary, in case there were any
+        // changes after the secondary entry was loaded. Note that no double check is needed
+        // with READ_UNCOMMITTED, because the updater for it still acquires locks.
+        if (!RowUtils.isUnsafe(txn) || (cache = mFilterFactoryCacheDoubleCheck) == null) {
             cache = mFilterFactoryCache;
         }
         ScanControllerFactory<R> factory = cache.get(filter);
