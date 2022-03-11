@@ -6034,7 +6034,7 @@ final class Node extends Clutch implements DatabaseAccess {
         if (strict) {
             acquireShared();
         } else if (!tryAcquireShared()) {
-            return -1;
+            return 0;
         }
 
         try {
