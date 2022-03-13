@@ -48,6 +48,7 @@ import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockMode;
+import org.cojen.tupl.SchemaChangeException;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UniqueConstraintException;
@@ -336,8 +337,7 @@ public class RowStore {
         }
 
         if (!oldInfo.keyColumns.equals(newInfo.keyColumns)) {
-            // FIXME: Better exception.
-            throw new IllegalStateException("Cannot alter primary key: " + typeName);
+            throw new SchemaChangeException("Cannot alter primary key: " + typeName);
         }
 
         // Checks for alternate keys and secondary indexes is much more strict. Any change to
@@ -396,8 +396,7 @@ public class RowStore {
             if (cmp == 0) {
                 // Same descriptor, so check if the index has changed.
                 if (!oldEntry.getValue().matches(newEntry.getValue())) {
-                    // FIXME: Better exception.
-                    throw new IllegalStateException("Cannot alter " + which + ": " + typeName);
+                    throw new SchemaChangeException("Cannot alter " + which + ": " + typeName);
                 }
                 oldEntry = null;
                 newEntry = null;
