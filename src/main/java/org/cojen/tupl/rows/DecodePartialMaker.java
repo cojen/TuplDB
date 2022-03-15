@@ -1,0 +1,198 @@
+/*
+ *  Copyright (C) 2022 Cojen.org
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU Affero General Public License as
+ *  published by the Free Software Foundation, either version 3 of the
+ *  License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU Affero General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Affero General Public License
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package org.cojen.tupl.rows;
+
+import java.lang.invoke.CallSite;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+
+import java.lang.ref.WeakReference;
+
+import java.util.Arrays;
+import java.util.BitSet;
+import java.util.Map;
+
+import org.cojen.maker.Field;
+import org.cojen.maker.MethodMaker;
+import org.cojen.maker.Variable;
+
+import org.cojen.tupl.DatabaseException;
+
+/**
+ * Makes a call site which decodes rows partially.
+ *
+ * @author Brian S O'Neill
+ * @see AbstractTable#decodePartialCallSite
+ */
+public class DecodePartialMaker {
+    private DecodePartialMaker() {
+    }
+
+    /**
+     * MethodType is: void (int schemaVersion, RowClass row, byte[] key, byte[] value)
+     */
+    public static CallSite makePrimary(MethodHandles.Lookup lookup,
+                                       WeakReference<RowStore> storeRef,
+                                       Class<?> rowType, Class<?> rowClass, Class<?> tableClass,
+                                       long indexId, byte[] spec)
+    {
+        MethodType mt = MethodType.methodType
+            (void.class, int.class, rowClass, byte[].class, byte[].class);
+
+        return new SwitchCallSite(lookup, mt, schemaVersion -> {
+            MethodMaker mm = MethodMaker.begin
+                (lookup, null, "case", rowClass, byte[].class, byte[].class);
+
+            RowStore store = storeRef.get();
+            if (store == null) {
+                mm.new_(DatabaseException.class, "Closed").throw_();
+                return mm.finish();
+            }
+
+            RowInfo dstRowInfo = RowInfo.find(rowType);
+            RowGen dstRowGen = dstRowInfo.rowGen();
+
+            int specLen = spec.length;
+            BitSet toDecode = BitSet.valueOf(Arrays.copyOfRange(spec, 0, specLen >> 1));
+            BitSet toMarkClean = BitSet.valueOf(Arrays.copyOfRange(spec, specLen >> 1, specLen));
+
+            // Decode the key columns.
+            ColumnCodec[] keyCodecs = dstRowGen.keyCodecs();
+            if (allRequested(toDecode, 0, keyCodecs.length)) {
+                // All key columns are requested.
+                mm.var(tableClass).invoke("decodePrimaryKey", mm.param(0), mm.param(1));
+            } else {
+                addDecodeColumns(mm, toDecode, mm.param(0), dstRowInfo, mm.param(1), keyCodecs, 0);
+            }
+
+            // Decode the value columns.
+            if (allRequested(toDecode, keyCodecs.length, dstRowInfo.allColumns.size())) {
+                // All value columns are requested. Use decodeValueHandle instead of
+                // decodeValue because the schema version is already known.
+                try {
+                    MethodHandle mh = lookup.findStatic
+                        (tableClass, "decodeValueHandle",
+                         MethodType.methodType(MethodHandle.class, int.class));
+                    mh = (MethodHandle) mh.invokeExact(schemaVersion);
+                    mm.invoke(mh, mm.param(0), mm.param(1));
+                } catch (Throwable e) {
+                    throw RowUtils.rethrow(e);
+                }
+            } else if (schemaVersion == 0) {
+                // No value columns to decode, so assign defaults.
+                addDefaultColumns(mm, toDecode, mm.param(0), dstRowGen,
+                                  dstRowInfo.valueColumns, null);
+            } else {
+                RowInfo srcRowInfo;
+                try {
+                    srcRowInfo = store.rowInfo(rowType, indexId, schemaVersion);
+                } catch (Exception e) {
+                    return new ExceptionCallSite.Failed
+                        (MethodType.methodType(void.class, rowClass, byte[].class, byte[].class),
+                         mm, e);
+                }
+
+                ColumnCodec[] srcCodecs = srcRowInfo.rowGen().valueCodecs();
+                int fixedOffset = schemaVersion < 128 ? 1 : 4;
+
+                addDecodeColumns(mm, toDecode,  mm.param(0), dstRowInfo,
+                                 mm.param(2), srcCodecs, fixedOffset);
+
+                if (dstRowInfo != srcRowInfo) {
+                    // Assign defaults for any missing columns.
+                    addDefaultColumns(mm, toDecode, mm.param(0), dstRowGen,
+                                      dstRowInfo.valueColumns, srcRowInfo.valueColumns);
+                }
+            }
+
+            // Mark requested columns as clean, all others are unset.
+            {
+                final int maxNum = dstRowInfo.allColumns.size();
+                int mask = 0;
+
+                for (int num = 0; num < maxNum; ) {
+                    if (toMarkClean.get(num)) {
+                        mask |= RowGen.stateFieldMask(num, 0b01); // clean state
+                    }
+                    if ((++num & 0b1111) == 0 || num >= maxNum) {
+                        mm.param(0).field(dstRowGen.stateField(num - 1)).set(mask);
+                        mask = 0;
+                    }
+                }
+            }
+
+            return mm.finish();
+        });
+    }
+
+    /**
+     * Returns true if all key columns or all value columns are to be decoded.
+     */
+    private static boolean allRequested(BitSet toDecode, int from, int to) {
+        return toDecode.get(from, to).cardinality() == (to - from);
+    }
+
+    /**
+     * @param rowVar a row instance
+     * @param srcVar a byte array
+     * @param fixedOffset must be after the schema version (when applicable)
+     */
+    private static void addDecodeColumns(MethodMaker mm, BitSet toDecode,
+                                         Variable rowVar, RowInfo dstRowInfo,
+                                         Variable srcVar, ColumnCodec[] srcCodecs, int fixedOffset)
+    {
+        Map<String, Integer> columnNumbers = dstRowInfo.rowGen().columnNumbers();
+
+        srcCodecs = ColumnCodec.bind(srcCodecs, mm);
+        Variable offsetVar = mm.var(int.class).set(fixedOffset);
+
+        for (ColumnCodec srcCodec : srcCodecs) {
+            String name = srcCodec.mInfo.name;
+
+            if (toDecode.get(columnNumbers.get(name))) {
+                ColumnInfo dstInfo = dstRowInfo.allColumns.get(name);
+                if (dstInfo != null) {
+                    Field dstVar = rowVar.field(name);
+                    Converter.decode(mm, srcVar, offsetVar, null, srcCodec, dstInfo, dstVar);
+                    continue;
+                }
+            }
+
+            srcCodec.decodeSkip(srcVar, offsetVar, null);
+        }
+    }
+
+    /**
+     * @param srcColumns can be null if no source columns exist
+     */
+    private static void addDefaultColumns(MethodMaker mm, BitSet toDecode,
+                                          Variable rowVar, RowGen dstRowGen,
+                                          Map<String, ColumnInfo> dstColumns,
+                                          Map<String, ColumnInfo> srcColumns)
+    {
+        for (Map.Entry<String, ColumnInfo> e : dstColumns.entrySet()) {
+            String name = e.getKey();
+            if (srcColumns == null || !srcColumns.containsKey(name)) {
+                if (toDecode.get(dstRowGen.columnNumbers().get(name))) {
+                    Converter.setDefault(mm, e.getValue(), rowVar.field(name));
+                }
+            }
+        }
+    }
+}

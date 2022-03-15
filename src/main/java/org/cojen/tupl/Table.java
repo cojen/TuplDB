@@ -378,6 +378,9 @@ public interface Table<R> {
     //public Table<R> viewFiltered(String filter, Object... args);
 
     // FIXME: viewOf? viewSelection? viewProjection? viewOnly? viewWith? viewWithout? viewColumns?
+    //        viewOmit? viewSelectNot? viewRestrict? (for "true" views; cannot use removed columns
+    //                                                for filtering, although restriction can also
+    //                                                be imposed when calling viewFiltered)
     // Projection.
     //public Table<R> viewSelect(String... columns);
 

@@ -162,6 +162,8 @@ public class TableMaker {
 
                 addDecodeColumnsMethod("decodeValue", mCodecGen.valueCodecs());
             }
+
+            addDecodePartialCallSite();
         }
 
         // Add code to support an automatic column (if defined).
@@ -948,6 +950,23 @@ public class TableMaker {
         MethodHandle mh = lookup.findStatic(lookup.lookupClass(), "decodeValueSwitchCallSite",
                                             MethodType.methodType(SwitchCallSite.class));
         return (SwitchCallSite) mh.invokeExact();
+    }
+
+    private void addDecodePartialCallSite() {
+        MethodMaker mm = mClassMaker.addMethod
+            (CallSite.class, "makeDecodePartialCallSite", byte[].class).protected_();
+        var spec = mm.param(0);
+
+        if (isPrimaryTable()) {
+            var lookup = mm.var(MethodHandles.class).invoke("lookup");
+            var storeRef = mm.invoke("rowStoreRef");
+            var callSite = mm.var(DecodePartialMaker.class).invoke
+                ("makePrimary", lookup, storeRef, mRowType, mRowClass, mm.class_(), mIndexId, spec);
+            mm.return_(callSite);
+        } else {
+            // FIXME
+            mm.new_(Exception.class, "FIXME").throw_();
+        }
     }
 
     /**

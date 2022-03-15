@@ -19,6 +19,8 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
+import java.lang.invoke.CallSite;
+import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
@@ -83,6 +85,9 @@ public abstract class AbstractTable<R> implements Table<R> {
     // Is null if unsupported.
     protected final RowPredicateLock<R> mIndexLock;
 
+    private WeakCache<Object, CallSite> mPartialDecodeCache;
+    private static final VarHandle cPartialDecodeCacheHandle;
+
     static {
         try {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
@@ -90,6 +95,8 @@ public abstract class AbstractTable<R> implements Table<R> {
                 (AbstractTable.class, "mTrigger", Trigger.class);
             cComparatorCacheHandle = lookup.findVarHandle
                 (AbstractTable.class, "mComparatorCache", WeakCache.class);
+            cPartialDecodeCacheHandle = lookup.findVarHandle
+                (AbstractTable.class, "mPartialDecodeCache", WeakCache.class);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
@@ -622,7 +629,7 @@ public abstract class AbstractTable<R> implements Table<R> {
             if (r[1] != null) {
                 remainder = remainder.and(r[1]);
             }
-            // Remove terms that only check the primary key, because the won't change with a join.
+            // Remove terms that only check the primary key, because they won't change with a join.
             remainder = remainder.retain(rowInfo.valueColumns, false, TrueFilter.THE);
             r[3] = remainder.reduceMore();
         }
@@ -656,6 +663,52 @@ public abstract class AbstractTable<R> implements Table<R> {
      * Returns a singleton instance.
      */
     protected abstract SingleScanController<R> unfiltered();
+
+    /**
+     * Returns a call site which decodes rows partially.
+     *
+     * MethodType is one of:
+     *
+     *    void (int schemaVersion, RowClass row, byte[] key, byte[] value)  // for primary table
+     *    void (                   RowClass row, byte[] key, byte[] value)  // for secondary index
+     *
+     * The spec defines two BitSets, which refer to columns to decode. The first BitSet
+     * indicates which columns aren't in the row object and must be decoded. The second BitSet
+     * indicates which columns must be marked as clean. All other columns are unset.
+     *
+     * @param spec must have an even length; first half refers to columns to decode and second
+     * half refers to columns to mark clean
+     */
+    // FIXME: protected
+    public final CallSite decodePartialCallSite(byte[] spec) {
+        WeakCache<Object, CallSite> cache = mPartialDecodeCache;
+
+        if (cache == null) {
+            cache = new WeakCache<>();
+            var existing = (WeakCache<Object, CallSite>)
+                cPartialDecodeCacheHandle.compareAndExchange(this, null, cache);
+            if (existing != null) {
+                cache = existing;
+            }
+        }
+
+        final Object key = ArrayKey.make(spec);
+        CallSite callSite = cache.get(key);
+
+        if (callSite == null) {
+            synchronized (cache) {
+                callSite = cache.get(key);
+                if (callSite == null) {
+                    callSite = makeDecodePartialCallSite(spec);
+                    cache.put(key, callSite);
+                }
+            }
+        }
+
+        return callSite;
+    }
+
+    protected abstract CallSite makeDecodePartialCallSite(byte[] spec);
 
     protected final void redoPredicateMode(Transaction txn) throws IOException {
         RowPredicateLock<R> lock = mIndexLock;
