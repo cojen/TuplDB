@@ -56,7 +56,7 @@ public class ReductionTest {
             for (String relOp1 : relOps) {
                 for (String relOp2 : relOps) {
                     String filterStr = "a" + relOp1 + "?0" + op + "a" + relOp2 + "?0";
-                    RowFilter filter = new Parser(colMap, filterStr).parse();
+                    RowFilter filter = new Parser(colMap, filterStr).parseFilter();
                     RowFilter reduced = filter.reduce();
 
                     assertNotEquals(filter, reduced);
@@ -163,7 +163,7 @@ public class ReductionTest {
         // the reduction along.
 
         String filterStr = "((a > ?1 && a > ?2) || (a > ?3)) && (a > ?1 && a > ?2)";
-        RowFilter filter = new Parser(newColMap(), filterStr).parse().reduce();
+        RowFilter filter = new Parser(newColMap(), filterStr).parseFilter().reduce();
 
         assertEquals(5, filter.numTerms());
         assertFalse(filter.isDnf());

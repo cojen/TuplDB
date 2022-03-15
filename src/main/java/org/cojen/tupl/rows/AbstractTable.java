@@ -791,6 +791,6 @@ public abstract class AbstractTable<R> implements Table<R> {
     }
 
     static RowFilter parse(Class<?> rowType, String filter) {
-        return new Parser(RowInfo.find(rowType).allColumns, filter).parse();
+        return new Parser(RowInfo.find(rowType).allColumns, filter).parseFilter();
     }
 }

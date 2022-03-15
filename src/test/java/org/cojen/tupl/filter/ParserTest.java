@@ -85,7 +85,7 @@ public class ParserTest {
     // pf: parse failure
     private void pf(String filterStr, String message) {
         try {
-            new Parser(mColumnMap, filterStr).parse();
+            new Parser(mColumnMap, filterStr).parseFilter();
             fail();
         } catch (IllegalArgumentException e) {
             assertTrue(e.getMessage(), e.getMessage().contains(message));
@@ -95,7 +95,7 @@ public class ParserTest {
     @Test
     public void flatten() throws Exception {
         String filterStr = "a == ? && (a == ? && a < ?0) && !((a == ? || a < ?0) || a != ?)";
-        RowFilter filter = new Parser(mColumnMap, filterStr).parse();
+        RowFilter filter = new Parser(mColumnMap, filterStr).parseFilter();
         assertEquals("a == ?0 && a == ?1 && a < ?0 && a != ?2 && a >= ?0 && a == ?3",
                      filter.toString());
     }

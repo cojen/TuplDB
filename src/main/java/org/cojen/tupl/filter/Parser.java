@@ -19,6 +19,7 @@ package org.cojen.tupl.filter;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,48 +32,122 @@ import org.cojen.tupl.rows.ConvertUtils;
  * @author Brian S O'Neill
  */
 public class Parser {
-    /*
-      RowFilter    = AndFilter { "||" AndFilter }
-      AndFilter    = EntityFilter { "&&" EntityFilter }
-      EntityFilter = ColumnFilter | ParenFilter
-      ParenFilter  = [ "!" ] "(" RowFilter ")"
-      ColumnFilter = ColumnName RelOp ( ArgRef | ColumnName )
-                   | ColumnName "in" ArgRef
-      RelOp        = "==" | "!=" | ">=" | "<" | "<=" | ">"
-      ColumnName   = string
-      ArgRef       = "?" [ uint ]
-     */
-
-    /* FIXME: Support projection with a set of names, before the filter portion:
-       
-       // Only fully decode the "name" and "size" columns.
-       {name, size}: date < ? && ...
-
-       // Fully decode all columns except "blob".
-       !{blob}: data < ? && ...
-
-       By default, the projection is !{}. Empty set notation is legal, but not practical.
-
-       This might be going to far. Composability with "view" methods generally works, but filters
-       have arguments and that makes them special.
-
-     */
-
     private final Map<String, ColumnInfo> mAllColumns;
     private final String mFilter;
 
     private int mPos;
     private int mNextArg;
     private Map<Integer, Boolean> mInArgs;
+    private boolean mNoFilter;
 
     public Parser(Map<String, ColumnInfo> allColumns, String filter) {
         mAllColumns = allColumns;
         mFilter = filter;
     }
 
-    public RowFilter parse() {
+    /**
+     * Projection  = [ "~" ] "{" Columns "}" [ ':' RowFilter ]
+     * Columns     = [ ColumnName { "," ColumnName } ]
+     *
+     * Returns null if string doesn't start with a projection or if the projection is all of
+     * the columns. If the projection ends with a colon, then a subsequent call to parseFilter
+     * expects a filter. Without the colon, parseFilter expects nothing, and it returns
+     * TrueFilter if successful.
+     */
+    public Map<String, ColumnInfo> parseProjection() {
+        final int start = mPos;
+
+        int c = nextCharIgnoreWhitespace();
+        boolean invert = false;
+        if (c == '~') {
+            c = nextCharIgnoreWhitespace();
+            if (c != '{') {
+                mPos--;
+                throw error("Left brace expected");
+            }
+            invert = true;
+        } else if (c != '{') {
+            mPos = start;
+            return null;
+        }
+
+        Map<String, ColumnInfo> projection = invert ?
+            new LinkedHashMap<>(mAllColumns) : new LinkedHashMap<>();
+
+        if (nextCharIgnoreWhitespace() != '}') {
+            mPos--;
+            while (true) {
+                ColumnInfo column = parseColumn();
+                String name = column.name;
+
+                if (invert) {
+                    projection.remove(name);
+                } else {
+                    projection.put(name, column);
+                }
+
+                c = nextCharIgnoreWhitespace();
+                if (c == '}') {
+                    break;
+                } else if (c != ',') {
+                    mPos--;
+                    throw error("Comma expected");
+                }
+
+                c = nextCharIgnoreWhitespace();
+                mPos--;
+            }
+        }
+
+        if (nextCharIgnoreWhitespace() != ':') {
+            if (mPos - 1 >= mFilter.length()) {
+                mNoFilter = true;
+            } else {
+                mPos--;
+                throw error("Colon expected");
+            }
+        }
+
+        return projection.size() == mAllColumns.size() ? null : projection;
+    }
+
+    /**
+     * Skips the projection portion without performing any validation.
+     */
+    public void skipProjection() {
+        final int start = mPos;
+        int c = nextCharIgnoreWhitespace();
+        if (c == '~' || c == '{') {
+            mPos = mFilter.indexOf(':', mPos);
+            if (mPos < 0) {
+                mPos = mFilter.length();
+                mNoFilter = true;
+            } else {
+                mPos++;
+            }
+        } else {
+            mPos = start;
+        }
+    }
+
+    /**
+     * RowFilter    = AndFilter { "||" AndFilter }
+     * AndFilter    = EntityFilter { "&&" EntityFilter }
+     * EntityFilter = ColumnFilter | ParenFilter
+     * ParenFilter  = [ "!" ] "(" RowFilter ")"
+     * ColumnFilter = ColumnName RelOp ( ArgRef | ColumnName )
+     *              | ColumnName "in" ArgRef
+     * RelOp        = "==" | "!=" | ">=" | "<" | "<=" | ">"
+     * ColumnName   = string
+     * ArgRef       = "?" [ uint ]
+     */
+    public RowFilter parseFilter() {
+        if (mNoFilter) {
+            return TrueFilter.THE;
+        }
+
         mInArgs = new HashMap<>();
-        RowFilter filter = parseFilter();
+        RowFilter filter = doParseFilter();
         int c = nextCharIgnoreWhitespace();
         if (c >= 0) {
             mPos--;
@@ -81,7 +156,7 @@ public class Parser {
         return filter;
     }
 
-    private RowFilter parseFilter() {
+    private RowFilter doParseFilter() {
         return parseOrFilter();
     }
 
@@ -298,7 +373,7 @@ public class Parser {
 
     // Left paren has already been consumed.
     private RowFilter parseParenFilter() {
-        RowFilter filter = parseFilter();
+        RowFilter filter = doParseFilter();
         if (nextCharIgnoreWhitespace() != ')') {
             mPos--;
             throw error("Right paren expected");
@@ -347,6 +422,7 @@ public class Parser {
         ColumnInfo column = mAllColumns.get(name);
 
         if (column == null) {
+            mPos = start;
             throw error("Unknown column: " + name);
         }
 

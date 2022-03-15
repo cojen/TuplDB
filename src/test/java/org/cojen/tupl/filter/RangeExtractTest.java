@@ -42,7 +42,7 @@ public class RangeExtractTest {
     public void mix() throws Exception {
         Map<String, ColumnInfo> colMap = NormalizeTest.newColMap(2);
 
-        RowFilter f0 = new Parser(colMap, "a==?&&(b>?||b>?)&&(b>?||b>?)&&(b>?||b>?)").parse();
+        RowFilter f0 = new Parser(colMap, "a==?&&(b>?||b>?)&&(b>?||b>?)&&(b>?||b>?)").parseFilter();
         RowFilter[] range = f0.cnf().rangeExtract(colMap.get("a"), colMap.get("b"));
 
         check(range, new String[] {
@@ -72,7 +72,7 @@ public class RangeExtractTest {
         });
 
         // Switch the direction of a few operators.
-        RowFilter f2 = new Parser(colMap, "a==?&&(b<?||b<?)&&(b>?||b>?)&&(b>?||b>?)").parse();
+        RowFilter f2 = new Parser(colMap, "a==?&&(b<?||b<?)&&(b>?||b>?)&&(b>?||b>?)").parseFilter();
         range = f2.cnf().rangeExtract(colMap.get("a"), colMap.get("b"));
 
         check(range, new String[] {
