@@ -65,6 +65,7 @@ public class FilteredScanMaker<R> {
     private final RowGen mRowGen;
     private final long mIndexId;
     private final RowFilter mLowBound, mHighBound, mFilter, mJoinFilter;
+    private final byte[] mProjectionSpec;
     private final ClassMaker mFilterMaker;
     private final MethodMaker mFilterCtorMaker;
 
@@ -91,6 +92,7 @@ public class FilteredScanMaker<R> {
      * @param highBound pass null for open bound
      * @param filter the filter to apply to all rows which are in bounds, or null if none
      * @param joinFilter the filter to apply after joining, or null if none
+     * @param projectionSpec null if all columns are to be decoded; else see DecodePartialMaker
      */
     public FilteredScanMaker(WeakReference<RowStore> storeRef, byte[] secondaryDescriptor,
                              Class<?> tableClass, Class<?> primaryTableClass,
@@ -98,7 +100,8 @@ public class FilteredScanMaker<R> {
                              Class<? extends RowPredicate> predClass,
                              Class<R> rowType, RowGen rowGen, long indexId,
                              RowFilter lowBound, RowFilter highBound,
-                             RowFilter filter, RowFilter joinFilter)
+                             RowFilter filter, RowFilter joinFilter,
+                             byte[] projectionSpec)
     {
         mStoreRef = storeRef;
         mSecondaryDescriptor = secondaryDescriptor;
@@ -115,6 +118,7 @@ public class FilteredScanMaker<R> {
         mHighBound = highBound;
         mFilter = filter;
         mJoinFilter = joinFilter;
+        mProjectionSpec = projectionSpec;
 
         // Define in the same package as the predicate class, in order to access it, and to
         // facilitate class unloading.
@@ -427,7 +431,9 @@ public class FilteredScanMaker<R> {
     }
 
     private void addDecodeRowMethod() {
-        if (mFilter == null || (mSecondaryDescriptor == null && mFilter == TrueFilter.THE)) {
+        if (mProjectionSpec == null &&
+            (mFilter == null || (mSecondaryDescriptor == null && mFilter == TrueFilter.THE)))
+        {
             // No remainder filter, so rely on inherited method.
             return;
         }
@@ -447,7 +453,8 @@ public class FilteredScanMaker<R> {
 
             var indy = mm.var(FilteredScanMaker.class).indy
                 ("indyFilter", mStoreRef, mTableClass, mRowType, mIndexId,
-                 new WeakReference<>(mFilter), mFilter.toString(), mStopColumn, mStopArgument);
+                 new WeakReference<>(mFilter), mFilter.toString(), mProjectionSpec,
+                 mStopColumn, mStopArgument);
 
             var valueVar = cursorVar.invoke("value");
 
@@ -466,8 +473,9 @@ public class FilteredScanMaker<R> {
 
         if (mPrimaryTableClass == null) {
             // Not joined to a primary.
+            // FIXME: mProjectionSpec
             Class<?> rowClass = RowMaker.find(mRowType);
-            visitor.finishDecode(null, mTableClass, rowClass, rowVar);
+            visitor.finishDecode(null, null, mTableClass, rowClass, rowVar);
             return;
         }
 
@@ -508,7 +516,7 @@ public class FilteredScanMaker<R> {
 
         var indy = mm.var(FilteredScanMaker.class).indy
             ("indyFilter", mStoreRef, mPrimaryTableClass, mRowType, primaryIndexId,
-             filterRef, filterStr, null, 0);
+             filterRef, filterStr, mProjectionSpec, null, 0);
 
         var schemaVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", primaryValueVar);
 
@@ -544,11 +552,11 @@ public class FilteredScanMaker<R> {
                                       WeakReference<RowStore> storeRef,
                                       Class<?> tableClass, Class<?> rowType, long indexId,
                                       WeakReference<RowFilter> filterRef, String filterStr,
-                                      String stopColumn, int stopArgument)
+                                      byte[] projectionSpec, String stopColumn, int stopArgument)
     {
         var dm = new FilterMaker
             (lookup, mt, storeRef, tableClass, rowType, indexId,
-             filterRef, filterStr, stopColumn, stopArgument);
+             filterRef, filterStr, projectionSpec, stopColumn, stopArgument);
         return new SwitchCallSite(lookup, mt, dm);
     }
 
@@ -560,6 +568,7 @@ public class FilteredScanMaker<R> {
         private final Class<?> mRowType;
         private final long mIndexId;
         private final String mFilterStr;
+        private final byte[] mProjectionSpec;
         private final String mStopColumn;
         private final int mStopArgument;
 
@@ -570,7 +579,7 @@ public class FilteredScanMaker<R> {
                     WeakReference<RowStore> storeRef, Class<?> tableClass,
                     Class<?> rowType, long indexId,
                     WeakReference<RowFilter> filterRef, String filterStr,
-                    String stopColumn, int stopArgument)
+                    byte[] projectionSpec, String stopColumn, int stopArgument)
         {
             mLookup = lookup;
             mMethodType = mt.dropParameterTypes(0, 1);
@@ -580,6 +589,7 @@ public class FilteredScanMaker<R> {
             mIndexId = indexId;
             mFilterStr = filterStr;
             mFilterRef = filterRef;
+            mProjectionSpec = projectionSpec;
             mStopColumn = stopColumn;
             mStopArgument = stopArgument;
         }
@@ -599,7 +609,7 @@ public class FilteredScanMaker<R> {
             } else {
                 filter = mFilterRef.get();
                 if (filter == null) {
-                    filter = AbstractTable.parse(mRowType, mFilterStr);
+                    filter = AbstractTable.parseFilter(mRowType, mFilterStr);
                     mFilterRef = new WeakReference<>(filter);
                 }
             }
@@ -611,16 +621,23 @@ public class FilteredScanMaker<R> {
             }
 
             RowInfo rowInfo;
-            MethodHandle decoder;
+            MethodHandle decoder, valueDecoder;
 
             try {
                 rowInfo = store.rowInfo(mRowType, mIndexId, schemaVersion);
 
                 // Obtain the MethodHandle which fully decodes the value columns.
-                decoder = (MethodHandle) mLookup.findStatic
-                    (mLookup.lookupClass(), "decodeValueHandle",
-                     MethodType.methodType(MethodHandle.class, int.class))
-                    .invokeExact(schemaVersion);
+                if (mProjectionSpec == null) {
+                    decoder = null;
+                    valueDecoder = (MethodHandle) mLookup.findStatic
+                        (mLookup.lookupClass(), "decodeValueHandle",
+                         MethodType.methodType(MethodHandle.class, int.class))
+                        .invokeExact(schemaVersion);
+                } else {
+                    AbstractTable<?> table = store.findTable(mIndexId, mRowType);
+                    decoder = table.decodePartialHandle(mProjectionSpec, mLookup, schemaVersion);
+                    valueDecoder = null;
+                }
             } catch (Throwable e) {
                 return new ExceptionCallSite.Failed(mMethodType, mm, e);
             }
@@ -636,7 +653,7 @@ public class FilteredScanMaker<R> {
 
             Class<?> rowClass = RowMaker.find(mRowType);
             Variable rowVar = mm.param(mMethodType.parameterCount() - 2);
-            visitor.finishDecode(decoder, mTableClass, rowClass, rowVar);
+            visitor.finishDecode(decoder, valueDecoder, mTableClass, rowClass, rowVar);
 
             return mm.finish();
         }

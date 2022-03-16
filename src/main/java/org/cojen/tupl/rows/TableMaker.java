@@ -961,7 +961,7 @@ public class TableMaker {
             var lookup = mm.var(MethodHandles.class).invoke("lookup");
             var storeRef = mm.invoke("rowStoreRef");
             var callSite = mm.var(DecodePartialMaker.class).invoke
-                ("makePrimary", lookup, storeRef, mRowType, mRowClass, mm.class_(), mIndexId, spec);
+                ("makeDynamic", lookup, storeRef, mRowType, mRowClass, mm.class_(), mIndexId, spec);
             mm.return_(callSite);
         } else {
             // FIXME

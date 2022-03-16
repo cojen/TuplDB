@@ -304,7 +304,7 @@ public class RowPredicateMaker {
     {
         RowFilter filter = filterRef.get();
         if (filter == null) {
-            filter = AbstractTable.parse(rowType, filterStr);
+            filter = AbstractTable.parseFilter(rowType, filterStr);
         }
         MethodMaker mm = MethodMaker.begin(lookup, name, mt);
         var tm = new RowTestMaker(mm, mm.param(0), mm.param(1));
@@ -472,7 +472,7 @@ public class RowPredicateMaker {
                 RowFilter filter = mFilterRef.get();
 
                 if (filter == null) {
-                    filter = AbstractTable.parse(mRowType, mFilterStr);
+                    filter = AbstractTable.parseFilter(mRowType, mFilterStr);
                     mFilterRef = new WeakReference<>(filter);
                 }
 
@@ -544,7 +544,7 @@ public class RowPredicateMaker {
 
                 RowFilter filter = filterRef.get();
                 if (filter == null) {
-                    filter = AbstractTable.parse(rowType, filterStr);
+                    filter = AbstractTable.parseFilter(rowType, filterStr);
                 }
 
                 // DecodeVisitor assumes that the second parameter is a byte[] value, but if
@@ -566,7 +566,7 @@ public class RowPredicateMaker {
     {
         RowFilter filter = filterRef.get();
         if (filter == null) {
-            filter = AbstractTable.parse(rowType, filterStr);
+            filter = AbstractTable.parseFilter(rowType, filterStr);
         }
         MethodMaker mm = MethodMaker.begin(lookup, name, mt);
         var sm = new ToStringMaker(mm, mm.param(0));

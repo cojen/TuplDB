@@ -46,6 +46,13 @@ public class Parser {
     }
 
     /**
+     * Parses a projection and row filter.
+     */
+    public FullFilter parseFull() {
+        return new FullFilter(parseProjection(), parseFilter());
+    }
+
+    /**
      * Projection  = [ "~" ] "{" Columns "}" [ ':' RowFilter ]
      * Columns     = [ ColumnName { "," ColumnName } ]
      *

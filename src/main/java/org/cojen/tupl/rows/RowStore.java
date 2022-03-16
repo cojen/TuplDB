@@ -254,9 +254,24 @@ public class RowStore {
         }
     }
 
-    @SuppressWarnings("unchecked")
     public <R> Table<R> asTable(Index ix, Class<R> type) throws IOException {
+        return openTable(ix, type);
+    }
+
+    @SuppressWarnings("unchecked")
+    private <R> AbstractTable<R> openTable(Index ix, Class<R> type) throws IOException {
         return ((TableManager<R>) tableManager(ix)).asTable(this, ix, type);
+    }
+
+    /**
+     * @throws DeletedIndexException if not found
+     */
+    <R> AbstractTable<R> findTable(long indexId, Class<R> type) throws IOException {
+        Index ix = mDatabase.indexById(indexId);
+        if (ix == null) {
+            throw new DeletedIndexException();
+        }
+        return openTable(ix, type);
     }
 
     /**

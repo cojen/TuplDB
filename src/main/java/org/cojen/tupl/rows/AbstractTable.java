@@ -50,6 +50,7 @@ import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.filter.ComplexFilterException;
 import org.cojen.tupl.filter.FalseFilter;
+import org.cojen.tupl.filter.FullFilter;
 import org.cojen.tupl.filter.Parser;
 import org.cojen.tupl.filter.RowFilter;
 import org.cojen.tupl.filter.TrueFilter;
@@ -459,14 +460,15 @@ public abstract class AbstractTable<R> implements Table<R> {
 
         obtain: try {
             Class<?> rowType = rowType();
-            RowFilter rf = parse(rowType, filter).reduce();
+            FullFilter ff = parseFull(rowType, filter).reduce();
+            RowFilter rf = ff.filter();
 
             if (rf instanceof FalseFilter) {
                 factory = EmptyScanController.factory();
                 break obtain;
             }
 
-            if (rf instanceof TrueFilter) {
+            if (rf instanceof TrueFilter && ff.projection() == null) {
                 SingleScanController<R> unfiltered = unfiltered();
 
                 factory = new ScanControllerFactory<>() {
@@ -489,7 +491,7 @@ public abstract class AbstractTable<R> implements Table<R> {
                 break obtain;
             }
 
-            String canonical = rf.toString();
+            String canonical = ff.toString();
             if (!canonical.equals(filter)) {
                 factory = findFilteredFactory(cache, canonical);
                 break obtain;
@@ -528,6 +530,8 @@ public abstract class AbstractTable<R> implements Table<R> {
 
             RowGen rowGen = rowInfo.rowGen();
 
+            byte[] projectionSpec = DecodePartialMaker.makeFullSpec(rowGen, ff.projection());
+
             Class<? extends RowPredicate> predClass = new RowPredicateMaker
                 (rowStoreRef(), baseClass, rowType, rowGen, primaryRowGen,
                  mTableManager.mPrimaryIndex.id(), mSource.id(), rf, filter, ranges).finish();
@@ -535,7 +539,8 @@ public abstract class AbstractTable<R> implements Table<R> {
             if (ranges.length > 1) {
                 var rangeFactories = new ScanControllerFactory[ranges.length];
                 for (int i=0; i<ranges.length; i++) {
-                    rangeFactories[i] = newFilteredFactory(rowGen, ranges[i], predClass);
+                    rangeFactories[i] = newFilteredFactory
+                        (rowGen, ranges[i], predClass, projectionSpec);
                 }
                 factory = new MultiScanControllerFactory(rangeFactories);
                 break obtain;
@@ -553,7 +558,7 @@ public abstract class AbstractTable<R> implements Table<R> {
                 splitRemainders(rowInfo, range);
             }
 
-            factory = newFilteredFactory(rowGen, range, predClass);
+            factory = newFilteredFactory(rowGen, range, predClass, projectionSpec);
         } catch (Throwable e) {
             factory = null;
             ex = e;
@@ -580,7 +585,8 @@ public abstract class AbstractTable<R> implements Table<R> {
 
     @SuppressWarnings("unchecked")
     private ScanControllerFactory<R> newFilteredFactory(RowGen rowGen, RowFilter[] range,
-                                                        Class<? extends RowPredicate> predClass)
+                                                        Class<? extends RowPredicate> predClass,
+                                                        byte[] projectionSpec)
     {
         SingleScanController<R> unfiltered = unfiltered();
 
@@ -592,7 +598,7 @@ public abstract class AbstractTable<R> implements Table<R> {
         return new FilteredScanMaker<R>
             (rowStoreRef(), secondaryDescriptor(), getClass(), joinedPrimaryTableClass(),
              unfiltered, predClass, rowType(), rowGen,
-             mSource.id(), lowBound, highBound, filter, joinFilter).finish();
+             mSource.id(), lowBound, highBound, filter, joinFilter, projectionSpec).finish();
     }
 
     private RowFilter[][] multiRangeExtract(RowFilter rf, ColumnInfo... keyColumns) {
@@ -679,8 +685,7 @@ public abstract class AbstractTable<R> implements Table<R> {
      * @param spec must have an even length; first half refers to columns to decode and second
      * half refers to columns to mark clean
      */
-    // FIXME: protected
-    public final CallSite decodePartialCallSite(byte[] spec) {
+    protected final CallSite decodePartialCallSite(byte[] spec) {
         WeakCache<Object, CallSite> cache = mPartialDecodeCache;
 
         if (cache == null) {
@@ -708,6 +713,20 @@ public abstract class AbstractTable<R> implements Table<R> {
         return callSite;
     }
 
+    /**
+     * MethodType is: void (RowClass row, byte[] key, byte[] value)
+     *
+     * @throws ClassCastException if not a primary table
+     */
+    protected final MethodHandle decodePartialHandle
+        (byte[] spec, MethodHandles.Lookup lookup, int schemaVersion)
+    {
+        return ((SwitchCallSite) decodePartialCallSite(spec)).getCase(lookup, schemaVersion);
+    }
+
+    /**
+     * @return SwitchCallSite if a primary table
+     */
     protected abstract CallSite makeDecodePartialCallSite(byte[] spec);
 
     protected final void redoPredicateMode(Transaction txn) throws IOException {
@@ -843,7 +862,13 @@ public abstract class AbstractTable<R> implements Table<R> {
         return (Trigger<R>) cTriggerHandle.getOpaque(this);
     }
 
-    static RowFilter parse(Class<?> rowType, String filter) {
-        return new Parser(RowInfo.find(rowType).allColumns, filter).parseFilter();
+    static FullFilter parseFull(Class<?> rowType, String filter) {
+        return new Parser(RowInfo.find(rowType).allColumns, filter).parseFull();
+    }
+
+    static RowFilter parseFilter(Class<?> rowType, String filter) {
+        var parser = new Parser(RowInfo.find(rowType).allColumns, filter);
+        parser.skipProjection();
+        return parser.parseFilter();
     }
 }

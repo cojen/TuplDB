@@ -45,9 +45,73 @@ public class DecodePartialMaker {
     }
 
     /**
-     * MethodType is: void (int schemaVersion, RowClass row, byte[] key, byte[] value)
+     * Makes a specification in which the columns to decode and the columns to mark clean are
+     * the same.
+     *
+     * @param projection if null, then null is returned (implies all columns)
      */
-    public static CallSite makePrimary(MethodHandles.Lookup lookup,
+    public static byte[] makeFullSpec(RowGen rowGen, Map<String, ColumnInfo> projection) {
+        if (projection == null) {
+            return null;
+        }
+
+        var toDecode = new BitSet();
+
+        Map<String, Integer> columnNumbers = rowGen.columnNumbers();
+        for (String name : projection.keySet()) {
+            toDecode.set(columnNumbers.get(name));
+        }
+
+        byte[] bytes = toDecode.toByteArray();
+        return makeSpec(bytes, bytes);
+    }
+
+    /**
+     * Makes a specification in which only the value columns are decoded, but all projected
+     * columns are marked clean. This implies that any key columns are already decoded.
+     *
+     * @param projection if null, then null is returned (implies all columns)
+     */
+    public static byte[] makeValueSpec(RowGen rowGen, Map<String, ColumnInfo> projection) {
+        if (projection == null) {
+            return null;
+        }
+
+        var toDecode = new BitSet();
+        var toMarkClean = new BitSet();
+
+        Map<String, Integer> columnNumbers = rowGen.columnNumbers();
+        int numKeys = rowGen.info.keyColumns.size();
+        for (String name : projection.keySet()) {
+            int num = columnNumbers.get(name);
+            if (num >= numKeys) {
+                toDecode.set(num);
+            }
+            toMarkClean.set(num);
+        }
+
+        return makeSpec(toDecode, toMarkClean);
+    }
+
+    private static byte[] makeSpec(BitSet toDecode, BitSet toMarkClean) {
+        return makeSpec(toDecode.toByteArray(), toMarkClean.toByteArray());
+    }
+
+    private static byte[] makeSpec(byte[] toDecode, byte[] toMarkClean) {
+        byte[] spec = new byte[Math.max(toDecode.length, toMarkClean.length) << 1];
+        System.arraycopy(toDecode, 0, spec, 0, toDecode.length);
+        System.arraycopy(toMarkClean, 0, spec, spec.length >> 1, toMarkClean.length);
+        return spec;
+    }
+
+    /**
+     * Make a decoder which dynamically generates new decoders based on the schema version.
+     *
+     * MethodType is: void (int schemaVersion, RowClass row, byte[] key, byte[] value)
+     *
+     * @param spec obtained from makeFullSpec, et al
+     */
+    public static CallSite makeDynamic(MethodHandles.Lookup lookup,
                                        WeakReference<RowStore> storeRef,
                                        Class<?> rowType, Class<?> rowClass, Class<?> tableClass,
                                        long indexId, byte[] spec)

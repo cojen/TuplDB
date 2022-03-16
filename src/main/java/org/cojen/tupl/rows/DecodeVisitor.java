@@ -188,15 +188,21 @@ class DecodeVisitor extends Visitor {
      * Finishes the method by returning a decoded row. After calling this method, this visitor
      * cannot be used again.
      *
-     * @param decoder performs full decoding of the value columns; pass null to invoke the full
-     * decode method in the generated table class
+     * @param decoder performs decoding of the key and value columns; pass null to rely on
+     * default key decoding and use valueDecoder for the value columns
+     * @param valueDecoder performs decoding of the value columns; pass null to invoke the
+     * default value decoding method in the generated table class
      * @param tableClass current table implementation class
      * @param rowClass current row implementation
      * @param rowVar refers to the row parameter to allocate or fill in
      */
-    void finishDecode(MethodHandle decoder,
+    void finishDecode(MethodHandle decoder, MethodHandle valueDecoder,
                       Class<?> tableClass, Class<?> rowClass, Variable rowVar)
     {
+        if (decoder != null && valueDecoder != null) {
+            throw new IllegalArgumentException();
+        }
+
         passFail(null);
 
         // Must call this in case applyFilter wasn't called, or it did nothing.
@@ -210,18 +216,22 @@ class DecodeVisitor extends Visitor {
         rowVar.set(mMaker.new_(rowClass));
         hasRow.here();
 
-        var tableVar = mMaker.var(tableClass);
-        tableVar.invoke("decodePrimaryKey", rowVar, mKeyVar);
-
-        // Invoke the schema-specific decoder directly, instead of calling the decodeValue
-        // method which redundantly examines the schema version and switches on it.
         if (decoder != null) {
-            mMaker.invoke(decoder, rowVar, mValueVar);
+            mMaker.invoke(decoder, rowVar, mKeyVar, mValueVar);
         } else {
-            tableVar.invoke("decodeValue", rowVar, mValueVar);
-        }
+            var tableVar = mMaker.var(tableClass); 
+            tableVar.invoke("decodePrimaryKey", rowVar, mKeyVar);
 
-        tableVar.invoke("markAllClean", rowVar);
+            // Invoke the schema-specific decoder directly, instead of calling the decodeValue
+            // method which redundantly examines the schema version and switches on it.
+            if (valueDecoder != null) {
+                mMaker.invoke(valueDecoder, rowVar, mValueVar);
+            } else {
+                tableVar.invoke("decodeValue", rowVar, mValueVar);
+            }
+
+            tableVar.invoke("markAllClean", rowVar);
+        }
 
         mMaker.return_(rowVar);
     }

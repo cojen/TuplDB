@@ -68,7 +68,7 @@ public final class TableManager<R> {
         return mPrimaryIndex;
     }
 
-    Table<R> asTable(RowStore rs, Index ix, Class<R> type) throws IOException {
+    AbstractTable<R> asTable(RowStore rs, Index ix, Class<R> type) throws IOException {
         var table = tryFindTable(type);
 
         if (table != null) {
