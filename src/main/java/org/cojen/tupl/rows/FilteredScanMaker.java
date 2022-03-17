@@ -469,7 +469,9 @@ public class FilteredScanMaker<R> {
 
         var visitor = new DecodeVisitor(mm, 0, mRowGen, predicateVar, mStopColumn, mStopArgument);
 
-        visitor.applyFilter(mFilter);
+        if (mFilter != null) {
+            visitor.applyFilter(mFilter);
+        }
 
         if (mPrimaryTableClass == null) {
             // Not joined to a primary.
@@ -538,7 +540,10 @@ public class FilteredScanMaker<R> {
         var predicateVar = mm.field("predicate");
 
         var visitor = new DecodeVisitor(mm, 0, mRowGen, predicateVar, mStopColumn, mStopArgument);
-        visitor.applyFilter(mFilter);
+
+        if (mFilter != null) {
+            visitor.applyFilter(mFilter);
+        }
 
         Variable[] primaryVars = visitor.joinToPrimary(resultVar, primaryCursorVar);
 

@@ -530,7 +530,8 @@ public abstract class AbstractTable<R> implements Table<R> {
 
             RowGen rowGen = rowInfo.rowGen();
 
-            byte[] projectionSpec = DecodePartialMaker.makeFullSpec(rowGen, ff.projection());
+            byte[] projectionSpec = DecodePartialMaker.makeFullSpec
+                (primaryRowGen != null ? primaryRowGen : rowGen, ff.projection());
 
             Class<? extends RowPredicate> predClass = new RowPredicateMaker
                 (rowStoreRef(), baseClass, rowType, rowGen, primaryRowGen,
