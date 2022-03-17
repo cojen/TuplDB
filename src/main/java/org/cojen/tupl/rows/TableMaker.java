@@ -954,14 +954,16 @@ public class TableMaker {
 
     private void addDecodePartialCallSite() {
         MethodMaker mm = mClassMaker.addMethod
-            (CallSite.class, "makeDecodePartialCallSite", byte[].class).protected_();
+            (CallSite.class, "makeDecodePartialCallSite", byte[].class, int.class).protected_();
         var spec = mm.param(0);
+        var schemaVersion = mm.param(1);
 
         if (isPrimaryTable()) {
             var lookup = mm.var(MethodHandles.class).invoke("lookup");
             var storeRef = mm.invoke("rowStoreRef");
             var callSite = mm.var(DecodePartialMaker.class).invoke
-                ("makeDynamic", lookup, storeRef, mRowType, mRowClass, mm.class_(), mIndexId, spec);
+                ("makeDecoder", lookup, storeRef, mRowType, mRowClass, mm.class_(),
+                 mIndexId, spec, schemaVersion);
             mm.return_(callSite);
         } else {
             // FIXME

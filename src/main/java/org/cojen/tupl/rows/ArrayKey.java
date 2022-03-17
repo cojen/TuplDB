@@ -29,6 +29,10 @@ abstract class ArrayKey {
         return new Bytes(array);
     }
 
+    static Object make(int prefix, byte[] array) {
+        return new PrefixBytes(prefix, array);
+    }
+
     static Object make(Object first, Object[] rest) {
         var array = new Object[1 + rest.length];
         array[0] = first;
@@ -52,6 +56,32 @@ abstract class ArrayKey {
         public boolean equals(Object obj) {
             return this == obj || obj instanceof Bytes other
                 && Arrays.equals(mArray, other.mArray);
+        }
+
+        @Override
+        public String toString() {
+            return Arrays.toString(mArray);
+        }
+    }
+
+    private static final class PrefixBytes {
+        private final int mPrefix;
+        private final byte[] mArray;
+
+        PrefixBytes(int prefix, byte[] array) {
+            mPrefix = prefix;
+            mArray = array;
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(mArray) * 31 + mPrefix;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj || obj instanceof PrefixBytes other
+                && mPrefix == other.mPrefix && Arrays.equals(mArray, other.mArray);
         }
 
         @Override

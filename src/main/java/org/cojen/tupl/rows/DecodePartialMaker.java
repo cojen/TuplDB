@@ -105,29 +105,30 @@ public class DecodePartialMaker {
     }
 
     /**
-     * Make a decoder which dynamically generates new decoders based on the schema version.
+     * Make a decoder for a specific schema version.
      *
-     * MethodType is: void (int schemaVersion, RowClass row, byte[] key, byte[] value)
+     * MethodType is: void (RowClass row, byte[] key, byte[] value)
      *
      * @param spec obtained from makeFullSpec, et al
      */
-    public static CallSite makeDynamic(MethodHandles.Lookup lookup,
+    public static CallSite makeDecoder(MethodHandles.Lookup lookup,
                                        WeakReference<RowStore> storeRef,
                                        Class<?> rowType, Class<?> rowClass, Class<?> tableClass,
-                                       long indexId, byte[] spec)
+                                       long indexId, byte[] spec, int schemaVersion)
     {
-        MethodType mt = MethodType.methodType
-            (void.class, int.class, rowClass, byte[].class, byte[].class);
-
-        return new SwitchCallSite(lookup, mt, schemaVersion -> {
+        return ExceptionCallSite.make(() -> {
             MethodMaker mm = MethodMaker.begin
-                (lookup, null, "case", rowClass, byte[].class, byte[].class);
+                (lookup, null, "decodeRow", rowClass, byte[].class, byte[].class);
 
             RowStore store = storeRef.get();
             if (store == null) {
                 mm.new_(DatabaseException.class, "Closed").throw_();
                 return mm.finish();
             }
+
+            var rowVar = mm.param(0);
+            var keyVar = mm.param(1);
+            var valueVar = mm.param(2);
 
             RowInfo dstRowInfo = RowInfo.find(rowType);
             RowGen dstRowGen = dstRowInfo.rowGen();
@@ -140,9 +141,9 @@ public class DecodePartialMaker {
             ColumnCodec[] keyCodecs = dstRowGen.keyCodecs();
             if (allRequested(toDecode, 0, keyCodecs.length)) {
                 // All key columns are requested.
-                mm.var(tableClass).invoke("decodePrimaryKey", mm.param(0), mm.param(1));
+                mm.var(tableClass).invoke("decodePrimaryKey", rowVar, keyVar);
             } else {
-                addDecodeColumns(mm, toDecode, mm.param(0), dstRowInfo, mm.param(1), keyCodecs, 0);
+                addDecodeColumns(mm, toDecode, rowVar, dstRowInfo, keyVar, keyCodecs, 0);
             }
 
             // Decode the value columns.
@@ -154,13 +155,13 @@ public class DecodePartialMaker {
                         (tableClass, "decodeValueHandle",
                          MethodType.methodType(MethodHandle.class, int.class));
                     mh = (MethodHandle) mh.invokeExact(schemaVersion);
-                    mm.invoke(mh, mm.param(0), mm.param(1));
+                    mm.invoke(mh, rowVar, valueVar);
                 } catch (Throwable e) {
                     throw RowUtils.rethrow(e);
                 }
             } else if (schemaVersion == 0) {
                 // No value columns to decode, so assign defaults.
-                addDefaultColumns(mm, toDecode, mm.param(0), dstRowGen,
+                addDefaultColumns(mm, toDecode, rowVar, dstRowGen,
                                   dstRowInfo.valueColumns, null);
             } else {
                 RowInfo srcRowInfo;
@@ -175,12 +176,12 @@ public class DecodePartialMaker {
                 ColumnCodec[] srcCodecs = srcRowInfo.rowGen().valueCodecs();
                 int fixedOffset = schemaVersion < 128 ? 1 : 4;
 
-                addDecodeColumns(mm, toDecode,  mm.param(0), dstRowInfo,
-                                 mm.param(2), srcCodecs, fixedOffset);
+                addDecodeColumns(mm, toDecode,  rowVar, dstRowInfo,
+                                 valueVar, srcCodecs, fixedOffset);
 
                 if (dstRowInfo != srcRowInfo) {
                     // Assign defaults for any missing columns.
-                    addDefaultColumns(mm, toDecode, mm.param(0), dstRowGen,
+                    addDefaultColumns(mm, toDecode, rowVar, dstRowGen,
                                       dstRowInfo.valueColumns, srcRowInfo.valueColumns);
                 }
             }
@@ -195,7 +196,7 @@ public class DecodePartialMaker {
                         mask |= RowGen.stateFieldMask(num, 0b01); // clean state
                     }
                     if ((++num & 0b1111) == 0 || num >= maxNum) {
-                        mm.param(0).field(dstRowGen.stateField(num - 1)).set(mask);
+                        rowVar.field(dstRowGen.stateField(num - 1)).set(mask);
                         mask = 0;
                     }
                 }
@@ -226,6 +227,17 @@ public class DecodePartialMaker {
         srcCodecs = ColumnCodec.bind(srcCodecs, mm);
         Variable offsetVar = mm.var(int.class).set(fixedOffset);
 
+        int remaining = 0;
+        for (ColumnCodec srcCodec : srcCodecs) {
+            if (toDecode.get(columnNumbers.get(srcCodec.mInfo.name))) {
+                remaining++;
+            }
+        }
+
+        if (remaining == 0) {
+            return;
+        }
+
         for (ColumnCodec srcCodec : srcCodecs) {
             String name = srcCodec.mInfo.name;
 
@@ -234,6 +246,9 @@ public class DecodePartialMaker {
                 if (dstInfo != null) {
                     Field dstVar = rowVar.field(name);
                     Converter.decode(mm, srcVar, offsetVar, null, srcCodec, dstInfo, dstVar);
+                    if (--remaining <= 0) {
+                        break;
+                    }
                     continue;
                 }
             }

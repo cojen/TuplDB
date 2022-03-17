@@ -635,7 +635,7 @@ public class FilteredScanMaker<R> {
                         .invokeExact(schemaVersion);
                 } else {
                     AbstractTable<?> table = store.findTable(mIndexId, mRowType);
-                    decoder = table.decodePartialHandle(mProjectionSpec, mLookup, schemaVersion);
+                    decoder = table.decodePartialHandle(mProjectionSpec, schemaVersion);
                     valueDecoder = null;
                 }
             } catch (Throwable e) {

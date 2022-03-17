@@ -673,10 +673,7 @@ public abstract class AbstractTable<R> implements Table<R> {
     /**
      * Returns a call site which decodes rows partially.
      *
-     * MethodType is one of:
-     *
-     *    void (int schemaVersion, RowClass row, byte[] key, byte[] value)  // for primary table
-     *    void (                   RowClass row, byte[] key, byte[] value)  // for secondary index
+     * MethodType is: void (RowClass row, byte[] key, byte[] value)
      *
      * The spec defines two BitSets, which refer to columns to decode. The first BitSet
      * indicates which columns aren't in the row object and must be decoded. The second BitSet
@@ -685,7 +682,7 @@ public abstract class AbstractTable<R> implements Table<R> {
      * @param spec must have an even length; first half refers to columns to decode and second
      * half refers to columns to mark clean
      */
-    protected final CallSite decodePartialCallSite(byte[] spec) {
+    protected final CallSite decodePartialCallSite(byte[] spec, int schemaVersion) {
         WeakCache<Object, CallSite> cache = mPartialDecodeCache;
 
         if (cache == null) {
@@ -697,14 +694,14 @@ public abstract class AbstractTable<R> implements Table<R> {
             }
         }
 
-        final Object key = ArrayKey.make(spec);
+        final Object key = ArrayKey.make(schemaVersion, spec);
         CallSite callSite = cache.get(key);
 
         if (callSite == null) {
             synchronized (cache) {
                 callSite = cache.get(key);
                 if (callSite == null) {
-                    callSite = makeDecodePartialCallSite(spec);
+                    callSite = makeDecodePartialCallSite(spec, schemaVersion);
                     cache.put(key, callSite);
                 }
             }
@@ -715,19 +712,12 @@ public abstract class AbstractTable<R> implements Table<R> {
 
     /**
      * MethodType is: void (RowClass row, byte[] key, byte[] value)
-     *
-     * @throws ClassCastException if not a primary table
      */
-    protected final MethodHandle decodePartialHandle
-        (byte[] spec, MethodHandles.Lookup lookup, int schemaVersion)
-    {
-        return ((SwitchCallSite) decodePartialCallSite(spec)).getCase(lookup, schemaVersion);
+    protected final MethodHandle decodePartialHandle(byte[] spec, int schemaVersion) {
+        return decodePartialCallSite(spec, schemaVersion).dynamicInvoker();
     }
 
-    /**
-     * @return SwitchCallSite if a primary table
-     */
-    protected abstract CallSite makeDecodePartialCallSite(byte[] spec);
+    protected abstract CallSite makeDecodePartialCallSite(byte[] spec, int schemaVersion);
 
     protected final void redoPredicateMode(Transaction txn) throws IOException {
         RowPredicateLock<R> lock = mIndexLock;
