@@ -86,7 +86,7 @@ abstract class ArrayKey {
 
         @Override
         public String toString() {
-            return Arrays.toString(mArray);
+            return mPrefix + ", " + Arrays.toString(mArray);
         }
     }
 

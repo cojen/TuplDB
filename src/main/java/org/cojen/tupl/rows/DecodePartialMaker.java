@@ -17,7 +17,6 @@
 
 package org.cojen.tupl.rows;
 
-import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -26,6 +25,7 @@ import java.lang.ref.WeakReference;
 
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.cojen.maker.Field;
@@ -38,7 +38,7 @@ import org.cojen.tupl.DatabaseException;
  * Makes a call site which decodes rows partially.
  *
  * @author Brian S O'Neill
- * @see AbstractTable#decodePartialCallSite
+ * @see AbstractTable#decodePartialHandle
  */
 public class DecodePartialMaker {
     private DecodePartialMaker() {
@@ -59,7 +59,11 @@ public class DecodePartialMaker {
 
         Map<String, Integer> columnNumbers = rowGen.columnNumbers();
         for (String name : projection.keySet()) {
-            toDecode.set(columnNumbers.get(name));
+            Integer num = columnNumbers.get(name);
+            if (num == null) {
+                throw new IllegalStateException("Column is unavailable for selection: " + name);
+            }
+            toDecode.set(num);
         }
 
         byte[] bytes = toDecode.toByteArray();
@@ -111,10 +115,10 @@ public class DecodePartialMaker {
      *
      * @param spec obtained from makeFullSpec, et al
      */
-    public static CallSite makeDecoder(MethodHandles.Lookup lookup,
-                                       WeakReference<RowStore> storeRef,
-                                       Class<?> rowType, Class<?> rowClass, Class<?> tableClass,
-                                       long indexId, byte[] spec, int schemaVersion)
+    public static MethodHandle makeDecoder(MethodHandles.Lookup lookup,
+                                           WeakReference<RowStore> storeRef,
+                                           Class<?> rowType, Class<?> rowClass, Class<?> tableClass,
+                                           long indexId, byte[] spec, int schemaVersion)
     {
         return ExceptionCallSite.make(() -> {
             MethodMaker mm = MethodMaker.begin
@@ -203,7 +207,77 @@ public class DecodePartialMaker {
             }
 
             return mm.finish();
-        });
+        }).dynamicInvoker();
+    }
+
+    /**
+     * Make a decoder for a secondary index.
+     *
+     * MethodType is: void (RowClass row, byte[] key, byte[] value)
+     *
+     * @param spec obtained from makeFullSpec, et al
+     */
+    public static MethodHandle makeDecoder(MethodHandles.Lookup lookup,
+                                           Class<?> rowType, Class<?> rowClass, Class<?> tableClass,
+                                           byte[] secondaryDesc, byte[] spec)
+    {
+        MethodMaker mm = MethodMaker.begin
+            (lookup, null, "decodeRow", rowClass, byte[].class, byte[].class);
+
+        var rowVar = mm.param(0);
+        var keyVar = mm.param(1);
+        var valueVar = mm.param(2);
+
+        RowInfo primaryRowInfo = RowInfo.find(rowType);
+        RowInfo rowInfo = RowStore.indexRowInfo(primaryRowInfo, secondaryDesc);
+        RowGen rowGen = rowInfo.rowGen();
+
+        int specLen = spec.length;
+        BitSet toDecode = BitSet.valueOf(Arrays.copyOfRange(spec, 0, specLen >> 1));
+        BitSet toMarkClean = BitSet.valueOf(Arrays.copyOfRange(spec, specLen >> 1, specLen));
+
+        // Decode the key columns.
+        ColumnCodec[] keyCodecs = rowGen.keyCodecs();
+        if (allRequested(toDecode, 0, keyCodecs.length)) {
+            // All key columns are requested.
+            mm.var(tableClass).invoke("decodePrimaryKey", rowVar, keyVar);
+        } else {
+            addDecodeColumns(mm, toDecode, rowVar, rowInfo, keyVar, keyCodecs, 0);
+        }
+
+        // Decode the value columns.
+        if (allRequested(toDecode, keyCodecs.length, rowInfo.allColumns.size())) {
+            // All value columns are requested.
+            mm.var(tableClass).invoke("decodeValue", rowVar, valueVar);
+        } else {
+            ColumnCodec[] valueCodecs = rowGen.valueCodecs();
+            addDecodeColumns(mm, toDecode, rowVar, rowInfo, valueVar, valueCodecs, 0);
+        }
+
+        // Mark requested columns as clean, all others are unset.
+        {
+            Map<Integer, String> numToName = flip(rowGen.columnNumbers());
+
+            RowGen primaryRowGen = primaryRowInfo.rowGen();
+            Map<String, Integer> primaryColumnNumbers = primaryRowGen.columnNumbers();
+
+            final int maxNum = primaryColumnNumbers.size();
+            int mask = 0;
+
+            for (int num = 0; num < maxNum; ) {
+                if (toMarkClean.get(num)) {
+                    String name = numToName.get(num);
+                    int primaryNum = primaryColumnNumbers.get(name);
+                    mask |= RowGen.stateFieldMask(primaryNum, 0b01); // clean state
+                }
+                if ((++num & 0b1111) == 0 || num >= maxNum) {
+                    rowVar.field(primaryRowGen.stateField(num - 1)).set(mask);
+                    mask = 0;
+                }
+            }
+        }
+
+        return mm.finish();
     }
 
     /**
@@ -273,5 +347,13 @@ public class DecodePartialMaker {
                 }
             }
         }
+    }
+
+    private static <K, V> Map<V, K> flip(Map<K, V> map) {
+        var flipped = new HashMap<V, K>(map.size());
+        for (Map.Entry<K, V> e : map.entrySet()) {
+            flipped.put(e.getValue(), e.getKey());
+        }
+        return flipped;
     }
 }

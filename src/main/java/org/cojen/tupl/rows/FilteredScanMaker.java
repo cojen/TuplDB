@@ -57,7 +57,7 @@ import org.cojen.tupl.io.Utils;
 public class FilteredScanMaker<R> {
     private final WeakReference<RowStore> mStoreRef;
     private final byte[] mSecondaryDescriptor;
-    private final Class<?> mTableClass;
+    private final AbstractTable<R> mTable;
     private final Class<?> mPrimaryTableClass;
     private final SingleScanController<R> mUnfiltered;
     private final Class<?> mPredicateClass;
@@ -95,7 +95,7 @@ public class FilteredScanMaker<R> {
      * @param projectionSpec null if all columns are to be decoded; else see DecodePartialMaker
      */
     public FilteredScanMaker(WeakReference<RowStore> storeRef, byte[] secondaryDescriptor,
-                             Class<?> tableClass, Class<?> primaryTableClass,
+                             AbstractTable<R> table, Class<?> primaryTableClass,
                              SingleScanController<R> unfiltered,
                              Class<? extends RowPredicate> predClass,
                              Class<R> rowType, RowGen rowGen, long indexId,
@@ -105,7 +105,7 @@ public class FilteredScanMaker<R> {
     {
         mStoreRef = storeRef;
         mSecondaryDescriptor = secondaryDescriptor;
-        mTableClass = tableClass;
+        mTable = table;
         mPrimaryTableClass = primaryTableClass;
         mUnfiltered = unfiltered;
         mPredicateClass = predClass;
@@ -452,7 +452,7 @@ public class FilteredScanMaker<R> {
             // The decode method is implemented using indy, to support multiple schema versions.
 
             var indy = mm.var(FilteredScanMaker.class).indy
-                ("indyFilter", mStoreRef, mTableClass, mRowType, mIndexId,
+                ("indyFilter", mStoreRef, mTable.getClass(), mRowType, mIndexId,
                  new WeakReference<>(mFilter), mFilter.toString(), mProjectionSpec,
                  mStopColumn, mStopArgument);
 
@@ -475,9 +475,13 @@ public class FilteredScanMaker<R> {
 
         if (mPrimaryTableClass == null) {
             // Not joined to a primary.
-            // FIXME: mProjectionSpec
+            MethodHandle decoder = null;
+            if (mProjectionSpec != null) {
+                // Obtain the MethodHandle which decodes the key and value columns.
+                decoder = mTable.decodePartialHandle(mProjectionSpec, 0 /*ignored*/);
+            }
             Class<?> rowClass = RowMaker.find(mRowType);
-            visitor.finishDecode(null, null, mTableClass, rowClass, rowVar);
+            visitor.finishDecode(decoder, null, mTable.getClass(), rowClass, rowVar);
             return;
         }
 
@@ -631,14 +635,15 @@ public class FilteredScanMaker<R> {
             try {
                 rowInfo = store.rowInfo(mRowType, mIndexId, schemaVersion);
 
-                // Obtain the MethodHandle which fully decodes the value columns.
                 if (mProjectionSpec == null) {
+                    // Obtain the MethodHandle which fully decodes the value columns.
                     decoder = null;
                     valueDecoder = (MethodHandle) mLookup.findStatic
                         (mLookup.lookupClass(), "decodeValueHandle",
                          MethodType.methodType(MethodHandle.class, int.class))
                         .invokeExact(schemaVersion);
                 } else {
+                    // Obtain the MethodHandle which decodes the key and value columns.
                     AbstractTable<?> table = store.findTable(mIndexId, mRowType);
                     decoder = table.decodePartialHandle(mProjectionSpec, schemaVersion);
                     valueDecoder = null;

@@ -163,7 +163,7 @@ public class TableMaker {
                 addDecodeColumnsMethod("decodeValue", mCodecGen.valueCodecs());
             }
 
-            addDecodePartialCallSite();
+            addDecodePartialHandle();
         }
 
         // Add code to support an automatic column (if defined).
@@ -952,23 +952,27 @@ public class TableMaker {
         return (SwitchCallSite) mh.invokeExact();
     }
 
-    private void addDecodePartialCallSite() {
+    private void addDecodePartialHandle() {
         MethodMaker mm = mClassMaker.addMethod
-            (CallSite.class, "makeDecodePartialCallSite", byte[].class, int.class).protected_();
-        var spec = mm.param(0);
-        var schemaVersion = mm.param(1);
+            (MethodHandle.class, "makeDecodePartialHandle", byte[].class, int.class).protected_();
 
+        var spec = mm.param(0);
+        var lookup = mm.var(MethodHandles.class).invoke("lookup");
+
+        Variable decoder;
         if (isPrimaryTable()) {
-            var lookup = mm.var(MethodHandles.class).invoke("lookup");
+            var schemaVersion = mm.param(1);
             var storeRef = mm.invoke("rowStoreRef");
-            var callSite = mm.var(DecodePartialMaker.class).invoke
+            decoder = mm.var(DecodePartialMaker.class).invoke
                 ("makeDecoder", lookup, storeRef, mRowType, mRowClass, mm.class_(),
                  mIndexId, spec, schemaVersion);
-            mm.return_(callSite);
         } else {
-            // FIXME
-            mm.new_(Exception.class, "FIXME").throw_();
+            var secondaryDescVar = mm.var(byte[].class).setExact(mSecondaryDescriptor);
+            decoder = mm.var(DecodePartialMaker.class).invoke
+                ("makeDecoder", lookup, mRowType, mRowClass, mm.class_(), secondaryDescVar, spec);
         }
+
+        mm.return_(decoder);
     }
 
     /**

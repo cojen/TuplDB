@@ -19,7 +19,6 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
-import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
@@ -86,7 +85,7 @@ public abstract class AbstractTable<R> implements Table<R> {
     // Is null if unsupported.
     protected final RowPredicateLock<R> mIndexLock;
 
-    private WeakCache<Object, CallSite> mPartialDecodeCache;
+    private WeakCache<Object, MethodHandle> mPartialDecodeCache;
     private static final VarHandle cPartialDecodeCacheHandle;
 
     static {
@@ -597,7 +596,7 @@ public abstract class AbstractTable<R> implements Table<R> {
         RowFilter joinFilter = range[3];
 
         return new FilteredScanMaker<R>
-            (rowStoreRef(), secondaryDescriptor(), getClass(), joinedPrimaryTableClass(),
+            (rowStoreRef(), secondaryDescriptor(), this, joinedPrimaryTableClass(),
              unfiltered, predClass, rowType(), rowGen,
              mSource.id(), lowBound, highBound, filter, joinFilter, projectionSpec).finish();
     }
@@ -672,7 +671,7 @@ public abstract class AbstractTable<R> implements Table<R> {
     protected abstract SingleScanController<R> unfiltered();
 
     /**
-     * Returns a call site which decodes rows partially.
+     * Returns a MethodHandle which decodes rows partially.
      *
      * MethodType is: void (RowClass row, byte[] key, byte[] value)
      *
@@ -683,42 +682,37 @@ public abstract class AbstractTable<R> implements Table<R> {
      * @param spec must have an even length; first half refers to columns to decode and second
      * half refers to columns to mark clean
      */
-    protected final CallSite decodePartialCallSite(byte[] spec, int schemaVersion) {
-        WeakCache<Object, CallSite> cache = mPartialDecodeCache;
+    protected final MethodHandle decodePartialHandle(byte[] spec, int schemaVersion) {
+        WeakCache<Object, MethodHandle> cache = mPartialDecodeCache;
 
         if (cache == null) {
             cache = new WeakCache<>();
-            var existing = (WeakCache<Object, CallSite>)
+            var existing = (WeakCache<Object, MethodHandle>)
                 cPartialDecodeCacheHandle.compareAndExchange(this, null, cache);
             if (existing != null) {
                 cache = existing;
             }
         }
 
-        final Object key = ArrayKey.make(schemaVersion, spec);
-        CallSite callSite = cache.get(key);
+        final Object key = schemaVersion == 0 ?
+            ArrayKey.make(spec) : ArrayKey.make(schemaVersion, spec);
 
-        if (callSite == null) {
+        MethodHandle decoder = cache.get(key);
+
+        if (decoder == null) {
             synchronized (cache) {
-                callSite = cache.get(key);
-                if (callSite == null) {
-                    callSite = makeDecodePartialCallSite(spec, schemaVersion);
-                    cache.put(key, callSite);
+                decoder = cache.get(key);
+                if (decoder == null) {
+                    decoder = makeDecodePartialHandle(spec, schemaVersion);
+                    cache.put(key, decoder);
                 }
             }
         }
 
-        return callSite;
+        return decoder;
     }
 
-    /**
-     * MethodType is: void (RowClass row, byte[] key, byte[] value)
-     */
-    protected final MethodHandle decodePartialHandle(byte[] spec, int schemaVersion) {
-        return decodePartialCallSite(spec, schemaVersion).dynamicInvoker();
-    }
-
-    protected abstract CallSite makeDecodePartialCallSite(byte[] spec, int schemaVersion);
+    protected abstract MethodHandle makeDecodePartialHandle(byte[] spec, int schemaVersion);
 
     protected final void redoPredicateMode(Transaction txn) throws IOException {
         RowPredicateLock<R> lock = mIndexLock;
