@@ -451,9 +451,19 @@ public class FilteredScanMaker<R> {
         if (mSecondaryDescriptor == null) {
             // The decode method is implemented using indy, to support multiple schema versions.
 
+            WeakReference<RowFilter> filterRef;
+            String filterStr;
+            if (mFilter == null) {
+                filterRef = null;
+                filterStr = null;
+            } else {
+                filterRef = new WeakReference<>(mFilter);
+                filterStr = mFilter.toString();
+            }
+
             var indy = mm.var(FilteredScanMaker.class).indy
                 ("indyFilter", mStoreRef, mTable.getClass(), mRowType, mIndexId,
-                 new WeakReference<>(mFilter), mFilter.toString(), mProjectionSpec,
+                 filterRef, filterStr, mProjectionSpec,
                  mStopColumn, mStopArgument);
 
             var valueVar = cursorVar.invoke("value");
