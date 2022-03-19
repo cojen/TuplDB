@@ -257,8 +257,6 @@ public class TableMaker {
             addDoUpdateMethod();
             addUpdateMethod("update", false);
             addUpdateMethod("merge", true);
-
-            // TODO: define update, merge, and remove methods that accept a match row
         }
 
         addMarkAllCleanMethod();

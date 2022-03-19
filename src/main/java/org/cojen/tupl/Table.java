@@ -261,18 +261,6 @@ public interface Table<R> {
     public boolean update(Transaction txn, R row) throws IOException;
 
     /**
-     * Updates an existing row that matches the given criteria with the given modifications,
-     * but the resulting row isn't loaded back. This method permits updating the primary key.
-     *
-     * @param match the row match criteria
-     * @param row the row modifications to apply
-     * @return false if a matching row doesn't exist
-     * @throws IllegalStateException if primary key isn't fully specified
-     * @throws UniqueConstraintException if a conflicting alternate key exists
-     */
-    //public boolean update(Transaction txn, R match, R row) throws IOException;
-
-    /**
      * Updates an existing row with the modified columns of the given row, and then loads the
      * result back into the given row.
      *
@@ -283,34 +271,12 @@ public interface Table<R> {
     public boolean merge(Transaction txn, R row) throws IOException;
 
     /**
-     * Updates an existing row that matches the given criteria with the given modifications,
-     * and then loads the result back into the given row. This method permits updating the
-     * primary key.
-     *
-     * @param match the row match criteria
-     * @param row the row modifications to apply, and also the target of the loaded result
-     * @return false if a matching row doesn't exist
-     * @throws IllegalStateException if primary key isn't fully specified
-     * @throws UniqueConstraintException if a conflicting alternate key exists
-     */
-    //public boolean merge(Transaction txn, R match, R row) throws IOException;
-
-    /**
      * Unconditionally removes an existing row by primary key.
      *
      * @return false if a corresponding row doesn't exist
      * @throws IllegalStateException if primary key isn't fully specified
      */
     public boolean delete(Transaction txn, R row) throws IOException;
-
-    /**
-     * Removes the given row by primary key, also checking that all set columns of the given
-     * row match to an existing row.
-     *
-     * @return false if a matching row doesn't exist
-     * @throws IllegalStateException if primary key isn't fully specified
-     */
-    //public boolean remove(Transaction txn, R match) throws IOException;
 
     /**
      * Returns a row comparator based on the given specification, which defines the ordering
