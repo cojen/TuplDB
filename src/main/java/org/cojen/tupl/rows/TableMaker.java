@@ -1425,114 +1425,115 @@ public class TableMaker {
         // Identify the offsets to all the columns in the original value, and calculate the
         // size of the new value.
 
-        String stateFieldName = null;
-        Variable stateField = null;
+        Variable[] columnVars;
+        Variable newValueVar;
 
-        var columnVars = new Variable[codecs.length];
+        {
+            int fixedOffset = schemaVersion < 128 ? 1 : 4;
+            Variable offsetVar = mm.var(int.class).set(fixedOffset);
+            var newSizeVar = mm.var(int.class).set(fixedOffset); // need room for schemaVersion
 
-        int fixedOffset = schemaVersion < 128 ? 1 : 4;
-        Variable offsetVar = mm.var(int.class).set(fixedOffset);
-        var newSizeVar = mm.var(int.class).set(fixedOffset); // need room for schemaVersion
+            columnVars = new Variable[codecs.length];
 
-        for (int i=0; i<codecs.length; i++) {
-            ColumnCodec codec = codecs[i];
-            codec.encodePrepare();
+            String stateFieldName = null;
+            Variable stateField = null;
 
-            columnVars[i] = offsetVar.get();
-            codec.decodeSkip(valueVar, offsetVar, null);
+            for (int i=0; i<codecs.length; i++) {
+                ColumnCodec codec = codecs[i];
+                codec.encodePrepare();
 
-            ColumnInfo info = codec.mInfo;
-            int num = columnNumbers.get(info.name);
+                columnVars[i] = offsetVar.get();
+                codec.decodeSkip(valueVar, offsetVar, null);
 
-            String sfName = rowGen.stateField(num);
-            if (!sfName.equals(stateFieldName)) {
-                stateFieldName = sfName;
-                stateField = rowVar.field(stateFieldName).get();
-            }
+                ColumnInfo info = codec.mInfo;
+                int num = columnNumbers.get(info.name);
 
-            Label cont = mm.label();
+                String sfName = rowGen.stateField(num);
+                if (!sfName.equals(stateFieldName)) {
+                    stateFieldName = sfName;
+                    stateField = rowVar.field(stateFieldName).get();
+                }
 
-            int sfMask = RowGen.stateFieldMask(num);
-            Label isDirty = mm.label();
-            stateField.and(sfMask).ifEq(sfMask, isDirty);
+                int sfMask = RowGen.stateFieldMask(num);
+                Label isDirty = mm.label();
+                stateField.and(sfMask).ifEq(sfMask, isDirty);
 
-            // Add in the size of existing column, which won't be updated.
-            {
+                // Add in the size of existing column, which won't be updated.
                 codec.encodeSkip();
                 newSizeVar.inc(offsetVar.sub(columnVars[i]));
-                mm.goto_(cont);
+                Label cont = mm.label().goto_();
+
+                // Add in the size of the dirty column, which needs to be encoded.
+                isDirty.here();
+                newSizeVar.inc(codec.minSize());
+                codec.encodeSize(rowVar.field(info.name), newSizeVar);
+
+                cont.here();
             }
 
-            // Add in the size of the dirty column, which needs to be encoded.
-            isDirty.here();
-            newSizeVar.inc(codec.minSize());
-            codec.encodeSize(rowVar.field(info.name), newSizeVar);
+            // Encode the new byte[] value...
 
-            cont.here();
-        }
+            newValueVar = mm.new_(byte[].class, newSizeVar);
 
-        // Encode the new byte[] value...
+            var srcOffsetVar = mm.var(int.class).set(0);
+            var dstOffsetVar = mm.var(int.class).set(0);
+            var spanLengthVar = mm.var(int.class).set(schemaVersion < 128 ? 1 : 4);
+            var sysVar = mm.var(System.class);
 
-        var newValueVar = mm.new_(byte[].class, newSizeVar);
+            for (int i=0; i<codecs.length; i++) {
+                ColumnCodec codec = codecs[i];
+                ColumnInfo info = codec.mInfo;
+                int num = columnNumbers.get(info.name);
 
-        var srcOffsetVar = mm.var(int.class).set(0);
-        var dstOffsetVar = mm.var(int.class).set(0);
-        var spanLengthVar = mm.var(int.class).set(schemaVersion < 128 ? 1 : 4);
-        var sysVar = mm.var(System.class);
-
-        for (int i=0; i<codecs.length; i++) {
-            ColumnCodec codec = codecs[i];
-            ColumnInfo info = codec.mInfo;
-            int num = columnNumbers.get(info.name);
-
-            Variable columnLenVar;
-            {
-                Variable endVar;
-                if (i + 1 < codecs.length) {
-                    endVar = columnVars[i + 1];
-                } else {
-                    endVar = valueVar.alength();
+                Variable columnLenVar;
+                {
+                    Variable endVar;
+                    if (i + 1 < codecs.length) {
+                        endVar = columnVars[i + 1];
+                    } else {
+                        endVar = valueVar.alength();
+                    }
+                    columnLenVar = endVar.sub(columnVars[i]);
                 }
-                columnLenVar = endVar.sub(columnVars[i]);
+
+                int sfMask = RowGen.stateFieldMask(num);
+                Label isDirty = mm.label();
+                stateField.and(sfMask).ifEq(sfMask, isDirty);
+
+                // Increase the copy span length.
+                Label cont = mm.label();
+                spanLengthVar.inc(columnLenVar);
+                mm.goto_(cont);
+
+                isDirty.here();
+
+                // Copy the current span and prepare for the next span.
+                {
+                    Label noSpan = mm.label();
+                    spanLengthVar.ifEq(0, noSpan);
+                    sysVar.invoke("arraycopy", valueVar, srcOffsetVar,
+                                  newValueVar, dstOffsetVar, spanLengthVar);
+                    srcOffsetVar.inc(spanLengthVar);
+                    dstOffsetVar.inc(spanLengthVar);
+                    spanLengthVar.set(0);
+                    noSpan.here();
+                }
+
+                // Encode the dirty column, and skip over the original column value.
+                codec.encode(rowVar.field(info.name), newValueVar, dstOffsetVar);
+                srcOffsetVar.inc(columnLenVar);
+
+                cont.here();
             }
 
-            int sfMask = RowGen.stateFieldMask(num);
-            Label isDirty = mm.label();
-            stateField.and(sfMask).ifEq(sfMask, isDirty);
-
-            // Increase the copy span length.
-            Label cont = mm.label();
-            spanLengthVar.inc(columnLenVar);
-            mm.goto_(cont);
-
-            isDirty.here();
-
-            // Copy the current span and prepare for the next span.
+            // Copy any remaining span.
             {
                 Label noSpan = mm.label();
                 spanLengthVar.ifEq(0, noSpan);
                 sysVar.invoke("arraycopy", valueVar, srcOffsetVar,
                               newValueVar, dstOffsetVar, spanLengthVar);
-                srcOffsetVar.inc(spanLengthVar);
-                dstOffsetVar.inc(spanLengthVar);
-                spanLengthVar.set(0);
                 noSpan.here();
             }
-
-            // Encode the dirty column, and skip over the original column value.
-            codec.encode(rowVar.field(info.name), newValueVar, dstOffsetVar);
-            srcOffsetVar.inc(columnLenVar);
-
-            cont.here();
-        }
-
-        // Copy any remaining span.
-        {
-            Label noSpan = mm.label();
-            spanLengthVar.ifEq(0, noSpan);
-            sysVar.invoke("arraycopy", valueVar, srcOffsetVar,
-                          newValueVar, dstOffsetVar, spanLengthVar);
-            noSpan.here();
         }
 
         if (triggers == 0) {
@@ -1570,18 +1571,29 @@ public class TableMaker {
 
         // Decode all the original column values that weren't updated into the row.
 
-        for (int i=0; i<codecs.length; i++) {
-            ColumnCodec codec = codecs[i];
-            ColumnInfo info = codec.mInfo;
-            int num = columnNumbers.get(info.name);
+        {
+            String stateFieldName = null;
+            Variable stateField = null;
 
-            int sfMask = RowGen.stateFieldMask(num);
-            Label cont = mm.label();
-            stateField.and(sfMask).ifEq(sfMask, cont);
+            for (int i=0; i<codecs.length; i++) {
+                ColumnCodec codec = codecs[i];
+                ColumnInfo info = codec.mInfo;
+                int num = columnNumbers.get(info.name);
 
-            codec.decode(rowVar.field(info.name), valueVar, columnVars[i], null);
+                String sfName = rowGen.stateField(num);
+                if (!sfName.equals(stateFieldName)) {
+                    stateFieldName = sfName;
+                    stateField = rowVar.field(stateFieldName).get();
+                }
 
-            cont.here();
+                int sfMask = RowGen.stateFieldMask(num);
+                Label cont = mm.label();
+                stateField.and(sfMask).ifEq(sfMask, cont);
+
+                codec.decode(rowVar.field(info.name), valueVar, columnVars[i], null);
+
+                cont.here();
+            }
         }
 
         if (triggers != 0) {
