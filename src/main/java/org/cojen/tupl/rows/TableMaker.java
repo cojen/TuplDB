@@ -1402,139 +1402,10 @@ public class TableMaker {
         Variable cursorVar = mm.param(3);
 
         Variable valueVar = cursorVar.invoke("value");
-        Variable decodeVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", valueVar);
 
-        Label sameVersion = mm.label();
-        decodeVersion.ifEq(schemaVersion, sameVersion);
-
-        // If different schema versions, decode and re-encode a new value, and then go to the
-        // next step. The simplest way to perform this conversion is to create a new temporary
-        // row object, decode the value into it, and then create a new value from it.
-        {
-            var tempRowVar = mm.new_(rowVar);
-            tableVar.invoke("decodeValue", tempRowVar, valueVar);
-            valueVar.set(tableVar.invoke("encodeValue", tempRowVar));
-        }
-
-        sameVersion.here();
-
-        RowGen rowGen = rowInfo.rowGen();
-        ColumnCodec[] codecs = ColumnCodec.bind(rowGen.valueCodecs(), mm);
-        Map<String, Integer> columnNumbers = rowGen.columnNumbers();
-
-        // Identify the offsets to all the columns in the original value, and calculate the
-        // size of the new value.
-
-        Variable[] columnVars;
-        Variable newValueVar;
-
-        {
-            int fixedOffset = schemaVersion < 128 ? 1 : 4;
-            Variable offsetVar = mm.var(int.class).set(fixedOffset);
-            var newSizeVar = mm.var(int.class).set(fixedOffset); // need room for schemaVersion
-
-            columnVars = new Variable[codecs.length];
-
-            String stateFieldName = null;
-            Variable stateField = null;
-
-            for (int i=0; i<codecs.length; i++) {
-                ColumnCodec codec = codecs[i];
-                codec.encodePrepare();
-
-                columnVars[i] = offsetVar.get();
-                codec.decodeSkip(valueVar, offsetVar, null);
-
-                ColumnInfo info = codec.mInfo;
-                int num = columnNumbers.get(info.name);
-
-                String sfName = rowGen.stateField(num);
-                if (!sfName.equals(stateFieldName)) {
-                    stateFieldName = sfName;
-                    stateField = rowVar.field(stateFieldName).get();
-                }
-
-                int sfMask = RowGen.stateFieldMask(num);
-                Label isDirty = mm.label();
-                stateField.and(sfMask).ifEq(sfMask, isDirty);
-
-                // Add in the size of existing column, which won't be updated.
-                codec.encodeSkip();
-                newSizeVar.inc(offsetVar.sub(columnVars[i]));
-                Label cont = mm.label().goto_();
-
-                // Add in the size of the dirty column, which needs to be encoded.
-                isDirty.here();
-                newSizeVar.inc(codec.minSize());
-                codec.encodeSize(rowVar.field(info.name), newSizeVar);
-
-                cont.here();
-            }
-
-            // Encode the new byte[] value...
-
-            newValueVar = mm.new_(byte[].class, newSizeVar);
-
-            var srcOffsetVar = mm.var(int.class).set(0);
-            var dstOffsetVar = mm.var(int.class).set(0);
-            var spanLengthVar = mm.var(int.class).set(schemaVersion < 128 ? 1 : 4);
-            var sysVar = mm.var(System.class);
-
-            for (int i=0; i<codecs.length; i++) {
-                ColumnCodec codec = codecs[i];
-                ColumnInfo info = codec.mInfo;
-                int num = columnNumbers.get(info.name);
-
-                Variable columnLenVar;
-                {
-                    Variable endVar;
-                    if (i + 1 < codecs.length) {
-                        endVar = columnVars[i + 1];
-                    } else {
-                        endVar = valueVar.alength();
-                    }
-                    columnLenVar = endVar.sub(columnVars[i]);
-                }
-
-                int sfMask = RowGen.stateFieldMask(num);
-                Label isDirty = mm.label();
-                stateField.and(sfMask).ifEq(sfMask, isDirty);
-
-                // Increase the copy span length.
-                Label cont = mm.label();
-                spanLengthVar.inc(columnLenVar);
-                mm.goto_(cont);
-
-                isDirty.here();
-
-                // Copy the current span and prepare for the next span.
-                {
-                    Label noSpan = mm.label();
-                    spanLengthVar.ifEq(0, noSpan);
-                    sysVar.invoke("arraycopy", valueVar, srcOffsetVar,
-                                  newValueVar, dstOffsetVar, spanLengthVar);
-                    srcOffsetVar.inc(spanLengthVar);
-                    dstOffsetVar.inc(spanLengthVar);
-                    spanLengthVar.set(0);
-                    noSpan.here();
-                }
-
-                // Encode the dirty column, and skip over the original column value.
-                codec.encode(rowVar.field(info.name), newValueVar, dstOffsetVar);
-                srcOffsetVar.inc(columnLenVar);
-
-                cont.here();
-            }
-
-            // Copy any remaining span.
-            {
-                Label noSpan = mm.label();
-                spanLengthVar.ifEq(0, noSpan);
-                sysVar.invoke("arraycopy", valueVar, srcOffsetVar,
-                              newValueVar, dstOffsetVar, spanLengthVar);
-                noSpan.here();
-            }
-        }
+        var ue = encodeUpdateEntry(mm, rowInfo, schemaVersion, tableVar, rowVar, valueVar);
+        Variable newValueVar = ue.newEntryVar;
+        Variable[] offsetVars = ue.offsetVars;
 
         if (triggers == 0) {
             cursorVar.invoke("commit", newValueVar);
@@ -1571,29 +1442,31 @@ public class TableMaker {
 
         // Decode all the original column values that weren't updated into the row.
 
-        {
-            String stateFieldName = null;
-            Variable stateField = null;
+        RowGen rowGen = rowInfo.rowGen();
+        Map<String, Integer> columnNumbers = rowGen.columnNumbers();
+        ColumnCodec[] codecs = ColumnCodec.bind(rowGen.valueCodecs(), mm);
 
-            for (int i=0; i<codecs.length; i++) {
-                ColumnCodec codec = codecs[i];
-                ColumnInfo info = codec.mInfo;
-                int num = columnNumbers.get(info.name);
+        String stateFieldName = null;
+        Variable stateField = null;
 
-                String sfName = rowGen.stateField(num);
-                if (!sfName.equals(stateFieldName)) {
-                    stateFieldName = sfName;
-                    stateField = rowVar.field(stateFieldName).get();
-                }
+        for (int i=0; i<codecs.length; i++) {
+            ColumnCodec codec = codecs[i];
+            ColumnInfo info = codec.mInfo;
+            int num = columnNumbers.get(info.name);
 
-                int sfMask = RowGen.stateFieldMask(num);
-                Label cont = mm.label();
-                stateField.and(sfMask).ifEq(sfMask, cont);
-
-                codec.decode(rowVar.field(info.name), valueVar, columnVars[i], null);
-
-                cont.here();
+            String sfName = rowGen.stateField(num);
+            if (!sfName.equals(stateFieldName)) {
+                stateFieldName = sfName;
+                stateField = rowVar.field(stateFieldName).get();
             }
+
+            int sfMask = RowGen.stateFieldMask(num);
+            Label cont = mm.label();
+            stateField.and(sfMask).ifEq(sfMask, cont);
+
+            codec.decode(rowVar.field(info.name), valueVar, offsetVars[i], null);
+
+            cont.here();
         }
 
         if (triggers != 0) {
@@ -1618,6 +1491,162 @@ public class TableMaker {
         }
 
         markAllClean(rowVar, rowGen, rowGen);
+    }
+
+    private record UpdateEntry(Variable newEntryVar, Variable[] offsetVars) {}
+
+    /**
+     * Makes code which encodes a new entry (a key or value) by comparing dirty row columns to
+     * the original entry. Returns the new entry and the column offsets in the original entry.
+     *
+     * @param schemaVersion pass 0 if entry is a key instead of a value; implies that caller
+     * must handle the case where the value must be empty
+     * @param rowVar non-null
+     * @param tableVar doesn't need to be initialized (is used to invoke a static method)
+     * @param entryVar original non-null encoded key or value
+     */
+    private static UpdateEntry encodeUpdateEntry
+        (MethodMaker mm, RowInfo rowInfo, int schemaVersion,
+         Variable tableVar, Variable rowVar, Variable entryVar)
+    {
+        RowGen rowGen = rowInfo.rowGen();
+        ColumnCodec[] codecs;
+        int fixedOffset;
+
+        if (schemaVersion == 0) {
+            codecs = rowGen.keyCodecs();
+            fixedOffset = 0;
+        } else {
+            codecs = rowGen.valueCodecs();
+
+            Variable decodeVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", entryVar);
+            Label sameVersion = mm.label();
+            decodeVersion.ifEq(schemaVersion, sameVersion);
+
+            // If different schema versions, decode and re-encode a new entry, and then go to
+            // the next step. The simplest way to perform this conversion is to create a new
+            // temp row object, decode the entry into it, and then create a new entry from it.
+            var tempRowVar = mm.new_(rowVar);
+            tableVar.invoke("decodeValue", tempRowVar, entryVar);
+            entryVar.set(tableVar.invoke("encodeValue", tempRowVar));
+
+            sameVersion.here();
+
+            fixedOffset = schemaVersion < 128 ? 1 : 4;
+        }
+
+        // Identify the offsets to all the columns in the original entry, and calculate the
+        // size of the new entry.
+
+        Map<String, Integer> columnNumbers = rowGen.columnNumbers();
+        codecs = ColumnCodec.bind(codecs, mm);
+
+        Variable[] offsetVars = new Variable[codecs.length];
+
+        var offsetVar = mm.var(int.class).set(fixedOffset);
+        var newSizeVar = mm.var(int.class).set(fixedOffset); // need room for schemaVersion
+
+        String stateFieldName = null;
+        Variable stateField = null;
+
+        for (int i=0; i<codecs.length; i++) {
+            ColumnCodec codec = codecs[i];
+            codec.encodePrepare();
+
+            offsetVars[i] = offsetVar.get();
+            codec.decodeSkip(entryVar, offsetVar, null);
+
+            ColumnInfo info = codec.mInfo;
+            int num = columnNumbers.get(info.name);
+
+            String sfName = rowGen.stateField(num);
+            if (!sfName.equals(stateFieldName)) {
+                stateFieldName = sfName;
+                stateField = rowVar.field(stateFieldName).get();
+            }
+
+            int sfMask = RowGen.stateFieldMask(num);
+            Label isDirty = mm.label();
+            stateField.and(sfMask).ifEq(sfMask, isDirty);
+
+            // Add in the size of original column, which won't be updated.
+            codec.encodeSkip();
+            newSizeVar.inc(offsetVar.sub(offsetVars[i]));
+            Label cont = mm.label().goto_();
+
+            // Add in the size of the dirty column, which needs to be encoded.
+            isDirty.here();
+            newSizeVar.inc(codec.minSize());
+            codec.encodeSize(rowVar.field(info.name), newSizeVar);
+
+            cont.here();
+        }
+
+        // Encode the new byte[] entry...
+
+        var newEntryVar = mm.new_(byte[].class, newSizeVar);
+
+        var srcOffsetVar = mm.var(int.class).set(0);
+        var dstOffsetVar = mm.var(int.class).set(0);
+        var spanLengthVar = mm.var(int.class).set(schemaVersion < 128 ? 1 : 4);
+        var sysVar = mm.var(System.class);
+
+        for (int i=0; i<codecs.length; i++) {
+            ColumnCodec codec = codecs[i];
+            ColumnInfo info = codec.mInfo;
+            int num = columnNumbers.get(info.name);
+
+            Variable columnLenVar;
+            {
+                Variable endVar;
+                if (i + 1 < codecs.length) {
+                    endVar = offsetVars[i + 1];
+                } else {
+                    endVar = entryVar.alength();
+                }
+                columnLenVar = endVar.sub(offsetVars[i]);
+            }
+
+            int sfMask = RowGen.stateFieldMask(num);
+            Label isDirty = mm.label();
+            stateField.and(sfMask).ifEq(sfMask, isDirty);
+
+            // Increase the copy span length.
+            Label cont = mm.label();
+            spanLengthVar.inc(columnLenVar);
+            mm.goto_(cont);
+
+            isDirty.here();
+
+            // Copy the current span and prepare for the next span.
+            {
+                Label noSpan = mm.label();
+                spanLengthVar.ifEq(0, noSpan);
+                sysVar.invoke("arraycopy", entryVar, srcOffsetVar,
+                              newEntryVar, dstOffsetVar, spanLengthVar);
+                srcOffsetVar.inc(spanLengthVar);
+                dstOffsetVar.inc(spanLengthVar);
+                spanLengthVar.set(0);
+                noSpan.here();
+            }
+
+            // Encode the dirty column, and skip over the original column value.
+            codec.encode(rowVar.field(info.name), newEntryVar, dstOffsetVar);
+            srcOffsetVar.inc(columnLenVar);
+
+            cont.here();
+        }
+
+        // Copy any remaining span.
+        {
+            Label noSpan = mm.label();
+            spanLengthVar.ifEq(0, noSpan);
+            sysVar.invoke("arraycopy", entryVar, srcOffsetVar,
+                          newEntryVar, dstOffsetVar, spanLengthVar);
+            noSpan.here();
+        }
+
+        return new UpdateEntry(newEntryVar, offsetVars);
     }
 
     /**
