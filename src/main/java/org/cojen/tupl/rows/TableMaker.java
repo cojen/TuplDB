@@ -1518,7 +1518,10 @@ public class TableMaker {
         markAllClean(rowVar, rowGen, rowGen);
     }
 
-    private record UpdateEntry(Variable newEntryVar, Variable[] offsetVars) {}
+    private static class UpdateEntry {
+        Variable newEntryVar;
+        Variable[] offsetVars;
+    }
 
     /**
      * Makes code which encodes a new entry (a key or value) by comparing dirty row columns to
@@ -1671,7 +1674,10 @@ public class TableMaker {
             noSpan.here();
         }
 
-        return new UpdateEntry(newEntryVar, offsetVars);
+        var ue = new UpdateEntry();
+        ue.newEntryVar = newEntryVar;
+        ue.offsetVars = offsetVars;
+        return ue;
     }
 
     /**
