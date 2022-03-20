@@ -519,7 +519,7 @@ public class IndexTriggerMaker<R> {
                              Variable srcVar, int offset,
                              boolean forKey, int rowMode, int num)
     {
-        if (num == 0) {
+        if (srcVar == null || num == 0) {
             return;
         }
 
