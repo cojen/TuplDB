@@ -148,15 +148,15 @@ final class MergedScanController<R> extends SingleScanController<R> {
     }
 
     @Override
-    public byte[] encodeKey(R row) throws IOException {
+    public byte[] updateKey(R row, byte[] original) throws IOException {
         // Can call either decoder. They should do the same thing.
-        return mLowDecoder.encodeKey(row);
+        return mLowDecoder.updateKey(row, original);
     }
 
     @Override
-    public byte[] encodeValue(R row) throws IOException {
+    public byte[] updateValue(R row, byte[] original) throws IOException {
         // Can call either decoder. They should do the same thing.
-        return mLowDecoder.encodeValue(row);
+        return mLowDecoder.updateValue(row, original);
     }
 
     @Override

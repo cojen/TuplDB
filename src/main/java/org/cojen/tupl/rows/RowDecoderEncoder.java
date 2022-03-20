@@ -56,7 +56,7 @@ public interface RowDecoderEncoder<R> {
      *
      * @return null if the key columns didn't change
      */
-    default byte[] encodeKey(R row) throws IOException {
+    default byte[] updateKey(R row, byte[] original) throws IOException {
         throw new UnmodifiableViewException();
     }
 
@@ -65,7 +65,7 @@ public interface RowDecoderEncoder<R> {
      *
      * @return non-null value
      */
-    default byte[] encodeValue(R row) throws IOException {
+    default byte[] updateValue(R row, byte[] original) throws IOException {
         throw new UnmodifiableViewException();
     }
 }

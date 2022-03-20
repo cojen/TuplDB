@@ -145,19 +145,49 @@ public class TableMaker {
         MethodMaker ctor = mClassMaker.addConstructor(mt);
         ctor.invokeSuperConstructor(ctor.param(0), ctor.param(1), ctor.param(2));
 
+        // Add private methods which check that required columns are set.
+        {
+            addCheckSet("checkPrimaryKeySet", mCodecGen.info.keyColumns);
+
+            //addCheckSet("checkValue", mCodecGen.info.valueColumns);
+
+            if (isPrimaryTable()) {
+                addCheckSet("checkAllSet", mCodecGen.info.allColumns);
+                addRequireSet("requireAllSet", mCodecGen.info.allColumns);
+            }
+
+            int i = 0;
+            for (ColumnSet altKey : mCodecGen.info.alternateKeys) {
+                addCheckSet("checkAltKeySet$" + i, altKey.keyColumns);
+                i++;
+            }
+
+            if (isPrimaryTable() && !mCodecGen.info.valueColumns.isEmpty()) {
+                addCheckAllDirty("checkValueAllDirty", mCodecGen.info.valueColumns);
+            }
+
+            addCheckAnyDirty("checkPrimaryKeyAnyDirty", mCodecGen.info.keyColumns);
+            addCheckAllDirty("checkPrimaryKeyAllDirty", mCodecGen.info.keyColumns);
+        }
+
         // Add encode/decode methods.
         {
             ColumnCodec[] keyCodecs = mCodecGen.keyCodecs();
             addEncodeColumnsMethod("encodePrimaryKey", keyCodecs);
             addDecodeColumnsMethod("decodePrimaryKey", keyCodecs);
+            addUpdatePrimaryKeyMethod(keyCodecs);
 
             if (isPrimaryTable()) {
                 addDynamicEncodeValueColumns();
                 addDynamicDecodeValueColumns();
+                addDynamicUpdateValueColumns();
             } else {
-                // The encodeValue method is only used for storing rows into the table. By
-                // making it always fail, there's no backdoor to permit modifications.
+                // The encodeValue and updateValue methods are only used for storing rows into
+                // the table. By making them always fail, there's no backdoor to permit
+                // modifications.
                 mClassMaker.addMethod(byte[].class, "encodeValue", mRowClass)
+                    .static_().new_(UnmodifiableViewException.class).throw_();
+                mClassMaker.addMethod(byte[].class, "updateValue", mRowClass, byte[].class)
                     .static_().new_(UnmodifiableViewException.class).throw_();
 
                 addDecodeColumnsMethod("decodeValue", mCodecGen.valueCodecs());
@@ -215,30 +245,6 @@ public class TableMaker {
             addCheckSet("checkAllButAutoSet", allButAuto);
 
             addStoreAutoMethod();
-        }
-
-        // Add private methods which check that required columns are set.
-        {
-            addCheckSet("checkPrimaryKeySet", mCodecGen.info.keyColumns);
-
-            //addCheckSet("checkValue", mCodecGen.info.valueColumns);
-
-            if (isPrimaryTable()) {
-                addCheckSet("checkAllSet", mCodecGen.info.allColumns);
-                addRequireSet("requireAllSet", mCodecGen.info.allColumns);
-            }
-
-            int i = 0;
-            for (ColumnSet altKey : mCodecGen.info.alternateKeys) {
-                addCheckSet("checkAltKeySet$" + i, altKey.keyColumns);
-                i++;
-            }
-
-            if (isPrimaryTable() && !mCodecGen.info.valueColumns.isEmpty()) {
-                addCheckAllDirty("checkValueAllDirty", mCodecGen.info.valueColumns);
-            }
-
-            addCheckAnyDirty("checkPrimaryKeyAnyDirty", mCodecGen.info.keyColumns);
         }
 
         // Add the public load/store methods, etc.
@@ -754,6 +760,31 @@ public class TableMaker {
     }
 
     /**
+     * Defines a static method which encodes a new key by comparing dirty row columns to the
+     * original key.
+     *
+     * @param name method name
+     */
+    private void addUpdatePrimaryKeyMethod(ColumnCodec[] codecs) {
+        MethodMaker mm = mClassMaker
+            .addMethod(byte[].class, "updatePrimaryKey", mRowClass, byte[].class).static_();
+
+        Variable rowVar = mm.param(0);
+
+        Label partiallyDirty = mm.label();
+        mm.invoke("checkPrimaryKeyAllDirty", rowVar).ifFalse(partiallyDirty);
+        mm.return_(mm.invoke("encodePrimaryKey", rowVar));
+        partiallyDirty.here();
+
+        var tableVar = mm.class_();
+        var ue = encodeUpdateEntry(mm, mRowInfo, 0, tableVar, rowVar, mm.param(1));
+
+        mm.return_(ue.newEntryVar);
+    }
+
+    /**
+     * Implements: static byte[] encodeValue(RowClass row)
+     *
      * Method isn't implemented until needed, delaying acquisition/creation of the current
      * schema version. This allows replicas to decode existing rows even when the class
      * definition has changed, but encoding will still fail.
@@ -773,6 +804,58 @@ public class TableMaker {
             (lookup, name, mt, storeRef, rowType, indexId, (mm, info, schemaVersion) -> {
                 ColumnCodec[] codecs = info.rowGen().valueCodecs();
                 addEncodeColumns(mm, ColumnCodec.bind(schemaVersion, codecs, mm));
+            });
+    }
+
+    /**
+     * Implements: static byte[] updateValue(RowClass row, byte[] original)
+     *
+     * Method isn't fully implemented until needed, delaying acquisition/creation of the
+     * current schema version. This allows replicas to decode existing rows even when the class
+     * definition has changed, but encoding will still fail.
+     */
+    private void addDynamicUpdateValueColumns() {
+        MethodMaker mm = mClassMaker
+            .addMethod(byte[].class, "updateValue", mRowClass, byte[].class).static_();
+
+        if (mCodecGen.info.valueColumns.isEmpty()) {
+            // If the checkValueAllDirty method was defined, it would always return true.
+            mm.return_(mm.var(RowUtils.class).field("EMPTY_BYTES"));
+            return;
+        }
+
+        Variable rowVar = mm.param(0);
+
+        Label partiallyDirty = mm.label();
+        mm.invoke("checkValueAllDirty", rowVar).ifFalse(partiallyDirty);
+        mm.return_(mm.invoke("encodeValue", rowVar));
+        partiallyDirty.here();
+
+        var indy = mm.var(TableMaker.class).indy
+            ("indyUpdateValueColumns", mStore.ref(), mRowType, mIndexId);
+        mm.return_(indy.invoke(byte[].class, "updateValue", null, rowVar, mm.param(1)));
+    }
+
+    public static CallSite indyUpdateValueColumns
+        (MethodHandles.Lookup lookup, String name, MethodType mt,
+         WeakReference<RowStore> storeRef, Class<?> rowType, long indexId)
+    {
+        return doIndyEncode
+            (lookup, name, mt, storeRef, rowType, indexId, (mm, info, schemaVersion) -> {
+                if (schemaVersion == 0 || info.valueColumns.isEmpty()) {
+                    // Not expected, but handle it nonetheless.
+                    mm.return_(mm.var(RowUtils.class).field("EMPTY_BYTES"));
+                    return;
+                }
+
+                // These variables were provided by the indy call in addDynamicUpdateValueColumns.
+                Variable rowVar = mm.param(0);
+                Variable originalVar = mm.param(1); // byte[]
+
+                var tableVar = mm.var(lookup.lookupClass());
+                var ue = encodeUpdateEntry(mm, info, schemaVersion, tableVar, rowVar, originalVar);
+
+                mm.return_(ue.newEntryVar);
             });
     }
 
@@ -1531,11 +1614,11 @@ public class TableMaker {
      * must handle the case where the value must be empty
      * @param rowVar non-null
      * @param tableVar doesn't need to be initialized (is used to invoke a static method)
-     * @param entryVar original non-null encoded key or value
+     * @param originalVar original non-null encoded key or value
      */
     private static UpdateEntry encodeUpdateEntry
         (MethodMaker mm, RowInfo rowInfo, int schemaVersion,
-         Variable tableVar, Variable rowVar, Variable entryVar)
+         Variable tableVar, Variable rowVar, Variable originalVar)
     {
         RowGen rowGen = rowInfo.rowGen();
         ColumnCodec[] codecs;
@@ -1547,7 +1630,8 @@ public class TableMaker {
         } else {
             codecs = rowGen.valueCodecs();
 
-            Variable decodeVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", entryVar);
+            Variable decodeVersion = mm.var(RowUtils.class)
+                .invoke("decodeSchemaVersion", originalVar);
             Label sameVersion = mm.label();
             decodeVersion.ifEq(schemaVersion, sameVersion);
 
@@ -1555,8 +1639,8 @@ public class TableMaker {
             // the next step. The simplest way to perform this conversion is to create a new
             // temp row object, decode the entry into it, and then create a new entry from it.
             var tempRowVar = mm.new_(rowVar);
-            tableVar.invoke("decodeValue", tempRowVar, entryVar);
-            entryVar.set(tableVar.invoke("encodeValue", tempRowVar));
+            tableVar.invoke("decodeValue", tempRowVar, originalVar);
+            originalVar.set(tableVar.invoke("encodeValue", tempRowVar));
 
             sameVersion.here();
 
@@ -1582,7 +1666,7 @@ public class TableMaker {
             codec.encodePrepare();
 
             offsetVars[i] = offsetVar.get();
-            codec.decodeSkip(entryVar, offsetVar, null);
+            codec.decodeSkip(originalVar, offsetVar, null);
 
             ColumnInfo info = codec.mInfo;
             int num = columnNumbers.get(info.name);
@@ -1616,7 +1700,7 @@ public class TableMaker {
 
         var srcOffsetVar = mm.var(int.class).set(0);
         var dstOffsetVar = mm.var(int.class).set(0);
-        var spanLengthVar = mm.var(int.class).set(schemaVersion < 128 ? 1 : 4);
+        var spanLengthVar = mm.var(int.class).set(fixedOffset);
         var sysVar = mm.var(System.class);
 
         for (int i=0; i<codecs.length; i++) {
@@ -1630,7 +1714,7 @@ public class TableMaker {
                 if (i + 1 < codecs.length) {
                     endVar = offsetVars[i + 1];
                 } else {
-                    endVar = entryVar.alength();
+                    endVar = originalVar.alength();
                 }
                 columnLenVar = endVar.sub(offsetVars[i]);
             }
@@ -1650,7 +1734,7 @@ public class TableMaker {
             {
                 Label noSpan = mm.label();
                 spanLengthVar.ifEq(0, noSpan);
-                sysVar.invoke("arraycopy", entryVar, srcOffsetVar,
+                sysVar.invoke("arraycopy", originalVar, srcOffsetVar,
                               newEntryVar, dstOffsetVar, spanLengthVar);
                 srcOffsetVar.inc(spanLengthVar);
                 dstOffsetVar.inc(spanLengthVar);
@@ -1669,7 +1753,7 @@ public class TableMaker {
         {
             Label noSpan = mm.label();
             spanLengthVar.ifEq(0, noSpan);
-            sysVar.invoke("arraycopy", entryVar, srcOffsetVar,
+            sysVar.invoke("arraycopy", originalVar, srcOffsetVar,
                           newEntryVar, dstOffsetVar, spanLengthVar);
             noSpan.here();
         }
@@ -1930,22 +2014,24 @@ public class TableMaker {
 
         {
             // Specified by RowDecoderEncoder.
-            MethodMaker mm = cm.addMethod(byte[].class, "encodeKey", Object.class).public_();
+            MethodMaker mm = cm.addMethod
+                (byte[].class, "updateKey", Object.class, byte[].class).public_();
             var rowVar = mm.param(0).cast(rowClass);
             var tableVar = mm.var(lookup.lookupClass());
             Label unchanged = mm.label();
             tableVar.invoke("checkPrimaryKeyAnyDirty", rowVar).ifFalse(unchanged);
-            mm.return_(tableVar.invoke("encodePrimaryKey", rowVar));
+            mm.return_(tableVar.invoke("updatePrimaryKey", rowVar, mm.param(1)));
             unchanged.here();
             mm.return_(null);
         }
 
         {
             // Specified by RowDecoderEncoder.
-            MethodMaker mm = cm.addMethod(byte[].class, "encodeValue", Object.class).public_();
+            MethodMaker mm = cm.addMethod
+                (byte[].class, "updateValue", Object.class, byte[].class).public_();
             var rowVar = mm.param(0).cast(rowClass);
             var tableVar = mm.var(lookup.lookupClass());
-            mm.return_(tableVar.invoke("encodeValue", rowVar));
+            mm.return_(tableVar.invoke("updateValue", rowVar, mm.param(1)));
         }
 
         {
@@ -2065,18 +2151,20 @@ public class TableMaker {
 
         {
             // Specified by RowDecoderEncoder.
-            MethodMaker mm = cm.addMethod(byte[].class, "encodeKey", Object.class).public_();
+            MethodMaker mm = cm.addMethod
+                (byte[].class, "updateKey", Object.class, byte[].class).public_();
             var rowVar = mm.param(0).cast(mRowClass);
             var tableVar = mm.var(primaryTableClass);
-            mm.return_(tableVar.invoke("encodePrimaryKey", rowVar));
+            mm.return_(tableVar.invoke("updatePrimaryKey", rowVar, mm.param(1)));
         }
 
         {
             // Specified by RowDecoderEncoder.
-            MethodMaker mm = cm.addMethod(byte[].class, "encodeValue", Object.class).public_();
+            MethodMaker mm = cm.addMethod
+                (byte[].class, "updateValue", Object.class, byte[].class).public_();
             var rowVar = mm.param(0).cast(mRowClass);
             var tableVar = mm.var(primaryTableClass);
-            mm.return_(tableVar.invoke("encodeValue", rowVar));
+            mm.return_(tableVar.invoke("updateValue", rowVar, mm.param(1)));
         }
 
         {

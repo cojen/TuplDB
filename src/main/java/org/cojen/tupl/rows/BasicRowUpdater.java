@@ -80,14 +80,14 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
     }
 
     private void doUpdateCurrent(R row) throws IOException {
+        Cursor c = mCursor;
+
         byte[] key, value;
         {
             RowDecoderEncoder<R> encoder = mDecoder;
-            key = encoder.encodeKey(row);
-            value = encoder.encodeValue(row);
+            key = encoder.updateKey(row, c.key());
+            value = encoder.updateValue(row, c.value());
         }
-
-        Cursor c = mCursor;
 
         int cmp;
         if (key == null || (cmp = c.compareKeyTo(key)) == 0) {
@@ -238,14 +238,14 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
     }
 
     private void doJoinedUpdateCurrent(R row) throws IOException {
+        Cursor c = mCursor;
+
         byte[] key, value;
         {
             RowDecoderEncoder<R> encoder = mDecoder;
-            key = encoder.encodeKey(row);
-            value = encoder.encodeValue(row);
+            key = encoder.updateKey(row, c.key());
+            value = encoder.updateValue(row, c.value());
         }
-
-        Cursor c = mCursor;
 
         if (Arrays.equals(key, c.key())) {
             doUpdateAsStore(c, value);

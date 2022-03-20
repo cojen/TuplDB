@@ -77,12 +77,12 @@ final class EmptyScanController extends SingleScanController implements ScanCont
     }
 
     @Override
-    public byte[] encodeKey(Object row) {
+    public byte[] updateKey(Object row, byte[] original) {
         throw new AssertionError();
     }
 
     @Override
-    public byte[] encodeValue(Object row) {
+    public byte[] updateValue(Object row, byte[] original) {
         throw new AssertionError();
     }
 }

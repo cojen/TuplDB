@@ -529,6 +529,7 @@ public abstract class AbstractTable<R> implements Table<R> {
 
             RowGen rowGen = rowInfo.rowGen();
 
+            // FIXME: Doesn't really work with ~{...} form and unjoined secondary.
             byte[] projectionSpec = DecodePartialMaker.makeFullSpec
                 (primaryRowGen != null ? primaryRowGen : rowGen, ff.projection());
 
@@ -847,7 +848,7 @@ public abstract class AbstractTable<R> implements Table<R> {
         return (Trigger<R>) cTriggerHandle.getOpaque(this);
     }
 
-    static FullFilter parseFull(Class<?> rowType, String filter) {
+    private static FullFilter parseFull(Class<?> rowType, String filter) {
         return new Parser(RowInfo.find(rowType).allColumns, filter).parseFull();
     }
 
