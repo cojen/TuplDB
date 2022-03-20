@@ -323,11 +323,18 @@ public class RowMaker {
         }
 
         Label unset = mm.label();
-        rowObject.field(rowGen.stateField(num)).and(RowGen.stateFieldMask(num)).ifEq(0, unset);
+        int mask = RowGen.stateFieldMask(num);
+        var stateVar = rowObject.field(rowGen.stateField(num)).and(mask);
+        stateVar.ifEq(0, unset);
         Label sep = mm.label();
         bob.invoke("length").ifEq(initSize, sep);
         bob.invoke("append", ", ");
         sep.here();
+
+        Label clean = mm.label();
+        stateVar.ifNe(mask, clean);
+        bob.invoke("append", '*');
+        clean.here();
 
         bob.invoke("append", info.name).invoke("append", '=');
         Variable value = rowObject.field(info.name);

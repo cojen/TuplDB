@@ -24,6 +24,14 @@ import java.io.IOException;
  * Support for scanning through all rows in a table, updating them along the way. Any exception
  * thrown when acting upon an updater automatically closes it.
  *
+ * <p>Update operations only affect columns which have a modified state, and the rest of the
+ * columns remain the same as what was served by the updater. Columns which have an unmodified
+ * state, regardless of the column value, aren't updated. Consider the case in which a row key
+ * is changed, the row is loaded, and then one column is modified. Although all columns are
+ * effectively different than what was served by the updater, only one column is updated
+ * against the original row. For debugging, call the row's {@code toString} method to identify
+ * which columns are modified. The name of a modified column is prefixed with an asterisk.
+ *
  * <p>RowUpdater instances can only be safely used by one thread at a time, and they must be
  * closed when no longer needed. Instances can be exchanged by threads, as long as a
  * happens-before relationship is established. Without proper exclusion, multiple threads

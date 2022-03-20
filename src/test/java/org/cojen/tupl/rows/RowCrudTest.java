@@ -120,7 +120,7 @@ public class RowCrudTest {
         row.id(1);
         assertFalse(mTable.load(null, row));
 
-        assertTrue(row.toString().endsWith("TestRow{id=1}"));
+        assertTrue(row.toString().endsWith("TestRow{*id=1}"));
 
         try {
             row.str1();
@@ -138,12 +138,12 @@ public class RowCrudTest {
         }
 
         assertFalse(mTable.delete(null, row));
-        assertTrue(row.toString().endsWith("TestRow{id=1}"));
+        assertTrue(row.toString().endsWith("TestRow{*id=1}"));
 
         row.str1("hello");
         row.str2(null);
         row.num1(100);
-        assertTrue(row.toString().endsWith("TestRow{id=1, num1=100, str1=hello, str2=null}"));
+        assertTrue(row.toString().endsWith("TestRow{*id=1, *num1=100, *str1=hello, *str2=null}"));
 
         assertTrue(mTable.insert(null, row));
         assertTrue(row.toString().endsWith("TestRow{id=1, num1=100, str1=hello, str2=null}"));
@@ -225,7 +225,7 @@ public class RowCrudTest {
         row.num1(123);
         TestRow copy = mTable.cloneRow(row);
         assertFalse(mTable.load(null, row));
-        assertTrue(row.toString().contains("TestRow{id=10}"));
+        assertTrue(row.toString().contains("TestRow{*id=10}"));
 
         assertNotEquals(row.toString(), copy.toString());
         assertEquals(0, mTable.comparator("+id+str1+str2+num1").compare(row, copy));

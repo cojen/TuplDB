@@ -132,7 +132,7 @@ public class IndexingTest {
             row.name("xxx");
             row.id(2);
             assertFalse(alt.load(null, row));
-            assertTrue(row.toString().contains("TestRow{path=pathx}"));
+            assertTrue(row.toString().contains("TestRow{*path=pathx}"));
         }
 
         {
@@ -164,7 +164,7 @@ public class IndexingTest {
             row.path("xxx");
             row.id(2);
             assertFalse(ix1.load(null, row));
-            assertTrue(row.toString().contains("TestRow{id=2, name=namex}"));
+            assertTrue(row.toString().contains("TestRow{*id=2, *name=namex}"));
         }
 
         {
@@ -198,7 +198,7 @@ public class IndexingTest {
             row.path("xxx");
             row.id(2);
             assertFalse(ix2.load(null, row));
-            assertTrue(row.toString().contains("TestRow{id=2, name=namex, num=999}"));
+            assertTrue(row.toString().contains("TestRow{*id=2, *name=namex, *num=999}"));
         }
 
         try {
@@ -1377,7 +1377,7 @@ public class IndexingTest {
                 row.id(999); // should be ignored
                 TestRow copy = alt.cloneRow(row);
                 assertFalse(alt.load(txn, row));
-                assertTrue(row.toString().contains("TestRow{path=path-x}"));
+                assertTrue(row.toString().contains("TestRow{*path=path-x}"));
                 // Fields must remain unchanged.
                 assertEquals(0, alt.comparator("+path+id").compare(row, copy));
             }
@@ -1391,7 +1391,7 @@ public class IndexingTest {
                 row.name("name-x");
                 row.id(2);
                 assertFalse(ix1.load(txn, row));
-                assertTrue(row.toString().contains("TestRow{id=2, name=name-x}"));
+                assertTrue(row.toString().contains("TestRow{*id=2, *name=name-x}"));
             }
 
             if (i == 1) {
@@ -1404,7 +1404,7 @@ public class IndexingTest {
                 row.name("name-x");
                 row.id(2);
                 assertFalse(ix2.load(txn, row));
-                assertTrue(row.toString().contains("TestRow{id=2, name=name-x, num=2}"));
+                assertTrue(row.toString().contains("TestRow{*id=2, *name=name-x, *num=2}"));
             }
 
             if (i == 1) {
@@ -1465,7 +1465,7 @@ public class IndexingTest {
                 row.id(999); // should be ignored
                 TestRow copy = alt.cloneRow(row);
                 assertFalse(alt.load(null, row));
-                assertTrue(row.toString().contains("TestRow{path=path}"));
+                assertTrue(row.toString().contains("TestRow{*path=path}"));
                 // Fields must remain unchanged.
                 assertEquals(0, alt.comparator("+path+id").compare(row, copy));
             } catch (Throwable e) {
