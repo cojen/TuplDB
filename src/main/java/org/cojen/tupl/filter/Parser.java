@@ -86,8 +86,14 @@ public class Parser {
             return null;
         }
 
-        Map<String, ColumnInfo> projection = invert ?
-            new LinkedHashMap<>(availableColumns) : new LinkedHashMap<>();
+        Map<String, ColumnInfo> projection;
+        if (invert) {
+            projection = new LinkedHashMap<>(availableColumns);
+            // Allow unavailable columns to be removed, although it won't have any effect.
+            availableColumns = mAllColumns;
+        } else {
+            projection = new LinkedHashMap<>();
+        }
 
         if (nextCharIgnoreWhitespace() != '}') {
             mPos--;

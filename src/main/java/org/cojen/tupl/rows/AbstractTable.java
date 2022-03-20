@@ -473,7 +473,9 @@ public abstract class AbstractTable<R> implements Table<R> {
             byte[] secondaryDesc = secondaryDescriptor();
             if (secondaryDesc != null) {
                 rowInfo = RowStore.indexRowInfo(rowInfo, secondaryDesc);
-                availableColumns = rowInfo.allColumns;
+                if (joinedPrimaryTableClass() == null) {
+                    availableColumns = rowInfo.allColumns;
+                }
             }
 
             FullFilter ff = new Parser(allColumns, filter).parseFull(availableColumns).reduce();
