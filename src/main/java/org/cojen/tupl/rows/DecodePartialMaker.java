@@ -59,11 +59,7 @@ public class DecodePartialMaker {
 
         Map<String, Integer> columnNumbers = rowGen.columnNumbers();
         for (String name : projection.keySet()) {
-            Integer num = columnNumbers.get(name);
-            if (num == null) {
-                throw new IllegalStateException("Column is unavailable for selection: " + name);
-            }
-            toDecode.set(num);
+            toDecode.set(columnNumbers.get(name));
         }
 
         byte[] bytes = toDecode.toByteArray();

@@ -47,9 +47,11 @@ public class Parser {
 
     /**
      * Parses a projection and row filter.
+     *
+     * @param availableColumns can pass null if same as all columns
      */
-    public FullFilter parseFull() {
-        return new FullFilter(parseProjection(), parseFilter());
+    public FullFilter parseFull(Map<String, ColumnInfo> availableColumns) {
+        return new FullFilter(parseProjection(availableColumns), parseFilter());
     }
 
     /**
@@ -57,11 +59,17 @@ public class Parser {
      * Columns     = [ ColumnName { "," ColumnName } ]
      *
      * Returns null if string doesn't start with a projection or if the projection is all of
-     * the columns. If the projection ends with a colon, then a subsequent call to parseFilter
-     * expects a filter. Without the colon, parseFilter expects nothing, and it returns
-     * TrueFilter if successful.
+     * the available columns. If the projection ends with a colon, then a subsequent call to
+     * parseFilter expects a filter. Without the colon, parseFilter expects nothing, and it
+     * returns TrueFilter if successful.
+     *
+     * @param availableColumns can pass null if same as all columns
      */
-    public Map<String, ColumnInfo> parseProjection() {
+    public Map<String, ColumnInfo> parseProjection(Map<String, ColumnInfo> availableColumns) {
+        if (availableColumns == null) {
+            availableColumns = mAllColumns;
+        }
+
         final int start = mPos;
 
         int c = nextCharIgnoreWhitespace();
@@ -79,12 +87,12 @@ public class Parser {
         }
 
         Map<String, ColumnInfo> projection = invert ?
-            new LinkedHashMap<>(mAllColumns) : new LinkedHashMap<>();
+            new LinkedHashMap<>(availableColumns) : new LinkedHashMap<>();
 
         if (nextCharIgnoreWhitespace() != '}') {
             mPos--;
             while (true) {
-                ColumnInfo column = parseColumn();
+                ColumnInfo column = parseColumn(availableColumns);
                 String name = column.name;
 
                 if (invert) {
@@ -115,7 +123,7 @@ public class Parser {
             }
         }
 
-        return projection.size() == mAllColumns.size() ? null : projection;
+        return projection.size() == availableColumns.size() ? null : projection;
     }
 
     /**
@@ -262,7 +270,7 @@ public class Parser {
         // parseColumnFilter
 
         int startPos = mPos;
-        ColumnInfo column = parseColumn();
+        ColumnInfo column = parseColumn(null);
 
         c = nextCharIgnoreWhitespace();
 
@@ -346,7 +354,7 @@ public class Parser {
                 throw error("Argument number or '?' expected");
             }
 
-            ColumnInfo match = parseColumn();
+            ColumnInfo match = parseColumn(null);
 
             ColumnInfo common = ConvertUtils.commonType(column, match, op);
 
@@ -411,7 +419,10 @@ public class Parser {
         }
     }
 
-    private ColumnInfo parseColumn() {
+    /**
+     * @param availableColumns can pass null if same as all columns
+     */
+    private ColumnInfo parseColumn(Map<String, ColumnInfo> availableColumns) {
         int start = mPos;
         int c = nextChar();
         if (c < 0) {
@@ -426,11 +437,21 @@ public class Parser {
         } while (Character.isJavaIdentifierPart(c));
 
         String name = mFilter.substring(start, --mPos);
-        ColumnInfo column = mAllColumns.get(name);
+
+        if (availableColumns == null) {
+            availableColumns = mAllColumns;
+        }
+        ColumnInfo column = availableColumns.get(name);
 
         if (column == null) {
             mPos = start;
-            throw error("Unknown column: " + name);
+            String prefix;
+            if (availableColumns == mAllColumns || !mAllColumns.containsKey(name)) {
+                prefix = "Unknown column";
+            } else {
+                prefix = "Column is unavailable for selection";
+            }
+            throw error(prefix + ": " + name);
         }
 
         return column;

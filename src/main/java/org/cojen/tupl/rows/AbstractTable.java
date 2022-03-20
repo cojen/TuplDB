@@ -27,6 +27,7 @@ import java.lang.ref.WeakReference;
 
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 import java.util.stream.Stream;
@@ -459,7 +460,23 @@ public abstract class AbstractTable<R> implements Table<R> {
 
         obtain: try {
             Class<?> rowType = rowType();
-            FullFilter ff = parseFull(rowType, filter).reduce();
+            RowInfo rowInfo = RowInfo.find(rowType);
+            Map<String, ColumnInfo> allColumns = rowInfo.allColumns;
+            Map<String, ColumnInfo> availableColumns = allColumns;
+
+            RowGen primaryRowGen = null;
+            if (joinedPrimaryTableClass() != null) {
+                // Join to the primary.
+                primaryRowGen = rowInfo.rowGen();
+            }
+
+            byte[] secondaryDesc = secondaryDescriptor();
+            if (secondaryDesc != null) {
+                rowInfo = RowStore.indexRowInfo(rowInfo, secondaryDesc);
+                availableColumns = rowInfo.allColumns;
+            }
+
+            FullFilter ff = new Parser(allColumns, filter).parseFull(availableColumns).reduce();
             RowFilter rf = ff.filter();
 
             if (rf instanceof FalseFilter) {
@@ -496,19 +513,6 @@ public abstract class AbstractTable<R> implements Table<R> {
                 break obtain;
             }
 
-            RowInfo rowInfo = RowInfo.find(rowType);
-
-            RowGen primaryRowGen = null;
-            if (joinedPrimaryTableClass() != null) {
-                // Join to the primary.
-                primaryRowGen = rowInfo.rowGen();
-            }
-
-            byte[] secondaryDesc = secondaryDescriptor();
-            if (secondaryDesc != null) {
-                rowInfo = RowStore.indexRowInfo(rowInfo, secondaryDesc);
-            }
-
             var keyColumns = rowInfo.keyColumns.values().toArray(ColumnInfo[]::new);
             RowFilter[][] ranges = multiRangeExtract(rf, keyColumns);
             splitRemainders(rowInfo, ranges);
@@ -529,7 +533,6 @@ public abstract class AbstractTable<R> implements Table<R> {
 
             RowGen rowGen = rowInfo.rowGen();
 
-            // FIXME: Doesn't really work with ~{...} form and unjoined secondary.
             byte[] projectionSpec = DecodePartialMaker.makeFullSpec
                 (primaryRowGen != null ? primaryRowGen : rowGen, ff.projection());
 
@@ -846,10 +849,6 @@ public abstract class AbstractTable<R> implements Table<R> {
      */
     public final Trigger<R> trigger() {
         return (Trigger<R>) cTriggerHandle.getOpaque(this);
-    }
-
-    private static FullFilter parseFull(Class<?> rowType, String filter) {
-        return new Parser(RowInfo.find(rowType).allColumns, filter).parseFull();
     }
 
     static RowFilter parseFilter(Class<?> rowType, String filter) {
