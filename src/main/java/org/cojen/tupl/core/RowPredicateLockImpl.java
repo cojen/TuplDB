@@ -126,6 +126,32 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
     }
 
     @Override
+    public Closer openAcquire(Transaction txn, R row, byte[] key, byte[] value) throws IOException {
+        if (txn.lockMode() == LockMode.UNSAFE) {
+            return NonCloser.THE;
+        }
+
+        var local = (LocalTransaction) txn;
+        VersionLock version = mNewestVersion.select(this);
+
+        if (version.acquireNoPush(local)) {
+            local.push(version);
+        }
+
+        try {
+            for (Evaluator<R> e = mLastEvaluator; e != null; e = e.mPrev) {
+                if (e.test(row, key, value)) {
+                    e.matchAcquire(local);
+                }
+            }
+            return version;
+        } catch (Throwable e) {
+            version.close();
+            throw e;
+        }
+    }
+
+    @Override
     public Closer tryOpenAcquire(Transaction txn, R row) throws IOException {
         if (txn.lockMode() == LockMode.UNSAFE) {
             return NonCloser.THE;

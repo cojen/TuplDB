@@ -43,6 +43,15 @@ public interface RowPredicateLock<R> {
     Closer openAcquire(Transaction txn, R row) throws IOException;
 
     /**
+     * Variant which can act upon a partially filled in row.
+     *
+     * @param row partially specified row
+     * @param key is passed to the {@code RowPredicate.test} method
+     * @param value is passed to the {@code RowPredicate.test} method
+     */
+    Closer openAcquire(Transaction txn, R row, byte[] key, byte[] value) throws IOException;
+
+    /**
      * Acquires shared access for all the predicate locks, without waiting, and retains the
      * locks for the entire transaction scope. If lock acquisition fails, all locks
      * acquired up to that point are released.

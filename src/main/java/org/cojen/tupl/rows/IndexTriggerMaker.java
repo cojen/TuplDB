@@ -1181,7 +1181,15 @@ public class IndexTriggerMaker<R> {
             if (mSecondaryLocks[i] == null) {
                 closerVar = null;
             } else {
-                closerVar = mm.field("lock" + i).invoke("openAcquire", txnVar, rowVar);
+                var lockVar = mm.field("lock" + i);
+                if (!isUpdate) {
+                    closerVar = lockVar.invoke("openAcquire", txnVar, rowVar);
+                } else {
+                    // Row might be partially specified, so use the variant that can examine
+                    // the fully encoded binary form.
+                    closerVar = lockVar.invoke("openAcquire", txnVar, rowVar,
+                                               secondaryKeyVar, secondaryValueVar);
+                }
             }
 
             Label opStart = mm.label().here();

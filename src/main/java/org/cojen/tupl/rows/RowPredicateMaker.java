@@ -167,6 +167,7 @@ public class RowPredicateMaker {
 
         if (!RowPredicate.None.class.isAssignableFrom(mBaseClass)) {
             addRowTestMethod();
+            addPartialRowTestMethod();
             addFullDecodeTestMethod();
             addKeyTestMethod();
         }
@@ -380,6 +381,14 @@ public class RowPredicateMaker {
             var c2Var = mRowVar.field(c2.name);
             CompareUtils.compare(mMaker, c1, c1Var, c2, c2Var, filter.operator(), mPass, mFail);
         }
+    }
+
+    private void addPartialRowTestMethod() {
+        /* TODO: Override the default impementation.
+
+           MethodMaker mm = mClassMaker.addMethod
+               (boolean.class, "test", Object.class, byte[].class, byte[].class).public_();
+         */
     }
 
     private void addFullDecodeTestMethod() {
