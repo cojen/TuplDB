@@ -153,12 +153,12 @@ public class ScanControllerTest {
         }
 
         @Override
-        public byte[] encodeKey(Object row) {
+        public byte[] updateKey(Object row, byte[] original) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        public byte[] encodeValue(Object row) {
+        public byte[] updateValue(Object row, byte[] original) {
             throw new UnsupportedOperationException();
         }
     }
