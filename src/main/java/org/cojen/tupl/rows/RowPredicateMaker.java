@@ -395,6 +395,7 @@ public class RowPredicateMaker {
         MethodMaker mm = mClassMaker.addMethod
             (boolean.class, "test", byte[].class, byte[].class).public_();
 
+        var keyVar = mm.param(0);
         var valueVar = mm.param(1);
 
         if (mPrimaryIndexId == mIndexId) {
@@ -404,13 +405,13 @@ public class RowPredicateMaker {
             var schemaVersionVar = mm.var(RowUtils.class).invoke("decodeSchemaVersion", valueVar);
 
             mm.return_(indy.invoke(boolean.class, "test", null,
-                                   schemaVersionVar, mm.param(0), valueVar, mm.this_()));
+                                   schemaVersionVar, keyVar, valueVar, mm.this_()));
         } else {
             var indy = mm.var(RowPredicateMaker.class).indy
                 ("indyDecodeTest", mStoreRef, mRowType,
                  mPrimaryIndexId, mIndexId, mFilterRef, mFilterStr);
 
-            mm.return_(indy.invoke(boolean.class, "test", null, mm.param(0), valueVar, mm.this_()));
+            mm.return_(indy.invoke(boolean.class, "test", null, keyVar, valueVar, mm.this_()));
         }
     }
 

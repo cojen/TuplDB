@@ -220,7 +220,6 @@ public abstract class AbstractTable<R> implements Table<R> {
         RowPredicateLock.Closer closer = null;
 
         addPredicate: {
-            final RowPredicateLock<R> lock;
 
             if (txn == null) {
                 txn = mSource.newTransaction(null);
@@ -260,7 +259,7 @@ public abstract class AbstractTable<R> implements Table<R> {
                 break addPredicate;
             }
 
-            lock = mIndexLock;
+            RowPredicateLock<R> lock = secondary == null ? mIndexLock : secondary.mIndexLock;
             if (lock == null) {
                 break addPredicate;
             }

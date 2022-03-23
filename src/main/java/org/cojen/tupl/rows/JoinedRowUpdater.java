@@ -36,7 +36,7 @@ class JoinedRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
 
     private Cursor mPrimaryCursor;
 
-    JoinedRowUpdater(AbstractTable<R> table, ScanController<R> controller,
+    JoinedRowUpdater(AbstractTableView<R> table, ScanController<R> controller,
                      BasicRowUpdater<R> primaryUpdater)
     {
         super(table, controller);
@@ -101,8 +101,10 @@ class JoinedRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
         mPrimaryUpdater.mRow = mRow;
         mPrimaryUpdater.joinedUpdateCurrent();
 
+        // FIXME: predicate test doesn't work against partial rows
         if (!mCursor.exists() && mController.predicate().test(mRow)) {
             // The secondary key changed and it's still in bounds.
+            // FIXME: With partial row, this won't work. This is the only place that calls toKey.
             byte[] newKey = mTable.toKey(mRow);
             if (mCursor.comparator().compare(originalKey, newKey) < 0) {
                 // The new key is higher, and so it must be added to the remembered set.
