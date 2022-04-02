@@ -38,10 +38,10 @@ public class RowUtils extends Utils {
     /** Byte to use for null, high ordering */
     static final byte NULL_BYTE_HIGH = (byte) ~NULL_BYTE_LOW; // 0xff
 
-    /** Byte to use for not-null, low ordering */
+    /** Byte to use for not-null, high ordering */
     static final byte NOT_NULL_BYTE_HIGH = (byte) 128; // 0x80
 
-    /** Byte to use for not-null, high ordering */
+    /** Byte to use for not-null, low ordering */
     static final byte NOT_NULL_BYTE_LOW = (byte) ~NOT_NULL_BYTE_HIGH; // 0x7f
 
     /** Byte to terminate variable data encoded for ascending order */
