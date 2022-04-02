@@ -49,7 +49,7 @@ final class BigDecimalColumnCodec extends ColumnCodec {
 
     @Override
     protected final boolean doEquals(Object obj) {
-        return ((BigDecimalColumnCodec) obj).mUnscaledCodec.doEquals(mUnscaledCodec);
+        return ((BigDecimalColumnCodec) obj).mUnscaledCodec.equals(mUnscaledCodec);
     }
 
     @Override
