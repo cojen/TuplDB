@@ -81,8 +81,7 @@ public class RowMaker {
         mRowGen = gen;
         mRowInfo = gen.info;
         mClassMaker = gen.beginClassMaker(getClass(), type, "")
-            .implement(type).implement(Cloneable.class).implement(Comparable.class)
-            .final_().public_();
+            .implement(type).implement(Cloneable.class).final_().public_();
     }
 
     private Class<?> finish() {
