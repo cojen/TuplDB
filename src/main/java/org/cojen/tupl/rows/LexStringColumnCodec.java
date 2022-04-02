@@ -38,6 +38,11 @@ final class LexStringColumnCodec extends StringColumnCodec {
     }
 
     @Override
+    protected final boolean doEquals(Object obj) {
+        return equalOrdering(obj);
+    }
+
+    @Override
     boolean isLast() {
         return false;
     }

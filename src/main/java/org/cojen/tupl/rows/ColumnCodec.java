@@ -278,6 +278,10 @@ abstract class ColumnCodec {
      */
     protected abstract boolean doEquals(Object obj);
 
+    protected boolean equalOrdering(Object obj) {
+        return mInfo.isDescending() == ((ColumnCodec) obj).mInfo.isDescending();
+    }
+
     /**
      * Should only consider the encoding strategy.
      */

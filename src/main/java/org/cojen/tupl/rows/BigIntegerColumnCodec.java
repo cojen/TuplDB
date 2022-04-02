@@ -35,7 +35,7 @@ abstract class BigIntegerColumnCodec extends BytesColumnCodec {
     }
 
     @Override
-    protected final boolean doEquals(Object obj) {
+    protected boolean doEquals(Object obj) {
         return true;
     }
 

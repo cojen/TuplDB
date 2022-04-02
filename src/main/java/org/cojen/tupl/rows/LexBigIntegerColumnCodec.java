@@ -40,6 +40,11 @@ final class LexBigIntegerColumnCodec extends BigIntegerColumnCodec {
     }
 
     @Override
+    protected final boolean doEquals(Object obj) {
+        return equalOrdering(obj);
+    }
+
+    @Override
     int minSize() {
         return 1;
     }

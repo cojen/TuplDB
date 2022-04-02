@@ -41,7 +41,7 @@ final class LexBigDecimalColumnCodec extends ColumnCodec {
 
     @Override
     protected final boolean doEquals(Object obj) {
-        return true;
+        return equalOrdering(obj);
     }
 
     @Override
