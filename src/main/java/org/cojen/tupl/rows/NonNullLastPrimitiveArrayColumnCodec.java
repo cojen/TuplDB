@@ -64,6 +64,7 @@ class NonNullLastPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
     @Override
     void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
         encodeByteArray(srcVar, dstVar, offsetVar);
+        offsetVar.inc(byteArrayLength(srcVar));
     }
 
     @Override
