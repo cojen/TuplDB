@@ -26,6 +26,7 @@ import java.lang.ref.WeakReference;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
@@ -1989,7 +1990,27 @@ public class TableMaker {
         Variable pkVar;
 
         if (define) {
-            pkVar = IndexTriggerMaker.makeToPrimaryKey(mm, mRowType, mRowClass, mRowInfo, info);
+            Variable rowVar, keyVar;
+            Map<String, TransformMaker.Availability> available;
+
+            if (!hasRow) {
+                available = null;
+                rowVar = null; // shouldn't be needed
+                keyVar = mm.param(0);
+            } else {
+                rowVar = mm.param(0);
+                keyVar = null; // shouldn't be needed
+                available = new HashMap<>();
+                for (String colName : info.keyColumns.keySet()) {
+                    available.put(colName, TransformMaker.Availability.ALWAYS);
+                }
+            }
+
+            var tm = new TransformMaker<>(mRowType, info, available);
+            tm.addKeyTarget(mRowInfo, 0, true);
+            var valueVar = params.length == 1 ? null : mm.param(1);
+            tm.begin(mm, rowVar, keyVar, valueVar, 0);
+            pkVar = tm.encodeKey(0);
         } else {
             mm.protected_();
             var tableVar = mm.var(mClassMaker);

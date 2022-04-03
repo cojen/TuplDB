@@ -339,55 +339,6 @@ public class IndexTriggerMaker<R> {
         return trigger;
     }
 
-    /**
-     * Makes code which does the reverse of what IndexTriggerMaker normally does. Given an
-     * encoded secondary index or alternate key, it produces a primary key.
-     *
-     *     byte[] toPrimaryKey(byte[] key)
-     *     byte[] toPrimaryKey(byte[] key, byte[] value)
-     *     byte[] toPrimaryKey(R row)
-     *     byte[] toPrimaryKey(R row, byte[] value)
-     *
-     * If this method is called for a secondary key, the value param is required. When a row
-     * param is provided, the key columns must be fully specified.
-     *
-     * @param mm param(0) is the secondary key, and param(1) is the secondary value (only
-     * needed for alternate keys)
-     * @return a byte[] variable with the encoded primary key
-     */
-    static <R> Variable makeToPrimaryKey(MethodMaker mm, Class<R> rowType, Class rowClass,
-                                         RowInfo primaryInfo, RowInfo secondaryInfo)
-    {
-        // Construct the maker backwards such that the secondary is the primary, and the
-        // primary is the secondary. There's no need to actually pass the primary info to the
-        // constructor, since it only needs to be accessed within this method.
-        var maker = new IndexTriggerMaker<R>(rowType, rowClass, secondaryInfo, null, null, null);
-
-        var sources = new HashMap<String, ColumnSource>();
-        RowGen secondaryGen = secondaryInfo.rowGen();
-        ColumnCodec[] primaryKeyCodecs = primaryInfo.rowGen().keyCodecs();
-        maker.buildColumnSources(sources, secondaryGen.keyCodecMap(), true, primaryKeyCodecs);
-        maker.buildColumnSources(sources, secondaryGen.valueCodecMap(), false, primaryKeyCodecs);
-        maker.mColumnSources = sources;
-
-        Variable rowVar = null;
-        int rowMode = ROW_NONE;
-        var keyVar = mm.param(0);
-        var valueVar = secondaryInfo.isAltKey() ? mm.param(1) : null;
-
-        if (keyVar.classType() != byte[].class) {
-            rowVar = keyVar;
-            rowMode = ROW_KEY_ONLY;
-            keyVar = null; // shouldn't be needed
-        }
-
-        maker.findColumns(mm, keyVar, valueVar, 0, rowMode);
-
-        ColumnCodec[] pkCodecs = ColumnCodec.bind(primaryKeyCodecs, mm);
-
-        return maker.encodeColumns(mm, sources, rowVar, rowMode, keyVar, valueVar, pkCodecs);
-    }
-
     private Map<String, ColumnSource> buildColumnSources() {
         return buildColumnSources(mSecondaryInfos);
     }
