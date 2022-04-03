@@ -905,9 +905,6 @@ public class IndexTriggerMaker<R> {
 
             SecondaryInfo[] secondaryInfos = RowStore.indexRowInfos(primaryInfo, secondaryDescs);
 
-            var maker = new IndexTriggerMaker<>
-                (rowType, rowClass, primaryInfo, secondaryInfos, secondaryIndexes, secondaryLocks);
-
             IndexBackfill[] backfills = null;
             if (backfillRefs != null) {
                 backfills = new IndexBackfill[backfillRefs.length];
@@ -918,6 +915,9 @@ public class IndexTriggerMaker<R> {
                     }
                 }
             }
+
+            var maker = new IndexTriggerMaker<>
+                (rowType, rowClass, primaryInfo, secondaryInfos, secondaryIndexes, secondaryLocks);
 
             return maker.makeDeleteMethod(mtx, schemaVersion, backfills);
         });
@@ -945,32 +945,43 @@ public class IndexTriggerMaker<R> {
         mColumnSources = buildColumnSources();
 
         Variable txnVar = mm.param(0), rowVar, keyVar, oldValueVar;
-        int rowMode;
+        Map<String, TransformMaker.Availability> available;
 
         if (mRowClass != null) {
             rowVar = mm.param(1);
             keyVar = mm.param(2);
             oldValueVar = mm.param(3);
-            rowMode = ROW_KEY_ONLY;
+            available = new HashMap<>();
+            for (String colName : mPrimaryGen.info.keyColumns.keySet()) {
+                available.put(colName, TransformMaker.Availability.ALWAYS);
+            }
         } else {
             rowVar = null;
             keyVar = mm.param(1);
             oldValueVar = mm.param(2);
-            rowMode = ROW_NONE;
+            available = null;
+        }
+
+        var tm = new TransformMaker<R>(mRowType, mPrimaryGen.info, available);
+
+        for (int i=0; i<mSecondaryInfos.length; i++) {
+            if (mSecondaryIndexes[i] == null) {
+                // Index was dropped, so no need to delete anything from it either.
+            } else {
+                tm.addKeyTarget(mSecondaryInfos[i], 0, true);
+            }
         }
 
         int valueOffset = schemaVersion == 0 ? 0 : (schemaVersion < 128 ? 1 : 4);
-        findColumns(mm, keyVar, oldValueVar, valueOffset, rowMode);
-
-        // FIXME: As an optimization, when encoding complex columns (non-primitive), check if
-        // prior secondary indexes have a matching codec and copy from them.
+        tm.begin(mm, rowVar, keyVar, oldValueVar, valueOffset);
 
         for (int i=0; i<mSecondaryInfos.length; i++) {
-            Index ix = mSecondaryIndexes[i];
-            if (ix == null) {
+            if (mSecondaryIndexes[i] == null) {
                 // Index was dropped, so no need to delete anything from it either.
                 continue;
             }
+
+            var secondaryKeyVar = tm.encodeKey(i);
 
             String ixFieldName = "ix" + i;
             mClassMaker.addField(Index.class, ixFieldName).private_().final_();
@@ -984,13 +995,6 @@ public class IndexTriggerMaker<R> {
                     .private_().final_();
                 ctorMaker.field(backfillFieldName).set(ctorMaker.param(1).aget(i));
             }
-
-            RowGen secondaryGen = mSecondaryInfos[i].rowGen();
-
-            ColumnCodec[] secondaryKeyCodecs = ColumnCodec.bind(secondaryGen.keyCodecs(), mm);
-
-            var secondaryKeyVar = encodeColumns
-                (mm, mColumnSources, rowVar, rowMode, keyVar, oldValueVar, secondaryKeyCodecs);
 
             Label opStart = mm.label().here();
 
