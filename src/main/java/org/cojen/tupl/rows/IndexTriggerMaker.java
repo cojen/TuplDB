@@ -737,23 +737,24 @@ public class IndexTriggerMaker<R> {
         var keyVar = mm.param(2);
         var newValueVar = mm.param(3);
 
-        findColumns(mm, keyVar, newValueVar, -1, ROW_FULL);
+        Map<String, TransformMaker.Availability> available = new HashMap<>();
+        for (String colName : mPrimaryGen.info.allColumns.keySet()) {
+            available.put(colName, TransformMaker.Availability.ALWAYS);
+        }
 
-        // FIXME: As an optimization, when encoding complex columns (non-primitive), check if
-        // prior secondary indexes have a matching codec and copy from them.
+        var tm = new TransformMaker<R>(mRowType, mPrimaryGen.info, available);
 
         for (int i=0; i<mSecondaryInfos.length; i++) {
             RowInfo secondaryInfo = mSecondaryInfos[i];
-            RowGen secondaryGen = secondaryInfo.rowGen();
+            tm.addKeyTarget(secondaryInfo, 0, true);
+            tm.addValueTarget(secondaryInfo, 0, true);
+        }
 
-            ColumnCodec[] secondaryKeyCodecs = ColumnCodec.bind(secondaryGen.keyCodecs(), mm);
-            ColumnCodec[] secondaryValueCodecs = ColumnCodec.bind(secondaryGen.valueCodecs(), mm);
+        tm.begin(mm, rowVar, keyVar, newValueVar, -1);
 
-            var secondaryKeyVar = encodeColumns
-                (mm, mColumnSources, rowVar, ROW_FULL, keyVar, newValueVar, secondaryKeyCodecs);
-
-            var secondaryValueVar = encodeColumns
-                (mm, mColumnSources, rowVar, ROW_FULL, keyVar, newValueVar, secondaryValueCodecs);
+        for (int i=0; i<mSecondaryInfos.length; i++) {
+            var secondaryKeyVar = tm.encodeKey(i);
+            var secondaryValueVar = tm.encodeValue(i, null);
 
             Variable closerVar;
             if (mSecondaryLocks[i] == null) {
@@ -765,7 +766,7 @@ public class IndexTriggerMaker<R> {
             Label opStart = mm.label().here();
             var ixField = mm.field("ix" + i);
 
-            if (!secondaryInfo.isAltKey()) {
+            if (!mSecondaryInfos[i].isAltKey()) {
                 ixField.invoke("store", txnVar, secondaryKeyVar, secondaryValueVar);
                 if (closerVar != null) {
                     mm.finally_(opStart, () -> closerVar.invoke("close"));

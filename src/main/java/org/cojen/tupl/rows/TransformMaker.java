@@ -617,7 +617,8 @@ class TransformMaker<R> {
         ColumnTarget shouldStash(ColumnCodec targetCodec, Target target) {
             ColumnTarget columnTarget;
             if (target.mEager && !isPrimitive() &&
-                (columnTarget = mColumnTargets.get(targetCodec)).mUsageCount > 1)
+                (columnTarget = mColumnTargets.get(targetCodec)) != null &&
+                columnTarget.mUsageCount > 1)
             {
                 return columnTarget;
             }
