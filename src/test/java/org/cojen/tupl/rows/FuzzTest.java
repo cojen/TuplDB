@@ -262,7 +262,7 @@ public class FuzzTest {
         updater.close();
     }
 
-    private static void truncateAndClose(Index ix, Table table) throws Exception {
+    static void truncateAndClose(Index ix, Table table) throws Exception {
         var updater = table.newRowUpdater(null);
         while (updater.row() != null) {
             updater.delete();
@@ -270,7 +270,7 @@ public class FuzzTest {
         ix.drop();
     }
 
-    private static void fillInColumns(Random rnd, Column[] columns, Object row) throws Exception {
+    static void fillInColumns(Random rnd, Column[] columns, Object row) throws Exception {
         Class<?> rowClass = row.getClass();
         for (Column c : columns) {
             Method m = rowClass.getMethod(c.name, c.type.clazz);
@@ -444,14 +444,18 @@ public class FuzzTest {
         int pkNum = 1 + rnd.nextInt(columns.length);
         var pkNames = new String[pkNum];
 
-        for (int i=0; i<pkNames.length; i++) {
-            pkNames[i] = columns[i].name;
-            if (rnd.nextBoolean()) {
-                // Descending order.
-                pkNames[i] = '-' + pkNames[i];
-                columns[i].pk = -1;
+        for (int i=0; i<columns.length; i++) {
+            if (i < pkNames.length) {
+                pkNames[i] = columns[i].name;
+                if (rnd.nextBoolean()) {
+                    // Descending order.
+                    pkNames[i] = '-' + pkNames[i];
+                    columns[i].pk = -1;
+                } else {
+                    columns[i].pk = 1;
+                }
             } else {
-                columns[i].pk = 1;
+                columns[i].pk = 0;
             }
         }
 
