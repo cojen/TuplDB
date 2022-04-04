@@ -94,7 +94,7 @@ class TransformMaker<R> {
      *
      * @param rowInfo target row info
      * @param offset start offset of target value (padding)
-     * @param eager true to always encode the key
+     * @param eager true if the target will always be encoded
      */
     int addKeyTarget(RowInfo rowInfo, int offset, boolean eager) {
         if (mMaker != null) {
@@ -111,7 +111,7 @@ class TransformMaker<R> {
      *
      * @param rowInfo target row info
      * @param offset start offset of target value (padding)
-     * @param eager true to always encode the value
+     * @param eager true if the target will always be encoded
      */
     int addValueTarget(RowInfo rowInfo, int offset, boolean eager) {
         if (mMaker != null) {
@@ -165,9 +165,6 @@ class TransformMaker<R> {
         }
 
         findColumns();
-
-        encodeEagerTargets(mKeyTargets);
-        encodeEagerTargets(mValueTargets);
     }
 
     void diffValueColumns(Variable oldValueVar) {
@@ -358,14 +355,6 @@ class TransformMaker<R> {
 
             if (--num <= 0) {
                 break;
-            }
-        }
-    }
-
-    private void encodeEagerTargets(List<Target> targets) {
-        for (Target target : targets) {
-            if (target.mEager) {
-                encodeColumns(target);
             }
         }
     }
