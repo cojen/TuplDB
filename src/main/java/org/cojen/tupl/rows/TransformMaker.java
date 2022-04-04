@@ -725,8 +725,10 @@ class TransformMaker<R> {
                 int stateFieldMask = rowGen.stateFieldMask(columnNum);
 
                 Label mustDecode = mm.label();
-                rowVar.field(stateField).and(stateFieldMask).ifEq(0, mustDecode);
-                // The column field is clean or dirty, so use it directly.
+                rowVar.field(stateField).and(stateFieldMask).ifNe(stateFieldMask, mustDecode);
+                // The column field is dirty, so use it directly. The update method only
+                // examines dirty fields when encoding the key and value, and so clean fields
+                // cannot be trusted in case the underlying row changed concurrently.
                 mColumnVar.set(rowVar.field(columnName));
                 cont = mm.label().goto_();
                 mustDecode.here();
