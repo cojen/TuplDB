@@ -670,7 +670,14 @@ class TransformMaker<R> {
 
             mColumnVar = mm.var(mCodec.mInfo.type);
 
-            if (!mEager) {
+            if (mEager) {
+                if (mAvailability == Availability.CONDITIONAL) {
+                    decodeColumn(mm, rowVar, rowInfo);
+                } else {
+                    // Is never available in the row and it should have already been decoded.
+                    throw new AssertionError();
+                }
+            } else {
                 // Need to check if the column is set at runtime.
                 mColumnAccessCheck = true;
                 mColumnVar.clear(); // needs to be definitely assigned
@@ -679,15 +686,6 @@ class TransformMaker<R> {
                     // works fine for non-nullable object types.
                     mColumnSetVar = mm.var(boolean.class).set(false);
                 }
-            }
-
-            if (mAvailability == Availability.CONDITIONAL) {
-                if (!mColumnAccessCheck) {
-                    decodeColumn(mm, rowVar, rowInfo);
-                }
-            } else if (mEager) {
-                // Is never available in the row and it should have already been decoded.
-                throw new AssertionError();
             }
         }
 
