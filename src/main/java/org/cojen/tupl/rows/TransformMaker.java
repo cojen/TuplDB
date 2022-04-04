@@ -332,14 +332,10 @@ class TransformMaker<R> {
                 startVar = mMaker.var(int.class).set(offsetVar);
             }
 
-            if (source.mEager &&
-                source.mAvailability == Availability.NEVER && source.hasMismatches())
-            {
-                // Eager decoding is required when the column is never available in the row or
-                // if it needs to be transcoded.
-                var dstVar = mMaker.var(codec.mInfo.type);
-                codec.decode(dstVar, srcVar, offsetVar, null);
-                source.mDecodedVar = dstVar;
+            if (source.mustDecodeEagerly()) {
+                var columnVar = mMaker.var(codec.mInfo.type);
+                codec.decode(columnVar, srcVar, offsetVar, null);
+                source.mColumnVar = columnVar;
             } else {
                 // Skip it for now. As side effect, the offsetVar is updated, and so the column
                 // can be decoded later if necessary.
@@ -354,9 +350,12 @@ class TransformMaker<R> {
             source.mEndVar = endVar;
 
             if (--num <= 0) {
-                break;
+                return;
             }
         }
+
+        // Reached if num was miscalculated.
+        throw new AssertionError();
     }
 
     private void encodeColumns(Target target) {
@@ -403,7 +402,8 @@ class TransformMaker<R> {
             } else {
                 ColumnTarget stash = source.hasStash(codec);
                 if (stash == null) {
-                    totalVar = codec.encodeSize(source.accessColumn(mMaker), totalVar);
+                    var columnVar = source.accessColumn(mMaker, mRowVar, mRowInfo);
+                    totalVar = codec.encodeSize(columnVar, totalVar);
                 } else {
                     totalVar = codec.accum(totalVar, stash.mLengthVar);
                 }
@@ -445,15 +445,18 @@ class TransformMaker<R> {
                     if (i < codecs.length - 1) {
                         offsetVar.inc(stash.mLengthVar);
                     }
-                } else if ((stash = source.shouldStash(codec, target)) != null) {
-                    // Encode the first time and stash for later.
-                    stash.mEncodedVar = encodedVar;
-                    stash.mStartVar = offsetVar.get();
-                    codec.encode(source.accessColumn(mMaker), encodedVar, offsetVar);
-                    stash.mLengthVar = offsetVar.sub(stash.mStartVar);
                 } else {
-                    // Encode and don't stash for later.
-                    codec.encode(source.accessColumn(mMaker), encodedVar, offsetVar);
+                    var columnVar = source.accessColumn(mMaker, mRowVar, mRowInfo);
+                    if ((stash = source.shouldStash(codec, target)) != null) {
+                        // Encode the first time and stash for later.
+                        stash.mEncodedVar = encodedVar;
+                        stash.mStartVar = offsetVar.get();
+                        codec.encode(columnVar, encodedVar, offsetVar);
+                        stash.mLengthVar = offsetVar.sub(stash.mStartVar);
+                    } else {
+                        // Encode and don't stash for later.
+                        codec.encode(columnVar, encodedVar, offsetVar);
+                    }
                 }
             }
         }
@@ -517,21 +520,19 @@ class TransformMaker<R> {
 
         // Fully decoded column. Is defined when the column cannot be directly copied from the
         // source, and it needed a transformation step. Or when decoding is cheap.
-        // FIXME: Can only be trusted when eagerly decoded. Otherwise, add a runtime check.
-        Variable mDecodedVar;
+        Variable mColumnVar;
+
+        // Optional boolean variable used when column isn't eagerly decoded.
+        Variable mColumnSetVar;
+
+        // Is true when column isn't eagerly decoded;
+        boolean mColumnAccessCheck;
 
         ColumnSource(boolean isKey, ColumnCodec codec, Availability availability) {
             mIsKey = isKey;
             mCodec = codec;
             mAvailability = availability;
             mColumnTargets = new HashMap<>();
-        }
-
-        /**
-         * Returns true if source type is a boxed or unboxed primitive type.
-         */
-        boolean isPrimitive() {
-            return mCodec instanceof PrimitiveColumnCodec;
         }
 
         ColumnTarget addTarget(ColumnCodec targetCodec, boolean eager) {
@@ -549,10 +550,40 @@ class TransformMaker<R> {
         }
 
         /**
+         * Returns true if source type is a boxed or unboxed primitive type.
+         */
+        boolean isPrimitive() {
+            return mCodec instanceof PrimitiveColumnCodec;
+        }
+
+        boolean isUnboxedPrimitive() {
+            return mCodec.mInfo.type.isPrimitive();
+        }
+
+        /**
          * Returns true if any target codecs need transcoding.
          */
         boolean hasMismatches() {
             return mMatches < mColumnTargets.size();
+        }
+
+        /**
+         * Returns true if the column should be decoded during the find step.
+         */
+        boolean mustDecodeEagerly() {
+            if (mAvailability != Availability.NEVER) {
+                // If the column is always available in the row no need to decode anything. If
+                // conditionally available in the row, decode on demand if necessary.
+                return false;
+            } else if (mEager) {
+                // If never available in the row, decode if transcoding is required.
+                return hasMismatches();
+            } else {
+                // If never available in the row, but decoding is cheap, go ahead and decode
+                // even if the column is never used. This avoids having to create an additional
+                // variable and check step to determine if the column has been decoded yet.
+                return isUnboxedPrimitive();
+            }
         }
 
         /**
@@ -615,65 +646,101 @@ class TransformMaker<R> {
         }
 
         /**
-         * Prepares the necessary column checks in order for accessColumn to work.
+         * Prepares the necessary column checks in order for accessColumn to work. Neither
+         * method should be called when shouldCopyBytes is true.
          *
          * @param rowVar source row
          */
         void prepareColumn(MethodMaker mm, Variable rowVar, RowInfo rowInfo) {
-            if (mDecodedVar != null) {
+            if (mColumnVar != null) {
                 // Already prepared or was eagerly decoded from the binary form.
                 return;
             }
 
             if (mCodec instanceof NullColumnCodec ncc) {
-                mDecodedVar = mm.var(ncc.mInfo.type);
-                ncc.decode(mDecodedVar, null, null, null);
+                mColumnVar = mm.var(ncc.mInfo.type);
+                ncc.decode(mColumnVar, null, null, null);
                 return;
             }
 
             if (mAvailability == Availability.ALWAYS) {
-                mDecodedVar = rowVar.field(mCodec.mInfo.name);
+                mColumnVar = rowVar.field(mCodec.mInfo.name);
                 return;
             }
 
-            if (mAvailability != Availability.CONDITIONAL) {
-                return;
+            mColumnVar = mm.var(mCodec.mInfo.type);
+
+            if (!mEager) {
+                // Need to check if the column is set at runtime.
+                mColumnAccessCheck = true;
+                mColumnVar.clear(); // needs to be definitely assigned
+                if (isUnboxedPrimitive() || mCodec.mInfo.isNullable()) {
+                    // Need an additional variable for checking if set or not. A null check
+                    // works fine for non-nullable object types.
+                    mColumnSetVar = mm.var(boolean.class).set(false);
+                }
             }
 
-            if (rowVar == null || rowInfo == null) {
+            if (mAvailability == Availability.CONDITIONAL) {
+                if (!mColumnAccessCheck) {
+                    decodeColumn(mm, rowVar, rowInfo);
+                }
+            } else if (mEager) {
+                // Is never available in the row and it should have already been decoded.
                 throw new AssertionError();
             }
-
-            // FIXME: If not mEager, need to check each time.
-
-            mDecodedVar = mm.var(mCodec.mInfo.type);
-
-            RowGen rowGen = rowInfo.rowGen();
-            String columnName = mCodec.mInfo.name;
-            int columnNum = rowGen.columnNumbers().get(columnName);
-            String stateField = rowGen.stateField(columnNum);
-            int stateFieldMask = rowGen.stateFieldMask(columnNum);
-
-            Label mustDecode = mm.label();
-            rowVar.field(stateField).and(stateFieldMask).ifEq(0, mustDecode);
-            // The column field is clean or dirty, so use it directly.
-            mDecodedVar.set(rowVar.field(columnName));
-            Label cont = mm.label().goto_();
-            mustDecode.here();
-            // The decode method modifies the offset, so operate against a copy.
-            var offsetVar = mStartVar.get();
-            mCodec.bind(mm).decode(mDecodedVar, mSrcVar, offsetVar, null);
-
-            cont.here();
         }
 
         /**
          * Returns a decoded variable or a field from the row. A call to prepareColumn must
          * have been made earlier.
          */
-        // FIXME: remove? will it be different if mEager?
-        Variable accessColumn(MethodMaker mm) {
-            return mDecodedVar;
+        Variable accessColumn(MethodMaker mm, Variable rowVar, RowInfo rowInfo) {
+            if (mColumnAccessCheck) {
+                Label isSet = mm.label();
+                if (mColumnSetVar == null) {
+                    mColumnVar.ifNe(null, isSet);
+                    decodeColumn(mm, rowVar, rowInfo);
+                } else {
+                    mColumnSetVar.ifTrue(isSet);
+                    decodeColumn(mm, rowVar, rowInfo);
+                    mColumnSetVar.set(true);
+                }
+                isSet.here();
+            }
+            return mColumnVar;
+        }
+
+        private void decodeColumn(MethodMaker mm, Variable rowVar, RowInfo rowInfo) {
+            Label cont = null;
+
+            if (mAvailability != Availability.NEVER) {
+                if (rowVar == null || rowInfo == null) {
+                    // Need to access a row instance.
+                    throw new AssertionError();
+                }
+
+                RowGen rowGen = rowInfo.rowGen();
+                String columnName = mCodec.mInfo.name;
+                int columnNum = rowGen.columnNumbers().get(columnName);
+                String stateField = rowGen.stateField(columnNum);
+                int stateFieldMask = rowGen.stateFieldMask(columnNum);
+
+                Label mustDecode = mm.label();
+                rowVar.field(stateField).and(stateFieldMask).ifEq(0, mustDecode);
+                // The column field is clean or dirty, so use it directly.
+                mColumnVar.set(rowVar.field(columnName));
+                cont = mm.label().goto_();
+                mustDecode.here();
+            }
+
+            // The decode method modifies the offset, so operate against a copy.
+            var offsetVar = mStartVar.get();
+            mCodec.bind(mm).decode(mColumnVar, mSrcVar, offsetVar, null);
+
+            if (cont != null) {
+                cont.here();
+            }
         }
     }
 

@@ -166,7 +166,7 @@ public class TransformMakerTest {
                 }
             }
 
-            MethodHandle transformer = makeTransformer(available, srcRowType, dstRowTypes);
+            MethodHandle transformer = makeTransformer(rnd, available, srcRowType, dstRowTypes);
 
             var result = (byte[][]) transformer.invoke(useRow, srcKey, srcValue);
 
@@ -274,7 +274,8 @@ public class TransformMakerTest {
      *
      *    byte[][] _(Row row, byte[] key, byte[] value)
      */
-    private static MethodHandle makeTransformer(Map<String, TransformMaker.Availability> available,
+    private static MethodHandle makeTransformer(Random rnd,
+                                                Map<String, TransformMaker.Availability> available,
                                                 Class<?> srcType, Class<?>... dstTypes)
         throws Throwable
     {
@@ -282,8 +283,8 @@ public class TransformMakerTest {
 
         for (var dstType : dstTypes) {
             RowInfo dstInfo = RowInfo.find(dstType);
-            tm.addKeyTarget(dstInfo, 0, true);
-            tm.addValueTarget(dstInfo, 1, true); // one byte for schema version
+            tm.addKeyTarget(dstInfo, 0, rnd.nextBoolean()); // randomly eager
+            tm.addValueTarget(dstInfo, 1, rnd.nextBoolean()); // one byte for schema version
         }
 
         ClassMaker cm = RowInfo.find(srcType).rowGen().beginClassMaker(null, srcType, "trans");
