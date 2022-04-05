@@ -210,14 +210,14 @@ class TransformMaker<R> {
             ColumnCodec[] targetCodecs = target.mRowInfo.rowGen().keyCodecs();
             buildColumnSources(sources, keyCodecMap, true, target, targetCodecs);
             buildColumnSources(sources, valueCodecMap, false, target, targetCodecs);
-            buildNullColumnSources(sources, targetCodecs);
+            buildVoidColumnSources(sources, targetCodecs);
         }
 
         for (Target target : mValueTargets) {
             ColumnCodec[] targetCodecs = target.mRowInfo.rowGen().valueCodecs();
             buildColumnSources(sources, keyCodecMap, true, target, targetCodecs);
             buildColumnSources(sources, valueCodecMap, false, target, targetCodecs);
-            buildNullColumnSources(sources, targetCodecs);
+            buildVoidColumnSources(sources, targetCodecs);
         }
 
         mSources = sources;
@@ -250,17 +250,17 @@ class TransformMaker<R> {
     }
 
     /**
-     * Builds column sources with NullColumnCodec for those not found in the source row/entry.
+     * Builds column sources with VoidColumnCodec for those not found in the source row/entry.
      *
      * @param sources results stored here
      */
-    private void buildNullColumnSources(Map<String, ColumnSource> sources,
+    private void buildVoidColumnSources(Map<String, ColumnSource> sources,
                                         ColumnCodec[] targetCodecs)
     {
         for (ColumnCodec targetCodec : targetCodecs) {
             String name = targetCodec.mInfo.name;
             if (!sources.containsKey(name)) {
-                var srcCodec = new NullColumnCodec(targetCodec.mInfo, null);
+                var srcCodec = new VoidColumnCodec(targetCodec.mInfo, null);
                 sources.put(name, new ColumnSource(false, srcCodec, Availability.NEVER));
             }
         }
@@ -590,7 +590,7 @@ class TransformMaker<R> {
          * Returns true if the column must be found in the encoded byte array.
          */
         boolean mustFind() {
-            if (mCodec instanceof NullColumnCodec) {
+            if (mCodec instanceof VoidColumnCodec) {
                 // Can't find that which doesn't exist.
                 return false;
             }
@@ -657,9 +657,9 @@ class TransformMaker<R> {
                 return;
             }
 
-            if (mCodec instanceof NullColumnCodec ncc) {
-                mColumnVar = mm.var(ncc.mInfo.type);
-                ncc.decode(mColumnVar, null, null, null);
+            if (mCodec instanceof VoidColumnCodec vcc) {
+                mColumnVar = mm.var(vcc.mInfo.type);
+                vcc.decode(mColumnVar, null, null, null);
                 return;
             }
 

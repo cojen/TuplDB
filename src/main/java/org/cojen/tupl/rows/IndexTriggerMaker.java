@@ -319,8 +319,8 @@ public class IndexTriggerMaker<R> {
             buildColumnSources(sources, valueCodecMap, false, secondaryKeyCodecs);
             buildColumnSources(sources, valueCodecMap, false, secondaryValueCodecs);
 
-            buildNullColumnSources(sources, secondaryKeyCodecs);
-            buildNullColumnSources(sources, secondaryValueCodecs);
+            buildVoidColumnSources(sources, secondaryKeyCodecs);
+            buildVoidColumnSources(sources, secondaryValueCodecs);
         }
 
         return sources;
@@ -355,18 +355,18 @@ public class IndexTriggerMaker<R> {
     }
 
     /**
-     * Builds sources with NullColumnCodec for those not found in the primary key or value.
+     * Builds sources with VoidColumnCodec for those not found in the primary key or value.
      *
      * @param sources results stored here
      * @param secondaryCodecs secondary index columns which need to be found
      */
-    private void buildNullColumnSources(Map<String, ColumnSource> sources,
+    private void buildVoidColumnSources(Map<String, ColumnSource> sources,
                                         ColumnCodec[] secondaryCodecs)
     {
         for (ColumnCodec codec : secondaryCodecs) {
             String name = codec.mInfo.name;
             if (!sources.containsKey(name)) {
-                var primaryCodec = new NullColumnCodec(codec.mInfo, null);
+                var primaryCodec = new VoidColumnCodec(codec.mInfo, null);
                 // Pass true for fromKey, because like key columns, "null" columns always exist.
                 sources.put(name, new ColumnSource(sources.size(), primaryCodec, true));
             }
@@ -1202,7 +1202,7 @@ public class IndexTriggerMaker<R> {
          * @param rowMode see ROW_* fields
          */
         boolean mustFind(int rowMode) {
-            if (mCodec instanceof NullColumnCodec) {
+            if (mCodec instanceof VoidColumnCodec) {
                 return false;
             } else if (rowMode == ROW_FULL || (rowMode == ROW_KEY_ONLY && mFromKey)) {
                 if (isPrimitive()) {
@@ -1406,9 +1406,9 @@ public class IndexTriggerMaker<R> {
                 Checked checked = mChecked;
                 if (checked != null) {
                     colVar = checked.mColumnVar;
-                } else if (mCodec instanceof NullColumnCodec ncc) {
-                    colVar = mm.var(ncc.mInfo.type);
-                    ncc.decode(colVar, null, null, null);
+                } else if (mCodec instanceof VoidColumnCodec vcc) {
+                    colVar = mm.var(vcc.mInfo.type);
+                    vcc.decode(colVar, null, null, null);
                     mDecodedVar = colVar;
                 } else {
                     colVar = rowVar.field(mCodec.mInfo.name);
