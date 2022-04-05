@@ -304,7 +304,7 @@ public class TransformMakerTest {
 
         for (int i=0; i<dstTypes.length; i++) {
             resultVar.aset(i << 1, tm.encodeKey(i));
-            var dstValueVar = tm.encodeValue(i, null);
+            var dstValueVar = tm.encodeValue(i);
             dstValueVar.aset(0, 1); // schema version
             resultVar.aset((i << 1) + 1, dstValueVar);
         }

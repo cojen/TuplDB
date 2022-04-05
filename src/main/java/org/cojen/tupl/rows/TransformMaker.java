@@ -43,9 +43,9 @@ class TransformMaker<R> {
 
     private MethodMaker mMaker;
     private Variable mRowVar, mKeyVar, mValueVar;
-    private int mValueOffset;
+    private Object mValueOffset; // Integer, Variable, or null (to auto skip schema version)
 
-    private Map<String, ColumnSource> mSources;
+    private Map<String, ColumnSource> mColumnSources;
 
     /**
      * @param rowType source row type; can pass null if no row instance is available
@@ -148,12 +148,12 @@ class TransformMaker<R> {
         mRowVar = rowVar;
         mKeyVar = keyVar;
         mValueVar = valueVar;
-        mValueOffset = valueOffset;
+        mValueOffset = valueOffset < 0 ? null : valueOffset;
 
         buildColumnSources();
 
         // Try to ditch conditional availability if possible, reducing runtime checks.
-        for (Map.Entry<String, ColumnSource> e : mSources.entrySet()) {
+        for (Map.Entry<String, ColumnSource> e : mColumnSources.entrySet()) {
             ColumnSource source = e.getValue();
             if (source.mAvailability == Availability.CONDITIONAL) {
                 // Primitive types are cheap to extract from the binary encoding, or if no
@@ -173,6 +173,14 @@ class TransformMaker<R> {
     }
 
     /**
+     * Call after diffValueColumns has been called to make code which skips over targets that
+     * haven't changed.
+     */
+    void diffValueCheck(Label skip) {
+        // FIXME
+    }
+
+    /**
      * Makes code to encode a target key, but only after begin was called.
      *
      * @param keyTarget identifier returned by addKeyTarget
@@ -188,12 +196,9 @@ class TransformMaker<R> {
      * Makes code to encode a target value, but only after begin was called.
      *
      * @param valueTarget identifier returned by addValueTarget
-     * @param skip used only if diffValueColumns was called; if target value is the same as the
-     * old value, then no value is encoded and instead control flow branches here
      * @return a byte[] variable
      */
-    Variable encodeValue(int valueTarget, Label skip) {
-        // FIXME: support skip label
+    Variable encodeValue(int valueTarget) {
         Target target = mValueTargets.get(valueTarget);
         encodeColumns(target);
         return target.mEncodedVar;
@@ -220,7 +225,7 @@ class TransformMaker<R> {
             buildVoidColumnSources(sources, targetCodecs);
         }
 
-        mSources = sources;
+        mColumnSources = sources;
     }
 
     /**
@@ -272,7 +277,7 @@ class TransformMaker<R> {
     private void findColumns() {
         // Determine how many columns must be accessed from the encoded form.
         int numKeys = 0, numValues = 0;
-        for (ColumnSource source : mSources.values()) {
+        for (ColumnSource source : mColumnSources.values()) {
             if (source.mustFind()) {
                 if (source.mIsKey) {
                     numKeys++;
@@ -282,14 +287,14 @@ class TransformMaker<R> {
             }
         }
 
-        findColumns(mKeyVar, 0, true, numKeys);
-        findColumns(mValueVar, mValueOffset, false, numValues);
+        findColumns(mKeyVar, true, numKeys);
+        findColumns(mValueVar, false, numValues);
     }
 
     /**
      * @param srcVar byte array
      */
-    private void findColumns(Variable srcVar, int offset, boolean fromKey, int num) {
+    private void findColumns(Variable srcVar, boolean fromKey, int num) {
         if (num == 0) {
             return;
         }
@@ -302,10 +307,10 @@ class TransformMaker<R> {
             offsetVar.set(0);
         } else {
             codecs = mRowInfo.rowGen().valueCodecs();
-            if (offset >= 0) {
-                offsetVar.set(offset);
-            } else {
+            if (mValueOffset == null) {
                 offsetVar.set(mMaker.var(RowUtils.class).invoke("skipSchemaVersion", srcVar));
+            } else {
+                offsetVar.set(mValueOffset);
             }
         }
 
@@ -313,7 +318,7 @@ class TransformMaker<R> {
         Variable endVar = null;
 
         for (ColumnCodec codec : codecs) {
-            ColumnSource source = mSources.get(codec.mInfo.name);
+            ColumnSource source = mColumnSources.get(codec.mInfo.name);
 
             if (source == null || !source.mustFind()) {
                 // Can't re-use end offset for next start offset when a gap exists.
@@ -382,7 +387,7 @@ class TransformMaker<R> {
 
         int minSize = target.mOffset;
         for (ColumnCodec codec : codecs) {
-            ColumnSource source = mSources.get(codec.mInfo.name);
+            ColumnSource source = mColumnSources.get(codec.mInfo.name);
             if (!source.shouldCopyBytes(codec)) {
                 if (source.hasStash(codec) == null) {
                     minSize += codec.minSize();
@@ -396,7 +401,7 @@ class TransformMaker<R> {
 
         Variable totalVar = null;
         for (ColumnCodec codec : codecs) {
-            ColumnSource source = mSources.get(codec.mInfo.name);
+            ColumnSource source = mColumnSources.get(codec.mInfo.name);
             if (source.shouldCopyBytes(codec)) {
                 totalVar = codec.accum(totalVar, source.mEndVar.sub(source.mStartVar));
             } else {
@@ -426,7 +431,7 @@ class TransformMaker<R> {
         for (int i=0; i<codecs.length; i++) {
             ColumnCodec codec = codecs[i];
             String name = codec.mInfo.name;
-            ColumnSource source = mSources.get(name);
+            ColumnSource source = mColumnSources.get(name);
 
             if (source.shouldCopyBytes(codec)) {
                 var lengthVar = source.mEndVar.sub(source.mStartVar);
@@ -514,6 +519,8 @@ class TransformMaker<R> {
 
         // Is one if a target codec exists which is equal to the source codec.
         int mMatches;
+
+        // The remaining fields are used during code generation.
 
         // Source byte array and decoded offsets. Offset vars are null for skipped columns.
         Variable mSrcVar, mStartVar, mEndVar;

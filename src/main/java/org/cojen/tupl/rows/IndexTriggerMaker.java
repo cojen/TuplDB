@@ -189,7 +189,7 @@ public class IndexTriggerMaker<R> {
             tm.begin(mm, null, primaryKeyVar, primaryValueVar, -1);
 
             secondaryEntryVar.aset(offsetVar, tm.encodeKey(0));
-            secondaryEntryVar.aset(offsetVar.add(1), tm.encodeValue(0, null));
+            secondaryEntryVar.aset(offsetVar.add(1), tm.encodeValue(0));
 
             return mm.finish();
         });
@@ -595,7 +595,7 @@ public class IndexTriggerMaker<R> {
 
         for (int i=0; i<mSecondaryInfos.length; i++) {
             var secondaryKeyVar = tm.encodeKey(i);
-            var secondaryValueVar = tm.encodeValue(i, null);
+            var secondaryValueVar = tm.encodeValue(i);
 
             Variable closerVar;
             if (mSecondaryLocks[i] == null) {
