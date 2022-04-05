@@ -185,7 +185,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
                         if (oldValue != null) {
                             trigger.delete(txn, c.key(), oldValue);
                         }
-                        trigger.insert(txn, row, c.key(), value);
+                        trigger.insert(txn, row, key, value);
                         break;
                     }
                 } finally {
