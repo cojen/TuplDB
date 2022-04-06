@@ -557,13 +557,9 @@ class TransformMaker<R> {
         }
 
         /**
-         * Returns true if source type is a boxed or unboxed primitive type.
+         * Returns true if source type is an unboxed primitive type.
          */
         boolean isPrimitive() {
-            return mCodec instanceof PrimitiveColumnCodec;
-        }
-
-        boolean isUnboxedPrimitive() {
             return mCodec.mInfo.type.isPrimitive();
         }
 
@@ -575,26 +571,26 @@ class TransformMaker<R> {
         }
 
         /**
-         * Returns true if the column should be decoded during the find step.
+         * Returns true if the column must be decoded during the find step.
          */
         boolean mustDecodeEagerly() {
             if (mAvailability != Availability.NEVER) {
                 // If the column is always available in the row no need to decode anything. If
                 // conditionally available in the row, decode on demand if necessary.
                 return false;
-            } else if (mEager) {
-                // If never available in the row, decode if transcoding is required.
-                return hasMismatches();
-            } else {
+            } else if (isPrimitive()) {
                 // If never available in the row, but decoding is cheap, go ahead and decode
                 // even if the column is never used. This avoids having to create an additional
                 // variable and check step to determine if the column has been decoded yet.
-                return isUnboxedPrimitive();
+                return true;
+            } else {
+                // If never available in the row, decode if eager and transcoding is required.
+                return mEager && hasMismatches();
             }
         }
 
         /**
-         * Returns true if the column must be found in the encoded byte array.
+         * Returns true if the column must be found in the encoded byte array, if provided.
          */
         boolean mustFind() {
             if (mCodec instanceof VoidColumnCodec) {
@@ -622,7 +618,7 @@ class TransformMaker<R> {
          * found in the encoded byte array.
          */
         boolean shouldCopyBytes(ColumnCodec targetCodec) {
-            return targetCodec.equals(mCodec) && mustFind();
+            return mSrcVar != null && targetCodec.equals(mCodec) && mustFind();
         }
 
         /**
@@ -688,7 +684,7 @@ class TransformMaker<R> {
                 // Need to check if the column is set at runtime.
                 mColumnAccessCheck = true;
                 mColumnVar.clear(); // needs to be definitely assigned
-                if (isUnboxedPrimitive() || mCodec.mInfo.isNullable()) {
+                if (isPrimitive() || mCodec.mInfo.isNullable()) {
                     // Need an additional variable for checking if set or not. A null check
                     // works fine for non-nullable object types.
                     mColumnSetVar = mm.var(boolean.class).set(false);
