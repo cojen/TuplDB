@@ -279,6 +279,29 @@ public class FuzzTest {
     }
 
     /**
+     * @return names of columns which where altered
+     */
+    static Set<String> alterValueColumns(Random rnd, Column[] columns, Object oldRow, Object newRow)
+        throws Exception
+    {
+        var altered = new HashSet<String>();
+
+        Class<?> rowClass = oldRow.getClass();
+        for (Column c : columns) {
+            Method setter = rowClass.getMethod(c.name, c.type.clazz);
+            if (c.pk == 0 && rnd.nextInt(2) == 0) {
+                altered.add(c.name);
+                setter.invoke(newRow, c.type.randomValue(rnd));
+            } else {
+                Method getter = rowClass.getMethod(c.name);
+                setter.invoke(newRow, getter.invoke(oldRow));
+            }
+        }
+
+        return altered;
+    }
+
+    /**
      * Returns a filter over all the columns, combined with the 'and' operator. The order of
      * the column array is shuffled as a side-effect.
      */
@@ -574,6 +597,14 @@ public class FuzzTest {
         return cmp;
     }
 
+    static Column[] cloneColumns(Column[] columns) {
+        var newColumns = new Column[columns.length];
+        for (int i=0; i<columns.length; i++) {
+            newColumns[i] = new Column(columns[i]);
+        }
+        return newColumns;
+    }
+
     static class Column {
         final Type type;
         final String name;
@@ -584,6 +615,12 @@ public class FuzzTest {
         Column(Type type, String name) {
             this.type = type;
             this.name = name;
+        }
+
+        Column(Column c) {
+            type = c.type;
+            name = c.name;
+            pk = c.pk;
         }
     }
 

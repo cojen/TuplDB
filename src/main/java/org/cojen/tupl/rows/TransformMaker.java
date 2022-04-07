@@ -18,6 +18,7 @@
 package org.cojen.tupl.rows;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,13 +40,15 @@ class TransformMaker<R> {
     private final RowInfo mRowInfo;
     private final Map<String, Availability> mAvailable;
 
-    private final List<Target> mKeyTargets, mValueTargets;
+    private List<Target> mTargets;
 
     private MethodMaker mMaker;
     private Variable mRowVar, mKeyVar, mValueVar;
     private Object mValueOffset; // Integer, Variable, or null (to auto skip schema version)
 
     private Map<String, ColumnSource> mColumnSources;
+
+    private Variable[] mDiffBitMap;
 
     /**
      * @param rowType source row type; can pass null if no row instance is available
@@ -54,42 +57,49 @@ class TransformMaker<R> {
      * if all columns are never available
      */
     TransformMaker(Class<R> rowType, RowInfo rowInfo, Map<String, Availability> available) {
-        if (rowInfo == null) {
-            if (rowType != null) {
-                rowInfo = RowInfo.find(rowType);
-            } else {
-                Objects.requireNonNull(rowInfo);
-            }
-        }
+        this(rowType, rowInfo, available, true);
+    }
 
-        if (available != null) hasAny: {
-            for (Availability avail : available.values()) {
-                if (avail != Availability.NEVER) {
-                    break hasAny;
+    TransformMaker(Class<R> rowType, RowInfo rowInfo, Map<String, Availability> available,
+                   boolean validate)
+    {
+        if (validate) {
+            if (rowInfo == null) {
+                if (rowType != null) {
+                    rowInfo = RowInfo.find(rowType);
+                } else {
+                    Objects.requireNonNull(rowInfo);
                 }
             }
-            available = null;
-        }
 
-        if (available == null) {
-            // Row instance won't be used, and this makes sure of that.
-            rowType = null;
-        } else if (rowType == null) {
-            // A row instance is needed, and so a row type is needed too.
-            throw new IllegalArgumentException();
+            if (available != null) hasAny: {
+                for (Availability avail : available.values()) {
+                    if (avail != Availability.NEVER) {
+                        break hasAny;
+                    }
+                }
+                available = null;
+            }
+
+            if (available == null) {
+                // Row instance won't be used, and this makes sure of that.
+                rowType = null;
+            } else if (rowType == null) {
+                // A row instance is needed, and so a row type is needed too.
+                throw new IllegalArgumentException();
+            }
         }
 
         mRowType = rowType;
         mRowInfo = rowInfo;
         mAvailable = available;
 
-        mKeyTargets = new ArrayList<>();
-        mValueTargets = new ArrayList<>();
+        mTargets = new ArrayList<>();
     }
 
     /**
      * Add a transformation target, which will have key encoding applied to it. A target
-     * identifier is returned, which always starts at 0 and increments by 1 for subsequent key
+     * identifier is returned, which always starts at 0 and increments by 1 for subsequent
      * targets.
      *
      * @param rowInfo target row info
@@ -100,14 +110,14 @@ class TransformMaker<R> {
         if (mMaker != null) {
             throw new IllegalStateException();
         }
-        mKeyTargets.add(new Target(true, rowInfo, offset, eager));
-        return mKeyTargets.size() - 1;
+        mTargets.add(new Target(true, rowInfo, offset, eager));
+        return mTargets.size() - 1;
     }
 
     /**
      * Add a transformation target, which will have value encoding applied to it. A target
      * identifier is returned, which always starts at 0 and increments by 1 for subsequent
-     * value targets.
+     * targets.
      *
      * @param rowInfo target row info
      * @param offset start offset of target value (padding)
@@ -117,8 +127,8 @@ class TransformMaker<R> {
         if (mMaker != null) {
             throw new IllegalStateException();
         }
-        mValueTargets.add(new Target(false, rowInfo, offset, eager));
-        return mValueTargets.size() - 1;
+        mTargets.add(new Target(false, rowInfo, offset, eager));
+        return mTargets.size() - 1;
     }
 
     /**
@@ -134,6 +144,163 @@ class TransformMaker<R> {
     void begin(MethodMaker mm, Variable rowVar,
                Variable keyVar, Variable valueVar, int valueOffset)
     {
+        setup(mm, rowVar, keyVar, valueVar, valueOffset);
+
+        findColumns(false);
+    }
+
+    /**
+     * Begin making code which computes the difference between two encoded values which have
+     * the same schema, returning a maker suitable for making the old value. The diffValueCheck
+     * method can be called (on the returned maker) to skip over targets that haven't changed.
+     */
+    TransformMaker<R> beginValueDiff(MethodMaker mm, Variable rowVar,
+                                     Variable keyVar, Variable valueVar, int valueOffset,
+                                     Variable oldValueVar)
+    {
+        setup(mm, rowVar, keyVar, valueVar, valueOffset);
+
+        // Never consult the row instance for value columns, ensuring that they must be found
+        // in the encoded value.
+        for (ColumnSource source : mColumnSources.values()) {
+            if (!source.mIsKey) {
+                source.mAvailability = Availability.NEVER;
+            }
+        }
+
+        var oldMaker = new TransformMaker<>(mRowType, mRowInfo, mAvailable, false);
+
+        oldMaker.mTargets = cloneTargets(mTargets);
+
+        // Find with keepValueOffset such that oldMaker doesn't need to find it again.
+        findColumns(true);
+
+        oldMaker.setup(mm, rowVar, keyVar, oldValueVar, mValueOffset);
+
+        // Never consult the row instance for value columns, ensuring that they must be found
+        // in the encoded value. Then find only the value columns for the old maker, and the
+        // already found key columns will be copied over.
+        {
+            int numValues = 0;
+            for (ColumnSource source : oldMaker.mColumnSources.values()) {
+                if (!source.mIsKey) {
+                    source.mAvailability = Availability.NEVER;
+                    if (source.mustFind()) {
+                        numValues++;
+                    }
+                }
+            }
+
+            oldMaker.findColumns(oldMaker.mValueVar, false, numValues, false);
+
+            // Copy the key columns sources, since they don't need to be found again.
+            for (Map.Entry<String, ColumnSource> e : mColumnSources.entrySet()) {
+                ColumnSource source = e.getValue();
+                if (source.mIsKey) {
+                    oldMaker.mColumnSources.put(e.getKey(), source);
+                }
+            }
+        }
+
+        // Use a bit map (of longs) whose bits correspond to a ColumnSource slot. Some
+        // variables in the array will remain null, which implies that the bits are all zero
+        // for that particular range.
+        var bitMap = new Variable[numBitMapWords(mColumnSources)];
+
+        for (ColumnSource oldSource : oldMaker.mColumnSources.values()) {
+            ColumnSource source = mColumnSources.get(oldSource.mCodec.mInfo.name);
+
+            if (source.mIsKey) {
+                continue;
+            }
+
+            int slot = source.mSlot;
+
+            Variable bitsVar = bitMap[bitMapWord(slot)];
+            if (bitsVar == null) {
+                bitsVar = mm.var(long.class).set(0);
+                bitMap[bitMapWord(slot)] = bitsVar;
+            }
+
+            Label same = mm.label();
+
+            Variable columnVar = source.mColumnVar;
+            if (columnVar != null && source.isPrimitive()) {
+                // Quick compare.
+                columnVar.ifEq(oldSource.mColumnVar, same);
+            } else {
+                // Compare array ranges in the encoded values.
+                mMaker.var(Arrays.class).invoke
+                    ("equals", source.mSrcVar, source.mStartVar, source.mEndVar,
+                     oldSource.mSrcVar, oldSource.mStartVar, oldSource.mEndVar)
+                    .ifTrue(same);
+            }
+
+            // Set the bit to indicate that a difference was found.
+            bitsVar.set(bitsVar.or(bitMapWordMask(slot)));
+
+            same.here();
+        }
+
+        oldMaker.mDiffBitMap = bitMap;
+
+        // Assign the masks needed by the diffValueCheck method.
+        for (Target target : oldMaker.mTargets) {
+            target.assignValueSourceMasks(oldMaker.mColumnSources);
+        }
+
+        return oldMaker;
+    }
+
+    /**
+     * Call after diffValueColumns has been called to make code which skips over targets that
+     * haven't changed.
+     *
+     * @param skip branch to this label when none of the specified targets have changed
+     * @param targetIds identifier returned by addKeyTarget or addValueTarget
+     */
+    void diffValueCheck(Label skip, int... targetIds) {
+        Label modified = mMaker.label();
+        for (int i=0; i<mDiffBitMap.length; i++) {
+            Variable word = mDiffBitMap[i];
+            if (word != null) {
+                long mask = 0;
+                for (int targetId : targetIds) {
+                    mask |= mTargets.get(targetId).mSourceMasks[i];
+                }
+                if (mask != 0) {
+                    word.and(mask).ifNe(0L, modified);
+                }
+            }
+        }
+        mMaker.goto_(skip);
+        modified.here();
+    }
+
+    /**
+     * Makes code to encode a target key or value, but only after begin was called.
+     *
+     * @param targetId identifier returned by addKeyTarget or addValueTarget
+     * @return a byte[] variable
+     */
+    Variable encode(int targetId) {
+        Target target = mTargets.get(targetId);
+        encodeColumns(target);
+        return target.mEncodedVar;
+    }
+
+    /**
+     * Assigns the maker related variables and builds the map of ColumnSources.
+     */
+    private void setup(MethodMaker mm, Variable rowVar,
+                       Variable keyVar, Variable valueVar, int valueOffset)
+    {
+        setup(mm, rowVar, keyVar, valueVar, valueOffset < 0 ? null : valueOffset);
+    }
+
+    private void setup(MethodMaker mm, Variable rowVar,
+                       Variable keyVar, Variable valueVar, Object valueOffset)
+    {
         Objects.requireNonNull(mm);
 
         if (mMaker != null) {
@@ -148,13 +315,24 @@ class TransformMaker<R> {
         mRowVar = rowVar;
         mKeyVar = keyVar;
         mValueVar = valueVar;
-        mValueOffset = valueOffset < 0 ? null : valueOffset;
+        mValueOffset = valueOffset;
 
-        buildColumnSources();
+        RowGen srcGen = mRowInfo.rowGen();
+        Map<String, ColumnCodec> keyCodecMap = srcGen.keyCodecMap();
+        Map<String, ColumnCodec> valueCodecMap = srcGen.valueCodecMap();
+
+        var sources = new HashMap<String, ColumnSource>();
+
+        for (Target target : mTargets) {
+            RowGen rowGen = target.mRowInfo.rowGen();
+            ColumnCodec[] targetCodecs = target.mIsKey ? rowGen.keyCodecs() : rowGen.valueCodecs();
+            buildColumnSources(sources, keyCodecMap, true, target, targetCodecs);
+            buildColumnSources(sources, valueCodecMap, false, target, targetCodecs);
+            buildVoidColumnSources(sources, targetCodecs);
+        }
 
         // Try to ditch conditional availability if possible, reducing runtime checks.
-        for (Map.Entry<String, ColumnSource> e : mColumnSources.entrySet()) {
-            ColumnSource source = e.getValue();
+        for (ColumnSource source : sources.values()) {
             if (source.mAvailability == Availability.CONDITIONAL) {
                 // Primitive types are cheap to extract from the binary encoding, or if no
                 // transcoding is required, then a binary copy is preferred.
@@ -162,67 +340,6 @@ class TransformMaker<R> {
                     source.mAvailability = Availability.NEVER;
                 }
             }
-        }
-
-        findColumns();
-    }
-
-    void diffValueColumns(Variable oldValueVar) {
-        // FIXME: Assume another transformer is involved. Must have the same schema. Can be
-        // called once, only after begin.
-    }
-
-    /**
-     * Call after diffValueColumns has been called to make code which skips over targets that
-     * haven't changed.
-     */
-    void diffValueCheck(Label skip) {
-        // FIXME
-    }
-
-    /**
-     * Makes code to encode a target key, but only after begin was called.
-     *
-     * @param keyTarget identifier returned by addKeyTarget
-     * @return a byte[] variable
-     */
-    Variable encodeKey(int keyTarget) {
-        Target target = mKeyTargets.get(keyTarget);
-        encodeColumns(target);
-        return target.mEncodedVar;
-    }
-
-    /**
-     * Makes code to encode a target value, but only after begin was called.
-     *
-     * @param valueTarget identifier returned by addValueTarget
-     * @return a byte[] variable
-     */
-    Variable encodeValue(int valueTarget) {
-        Target target = mValueTargets.get(valueTarget);
-        encodeColumns(target);
-        return target.mEncodedVar;
-    }
-
-    private void buildColumnSources() {
-        RowGen srcGen = mRowInfo.rowGen();
-        Map<String, ColumnCodec> keyCodecMap = srcGen.keyCodecMap();
-        Map<String, ColumnCodec> valueCodecMap = srcGen.valueCodecMap();
-
-        var sources = new HashMap<String, ColumnSource>();
-
-        for (Target target : mKeyTargets) {
-            ColumnCodec[] targetCodecs = target.mRowInfo.rowGen().keyCodecs();
-            buildColumnSources(sources, keyCodecMap, true, target, targetCodecs);
-            buildColumnSources(sources, valueCodecMap, false, target, targetCodecs);
-            buildVoidColumnSources(sources, targetCodecs);
-        }
-
-        for (Target target : mValueTargets) {
-            ColumnCodec[] targetCodecs = target.mRowInfo.rowGen().valueCodecs();
-            buildColumnSources(sources, keyCodecMap, true, target, targetCodecs);
-            buildColumnSources(sources, valueCodecMap, false, target, targetCodecs);
-            buildVoidColumnSources(sources, targetCodecs);
         }
 
         mColumnSources = sources;
@@ -241,15 +358,18 @@ class TransformMaker<R> {
             if (srcCodec == null) {
                 continue;
             }
+
             ColumnSource source = sources.get(name);
             if (source == null) {
+                int slot = sources.size();
                 Availability availability;
                 if (mAvailable == null || (availability = mAvailable.get(name)) == null) {
                     availability = Availability.NEVER;
                 }
-                source = new ColumnSource(srcIsKey, srcCodec, availability);
+                source = new ColumnSource(slot, srcIsKey, srcCodec, availability);
                 sources.put(name, source);
             }
+
             source.addTarget(targetCodec, target.mEager);
         }
     }
@@ -265,16 +385,20 @@ class TransformMaker<R> {
         for (ColumnCodec targetCodec : targetCodecs) {
             String name = targetCodec.mInfo.name;
             if (!sources.containsKey(name)) {
+                int slot = sources.size();
                 var srcCodec = new VoidColumnCodec(targetCodec.mInfo, null);
-                sources.put(name, new ColumnSource(false, srcCodec, Availability.NEVER));
+                sources.put(name, new ColumnSource(slot, false, srcCodec, Availability.NEVER));
             }
         }
     }
 
     /**
      * Generates code which finds column offsets in an encoded row.
+     *
+     * @param keepValueOffset when true, assign known mValueOffset when configured to auto skip
+     * schema version
      */
-    private void findColumns() {
+    private void findColumns(boolean keepValueOffset) {
         // Determine how many columns must be accessed from the encoded form.
         int numKeys = 0, numValues = 0;
         for (ColumnSource source : mColumnSources.values()) {
@@ -287,15 +411,15 @@ class TransformMaker<R> {
             }
         }
 
-        findColumns(mKeyVar, true, numKeys);
-        findColumns(mValueVar, false, numValues);
+        findColumns(mKeyVar, true, numKeys, false);
+        findColumns(mValueVar, false, numValues, keepValueOffset);
     }
 
     /**
      * @param srcVar byte array
      */
-    private void findColumns(Variable srcVar, boolean fromKey, int num) {
-        if (num == 0) {
+    private void findColumns(Variable srcVar, boolean fromKey, int num, boolean keepValueOffset) {
+        if (srcVar == null || num == 0) {
             return;
         }
 
@@ -309,6 +433,9 @@ class TransformMaker<R> {
             codecs = mRowInfo.rowGen().valueCodecs();
             if (mValueOffset == null) {
                 offsetVar.set(mMaker.var(RowUtils.class).invoke("skipSchemaVersion", srcVar));
+                if (keepValueOffset) {
+                    mValueOffset = offsetVar.get();
+                }
             } else {
                 offsetVar.set(mValueOffset);
             }
@@ -361,6 +488,51 @@ class TransformMaker<R> {
 
         // Reached if num was miscalculated.
         throw new AssertionError();
+    }
+
+    /**
+     * Each "word" is a long and holds 64 bits.
+     */
+    private static int numBitMapWords(Map<String, ColumnSource> columnSources) {
+        return (columnSources.size() + 63) >> 6;
+    }
+
+    /**
+     * Returns the zero-based bit map word ordinal.
+     */
+    private static int bitMapWord(int slot) {
+        return slot >> 6;
+    }
+
+    /**
+     * Returns a single bit shifted into the correct bit map word position.
+     */
+    private static long bitMapWordMask(int slot) {
+        return 1L << (slot & 0x3f);
+    }
+
+    /**
+     * Compute the bit mask to use in conjunction with diffValueColumns to determine which
+     * targets have changed.
+     *
+     * @param masks to fill in
+     * @return false if target consists only of primary key columns
+     */
+    private boolean bitMask(RowInfo targetInfo, long[] masks) {
+        Arrays.fill(masks, 0);
+
+        boolean any = false;
+
+        for (String name : targetInfo.allColumns.keySet()) {
+            ColumnSource source = mColumnSources.get(name);
+            if (!source.mIsKey) {
+                any = true;
+                int slot = source.mSlot;
+                masks[bitMapWord(slot)] |= bitMapWordMask(slot);
+            }
+        }
+
+        return any;
     }
 
     private void encodeColumns(Target target) {
@@ -483,10 +655,18 @@ class TransformMaker<R> {
         CONDITIONAL
     }
 
+    private static List<Target> cloneTargets(List<Target> targets) {
+        var clone = new ArrayList<Target>(targets.size());
+        for (Target t : targets) {
+            clone.add(t.clone());
+        }
+        return clone;
+    }
+
     /**
      * Tracks a key/value target to be encoded.
      */
-    private static class Target {
+    private static class Target implements Cloneable {
         final boolean mIsKey;
         final RowInfo mRowInfo;
         final int mOffset;
@@ -495,11 +675,42 @@ class TransformMaker<R> {
         // The fully encoded target row, as a byte array.
         Variable mEncodedVar;
 
+        // Indicates which sources this target depends on, for a value difference operation.
+        long[] mSourceMasks;
+
         Target(boolean isKey, RowInfo rowInfo, int offset, boolean eager) {
             mIsKey = isKey;
             mRowInfo = rowInfo;
             mOffset = offset;
             mEager = eager;
+        }
+
+        /**
+         * Assign the bit mask needed for a value diff.
+         */
+        void assignValueSourceMasks(Map<String, ColumnSource> sources) {
+            var masks = new long[numBitMapWords(sources)];
+
+            Map<String, ColumnInfo> columns = mIsKey ? mRowInfo.keyColumns : mRowInfo.valueColumns;
+
+            for (String name : columns.keySet()) {
+                ColumnSource source = sources.get(name);
+                if (!source.mIsKey) {
+                    int slot = source.mSlot;
+                    masks[bitMapWord(slot)] |= bitMapWordMask(slot);
+                }
+            }
+
+            mSourceMasks = masks;
+        }
+
+        @Override
+        public Target clone() {
+            try {
+                return (Target) super.clone();
+            } catch (CloneNotSupportedException e) {
+                throw RowUtils.rethrow(e);
+            }
         }
     }
 
@@ -507,6 +718,7 @@ class TransformMaker<R> {
      * State for a column source.
      */
     private static class ColumnSource {
+        final int mSlot;
         final boolean mIsKey;
         final ColumnCodec mCodec;
         Availability mAvailability;
@@ -535,7 +747,8 @@ class TransformMaker<R> {
         // Is true when column isn't eagerly decoded;
         boolean mColumnAccessCheck;
 
-        ColumnSource(boolean isKey, ColumnCodec codec, Availability availability) {
+        ColumnSource(int slot, boolean isKey, ColumnCodec codec, Availability availability) {
+            mSlot = slot;
             mIsKey = isKey;
             mCodec = codec;
             mAvailability = availability;

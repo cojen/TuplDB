@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
+import java.util.Set;
 
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -36,6 +37,7 @@ import org.junit.*;
 import static org.junit.Assert.*;
 
 import org.cojen.maker.ClassMaker;
+import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
@@ -103,7 +105,7 @@ public class TransformMakerTest {
         for (int i=0; i<n; i++) {
             long seed = ThreadLocalRandom.current().nextLong();
             try {
-                fuzzIt(seed, always, never, conditional);
+                doFuzz(seed, always, never, conditional);
             } catch (Throwable e) {
                 var err = new AssertionError("seed: " + seed, e);
                 err.printStackTrace(System.out);
@@ -112,8 +114,7 @@ public class TransformMakerTest {
         }
     }
 
-    @SuppressWarnings("unchecked")
-    private static void fuzzIt(long seed, float always, float never, float conditional)
+    private static void doFuzz(long seed, float always, float never, float conditional)
         throws Throwable
     {
         var rnd = new Random(seed);
@@ -121,97 +122,84 @@ public class TransformMakerTest {
         Database db = Database.open(new DatabaseConfig());
 
         for (int t=0; t<100; t++) {
-            FuzzTest.Column[] columns = FuzzTest.randomColumns(rnd);
-            Class<?> srcRowType = FuzzTest.randomRowType(rnd, columns);
-            Class<?>[] dstRowTypes = transformedRowTypes(rnd, srcRowType, columns, 3);
-
-            Index srcIndex = db.openIndex(srcRowType.getName());
-            Table srcTable = srcIndex.asTable(srcRowType);
-
-            var dstIndexes = new Index[dstRowTypes.length];
-            var dstTables = new Table[dstRowTypes.length];
-            for (int i=0; i<dstRowTypes.length; i++) {
-                dstIndexes[i] = db.openIndex(dstRowTypes[i].getName());
-                dstTables[i] = dstIndexes[i].asTable(dstRowTypes[i]);
-            }
-
-            var row = srcTable.newRow();
-            FuzzTest.fillInColumns(rnd, columns, row);
-            srcTable.store(null, row);
-
-            byte[] srcKey, srcValue;
-            try (Cursor c = srcIndex.newCursor(null)) {
-                c.first();
-                srcKey = c.key();
-                srcValue = c.value();
-            }
-
-            Map<String, TransformMaker.Availability> available =
-                availability(rnd, always, never, conditional, srcRowType);
-
-            var useRow = row;
-
-            if (available != null && conditional > 0) {
-                useRow = srcTable.newRow();
-
-                for (Map.Entry<String, TransformMaker.Availability> e : available.entrySet()) {
-                    var avail = e.getValue();
-                    if (avail == TransformMaker.Availability.ALWAYS || rnd.nextBoolean()) {
-                        String name = e.getKey();
-                        Method getter = srcRowType.getMethod(name);
-                        Class<?> colType = getter.getReturnType();
-                        Method setter = srcRowType.getMethod(name, colType);
-                        setter.invoke(useRow, getter.invoke(row));
-                    }
-                }
-            }
-
-            MethodHandle transformer = makeTransformer(rnd, available, srcRowType, dstRowTypes);
-
-            var result = (byte[][]) transformer.invoke(useRow, srcKey, srcValue);
-
-            for (int i = 0; i < result.length; i += 2) {
-                dstIndexes[i >> 1].store(null, result[i], result[i + 1]);
-            }
-
-            Class<?> rowClass = row.getClass();
-
-            for (int i=0; i<dstTables.length; i++) {
-                Object dstRow;
-                try (RowScanner s = dstTables[i].newRowScanner(null)) {
-                    dstRow = s.row();
-                }
-
-                Class<?> dstRowClass = dstRow.getClass();
-
-                for (FuzzTest.Column c : columns) {
-                    Method dstMethod;
-                    try {
-                        dstMethod = dstRowClass.getMethod(c.name);
-                    } catch (NoSuchMethodException e) {
-                        continue;
-                    }
-                    Method srcMethod = rowClass.getMethod(c.name);
-                    Object expect = srcMethod.invoke(row);
-                    Object actual = dstMethod.invoke(dstRow);
-                    if (expect == null) {
-                        assertNull(actual);
-                    } else if (!expect.getClass().isArray()) {
-                        assertEquals(c.name, expect, actual);
-                    } else {
-                        assertTrue(c.name, Objects.deepEquals(expect, actual));
-                    }
-                }
-            }
-
-            FuzzTest.truncateAndClose(srcIndex, srcTable);
-
-            for (int i=0; i<dstTables.length; i++) {
-                FuzzTest.truncateAndClose(dstIndexes[i], dstTables[i]);
-            }
+            doFuzz(rnd, db, always, never, conditional);
         }
 
         db.close();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void doFuzz(Random rnd, Database db,
+                               float always, float never, float conditional)
+        throws Throwable
+    {
+        FuzzTest.Column[] columns = FuzzTest.randomColumns(rnd);
+        Class<?> srcRowType = FuzzTest.randomRowType(rnd, columns);
+        Class<?>[] dstRowTypes = transformedRowTypes(rnd, srcRowType, columns, 3);
+
+        Index srcIndex = db.openIndex(srcRowType.getName());
+        Table srcTable = srcIndex.asTable(srcRowType);
+
+        var dstIndexes = new Index[dstRowTypes.length];
+        var dstTables = new Table[dstRowTypes.length];
+        for (int i=0; i<dstRowTypes.length; i++) {
+            dstIndexes[i] = db.openIndex(dstRowTypes[i].getName());
+            dstTables[i] = dstIndexes[i].asTable(dstRowTypes[i]);
+        }
+
+        var row = srcTable.newRow();
+        FuzzTest.fillInColumns(rnd, columns, row);
+        srcTable.store(null, row);
+
+        byte[] srcKey, srcValue;
+        try (Cursor c = srcIndex.newCursor(null)) {
+            c.first();
+            srcKey = c.key();
+            srcValue = c.value();
+        }
+
+        Map<String, TransformMaker.Availability> available =
+            availability(rnd, always, never, conditional, srcRowType);
+
+        var useRow = row;
+
+        if (available != null && conditional > 0) {
+            useRow = srcTable.newRow();
+
+            for (Map.Entry<String, TransformMaker.Availability> e : available.entrySet()) {
+                var avail = e.getValue();
+                if (avail == TransformMaker.Availability.ALWAYS || rnd.nextBoolean()) {
+                    String name = e.getKey();
+                    Method getter = srcRowType.getMethod(name);
+                    Class<?> colType = getter.getReturnType();
+                    Method setter = srcRowType.getMethod(name, colType);
+                    setter.invoke(useRow, getter.invoke(row));
+                }
+            }
+        }
+
+        MethodHandle transformer = makeTransformer
+            (rnd, false, available, srcRowType, dstRowTypes);
+
+        var kvPairs = (byte[][]) transformer.invoke(useRow, srcKey, srcValue);
+
+        for (int i = 0; i < kvPairs.length; i += 2) {
+            dstIndexes[i >> 1].store(null, kvPairs[i], kvPairs[i + 1]);
+        }
+
+        for (int i=0; i<dstTables.length; i++) {
+            Object dstRow;
+            try (RowScanner s = dstTables[i].newRowScanner(null)) {
+                dstRow = s.row();
+            }
+            verifyTransform(columns, row, dstRow);
+        }
+
+        FuzzTest.truncateAndClose(srcIndex, srcTable);
+
+        for (int i=0; i<dstTables.length; i++) {
+            FuzzTest.truncateAndClose(dstIndexes[i], dstTables[i]);
+        }
     }
 
     /**
@@ -273,8 +261,12 @@ public class TransformMakerTest {
      * Transformer method returns an array of alternating key/value pairs.
      *
      *    byte[][] _(Row row, byte[] key, byte[] value)
+     *
+     * If diff is true:
+     *
+     *    DiffResult _(Row row, byte[] key, byte[] value, byte[] oldValue)
      */
-    private static MethodHandle makeTransformer(Random rnd,
+    private static MethodHandle makeTransformer(Random rnd, boolean diff,
                                                 Map<String, TransformMaker.Availability> available,
                                                 Class<?> srcType, Class<?>... dstTypes)
         throws Throwable
@@ -291,29 +283,249 @@ public class TransformMakerTest {
 
         Class<?> rowClass = RowMaker.find(srcType);
 
-        MethodType mt = MethodType.methodType(byte[][].class, rowClass, byte[].class, byte[].class);
+        MethodType mt;
+        if (!diff) {
+            mt = MethodType.methodType(byte[][].class, rowClass, byte[].class, byte[].class);
+        } else {
+            mt = MethodType.methodType
+                (DiffResult.class, rowClass, byte[].class, byte[].class, byte[].class);
+        }
+
         MethodMaker mm = cm.addMethod("_", mt).static_();
 
         var rowVar = mm.param(0);
         var keyVar = mm.param(1);
         var valueVar = mm.param(2);
 
-        tm.begin(mm, rowVar, keyVar, valueVar, -1);
+        TransformMaker oldMaker = null;
 
-        var resultVar = mm.new_(byte[][].class, dstTypes.length << 1);
-
-        for (int i=0; i<dstTypes.length; i++) {
-            resultVar.aset(i << 1, tm.encodeKey(i));
-            var dstValueVar = tm.encodeValue(i);
-            dstValueVar.aset(0, 1); // schema version
-            resultVar.aset((i << 1) + 1, dstValueVar);
+        if (!diff) {
+            tm.begin(mm, rowVar, keyVar, valueVar, -1);
+        } else {
+            oldMaker = tm.beginValueDiff(mm, rowVar, keyVar, valueVar, -1, mm.param(3));
         }
 
-        mm.return_(resultVar);
+        var kvPairs = mm.new_(byte[][].class, dstTypes.length << 1);
+
+        for (int i=0; i<dstTypes.length; i++) {
+            int id = i << 1;
+            kvPairs.aset(id, tm.encode(id));
+            var dstValueVar = tm.encode(++id);
+            dstValueVar.aset(0, 1); // schema version
+            kvPairs.aset(id, dstValueVar);
+        }
+
+        if (!diff) {
+            mm.return_(kvPairs);
+        } else {
+            var diffs = mm.new_(boolean[].class, dstTypes.length);
+            for (int i=0; i<dstTypes.length; i++) {
+                Label skip = mm.label();
+                oldMaker.diffValueCheck(skip, i << 1, (i << 1) + 1);
+                diffs.aset(i, true);
+                skip.here();
+            }
+
+            var oldKvPairs = mm.new_(byte[][].class, dstTypes.length << 1);
+
+            for (int i=0; i<dstTypes.length; i++) {
+                int id = i << 1;
+                oldKvPairs.aset(id, oldMaker.encode(id));
+                var dstValueVar = oldMaker.encode(++id);
+                dstValueVar.aset(0, 1); // schema version
+                oldKvPairs.aset(id, dstValueVar);
+            }
+
+            mm.return_(mm.new_(DiffResult.class, kvPairs, diffs, oldKvPairs));
+        }
 
         var lookup = cm.finishLookup();
         var clazz = lookup.lookupClass();
 
         return lookup.findStatic(clazz, "_", mt);
     }
+
+    @Test
+    public void fuzzDiff() throws Throwable {
+        // Test transformations where row column availability is always, never, or conditional.
+
+        var tasks = new TestUtils.TestTask[4];
+        for (int i=0; i<tasks.length; i++) {
+            tasks[i] = TestUtils.startTestTask(() -> fuzzDiff(1));
+        }
+        for (var task : tasks) {
+            task.join();
+        }
+    }
+
+    /**
+     * @param n number of test iterations (times 100)
+     */
+    private static void fuzzDiff(int n) {
+        for (int i=0; i<n; i++) {
+            long seed = ThreadLocalRandom.current().nextLong();
+            try {
+                doFuzzDiff(seed);
+            } catch (Throwable e) {
+                var err = new AssertionError("seed: " + seed, e);
+                err.printStackTrace(System.out);
+                throw err;
+            }
+        }
+    }
+
+    private static void doFuzzDiff(long seed) throws Throwable {
+        var rnd = new Random(seed);
+
+        Database db = Database.open(new DatabaseConfig());
+
+        for (int t=0; t<100; t++) {
+            doFuzzDiff(rnd, db);
+        }
+
+        db.close();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void doFuzzDiff(Random rnd, Database db) throws Throwable {
+        FuzzTest.Column[] columns = FuzzTest.randomColumns(rnd);
+        Class<?> srcRowType = FuzzTest.randomRowType(rnd, columns);
+        FuzzTest.Column[] srcColumns = FuzzTest.cloneColumns(columns);
+        Class<?>[] dstRowTypes = transformedRowTypes(rnd, srcRowType, columns, 3);
+
+        Map<String, TransformMaker.Availability> available = 
+            availability(rnd, 1.0f, 1.0f, 0.0f, srcRowType);
+
+        MethodHandle transformer = makeTransformer
+            (rnd, true, available, srcRowType, dstRowTypes);
+
+        Index srcIndex = db.openIndex(srcRowType.getName());
+        Table srcTable = srcIndex.asTable(srcRowType);
+
+        var dstIndexes = new Index[dstRowTypes.length];
+        var dstTables = new Table[dstRowTypes.length];
+        for (int i=0; i<dstRowTypes.length; i++) {
+            dstIndexes[i] = db.openIndex(dstRowTypes[i].getName());
+            dstTables[i] = dstIndexes[i].asTable(dstRowTypes[i]);
+        }
+
+        var row1 = srcTable.newRow();
+        FuzzTest.fillInColumns(rnd, columns, row1);
+        srcTable.store(null, row1);
+
+        byte[] srcKey1, srcValue1;
+        try (Cursor c = srcIndex.newCursor(null)) {
+            c.first();
+            srcKey1 = c.key();
+            srcValue1 = c.value();
+            c.delete();
+        }
+
+        var row2 = srcTable.newRow();
+        Set<String> altered = FuzzTest.alterValueColumns(rnd, srcColumns, row1, row2);
+        srcTable.store(null, row2);
+
+        byte[] srcKey2, srcValue2;
+        try (Cursor c = srcIndex.newCursor(null)) {
+            c.first();
+            srcKey2 = c.key();
+            srcValue2 = c.value();
+            c.delete();
+        }
+
+        assertTrue(Arrays.equals(srcKey1, srcKey2));
+
+        if (altered.isEmpty()) {
+            assertTrue(Arrays.equals(srcValue1, srcValue2));
+        }
+
+        var result = (DiffResult) transformer.invoke(row2, srcKey2, srcValue2, srcValue1);
+
+        // Insert and verify the new transformed kvPairs.
+
+        for (int i = 0; i < result.kvPairs.length; i += 2) {
+            dstIndexes[i >> 1].store(null, result.kvPairs[i], result.kvPairs[i + 1]);
+        }
+
+        var dstRows2 = new Object[dstTables.length];
+
+        for (int i=0; i<dstTables.length; i++) {
+            Object dstRow;
+            try (RowScanner s = dstTables[i].newRowScanner(null)) {
+                dstRow = s.row();
+            }
+            dstRows2[i] = dstRow;
+
+            verifyTransform(columns, row2, dstRow);
+
+            try (Cursor c = dstIndexes[i].newCursor(null)) {
+                c.autoload(false);
+                for (c.first(); c.key() != null; c.next()) {
+                    c.delete();
+                }
+            }
+        }
+
+        // Store the old values and verify.
+
+        for (int i = 0; i < result.oldKvPairs.length; i += 2) {
+            dstIndexes[i >> 1].store(null, result.oldKvPairs[i], result.oldKvPairs[i + 1]);
+        }
+
+        var dstRows1 = new Object[dstTables.length];
+
+        for (int i=0; i<dstTables.length; i++) {
+            Object dstRow;
+            try (RowScanner s = dstTables[i].newRowScanner(null)) {
+                dstRow = s.row();
+            }
+            dstRows1[i] = dstRow;
+            verifyTransform(columns, row1, dstRow);
+        }
+
+        // Verify that the targets that changed were detected as different.
+
+        for (int i=0; i<dstTables.length; i++) {
+            boolean diff = result.diffs[i];
+            if (diff) {
+                assertNotEquals(dstRows2[i], dstRows1[i]);
+            } else {
+                assertEquals(dstRows2[i], dstRows1[i]);
+            }
+        }
+
+        FuzzTest.truncateAndClose(srcIndex, srcTable);
+
+        for (int i=0; i<dstTables.length; i++) {
+            FuzzTest.truncateAndClose(dstIndexes[i], dstTables[i]);
+        }
+    }
+
+    private static void verifyTransform(FuzzTest.Column[] columns, Object srcRow, Object dstRow)
+        throws Exception
+    {
+        Class<?> srcRowClass = srcRow.getClass();
+        Class<?> dstRowClass = dstRow.getClass();
+
+        for (FuzzTest.Column c : columns) {
+            Method dstMethod;
+            try {
+                dstMethod = dstRowClass.getMethod(c.name);
+            } catch (NoSuchMethodException e) {
+                continue;
+            }
+            Method srcMethod = srcRowClass.getMethod(c.name);
+            Object expect = srcMethod.invoke(srcRow);
+            Object actual = dstMethod.invoke(dstRow);
+            if (expect == null) {
+                assertNull(actual);
+            } else if (!expect.getClass().isArray()) {
+                assertEquals(c.name, expect, actual);
+            } else {
+                assertTrue(c.name, Objects.deepEquals(expect, actual));
+            }
+        }
+    }
+
+    public static record DiffResult(byte[][] kvPairs, boolean[] diffs, byte[][] oldKvPairs) {}
 }

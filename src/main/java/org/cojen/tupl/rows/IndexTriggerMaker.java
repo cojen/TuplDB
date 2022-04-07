@@ -188,8 +188,8 @@ public class IndexTriggerMaker<R> {
 
             tm.begin(mm, null, primaryKeyVar, primaryValueVar, -1);
 
-            secondaryEntryVar.aset(offsetVar, tm.encodeKey(0));
-            secondaryEntryVar.aset(offsetVar.add(1), tm.encodeValue(0));
+            secondaryEntryVar.aset(offsetVar, tm.encode(0));
+            secondaryEntryVar.aset(offsetVar.add(1), tm.encode(1));
 
             return mm.finish();
         });
@@ -594,8 +594,8 @@ public class IndexTriggerMaker<R> {
         tm.begin(mm, rowVar, keyVar, newValueVar, -1);
 
         for (int i=0; i<mSecondaryInfos.length; i++) {
-            var secondaryKeyVar = tm.encodeKey(i);
-            var secondaryValueVar = tm.encodeValue(i);
+            var secondaryKeyVar = tm.encode(i << 1);
+            var secondaryValueVar = tm.encode((i << 1) + 1);
 
             Variable closerVar;
             if (mSecondaryLocks[i] == null) {
@@ -821,7 +821,7 @@ public class IndexTriggerMaker<R> {
                 continue;
             }
 
-            var secondaryKeyVar = tm.encodeKey(i);
+            var secondaryKeyVar = tm.encode(i);
 
             String ixFieldName = "ix" + i;
             cm.addField(Index.class, ixFieldName).private_().final_();

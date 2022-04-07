@@ -2051,7 +2051,7 @@ public class TableMaker {
         var tm = new TransformMaker<>(rowType, secondaryInfo, available);
         tm.addKeyTarget(primaryInfo, 0, true);
         tm.begin(mm, rowVar, keyVar, valueVar, 0);
-        mm.return_(tm.encodeKey(0));
+        mm.return_(tm.encode(0));
 
         return new ConstantCallSite(mm.finish());
     }
