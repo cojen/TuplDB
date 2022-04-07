@@ -153,18 +153,30 @@ class TransformMaker<R> {
      * Begin making code which computes the difference between two encoded values which have
      * the same schema, returning a maker suitable for making the old value. The diffValueCheck
      * method can be called (on the returned maker) to skip over targets that haven't changed.
+     *
+     * @param checkForConditionals when true and maker has no row columns which are
+     * conditionally available, return null
      */
     TransformMaker<R> beginValueDiff(MethodMaker mm, Variable rowVar,
                                      Variable keyVar, Variable valueVar, int valueOffset,
-                                     Variable oldValueVar)
+                                     Variable oldValueVar, boolean checkForConditionals)
     {
         setup(mm, rowVar, keyVar, valueVar, valueOffset);
 
-        // Never consult the row instance for value columns, ensuring that they must be found
-        // in the encoded value.
+        // After calling setup, some CONDITIONAL columns might now be NEVER.
+        if (checkForConditionals) check: {
+            for (ColumnSource source : mColumnSources.values()) {
+                if (source.mAvailability == Availability.CONDITIONAL) {
+                    break check;
+                }
+            }
+            return null;
+        }
+
+        // Binary comparison requires that all value columns in the encoded value be found.
         for (ColumnSource source : mColumnSources.values()) {
             if (!source.mIsKey) {
-                source.mAvailability = Availability.NEVER;
+                source.mForceFind = true;
             }
         }
 
@@ -210,7 +222,7 @@ class TransformMaker<R> {
         for (ColumnSource oldSource : oldMaker.mColumnSources.values()) {
             ColumnSource source = mColumnSources.get(oldSource.mCodec.mInfo.name);
 
-            if (source.mIsKey) {
+            if (source.mIsKey || source.mCodec instanceof VoidColumnCodec) {
                 continue;
             }
 
@@ -247,6 +259,13 @@ class TransformMaker<R> {
         // Assign the masks needed by the diffValueCheck method.
         for (Target target : oldMaker.mTargets) {
             target.assignValueSourceMasks(oldMaker.mColumnSources);
+        }
+
+        for (Target target : mTargets) {
+            // Column variables need to be definitely assigned in advance due to conditional
+            // branching from all the expected diffValueCheck calls.
+            prepareColumns(target);
+            oldMaker.prepareColumns(target);
         }
 
         return oldMaker;
@@ -535,6 +554,27 @@ class TransformMaker<R> {
         return any;
     }
 
+    /**
+     * Invokes prepareColumn for all sources that the target depends on, just like
+     * encodeColumns would do.
+     */
+    private void prepareColumns(Target target) {
+        if (target.mEncodedVar != null) {
+            // Already encoded, which implies that all columns were prepared too.
+            return;
+        }
+
+        RowGen targetGen = target.mRowInfo.rowGen();
+        ColumnCodec[] codecs = target.mIsKey ? targetGen.keyCodecs() : targetGen.valueCodecs();
+
+        for (ColumnCodec codec : codecs) {
+            ColumnSource source = mColumnSources.get(codec.mInfo.name);
+            if (!source.mustCopyBytes(codec)) {
+                source.prepareColumn(mMaker, mRowVar, mRowInfo);
+            }
+        }
+    }
+
     private void encodeColumns(Target target) {
         if (target.mEncodedVar != null) {
             // Already encoded.
@@ -560,7 +600,7 @@ class TransformMaker<R> {
         int minSize = target.mOffset;
         for (ColumnCodec codec : codecs) {
             ColumnSource source = mColumnSources.get(codec.mInfo.name);
-            if (!source.shouldCopyBytes(codec)) {
+            if (!source.mustCopyBytes(codec)) {
                 if (source.hasStash(codec) == null) {
                     minSize += codec.minSize();
                     codec.encodePrepare();
@@ -574,7 +614,7 @@ class TransformMaker<R> {
         Variable totalVar = null;
         for (ColumnCodec codec : codecs) {
             ColumnSource source = mColumnSources.get(codec.mInfo.name);
-            if (source.shouldCopyBytes(codec)) {
+            if (source.mustCopyBytes(codec)) {
                 totalVar = codec.accum(totalVar, source.mEndVar.sub(source.mStartVar));
             } else {
                 ColumnTarget stash = source.hasStash(codec);
@@ -605,7 +645,7 @@ class TransformMaker<R> {
             String name = codec.mInfo.name;
             ColumnSource source = mColumnSources.get(name);
 
-            if (source.shouldCopyBytes(codec)) {
+            if (source.mustCopyBytes(codec)) {
                 var lengthVar = source.mEndVar.sub(source.mStartVar);
                 mMaker.var(System.class).invoke("arraycopy", source.mSrcVar, source.mStartVar,
                                                 encodedVar, offsetVar, lengthVar);
@@ -732,6 +772,8 @@ class TransformMaker<R> {
         // Is one if a target codec exists which is equal to the source codec.
         int mMatches;
 
+        boolean mForceFind;
+
         // The remaining fields are used during code generation.
 
         // Source byte array and decoded offsets. Offset vars are null for skipped columns.
@@ -811,7 +853,7 @@ class TransformMaker<R> {
                 return false;
             }
 
-            if (mAvailability == Availability.ALWAYS) {
+            if (!mForceFind && mAvailability == Availability.ALWAYS) {
                 if (isPrimitive()) {
                     // Primitive columns are cheap to encode, so no need to copy the byte form.
                     return false;
@@ -830,7 +872,7 @@ class TransformMaker<R> {
          * Returns true if the target codec matches this source codec and the column must be
          * found in the encoded byte array.
          */
-        boolean shouldCopyBytes(ColumnCodec targetCodec) {
+        boolean mustCopyBytes(ColumnCodec targetCodec) {
             return mSrcVar != null && targetCodec.equals(mCodec) && mustFind();
         }
 
@@ -863,7 +905,7 @@ class TransformMaker<R> {
 
         /**
          * Prepares the necessary column checks in order for accessColumn to work. Neither
-         * method should be called when shouldCopyBytes is true.
+         * method should be called when mustCopyBytes is true.
          *
          * @param rowVar source row
          */

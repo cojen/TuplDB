@@ -19,7 +19,6 @@ package org.cojen.tupl.rows;
 
 import java.math.BigInteger;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
@@ -347,33 +346,6 @@ abstract class ColumnCodec {
      * @param endVar end offset, which when null implies the end of the array
      */
     abstract void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar);
-
-    /**
-     * Makes code which compares two columns which have identical codecs.
-     *
-     * @param src1Var source byte array
-     * @param offset1Var int type; is incremented as a side-effect
-     * @param end1Var end offset, which when null implies the end of the array
-     * @param src2Var source byte array
-     * @param offset2Var int type; is incremented as a side-effect
-     * @param end2Var end offset, which when null implies the end of the array
-     * @param codec2 codec bound to the second source
-     * @param same branch here when the columns are the same
-     * @return a non-null pair of variables if the columns were decoded anyhow
-     */
-    Variable[] decodeDiff(Variable src1Var, Variable offset1Var, Variable end1Var,
-                          Variable src2Var, Variable offset2Var, Variable end2Var,
-                          ColumnCodec codec2, Label same)
-    {
-        var start1Var = offset1Var.get();
-        decodeSkip(src1Var, offset1Var, end1Var);
-        var start2Var = offset2Var.get();
-        codec2.decodeSkip(src2Var, offset2Var, end2Var);
-        mMaker.var(Arrays.class).invoke
-            ("equals", src1Var, start1Var, offset1Var, src2Var, start2Var, offset2Var)
-            .ifTrue(same);
-        return null;
-    }
 
     /**
      * Makes code which defines and initializes extra final field(s) for filter arguments.
