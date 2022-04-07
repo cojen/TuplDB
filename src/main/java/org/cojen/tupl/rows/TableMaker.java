@@ -18,14 +18,17 @@
 package org.cojen.tupl.rows;
 
 import java.lang.invoke.CallSite;
+import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
 import java.lang.ref.WeakReference;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.TreeMap;
@@ -325,8 +328,15 @@ public class TableMaker {
             mm.return_(mm.field("unjoined"));
         }
 
-        addToPrimaryKeyMethod(mClassMaker, false, true);
-        addToPrimaryKeyMethod(mClassMaker, true, true);
+        {
+            // Create three toPrimaryKey methods. A value param is always needed for alternate
+            // keys but never for ordinary secondary indexes.
+            int mode = mCodecGen.info.isAltKey() ? 0b011 : 0b010;
+            while (mode <= 0b111) {
+                addToPrimaryKeyMethod(mClassMaker, mode);
+                mode += 0b010;
+            }
+        }
 
         addJoinedLoadMethod(primaryTableClass);
 
@@ -367,7 +377,7 @@ public class TableMaker {
 
         Variable valueVar = null;
         Variable repeatableVar = null;
-        Variable joinedPkVar;
+        final Variable joinedPkVar;
 
         Label notFound = mm.label();
 
@@ -375,17 +385,21 @@ public class TableMaker {
             var keyVar = mm.invoke("encodePrimaryKey", rowVar);
             valueVar = mm.field("mSource").invoke("load", txnVar, keyVar);
             valueVar.ifEq(null, notFound);
-            joinedPkVar = mm.invoke("toPrimaryKey", rowVar, valueVar);
+            joinedPkVar = mm.invoke("toPrimaryKey", rowVar, keyVar, valueVar);
         } else {
-            repeatableVar = mm.var(RowUtils.class).invoke("isRepeatable", txnVar);
-            Label ready = mm.label();
-            repeatableVar.ifFalse(ready);
+            joinedPkVar = mm.var(byte[].class);
+            Label cont = mm.label();
+            Label repeatable = mm.label();
+            mm.var(RowUtils.class).invoke("isRepeatable", txnVar).ifTrue(repeatable);
+            joinedPkVar.set(mm.invoke("toPrimaryKey", rowVar));
+            mm.goto_(cont);
+            repeatable.here();
             var keyVar = mm.invoke("encodePrimaryKey", rowVar);
-            // Calling exists is necessary for proper lock acquisition order.
-            var resultVar = mm.field("mSource").invoke("exists", txnVar, keyVar);
-            resultVar.ifFalse(notFound);
-            ready.here();
-            joinedPkVar = mm.invoke("toPrimaryKey", rowVar);
+            // Calling exists is necessary for proper lock acquisition order. A return value of
+            // false isn't expected, but handle it just in case.
+            mm.field("mSource").invoke("exists", txnVar, keyVar).ifFalse(notFound);
+            joinedPkVar.set(mm.invoke("toPrimaryKey", rowVar, keyVar));
+            cont.here();
         }
 
         var joinedValueVar = mm.field("primaryIndex").invoke("load", txnVar, joinedPkVar);
@@ -2083,41 +2097,80 @@ public class TableMaker {
     /**
      * Define a static method which encodes a primary key when given an encoded secondary key.
      *
-     * @param hasRow true to pass a row with a fully specified key instead of an encoded key
-     * @param define true to actually define, false to delegate to it
+     *  000:  byte[] toPrimaryKey()               not used / illegal
+     *  001:  byte[] toPrimaryKey(byte[] value)   not used
+     *  010:  byte[] toPrimaryKey(byte[] key)
+     *  011:  byte[] toPrimaryKey(byte[] key, byte[] value)
+     *  100:  byte[] toPrimaryKey(Row row)
+     *  101:  byte[] toPrimaryKey(Row row, byte[] value)
+     *  110:  byte[] toPrimaryKey(Row row, byte[] key)
+     *  111:  byte[] toPrimaryKey(Row row, byte[] key, byte[] value)
+     *
+     * @param options bit 2: pass a row with a fully specified secondary key, bit 1: pass an
+     * encoded key, bit 0: pass an encoded value
      */
-    private void addToPrimaryKeyMethod(ClassMaker cm, boolean hasRow, boolean define) {
-        RowInfo info = mCodecGen.info;
-
-        Object[] params;
-        if (info.isAltKey()) {
-            // Needs the secondary key and value.
-            params = new Object[] {byte[].class, byte[].class};
-        } else {
-            // Only needs the secondary key.
-            params = new Object[] {byte[].class};
+    private void addToPrimaryKeyMethod(ClassMaker cm, int options) {
+        var paramList = new ArrayList<Object>(3);
+        if ((options & 0b100) != 0) {
+            paramList.add(mRowClass); // row
+        }
+        if ((options & 0b010) != 0) {
+            paramList.add(byte[].class); // key
+        }
+        if ((options & 0b001) != 0) {
+            paramList.add(byte[].class); // value
         }
 
-        if (hasRow) {
-            params[0] = mRowClass;
-        }
+        Object[] params = paramList.toArray();
 
         MethodMaker mm = cm.addMethod(byte[].class, "toPrimaryKey", params).static_();
-        Variable pkVar;
 
-        if (define) {
-            pkVar = IndexTriggerMaker.makeToPrimaryKey(mm, mRowType, mRowClass, mRowInfo, info);
-        } else {
-            mm.protected_();
-            var tableVar = mm.var(mClassMaker);
-            if (params.length == 2) {
-                pkVar = tableVar.invoke("toPrimaryKey", mm.param(0), mm.param(1));
-            } else {
-                pkVar = tableVar.invoke("toPrimaryKey", mm.param(0));
+        var paramVars = new Object[params.length];
+        for (int i=0; i<params.length; i++) {
+            paramVars[i] = mm.param(i);
+        }
+
+        // Use indy to create on demand, reducing code bloat.
+        var indy = mm.var(TableMaker.class).indy
+            ("toPrimaryKey", mRowType, mSecondaryDescriptor, options);
+        mm.return_(indy.invoke(byte[].class, "toPrimaryKey", null, paramVars));
+    }
+
+    public static CallSite toPrimaryKey(MethodHandles.Lookup lookup, String name, MethodType mt,
+                                        Class<?> rowType, byte[] secondaryDesc, int options)
+    {
+        RowInfo primaryInfo = RowInfo.find(rowType);
+        RowInfo secondaryInfo = RowStore.indexRowInfo(primaryInfo, secondaryDesc);
+
+        MethodMaker mm = MethodMaker.begin(lookup, name, mt);
+
+        Variable rowVar = null, keyVar = null, valueVar = null;
+        int offset = 0;
+        if ((options & 0b100) != 0) {
+            rowVar = mm.param(offset++);
+        }
+        if ((options & 0b010) != 0) {
+            keyVar = mm.param(offset++);
+        }
+        if ((options & 0b001) != 0) {
+            valueVar = mm.param(offset++);
+        }
+
+        Map<String, TransformMaker.Availability> available = null;
+
+        if (rowVar != null) {
+            available = new HashMap<>();
+            for (String colName : secondaryInfo.keyColumns.keySet()) {
+                available.put(colName, TransformMaker.Availability.ALWAYS);
             }
         }
 
-        mm.return_(pkVar);
+        var tm = new TransformMaker<>(rowType, secondaryInfo, available);
+        tm.addKeyTarget(primaryInfo, 0, true);
+        tm.begin(mm, rowVar, keyVar, valueVar, 0);
+        mm.return_(tm.encode(0));
+
+        return new ConstantCallSite(mm.finish());
     }
 
     /**
@@ -2139,7 +2192,15 @@ public class TableMaker {
 
         // Provide access to the toPrimaryKey method to be accessible by filter implementation
         // subclasses, which are defined in a different package.
-        addToPrimaryKeyMethod(cm, false, false);
+        if (mCodecGen.info.isAltKey()) {
+            MethodMaker mm = cm.addMethod(byte[].class, "toPrimaryKey", byte[].class, byte[].class);
+            mm.static_().protected_();
+            mm.return_(mm.var(mClassMaker).invoke("toPrimaryKey", mm.param(0), mm.param(1)));
+        } else {
+            MethodMaker mm = cm.addMethod(byte[].class, "toPrimaryKey", byte[].class);
+            mm.static_().protected_();
+            mm.return_(mm.var(mClassMaker).invoke("toPrimaryKey", mm.param(0)));
+        }
 
         // Note regarding the RowDecoderEncoder methods: The decode methods fully resolve rows
         // by joining to the primary table, and the encode methods return bytes for storing

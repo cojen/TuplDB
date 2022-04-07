@@ -27,18 +27,18 @@ import org.cojen.maker.Variable;
  *
  * @author Brian S O'Neill
  */
-final class NullColumnCodec extends ColumnCodec {
+final class VoidColumnCodec extends ColumnCodec {
     /**
      * @param info non-null; type can be anything
      * @param mm is null for stateless instance
      */
-    NullColumnCodec(ColumnInfo info, MethodMaker mm) {
+    VoidColumnCodec(ColumnInfo info, MethodMaker mm) {
         super(info, mm);
     }
 
     @Override
     ColumnCodec bind(MethodMaker mm) {
-        return new NullColumnCodec(mInfo, mm);
+        return new VoidColumnCodec(mInfo, mm);
     }
 
     @Override

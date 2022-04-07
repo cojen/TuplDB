@@ -54,11 +54,10 @@ public class RowTestUtils {
     }
 
     /**
-    /**
      * Define a new row type interface. Specification consists of alternating Class and name
      * pairs. A name suffix of '?' indicates that it's Nullable. A name prefix of '+' or '-'
      * indicates that it's part of the primary key.
-
+     *
      * @param rowTypeName can be null to assign automatically
      */
     public static ClassMaker newRowTypeMaker(String rowTypeName, Object... spec) {
