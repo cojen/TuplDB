@@ -107,11 +107,7 @@ class TransformMaker<R> {
      * @param eager true if the target will always be encoded
      */
     int addKeyTarget(RowInfo rowInfo, int offset, boolean eager) {
-        if (mMaker != null) {
-            throw new IllegalStateException();
-        }
-        mTargets.add(new Target(true, rowInfo, offset, eager));
-        return mTargets.size() - 1;
+        return addTarget(true, rowInfo, offset, eager);
     }
 
     /**
@@ -124,10 +120,14 @@ class TransformMaker<R> {
      * @param eager true if the target will always be encoded
      */
     int addValueTarget(RowInfo rowInfo, int offset, boolean eager) {
+        return addTarget(false, rowInfo, offset, eager);
+    }
+
+    private int addTarget(boolean isKey, RowInfo rowInfo, int offset, boolean eager) {
         if (mMaker != null) {
             throw new IllegalStateException();
         }
-        mTargets.add(new Target(false, rowInfo, offset, eager));
+        mTargets.add(new Target(isKey, rowInfo, offset, eager));
         return mTargets.size() - 1;
     }
 
