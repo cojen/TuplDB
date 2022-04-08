@@ -56,12 +56,12 @@ class TransformMaker<R> {
      * @param available defines which columns from a row instance are available; can pass null
      * if all columns are never available
      */
-    TransformMaker(Class<R> rowType, RowInfo rowInfo, Map<String, Availability> available) {
+    public TransformMaker(Class<R> rowType, RowInfo rowInfo, Map<String, Availability> available) {
         this(rowType, rowInfo, available, true);
     }
 
-    TransformMaker(Class<R> rowType, RowInfo rowInfo, Map<String, Availability> available,
-                   boolean validate)
+    public TransformMaker(Class<R> rowType, RowInfo rowInfo, Map<String, Availability> available,
+                          boolean validate)
     {
         if (validate) {
             if (rowInfo == null) {
@@ -106,7 +106,7 @@ class TransformMaker<R> {
      * @param offset start offset of target value (padding)
      * @param eager true if the target will always be encoded
      */
-    int addKeyTarget(RowInfo rowInfo, int offset, boolean eager) {
+    public int addKeyTarget(RowInfo rowInfo, int offset, boolean eager) {
         return addTarget(true, rowInfo, offset, eager);
     }
 
@@ -119,16 +119,30 @@ class TransformMaker<R> {
      * @param offset start offset of target value (padding)
      * @param eager true if the target will always be encoded
      */
-    int addValueTarget(RowInfo rowInfo, int offset, boolean eager) {
+    public int addValueTarget(RowInfo rowInfo, int offset, boolean eager) {
         return addTarget(false, rowInfo, offset, eager);
     }
 
     private int addTarget(boolean isKey, RowInfo rowInfo, int offset, boolean eager) {
-        if (mMaker != null) {
+        if (mColumnSources != null) {
             throw new IllegalStateException();
         }
         mTargets.add(new Target(isKey, rowInfo, offset, eager));
         return mTargets.size() - 1;
+    }
+
+    /**
+     * Returns true if the targets only need to access source keys. After calling this method,
+     * no more targets can be added.
+     */
+    public boolean onlyNeedsKeys() {
+        buildColumnSources();
+        for (ColumnSource source : mColumnSources.values()) {
+            if (!source.mIsKey) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -141,8 +155,8 @@ class TransformMaker<R> {
      * @param valueOffset start offset of the source binary value; pass -1 to auto skip schema
      * version
      */
-    void begin(MethodMaker mm, Variable rowVar,
-               Variable keyVar, Variable valueVar, int valueOffset)
+    public void begin(MethodMaker mm, Variable rowVar,
+                      Variable keyVar, Variable valueVar, int valueOffset)
     {
         setup(mm, rowVar, keyVar, valueVar, valueOffset);
 
@@ -153,25 +167,12 @@ class TransformMaker<R> {
      * Begin making code which computes the difference between two encoded values which have
      * the same schema, returning a maker suitable for making the old value. The diffValueCheck
      * method can be called (on the returned maker) to skip over targets that haven't changed.
-     *
-     * @param checkForConditionals when true and maker has no row columns which are
-     * conditionally available, return null
      */
-    TransformMaker<R> beginValueDiff(MethodMaker mm, Variable rowVar,
-                                     Variable keyVar, Variable valueVar, int valueOffset,
-                                     Variable oldValueVar, boolean checkForConditionals)
+    public TransformMaker<R> beginValueDiff(MethodMaker mm, Variable rowVar,
+                                            Variable keyVar, Variable valueVar, int valueOffset,
+                                            Variable oldValueVar)
     {
         setup(mm, rowVar, keyVar, valueVar, valueOffset);
-
-        // After calling setup, some CONDITIONAL columns might now be NEVER.
-        if (checkForConditionals) check: {
-            for (ColumnSource source : mColumnSources.values()) {
-                if (source.mAvailability == Availability.CONDITIONAL) {
-                    break check;
-                }
-            }
-            return null;
-        }
 
         // Binary comparison requires that all value columns in the encoded value be found.
         for (ColumnSource source : mColumnSources.values()) {
@@ -278,7 +279,7 @@ class TransformMaker<R> {
      * @param skip branch to this label when none of the specified targets have changed
      * @param targetIds identifier returned by addKeyTarget or addValueTarget
      */
-    void diffValueCheck(Label skip, int... targetIds) {
+    public void diffValueCheck(Label skip, int... targetIds) {
         Label modified = mMaker.label();
         for (int i=0; i<mDiffBitMap.length; i++) {
             Variable word = mDiffBitMap[i];
@@ -302,7 +303,7 @@ class TransformMaker<R> {
      * @param targetId identifier returned by addKeyTarget or addValueTarget
      * @return a byte[] variable
      */
-    Variable encode(int targetId) {
+    public Variable encode(int targetId) {
         Target target = mTargets.get(targetId);
         encodeColumns(target);
         return target.mEncodedVar;
@@ -320,6 +321,8 @@ class TransformMaker<R> {
     private void setup(MethodMaker mm, Variable rowVar,
                        Variable keyVar, Variable valueVar, Object valueOffset)
     {
+        buildColumnSources();
+
         Objects.requireNonNull(mm);
 
         if (mMaker != null) {
@@ -335,6 +338,12 @@ class TransformMaker<R> {
         mKeyVar = keyVar;
         mValueVar = valueVar;
         mValueOffset = valueOffset;
+    }
+
+    private void buildColumnSources() {
+        if (mColumnSources != null) {
+            return;
+        }
 
         RowGen srcGen = mRowInfo.rowGen();
         Map<String, ColumnCodec> keyCodecMap = srcGen.keyCodecMap();
@@ -570,7 +579,7 @@ class TransformMaker<R> {
         for (ColumnCodec codec : codecs) {
             ColumnSource source = mColumnSources.get(codec.mInfo.name);
             if (!source.mustCopyBytes(codec)) {
-                source.prepareColumn(mMaker, mRowVar, mRowInfo);
+                source.prepareColumn(this);
             }
         }
     }
@@ -604,7 +613,7 @@ class TransformMaker<R> {
                 if (source.hasStash(codec) == null) {
                     minSize += codec.minSize();
                     codec.encodePrepare();
-                    source.prepareColumn(mMaker, mRowVar, mRowInfo);
+                    source.prepareColumn(this);
                 }
             }
         }
@@ -619,7 +628,7 @@ class TransformMaker<R> {
             } else {
                 ColumnTarget stash = source.hasStash(codec);
                 if (stash == null) {
-                    var columnVar = source.accessColumn(mMaker, mRowVar, mRowInfo);
+                    var columnVar = source.accessColumn(this);
                     totalVar = codec.encodeSize(columnVar, totalVar);
                 } else {
                     totalVar = codec.accum(totalVar, stash.mLengthVar);
@@ -663,7 +672,7 @@ class TransformMaker<R> {
                         offsetVar.inc(stash.mLengthVar);
                     }
                 } else {
-                    var columnVar = source.accessColumn(mMaker, mRowVar, mRowInfo);
+                    var columnVar = source.accessColumn(this);
                     if ((stash = source.shouldStash(codec, target)) != null) {
                         // Encode the first time and stash for later.
                         stash.mEncodedVar = encodedVar;
@@ -786,7 +795,7 @@ class TransformMaker<R> {
         // Optional boolean variable used when column isn't eagerly decoded.
         Variable mColumnSetVar;
 
-        // Is true when column isn't eagerly decoded;
+        // Is true when column isn't eagerly decoded and must be checked at runtime.
         boolean mColumnAccessCheck;
 
         ColumnSource(int slot, boolean isKey, ColumnCodec codec, Availability availability) {
@@ -909,28 +918,28 @@ class TransformMaker<R> {
          *
          * @param rowVar source row
          */
-        void prepareColumn(MethodMaker mm, Variable rowVar, RowInfo rowInfo) {
+        void prepareColumn(TransformMaker tm) {
             if (mColumnVar != null) {
                 // Already prepared or was eagerly decoded from the binary form.
                 return;
             }
 
             if (mCodec instanceof VoidColumnCodec vcc) {
-                mColumnVar = mm.var(vcc.mInfo.type);
+                mColumnVar = tm.mMaker.var(vcc.mInfo.type);
                 vcc.decode(mColumnVar, null, null, null);
                 return;
             }
 
             if (mAvailability == Availability.ALWAYS) {
-                mColumnVar = rowVar.field(mCodec.mInfo.name);
+                mColumnVar = tm.mRowVar.field(mCodec.mInfo.name);
                 return;
             }
 
-            mColumnVar = mm.var(mCodec.mInfo.type);
+            mColumnVar = tm.mMaker.var(mCodec.mInfo.type);
 
             if (mEager) {
                 if (mAvailability == Availability.CONDITIONAL) {
-                    decodeColumn(mm, rowVar, rowInfo);
+                    decodeColumn(tm);
                 } else {
                     // Is never available in the row and it should have already been decoded.
                     throw new AssertionError();
@@ -942,7 +951,7 @@ class TransformMaker<R> {
                 if (isPrimitive() || mCodec.mInfo.isNullable()) {
                     // Need an additional variable for checking if set or not. A null check
                     // works fine for non-nullable object types.
-                    mColumnSetVar = mm.var(boolean.class).set(false);
+                    mColumnSetVar = tm.mMaker.var(boolean.class).set(false);
                 }
             }
         }
@@ -951,15 +960,15 @@ class TransformMaker<R> {
          * Returns a decoded variable or a field from the row. A call to prepareColumn must
          * have been made earlier.
          */
-        Variable accessColumn(MethodMaker mm, Variable rowVar, RowInfo rowInfo) {
+        Variable accessColumn(TransformMaker tm) {
             if (mColumnAccessCheck) {
-                Label isSet = mm.label();
+                Label isSet = tm.mMaker.label();
                 if (mColumnSetVar == null) {
                     mColumnVar.ifNe(null, isSet);
-                    decodeColumn(mm, rowVar, rowInfo);
+                    decodeColumn(tm);
                 } else {
                     mColumnSetVar.ifTrue(isSet);
-                    decodeColumn(mm, rowVar, rowInfo);
+                    decodeColumn(tm);
                     mColumnSetVar.set(true);
                 }
                 isSet.here();
@@ -967,10 +976,14 @@ class TransformMaker<R> {
             return mColumnVar;
         }
 
-        private void decodeColumn(MethodMaker mm, Variable rowVar, RowInfo rowInfo) {
+        private void decodeColumn(TransformMaker tm) {
+            MethodMaker mm = tm.mMaker;
             Label cont = null;
 
             if (mAvailability != Availability.NEVER) {
+                Variable rowVar = tm.mRowVar;
+                RowInfo rowInfo = tm.mRowInfo;
+
                 if (rowVar == null || rowInfo == null) {
                     // Need to access a row instance.
                     throw new AssertionError();
