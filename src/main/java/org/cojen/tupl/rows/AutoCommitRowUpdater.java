@@ -80,9 +80,9 @@ class AutoCommitRowUpdater<R> extends BasicRowUpdater<R> {
         Transaction txn = c.link();
         byte[] oldValue = c.value();
         if (oldValue == null) {
-            trigger.insert(txn, row, c.key(), value);
+            trigger.insertP(txn, row, c.key(), value);
         } else {
-            trigger.store(txn, row, c.key(), oldValue, value);
+            trigger.storeP(txn, row, c.key(), oldValue, value);
         }
         c.commit(value);
         mLockResult = null;
@@ -104,7 +104,7 @@ class AutoCommitRowUpdater<R> extends BasicRowUpdater<R> {
         Cursor c = mCursor;
         byte[] oldValue = c.value();
         if (oldValue != null) {
-            trigger.delete(c.link(), row, c.key(), oldValue);
+            trigger.deleteP(c.link(), row, c.key(), oldValue);
             c.commit(null);
         }
     }

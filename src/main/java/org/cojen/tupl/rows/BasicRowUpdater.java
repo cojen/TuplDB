@@ -185,7 +185,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
                         if (oldValue != null) {
                             trigger.delete(txn, c.key(), oldValue);
                         }
-                        trigger.insert(txn, row, key, value);
+                        trigger.insertP(txn, row, key, value);
                         break;
                     }
                 } finally {
@@ -328,9 +328,9 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
             mTable.redoPredicateMode(txn);
             byte[] oldValue = c.value();
             if (oldValue == null) {
-                trigger.insert(txn, row, c.key(), value);
+                trigger.insertP(txn, row, c.key(), value);
             } else {
-                trigger.store(txn, row, c.key(), oldValue, value);
+                trigger.storeP(txn, row, c.key(), oldValue, value);
             }
             c.commit(value);
         } finally {
@@ -356,7 +356,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
         try {
             byte[] oldValue = c.value();
             if (oldValue != null) {
-                trigger.delete(txn, row, c.key(), oldValue);
+                trigger.deleteP(txn, row, c.key(), oldValue);
                 c.commit(null);
             }
         } finally {

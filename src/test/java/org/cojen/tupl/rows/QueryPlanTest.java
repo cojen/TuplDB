@@ -519,8 +519,6 @@ public class QueryPlanTest {
 
         plan = mIndexB.queryPlan(null, "(b == ? && id != ? && c != ?) || (b == ? && c > ?)");
 
-        //System.out.println(plan);
-
         assertEquals(new QueryPlan.RangeUnion
                      (new QueryPlan.Filter
                       ("c != ?2", new QueryPlan.NaturalJoin
@@ -541,7 +539,6 @@ public class QueryPlanTest {
         // cursors which do the exact same thing.
         plan = mIndexB.queryPlan(null, "(b == ? && id != ? && c != ?) || (b == ?0 && c > ?)");
 
-        //System.out.println(plan);
 
         assertEquals(new QueryPlan.Filter
                      ("c > ?3 || (id != ?1 && c != ?2)", new QueryPlan.NaturalJoin
@@ -630,8 +627,6 @@ public class QueryPlanTest {
     public void secondaryIndex2() throws Exception {
         QueryPlan plan = mIndexC.queryPlan(null, "(c > ? || c <= ?) && b != ? && a != ?");
 
-        //System.out.println(plan);
-
         assertEquals(new QueryPlan.RangeUnion
                      (new QueryPlan.Filter
                       ("a != ?3", new QueryPlan.NaturalJoin
@@ -676,8 +671,6 @@ public class QueryPlanTest {
         QueryPlan plan = mIndexB.queryPlan
             (Transaction.BOGUS, "(b == ? && id != ? && c != ?) || (b == ? && c > ?)");
 
-        //System.out.println(plan);
-       
         assertEquals(new QueryPlan.RangeUnion
                      (new QueryPlan.Filter
                       ("c != ?2 && b == ?0", new QueryPlan.NaturalJoin
@@ -696,8 +689,6 @@ public class QueryPlanTest {
 
         plan = mIndexB.queryPlan
             (Transaction.BOGUS, "(b == ? && id != c && c != ?) || (b == ? && c > ?)");
-
-        //System.out.println(plan);
 
         assertEquals(new QueryPlan.RangeUnion
                      (new QueryPlan.Filter

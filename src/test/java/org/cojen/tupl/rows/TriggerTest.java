@@ -86,6 +86,7 @@ public class TriggerTest {
         assertSame(row, trigger.row);
         assertNull(trigger.oldValue);
         assertNotNull(trigger.newValue);
+        assertFalse(trigger.partial);
 
         row = mTable.newRow();
         row.extra("extra!");
@@ -125,6 +126,7 @@ public class TriggerTest {
         assertSame(row, trigger.row);
         assertNull(trigger.oldValue);
         assertNotNull(trigger.newValue);
+        assertFalse(trigger.partial);
 
         row = mTable.newRow();
         row.extra("extra!");
@@ -166,6 +168,7 @@ public class TriggerTest {
         assertSame(row, trigger.row);
         assertNull(trigger.oldValue);
         assertNotNull(trigger.newValue);
+        assertFalse(trigger.partial);
 
         row = mTable.newRow();
         row.extra("extra!");
@@ -208,6 +211,7 @@ public class TriggerTest {
         assertNotNull(trigger.oldValue);
         assertNotNull(trigger.newValue);
         assertFalse(Arrays.equals(trigger.oldValue, trigger.newValue));
+        assertFalse(trigger.partial);
 
         mTable.setTrigger(null);
 
@@ -239,6 +243,7 @@ public class TriggerTest {
         assertSame(row, trigger.row);
         assertNotNull(trigger.oldValue);
         assertNull(trigger.newValue);
+        assertFalse(trigger.partial);
 
         mTable.setTrigger(null);
 
@@ -280,6 +285,7 @@ public class TriggerTest {
         assertFalse(Arrays.equals(trigger.oldValue, trigger.newValue));
         mTable.load(null, row);
         assertEquals("v3", row.value());
+        assertFalse(trigger.partial);
 
         mTable.setTrigger(null);
 
@@ -323,7 +329,7 @@ public class TriggerTest {
         assertSame(row, trigger.row);
         assertNotNull(trigger.oldValue);
         assertNotNull(trigger.newValue);
-        assertTrue(trigger.update);
+        assertTrue(trigger.partial);
         assertFalse(Arrays.equals(trigger.oldValue, trigger.newValue));
         mTable.load(null, row);
         assertEquals("v2", row.value());
@@ -373,7 +379,7 @@ public class TriggerTest {
         assertSame(row, trigger.row);
         assertNotNull(trigger.oldValue);
         assertNotNull(trigger.newValue);
-        assertFalse(trigger.update);
+        assertFalse(trigger.partial);
         assertFalse(Arrays.equals(trigger.oldValue, trigger.newValue));
         mTable.load(null, row);
         assertEquals("v2", row.value());
@@ -414,7 +420,7 @@ public class TriggerTest {
         Index ix = mDb.openIndex(TestRow.class.getName());
         assertEquals(4, ix.count(null, null));
 
-        assertFalse(trigger.update);
+        assertTrue(trigger.partial);
         assertNotNull(trigger.oldValue);
         assertNull(trigger.newValue);
         assertEquals(3, trigger.row.id());
@@ -434,7 +440,7 @@ public class TriggerTest {
 
         assertEquals(3, ix.count(null, null));
 
-        assertFalse(trigger.update);
+        assertTrue(trigger.partial);
         assertNotNull(trigger.oldValue);
         assertNull(trigger.newValue);
         assertEquals(2, trigger.row.id());
@@ -468,7 +474,7 @@ public class TriggerTest {
             updater.update();
         }
 
-        assertFalse(trigger.update);
+        assertTrue(trigger.partial);
         assertNotNull(trigger.oldValue);
         assertNotNull(trigger.newValue);
         assertFalse(Arrays.equals(trigger.oldValue, trigger.newValue));
@@ -490,7 +496,7 @@ public class TriggerTest {
         }
         txn.commit();
 
-        assertFalse(trigger.update);
+        assertTrue(trigger.partial);
         assertNotNull(trigger.oldValue);
         assertNotNull(trigger.newValue);
         assertFalse(Arrays.equals(trigger.oldValue, trigger.newValue));
@@ -527,7 +533,7 @@ public class TriggerTest {
             updater.update();
         }
 
-        assertFalse(trigger.update);
+        assertTrue(trigger.partial);
         assertNull(trigger.oldValue);
         assertNotNull(trigger.newValue);
         assertEquals(103, trigger.row.id());
@@ -548,7 +554,7 @@ public class TriggerTest {
         }
         txn.commit();
 
-        assertFalse(trigger.update);
+        assertTrue(trigger.partial);
         assertNull(trigger.oldValue);
         assertNotNull(trigger.newValue);
         assertEquals(102, trigger.row.id());
@@ -577,7 +583,7 @@ public class TriggerTest {
     static class TestTrigger extends Trigger<TestRow> {
         TestRow row;
         byte[] oldValue, newValue;
-        boolean update;
+        boolean partial;
 
         @Override
         public void store(Transaction txn, TestRow row, byte[] key,
@@ -589,17 +595,39 @@ public class TriggerTest {
             this.row = row;
             this.oldValue = oldValue;
             this.newValue = newValue;
-            update = false;
+            partial = false;
+        }
+
+        @Override
+        public void storeP(Transaction txn, TestRow row, byte[] key,
+                           byte[] oldValue, byte[] newValue)
+        {
+            store(txn, row, key, oldValue, newValue);
+            partial = true;
         }
 
         @Override
         public void insert(Transaction txn, TestRow row, byte[] key, byte[] newValue) {
             store(txn, row, key, null, newValue);
+            partial = false;
+        }
+
+        @Override
+        public void insertP(Transaction txn, TestRow row, byte[] key, byte[] newValue) {
+            store(txn, row, key, null, newValue);
+            partial = true;
         }
 
         @Override
         public void delete(Transaction txn, TestRow row, byte[] key, byte[] oldValue) {
             store(txn, row, key, oldValue, null);
+            partial = false;
+        }
+
+        @Override
+        public void deleteP(Transaction txn, TestRow row, byte[] key, byte[] oldValue) {
+            store(txn, row, key, oldValue, null);
+            partial = true;
         }
 
         @Override
@@ -608,15 +636,7 @@ public class TriggerTest {
             assertNotNull(key);
             this.oldValue = oldValue;
             this.newValue = newValue;
-            update = false;
-        }
-
-        @Override
-        public void update(Transaction txn, TestRow row, byte[] key,
-                           byte[] oldValue, byte[] newValue)
-        {
-            store(txn, row, key, oldValue, newValue);
-            update = true;
+            partial = false;
         }
     }
 }

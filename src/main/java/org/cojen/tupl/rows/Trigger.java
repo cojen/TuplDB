@@ -43,7 +43,7 @@ public class Trigger<R> extends WideLatch {
      * default, this method always throws an exception.
      *
      * @param txn never null, although can be BOGUS
-     * @param row never null
+     * @param row never null, all columns are set
      * @param key never null
      * @param oldValue never null, same schema as new value (might have been converted)
      * @param newValue never null
@@ -55,11 +55,31 @@ public class Trigger<R> extends WideLatch {
     }
 
     /**
+     * Called after a row has been locked, but before the row has been marked undirty. This
+     * variant supports a partially filled in row, when called from the "update" method or from
+     * an updater which only has partial rows. The oldValue and newValue are fully specified,
+     * but the row object remains partial. When the "merge" method is called (or any other), or
+     * when all columns are dirty, the regular trigger store method is called with a fully
+     * populated row. By default, this method always throws an exception.
+     *
+     * @param txn never null, although can be BOGUS
+     * @param row never null
+     * @param key never null
+     * @param oldValue never null, same schema as new value (might have been converted)
+     * @param newValue never null
+     */
+    public void storeP(Transaction txn, R row, byte[] key, byte[] oldValue, byte[] newValue)
+        throws IOException
+    {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * Called after a row has been locked, but before the row has been marked clean. By
      * default, this method always throws an exception.
      *
      * @param txn never null, although can be BOGUS
-     * @param row never null
+     * @param row never null, all columns are set
      * @param key never null
      * @param newValue never null
      */
@@ -68,11 +88,23 @@ public class Trigger<R> extends WideLatch {
     }
 
     /**
+     * Variant which supports partial rows.
+     *
+     * @param txn never null, although can be BOGUS
+     * @param row never null
+     * @param key never null
+     * @param newValue never null
+     */
+    public void insertP(Transaction txn, R row, byte[] key, byte[] newValue) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
      * Called after a row has been locked, but before the row has been marked clean. By
      * default, this method always throws an exception.
      *
      * @param txn never null, although can be BOGUS
-     * @param row never null
+     * @param row never null, all key columns are set
      * @param key never null
      * @param oldValue never null
      */
@@ -81,29 +113,21 @@ public class Trigger<R> extends WideLatch {
     }
 
     /**
-     * Variant which is called when no row object is available.
-     */
-    public void delete(Transaction txn, byte[] key, byte[] oldValue) throws IOException {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
-     * Called after a row has been locked, but before the row has been marked undirty. This
-     * variant is only called from the "update" method when the row is partially dirtied. The
-     * oldValue and newValue are fully specified, but the row object remains partial. When the
-     * "merge" method is called (or any other), or when all columns are dirty, the regular
-     * trigger store method is called with a fully populated row. By default, this method
-     * always throws an exception.
+     * Variant which supports partial rows.
      *
      * @param txn never null, although can be BOGUS
      * @param row never null
      * @param key never null
-     * @param oldValue never null, same schema as new value (might have been converted)
-     * @param newValue never null
+     * @param oldValue never null
      */
-    public void update(Transaction txn, R row, byte[] key, byte[] oldValue, byte[] newValue)
-        throws IOException
-    {
+    public void deleteP(Transaction txn, R row, byte[] key, byte[] oldValue) throws IOException {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * Variant which is called when no row object is available.
+     */
+    public void delete(Transaction txn, byte[] key, byte[] oldValue) throws IOException {
         throw new UnsupportedOperationException();
     }
 

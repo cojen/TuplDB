@@ -1544,7 +1544,7 @@ public class TableMaker {
 
             var txnVar = cursorVar.invoke("link");
             var keyVar = cursorVar.invoke("key");
-            triggerVar.invoke("update", txnVar, rowVar, keyVar, valueVar, newValueVar);
+            triggerVar.invoke("storeP", txnVar, rowVar, keyVar, valueVar, newValueVar);
             cursorVar.invoke("commit", newValueVar);
             Label cont = mm.label().goto_();
 
@@ -2096,6 +2096,7 @@ public class TableMaker {
 
     /**
      * Define a static method which encodes a primary key when given an encoded secondary key.
+     * When a row parameter is defined, all key columns must be set.
      *
      *  000:  byte[] toPrimaryKey()               not used / illegal
      *  001:  byte[] toPrimaryKey(byte[] value)   not used

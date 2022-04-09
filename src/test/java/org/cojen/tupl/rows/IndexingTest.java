@@ -1028,7 +1028,6 @@ public class IndexingTest {
             setters1[0].invoke(row, 10); // id
             setters1[1].invoke(row, "new name"); // name
             table1.merge(null, row);
-            //System.out.println(row);
         }
 
         {
@@ -1036,7 +1035,6 @@ public class IndexingTest {
             setters2[0].invoke(row, 20); // id
             setters2[1].invoke(row, "new name"); // name
             table2.merge(null, row);
-            //System.out.println(row);
         }
 
         try {

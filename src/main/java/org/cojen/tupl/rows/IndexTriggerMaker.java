@@ -249,14 +249,20 @@ public class IndexTriggerMaker<R> {
             }
         }
 
-        addInsertMethod();
+        {
+            boolean requiresRow = addInsertMethod("insert", true);
+            addInsertMethod("insertP", requiresRow);
+        }
 
-        addDeleteMethod(rs, primaryIndexId, true, hasBackfills);
-        addDeleteMethod(rs, primaryIndexId, false, hasBackfills);
+        {
+            addDeleteMethod("delete", rs, primaryIndexId, true, hasBackfills);
+            addDeleteMethod("deleteP", rs, primaryIndexId, true, hasBackfills);
+            addDeleteMethod("delete", rs, primaryIndexId, false, hasBackfills);
+        }
 
         {
             boolean requiresRow = addStoreMethod("store", true);
-            addStoreMethod("update", requiresRow);
+            addStoreMethod("storeP", requiresRow);
         }
 
         if (hasBackfills) {
@@ -294,18 +300,34 @@ public class IndexTriggerMaker<R> {
         return trigger;
     }
 
-    private void addInsertMethod() {
+    /**
+     * @param variant "insert" or "insertP"
+     * @param define delegate to the non-partial variant when false
+     * @return true if always requires a row instance
+     */
+    private boolean addInsertMethod(String variant, boolean define) {
         MethodMaker mm = mClassMaker.addMethod
-            (null, "insert", Transaction.class, Object.class, byte[].class, byte[].class).public_();
+            (null, variant, Transaction.class, Object.class, byte[].class, byte[].class).public_();
+
+        boolean isPartial = variant == "insertP";
 
         var txnVar = mm.param(0);
-        var rowVar = mm.param(1).cast(mRowClass);
+        var rowVar = mm.param(1);
         var keyVar = mm.param(2);
         var newValueVar = mm.param(3);
 
+        if (isPartial && !define) {
+            mm.invoke("insert", txnVar, rowVar, keyVar, newValueVar);
+            return false;
+        }
+
+        rowVar = rowVar.cast(mRowClass);
+
         Map<String, TransformMaker.Availability> available = new HashMap<>();
+        var avail = isPartial ? TransformMaker.Availability.CONDITIONAL
+            : TransformMaker.Availability.ALWAYS;
         for (String colName : mPrimaryGen.info.allColumns.keySet()) {
-            available.put(colName, TransformMaker.Availability.ALWAYS);
+            available.put(colName, avail);
         }
 
         var tm = new TransformMaker<R>(mRowType, mPrimaryGen.info, available);
@@ -357,10 +379,15 @@ public class IndexTriggerMaker<R> {
                 // Index was dropped. Assume that this trigger will soon be replaced.
             });
         }
+
+        return tm.requiresRow();
     }
 
+    /**
+     * @param variant "delete" or "deleteP"
+     */
     @SuppressWarnings("unchecked")
-    private void addDeleteMethod(RowStore rs, long primaryIndexId,
+    private void addDeleteMethod(String variant, RowStore rs, long primaryIndexId,
                                  boolean hasRow, boolean hasBackfills)
     {
         Object[] params;
@@ -370,7 +397,7 @@ public class IndexTriggerMaker<R> {
             params = new Object[] {Transaction.class, byte[].class, byte[].class};
         }
 
-        MethodMaker mm = mClassMaker.addMethod(null, "delete", params).public_();
+        MethodMaker mm = mClassMaker.addMethod(null, variant, params).public_();
 
         // The deletion of secondary indexes typically requires that the old value be
         // decoded. Given that the schema version can vary, don't fully implement this method
@@ -411,9 +438,9 @@ public class IndexTriggerMaker<R> {
              mSecondaryDescriptors, secondaryIndexIds, backfillRefs);
 
         if (hasRow) {
-            indy.invoke(null, "delete", null, schemaVersion, txnVar, rowVar, keyVar, oldValueVar);
+            indy.invoke(null, variant, null, schemaVersion, txnVar, rowVar, keyVar, oldValueVar);
         } else {
-            indy.invoke(null, "delete", null, schemaVersion, txnVar, keyVar, oldValueVar);
+            indy.invoke(null, variant, null, schemaVersion, txnVar, keyVar, oldValueVar);
         }
     }
 
@@ -426,7 +453,7 @@ public class IndexTriggerMaker<R> {
      *     void (int schemaVersion, Transaction txn, byte[] key, byte[] oldValueVar)
      */
     @SuppressWarnings("unchecked")
-    public static SwitchCallSite indyDelete(MethodHandles.Lookup lookup, String name,
+    public static SwitchCallSite indyDelete(MethodHandles.Lookup lookup, String variant,
                                             MethodType mt, WeakReference<RowStore> storeRef,
                                             Class<?> rowType, long indexId,
                                             byte[][] secondaryDescs, long[] secondaryIndexIds,
@@ -445,7 +472,7 @@ public class IndexTriggerMaker<R> {
 
             RowStore store = storeRef.get();
             if (store == null) {
-                var mm = MethodMaker.begin(lookup, "delete", mtx);
+                var mm = MethodMaker.begin(lookup, variant, mtx);
                 mm.new_(DatabaseException.class, "Closed").throw_();
                 return mm.finish();
             }
@@ -465,7 +492,7 @@ public class IndexTriggerMaker<R> {
                 }
 
             } catch (Exception e) {
-                var mm = MethodMaker.begin(lookup, "delete", mtx);
+                var mm = MethodMaker.begin(lookup, variant, mtx);
                 return new ExceptionCallSite.Failed(mtx, mm, e);
             }
 
@@ -482,13 +509,13 @@ public class IndexTriggerMaker<R> {
                 }
             }
 
-            return makeDeleteMethod(mtx, schemaVersion, rowType, rowClass, primaryInfo,
+            return makeDeleteMethod(variant, mtx, schemaVersion, rowType, rowClass, primaryInfo,
                                     secondaryInfos, secondaryIndexes, backfills);
         });
     }
 
     private static MethodHandle makeDeleteMethod
-        (MethodType mt, int schemaVersion,
+        (String variant, MethodType mt, int schemaVersion,
          Class<?> rowType, Class rowClass, RowInfo primaryInfo,
          RowInfo[] secondaryInfos, Index[] secondaryIndexes,
          IndexBackfill[] backfills)
@@ -507,7 +534,7 @@ public class IndexTriggerMaker<R> {
         MethodMaker ctorMaker = cm.addConstructor(ctorMethodType);
         ctorMaker.invokeSuperConstructor();
 
-        MethodMaker mm = cm.addMethod("delete", mt);
+        MethodMaker mm = cm.addMethod(variant, mt);
 
         Variable txnVar = mm.param(0), rowVar, keyVar, oldValueVar;
         Map<String, TransformMaker.Availability> available;
@@ -517,8 +544,10 @@ public class IndexTriggerMaker<R> {
             keyVar = mm.param(2);
             oldValueVar = mm.param(3);
             available = new HashMap<>();
+            var avail = variant == "deleteP" ? TransformMaker.Availability.CONDITIONAL
+                : TransformMaker.Availability.ALWAYS;
             for (String colName : primaryInfo.keyColumns.keySet()) {
-                available.put(colName, TransformMaker.Availability.ALWAYS);
+                available.put(colName, avail);
             }
         } else {
             rowVar = null;
@@ -585,14 +614,14 @@ public class IndexTriggerMaker<R> {
             } else {
                 deleter = ctor.invoke(secondaryIndexes, backfills);
             }
-            return lookup.findVirtual(clazz, "delete", mt).bindTo(deleter);
+            return lookup.findVirtual(clazz, variant, mt).bindTo(deleter);
         } catch (Throwable e) {
             throw rethrow(e);
         }
     }
 
     /**
-     * @param variant "store" or "update"
+     * @param variant "store" or "storeP"
      * @param define delegate to the non-partial variant when false
      * @return true if always requires a row instance
      */
@@ -601,7 +630,7 @@ public class IndexTriggerMaker<R> {
             (null, variant, Transaction.class, Object.class,
              byte[].class, byte[].class, byte[].class).public_();
 
-        boolean isPartial = variant == "update";
+        boolean isPartial = variant == "storeP";
 
         var txnVar = mm.param(0);
         var rowVar = mm.param(1);
@@ -615,12 +644,9 @@ public class IndexTriggerMaker<R> {
         }
 
         Map<String, TransformMaker.Availability> available = new HashMap<>();
-        for (String colName : mPrimaryGen.info.keyColumns.keySet()) {
-            available.put(colName, TransformMaker.Availability.ALWAYS);
-        }
         var avail = isPartial ? TransformMaker.Availability.CONDITIONAL
             : TransformMaker.Availability.ALWAYS;
-        for (String colName : mPrimaryGen.info.valueColumns.keySet()) {
+        for (String colName : mPrimaryGen.info.allColumns.keySet()) {
             available.put(colName, avail);
         }
 
