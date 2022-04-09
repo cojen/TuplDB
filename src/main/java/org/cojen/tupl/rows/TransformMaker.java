@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import org.cojen.maker.Field;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
@@ -49,6 +50,8 @@ class TransformMaker<R> {
     private Map<String, ColumnSource> mColumnSources;
 
     private Variable[] mDiffBitMap;
+
+    private boolean mRequiresRow;
 
     /**
      * @param rowType source row type; can pass null if no row instance is available
@@ -237,10 +240,10 @@ class TransformMaker<R> {
 
             Label same = mm.label();
 
-            Variable columnVar = source.mColumnVar;
+            Variable columnVar = source.accessColumn(this);
             if (columnVar != null && source.isPrimitive()) {
                 // Quick compare.
-                columnVar.ifEq(oldSource.mColumnVar, same);
+                columnVar.ifEq(oldSource.accessColumn(oldMaker), same);
             } else {
                 // Compare array ranges in the encoded values.
                 mMaker.var(Arrays.class).invoke
@@ -278,9 +281,12 @@ class TransformMaker<R> {
      *
      * @param skip branch to this label when none of the specified targets have changed
      * @param targetIds identifier returned by addKeyTarget or addValueTarget
+     * @return false if target is always skipped and no code was generated
      */
-    public void diffValueCheck(Label skip, int... targetIds) {
+    public boolean diffValueCheck(Label skip, int... targetIds) {
+        boolean notSkipped = false;
         Label modified = mMaker.label();
+
         for (int i=0; i<mDiffBitMap.length; i++) {
             Variable word = mDiffBitMap[i];
             if (word != null) {
@@ -289,12 +295,18 @@ class TransformMaker<R> {
                     mask |= mTargets.get(targetId).mSourceMasks[i];
                 }
                 if (mask != 0) {
+                    notSkipped = true;
                     word.and(mask).ifNe(0L, modified);
                 }
             }
         }
-        mMaker.goto_(skip);
-        modified.here();
+
+        if (notSkipped) {
+            mMaker.goto_(skip);
+            modified.here();
+        }
+
+        return notSkipped;
     }
 
     /**
@@ -307,6 +319,13 @@ class TransformMaker<R> {
         Target target = mTargets.get(targetId);
         encodeColumns(target);
         return target.mEncodedVar;
+    }
+
+    /**
+     * Returns false if a row instance was never accessed by the generated code.
+     */
+    public boolean requiresRow() {
+        return mRequiresRow;
     }
 
     /**
@@ -972,7 +991,10 @@ class TransformMaker<R> {
                     mColumnSetVar.set(true);
                 }
                 isSet.here();
+            } else if (mColumnVar instanceof Field) {
+                tm.mRequiresRow = true;
             }
+
             return mColumnVar;
         }
 
@@ -988,6 +1010,8 @@ class TransformMaker<R> {
                     // Need to access a row instance.
                     throw new AssertionError();
                 }
+
+                tm.mRequiresRow = true;
 
                 RowGen rowGen = rowInfo.rowGen();
                 String columnName = mCodec.mInfo.name;
