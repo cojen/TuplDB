@@ -100,7 +100,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
         // new value is inserted (if permitted), and the current one is deleted. If the new key
         // is higher, it's added to a remembered set and not observed again by this updater.
 
-        if (cmp < 0 && (!mController.predicate().test(row, key, value) || !addKeyToSkip(key))) {
+        if (cmp < 0 && (!mController.predicate().testP(row, key, value) || !addKeyToSkip(key))) {
             // No need to remember it because the updated row is filtered out, or don't try
             // removing it from the set in case of UniqueConstraintException.
             cmp = 0;
@@ -200,7 +200,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
                 result = source.insert(txn, key, value);
             } else {
                 lock.redoPredicateMode(txn);
-                try (RowPredicateLock.Closer closer = lock.openAcquire(txn, row, key, value)) {
+                try (RowPredicateLock.Closer closer = lock.openAcquireP(txn, row, key, value)) {
                     result = source.insert(txn, key, value);
                 }
             }

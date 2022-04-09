@@ -49,7 +49,7 @@ public interface RowPredicateLock<R> {
      * @param key is passed to the {@code RowPredicate.test} method
      * @param value is passed to the {@code RowPredicate.test} method
      */
-    Closer openAcquire(Transaction txn, R row, byte[] key, byte[] value) throws IOException;
+    Closer openAcquireP(Transaction txn, R row, byte[] key, byte[] value) throws IOException;
 
     /**
      * Acquires shared access for all the predicate locks, without waiting, and retains the

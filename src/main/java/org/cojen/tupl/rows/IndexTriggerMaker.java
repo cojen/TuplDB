@@ -692,7 +692,7 @@ public class IndexTriggerMaker<R> {
                 } else {
                     // Row might be partially specified, so use the variant that can examine
                     // the fully encoded binary form.
-                    closerVar = lockVar.invoke("openAcquire", txnVar, rowVar,
+                    closerVar = lockVar.invoke("openAcquireP", txnVar, rowVar,
                                                secondaryKeyVar, secondaryValueVar);
                 }
             }

@@ -35,7 +35,7 @@ public interface RowPredicate<R> extends Predicate<R> {
     /**
      * Test against a partially filled in row. Additional columns are decoded as necessary.
      */
-    public default boolean test(R row, byte[] key, byte[] value) {
+    public default boolean testP(R row, byte[] key, byte[] value) {
         return test(key, value);
     }
 
@@ -46,10 +46,10 @@ public interface RowPredicate<R> extends Predicate<R> {
 
     /**
      * Determine if a lock held against the given key matches the row predicate. This variant
-     * is called for transactions which were created before the predicate lock.
+     * is called for transactions which were created before the predicate lock. When undecided,
+     * this method should return true.
      */
     public default boolean test(byte[] key) {
-        // When undecided, always default to true.
         return true;
     }
 

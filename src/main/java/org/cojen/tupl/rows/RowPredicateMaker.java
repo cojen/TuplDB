@@ -387,7 +387,7 @@ public class RowPredicateMaker {
         /* TODO: Override the default impementation.
 
            MethodMaker mm = mClassMaker.addMethod
-               (boolean.class, "test", Object.class, byte[].class, byte[].class).public_();
+               (boolean.class, "testP", Object.class, byte[].class, byte[].class).public_();
          */
     }
 
