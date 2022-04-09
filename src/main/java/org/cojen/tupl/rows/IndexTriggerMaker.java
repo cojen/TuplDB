@@ -254,9 +254,10 @@ public class IndexTriggerMaker<R> {
         addDeleteMethod(rs, primaryIndexId, true, hasBackfills);
         addDeleteMethod(rs, primaryIndexId, false, hasBackfills);
 
-        addStoreMethod("store");
-
-        addStoreMethod("update");
+        {
+            boolean requiresRow = addStoreMethod("store", true);
+            addStoreMethod("update", requiresRow);
+        }
 
         if (hasBackfills) {
             MethodMaker mm = mClassMaker.addMethod(null, "notifyDisabled").protected_();
@@ -592,8 +593,10 @@ public class IndexTriggerMaker<R> {
 
     /**
      * @param variant "store" or "update"
+     * @param define delegate to the non-partial variant when false
+     * @return true if always requires a row instance
      */
-    private void addStoreMethod(String variant) {
+    private boolean addStoreMethod(String variant, boolean define) {
         MethodMaker mm = mClassMaker.addMethod
             (null, variant, Transaction.class, Object.class,
              byte[].class, byte[].class, byte[].class).public_();
@@ -605,6 +608,11 @@ public class IndexTriggerMaker<R> {
         var keyVar = mm.param(2);
         var oldValueVar = mm.param(3);
         var newValueVar = mm.param(4);
+
+        if (isPartial && !define) {
+            mm.invoke("store", txnVar, rowVar, keyVar, oldValueVar, newValueVar);
+            return false;
+        }
 
         Map<String, TransformMaker.Availability> available = new HashMap<>();
         for (String colName : mPrimaryGen.info.keyColumns.keySet()) {
@@ -628,7 +636,7 @@ public class IndexTriggerMaker<R> {
             // If the targets only depend on the primary keys, then any differences in the
             // values are irrelevant.
             mm.return_();
-            return;
+            return false;
         }
 
         rowVar = rowVar.cast(mRowClass);
@@ -639,7 +647,9 @@ public class IndexTriggerMaker<R> {
             Label modified = mm.label();
 
             Label cont = mm.label();
-            otm.diffValueCheck(cont, i << 1, (i << 1) + 1);
+            if (!otm.diffValueCheck(cont, i << 1, (i << 1) + 1)) {
+                continue;
+            }
 
             // Index needs to be updated. Insert the new entry and delete the old one.
 
@@ -708,5 +718,7 @@ public class IndexTriggerMaker<R> {
 
             cont.here();
         }
+
+        return tm.requiresRow();
     }
 }

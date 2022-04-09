@@ -321,9 +321,10 @@ public class TransformMakerTest {
             var diffs = mm.new_(boolean[].class, dstTypes.length);
             for (int i=0; i<dstTypes.length; i++) {
                 Label skip = mm.label();
-                oldMaker.diffValueCheck(skip, i << 1, (i << 1) + 1);
-                diffs.aset(i, true);
-                skip.here();
+                if (oldMaker.diffValueCheck(skip, i << 1, (i << 1) + 1)) {
+                    diffs.aset(i, true);
+                    skip.here();
+                }
             }
 
             var oldKvPairs = mm.new_(byte[][].class, dstTypes.length << 1);
