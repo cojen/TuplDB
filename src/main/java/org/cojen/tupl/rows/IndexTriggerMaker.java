@@ -598,10 +598,10 @@ public class IndexTriggerMaker<R> {
             (null, variant, Transaction.class, Object.class,
              byte[].class, byte[].class, byte[].class).public_();
 
-        boolean isUpdate = variant == "update";
+        boolean isPartial = variant == "update";
 
         var txnVar = mm.param(0);
-        var rowVar = mm.param(1).cast(mRowClass);
+        var rowVar = mm.param(1);
         var keyVar = mm.param(2);
         var oldValueVar = mm.param(3);
         var newValueVar = mm.param(4);
@@ -610,9 +610,9 @@ public class IndexTriggerMaker<R> {
         for (String colName : mPrimaryGen.info.keyColumns.keySet()) {
             available.put(colName, TransformMaker.Availability.ALWAYS);
         }
+        var avail = isPartial ? TransformMaker.Availability.CONDITIONAL
+            : TransformMaker.Availability.ALWAYS;
         for (String colName : mPrimaryGen.info.valueColumns.keySet()) {
-            var avail = isUpdate
-                ? TransformMaker.Availability.CONDITIONAL : TransformMaker.Availability.ALWAYS;
             available.put(colName, avail);
         }
 
@@ -624,15 +624,16 @@ public class IndexTriggerMaker<R> {
             tm.addValueTarget(secondaryInfo, 0, false);
         }
 
-        TransformMaker otm = tm.beginValueDiff
-            (mm, rowVar, keyVar, newValueVar, -1, oldValueVar, isUpdate);
-
-        if (otm == null) {
-            // No conditionals, so the update method is same as the store method.
-            // TODO: This causes an unnecessary cast of rowVar to be generated.
-            mm.invoke("store", txnVar, rowVar, keyVar, oldValueVar, newValueVar);
+        if (tm.onlyNeedsKeys()) {
+            // If the targets only depend on the primary keys, then any differences in the
+            // values are irrelevant.
+            mm.return_();
             return;
         }
+
+        rowVar = rowVar.cast(mRowClass);
+
+        TransformMaker otm = tm.beginValueDiff(mm, rowVar, keyVar, newValueVar, -1, oldValueVar);
 
         for (int i=0; i<mSecondaryInfos.length; i++) {
             Label modified = mm.label();
@@ -650,7 +651,7 @@ public class IndexTriggerMaker<R> {
                 closerVar = null;
             } else {
                 var lockVar = mm.field("lock" + i);
-                if (!isUpdate) {
+                if (!isPartial) {
                     closerVar = lockVar.invoke("openAcquire", txnVar, rowVar);
                 } else {
                     // Row might be partially specified, so use the variant that can examine

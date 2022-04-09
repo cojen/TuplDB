@@ -302,7 +302,7 @@ public class TransformMakerTest {
         if (!diff) {
             tm.begin(mm, rowVar, keyVar, valueVar, -1);
         } else {
-            oldMaker = tm.beginValueDiff(mm, rowVar, keyVar, valueVar, -1, mm.param(3), false);
+            oldMaker = tm.beginValueDiff(mm, rowVar, keyVar, valueVar, -1, mm.param(3));
         }
 
         var kvPairs = mm.new_(byte[][].class, dstTypes.length << 1);
