@@ -69,6 +69,8 @@ import org.cojen.tupl.diag.QueryPlan;
  * <p>Scans over the rows of the table can be reduced by a filter, described by this syntax:
  *
  * <blockquote><pre>{@code
+ * Filter       = RowFilter
+ *              | Projection [ ':' RowFilter ]
  * RowFilter    = AndFilter { "||" AndFilter }
  * AndFilter    = EntityFilter { "&&" EntityFilter }
  * EntityFilter = ColumnFilter | ParenFilter
@@ -76,6 +78,8 @@ import org.cojen.tupl.diag.QueryPlan;
  * ColumnFilter = ColumnName RelOp ( ArgRef | ColumnName )
  *              | ColumnName "in" ArgRef
  * RelOp        = "==" | "!=" | ">=" | "<" | "<=" | ">"
+ * Projection   = [ "~" ] "{" Columns "}"
+ * Columns      = [ ColumnName { "," ColumnName } ]
  * ColumnName   = string
  * ArgRef       = "?" [ uint ]
  * }</pre></blockquote>
