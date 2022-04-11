@@ -104,7 +104,8 @@ class AutoCommitRowUpdater<R> extends BasicRowUpdater<R> {
         Cursor c = mCursor;
         byte[] oldValue = c.value();
         if (oldValue != null) {
-            trigger.deleteP(c.link(), row, c.key(), oldValue);
+            // Don't pass the row in case the key columns were modified.
+            trigger.delete(c.link(), c.key(), oldValue);
             c.commit(null);
         }
     }

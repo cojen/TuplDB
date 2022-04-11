@@ -183,6 +183,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
                     if (mode != Trigger.DISABLED) {
                         byte[] oldValue = c.value();
                         if (oldValue != null) {
+                            // Don't pass the row because the key columns were modified.
                             trigger.delete(txn, c.key(), oldValue);
                         }
                         trigger.insertP(txn, row, key, value);
@@ -356,7 +357,8 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
         try {
             byte[] oldValue = c.value();
             if (oldValue != null) {
-                trigger.deleteP(txn, row, c.key(), oldValue);
+                // Don't pass the row in case the key columns were modified.
+                trigger.delete(txn, c.key(), oldValue);
                 c.commit(null);
             }
         } finally {

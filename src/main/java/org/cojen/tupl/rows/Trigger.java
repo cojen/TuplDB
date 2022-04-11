@@ -113,18 +113,6 @@ public class Trigger<R> extends WideLatch {
     }
 
     /**
-     * Variant which supports partial rows.
-     *
-     * @param txn never null, although can be BOGUS
-     * @param row never null
-     * @param key never null
-     * @param oldValue never null
-     */
-    public void deleteP(Transaction txn, R row, byte[] key, byte[] oldValue) throws IOException {
-        throw new UnsupportedOperationException();
-    }
-
-    /**
      * Variant which is called when no row object is available.
      */
     public void delete(Transaction txn, byte[] key, byte[] oldValue) throws IOException {

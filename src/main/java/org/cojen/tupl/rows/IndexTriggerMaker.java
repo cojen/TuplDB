@@ -255,9 +255,8 @@ public class IndexTriggerMaker<R> {
         }
 
         {
-            addDeleteMethod("delete", rs, primaryIndexId, true, hasBackfills);
-            addDeleteMethod("deleteP", rs, primaryIndexId, true, hasBackfills);
-            addDeleteMethod("delete", rs, primaryIndexId, false, hasBackfills);
+            addDeleteMethod(rs, primaryIndexId, true, hasBackfills);
+            addDeleteMethod(rs, primaryIndexId, false, hasBackfills);
         }
 
         {
@@ -383,11 +382,8 @@ public class IndexTriggerMaker<R> {
         return tm.requiresRow();
     }
 
-    /**
-     * @param variant "delete" or "deleteP"
-     */
     @SuppressWarnings("unchecked")
-    private void addDeleteMethod(String variant, RowStore rs, long primaryIndexId,
+    private void addDeleteMethod(RowStore rs, long primaryIndexId,
                                  boolean hasRow, boolean hasBackfills)
     {
         Object[] params;
@@ -397,7 +393,7 @@ public class IndexTriggerMaker<R> {
             params = new Object[] {Transaction.class, byte[].class, byte[].class};
         }
 
-        MethodMaker mm = mClassMaker.addMethod(null, variant, params).public_();
+        MethodMaker mm = mClassMaker.addMethod(null, "delete", params).public_();
 
         // The deletion of secondary indexes typically requires that the old value be
         // decoded. Given that the schema version can vary, don't fully implement this method
@@ -438,9 +434,9 @@ public class IndexTriggerMaker<R> {
              mSecondaryDescriptors, secondaryIndexIds, backfillRefs);
 
         if (hasRow) {
-            indy.invoke(null, variant, null, schemaVersion, txnVar, rowVar, keyVar, oldValueVar);
+            indy.invoke(null, "delete", null, schemaVersion, txnVar, rowVar, keyVar, oldValueVar);
         } else {
-            indy.invoke(null, variant, null, schemaVersion, txnVar, keyVar, oldValueVar);
+            indy.invoke(null, "delete", null, schemaVersion, txnVar, keyVar, oldValueVar);
         }
     }
 
@@ -453,7 +449,7 @@ public class IndexTriggerMaker<R> {
      *     void (int schemaVersion, Transaction txn, byte[] key, byte[] oldValueVar)
      */
     @SuppressWarnings("unchecked")
-    public static SwitchCallSite indyDelete(MethodHandles.Lookup lookup, String variant,
+    public static SwitchCallSite indyDelete(MethodHandles.Lookup lookup, String name,
                                             MethodType mt, WeakReference<RowStore> storeRef,
                                             Class<?> rowType, long indexId,
                                             byte[][] secondaryDescs, long[] secondaryIndexIds,
@@ -472,7 +468,7 @@ public class IndexTriggerMaker<R> {
 
             RowStore store = storeRef.get();
             if (store == null) {
-                var mm = MethodMaker.begin(lookup, variant, mtx);
+                var mm = MethodMaker.begin(lookup, "delete", mtx);
                 mm.new_(DatabaseException.class, "Closed").throw_();
                 return mm.finish();
             }
@@ -492,7 +488,7 @@ public class IndexTriggerMaker<R> {
                 }
 
             } catch (Exception e) {
-                var mm = MethodMaker.begin(lookup, variant, mtx);
+                var mm = MethodMaker.begin(lookup, "delete", mtx);
                 return new ExceptionCallSite.Failed(mtx, mm, e);
             }
 
@@ -509,13 +505,13 @@ public class IndexTriggerMaker<R> {
                 }
             }
 
-            return makeDeleteMethod(variant, mtx, schemaVersion, rowType, rowClass, primaryInfo,
+            return makeDeleteMethod(mtx, schemaVersion, rowType, rowClass, primaryInfo,
                                     secondaryInfos, secondaryIndexes, backfills);
         });
     }
 
     private static MethodHandle makeDeleteMethod
-        (String variant, MethodType mt, int schemaVersion,
+        (MethodType mt, int schemaVersion,
          Class<?> rowType, Class rowClass, RowInfo primaryInfo,
          RowInfo[] secondaryInfos, Index[] secondaryIndexes,
          IndexBackfill[] backfills)
@@ -534,7 +530,7 @@ public class IndexTriggerMaker<R> {
         MethodMaker ctorMaker = cm.addConstructor(ctorMethodType);
         ctorMaker.invokeSuperConstructor();
 
-        MethodMaker mm = cm.addMethod(variant, mt);
+        MethodMaker mm = cm.addMethod("delete", mt);
 
         Variable txnVar = mm.param(0), rowVar, keyVar, oldValueVar;
         Map<String, TransformMaker.Availability> available;
@@ -544,10 +540,8 @@ public class IndexTriggerMaker<R> {
             keyVar = mm.param(2);
             oldValueVar = mm.param(3);
             available = new HashMap<>();
-            var avail = variant == "deleteP" ? TransformMaker.Availability.CONDITIONAL
-                : TransformMaker.Availability.ALWAYS;
             for (String colName : primaryInfo.keyColumns.keySet()) {
-                available.put(colName, avail);
+                available.put(colName, TransformMaker.Availability.ALWAYS);
             }
         } else {
             rowVar = null;
@@ -614,7 +608,7 @@ public class IndexTriggerMaker<R> {
             } else {
                 deleter = ctor.invoke(secondaryIndexes, backfills);
             }
-            return lookup.findVirtual(clazz, variant, mt).bindTo(deleter);
+            return lookup.findVirtual(clazz, "delete", mt).bindTo(deleter);
         } catch (Throwable e) {
             throw rethrow(e);
         }

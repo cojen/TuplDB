@@ -420,12 +420,10 @@ public class TriggerTest {
         Index ix = mDb.openIndex(TestRow.class.getName());
         assertEquals(4, ix.count(null, null));
 
-        assertTrue(trigger.partial);
+        assertFalse(trigger.partial);
         assertNotNull(trigger.oldValue);
         assertNull(trigger.newValue);
-        assertEquals(3, trigger.row.id());
-        assertEquals("v3", trigger.row.value());
-        assertEquals("nothing", trigger.row.extra());
+        assertNull(trigger.row);
 
         TestRow row = mTable.newRow();
         row.id(3);
@@ -440,12 +438,10 @@ public class TriggerTest {
 
         assertEquals(3, ix.count(null, null));
 
-        assertTrue(trigger.partial);
+        assertFalse(trigger.partial);
         assertNotNull(trigger.oldValue);
         assertNull(trigger.newValue);
-        assertEquals(2, trigger.row.id());
-        assertEquals("v2", trigger.row.value());
-        assertEquals("nothing", trigger.row.extra());
+        assertNull(trigger.row);
 
         row = mTable.newRow();
         row.id(2);
@@ -625,15 +621,10 @@ public class TriggerTest {
         }
 
         @Override
-        public void deleteP(Transaction txn, TestRow row, byte[] key, byte[] oldValue) {
-            store(txn, row, key, oldValue, null);
-            partial = true;
-        }
-
-        @Override
         public void delete(Transaction txn, byte[] key, byte[] oldValue) {
             assertNotNull(txn);
             assertNotNull(key);
+            this.row = null;
             this.oldValue = oldValue;
             this.newValue = newValue;
             partial = false;
