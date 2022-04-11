@@ -691,7 +691,9 @@ class TransformMaker<R> {
                         offsetVar.inc(stash.mLengthVar);
                     }
                 } else {
-                    var columnVar = source.accessColumn(this);
+                    // Can bypass accessColumn and its mColumnAccessCheck because accessColumn
+                    // was called earlier to determine the additional runtime length.
+                    var columnVar = source.mColumnVar;
                     if ((stash = source.shouldStash(codec, target)) != null) {
                         // Encode the first time and stash for later.
                         stash.mEncodedVar = encodedVar;
