@@ -369,6 +369,15 @@ public class IndexTriggerMaker<R> {
                 pass.here();
             }
 
+            if (isPartial) {
+                var attachment = txnVar.invoke("attachment");
+                Label noAttachment = mm.label();
+                attachment.instanceOf(TriggerIndexAccessor.class).ifFalse(noAttachment);
+                attachment.cast(TriggerIndexAccessor.class)
+                    .invoke("stored", ixField, secondaryKeyVar, secondaryValueVar);
+                noAttachment.here();
+            }
+
             if (mBackfills[i] != null) {
                 mm.field("backfill" + i).invoke
                     ("inserted", txnVar, secondaryKeyVar, secondaryValueVar);
@@ -586,7 +595,20 @@ public class IndexTriggerMaker<R> {
 
             Label opStart = mm.label().here();
 
-            mm.field(ixFieldName).invoke("store", txnVar, secondaryKeyVar, null);
+            var ixField = mm.field(ixFieldName);
+            if (rowVar != null) {
+                ixField.invoke("store", txnVar, secondaryKeyVar, null);
+            } else {
+                var attachment = txnVar.invoke("attachment");
+                Label noAttachment = mm.label();
+                attachment.instanceOf(TriggerIndexAccessor.class).ifFalse(noAttachment);
+                Label cont = mm.label();
+                attachment.cast(TriggerIndexAccessor.class)
+                    .invoke("delete", ixField, secondaryKeyVar).ifTrue(cont);
+                noAttachment.here();
+                ixField.invoke("store", txnVar, secondaryKeyVar, null);
+                cont.here();
+            }
 
             if (backfillFieldName != null) {
                 mm.field(backfillFieldName).invoke("deleted", txnVar, secondaryKeyVar);
@@ -710,6 +732,15 @@ public class IndexTriggerMaker<R> {
                 result.ifTrue(pass);
                 mm.new_(UniqueConstraintException.class, "Alternate key").throw_();
                 pass.here();
+            }
+
+            if (isPartial) {
+                var attachment = txnVar.invoke("attachment");
+                Label noAttachment = mm.label();
+                attachment.instanceOf(TriggerIndexAccessor.class).ifFalse(noAttachment);
+                attachment.cast(TriggerIndexAccessor.class)
+                    .invoke("stored", ixField, secondaryKeyVar, secondaryValueVar);
+                noAttachment.here();
             }
 
             if (mBackfills[i] != null) {

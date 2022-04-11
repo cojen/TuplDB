@@ -270,7 +270,6 @@ public class TableMaker {
 
         addMarkAllCleanMethod();
         addToRowMethod();
-        addToKeyMethod();
         addRowStoreRefMethod();
         addUnfilteredMethod();
 
@@ -1953,11 +1952,6 @@ public class TableMaker {
 
         mm = mClassMaker.addMethod(Object.class, "toRow", byte[].class).protected_().bridge();
         mm.return_(mm.this_().invoke(mRowType, "toRow", null, mm.param(0)));
-    }
-
-    private void addToKeyMethod() {
-        MethodMaker mm = mClassMaker.addMethod(byte[].class, "toKey", Object.class).protected_();
-        mm.return_(mm.invoke("encodePrimaryKey", mm.param(0).cast(mRowClass)));
     }
 
     private void addRowStoreRefMethod() {

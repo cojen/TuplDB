@@ -219,13 +219,27 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
     }
 
     // Called by JoinedRowUpdater.
-    void joinedUpdateCurrent() throws IOException {
+    final void joinedUpdateCurrent() throws IOException {
         try {
             R current = mRow;
             if (current == null) {
                 throw new IllegalStateException("No current row");
             }
-            doJoinedUpdateCurrent(current);
+
+            Cursor c = mCursor;
+
+            byte[] key, value;
+            {
+                RowDecoderEncoder<R> encoder = mDecoder;
+                key = encoder.updateKey(current, c.key());
+                value = encoder.updateValue(current, c.value());
+            }
+
+            if (Arrays.equals(key, c.key())) {
+                doUpdateAsStore(c, value);
+            } else {
+                doUpdateAsDeleteInsert(current, c, key, value);
+            }
         } catch (UnpositionedCursorException e) {
             finished();
             throw new IllegalStateException("No current row");
@@ -236,23 +250,6 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
         }
 
         unlocked(); // prevent subclass from attempting to release the lock
-    }
-
-    private void doJoinedUpdateCurrent(R row) throws IOException {
-        Cursor c = mCursor;
-
-        byte[] key, value;
-        {
-            RowDecoderEncoder<R> encoder = mDecoder;
-            key = encoder.updateKey(row, c.key());
-            value = encoder.updateValue(row, c.value());
-        }
-
-        if (Arrays.equals(key, c.key())) {
-            doUpdateAsStore(c, value);
-        } else {
-            doUpdateAsDeleteInsert(row, c, key, value);
-        }
     }
 
     @Override

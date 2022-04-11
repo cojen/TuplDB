@@ -19,9 +19,11 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 import org.cojen.tupl.Cursor;
+import org.cojen.tupl.Index;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.RowUpdater;
 import org.cojen.tupl.Transaction;
@@ -31,8 +33,10 @@ import org.cojen.tupl.Transaction;
  *
  * @author Brian S O'Neill
  */
-class JoinedRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
+final class JoinedRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
     protected final BasicRowUpdater<R> mPrimaryUpdater;
+
+    private final TriggerIndexAccessor mAccessor;
 
     private Cursor mPrimaryCursor;
 
@@ -41,6 +45,21 @@ class JoinedRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
     {
         super(table, controller);
         mPrimaryUpdater = primaryUpdater;
+
+        // Although TriggerIndexAccessor could be an interface, and then JoinedRowUpdater could
+        // simply implement it. This can be a problem if someone decided to attach the
+        // RowUpdater to a transaction. This composition approach is safer.
+        mAccessor = new TriggerIndexAccessor() {
+            @Override
+            public void stored(Index ix, byte[] key, byte[] value) throws IOException {
+                triggerStored(ix, key, value);
+            }
+
+            @Override
+            public boolean delete(Index ix, byte[] key) throws IOException {
+                return triggerDelete(ix, key);
+            }
+        };
     }
 
     @Override
@@ -96,35 +115,71 @@ class JoinedRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
     }
 
     private void updateCurrent() throws IOException {
-        final byte[] originalKey = mCursor.key();
-
-        mPrimaryUpdater.mRow = mRow;
-        mPrimaryUpdater.joinedUpdateCurrent();
-
-        // FIXME: predicate test doesn't work against partial rows
-        if (!mCursor.exists() && mController.predicate().test(mRow)) {
-            // The secondary key changed and it's still in bounds.
-            // FIXME: With partial row, this won't work. This is the only place that calls toKey.
-            byte[] newKey = mTable.toKey(mRow);
-            if (mCursor.comparator().compare(originalKey, newKey) < 0) {
-                // The new key is higher, and so it must be added to the remembered set.
-                mPrimaryUpdater.addKeyToSkip(newKey);
-            }
+        Transaction txn = txn();
+        Object old = attachAccessor(txn);
+        try {
+            mPrimaryUpdater.mRow = mRow;
+            mPrimaryUpdater.joinedUpdateCurrent();
+        } finally {
+            txn.attach(old);
         }
     }
 
     @Override
     public final R delete() throws IOException {
-        mPrimaryUpdater.mRow = mRow;
-        mPrimaryUpdater.deleteCurrent();
+        deleteCurrent();
         return doStep(null);
     }
 
     @Override
     public final R delete(R row) throws IOException {
         Objects.requireNonNull(row);
-        mPrimaryUpdater.mRow = mRow;
-        mPrimaryUpdater.deleteCurrent();
+        deleteCurrent();
         return doStep(row);
+    }
+
+    private void deleteCurrent() throws IOException {
+        Transaction txn = txn();
+        Object old = attachAccessor(txn);
+        try {
+            mPrimaryUpdater.mRow = mRow;
+            mPrimaryUpdater.deleteCurrent();
+        } finally {
+            txn.attach(old);
+        }
+    }
+
+    private Transaction txn() {
+        return mCursor.link();
+    }
+
+    private Object attachAccessor(Transaction txn) {
+        Object old = txn.attachment();
+        txn.attach(mAccessor);
+        return old;
+    }
+
+    private void triggerStored(Index ix, byte[] key, byte[] value) throws IOException {
+        if (mTable.mSource == ix) {
+            if (mController.predicate().testP(mRow, key, value)) {
+                // The secondary key changed and it's still in bounds.
+                if (mCursor.compareKeyTo(key) < 0) {
+                    // The new key is higher, and so it must be added to the remembered set.
+                    mPrimaryUpdater.addKeyToSkip(key);
+                }
+            }
+        }
+    }
+
+    private boolean triggerDelete(Index ix, byte[] key) throws IOException {
+        if (mTable.mSource == ix) {
+            // Try to use the existing cursor to avoid an extra search step.
+            Cursor c = mCursor;
+            if (Arrays.equals(c.key(), key)) {
+                c.delete();
+                return true;
+            }
+        }
+        return false;
     }
 }

@@ -663,11 +663,6 @@ public abstract class AbstractTable<R> implements Table<R> {
      */
     protected abstract R toRow(byte[] key);
 
-    /**
-     * Encodes a key from a row.
-     */
-    protected abstract byte[] toKey(R row);
-
     protected abstract WeakReference<RowStore> rowStoreRef();
 
     /**
