@@ -42,7 +42,7 @@ import org.cojen.tupl.filter.Visitor;
  */
 class DecodeVisitor extends Visitor {
     private final MethodMaker mMaker;
-    private Variable mKeyVar, mValueVar, mCursorVar;
+    private Variable mRowVar, mKeyVar, mValueVar, mCursorVar;
     private final int mValueOffset;
     private final RowGen mRowGen;
     private final Variable mPredicateVar;
@@ -70,11 +70,10 @@ class DecodeVisitor extends Visitor {
      * order for the stop to actually work.
      *
      *     boolean test(byte[] key, byte[] value, ...)
-     *     boolean test(R row, byte[] value, ...)
+     *     boolean test(R row, byte[] key, byte[] value, ...)
      *
-     * The predicate form which accepts a row only examines primary key columns from it.
-     *
-     * Note that other forms are supported, but the only the common forms are listed above.
+     * The predicate form which accepts a row only examines dirty columns from it.
+     *    NOTE: Row paramater isn't currently suported.
      *
      * @param mm signature: see above
      * @param valueOffset offset to skip past the schema version
@@ -98,30 +97,42 @@ class DecodeVisitor extends Visitor {
     }
 
     /**
-     * Initialize the key, value, and cursor variables.
+     * Initialize the row, key, value, and cursor variables.
      */
     private void initVars(boolean requireValue) {
         if (mKeyVar != null) {
             return;
         }
 
-        mKeyVar = mMaker.param(0);
+        int offset = 0;
+        while (true) {
+            mKeyVar = mMaker.param(offset);
+            Class<?> keyType = mKeyVar.classType(); 
 
-        if (mKeyVar.classType() == Cursor.class) {
-            mCursorVar = mKeyVar;
-            mKeyVar = mCursorVar.invoke("key");
-            if (requireValue) {
-                mValueVar = mCursorVar.invoke("value");
-            }
-        } else {
-            mValueVar = mMaker.param(1);
-            if (mValueVar.classType() == Cursor.class) {
-                mCursorVar = mValueVar;
+            if (keyType == Cursor.class) {
+                mCursorVar = mKeyVar;
+                mKeyVar = mCursorVar.invoke("key");
                 if (requireValue) {
                     mValueVar = mCursorVar.invoke("value");
-                } else {
-                    mValueVar = null;
                 }
+                break;
+            } else if (keyType == byte[].class) {
+                mValueVar = mMaker.param(offset + 1);
+                if (mValueVar.classType() == Cursor.class) {
+                    mCursorVar = mValueVar;
+                    if (requireValue) {
+                        mValueVar = mCursorVar.invoke("value");
+                    } else {
+                        mValueVar = null;
+                    }
+                }
+                break;
+            } else {
+                if (true) {
+                    throw new UnsupportedOperationException();
+                }
+                mRowVar = mKeyVar;
+                offset++;
             }
         }
     }
@@ -338,21 +349,16 @@ class DecodeVisitor extends Visitor {
         doCompare:
         if (colNum != null) {
             ColumnCodec codec = codecFor(colNum);
-            Object dc = decodeColumn(colNum, colInfo, true);
-            Variable decodedVar;
-            if (dc instanceof LocatedColumn located) {
-                Object decoded = located.mDecodedQuick;
-                if (decoded != null) {
-                    codec.filterQuickCompare(colInfo, located.mSrcVar, located.mOffsetVar, op,
-                                             decoded, mPredicateVar, argNum, mPass, mFail);
-                    break doCompare;
-                }
-                decodedVar = located.mDecodedVar;
-            } else {
-                decodedVar = (Variable) dc;
+            LocatedColumn located = decodeColumn(colNum, colInfo, true);
+            Object decoded = located.mDecodedQuick;
+            if (decoded != null) {
+                codec.filterQuickCompare(colInfo, located.mSrcVar, located.mOffsetVar, op,
+                                         decoded, mPredicateVar, argNum, mPass, mFail);
+                break doCompare;
             }
+            var columnVar = located.mDecodedVar;
             var argField = mPredicateVar.field(ColumnCodec.argFieldName(colInfo, argNum));
-            CompareUtils.compare(mMaker, colInfo, decodedVar, colInfo, argField, op, mPass, mFail);
+            CompareUtils.compare(mMaker, colInfo, columnVar, colInfo, argField, op, mPass, mFail);
         } else {
             // Column doesn't exist in the row, so compare against a default. This code
             // assumes that value codecs always define an arg field which preserves the
@@ -411,12 +417,7 @@ class DecodeVisitor extends Visitor {
 
     private Variable decodeColumnOrDefault(Integer colNum, ColumnInfo colInfo) {
         if (colNum != null) {
-            Object dc = decodeColumn(colNum, colInfo, false);
-            if (dc instanceof LocatedColumn located) {
-                return located.mDecodedVar;
-            } else {
-                return (Variable) dc;
-            }
+            return decodeColumn(colNum, colInfo, false).mDecodedVar;
         } else {
             var colVar = mMaker.var(colInfo.type);
             Converter.setDefault(mMaker, colInfo, colVar);
@@ -438,9 +439,8 @@ class DecodeVisitor extends Visitor {
      *
      * @param colInfo current definition for column
      * @param quick allow quick decode
-     * @return a Variable or LocatedColumn
      */
-    private Object decodeColumn(int colNum, ColumnInfo colInfo, boolean quick) {
+    private LocatedColumn decodeColumn(int colNum, ColumnInfo colInfo, boolean quick) {
         Variable srcVar;
         LocatedColumn[] located;
         ColumnCodec[] codecs = mKeyCodecs;
@@ -471,11 +471,6 @@ class DecodeVisitor extends Visitor {
             }
             located[0] = new LocatedColumn();
             located[0].located(srcVar, mMaker.var(int.class).set(startOffset));
-        }
-
-        if (srcVar.classType() != byte[].class) {
-            // Access the column from a row object.
-            return srcVar.field(colInfo.name).get();
         }
 
         if (colNum < highestNum) {
@@ -533,9 +528,9 @@ class DecodeVisitor extends Visitor {
 
             if (next != null && !next.isLocated()) {
                 // The decode call incremented offsetVar as a side-effect. Note that if the
-                // column is already located, then newly discovered offset will match. It can
-                // simply be replaced, but by discarding it, the compiler can discard some of
-                // the redundant steps which computed the offset again.
+                // column is already located, then the newly discovered offset will match. It
+                // could simply be replaced, but by discarding it, the compiler can discard
+                // some of the redundant steps which had recomputed the offset.
                 next.located(srcVar, offsetVar);
             }
         }

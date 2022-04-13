@@ -33,7 +33,8 @@ public interface RowPredicate<R> extends Predicate<R> {
     public boolean test(R row);
 
     /**
-     * Test against a partially filled in row. Additional columns are decoded as necessary.
+     * Test against a partially filled in row, only considering dirty columns. Additional
+     * columns are decoded as necessary from the given key and value.
      */
     public default boolean testP(R row, byte[] key, byte[] value) {
         return test(key, value);
