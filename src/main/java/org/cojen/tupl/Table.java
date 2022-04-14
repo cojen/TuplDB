@@ -107,7 +107,7 @@ public interface Table<R> {
     /**
      * Resets the state of the given row such that all columns are unset.
      */
-    public void resetRow(R row);
+    public void unsetRow(R row);
 
     /**
      * Returns a new scanner for all rows of this table.
@@ -336,25 +336,15 @@ public interface Table<R> {
      */
     public Table<R> viewUnjoined();
 
+    /**
+     * Returns a view of this table which scans in descending order. If this table already
+     * scans in descending order, it's returned as-is.
+     */
+    //public Table<R> viewDescending();
+
     //public Table<R> viewOrderBy(String... columns);
 
-    // FIXME: A filtered view is too restrictive. It prevents RowUpdater from making changes to
-    // rows when the change is part of the filter. Add this feature later. Initially support
-    // passing a filter and args to the newScanner and newUpdater methods. Evolve the filter
-    // specification such that it becomes a full query specification with select, order-by,
-    // index hints, etc. However, it's the parameterized nature of the filter that makes it
-    // special. How about thinking in terms of composability. It makes little sense to add
-    // more view layers after performing projection, for example.
     //public Table<R> viewFiltered(String filter, Object... args);
-
-    // FIXME: viewOf? viewSelection? viewProjection? viewOnly? viewWith? viewWithout? viewColumns?
-    //        viewOmit? viewSelectNot? viewRestrict? (for "true" views; cannot use removed columns
-    //                                                for filtering, although restriction can also
-    //                                                be imposed when calling viewFiltered)
-    // Projection.
-    //public Table<R> viewSelect(String... columns);
-
-    //public Table<R> viewReverse();
 
     //public Table<R> viewUnmodifiable();
 

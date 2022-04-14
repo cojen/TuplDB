@@ -78,9 +78,9 @@ class TableBasicsMaker {
             mm.return_(mm.this_().invoke(rowType, "cloneRow", null, mm.param(0)));
         }
 
-        // Add the reset method.
+        // Add the unsetRow method.
         {
-            MethodMaker mm = cm.addMethod(null, "resetRow", Object.class).public_();
+            MethodMaker mm = cm.addMethod(null, "unsetRow", Object.class).public_();
             Variable rowVar = mm.param(0).cast(rowClass);
 
             // Clear the column fields that refer to objects.

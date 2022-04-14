@@ -156,7 +156,7 @@ public class FuzzTest {
         assertEquals(row.hashCode(), clone.hashCode());
         assertEquals(row.toString(), clone.toString());
         assertEquals(rowType.getName() + "{}", row.toString());
-        table.resetRow(clone);
+        table.unsetRow(clone);
         assertEquals(row, clone);
 
         try {

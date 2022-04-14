@@ -71,7 +71,7 @@ public class RowCrudTest {
 
         TestRow row = mTable.newRow();
         assertTrue(row.toString().endsWith("TestRow{}"));
-        mTable.resetRow(row);
+        mTable.unsetRow(row);
         assertTrue(row.toString().endsWith("TestRow{}"));
 
         try {
@@ -175,7 +175,7 @@ public class RowCrudTest {
         assertTrue(mTable.update(null, row2));
         assertTrue(row2.toString().endsWith("TestRow{id=1, num1=-555, str1=hello, str2=world}"));
 
-        mTable.resetRow(row2);
+        mTable.unsetRow(row2);
         row2.id(1);
         row2.num1(999);
         assertTrue(mTable.update(null, row2));
