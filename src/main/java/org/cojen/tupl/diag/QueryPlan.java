@@ -345,7 +345,7 @@ public abstract sealed class QueryPlan implements Serializable {
             a.append(in1).append(title).append('\n');
             String subIn2 = null;
             for (int i=0; i<sources.length; i++) {
-                String subIn1 = in2 + (i + 1) + ": ";
+                String subIn1 = "- ";
                 if (subIn2 == null || subIn2.length() < subIn1.length()) {
                     subIn2 = " ".repeat(subIn1.length());
                 }
