@@ -27,6 +27,10 @@ import java.util.stream.Stream;
 
 import org.cojen.tupl.diag.QueryPlan;
 
+import org.cojen.tupl.io.Utils;
+
+import org.cojen.tupl.rows.RowSpliterator;
+
 /**
  * Defines a relational collection of persistent rows. A row is defined by an interface
  * consisting of accessor/mutator methods corresponding to each column:
@@ -172,7 +176,13 @@ public interface Table<R> {
      * @return a new stream positioned at the first row in the table
      * @throws IllegalStateException if transaction belongs to another database instance
      */
-    public Stream<R> newStream(Transaction txn);
+    public default Stream<R> newStream(Transaction txn) {
+        try {
+            return RowSpliterator.newStream(newRowScanner(txn));
+        } catch (IOException e) {
+            throw Utils.rethrow(e);
+        }
+    }
 
     /**
      * Returns a new stream for a subset of rows of this table, as specified by the filter
@@ -184,7 +194,13 @@ public interface Table<R> {
      * @return a new stream positioned at the first row in the table accepted by the filter
      * @throws IllegalStateException if transaction belongs to another database instance
      */
-    public Stream<R> newStream(Transaction txn, String filter, Object... args);
+    public default Stream<R> newStream(Transaction txn, String filter, Object... args) {
+        try {
+            return RowSpliterator.newStream(newRowScanner(txn, filter, args));
+        } catch (IOException e) {
+            throw Utils.rethrow(e);
+        }
+    }
 
     /**
      * Returns a new transaction which is compatible with this table. If the provided durability

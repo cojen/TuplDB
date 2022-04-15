@@ -305,24 +305,6 @@ public abstract class AbstractTable<R> implements Table<R> {
     }
 
     @Override
-    public final Stream<R> newStream(Transaction txn) {
-        try {
-            return RowSpliterator.newStream(newRowScanner(txn));
-        } catch (IOException e) {
-            throw Utils.rethrow(e);
-        }
-    }
-
-    @Override
-    public final Stream<R> newStream(Transaction txn, String filter, Object... args) {
-        try {
-            return RowSpliterator.newStream(newRowScanner(txn, filter, args));
-        } catch (IOException e) {
-            throw Utils.rethrow(e);
-        }
-    }
-
-    @Override
     public final String toString() {
         var b = new StringBuilder();
         RowUtils.appendMiniString(b, this);
