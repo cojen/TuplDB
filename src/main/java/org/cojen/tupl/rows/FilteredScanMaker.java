@@ -407,7 +407,7 @@ public class FilteredScanMaker<R> {
      */
     private void addFactoryMethod(Class which) {
         MethodMaker mm = mFilterMaker.addMethod
-            (ScanController.class, "newScanController", which).public_();
+            (ScanController.class, "scanController", which).public_();
 
         Variable predicateVar;
         if (which == Object[].class) {

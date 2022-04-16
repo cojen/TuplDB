@@ -54,16 +54,16 @@ final class MultiScanControllerFactory<R> implements ScanControllerFactory<R> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public ScanController<R> newScanController(Object... args) {
+    public ScanController<R> scanController(Object... args) {
         var ranges = mRanges;
         var controllers = new ScanController[ranges.length];
 
-        ScanController<R> first = ranges[0].newScanController(args);
+        ScanController<R> first = ranges[0].scanController(args);
         RowPredicate predicate = first.predicate();
         controllers[0] = first;
 
         for (int i=1; i<controllers.length; i++) {
-            controllers[i] = ranges[i].newScanController(predicate);
+            controllers[i] = ranges[i].scanController(predicate);
         }
 
         Arrays.sort(controllers, ScanController::compareLow);
@@ -73,12 +73,12 @@ final class MultiScanControllerFactory<R> implements ScanControllerFactory<R> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public ScanController<R> newScanController(RowPredicate predicate) {
+    public ScanController<R> scanController(RowPredicate predicate) {
         var ranges = mRanges;
         var controllers = new ScanController[ranges.length];
 
         for (int i=0; i<controllers.length; i++) {
-            controllers[i] = ranges[i].newScanController(predicate);
+            controllers[i] = ranges[i].scanController(predicate);
         }
 
         Arrays.sort(controllers, ScanController::compareLow);

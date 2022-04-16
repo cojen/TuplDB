@@ -66,7 +66,7 @@ import org.cojen.tupl.views.ViewUtils;
  *
  * @author Brian S O'Neill
  */
-public abstract class AbstractTable<R> implements Table<R> {
+public abstract class AbstractTable<R> implements Table<R>, ScanControllerFactory<R> {
     // Need a strong reference to this to prevent premature GC.
     final TableManager<R> mTableManager;
 
@@ -137,7 +137,7 @@ public abstract class AbstractTable<R> implements Table<R> {
     public final RowScanner<R> newRowScanner(Transaction txn, String filter, Object... args)
         throws IOException
     {
-        return newRowScanner(txn, scannerFilteredFactory(txn, filter).newScanController(args));
+        return newRowScanner(txn, scannerFilteredFactory(txn, filter).scanController(args));
     }
 
     private RowScanner<R> newRowScanner(Transaction txn, ScanController<R> controller)
@@ -200,7 +200,7 @@ public abstract class AbstractTable<R> implements Table<R> {
     public final RowUpdater<R> newRowUpdater(Transaction txn, String filter, Object... args)
         throws IOException
     {
-        return newRowUpdater(txn, updaterFilteredFactory(txn, filter).newScanController(args));
+        return newRowUpdater(txn, updaterFilteredFactory(txn, filter).scanController(args));
     }
 
     protected RowUpdater<R> newRowUpdater(Transaction txn, ScanController<R> controller)
@@ -404,10 +404,25 @@ public abstract class AbstractTable<R> implements Table<R> {
     @Override
     public QueryPlan queryPlan(Transaction txn, String filter, Object... args) {
         if (filter == null) {
-            return unfiltered().plan();
+            return plan();
         } else {
             return scannerFilteredFactory(txn, filter).plan(args);
         }
+    }
+
+    @Override // ScanControllerFactory
+    public final RowPredicate<R> predicate(Object... args) {
+        return RowPredicate.all();
+    }
+
+    @Override // ScanControllerFactory
+    public final ScanController<R> scanController(Object... args) {
+        return unfiltered();
+    }
+
+    @Override // ScanControllerFactory
+    public final ScanController<R> scanController(RowPredicate predicate) {
+        return unfiltered();
     }
 
     @SuppressWarnings("unchecked")
@@ -468,25 +483,7 @@ public abstract class AbstractTable<R> implements Table<R> {
             }
 
             if (rf instanceof TrueFilter && ff.projection() == null) {
-                SingleScanController<R> unfiltered = unfiltered();
-
-                factory = new ScanControllerFactory<>() {
-                    @Override
-                    public QueryPlan plan(Object... args) {
-                        return unfiltered.plan();
-                    }
-
-                    @Override
-                    public RowPredicate<R> predicate(Object... args) {
-                        return RowPredicate.all();
-                    }
-
-                    @Override
-                    public ScanController<R> newScanController(Object... args) {
-                        return unfiltered;
-                    }
-                };
-
+                factory = this;
                 break obtain;
             }
 

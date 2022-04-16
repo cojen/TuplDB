@@ -43,11 +43,6 @@ final class EmptyScanController extends SingleScanController implements ScanCont
     }
 
     @Override
-    public QueryPlan plan() {
-        return new QueryPlan.Empty();
-    }
-
-    @Override
     public QueryPlan plan(Object... args) {
         return new QueryPlan.Empty();
     }
@@ -67,7 +62,7 @@ final class EmptyScanController extends SingleScanController implements ScanCont
     }
 
     @Override
-    public ScanController newScanController(Object... args) {
+    public ScanController scanController(Object... args) {
         return THE;
     }
 

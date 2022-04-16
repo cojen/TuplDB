@@ -27,8 +27,6 @@ import org.cojen.tupl.View;
 
 import org.cojen.tupl.core.RowPredicate;
 
-import org.cojen.tupl.diag.QueryPlan;
-
 /**
  * 
  *
@@ -126,14 +124,5 @@ final class MultiScanController<R> implements ScanController<R> {
 
         mPosition = pos;
         mCurrent = current;
-    }
-
-    @Override
-    public QueryPlan plan() {
-        var plans = new QueryPlan[mControllers.length];
-        for (int i=0; i<plans.length; i++) {
-            plans[i] = mControllers[i].plan();
-        }
-        return new QueryPlan.RangeUnion(plans);
     }
 }

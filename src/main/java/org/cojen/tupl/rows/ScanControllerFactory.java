@@ -37,12 +37,12 @@ public interface ScanControllerFactory<R> {
     /**
      * Return a ScanController which constructs a RowPredicate from the given filter arguments.
      */
-    ScanController<R> newScanController(Object... args);
+    ScanController<R> scanController(Object... args);
 
     /**
      * Return a ScanController which references a RowPredicate as constructed by the first batch.
      */
-    default ScanController<R> newScanController(RowPredicate predicate) {
+    default ScanController<R> scanController(RowPredicate predicate) {
         throw new UnsupportedOperationException();
     }
 }

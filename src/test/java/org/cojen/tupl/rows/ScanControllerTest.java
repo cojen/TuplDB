@@ -143,11 +143,6 @@ public class ScanControllerTest {
         }
 
         @Override
-        public QueryPlan plan() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
         public Object decodeRow(Cursor c, LockResult result, Object row) {
             throw new UnsupportedOperationException();
         }

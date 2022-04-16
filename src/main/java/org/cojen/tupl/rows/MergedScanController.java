@@ -24,8 +24,6 @@ import java.util.Comparator;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.LockResult;
 
-import org.cojen.tupl.diag.QueryPlan;
-
 /**
  * 
  *
@@ -162,10 +160,5 @@ final class MergedScanController<R> extends SingleScanController<R> {
     @Override
     public Comparator<byte[]> comparator() {
         return mLow.comparator();
-    }
-
-    @Override
-    public QueryPlan plan() {
-        return new QueryPlan.RangeUnion(mLow.plan(), mHigh.plan());
     }
 }
