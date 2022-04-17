@@ -165,7 +165,7 @@ loadScripts(document, 'script');</script>
 <section class="method-summary" id="method-summary">
 <h2>Method Summary</h2>
 <div id="method-summary-table">
-<div class="table-tabs" role="tablist" aria-orientation="horizontal"><button id="method-summary-table-tab0" role="tab" aria-selected="true" aria-controls="method-summary-table.tabpanel" tabindex="0" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table', 3)" class="active-table-tab">All Methods</button><button id="method-summary-table-tab2" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab2', 3)" class="table-tab">Instance Methods</button><button id="method-summary-table-tab3" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab3', 3)" class="table-tab">Abstract Methods</button></div>
+<div class="table-tabs" role="tablist" aria-orientation="horizontal"><button id="method-summary-table-tab0" role="tab" aria-selected="true" aria-controls="method-summary-table.tabpanel" tabindex="0" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table', 3)" class="active-table-tab">All Methods</button><button id="method-summary-table-tab2" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab2', 3)" class="table-tab">Instance Methods</button><button id="method-summary-table-tab3" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab3', 3)" class="table-tab">Abstract Methods</button><button id="method-summary-table-tab5" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab5', 3)" class="table-tab">Default Methods</button></div>
 <div id="method-summary-table.tabpanel" role="tabpanel">
 <div class="summary-table three-column-summary" aria-labelledby="method-summary-table-tab0">
 <div class="table-header col-first">Modifier and Type</div>
@@ -256,16 +256,16 @@ loadScripts(document, 'script');</script>
 <div class="block">Returns a new updater for a subset of rows of this table, as specified by the filter
  expression.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/stream/Stream.html" title="class or interface in java.util.stream" class="external-link">Stream</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#newStream(org.cojen.tupl.Transaction)" class="member-name-link">newStream</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/stream/Stream.html" title="class or interface in java.util.stream" class="external-link">Stream</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#newStream(org.cojen.tupl.Transaction)" class="member-name-link">newStream</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a new stream for all rows of this table.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/stream/Stream.html" title="class or interface in java.util.stream" class="external-link">Stream</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#newStream(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">newStream</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/stream/Stream.html" title="class or interface in java.util.stream" class="external-link">Stream</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#newStream(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">newStream</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;filter,
  <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a new stream for a subset of rows of this table, as specified by the filter
  expression.</div>
 </div>
@@ -324,14 +324,19 @@ loadScripts(document, 'script');</script>
  alternate key, and the row is fully resolved by joining to the primary table.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#viewSecondaryIndex(java.lang.String...)" class="member-name-link">viewSecondaryIndex</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>...&nbsp;columns)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#viewReverse()" class="member-name-link">viewReverse</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Returns a view of this table which scans in reverse order.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#viewSecondaryIndex(java.lang.String...)" class="member-name-link">viewSecondaryIndex</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>...&nbsp;columns)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Returns a view of this table where the primary key is specified by the columns of a
  secondary index, and the row is fully resolved by joining to the primary table.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#viewUnjoined()" class="member-name-link">viewUnjoined</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#viewUnjoined()" class="member-name-link">viewUnjoined</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Returns a direct view of an alternate key or secondary index, in the form of an
  unmodifiable table.</div>
 </div>
@@ -478,7 +483,7 @@ loadScripts(document, 'script');</script>
 <li>
 <section class="detail" id="newStream(org.cojen.tupl.Transaction)">
 <h3>newStream</h3>
-<div class="member-signature"><span class="return-type"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/stream/Stream.html" title="class or interface in java.util.stream" class="external-link">Stream</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">newStream</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</span></div>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/stream/Stream.html" title="class or interface in java.util.stream" class="external-link">Stream</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">newStream</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</span></div>
 <div class="block">Returns a new stream for all rows of this table. The stream must be explicitly closed
  when no longer used, or else it must be used with a try-with-resources statement. If an
  underlying <code>IOException</code> is generated, it's thrown as if it was unchecked.</div>
@@ -495,7 +500,7 @@ loadScripts(document, 'script');</script>
 <li>
 <section class="detail" id="newStream(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)">
 <h3>newStream</h3>
-<div class="member-signature"><span class="return-type"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/stream/Stream.html" title="class or interface in java.util.stream" class="external-link">Stream</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">newStream</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/stream/Stream.html" title="class or interface in java.util.stream" class="external-link">Stream</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">newStream</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;filter,
  <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</span></div>
 <div class="block">Returns a new stream for a subset of rows of this table, as specified by the filter
@@ -763,6 +768,13 @@ loadScripts(document, 'script');</script>
 <dt>Returns:</dt>
 <dd>an unjoined table, or else this table if it's not joined</dd>
 </dl>
+</section>
+</li>
+<li>
+<section class="detail" id="viewReverse()">
+<h3>viewReverse</h3>
+<div class="member-signature"><span class="return-type"><a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">viewReverse</span>()</div>
+<div class="block">Returns a view of this table which scans in reverse order.</div>
 </section>
 </li>
 <li>

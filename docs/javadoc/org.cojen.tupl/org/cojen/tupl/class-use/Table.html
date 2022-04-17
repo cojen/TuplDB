@@ -93,14 +93,19 @@ loadScripts(document, 'script');</script>
  alternate key, and the row is fully resolved by joining to the primary table.</div>
 </div>
 <div class="col-first even-row-color"><code><a href="../Table.html" title="interface in org.cojen.tupl">Table</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#viewSecondaryIndex(java.lang.String...)" class="member-name-link">viewSecondaryIndex</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>...&nbsp;columns)</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#viewReverse()" class="member-name-link">viewReverse</a>()</code></div>
 <div class="col-last even-row-color">
+<div class="block">Returns a view of this table which scans in reverse order.</div>
+</div>
+<div class="col-first odd-row-color"><code><a href="../Table.html" title="interface in org.cojen.tupl">Table</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#viewSecondaryIndex(java.lang.String...)" class="member-name-link">viewSecondaryIndex</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>...&nbsp;columns)</code></div>
+<div class="col-last odd-row-color">
 <div class="block">Returns a view of this table where the primary key is specified by the columns of a
  secondary index, and the row is fully resolved by joining to the primary table.</div>
 </div>
-<div class="col-first odd-row-color"><code><a href="../Table.html" title="interface in org.cojen.tupl">Table</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#viewUnjoined()" class="member-name-link">viewUnjoined</a>()</code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code><a href="../Table.html" title="interface in org.cojen.tupl">Table</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#viewUnjoined()" class="member-name-link">viewUnjoined</a>()</code></div>
+<div class="col-last even-row-color">
 <div class="block">Returns a direct view of an alternate key or secondary index, in the form of an
  unmodifiable table.</div>
 </div>
