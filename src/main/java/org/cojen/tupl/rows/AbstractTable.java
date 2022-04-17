@@ -140,7 +140,7 @@ public abstract class AbstractTable<R> implements Table<R>, ScanControllerFactor
         return newRowScanner(txn, scannerFilteredFactory(txn, filter).scanController(args));
     }
 
-    private RowScanner<R> newRowScanner(Transaction txn, ScanController<R> controller)
+    RowScanner<R> newRowScanner(Transaction txn, ScanController<R> controller)
         throws IOException
     {
         final BasicRowScanner<R> scanner;
@@ -177,7 +177,7 @@ public abstract class AbstractTable<R> implements Table<R>, ScanControllerFactor
         }
     }
 
-    private ScanControllerFactory<R> scannerFilteredFactory(Transaction txn, String filter) {
+    ScanControllerFactory<R> scannerFilteredFactory(Transaction txn, String filter) {
         SoftCache<String, ScanControllerFactory<R>> cache;
         // Need to double check the filter after joining to the primary, in case there were any
         // changes after the secondary entry was loaded.
@@ -289,7 +289,7 @@ public abstract class AbstractTable<R> implements Table<R>, ScanControllerFactor
         }
     }
 
-    private ScanControllerFactory<R> updaterFilteredFactory(Transaction txn, String filter) {
+    ScanControllerFactory<R> updaterFilteredFactory(Transaction txn, String filter) {
         SoftCache<String, ScanControllerFactory<R>> cache;
         // Need to double check the filter after joining to the primary, in case there were any
         // changes after the secondary entry was loaded. Note that no double check is needed
@@ -320,13 +320,13 @@ public abstract class AbstractTable<R> implements Table<R>, ScanControllerFactor
     }
 
     @Override
-    public boolean isEmpty() throws IOException {
+    public final boolean isEmpty() throws IOException {
         return mSource.isEmpty();
     }
 
     @Override
     @SuppressWarnings("unchecked")
-    public Comparator<R> comparator(String spec) {
+    public final Comparator<R> comparator(String spec) {
         WeakCache<String, Comparator<R>> cache = mComparatorCache;
 
         if (cache == null) {
@@ -367,7 +367,7 @@ public abstract class AbstractTable<R> implements Table<R>, ScanControllerFactor
     }
 
     @Override
-    public RowPredicate<R> predicate(String filter, Object... args) {
+    public final RowPredicate<R> predicate(String filter, Object... args) {
         if (filter == null) {
             return RowPredicate.all();
         }
@@ -402,12 +402,47 @@ public abstract class AbstractTable<R> implements Table<R>, ScanControllerFactor
     }
 
     @Override
-    public QueryPlan queryPlan(Transaction txn, String filter, Object... args) {
+    public Table<R> viewReverse() {
+        return new ReverseTable<R>(this);
+    }
+
+    @Override
+    public final QueryPlan queryPlan(Transaction txn, String filter, Object... args) {
         if (filter == null) {
-            return plan();
+            return plan(args);
         } else {
             return scannerFilteredFactory(txn, filter).plan(args);
         }
+    }
+
+    @Override // ScanControllerFactory
+    public final ScanControllerFactory<R> reverse() {
+        return new ScanControllerFactory<R>() {
+            @Override
+            public QueryPlan plan(Object... args) {
+                return planReverse(args);
+            }
+
+            @Override
+            public ScanControllerFactory<R> reverse() {
+                return AbstractTable.this;
+            }
+
+            @Override
+            public RowPredicate<R> predicate(Object... args) {
+                return RowPredicate.all();
+            }
+
+            @Override
+            public ScanController<R> scanController(Object... args) {
+                return unfilteredReverse();
+            }
+
+            @Override
+            public ScanController<R> scanController(RowPredicate predicate) {
+                return unfilteredReverse();
+            }
+        };
     }
 
     @Override // ScanControllerFactory
@@ -644,10 +679,17 @@ public abstract class AbstractTable<R> implements Table<R>, ScanControllerFactor
 
     protected abstract WeakReference<RowStore> rowStoreRef();
 
+    protected abstract QueryPlan planReverse(Object... args);
+
     /**
      * Returns a singleton instance.
      */
     protected abstract SingleScanController<R> unfiltered();
+
+    /**
+     * Returns a singleton instance.
+     */
+    protected abstract SingleScanController<R> unfilteredReverse();
 
     /**
      * Returns a MethodHandle which decodes rows partially.

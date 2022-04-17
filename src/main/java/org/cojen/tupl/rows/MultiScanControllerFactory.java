@@ -48,6 +48,16 @@ final class MultiScanControllerFactory<R> implements ScanControllerFactory<R> {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
+    public ScanControllerFactory<R> reverse() {
+        var reversed = new ScanControllerFactory[mRanges.length];
+        for (int i=0; i<reversed.length; i++) {
+            reversed[reversed.length - i - 1] = mRanges[i].reverse();
+        }
+        return new MultiScanControllerFactory(reversed);
+    }
+
+    @Override
     public RowPredicate<R> predicate(Object... args) {
         return mRanges[0].predicate(args);
     }

@@ -132,33 +132,43 @@ public class FilteredScanMaker<R> {
         Object[] mainCtorParams;
         if (unfiltered instanceof JoinedScanController) {
             MethodMaker ctor = mFilterMaker.addConstructor(Index.class).public_();
-            ctor.invokeSuperConstructor(null, false, null, false, ctor.param(0));
-            mainCtorParams = new Class[] {predClass, Index.class};
+            ctor.invokeSuperConstructor(null, false, null, false, false, ctor.param(0));
+            mainCtorParams = new Class[] {boolean.class, predClass, Index.class};
         } else {
             MethodMaker ctor = mFilterMaker.addConstructor().public_();
-            ctor.invokeSuperConstructor(null, false, null, false);
-            mainCtorParams = new Class[] {predClass};
+            ctor.invokeSuperConstructor(null, false, null, false, false);
+            mainCtorParams = new Class[] {boolean.class, predClass};
         }
 
+        // Begin defining the normal constructor, which will be finished later.
         mFilterCtorMaker = mFilterMaker.addConstructor(mainCtorParams).private_();
-        mFilterCtorMaker.field("predicate").set(mFilterCtorMaker.param(0));
+        mFilterCtorMaker.field("predicate").set(mFilterCtorMaker.param(1));
+
+        // Define a reverse scan copy constructor.
+        MethodMaker ctor = mFilterMaker.addConstructor(mFilterMaker).private_();
+        var from = ctor.param(0);
+        ctor.invokeSuperConstructor(from);
+        ctor.field("predicate").set(from.field("predicate"));
     }
 
     public ScanControllerFactory<R> finish() {
         // Finish the filter class...
 
+        Variable reverseVar = mFilterCtorMaker.param(0);
+
         Object[] ctorParams;
         if (mUnfiltered instanceof JoinedScanController) {
-            ctorParams = new Object[5];
-            ctorParams[4] = mFilterCtorMaker.param(1);
+            ctorParams = new Object[6];
+            ctorParams[5] = mFilterCtorMaker.param(2);
         } else {
-            ctorParams = new Object[4];
+            ctorParams = new Object[5];
         }
 
         ctorParams[0] = null;
         ctorParams[1] = false;
         ctorParams[2] = null;
         ctorParams[3] = false;
+        ctorParams[4] = reverseVar;
 
         if (mLowBound != null || mHighBound != null) {
             // TODO: Optimize if bounds are the same strings (name >= ? && name <= ?) by
@@ -188,26 +198,45 @@ public class FilteredScanMaker<R> {
             mm.return_(mm.new_(mPredicateClass, mm.param(0)));
         }
 
-        {
-            // Override the plan method specified by ScanController.
-            MethodMaker mm = mFilterMaker.addMethod(QueryPlan.class, "plan").public_();
+        // Define two query plan methods, backed by a dynamic constant.
+        for (int i = 0b00; i <= 0b01; i += 0b01) {
+            String name = i == 0b00 ? "plan" : "planReverse";
+            MethodMaker mm = mFilterMaker.addMethod(QueryPlan.class, name).private_().static_();
 
-            int joinOption = mPrimaryTableClass == null ? 0 : 1;
+            int option = i + (mPrimaryTableClass == null ? 0b00 : 0b10);
 
             var condy = mm.var(FilteredScanMaker.class).condy
-                ("condyPlan", mRowType, mSecondaryDescriptor, joinOption,
+                ("condyPlan", mRowType, mSecondaryDescriptor, option,
                  toString(mLowBound), toString(mHighBound),
                  toString(mFilter), toString(mJoinFilter));
 
-            mm.return_(condy.invoke(QueryPlan.class, "plan"));
+            mm.return_(condy.invoke(QueryPlan.class, name));
         }
 
         {
             // Specified by ScanControllerFactory.
             MethodMaker mm = mFilterMaker.addMethod
                 (QueryPlan.class, "plan", Object[].class).public_();
-            // FIXME: substitute non-hidden arguments into query plan
-            mm.return_(mm.invoke("plan"));
+
+            Variable planVar = mm.var(QueryPlan.class);
+            Label isReverse = mm.label();
+            mm.invoke("isReverse").ifTrue(isReverse);
+            planVar.set(mm.invoke("plan"));
+            Label cont = mm.label().goto_();
+            isReverse.here();
+            planVar.set(mm.invoke("planReverse"));
+            cont.here();
+            
+            // FIXME: Substitute non-hidden arguments into the query plan.
+            mm.return_(planVar);
+        }
+
+        {
+            // Specified by ScanControllerFactory.
+            MethodMaker mm = mFilterMaker.addMethod
+                (ScanControllerFactory.class, "reverse").public_();
+            // Invoke the reverse scan copy constructor.
+            mm.return_(mm.new_(mFilterMaker, mm.this_()));
         }
 
         // Define the factory methods.
@@ -278,8 +307,8 @@ public class FilteredScanMaker<R> {
                 last = filter;
 
                 String fieldName = ColumnCodec.argFieldName(filter.column(), filter.argument());
-                // param(0) is the predicate instance which has the argument fields.
-                Variable argVar = mFilterCtorMaker.param(0).field(fieldName);
+                // param(1) is the predicate instance which has the argument fields.
+                Variable argVar = mFilterCtorMaker.param(1).field(fieldName);
 
                 if (ulp) {
                     argVar = argVar.get();
@@ -419,13 +448,14 @@ public class FilteredScanMaker<R> {
 
         Object[] params;
         if (mUnfiltered instanceof JoinedScanController) {
-            params = new Object[2];
-            params[1] = mm.field("mPrimaryIndex");
+            params = new Object[3];
+            params[2] = mm.field("mPrimaryIndex");
         } else {
-            params = new Object[1];
+            params = new Object[2];
         }
 
-        params[0] = predicateVar;
+        params[0] = mm.invoke("isReverse");
+        params[1] = predicateVar;
 
         mm.return_(mm.new_(mFilterMaker, params));
     }
@@ -683,8 +713,11 @@ public class FilteredScanMaker<R> {
         return (filter == null || filter == TrueFilter.THE) ? null : filter.toString();
     }
 
+    /**
+     * @param option bit 1: reverse, bit 2: joined
+     */
     public static QueryPlan condyPlan(MethodHandles.Lookup lookup, String name, Class type,
-                                      Class rowType, byte[] secondaryDesc, int joinOption,
+                                      Class rowType, byte[] secondaryDesc, int option,
                                       String lowBoundStr, String highBoundStr,
                                       String filterStr, String joinFilterStr)
     {
@@ -702,11 +735,12 @@ public class FilteredScanMaker<R> {
         }
 
         QueryPlan plan;
+        boolean reverse = (option & 0b01) != 0;
 
         if (lowBoundStr == null && highBoundStr == null) {
-            plan = new QueryPlan.FullScan(rowInfo.name, which, rowInfo.keySpec(), false);
+            plan = new QueryPlan.FullScan(rowInfo.name, which, rowInfo.keySpec(), reverse);
         } else {
-            plan = new QueryPlan.RangeScan(rowInfo.name, which, rowInfo.keySpec(), false,
+            plan = new QueryPlan.RangeScan(rowInfo.name, which, rowInfo.keySpec(), reverse,
                                            lowBoundStr, highBoundStr);
         }
     
@@ -714,7 +748,7 @@ public class FilteredScanMaker<R> {
             plan = new QueryPlan.Filter(filterStr, plan);
         }
 
-        if (joinOption != 0) {
+        if ((option & 0b10) != 0) {
             rowInfo = primaryRowInfo;
             plan = new QueryPlan.NaturalJoin(rowInfo.name, "primary key", rowInfo.keySpec(), plan);
 

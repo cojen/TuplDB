@@ -77,19 +77,33 @@ public interface ScanController<R> {
 
     boolean highInclusive();
 
+    boolean isReverse();
+
     /**
      * Returns true if the given key is lower than the low bounding range.
+     *
+     * @param key non-null
      */
     default boolean isTooLow(byte[] key) {
-        int cmp = comparator().compare(key, lowBound());
+        byte[] low = lowBound();
+        if (low == null) {
+            return false;
+        }
+        int cmp = comparator().compare(key, low);
         return cmp < 0 || (cmp == 0 && !lowInclusive());
     }
 
     /**
      * Returns true if the given key is higher than the high bounding range.
+     *
+     * @param key non-null
      */
     default boolean isTooHigh(byte[] key) {
-        int cmp = comparator().compare(key, highBound());
+        byte[] high = highBound();
+        if (high == null) {
+            return false;
+        }
+        int cmp = comparator().compare(key, high);
         return cmp > 0 || (cmp == 0 && !highInclusive());
     }
 
@@ -103,10 +117,17 @@ public interface ScanController<R> {
         byte[] thisLow = this.lowBound();
         byte[] otherLow = other.lowBound();
 
-        int cmp = comparator().compare(thisLow, otherLow);
+        int cmp;
 
-        if (cmp == 0 && thisLow != null) {
-            cmp = -Boolean.compare(this.lowInclusive(), other.lowInclusive());
+        if (thisLow == null) {
+            cmp = otherLow == null ? 0 : -1;
+        } else if (otherLow == null) {
+            cmp = 1;
+        } else {
+            cmp = comparator().compare(thisLow, otherLow);
+            if (cmp == 0) {
+                cmp = -Boolean.compare(this.lowInclusive(), other.lowInclusive());
+            }
         }
 
         return cmp;

@@ -35,10 +35,18 @@ public abstract class JoinedScanController<R> extends SingleScanController<R> {
 
     protected JoinedScanController(byte[] lowBound, boolean lowInclusive,
                                    byte[] highBound, boolean highInclusive,
-                                   Index primaryIndex)
+                                   boolean reverse, Index primaryIndex)
     {
-        super(lowBound, lowInclusive, highBound, highInclusive);
+        super(lowBound, lowInclusive, highBound, highInclusive, reverse);
         mPrimaryIndex = primaryIndex;
+    }
+
+    /**
+     * Reverse scan copy constructor.
+     */
+    protected JoinedScanController(JoinedScanController from) {
+        super(from);
+        mPrimaryIndex = from.mPrimaryIndex;
     }
 
     // Subclass should implement one of these methods. The secondaryValue param is required

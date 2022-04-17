@@ -103,6 +103,11 @@ final class MultiScanController<R> implements ScanController<R> {
         return mCurrent.highInclusive();
     }
 
+    @Override
+    public boolean isReverse() {
+        return mCurrent.isReverse();
+    }
+
     private void assignCurrent(int pos) {
         ScanController<R> current = mControllers[pos];
         Comparator<byte[]> comparator = current.comparator();

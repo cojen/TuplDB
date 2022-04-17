@@ -33,19 +33,59 @@ import org.cojen.tupl.View;
 public abstract class SingleScanController<R> implements ScanController<R>, RowDecoderEncoder<R> {
     private final byte[] mLowBound, mHighBound;
     private final boolean mLowInclusive, mHighInclusive;
+    private final boolean mReverse;
 
+    /**
+     * Constructor which swaps the bounds when reverse is true.
+     */
     protected SingleScanController(byte[] lowBound, boolean lowInclusive,
+                                   byte[] highBound, boolean highInclusive,
+                                   boolean reverse)
+    {
+        if (!reverse) {
+            mLowBound = lowBound;
+            mLowInclusive = lowInclusive;
+            mHighBound = highBound;
+            mHighInclusive = highInclusive;
+        } else {
+            mLowBound = highBound;
+            mLowInclusive = highInclusive;
+            mHighBound = lowBound;
+            mHighInclusive = lowInclusive;
+        }
+
+        mReverse = reverse;
+    }
+
+    /**
+     * Constructor which doesn't swap the bounds when reverse is true, possibly because they
+     * were swapped earlier.
+     */
+    protected SingleScanController(boolean reverse,
+                                   byte[] lowBound, boolean lowInclusive,
                                    byte[] highBound, boolean highInclusive)
     {
         mLowBound = lowBound;
         mLowInclusive = lowInclusive;
         mHighBound = highBound;
         mHighInclusive = highInclusive;
+        mReverse = reverse;
+    }
+
+    /**
+     * Reverse scan copy constructor.
+     */
+    protected SingleScanController(SingleScanController from) {
+        this(true, from.mHighBound, from.mHighInclusive, from.mLowBound, from.mLowInclusive);
     }
 
     @Override
     public Comparator<byte[]> comparator() {
-        return RowUtils.KEY_COMPARATOR;
+        Comparator<byte[]> cmp = RowUtils.KEY_COMPARATOR;
+        if (mReverse) {
+            cmp = cmp.reversed();
+        }
+        return cmp;
     }
 
     @Override
@@ -55,6 +95,12 @@ public abstract class SingleScanController<R> implements ScanController<R>, RowD
 
     @Override
     public final Cursor newCursor(View view, Transaction txn) throws IOException {
+        if (mReverse) {
+            // Must reverse before applying bounds, because they're supposed to be swapped.
+            // This behavior is necessary for MergedScanController to function correctly.
+            view = view.viewReverse();
+        }
+
         applyBounds: {
             byte[] low = mLowBound;
             if (low != null) {
@@ -101,5 +147,10 @@ public abstract class SingleScanController<R> implements ScanController<R>, RowD
     @Override
     public final boolean highInclusive() {
         return mHighInclusive;
+    }
+
+    @Override
+    public final boolean isReverse() {
+        return mReverse;
     }
 }

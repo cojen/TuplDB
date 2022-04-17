@@ -39,12 +39,17 @@ final class EmptyScanController extends SingleScanController implements ScanCont
     }
 
     private EmptyScanController() {
-        super(EMPTY, false, null, false);
+        super(false, EMPTY, false, null, false);
     }
 
     @Override
     public QueryPlan plan(Object... args) {
         return new QueryPlan.Empty();
+    }
+
+    @Override
+    public ScanControllerFactory reverse() {
+        return this;
     }
 
     @Override

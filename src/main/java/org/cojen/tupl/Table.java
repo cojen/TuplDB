@@ -353,10 +353,9 @@ public interface Table<R> {
     public Table<R> viewUnjoined();
 
     /**
-     * Returns a view of this table which scans in descending order. If this table already
-     * scans in descending order, it's returned as-is.
+     * Returns a view of this table which scans in reverse order.
      */
-    //public Table<R> viewDescending();
+    public Table<R> viewReverse();
 
     //public Table<R> viewOrderBy(String... columns);
 

@@ -139,7 +139,7 @@ public class ScanControllerTest {
         TestController(byte[] lowBound, boolean lowInclusive,
                        byte[] highBound, boolean highInclusive)
         {
-            super(lowBound, lowInclusive, highBound, highInclusive);
+            super(lowBound, lowInclusive, highBound, highInclusive, false);
         }
 
         @Override

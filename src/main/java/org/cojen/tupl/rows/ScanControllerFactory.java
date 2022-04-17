@@ -29,6 +29,8 @@ import org.cojen.tupl.diag.QueryPlan;
 public interface ScanControllerFactory<R> {
     QueryPlan plan(Object... args);
 
+    ScanControllerFactory<R> reverse();
+
     /**
      * Returns a predicate which is shared by all scan batches.
      */

@@ -768,7 +768,7 @@ public class Utils extends org.cojen.tupl.io.Utils {
     }
 
     public static String toHexDump(byte[] b) {
-        return toHexDump(b, 0, b.length);
+        return b == null ? "null" : toHexDump(b, 0, b.length);
     }
 
     public static String toHexDump(byte[] b, int offset, int length) {

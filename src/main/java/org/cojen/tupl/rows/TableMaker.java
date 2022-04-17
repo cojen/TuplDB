@@ -271,8 +271,12 @@ public class TableMaker {
         addMarkAllCleanMethod();
         addToRowMethod();
         addRowStoreRefMethod();
-        addUnfilteredMethod();
-        addPlanMethod(0);
+
+        addUnfilteredMethod("unfiltered");
+        addUnfilteredMethod("unfilteredReverse");
+
+        addPlanMethod(0b00);
+        addPlanMethod(0b01); // reverse option
 
         if (!isPrimaryTable()) {
             addSecondaryDescriptorMethod();
@@ -345,10 +349,12 @@ public class TableMaker {
         var scanControllerClass = makeUnfilteredJoinedScanControllerClass(primaryTableClass);
         mClassMaker.addField(scanControllerClass, "unfiltered").private_().final_();
         ctor.field("unfiltered").set
-            (ctor.new_(scanControllerClass, null, false, null, false, ctor.field("primaryIndex")));
+            (ctor.new_(scanControllerClass, null, false, null, false, false,
+                       ctor.field("primaryIndex")));
 
-        // Override the method inherited from the unjoined class, defined in ScanControllerFactory.
-        addPlanMethod(1);
+        // Override the methods inherited from the unjoined class, defined in ScanControllerFactory.
+        addPlanMethod(0b10);
+        addPlanMethod(0b11); // reverse option
 
         // Override the method inherited from the unjoined class, defined in AbstractTable.
         MethodMaker mm = mClassMaker.addMethod
@@ -1970,13 +1976,15 @@ public class TableMaker {
 
     /**
      * Defines a method which returns a singleton SingleScanController instance.
+     *
+     * @param variant "unfiltered" or "unfilteredReverse"
      */
-    private void addUnfilteredMethod() {
+    private void addUnfilteredMethod(String variant) {
         MethodMaker mm = mClassMaker.addMethod
-            (SingleScanController.class, "unfiltered").protected_();
+            (SingleScanController.class, variant).protected_();
         var condy = mm.var(TableMaker.class).condy
             ("condyDefineUnfiltered", mRowType, mRowClass, mSecondaryDescriptor);
-        mm.return_(condy.invoke(SingleScanController.class, "unfiltered"));
+        mm.return_(condy.invoke(SingleScanController.class, variant));
     }
 
     /**
@@ -1995,16 +2003,23 @@ public class TableMaker {
         }
 
         ClassMaker cm = RowGen.beginClassMaker
-            (TableMaker.class, rowType, rowInfo, null, "Unfiltered")
+            (TableMaker.class, rowType, rowInfo, null, name)
             .extend(SingleScanController.class).public_();
 
-        // Constructor is protected, for use by filter implementation subclasses.
+        boolean reverse = name == "unfilteredReverse";
+
+        // Constructors are protected, for use by filter implementation subclasses.
         MethodType ctorType;
         {
-            ctorType = MethodType.methodType
-                (void.class, byte[].class, boolean.class, byte[].class, boolean.class);
+            ctorType = MethodType.methodType(void.class, byte[].class, boolean.class,
+                                             byte[].class, boolean.class, boolean.class);
             MethodMaker mm = cm.addConstructor(ctorType).protected_();
-            mm.invokeSuperConstructor(mm.param(0), mm.param(1), mm.param(2), mm.param(3));
+            mm.invokeSuperConstructor(mm.param(0), mm.param(1),
+                                      mm.param(2), mm.param(3), mm.param(4));
+
+            // Define a reverse scan copy constructor.
+            mm = cm.addConstructor(SingleScanController.class).protected_();
+            mm.invokeSuperConstructor(mm.param(0));
         }
 
         {
@@ -2056,19 +2071,29 @@ public class TableMaker {
 
         var clazz = cm.finish();
 
-        return lookup.findConstructor(clazz, ctorType).invoke(null, false, null, false);
+        return lookup.findConstructor(clazz, ctorType).invoke(null, false, null, false, reverse);
     }
 
-    private void addPlanMethod(int joinOption) {
+    /**
+     * @param option bit 1: reverse, bit 2: joined
+     */
+    private void addPlanMethod(int option) {
+        String name = "plan";
+        if ((option & 0b01) != 0) {
+            name += "Reverse";
+        }
         MethodMaker mm = mClassMaker.addMethod
-            (QueryPlan.class, "plan", Object[].class).varargs().public_();
+            (QueryPlan.class, name, Object[].class).varargs().public_();
         var condy = mm.var(TableMaker.class).condy
-            ("condyPlan", mRowType, mSecondaryDescriptor, joinOption);
+            ("condyPlan", mRowType, mSecondaryDescriptor, option);
         mm.return_(condy.invoke(QueryPlan.class, "plan"));
     }
 
+    /**
+     * @param option bit 1: reverse, bit 2: joined
+     */
     public static QueryPlan condyPlan(MethodHandles.Lookup lookup, String name, Class type,
-                                      Class rowType, byte[] secondaryDesc, int joinOption)
+                                      Class rowType, byte[] secondaryDesc, int option)
     {
         RowInfo primaryRowInfo = RowInfo.find(rowType);
 
@@ -2083,9 +2108,10 @@ public class TableMaker {
             which = rowInfo.isAltKey() ? "alternate key" : "secondary index";
         }
 
-        QueryPlan plan = new QueryPlan.FullScan(rowInfo.name, which, rowInfo.keySpec(), false);
+        boolean reverse = (option & 0b01) != 0;
+        QueryPlan plan = new QueryPlan.FullScan(rowInfo.name, which, rowInfo.keySpec(), reverse);
     
-        if (joinOption != 0) {
+        if ((option & 0b10) != 0) {
             rowInfo = primaryRowInfo;
             plan = new QueryPlan.NaturalJoin(rowInfo.name, "primary key", rowInfo.keySpec(), plan);
         }
@@ -2178,16 +2204,20 @@ public class TableMaker {
      */
     private Class<?> makeUnfilteredJoinedScanControllerClass(Class<?> primaryTableClass) {
         ClassMaker cm = RowGen.beginClassMaker
-            (TableMaker.class, mRowType, mRowInfo, null, "Unfiltered")
+            (TableMaker.class, mRowType, mRowInfo, null, "unfiltered")
             .extend(JoinedScanController.class).public_();
 
-        // Constructor is protected, for use by filter implementation subclasses.
+        // Constructors are protected, for use by filter implementation subclasses.
         {
             MethodMaker mm = cm.addConstructor
-                (byte[].class, boolean.class, byte[].class, boolean.class, Index.class);
-            mm.protected_();
+                (byte[].class, boolean.class, byte[].class, boolean.class,
+                 boolean.class, Index.class).protected_();
             mm.invokeSuperConstructor
-                (mm.param(0), mm.param(1), mm.param(2), mm.param(3), mm.param(4));
+                (mm.param(0), mm.param(1), mm.param(2), mm.param(3), mm.param(4), mm.param(5));
+
+            // Define a reverse scan copy constructor.
+            mm = cm.addConstructor(JoinedScanController.class).protected_();
+            mm.invokeSuperConstructor(mm.param(0));
         }
 
         // Provide access to the toPrimaryKey method to be accessible by filter implementation

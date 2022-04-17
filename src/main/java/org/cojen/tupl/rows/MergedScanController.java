@@ -80,8 +80,13 @@ final class MergedScanController<R> extends SingleScanController<R> {
         // Start in mode 1 (both ranges) if the lower bound of both is the same.
         int mode = low.compareLow(high) == 0 ? 1 : 0;
 
+        boolean reverse = low.isReverse();
+        if (reverse != high.isReverse()) {
+            throw new AssertionError();
+        }
+
         return new MergedScanController<>
-            (lowLow, low.lowInclusive(), highBound, highInclusive, low, high, mode);
+            (lowLow, low.lowInclusive(), highBound, highInclusive, low, high, reverse, mode);
     }
 
     private final ScanController<R> mLow, mHigh;
@@ -98,9 +103,9 @@ final class MergedScanController<R> extends SingleScanController<R> {
     private MergedScanController(byte[] lowBound, boolean lowInclusive,
                                  byte[] highBound, boolean highInclusive,
                                  ScanController<R> low, ScanController<R> high,
-                                 int mode)
+                                 boolean reverse, int mode)
     {
-        super(lowBound, lowInclusive, highBound, highInclusive);
+        super(reverse, lowBound, lowInclusive, highBound, highInclusive);
         mLow = low;
         mHigh = high;
         mLowDecoder = low.decoder();
