@@ -633,15 +633,20 @@ public abstract class AbstractTable<R> implements Table<R>, ScanControllerFactor
         }
     }
 
+    /**
+     * @param rowInfo for secondary (method does nothing if this is the primary table)
+     */
     private void splitRemainders(RowInfo rowInfo, RowFilter[]... ranges) {
         if (unfiltered() instanceof JoinedScanController) {
             // First filter on the secondary entry, and then filter on the joined primary entry.
-            RowFilter.splitRemainders(rowInfo.keyColumns, ranges);
+            RowFilter.splitRemainders(rowInfo.allColumns, ranges);
         }
     }
 
     /**
      * Applies a double check of the remainder filter, applicable only to joins.
+     *
+     * @param rowInfo for primary
      */
     private static void doubleCheckRemainder(RowFilter[][] ranges, RowInfo rowInfo) {
         for (RowFilter[] r : ranges) {

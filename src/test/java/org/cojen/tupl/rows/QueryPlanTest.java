@@ -332,6 +332,15 @@ public class QueryPlanTest {
                        (TestRow.class.getName(), "alternate key",
                         new String[] {"+a"}, false, "a >= ?0", "a < ?1"))),
                      plan);
+
+        plan = mIndexA.queryPlan(null, "a > ? && id != ?");
+        assertEquals(new QueryPlan.NaturalJoin
+                     (TestRow.class.getName(), "primary key", new String[] {"+id"},
+                      new QueryPlan.Filter
+                      ("id != ?1", new QueryPlan.RangeScan
+                       (TestRow.class.getName(), "alternate key",
+                        new String[] {"+a"}, false, "a > ?0", null))),
+                     plan);
     }
 
     @Test
@@ -765,6 +774,35 @@ public class QueryPlanTest {
         long id();
         void id(long id);
 
+        int a();
+        void a(int a);
+
+        String b();
+        void b(String b);
+
+        @Nullable
+        Long c();
+        void c(Long c);
+    }
+
+    @Test
+    public void covering() throws Exception {
+        var table = mDatabase.openTable(TestRow2.class);
+        var index = table.viewSecondaryIndex("b", "a", "c");
+
+        QueryPlan plan = index.queryPlan(null, "b == ? && c == ?");
+        assertEquals(new QueryPlan.NaturalJoin
+                     (TestRow2.class.getName(), "primary key", new String[] {"+a", "+b"},
+                      new QueryPlan.Filter
+                      ("c == ?1", new QueryPlan.RangeScan
+                       (TestRow2.class.getName(), "secondary index",
+                        new String[] {"+b", "+a"}, false, "b >= ?0", "b <= ?0"))),
+                     plan);
+    }
+
+    @PrimaryKey({"a", "b"})
+    @SecondaryIndex({"b", "a", "c"})
+    public interface TestRow2 {
         int a();
         void a(int a);
 
