@@ -748,4 +748,33 @@ public class RowUtils extends Utils {
     public static boolean isUnlocked(Transaction txn) {
         return txn != null && txn.lockMode().noReadLock;
     }
+
+    public static void appendQuotedString(StringBuilder bob, char c) {
+        char quote = c != '\'' ? '\'' : '"';
+        bob.append(quote).append(c).append(quote);
+    }
+
+    public static void appendQuotedString(StringBuilder bob, Character c) {
+        if (c == null) {
+            bob.append("null");
+        } else {
+            bob.append((char) c);
+        }
+    }
+
+    public static void appendQuotedString(StringBuilder bob, String s) {
+        if (s == null) {
+            bob.append("null");
+        } else {
+            char quote = '"';
+            if (s.indexOf('"') >= 0) {
+                if (s.indexOf('\'') < 0) {
+                    quote = '\'';
+                } else {
+                    s = s.replace("\"", "\\\"");
+                }
+            }
+            bob.append(quote).append(s).append(quote);
+        }
+    }
 }

@@ -465,7 +465,7 @@ public class IndexLockTest {
 
             findFilter: if (withFilter) {
                 for (DeadlockInfo info : e.deadlockSet()) {
-                    if (info.toString().contains("id >= -123 && name != xxx")) {
+                    if (info.toString().contains("id >= -123 && name != \"xxx\"")) {
                         break findFilter;
                     }
                 }

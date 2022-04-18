@@ -660,7 +660,12 @@ public class RowPredicateMaker {
             }
 
             if (!column.isUnsignedInteger()) {
-                mBuilderVar = mBuilderVar.invoke("append", argValue);
+                int code = column.plainTypeCode();
+                if (code == TYPE_UTF8 || code == TYPE_CHAR) {
+                    mMaker.var(RowUtils.class).invoke("appendQuotedString", mBuilderVar, argValue);
+                } else {
+                    mBuilderVar = mBuilderVar.invoke("append", argValue);
+                }
                 return;
             }
 

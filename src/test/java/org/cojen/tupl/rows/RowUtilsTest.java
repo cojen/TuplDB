@@ -262,4 +262,37 @@ public class RowUtilsTest {
 
         all.put(bi, encoded);
     }
+
+    @Test
+    public void quoted() {
+        var bob = new StringBuilder();
+
+        RowUtils.appendQuotedString(bob, (String) null);
+        bob.append(' ');
+        RowUtils.appendQuotedString(bob, (Character) null);
+        bob.append(' ');
+        RowUtils.appendQuotedString(bob, 'a');
+        bob.append(' ');
+        RowUtils.appendQuotedString(bob, '"');
+        bob.append(' ');
+        RowUtils.appendQuotedString(bob, '\'');
+        bob.append(' ');
+        RowUtils.appendQuotedString(bob, Character.valueOf('A'));
+        bob.append(' ');
+        RowUtils.appendQuotedString(bob, "hello");
+        bob.append(' ');
+        RowUtils.appendQuotedString(bob, "O'Neill");
+        bob.append(' ');
+        RowUtils.appendQuotedString(bob, "\"hello\"");
+        bob.append(' ');
+        RowUtils.appendQuotedString(bob, "\"hello\" O'Neill");
+
+        String s = bob.toString();
+
+        String expect = """
+            null null 'a' '"' "'" A "hello" "O'Neill" '"hello"' "\\"hello\\" O'Neill"
+            """.trim();
+
+        assertEquals(expect, s);
+    }
 }

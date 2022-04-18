@@ -692,7 +692,7 @@ public class FilteringTest {
         assertTrue(str.contains("unfiltered"));
 
         str = table.newRowScanner(null, "name == ?", "x").toString();
-        assertTrue(str.contains("name == x"));
+        assertTrue(str.contains("name == \"x\""));
 
         str = table.newRowScanner
             (null, "(id == ? || array1 != ?) && num1 > ?", -10, new int[] {1, 2}, 5).toString();
