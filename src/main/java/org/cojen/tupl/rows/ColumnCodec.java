@@ -421,9 +421,6 @@ abstract class ColumnCodec {
         throw new UnsupportedOperationException();
     }
 
-    // FIXME: When filter passes, take advantage of existing decoded variables and avoid double
-    // decode if possible.
-
     static String argFieldName(String colName, int argNum) {
         return colName + '$' + argNum;
     }

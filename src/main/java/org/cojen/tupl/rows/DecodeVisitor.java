@@ -219,8 +219,6 @@ class DecodeVisitor extends Visitor {
         // Must call this in case applyFilter wasn't called, or it did nothing.
         initVars(true);
 
-        // FIXME: Some columns may have already been decoded, so don't double decode them.
-
         rowVar = rowVar.cast(rowClass);
         Label hasRow = mMaker.label();
         rowVar.ifNe(null, hasRow);
