@@ -18,7 +18,6 @@
 package org.cojen.tupl.filter;
 
 import java.util.Map;
-import java.util.Set;
 
 import org.cojen.tupl.rows.ColumnInfo;
 

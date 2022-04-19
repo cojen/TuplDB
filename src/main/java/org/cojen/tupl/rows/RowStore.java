@@ -206,7 +206,7 @@ public class RowStore {
 
         if (manager == null) {
             synchronized (mTableManagers) {
-                manager = (TableManager<?>) mTableManagers.get(ix);
+                manager = mTableManagers.get(ix);
                 if (manager == null) {
                     manager = new TableManager<>(ix);
                     mTableManagers.put(ix, manager);

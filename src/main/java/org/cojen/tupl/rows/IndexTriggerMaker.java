@@ -63,12 +63,6 @@ public class IndexTriggerMaker<R> {
 
     private ClassMaker mClassMaker;
 
-    // Values for rowMode param.
-    //  ROW_NONE     - no row exists
-    //  ROW_KEY_ONLY - only key fields of the row can be used
-    //  ROW_FULL     - the full row can be used
-    private static final int ROW_NONE = 0, ROW_KEY_ONLY = 1, ROW_FULL = 2;
-
     /**
      * @param rowType can pass null if only makeBackfill is to be called
      */

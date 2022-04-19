@@ -23,10 +23,6 @@ import java.util.Comparator;
 
 import java.util.function.Predicate;
 
-import java.util.stream.Stream;
-
-import org.cojen.tupl.core.RowPredicate;
-
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.RowScanner;
 import org.cojen.tupl.RowUpdater;

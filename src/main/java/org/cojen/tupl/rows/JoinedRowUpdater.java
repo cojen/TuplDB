@@ -34,7 +34,7 @@ import org.cojen.tupl.Transaction;
  * @author Brian S O'Neill
  */
 final class JoinedRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
-    protected final BasicRowUpdater<R> mPrimaryUpdater;
+    private final BasicRowUpdater<R> mPrimaryUpdater;
 
     private final TriggerIndexAccessor mAccessor;
 

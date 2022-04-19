@@ -254,8 +254,8 @@ public abstract class RowFilter implements Comparable<RowFilter> {
     }
 
     /**
-     * For each result from the {@link multiRangeExtract} method with a remainder, {@link
-     * split} it into the last two elements of the range array.
+     * For each result from the {@link #multiRangeExtract} method with a remainder, {@link
+     * #split} it into the last two elements of the range array.
      *
      * @param columns columns to extract
      * @param ranges result from calling multiRangeExtract

@@ -936,8 +936,6 @@ class TransformMaker<R> {
         /**
          * Prepares the necessary column checks in order for accessColumn to work. Neither
          * method should be called when mustCopyBytes is true.
-         *
-         * @param rowVar source row
          */
         void prepareColumn(TransformMaker tm) {
             if (mColumnVar != null) {
