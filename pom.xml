@@ -202,7 +202,7 @@
         <configuration>
           <detectJavaApiLink>true</detectJavaApiLink>
           <links>
-            <link>https://docs.oracle.com/en/java/javase/17/docs/api</link>
+            <link>https://docs.oracle.com/en/java/javase/18/docs/api</link>
           </links>
           <author>false</author>
           <nodeprecatedlist>true</nodeprecatedlist>
