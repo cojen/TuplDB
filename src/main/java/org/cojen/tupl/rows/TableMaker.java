@@ -272,8 +272,7 @@ public class TableMaker {
         addToRowMethod();
         addRowStoreRefMethod();
 
-        addUnfilteredMethod("unfiltered");
-        addUnfilteredMethod("unfilteredReverse");
+        addUnfilteredMethods();
 
         addPlanMethod(0b00);
         addPlanMethod(0b01); // reverse option
@@ -1981,20 +1980,28 @@ public class TableMaker {
     }
 
     /**
-     * Defines a method which returns a singleton SingleScanController instance.
-     *
-     * @param variant "unfiltered" or "unfilteredReverse"
+     * Defines methods which return a singleton SingleScanController instance.
      */
-    private void addUnfilteredMethod(String variant) {
+    private void addUnfilteredMethods() {
         MethodMaker mm = mClassMaker.addMethod
-            (SingleScanController.class, variant).protected_();
-        var condy = mm.var(TableMaker.class).condy
+            (SingleScanController.class, "unfiltered").protected_();
+        var condyClass = mm.var(TableMaker.class).condy
             ("condyDefineUnfiltered", mRowType, mRowClass, mSecondaryDescriptor);
-        mm.return_(condy.invoke(SingleScanController.class, variant));
+        var scanControllerClass = condyClass.invoke(Class.class, "unfiltered");
+        var condyInstance = mm.var(TableMaker.class).condy
+            ("condyUnfiltered", scanControllerClass, false);
+        mm.return_(condyInstance.invoke(SingleScanController.class, "unfiltered"));
+
+        mm = mClassMaker.addMethod(SingleScanController.class, "unfilteredReverse").protected_();
+        // Pass along the same scanControllerClass constant.
+        condyInstance = mm.var(TableMaker.class).condy
+            ("condyUnfiltered", scanControllerClass, true);
+        mm.return_(condyInstance.invoke(SingleScanController.class, "unfilteredReverse"));
     }
 
     /**
      * @param secondaryDesc pass null for primary table
+     * @return a SingleScanController class
      */
     public static Object condyDefineUnfiltered(MethodHandles.Lookup lookup, String name, Class type,
                                                Class rowType, Class rowClass, byte[] secondaryDesc)
@@ -2008,11 +2015,8 @@ public class TableMaker {
             codecGen = RowStore.indexRowInfo(rowInfo, secondaryDesc).rowGen();
         }
 
-        ClassMaker cm = RowGen.beginClassMaker
-            (TableMaker.class, rowType, rowInfo, null, name)
+        ClassMaker cm = RowGen.beginClassMaker(TableMaker.class, rowType, rowInfo, null, name)
             .extend(SingleScanController.class).public_();
-
-        boolean reverse = name == "unfilteredReverse";
 
         // Constructors are protected, for use by filter implementation subclasses.
         MethodType ctorType;
@@ -2075,9 +2079,20 @@ public class TableMaker {
             mm.return_(tableVar.invoke("decodeValueHandle", mm.param(0)));
         }
 
-        var clazz = cm.finish();
+        return cm.finish();
+    }
 
-        return lookup.findConstructor(clazz, ctorType).invoke(null, false, null, false, reverse);
+    public static Object condyUnfiltered(MethodHandles.Lookup lookup, String name, Class type,
+                                         Class scanControllerClass, boolean reverse)
+    {
+        MethodType ctorType = MethodType.methodType
+            (void.class, byte[].class, boolean.class, byte[].class, boolean.class, boolean.class);
+        try {
+            return lookup.findConstructor(scanControllerClass, ctorType)
+                .invoke(null, false, null, false, reverse);
+        } catch (Throwable e) {
+            throw RowUtils.rethrow(e);
+        }
     }
 
     /**
