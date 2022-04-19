@@ -344,22 +344,28 @@ public class TableMaker {
 
         addJoinedLoadMethod(primaryTableClass);
 
-        // Define the class that implements the unfiltered JoinedScanController and construct a
-        // singleton instance.
+        // Define the class that implements the unfiltered JoinedScanController and construct
+        // two singleton instances.
         var scanControllerClass = makeUnfilteredJoinedScanControllerClass(primaryTableClass);
         mClassMaker.addField(scanControllerClass, "unfiltered").private_().final_();
+        mClassMaker.addField(scanControllerClass, "unfilteredReverse").private_().final_();
         ctor.field("unfiltered").set
             (ctor.new_(scanControllerClass, null, false, null, false, false,
+                       ctor.field("primaryIndex")));
+        ctor.field("unfilteredReverse").set
+            (ctor.new_(scanControllerClass, null, false, null, false, true,
                        ctor.field("primaryIndex")));
 
         // Override the methods inherited from the unjoined class, defined in ScanControllerFactory.
         addPlanMethod(0b10);
         addPlanMethod(0b11); // reverse option
 
-        // Override the method inherited from the unjoined class, defined in AbstractTable.
+        // Override the methods inherited from the unjoined class, defined in AbstractTable.
         MethodMaker mm = mClassMaker.addMethod
             (SingleScanController.class, "unfiltered").protected_();
         mm.return_(mm.field("unfiltered"));
+        mm = mClassMaker.addMethod(SingleScanController.class, "unfilteredReverse").protected_();
+        mm.return_(mm.field("unfilteredReverse"));
 
         // Override the method inherited from AbstractTableView.
         mm = mClassMaker.addMethod(RowUpdater.class, "newRowUpdater",
