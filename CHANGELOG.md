@@ -7,6 +7,9 @@ v1.5.4
 * Fix deadlock during compaction caused by releasing the wrong node latch.
 * Fix improper lock release when writing cache primer.
 * Fix improper lock release/acquire when when opening indexes.
+* Fix BoundedCursor such that it doesn't observe uncommitted deletes when initially positioning it.
+* Fix possible reporting of negative cursor count in the database stats.
+* Fix safety of using updaters that require lock mode upgrades.
 * Don't reset checkpoint duration stat when thresholds aren't met.
 * Depends on Java 17.
 
