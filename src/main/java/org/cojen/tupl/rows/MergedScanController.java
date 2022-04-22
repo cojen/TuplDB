@@ -28,7 +28,7 @@ import org.cojen.tupl.LockResult;
  * 
  *
  * @author Brian S O'Neill
- * @see MultiScanController
+ * @see RangeUnionScanController
  */
 final class MergedScanController<R> extends SingleScanController<R> {
     /**

@@ -31,8 +31,9 @@ import org.cojen.tupl.core.RowPredicate;
  * 
  *
  * @author Brian S O'Neill
+ * @see RangeUnionScanControllerFactory
  */
-final class MultiScanController<R> implements ScanController<R> {
+final class RangeUnionScanController<R> implements ScanController<R> {
     private final ScanController<R>[] mControllers;
 
     private int mPosition;
@@ -41,7 +42,7 @@ final class MultiScanController<R> implements ScanController<R> {
     /**
      * @param controllers must be ordered by ascending lower bound
      */
-    MultiScanController(ScanController<R>[] controllers) {
+    RangeUnionScanController(ScanController<R>[] controllers) {
         mControllers = controllers;
         assignCurrent(0);
     }

@@ -559,7 +559,7 @@ public abstract class AbstractTable<R> implements Table<R>, ScanControllerFactor
                     rangeFactories[i] = newFilteredFactory
                         (rowGen, ranges[i], predClass, projectionSpec);
                 }
-                factory = new MultiScanControllerFactory(rangeFactories);
+                factory = new RangeUnionScanControllerFactory(rangeFactories);
                 break obtain;
             }
 

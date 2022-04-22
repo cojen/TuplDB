@@ -24,14 +24,14 @@ import org.cojen.tupl.core.RowPredicate;
 import org.cojen.tupl.diag.QueryPlan;
 
 /**
- * 
+ * A factory that combines ScanControllers which have the same natural order.
  *
  * @author Brian S O'Neill
  */
-final class MultiScanControllerFactory<R> implements ScanControllerFactory<R> {
+final class RangeUnionScanControllerFactory<R> implements ScanControllerFactory<R> {
     private final ScanControllerFactory<R>[] mRanges;
 
-    MultiScanControllerFactory(ScanControllerFactory<R>[] ranges) {
+    RangeUnionScanControllerFactory(ScanControllerFactory<R>[] ranges) {
         if (ranges.length <= 1) {
             throw new IllegalArgumentException();
         }
@@ -54,7 +54,7 @@ final class MultiScanControllerFactory<R> implements ScanControllerFactory<R> {
         for (int i=0; i<reversed.length; i++) {
             reversed[reversed.length - i - 1] = mRanges[i].reverse();
         }
-        return new MultiScanControllerFactory(reversed);
+        return new RangeUnionScanControllerFactory(reversed);
     }
 
     @Override
@@ -78,7 +78,7 @@ final class MultiScanControllerFactory<R> implements ScanControllerFactory<R> {
 
         Arrays.sort(controllers, ScanController::compareLow);
 
-        return new MultiScanController<R>(controllers);
+        return new RangeUnionScanController<R>(controllers);
     }
 
     @Override
@@ -93,6 +93,6 @@ final class MultiScanControllerFactory<R> implements ScanControllerFactory<R> {
 
         Arrays.sort(controllers, ScanController::compareLow);
 
-        return new MultiScanController<R>(controllers);
+        return new RangeUnionScanController<R>(controllers);
     }
 }
