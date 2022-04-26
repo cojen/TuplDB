@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2021 Cojen.org
+ *  Copyright (C) 2022 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -17,85 +17,76 @@
 
 package org.cojen.tupl.rows;
 
-import java.util.Arrays;
-
 import org.cojen.tupl.core.RowPredicate;
 
 import org.cojen.tupl.diag.QueryPlan;
 
 /**
- * A factory that combines SingleScanControllers which have the same natural order.
+ * A factory that combines ScanControllers which are known to be disjoint.
  *
  * @author Brian S O'Neill
  */
-final class RangeUnionScanControllerFactory<R> implements ScanControllerFactory<R> {
-    private final ScanControllerFactory<R>[] mRanges;
+final class DisjointUnionScanControllerFactory<R> implements ScanControllerFactory<R> {
+    private final ScanControllerFactory<R>[] mSubsets;
 
-    /**
-     * Each range must produce SingleScanController instances.
-     */
-    RangeUnionScanControllerFactory(ScanControllerFactory<R>[] ranges) {
-        if (ranges.length <= 1) {
+    DisjointUnionScanControllerFactory(ScanControllerFactory<R>[] subsets) {
+        if (subsets.length <= 1) {
             throw new IllegalArgumentException();
         }
-        mRanges = ranges;
+        mSubsets = subsets;
     }
 
     @Override
     public QueryPlan plan(Object... args) {
-        var plans = new QueryPlan[mRanges.length];
+        var plans = new QueryPlan[mSubsets.length];
         for (int i=0; i<plans.length; i++) {
-            plans[i] = mRanges[i].plan(args);
+            plans[i] = mSubsets[i].plan(args);
         }
-        return new QueryPlan.RangeUnion(plans);
+        return new QueryPlan.DisjointUnion(plans);
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public ScanControllerFactory<R> reverse() {
-        var reversed = new ScanControllerFactory[mRanges.length];
+        var reversed = new ScanControllerFactory[mSubsets.length];
         for (int i=0; i<reversed.length; i++) {
-            reversed[reversed.length - i - 1] = mRanges[i].reverse();
+            reversed[reversed.length - i - 1] = mSubsets[i].reverse();
         }
-        return new RangeUnionScanControllerFactory<R>(reversed);
+        return new DisjointUnionScanControllerFactory<R>(reversed);
     }
 
     @Override
     public RowPredicate<R> predicate(Object... args) {
-        return mRanges[0].predicate(args);
+        return mSubsets[0].predicate(args);
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public ScanController<R> scanController(Object... args) {
-        var ranges = mRanges;
-        var controllers = new SingleScanController[ranges.length];
+        var subsets = mSubsets;
+        var controllers = new ScanController[subsets.length];
 
-        var first = (SingleScanController<R>) ranges[0].scanController(args);
+        var first = subsets[0].scanController(args);
         RowPredicate predicate = first.predicate();
         controllers[0] = first;
 
         for (int i=1; i<controllers.length; i++) {
-            controllers[i] = (SingleScanController<R>) ranges[i].scanController(predicate);
+            controllers[i] = subsets[i].scanController(predicate);
         }
 
-        Arrays.sort(controllers, SingleScanController::compareLow);
-
-        return new RangeUnionScanController<R>(controllers);
+        return new DisjointUnionScanController<R>(controllers);
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public ScanController<R> scanController(RowPredicate predicate) {
-        var ranges = mRanges;
-        var controllers = new SingleScanController[ranges.length];
+        var subsets = mSubsets;
+        var controllers = new ScanController[subsets.length];
 
         for (int i=0; i<controllers.length; i++) {
-            controllers[i] = (SingleScanController<R>) ranges[i].scanController(predicate);
+            controllers[i] = subsets[i].scanController(predicate);
         }
 
-        Arrays.sort(controllers, SingleScanController::compareLow);
-
-        return new RangeUnionScanController<R>(controllers);
+        return new DisjointUnionScanController<R>(controllers);
     }
 }
