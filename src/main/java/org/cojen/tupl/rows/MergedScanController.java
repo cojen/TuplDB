@@ -39,12 +39,9 @@ final class MergedScanController<R> extends SingleScanController<R> {
      * @return null if cannot merge
      */
     static <R> MergedScanController<R> tryMerge(Comparator<byte[]> comparator,
-                                                ScanController<R> low, ScanController<R> high)
+                                                SingleScanController<R> low,
+                                                SingleScanController<R> high)
     {
-        if (!low.isSingleBatch() || !high.isSingleBatch()) {
-            return null;
-        }
-
         byte[] lowLow = low.lowBound();
         if (lowLow == EMPTY) {
             return null;
@@ -89,7 +86,7 @@ final class MergedScanController<R> extends SingleScanController<R> {
             (lowLow, low.lowInclusive(), highBound, highInclusive, low, high, reverse, mode);
     }
 
-    private final ScanController<R> mLow, mHigh;
+    private final SingleScanController<R> mLow, mHigh;
     private final RowDecoderEncoder<R> mLowDecoder, mHighDecoder;
 
     /* modes:
@@ -102,7 +99,7 @@ final class MergedScanController<R> extends SingleScanController<R> {
 
     private MergedScanController(byte[] lowBound, boolean lowInclusive,
                                  byte[] highBound, boolean highInclusive,
-                                 ScanController<R> low, ScanController<R> high,
+                                 SingleScanController<R> low, SingleScanController<R> high,
                                  boolean reverse, int mode)
     {
         super(reverse, lowBound, lowInclusive, highBound, highInclusive);
@@ -160,10 +157,5 @@ final class MergedScanController<R> extends SingleScanController<R> {
     public byte[] updateValue(R row, byte[] original) throws IOException {
         // Can call either decoder. They should do the same thing.
         return mLowDecoder.updateValue(row, original);
-    }
-
-    @Override
-    public Comparator<byte[]> comparator() {
-        return mLow.comparator();
     }
 }

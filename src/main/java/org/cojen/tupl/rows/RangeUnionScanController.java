@@ -34,32 +34,22 @@ import org.cojen.tupl.core.RowPredicate;
  * @see RangeUnionScanControllerFactory
  */
 final class RangeUnionScanController<R> implements ScanController<R> {
-    private final ScanController<R>[] mControllers;
+    private final SingleScanController<R>[] mControllers;
 
     private int mPosition;
-    private ScanController<R> mCurrent;
+    private SingleScanController<R> mCurrent;
 
     /**
      * @param controllers must be ordered by ascending lower bound
      */
-    RangeUnionScanController(ScanController<R>[] controllers) {
+    RangeUnionScanController(SingleScanController<R>[] controllers) {
         mControllers = controllers;
         assignCurrent(0);
     }
 
     @Override
-    public Comparator<byte[]> comparator() {
-        return mControllers[0].comparator();
-    }
-
-    @Override
     public RowPredicate<R> predicate() {
         return mControllers[0].predicate();
-    }
-
-    @Override
-    public boolean isSingleBatch() {
-        return false;
     }
 
     @Override
@@ -84,33 +74,8 @@ final class RangeUnionScanController<R> implements ScanController<R> {
         }
     }
 
-    @Override
-    public byte[] lowBound() {
-        return mCurrent.lowBound();
-    }
-
-    @Override
-    public boolean lowInclusive() {
-        return mCurrent.lowInclusive();
-    }
-
-    @Override
-    public byte[] highBound() {
-        return mCurrent.highBound();
-    }
-
-    @Override
-    public boolean highInclusive() {
-        return mCurrent.highInclusive();
-    }
-
-    @Override
-    public boolean isReverse() {
-        return mCurrent.isReverse();
-    }
-
     private void assignCurrent(int pos) {
-        ScanController<R> current = mControllers[pos];
+        SingleScanController<R> current = mControllers[pos];
         Comparator<byte[]> comparator = current.comparator();
 
         while (true) {
@@ -118,7 +83,7 @@ final class RangeUnionScanController<R> implements ScanController<R> {
             if (nextPos >= mControllers.length) {
                 break;
             }
-            ScanController<R> next = mControllers[nextPos];
+            SingleScanController<R> next = mControllers[nextPos];
             MergedScanController<R> merged =
                 MergedScanController.tryMerge(comparator, current, next);
             if (merged == null) {

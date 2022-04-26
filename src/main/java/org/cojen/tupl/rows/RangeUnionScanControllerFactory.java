@@ -31,6 +31,9 @@ import org.cojen.tupl.diag.QueryPlan;
 final class RangeUnionScanControllerFactory<R> implements ScanControllerFactory<R> {
     private final ScanControllerFactory<R>[] mRanges;
 
+    /**
+     * Each range must produce SingleScanController instances.
+     */
     RangeUnionScanControllerFactory(ScanControllerFactory<R>[] ranges) {
         if (ranges.length <= 1) {
             throw new IllegalArgumentException();
@@ -66,17 +69,17 @@ final class RangeUnionScanControllerFactory<R> implements ScanControllerFactory<
     @SuppressWarnings("unchecked")
     public ScanController<R> scanController(Object... args) {
         var ranges = mRanges;
-        var controllers = new ScanController[ranges.length];
+        var controllers = new SingleScanController[ranges.length];
 
-        ScanController<R> first = ranges[0].scanController(args);
+        var first = (SingleScanController<R>) ranges[0].scanController(args);
         RowPredicate predicate = first.predicate();
         controllers[0] = first;
 
         for (int i=1; i<controllers.length; i++) {
-            controllers[i] = ranges[i].scanController(predicate);
+            controllers[i] = (SingleScanController<R>) ranges[i].scanController(predicate);
         }
 
-        Arrays.sort(controllers, ScanController::compareLow);
+        Arrays.sort(controllers, SingleScanController::compareLow);
 
         return new RangeUnionScanController<R>(controllers);
     }
@@ -85,13 +88,13 @@ final class RangeUnionScanControllerFactory<R> implements ScanControllerFactory<
     @SuppressWarnings("unchecked")
     public ScanController<R> scanController(RowPredicate predicate) {
         var ranges = mRanges;
-        var controllers = new ScanController[ranges.length];
+        var controllers = new SingleScanController[ranges.length];
 
         for (int i=0; i<controllers.length; i++) {
-            controllers[i] = ranges[i].scanController(predicate);
+            controllers[i] = (SingleScanController<R>) ranges[i].scanController(predicate);
         }
 
-        Arrays.sort(controllers, ScanController::compareLow);
+        Arrays.sort(controllers, SingleScanController::compareLow);
 
         return new RangeUnionScanController<R>(controllers);
     }

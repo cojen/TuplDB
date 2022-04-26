@@ -36,16 +36,12 @@ import org.cojen.tupl.core.RowPredicate;
 public interface ScanController<R> {
     static final byte[] EMPTY = new byte[0];
 
-    Comparator<byte[]> comparator();
-
     /**
      * Returns a predicate which is shared by all scan batches.
      */
     default RowPredicate<R> predicate() {
         return RowPredicate.all();
     }
-
-    boolean isSingleBatch();
 
     /**
      * Returns a new cursor for the current scan batch.
@@ -61,101 +57,4 @@ public interface ScanController<R> {
      * Move to the next batch, returning false if none.
      */
     boolean next();
-
-    /**
-     * Returns the low bounding range, or null if unbounded, or EMPTY if low bound is so high
-     * that the scan results are empty.
-     */
-    byte[] lowBound();
-
-    boolean lowInclusive();
-
-    /**
-     * Returns the high bounding range, or null if unbounded.
-     */
-    byte[] highBound();
-
-    boolean highInclusive();
-
-    boolean isReverse();
-
-    /**
-     * Returns true if the given key is lower than the low bounding range.
-     *
-     * @param key non-null
-     */
-    default boolean isTooLow(byte[] key) {
-        byte[] low = lowBound();
-        if (low == null) {
-            return false;
-        }
-        int cmp = comparator().compare(key, low);
-        return cmp < 0 || (cmp == 0 && !lowInclusive());
-    }
-
-    /**
-     * Returns true if the given key is higher than the high bounding range.
-     *
-     * @param key non-null
-     */
-    default boolean isTooHigh(byte[] key) {
-        byte[] high = highBound();
-        if (high == null) {
-            return false;
-        }
-        int cmp = comparator().compare(key, high);
-        return cmp > 0 || (cmp == 0 && !highInclusive());
-    }
-
-    /**
-     * Compare the low bound of this controller to another. Returns -1 is this lower bound is
-     * lower than the other lower bound, etc.
-     *
-     * @return -1, 0, or 1
-     */
-    default int compareLow(ScanController other) {
-        byte[] thisLow = this.lowBound();
-        byte[] otherLow = other.lowBound();
-
-        int cmp;
-
-        if (thisLow == null) {
-            cmp = otherLow == null ? 0 : -1;
-        } else if (otherLow == null) {
-            cmp = 1;
-        } else {
-            cmp = comparator().compare(thisLow, otherLow);
-            if (cmp == 0) {
-                cmp = -Boolean.compare(this.lowInclusive(), other.lowInclusive());
-            }
-        }
-
-        return cmp;
-    }
-
-    /**
-     * Compare the high bound of this controller to another. Returns -1 is this higher bound is
-     * lower than the other higher bound, etc.
-     *
-     * @return -1, 0, or 1
-     */
-    default int compareHigh(ScanController other) {
-        byte[] thisHigh = this.highBound();
-        byte[] otherHigh = other.highBound();
-
-        int cmp;
-
-        if (thisHigh == null) {
-            cmp = otherHigh == null ? 0 : 1;
-        } else if (otherHigh == null) {
-            cmp = -1;
-        } else {
-            cmp = comparator().compare(thisHigh, otherHigh);
-            if (cmp == 0) {
-                cmp = Boolean.compare(this.highInclusive(), other.highInclusive());
-            }
-        }
-
-        return cmp;
-    }
 }

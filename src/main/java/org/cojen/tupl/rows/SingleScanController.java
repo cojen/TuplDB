@@ -80,20 +80,6 @@ public abstract class SingleScanController<R> implements ScanController<R>, RowD
     }
 
     @Override
-    public Comparator<byte[]> comparator() {
-        Comparator<byte[]> cmp = RowUtils.KEY_COMPARATOR;
-        if (mReverse) {
-            cmp = cmp.reversed();
-        }
-        return cmp;
-    }
-
-    @Override
-    public final boolean isSingleBatch() {
-        return true;
-    }
-
-    @Override
     public final Cursor newCursor(View view, Transaction txn) throws IOException {
         if (mReverse) {
             // Must reverse before applying bounds, because they're supposed to be swapped.
@@ -129,28 +115,111 @@ public abstract class SingleScanController<R> implements ScanController<R>, RowD
         return false;
     }
 
-    @Override
-    public final byte[] lowBound() {
+    protected final byte[] lowBound() {
         return mLowBound;
     }
 
-    @Override
-    public final boolean lowInclusive() {
+    protected final boolean lowInclusive() {
         return mLowInclusive;
     }
 
-    @Override
-    public final byte[] highBound() {
+    protected final byte[] highBound() {
         return mHighBound;
     }
 
-    @Override
-    public final boolean highInclusive() {
+    protected final boolean highInclusive() {
         return mHighInclusive;
     }
 
-    @Override
-    public final boolean isReverse() {
+    protected final boolean isReverse() {
         return mReverse;
+    }
+
+    /**
+     * Returns true if the given key is lower than the low bounding range.
+     *
+     * @param key non-null
+     */
+    protected final boolean isTooLow(byte[] key) {
+        byte[] low = lowBound();
+        if (low == null) {
+            return false;
+        }
+        int cmp = comparator().compare(key, low);
+        return cmp < 0 || (cmp == 0 && !lowInclusive());
+    }
+
+    /**
+     * Returns true if the given key is higher than the high bounding range.
+     *
+     * @param key non-null
+     */
+    protected final boolean isTooHigh(byte[] key) {
+        byte[] high = highBound();
+        if (high == null) {
+            return false;
+        }
+        int cmp = comparator().compare(key, high);
+        return cmp > 0 || (cmp == 0 && !highInclusive());
+    }
+
+    /**
+     * Compare the low bound of this controller to another. Returns -1 is this lower bound is
+     * lower than the other lower bound, etc.
+     *
+     * @return -1, 0, or 1
+     */
+    protected final int compareLow(SingleScanController other) {
+        byte[] thisLow = this.lowBound();
+        byte[] otherLow = other.lowBound();
+
+        int cmp;
+
+        if (thisLow == null) {
+            cmp = otherLow == null ? 0 : -1;
+        } else if (otherLow == null) {
+            cmp = 1;
+        } else {
+            cmp = comparator().compare(thisLow, otherLow);
+            if (cmp == 0) {
+                cmp = -Boolean.compare(this.lowInclusive(), other.lowInclusive());
+            }
+        }
+
+        return cmp;
+    }
+
+    /**
+     * Compare the high bound of this controller to another. Returns -1 is this higher bound is
+     * lower than the other higher bound, etc.
+     *
+     * @return -1, 0, or 1
+     */
+    protected final int compareHigh(SingleScanController other) {
+        byte[] thisHigh = this.highBound();
+        byte[] otherHigh = other.highBound();
+
+        int cmp;
+
+        if (thisHigh == null) {
+            cmp = otherHigh == null ? 0 : 1;
+        } else if (otherHigh == null) {
+            cmp = -1;
+        } else {
+            cmp = comparator().compare(thisHigh, otherHigh);
+            if (cmp == 0) {
+                cmp = Boolean.compare(this.highInclusive(), other.highInclusive());
+            }
+        }
+
+        return cmp;
+    }
+
+    protected final Comparator<byte[]> comparator() {
+        Comparator<byte[]> cmp = RowUtils.KEY_COMPARATOR;
+        if (mReverse) {
+            cmp = cmp.reversed();
+        }
+        return cmp;
     }
 }
