@@ -184,7 +184,7 @@ public abstract class AbstractTable<R> implements Table<R>, ScanControllerFactor
         }
         ScanControllerFactory<R> factory = cache.get(filter);
         if (factory == null) {
-            factory = findFilteredFactory(cache, filter);
+            factory = findFilteredFactory(cache, filter, null);
         }
         return factory;
     }
@@ -297,7 +297,7 @@ public abstract class AbstractTable<R> implements Table<R>, ScanControllerFactor
         }
         ScanControllerFactory<R> factory = cache.get(filter);
         if (factory == null) {
-            factory = findFilteredFactory(cache, filter);
+            factory = findFilteredFactory(cache, filter, null);
         }
         return factory;
     }
@@ -371,7 +371,7 @@ public abstract class AbstractTable<R> implements Table<R>, ScanControllerFactor
         }
         ScanControllerFactory<R> factory = mFilterFactoryCache.get(filter);
         if (factory == null) {
-            factory = findFilteredFactory(mFilterFactoryCache, filter);
+            factory = findFilteredFactory(mFilterFactoryCache, filter, null);
         }
         return factory.predicate(args);
     }
@@ -458,9 +458,12 @@ public abstract class AbstractTable<R> implements Table<R>, ScanControllerFactor
         return unfiltered();
     }
 
+    /**
+     * @param ff the parsed and reduced filter string; can be null initially
+     */
     @SuppressWarnings("unchecked")
     private ScanControllerFactory<R> findFilteredFactory
-        (SoftCache<String, ScanControllerFactory<R>> cache, String filter)
+        (SoftCache<String, ScanControllerFactory<R>> cache, String filter, FullFilter ff)
     {
         Latch latch;
         while (true) {
@@ -507,7 +510,10 @@ public abstract class AbstractTable<R> implements Table<R>, ScanControllerFactor
                 }
             }
 
-            FullFilter ff = new Parser(allColumns, filter).parseFull(availableColumns).reduce();
+            if (ff == null) {
+                ff = new Parser(allColumns, filter).parseFull(availableColumns).reduce();
+            }
+
             RowFilter rf = ff.filter();
 
             if (rf instanceof FalseFilter) {
@@ -522,7 +528,7 @@ public abstract class AbstractTable<R> implements Table<R>, ScanControllerFactor
 
             String canonical = ff.toString();
             if (!canonical.equals(filter)) {
-                factory = findFilteredFactory(cache, canonical);
+                factory = findFilteredFactory(cache, canonical, ff);
                 break obtain;
             }
 
