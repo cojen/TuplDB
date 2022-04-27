@@ -64,7 +64,7 @@ import org.cojen.tupl.views.ViewUtils;
  *
  * @author Brian S O'Neill
  */
-public abstract class AbstractTable<R> implements Table<R>, ScanControllerFactory<R> {
+public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R> {
     // Need a strong reference to this to prevent premature GC.
     final TableManager<R> mTableManager;
 
@@ -91,11 +91,11 @@ public abstract class AbstractTable<R> implements Table<R>, ScanControllerFactor
         try {
             MethodHandles.Lookup lookup = MethodHandles.lookup();
             cTriggerHandle = lookup.findVarHandle
-                (AbstractTable.class, "mTrigger", Trigger.class);
+                (BaseTable.class, "mTrigger", Trigger.class);
             cComparatorCacheHandle = lookup.findVarHandle
-                (AbstractTable.class, "mComparatorCache", WeakCache.class);
+                (BaseTable.class, "mComparatorCache", WeakCache.class);
             cPartialDecodeCacheHandle = lookup.findVarHandle
-                (AbstractTable.class, "mPartialDecodeCache", WeakCache.class);
+                (BaseTable.class, "mPartialDecodeCache", WeakCache.class);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
@@ -104,7 +104,7 @@ public abstract class AbstractTable<R> implements Table<R>, ScanControllerFactor
     /**
      * @param indexLock is null if unsupported
      */
-    protected AbstractTable(TableManager<R> manager, Index source, RowPredicateLock<R> indexLock) {
+    protected BaseTable(TableManager<R> manager, Index source, RowPredicateLock<R> indexLock) {
         mTableManager = manager;
 
         mSource = Objects.requireNonNull(source);
@@ -211,7 +211,7 @@ public abstract class AbstractTable<R> implements Table<R>, ScanControllerFactor
      * @param secondary non-null if joining from a secondary index to this primary table
      */
     protected RowUpdater<R> newRowUpdater(Transaction txn, ScanController<R> controller,
-                                          AbstractTableView<R> secondary)
+                                          BaseTableIndex<R> secondary)
         throws IOException
     {
         final BasicRowUpdater<R> updater;
@@ -395,7 +395,7 @@ public abstract class AbstractTable<R> implements Table<R>, ScanControllerFactor
     }
 
     @Override
-    public AbstractTable<R> viewUnjoined() {
+    public BaseTable<R> viewUnjoined() {
         return this;
     }
 
@@ -423,7 +423,7 @@ public abstract class AbstractTable<R> implements Table<R>, ScanControllerFactor
 
             @Override
             public ScanControllerFactory<R> reverse() {
-                return AbstractTable.this;
+                return BaseTable.this;
             }
 
             @Override
@@ -871,7 +871,7 @@ public abstract class AbstractTable<R> implements Table<R>, ScanControllerFactor
     /**
      * Returns the current trigger, which must be held shared during the operation. As soon as
      * acquired, check if the trigger is disabled. This method must be public because it's
-     * sometimes accessed from generated code which isn't a subclass of AbstractTable.
+     * sometimes accessed from generated code which isn't a subclass of BaseTable.
      */
     public final Trigger<R> trigger() {
         return (Trigger<R>) cTriggerHandle.getOpaque(this);

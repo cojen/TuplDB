@@ -37,9 +37,9 @@ import org.cojen.tupl.diag.QueryPlan;
  * @author Brian S O'Neill
  */
 final class ReverseTable<R> implements Table<R> {
-    private final AbstractTable<R> mSource;
+    private final BaseTable<R> mSource;
 
-    ReverseTable(AbstractTable<R> source) {
+    ReverseTable(BaseTable<R> source) {
         mSource = source;
     }
 

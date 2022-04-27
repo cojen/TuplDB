@@ -30,12 +30,12 @@ import org.cojen.tupl.util.WideLatch;
  * approach which replaces the trigger all at once might be safer.
  *
  * @author Brian S O'Neill
- * @see AbstractTable#setTrigger
+ * @see BaseTable#setTrigger
  */
 public class Trigger<R> extends WideLatch {
     public static final int ACTIVE = 0, SKIP = 1, DISABLED = 2;
 
-    // Set by AbstractTable.
+    // Set by BaseTable.
     int mMode;
 
     /**
@@ -129,7 +129,7 @@ public class Trigger<R> extends WideLatch {
     }
 
     /**
-     * Disables this trigger and waits. Called by AbstractTable at most once.
+     * Disables this trigger and waits. Called by BaseTable at most once.
      */
     final void disable() {
         // Note that mode field can be assigned using "plain" mode because lock acquisition

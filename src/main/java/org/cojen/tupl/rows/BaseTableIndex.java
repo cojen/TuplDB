@@ -32,9 +32,9 @@ import org.cojen.tupl.core.RowPredicateLock;
  *
  * @author Brian S O'Neill
  */
-public abstract class AbstractTableView<R> extends AbstractTable<R> {
-    protected AbstractTableView(TableManager<R> manager,
-                                Index source, RowPredicateLock<R> indexLock)
+public abstract class BaseTableIndex<R> extends BaseTable<R> {
+    protected BaseTableIndex(TableManager<R> manager,
+                             Index source, RowPredicateLock<R> indexLock)
     {
         super(manager, source, indexLock);
     }
@@ -97,7 +97,7 @@ public abstract class AbstractTableView<R> extends AbstractTable<R> {
     }
 
     protected RowUpdater<R> newJoinedRowUpdater(Transaction txn, ScanController<R> controller,
-                                                AbstractTable<R> primaryTable)
+                                                BaseTable<R> primaryTable)
         throws IOException
     {
         return primaryTable.newRowUpdater(txn, controller, this);

@@ -40,7 +40,7 @@ final class JoinedRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater
 
     private Cursor mPrimaryCursor;
 
-    JoinedRowUpdater(AbstractTableView<R> table, ScanController<R> controller,
+    JoinedRowUpdater(BaseTableIndex<R> table, ScanController<R> controller,
                      BasicRowUpdater<R> primaryUpdater)
     {
         super(table, controller);

@@ -30,7 +30,7 @@ import org.cojen.tupl.Transaction;
  * @author Brian S O'Neill
  */
 final class UpgradableRowUpdater<R> extends BasicRowUpdater<R> {
-    UpgradableRowUpdater(AbstractTable<R> table, ScanController<R> controller) {
+    UpgradableRowUpdater(BaseTable<R> table, ScanController<R> controller) {
         super(table, controller);
     }
 

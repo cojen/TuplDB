@@ -28,7 +28,7 @@ import org.cojen.tupl.LockResult;
  * @author Brian S O'Neill
  */
 final class AutoCommitRowScanner<R> extends BasicRowScanner<R> {
-    AutoCommitRowScanner(AbstractTable<R> table, ScanController<R> controller) {
+    AutoCommitRowScanner(BaseTable<R> table, ScanController<R> controller) {
         super(table, controller);
     }
 

@@ -46,8 +46,8 @@ import static org.cojen.tupl.rows.RowUtils.*;
 public final class TableManager<R> {
     final Index mPrimaryIndex;
 
-    private final WeakClassCache<AbstractTable<R>> mTables;
-    private volatile WeakReference<AbstractTable<R>> mMostRecentTable;
+    private final WeakClassCache<BaseTable<R>> mTables;
+    private volatile WeakReference<BaseTable<R>> mMostRecentTable;
 
     private final ConcurrentSkipListMap<byte[], WeakReference<SecondaryInfo>> mIndexInfos;
 
@@ -55,7 +55,7 @@ public final class TableManager<R> {
 
     private WeakReference<Worker> mWorkerRef;
 
-    private volatile WeakCache<Object, AbstractTable<R>> mIndexTables;
+    private volatile WeakCache<Object, BaseTable<R>> mIndexTables;
 
     TableManager(Index primaryIndex) {
         mPrimaryIndex = primaryIndex;
@@ -67,7 +67,7 @@ public final class TableManager<R> {
         return mPrimaryIndex;
     }
 
-    AbstractTable<R> asTable(RowStore rs, Index ix, Class<R> type) throws IOException {
+    BaseTable<R> asTable(RowStore rs, Index ix, Class<R> type) throws IOException {
         var table = tryFindTable(type);
 
         if (table != null) {
@@ -94,9 +94,9 @@ public final class TableManager<R> {
         return table;
     }
 
-    private AbstractTable<R> tryFindTable(Class<R> type) {
-        WeakReference<AbstractTable<R>> ref = mTables.getRef(type);
-        AbstractTable<R> table;
+    private BaseTable<R> tryFindTable(Class<R> type) {
+        WeakReference<BaseTable<R>> ref = mTables.getRef(type);
+        BaseTable<R> table;
 
         if (ref == null || (table = ref.get()) == null) {
             synchronized (mTables) {
@@ -115,8 +115,8 @@ public final class TableManager<R> {
     /**
      * Returns a cache of secondary indexes, as tables. See the RowStore.indexTable method.
      */
-    WeakCache<Object, AbstractTable<R>> indexTables() {
-        WeakCache<Object, AbstractTable<R>> indexTables = mIndexTables;
+    WeakCache<Object, BaseTable<R>> indexTables() {
+        WeakCache<Object, BaseTable<R>> indexTables = mIndexTables;
         if (indexTables == null) {
             synchronized (this) {
                 indexTables = mIndexTables;
@@ -142,11 +142,11 @@ public final class TableManager<R> {
      * tables, as this would create odd race conditions as different tables are GC'd
      * unpredictably.
      */
-    AbstractTable<R> mostRecentTable() {
-        WeakReference<AbstractTable<R>> ref = mMostRecentTable;
+    BaseTable<R> mostRecentTable() {
+        WeakReference<BaseTable<R>> ref = mMostRecentTable;
 
         if (ref != null) {
-            AbstractTable<R> table = ref.get();
+            BaseTable<R> table = ref.get();
             if (table != null) {
                 return table;
             }
@@ -180,7 +180,7 @@ public final class TableManager<R> {
      * @param secondaries maps index descriptor to index id and state
      */
     void update(RowStore rs, Transaction txn, View secondaries) throws IOException {
-        List<AbstractTable<R>> tables = mTables.copyValues();
+        List<BaseTable<R>> tables = mTables.copyValues();
         if (tables != null) {
             for (var table : tables) {
                 Class<R> rowType = table.rowType();
@@ -201,7 +201,7 @@ public final class TableManager<R> {
      * @param primaryInfo required
      * @param secondaries key is secondary index descriptor, value is index id and state
      */
-    private void update(AbstractTable<R> table, Class<R> rowType, RowInfo primaryInfo,
+    private void update(BaseTable<R> table, Class<R> rowType, RowInfo primaryInfo,
                         RowStore rs, Transaction txn, View secondaries)
         throws IOException
     {

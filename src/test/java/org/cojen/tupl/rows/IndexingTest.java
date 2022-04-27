@@ -970,7 +970,7 @@ public class IndexingTest {
         var nameTable = table1.viewSecondaryIndex("name").viewUnjoined();
         verifyIndex(nameTable, table1, 0);
         assertEquals(fillAmount, nameTable.newStream(null).count());
-        long nameTableId = ((AbstractTable) nameTable).mSource.id();
+        long nameTableId = ((BaseTable) nameTable).mSource.id();
 
         assertNotNull(db.indexById(nameTableId));
 
@@ -1101,7 +1101,7 @@ public class IndexingTest {
         var nameTable = table1.viewSecondaryIndex("name").viewUnjoined();
         verifyIndex(nameTable, table1, 0);
         assertEquals(fillAmount, nameTable.newStream(null).count());
-        long nameTableId = ((AbstractTable) nameTable).mSource.id();
+        long nameTableId = ((BaseTable) nameTable).mSource.id();
 
         assertNotNull(leaderDb.indexById(nameTableId));
 
@@ -1110,7 +1110,7 @@ public class IndexingTest {
         Table replicaTable = replicaDb.openIndex("test").asTable(t1);
 
         var replicaNameTable = replicaTable.viewSecondaryIndex("name").viewUnjoined();
-        assertEquals(nameTableId, ((AbstractTable) replicaNameTable).mSource.id());
+        assertEquals(nameTableId, ((BaseTable) replicaNameTable).mSource.id());
 
         verifyIndex(replicaNameTable, replicaTable, 0);
         assertEquals(fillAmount, replicaNameTable.newStream(null).count());

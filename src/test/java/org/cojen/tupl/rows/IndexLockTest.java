@@ -1016,7 +1016,7 @@ public class IndexLockTest {
         Table<TestRow2> table = tableSource.asTable(TestRow2.class);
         Table<TestRow2> nameIx = table.viewSecondaryIndex("name");
 
-        Index nameIxSouce = ((AbstractTable) nameIx).mSource;
+        Index nameIxSouce = ((BaseTable) nameIx).mSource;
 
         fill(table, 1, 3);
 

@@ -44,7 +44,6 @@ import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.RowUpdater;
-import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnmodifiableViewException;
 
@@ -57,7 +56,7 @@ import org.cojen.tupl.filter.ColumnFilter;
 import org.cojen.tupl.views.ViewUtils;
 
 /**
- * Makes Table classes that extend AbstractTable.
+ * Makes Table classes that extend BaseTable.
  *
  * @author Brian S O'Neill
  */
@@ -123,7 +122,7 @@ public class TableMaker {
 
     /**
      * Return a constructor which accepts a (TableManager, Index, RowPredicateLock) and returns
-     * an AbstractTable implementation.
+     * a BaseTable implementation.
      */
     MethodHandle finish() {
         {
@@ -132,10 +131,10 @@ public class TableMaker {
 
             if (isPrimaryTable()) {
                 suffix = "Table";
-                baseClass = AbstractTable.class;
+                baseClass = BaseTable.class;
             } else {
                 suffix = "Unjoined";
-                baseClass = AbstractTableView.class;
+                baseClass = BaseTableIndex.class;
             }
 
             mClassMaker = mCodecGen.beginClassMaker(getClass(), mRowType, suffix).public_()
@@ -286,7 +285,7 @@ public class TableMaker {
 
     /**
      * Return a constructor which accepts a (Index, RowPredicateLock, TableImpl primary,
-     * TableImpl unjoined) and returns an AbstractTable implementation.
+     * TableImpl unjoined) and returns a BaseTable implementation.
      *
      * @param primaryTableClass the primary table implementation class
      * @param unjoinedClass the table implementation which is passed as the last constructor
@@ -327,7 +326,7 @@ public class TableMaker {
         ctor.field("unjoined").set(unjoinedVar);
 
         {
-            MethodMaker mm = mClassMaker.addMethod(AbstractTable.class, "viewUnjoined").public_();
+            MethodMaker mm = mClassMaker.addMethod(BaseTable.class, "viewUnjoined").public_();
             mm.return_(mm.field("unjoined"));
         }
 
@@ -359,14 +358,14 @@ public class TableMaker {
         addPlanMethod(0b10);
         addPlanMethod(0b11); // reverse option
 
-        // Override the methods inherited from the unjoined class, defined in AbstractTable.
+        // Override the methods inherited from the unjoined class, defined in BaseTable.
         MethodMaker mm = mClassMaker.addMethod
             (SingleScanController.class, "unfiltered").protected_();
         mm.return_(mm.field("unfiltered"));
         mm = mClassMaker.addMethod(SingleScanController.class, "unfilteredReverse").protected_();
         mm.return_(mm.field("unfilteredReverse"));
 
-        // Override the method inherited from AbstractTableView.
+        // Override the method inherited from BaseTableIndex.
         mm = mClassMaker.addMethod(RowUpdater.class, "newRowUpdater",
                                    Transaction.class, ScanController.class).protected_();
         mm.return_(mm.invoke("newJoinedRowUpdater", mm.param(0), mm.param(1),
@@ -1340,7 +1339,7 @@ public class TableMaker {
         if (variant == "replace" || !mSupportsIndexLock) {
             return mm.field("mSource").invoke(variant, txnVar, keyVar, valueVar);
         } else {
-            // Call protected method inherited from AbstractTable.
+            // Call protected method inherited from BaseTable.
             return mm.invoke(variant, txnVar, rowVar, keyVar, valueVar);
         }
     }

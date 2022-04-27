@@ -38,7 +38,7 @@ import org.cojen.tupl.DatabaseException;
  * Makes a call site which decodes rows partially.
  *
  * @author Brian S O'Neill
- * @see AbstractTable#decodePartialHandle
+ * @see BaseTable#decodePartialHandle
  */
 public class DecodePartialMaker {
     private DecodePartialMaker() {

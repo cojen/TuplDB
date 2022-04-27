@@ -57,7 +57,7 @@ import org.cojen.tupl.io.Utils;
 public class FilteredScanMaker<R> {
     private final WeakReference<RowStore> mStoreRef;
     private final byte[] mSecondaryDescriptor;
-    private final AbstractTable<R> mTable;
+    private final BaseTable<R> mTable;
     private final Class<?> mPrimaryTableClass;
     private final SingleScanController<R> mUnfiltered;
     private final Class<?> mPredicateClass;
@@ -95,7 +95,7 @@ public class FilteredScanMaker<R> {
      * @param projectionSpec null if all columns are to be decoded; else see DecodePartialMaker
      */
     public FilteredScanMaker(WeakReference<RowStore> storeRef, byte[] secondaryDescriptor,
-                             AbstractTable<R> table, Class<?> primaryTableClass,
+                             BaseTable<R> table, Class<?> primaryTableClass,
                              SingleScanController<R> unfiltered,
                              Class<? extends RowPredicate> predClass,
                              Class<R> rowType, RowGen rowGen, long indexId,
@@ -658,7 +658,7 @@ public class FilteredScanMaker<R> {
             } else {
                 filter = mFilterRef.get();
                 if (filter == null) {
-                    filter = AbstractTable.parseFilter(mRowType, mFilterStr);
+                    filter = BaseTable.parseFilter(mRowType, mFilterStr);
                     mFilterRef = new WeakReference<>(filter);
                 }
             }
@@ -684,7 +684,7 @@ public class FilteredScanMaker<R> {
                         .invokeExact(schemaVersion);
                 } else {
                     // Obtain the MethodHandle which decodes the key and value columns.
-                    AbstractTable<?> table = store.findTable(mIndexId, mRowType);
+                    BaseTable<?> table = store.findTable(mIndexId, mRowType);
                     decoder = table.decodePartialHandle(mProjectionSpec, schemaVersion);
                     valueDecoder = null;
                 }

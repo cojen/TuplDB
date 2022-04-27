@@ -189,7 +189,7 @@ public class RowStore {
     public Object toRow(Index ix, byte[] key) {
         var manager = (TableManager<?>) mTableManagers.get(ix);
         if (manager != null) {
-            AbstractTable<?> table = manager.mostRecentTable();
+            BaseTable<?> table = manager.mostRecentTable();
             if (table != null) {
                 try {
                     return table.toRow(key);
@@ -259,14 +259,14 @@ public class RowStore {
     }
 
     @SuppressWarnings("unchecked")
-    private <R> AbstractTable<R> openTable(Index ix, Class<R> type) throws IOException {
+    private <R> BaseTable<R> openTable(Index ix, Class<R> type) throws IOException {
         return ((TableManager<R>) tableManager(ix)).asTable(this, ix, type);
     }
 
     /**
      * @throws DeletedIndexException if not found
      */
-    <R> AbstractTable<R> findTable(long indexId, Class<R> type) throws IOException {
+    <R> BaseTable<R> findTable(long indexId, Class<R> type) throws IOException {
         Index ix = mDatabase.indexById(indexId);
         if (ix == null) {
             throw new DeletedIndexException();
@@ -281,15 +281,15 @@ public class RowStore {
      * @param consumer called with lock held, to accept the newly made table
      */
     @SuppressWarnings("unchecked")
-    <R> AbstractTable<R> makeTable(TableManager<R> manager, Index ix, Class<R> type,
-                                   Supplier<AbstractTable<R>> doubleCheck,
-                                   Consumer<AbstractTable<R>> consumer)
+    <R> BaseTable<R> makeTable(TableManager<R> manager, Index ix, Class<R> type,
+                               Supplier<BaseTable<R>> doubleCheck,
+                               Consumer<BaseTable<R>> consumer)
         throws IOException
     {
         // Throws an exception if type is malformed.
         RowInfo info = RowInfo.find(type);
 
-        AbstractTable<R> table;
+        BaseTable<R> table;
 
         // Can use NO_FLUSH because transaction will be only used for reading data.
         Transaction txn = mSchemata.newTransaction(DurabilityMode.NO_FLUSH);
@@ -314,7 +314,7 @@ public class RowStore {
             try {
                 var mh = new TableMaker(this, type, info.rowGen(),
                                         ix.id(), indexLock != null).finish();
-                table = (AbstractTable) mh.invoke(manager, ix, indexLock);
+                table = (BaseTable) mh.invoke(manager, ix, indexLock);
             } catch (Throwable e) {
                 throw rethrow(e);
             }
@@ -449,13 +449,13 @@ public class RowStore {
     /**
      * @throws IllegalStateException if not found
      */
-    public <R> Table<R> indexTable(AbstractTable<R> primaryTable, boolean alt, String... columns)
+    public <R> Table<R> indexTable(BaseTable<R> primaryTable, boolean alt, String... columns)
         throws IOException
     {
         Object key = ArrayKey.make(alt, columns);
-        WeakCache<Object, AbstractTable<R>> indexTables = primaryTable.mTableManager.indexTables();
+        WeakCache<Object, BaseTable<R>> indexTables = primaryTable.mTableManager.indexTables();
 
-        AbstractTable<R> table = indexTables.get(key);
+        BaseTable<R> table = indexTables.get(key);
 
         if (table == null) {
             synchronized (indexTables) {
@@ -480,9 +480,9 @@ public class RowStore {
      * @throws IllegalStateException if not found
      */
     @SuppressWarnings("unchecked")
-    private <R> AbstractTable<R> makeIndexTable(WeakCache<Object, AbstractTable<R>> indexTables,
-                                                AbstractTable<R> primaryTable,
-                                                boolean alt, String... columns)
+    private <R> BaseTable<R> makeIndexTable(WeakCache<Object, BaseTable<R>> indexTables,
+                                            BaseTable<R> primaryTable,
+                                            boolean alt, String... columns)
         throws IOException
     {
         Class<R> rowType = primaryTable.rowType();
@@ -529,7 +529,7 @@ public class RowStore {
 
         Object key = ArrayKey.make(descriptor);
 
-        AbstractTable<R> table = indexTables.get(key);
+        BaseTable<R> table = indexTables.get(key);
 
         if (table != null) {
             return table;
@@ -551,9 +551,9 @@ public class RowStore {
             var maker = new TableMaker(this, rowType, rowInfo.rowGen(), indexRowInfo.rowGen(),
                                        descriptor, ix.id(), indexLock != null);
             var mh = maker.finish();
-            var unjoined = (AbstractTable<R>) mh.invoke(primaryTable.mTableManager, ix, indexLock);
+            var unjoined = (BaseTable<R>) mh.invoke(primaryTable.mTableManager, ix, indexLock);
             mh = maker.finishJoined(primaryTable.getClass(), unjoined.getClass());
-            table = (AbstractTable<R>) mh.invoke(ix, indexLock, primaryTable, unjoined);
+            table = (BaseTable<R>) mh.invoke(ix, indexLock, primaryTable, unjoined);
         } catch (Throwable e) {
             throw rethrow(e);
         }
@@ -641,7 +641,7 @@ public class RowStore {
         if (managers != null) {
             try {
                 for (var manager : managers) {
-                    AbstractTable<?> table = manager.mostRecentTable();
+                    BaseTable<?> table = manager.mostRecentTable();
                     if (table != null) {
                         RowInfo info = RowInfo.find(table.rowType());
                         long indexId = manager.mPrimaryIndex.id();
