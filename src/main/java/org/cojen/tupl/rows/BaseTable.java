@@ -641,7 +641,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      * @param rowInfo for secondary (method does nothing if this is the primary table)
      */
     private void splitRemainders(RowInfo rowInfo, RowFilter[]... ranges) {
-        if (unfiltered() instanceof JoinedScanController) {
+        if (joinedPrimaryTableClass() != null) {
             // First filter on the secondary entry, and then filter on the joined primary entry.
             RowFilter.splitRemainders(rowInfo.allColumns, ranges);
         }
@@ -691,12 +691,12 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     protected abstract QueryPlan planReverse(Object... args);
 
     /**
-     * Returns a singleton instance.
+     * Returns a new or singleton instance.
      */
     protected abstract SingleScanController<R> unfiltered();
 
     /**
-     * Returns a singleton instance.
+     * Returns a new or singleton instance.
      */
     protected abstract SingleScanController<R> unfilteredReverse();
 

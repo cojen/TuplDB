@@ -342,32 +342,17 @@ public class TableMaker {
 
         addJoinedLoadMethod(primaryTableClass);
 
-        // Define the class that implements the unfiltered JoinedScanController and construct
-        // two singleton instances.
-        var scanControllerClass = makeUnfilteredJoinedScanControllerClass(primaryTableClass);
-        mClassMaker.addField(scanControllerClass, "unfiltered").private_().final_();
-        mClassMaker.addField(scanControllerClass, "unfilteredReverse").private_().final_();
-        ctor.field("unfiltered").set
-            (ctor.new_(scanControllerClass, null, false, null, false, false,
-                       ctor.field("primaryIndex")));
-        ctor.field("unfilteredReverse").set
-            (ctor.new_(scanControllerClass, null, false, null, false, true,
-                       ctor.field("primaryIndex")));
+        // Override the methods inherited from the unjoined class, defined in BaseTable.
+        addJoinedUnfilteredMethods(primaryTableClass);
 
         // Override the methods inherited from the unjoined class, defined in ScanControllerFactory.
         addPlanMethod(0b10);
         addPlanMethod(0b11); // reverse option
 
-        // Override the methods inherited from the unjoined class, defined in BaseTable.
-        MethodMaker mm = mClassMaker.addMethod
-            (SingleScanController.class, "unfiltered").protected_();
-        mm.return_(mm.field("unfiltered"));
-        mm = mClassMaker.addMethod(SingleScanController.class, "unfilteredReverse").protected_();
-        mm.return_(mm.field("unfilteredReverse"));
-
         // Override the method inherited from BaseTableIndex.
-        mm = mClassMaker.addMethod(RowUpdater.class, "newRowUpdater",
-                                   Transaction.class, ScanController.class).protected_();
+        MethodMaker mm = mClassMaker.addMethod
+            (RowUpdater.class, "newRowUpdater", Transaction.class, ScanController.class);
+        mm.protected_();
         mm.return_(mm.invoke("newJoinedRowUpdater", mm.param(0), mm.param(1),
                              mm.field("primaryTable")));
 
@@ -1979,31 +1964,38 @@ public class TableMaker {
     }
 
     /**
-     * Defines methods which return a singleton SingleScanController instance.
+     * Defines methods which return a SingleScanController instance.
      */
     private void addUnfilteredMethods() {
         MethodMaker mm = mClassMaker.addMethod
             (SingleScanController.class, "unfiltered").protected_();
         var condyClass = mm.var(TableMaker.class).condy
             ("condyDefineUnfiltered", mRowType, mRowClass, mSecondaryDescriptor);
-        var scanControllerClass = condyClass.invoke(Class.class, "unfiltered");
-        var condyInstance = mm.var(TableMaker.class).condy
-            ("condyUnfiltered", scanControllerClass, false);
-        mm.return_(condyInstance.invoke(SingleScanController.class, "unfiltered"));
+        var scanControllerCtor = condyClass.invoke(MethodHandle.class, "unfiltered");
+        Class<?>[] paramTypes = {
+            byte[].class, boolean.class, byte[].class, boolean.class, boolean.class
+        };
+        mm.return_(scanControllerCtor.invoke
+                   (SingleScanController.class, "invokeExact", paramTypes,
+                    null, false, null, false, false));
 
         mm = mClassMaker.addMethod(SingleScanController.class, "unfilteredReverse").protected_();
-        // Pass along the same scanControllerClass constant.
-        condyInstance = mm.var(TableMaker.class).condy
-            ("condyUnfiltered", scanControllerClass, true);
-        mm.return_(condyInstance.invoke(SingleScanController.class, "unfilteredReverse"));
+        // Use the same scanControllerCtor constant, but must set against the correct maker.
+        scanControllerCtor = mm.var(MethodHandle.class).set(scanControllerCtor);
+        mm.return_(scanControllerCtor.invoke
+                   (SingleScanController.class, "invokeExact", paramTypes,
+                    null, false, null, false, true));
     }
 
     /**
+     * Makes a subclass of SingleScanController with matching constructors.
+     *
      * @param secondaryDesc pass null for primary table
-     * @return a SingleScanController class
+     * @return the basic constructor handle
      */
-    public static Object condyDefineUnfiltered(MethodHandles.Lookup lookup, String name, Class type,
-                                               Class rowType, Class rowClass, byte[] secondaryDesc)
+    public static MethodHandle condyDefineUnfiltered
+        (MethodHandles.Lookup lookup, String name, Class type,
+         Class rowType, Class rowClass, byte[] secondaryDesc)
         throws Throwable
     {
         RowInfo rowInfo = RowInfo.find(rowType);
@@ -2018,13 +2010,13 @@ public class TableMaker {
             .extend(SingleScanController.class).public_();
 
         // Constructors are protected, for use by filter implementation subclasses.
-        MethodType ctorType;
+        final MethodType ctorType;
         {
             ctorType = MethodType.methodType(void.class, byte[].class, boolean.class,
                                              byte[].class, boolean.class, boolean.class);
             MethodMaker mm = cm.addConstructor(ctorType).protected_();
-            mm.invokeSuperConstructor(mm.param(0), mm.param(1),
-                                      mm.param(2), mm.param(3), mm.param(4));
+            mm.invokeSuperConstructor
+                (mm.param(0), mm.param(1), mm.param(2), mm.param(3), mm.param(4));
 
             // Define a reverse scan copy constructor.
             mm = cm.addConstructor(SingleScanController.class).protected_();
@@ -2078,20 +2070,11 @@ public class TableMaker {
             mm.return_(tableVar.invoke("decodeValueHandle", mm.param(0)));
         }
 
-        return cm.finish();
-    }
+        lookup = cm.finishLookup();
 
-    public static Object condyUnfiltered(MethodHandles.Lookup lookup, String name, Class type,
-                                         Class scanControllerClass, boolean reverse)
-    {
-        MethodType ctorType = MethodType.methodType
-            (void.class, byte[].class, boolean.class, byte[].class, boolean.class, boolean.class);
-        try {
-            return lookup.findConstructor(scanControllerClass, ctorType)
-                .invoke(null, false, null, false, reverse);
-        } catch (Throwable e) {
-            throw RowUtils.rethrow(e);
-        }
+        MethodHandle mh = lookup.findConstructor(lookup.lookupClass(), ctorType);
+
+        return mh.asType(mh.type().changeReturnType(SingleScanController.class));
     }
 
     /**
@@ -2220,18 +2203,56 @@ public class TableMaker {
     }
 
     /**
-     * Returns a subclass of JoinedScanController with the same constructor.
+     * Defines methods which return a JoinedScanController instance.
      */
-    private Class<?> makeUnfilteredJoinedScanControllerClass(Class<?> primaryTableClass) {
+    private void addJoinedUnfilteredMethods(Class<?> primaryTableClass) {
+        MethodMaker mm = mClassMaker.addMethod
+            (SingleScanController.class, "unfiltered").protected_();
+        var condyClass = mm.var(TableMaker.class).condy
+            ("condyDefineJoinedUnfiltered", mRowType, mRowClass,
+             mSecondaryDescriptor, mm.class_(), primaryTableClass);
+        var scanControllerCtor = condyClass.invoke(MethodHandle.class, "unfiltered");
+        Class<?>[] paramTypes = {
+            byte[].class, boolean.class, byte[].class, boolean.class, boolean.class, Index.class
+        };
+        mm.return_(scanControllerCtor.invoke
+                   (JoinedScanController.class, "invokeExact", paramTypes,
+                    null, false, null, false, false, mm.field("primaryIndex")));
+
+        mm = mClassMaker.addMethod(SingleScanController.class, "unfilteredReverse").protected_();
+        // Use the same scanControllerCtor constant, but must set against the correct maker.
+        scanControllerCtor = mm.var(MethodHandle.class).set(scanControllerCtor);
+        mm.return_(scanControllerCtor.invoke
+                   (JoinedScanController.class, "invokeExact", paramTypes,
+                    null, false, null, false, true, mm.field("primaryIndex")));
+    }
+
+    /**
+     * Makes a subclass of JoinedScanController with matching constructors.
+     *
+     * @return the basic constructor handle
+     */
+    public static MethodHandle condyDefineJoinedUnfiltered
+        (MethodHandles.Lookup lookup, String name, Class type,
+         Class rowType, Class rowClass, byte[] secondaryDesc,
+         Class<?> tableClass, Class<?> primaryTableClass)
+        throws Throwable
+    {
+        RowInfo rowInfo = RowInfo.find(rowType);
+        RowGen rowGen = rowInfo.rowGen();
+        RowGen codecGen = RowStore.indexRowInfo(rowInfo, secondaryDesc).rowGen();
+
         ClassMaker cm = RowGen.beginClassMaker
-            (TableMaker.class, mRowType, mRowInfo, null, "unfiltered")
+            (TableMaker.class, rowType, rowInfo, null, name)
             .extend(JoinedScanController.class).public_();
 
         // Constructors are protected, for use by filter implementation subclasses.
+        final MethodType ctorType;
         {
-            MethodMaker mm = cm.addConstructor
-                (byte[].class, boolean.class, byte[].class, boolean.class,
-                 boolean.class, Index.class).protected_();
+            ctorType = MethodType.methodType
+                (void.class, byte[].class, boolean.class, byte[].class, boolean.class,
+                 boolean.class, Index.class);
+            MethodMaker mm = cm.addConstructor(ctorType).protected_();
             mm.invokeSuperConstructor
                 (mm.param(0), mm.param(1), mm.param(2), mm.param(3), mm.param(4), mm.param(5));
 
@@ -2242,14 +2263,14 @@ public class TableMaker {
 
         // Provide access to the toPrimaryKey method to be accessible by filter implementation
         // subclasses, which are defined in a different package.
-        if (mCodecGen.info.isAltKey()) {
+        if (codecGen.info.isAltKey()) {
             MethodMaker mm = cm.addMethod(byte[].class, "toPrimaryKey", byte[].class, byte[].class);
             mm.static_().protected_();
-            mm.return_(mm.var(mClassMaker).invoke("toPrimaryKey", mm.param(0), mm.param(1)));
+            mm.return_(mm.var(tableClass).invoke("toPrimaryKey", mm.param(0), mm.param(1)));
         } else {
             MethodMaker mm = cm.addMethod(byte[].class, "toPrimaryKey", byte[].class);
             mm.static_().protected_();
-            mm.return_(mm.var(mClassMaker).invoke("toPrimaryKey", mm.param(0)));
+            mm.return_(mm.var(tableClass).invoke("toPrimaryKey", mm.param(0)));
         }
 
         // Note regarding the RowDecoderEncoder methods: The decode methods fully resolve rows
@@ -2257,14 +2278,14 @@ public class TableMaker {
         // into the primary table.
 
         // Specified by RowDecoderEncoder.
-        addJoinedDecodeRow(cm, primaryTableClass, false);
-        addJoinedDecodeRow(cm, primaryTableClass, true);
+        addJoinedDecodeRow(cm, codecGen, rowClass, tableClass, primaryTableClass, false);
+        addJoinedDecodeRow(cm, codecGen, rowClass, tableClass, primaryTableClass, true);
 
         {
             // Specified by RowDecoderEncoder.
             MethodMaker mm = cm.addMethod
                 (byte[].class, "updateKey", Object.class, byte[].class).public_();
-            var rowVar = mm.param(0).cast(mRowClass);
+            var rowVar = mm.param(0).cast(rowClass);
             var tableVar = mm.var(primaryTableClass);
             mm.return_(tableVar.invoke("updatePrimaryKey", rowVar, mm.param(1)));
         }
@@ -2273,7 +2294,7 @@ public class TableMaker {
             // Specified by RowDecoderEncoder.
             MethodMaker mm = cm.addMethod
                 (byte[].class, "updateValue", Object.class, byte[].class).public_();
-            var rowVar = mm.param(0).cast(mRowClass);
+            var rowVar = mm.param(0).cast(rowClass);
             var tableVar = mm.var(primaryTableClass);
             mm.return_(tableVar.invoke("updateValue", rowVar, mm.param(1)));
         }
@@ -2287,11 +2308,16 @@ public class TableMaker {
             mm.return_(tableVar.invoke("decodeValueHandle", mm.param(0)));
         }
 
-        return cm.finish();
+        lookup = cm.finishLookup();
+
+        MethodHandle mh = lookup.findConstructor(lookup.lookupClass(), ctorType);
+
+        return mh.asType(mh.type().changeReturnType(JoinedScanController.class));
     }
 
-    private void addJoinedDecodeRow(ClassMaker cm, Class<?> primaryTableClass,
-                                    boolean withPrimaryCursor)
+    private static void addJoinedDecodeRow
+        (ClassMaker cm, RowGen codecGen, Class rowClass, 
+         Class<?> tableClass, Class<?> primaryTableClass, boolean withPrimaryCursor)
     {
         Object[] params;
         if (!withPrimaryCursor) {
@@ -2308,8 +2334,8 @@ public class TableMaker {
 
         Variable primaryKeyVar;
         {
-            var tableVar = mm.var(mClassMaker);
-            if (mCodecGen.info.isAltKey()) {
+            var tableVar = mm.var(tableClass);
+            if (codecGen.info.isAltKey()) {
                 var valueVar = cursorVar.invoke("value");
                 primaryKeyVar = tableVar.invoke("toPrimaryKey", keyVar, valueVar);
             } else {
@@ -2330,10 +2356,10 @@ public class TableMaker {
         mm.return_(null);
         hasValue.here();
 
-        var rowVar = mm.param(2).cast(mRowClass);
+        var rowVar = mm.param(2).cast(rowClass);
         Label hasRow = mm.label();
         rowVar.ifNe(null, hasRow);
-        rowVar.set(mm.new_(mRowClass));
+        rowVar.set(mm.new_(rowClass));
         hasRow.here();
 
         var tableVar = mm.var(primaryTableClass);
