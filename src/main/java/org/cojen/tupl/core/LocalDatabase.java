@@ -2656,6 +2656,8 @@ final class LocalDatabase extends CoreDatabase {
         Checkpointer c = mCheckpointer;
         if (c != null) {
             c.suspend();
+            mCheckpointLock.lock();
+            mCheckpointLock.unlock();
         }
     }
 
@@ -2673,11 +2675,31 @@ final class LocalDatabase extends CoreDatabase {
             throw new IllegalArgumentException("Illegal compaction target: " + target);
         }
 
+        if (mCheckpointer == null) {
+            // Can't compact if no checkpointer, which implies that there's no actual file or
+            // the database is opened in read-only mode.
+            return false;
+        }
+
         if (target == 0) {
             // No compaction to do at all, but not aborted.
             return true;
         }
 
+        // Block calls to suspend automatic checkpoints.
+        mCheckpointer.acquireExclusive();
+        try {
+            if (mCheckpointer.isSuspended()) {
+                // Compaction needs to perform several checkpoints, so abort if suspended.
+                return false;
+            }
+            return doCompactFile(observer, target);
+        } finally {
+            mCheckpointer.releaseExclusive();
+        }
+    }
+
+    private boolean doCompactFile(CompactionObserver observer, double target) throws IOException {
         long targetPageCount;
         mCheckpointLock.lock();
         try {

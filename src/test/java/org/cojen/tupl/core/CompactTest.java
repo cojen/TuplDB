@@ -49,8 +49,12 @@ public class CompactTest {
         return config;
     }
 
-    protected Database newTempDb() throws Exception {
-        return newTempDatabase(getClass());
+    protected Database newTempDb(boolean autoCheckpoints) throws Exception {
+        var config = new DatabaseConfig();
+        if (!autoCheckpoints) {
+            config.checkpointRate(-1, null);
+        }
+        return newTempDatabase(getClass(), config);
     }
 
     @After
@@ -72,7 +76,7 @@ public class CompactTest {
 
     @Test
     public void basic() throws Exception {
-        mDb = newTempDb();
+        mDb = newTempDb(true);
 
         final Index ix = openTestIndex();
         final int seed = 98232;
@@ -390,8 +394,7 @@ public class CompactTest {
 
     @Test
     public void manualAbort() throws Exception {
-        mDb = newTempDb();
-        mDb.suspendCheckpoints();
+        mDb = newTempDb(false);
 
         final Index ix = openTestIndex();
         final int seed = 98232;
@@ -435,7 +438,7 @@ public class CompactTest {
 
     @Test
     public void autoAbort() throws Exception {
-        mDb = newTempDb();
+        mDb = newTempDb(true);
 
         final Index ix = openTestIndex();
         final int seed = 98232;
@@ -625,8 +628,7 @@ public class CompactTest {
         // scan. This is only a problem for long running transactions -- they need to span the
         // entire duration of the compaction.
 
-        mDb = newTempDb();
-        mDb.suspendCheckpoints();
+        mDb = newTempDb(false);
         final Index ix = openTestIndex();
 
         for (int i=100000; i<200000; i++) {
@@ -683,7 +685,7 @@ public class CompactTest {
         // trash could be scanned, it would also need to check if compaction is in progress
         // when values move to and from the trash.
 
-        mDb = newTempDb();
+        mDb = newTempDb(true);
         final Index ix = openTestIndex();
 
         byte[] key = "hello".getBytes();

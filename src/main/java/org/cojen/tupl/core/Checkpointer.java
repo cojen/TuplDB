@@ -29,8 +29,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 import org.cojen.tupl.DatabaseException;
 
 import org.cojen.tupl.diag.EventListener;
@@ -45,10 +43,9 @@ import org.cojen.tupl.util.Latch;
  *
  * @author Brian S O'Neill
  */
-final class Checkpointer implements Runnable {
+final class Checkpointer extends Latch implements Runnable {
     private static final int STATE_INIT = 0, STATE_RUNNING = 1, STATE_CLOSED = 2;
 
-    private final AtomicInteger mSuspendCount;
     private final ReferenceQueue<CoreDatabase> mRefQueue;
     private final WeakReference<CoreDatabase> mDatabaseRef;
     private final long mRateNanos;
@@ -62,12 +59,12 @@ final class Checkpointer implements Runnable {
     // Is null when extra checkpoint threads aren't enabled.
     private final ThreadPoolExecutor mExtraExecutor;
 
+    private volatile int mSuspendCount;
+
     /**
      * @param extraLimit maximum number of extra checkpoint threads to use
      */
     Checkpointer(CoreDatabase db, Launcher launcher, int extraLimit) {
-        mSuspendCount = new AtomicInteger();
-
         mRateNanos = launcher.mCheckpointRateNanos;
         mSizeThreshold = launcher.mCheckpointSizeThreshold;
         mDelayThresholdNanos = launcher.mCheckpointDelayThresholdNanos;
@@ -171,7 +168,7 @@ final class Checkpointer implements Runnable {
                     return;
                 }
 
-                if (mSuspendCount.get() != 0) {
+                if (isSuspended()) {
                     // Don't actually suspend the thread, allowing for weak reference checks.
                     lastDurationNanos = 0;
                 } else try {
@@ -252,16 +249,21 @@ final class Checkpointer implements Runnable {
         suspend(-1);
     }
 
+    boolean isSuspended() {
+        return mSuspendCount != 0;
+    }
+
     private void suspend(int amt) {
-        while (true) {
-            int count = mSuspendCount.get() + amt;
+        acquireExclusive();
+        try {
+            int count = mSuspendCount + amt;
             if (count < 0) {
                 // Overflowed or too many resumes.
                 throw new IllegalStateException();
             }
-            if (mSuspendCount.compareAndSet(count - amt, count)) {
-                break;
-            }
+            mSuspendCount = count;
+        } finally {
+            releaseExclusive();
         }
     }
 

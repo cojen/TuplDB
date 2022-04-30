@@ -414,8 +414,8 @@ public interface Database extends CauseCloseable, Flushable {
     public abstract void checkpoint() throws IOException;
 
     /**
-     * Temporarily suspend automatic checkpoints without waiting for any in-progress checkpoint
-     * to complete. Suspend may be invoked multiple times, but each must be paired with a
+     * Temporarily suspend automatic checkpoints and wait for any in-progress checkpoint to
+     * complete. Suspend may be invoked multiple times, but each must be paired with a
      * {@linkplain #resumeCheckpoints resume} call to enable automatic checkpoints again.
      *
      * @throws IllegalStateException if suspended more than 2<sup>31</sup> times
