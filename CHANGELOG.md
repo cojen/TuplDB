@@ -10,6 +10,8 @@ v1.5.4
 * Fix BoundedCursor such that it doesn't observe uncommitted deletes when initially positioning it.
 * Fix possible reporting of negative cursor count in the database stats.
 * Fix safety of using updaters that require lock mode upgrades.
+* Improve utility of the suspendCheckpoints method by waiting for an in-progress checkpoint to
+  complete.
 * Don't reset checkpoint duration stat when thresholds aren't met.
 * Depends on Java 17.
 
