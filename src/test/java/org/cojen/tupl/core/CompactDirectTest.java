@@ -36,7 +36,12 @@ public class CompactDirectTest extends CompactTest {
     }
 
     @Override
-    protected Database newTempDb() throws Exception {
-        return TestUtils.newTempDatabase(getClass(), TestUtils.OpenMode.DIRECT);
+    protected Database newTempDb(boolean autoCheckpoints) throws Exception {
+        var config = new DatabaseConfig().durabilityMode(DurabilityMode.NO_SYNC);
+        config.directPageAccess(true);
+        if (!autoCheckpoints) {
+            config.checkpointRate(-1, null);
+        }
+        return TestUtils.newTempDatabase(getClass(), config);
     }
 }

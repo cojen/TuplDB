@@ -50,7 +50,7 @@ public class CompactTest {
     }
 
     protected Database newTempDb(boolean autoCheckpoints) throws Exception {
-        var config = new DatabaseConfig();
+        var config = new DatabaseConfig().durabilityMode(DurabilityMode.NO_SYNC);
         if (!autoCheckpoints) {
             config.checkpointRate(-1, null);
         }
