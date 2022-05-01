@@ -105,21 +105,31 @@ public class OrFilter extends GroupFilter {
 
     @Override
     public boolean isDnf() {
+        if ((mFlags & FLAG_DNF_SET) != 0) {
+            return (mFlags & FLAG_IS_DNF) != 0;
+        }
         for (RowFilter sub : mSubFilters) {
             if (!sub.isDnf()) {
+                mFlags |= FLAG_DNF_SET;
                 return false;
             }
         }
+        mFlags |= FLAG_DNF_SET | FLAG_IS_DNF;
         return true;
     }
 
     @Override
     public boolean isCnf() {
+        if ((mFlags & FLAG_CNF_SET) != 0) {
+            return (mFlags & FLAG_IS_CNF) != 0;
+        }
         for (RowFilter sub : mSubFilters) {
             if (sub instanceof AndFilter || !sub.isCnf()) {
+                mFlags |= FLAG_CNF_SET;
                 return false;
             }
         }
+        mFlags |= FLAG_CNF_SET | FLAG_IS_CNF;
         return true;
     }
 

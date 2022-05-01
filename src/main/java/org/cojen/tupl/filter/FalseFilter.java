@@ -26,7 +26,7 @@ public final class FalseFilter extends OrFilter {
     public static final FalseFilter THE = new FalseFilter();
 
     private FalseFilter() {
-        mReduced = true;
+        mFlags = FLAG_REDUCED | FLAG_DNF_SET | FLAG_IS_DNF | FLAG_CNF_SET | FLAG_IS_CNF;
     }
 
     @Override

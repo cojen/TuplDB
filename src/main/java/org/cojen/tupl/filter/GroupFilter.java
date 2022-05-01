@@ -56,7 +56,10 @@ public abstract class GroupFilter extends RowFilter {
 
     private MatchSet mMatchSet;
 
-    boolean mReduced;
+    static final int FLAG_REDUCED = 1,
+        FLAG_DNF_SET = 2, FLAG_IS_DNF = 4, FLAG_CNF_SET = 8, FLAG_IS_CNF = 16;
+
+    int mFlags;
 
     GroupFilter(int hash, RowFilter... subFilters) {
         super(hash);
@@ -262,7 +265,7 @@ public abstract class GroupFilter extends RowFilter {
 
     @Override
     public final RowFilter reduce() {
-        if (mReduced) {
+        if ((mFlags & FLAG_REDUCED) != 0) {
             return this;
         }
 
@@ -482,14 +485,14 @@ public abstract class GroupFilter extends RowFilter {
 
             subFilters = newSubFilters;
         } else if (subFilters == mSubFilters) {
-            mReduced = true;
+            mFlags |= FLAG_REDUCED;
             return this;
         }
 
         RowFilter reduced = newInstance(subFilters);
 
         if (reduced instanceof GroupFilter group) {
-            group.mReduced = true;
+            group.mFlags |= FLAG_REDUCED;
         }
 
         return reduced;
