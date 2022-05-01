@@ -115,6 +115,7 @@ public class OrFilter extends GroupFilter {
             }
         }
         mFlags |= FLAG_DNF_SET | FLAG_IS_DNF;
+        mDnf = this;
         return true;
     }
 
@@ -130,6 +131,7 @@ public class OrFilter extends GroupFilter {
             }
         }
         mFlags |= FLAG_CNF_SET | FLAG_IS_CNF;
+        mCnf = this;
         return true;
     }
 

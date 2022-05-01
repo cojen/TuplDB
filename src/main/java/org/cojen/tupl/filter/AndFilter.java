@@ -118,6 +118,7 @@ public class AndFilter extends GroupFilter {
             }
         }
         mFlags |= FLAG_DNF_SET | FLAG_IS_DNF;
+        mDnf = this;
         return true;
     }
 
@@ -133,6 +134,7 @@ public class AndFilter extends GroupFilter {
             }
         }
         mFlags |= FLAG_CNF_SET | FLAG_IS_CNF;
+        mCnf = this;
         return true;
     }
 
@@ -194,7 +196,7 @@ public class AndFilter extends GroupFilter {
 
     @Override
     public RowFilter[] rangeExtract(ColumnInfo... keyColumns) {
-        if ((mFlags & FLAG_REDUCED) == 0) {
+        if (mReduced == null) {
             return reduce().rangeExtract(keyColumns);
         }
 

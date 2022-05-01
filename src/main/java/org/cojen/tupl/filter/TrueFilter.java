@@ -26,7 +26,10 @@ public final class TrueFilter extends AndFilter {
     public static final TrueFilter THE = new TrueFilter();
 
     private TrueFilter() {
-        mFlags = FLAG_REDUCED | FLAG_DNF_SET | FLAG_IS_DNF | FLAG_CNF_SET | FLAG_IS_CNF;
+        mFlags = FLAG_DNF_SET | FLAG_IS_DNF | FLAG_CNF_SET | FLAG_IS_CNF;
+        mReduced = this;
+        mDnf = this;
+        mCnf = this;
     }
 
     @Override

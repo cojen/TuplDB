@@ -56,10 +56,11 @@ public abstract class GroupFilter extends RowFilter {
 
     private MatchSet mMatchSet;
 
-    static final int FLAG_REDUCED = 1,
-        FLAG_DNF_SET = 2, FLAG_IS_DNF = 4, FLAG_CNF_SET = 8, FLAG_IS_CNF = 16;
+    static final int FLAG_DNF_SET = 1, FLAG_IS_DNF = 2, FLAG_CNF_SET = 4, FLAG_IS_CNF = 8;
 
     int mFlags;
+
+    RowFilter mReduced, mDnf, mCnf;
 
     GroupFilter(int hash, RowFilter... subFilters) {
         super(hash);
@@ -265,10 +266,13 @@ public abstract class GroupFilter extends RowFilter {
 
     @Override
     public final RowFilter reduce() {
-        if ((mFlags & FLAG_REDUCED) != 0) {
-            return this;
+        if (mReduced == null) {
+            mReduced = doReduce();
         }
+        return mReduced;
+    }
 
+    private RowFilter doReduce() {
         /*
           Reduce the group filter by eliminating redundant sub-filters. The following
           transformations are applied:
@@ -485,14 +489,13 @@ public abstract class GroupFilter extends RowFilter {
 
             subFilters = newSubFilters;
         } else if (subFilters == mSubFilters) {
-            mFlags |= FLAG_REDUCED;
             return this;
         }
 
         RowFilter reduced = newInstance(subFilters);
 
         if (reduced instanceof GroupFilter group) {
-            group.mFlags |= FLAG_REDUCED;
+            group.mReduced = group;
         }
 
         return reduced;
@@ -500,10 +503,14 @@ public abstract class GroupFilter extends RowFilter {
 
     @Override
     public final RowFilter dnf() {
+        if (mDnf != null) {
+            return mDnf;
+        }
         RowFilter filter = this;
         while (true) {
             filter = filter.reduce();
             if (filter.isDnf()) {
+                mDnf = filter;
                 return filter;
             }
             if (!(filter instanceof GroupFilter group)) {
@@ -515,10 +522,14 @@ public abstract class GroupFilter extends RowFilter {
 
     @Override
     public final RowFilter cnf() {
+        if (mCnf != null) {
+            return mCnf;
+        }
         RowFilter filter = this;
         while (true) {
             filter = filter.reduce();
             if (filter.isCnf()) {
+                mCnf = filter;
                 return filter;
             }
             if (!(filter instanceof GroupFilter group)) {
