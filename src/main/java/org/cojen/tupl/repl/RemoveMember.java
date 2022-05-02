@@ -111,4 +111,7 @@ public class RemoveMember {
             System.out.println(e);
         }
     }
+
+    private RemoveMember() {
+    }
 }
