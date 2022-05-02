@@ -66,8 +66,8 @@ class ColumnSetComparator implements Comparator<ColumnSet> {
                 return compare;
             }
 
-            if (mUnspecifiedIsEqual && ainfo.typeCode == -1 || binfo.typeCode == -1) {
-                return 0;
+            if (mUnspecifiedIsEqual && (ainfo.typeCode == -1 || binfo.typeCode == -1)) {
+                continue;
             }
 
             compare = Integer.compare(ainfo.typeCode, binfo.typeCode);
