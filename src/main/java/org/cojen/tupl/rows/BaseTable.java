@@ -386,7 +386,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         return viewIndexTable(false, columns);
     }
 
-    private Table<R> viewIndexTable(boolean alt, String... columns) throws IOException {
+    private BaseTable<R> viewIndexTable(boolean alt, String... columns) throws IOException {
         var rs = rowStoreRef().get();
         if (rs == null) {
             throw new DatabaseException("Closed");

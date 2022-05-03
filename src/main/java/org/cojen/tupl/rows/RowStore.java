@@ -449,7 +449,7 @@ public class RowStore {
     /**
      * @throws IllegalStateException if not found
      */
-    public <R> Table<R> indexTable(BaseTable<R> primaryTable, boolean alt, String... columns)
+    public <R> BaseTable<R> indexTable(BaseTable<R> primaryTable, boolean alt, String... columns)
         throws IOException
     {
         Object key = ArrayKey.make(alt, columns);
