@@ -127,6 +127,7 @@ public class DirectAccess {
         ByteBuffer bb = local.get();
         if (bb == null) {
             bb = allocDirect();
+            local.set(bb);
         }
         ref(bb, ptr, length);
         return bb;
