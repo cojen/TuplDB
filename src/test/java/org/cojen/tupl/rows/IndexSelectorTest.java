@@ -38,6 +38,13 @@ public class IndexSelectorTest {
     @Test
     public void set1() throws Exception {
         withType(Type1.class);
+        verify("id == ?", "+id", "id == ?0");
+        verify("a == ?", "+id", "a == ?0");
+    }
+
+    @Test
+    public void set2() throws Exception {
+        withType(Type2.class);
 
         verify("id == ?", "+id", "id == ?0");
         verify("a == ?", "+a+id", "a == ?0");
@@ -83,16 +90,62 @@ public class IndexSelectorTest {
 
         verify("{c, b}: c != ? || b == ? || d == ?",
                "+d+c+b+id", "{c, b}: c != ?0 || b == ?1 || d == ?2");
+        verify("{c, b}: c != ? || b == ? || d == c",
+               "+d+c+b+id", "{c, b}: c != ?0 || b == ?1 || d == c");
+        verify("{c, b}: c != ? || b == ? || d == e", "+id", "{c, b}: c != ?0 || b == ?1 || d == e");
+        verify("~{}: c != ? || b == ? || d == e", "+id", "c != ?0 || b == ?1 || d == e");
+
+        verify("a == ? || a == ?", "+a+id", "a == ?0 || a == ?1");
+        verify("a == ? || b == ? || a == ?",
+               "+b+id", "b == ?1", "+a+id", "(a == ?0 || a == ?2) && b != ?1");
+
+        verify("e == b", "+id", "e == b");
+        verify("{e, b}: e == b", "+e+b+id", "{e, b}: e == b");
+        verify("{e, b}: b == e", "+b+e+id", "{e, b}: b == e");
+        verify("{b, e}: b == e", "+b+e+id", "{b, e}: b == e");
+        verify("{b, e}: e != ? && b in ?", "+e+b+id", "{b, e}: e != ?0 && b in ?1");
+
+        verify("{b, id}: b == ? && id == ?", "+b+id", "{b, id}: b == ?0 && id == ?1");
+        verify("d == ? && c in ? && b > ?", "+d+b+id", "d == ?0 && c in ?1 && b > ?2");
+        verify("d == ? && !(c in ?) && b in ?", "+d+c+b+id", "d == ?0 && !(c in ?1) && b in ?2");
+    }
+
+    @Test
+    public void set3() throws Exception {
+        withType(Type3.class);
+
+        verify("id == ?", "+id", "id == ?0");
+        verify("a == ?", "+a", "a == ?0");
+        verify("b == ?", "+b-c+id", "b == ?0");
+        verify("{b}: b != ? && d == ?", "+b-c+id", "{b}: b != ?0 && d == ?1");
+        verify("{a, id}: a != ? || id == ?", "+a", "{a, id}: a != ?0 || id == ?1");
+
+        verify("c == ? && e > ? && a > ?", "+c+a+id", "c == ?0 && e > ?1 && a > ?2");
+        verify("c == ? && a > ? && e > ?", "+c+a+id", "c == ?0 && a > ?1 && e > ?2");
+        verify("c == ? && e < ? && a < ?", "+c-e+id", "c == ?0 && e < ?1 && a < ?2");
+        verify("c == ? && a < ? && e < ?", "+c-e+id", "c == ?0 && a < ?1 && e < ?2");
+        verify("c == ? && e < ? && a > ?", "+c-e+id", "c == ?0 && e < ?1 && a > ?2");
+        verify("c == ? && a > ? && e < ?", "+c+a+id", "c == ?0 && a > ?1 && e < ?2");
+
+        verify("c == ? && e > ? && a >= ?", "+c+a+id", "c == ?0 && e > ?1 && a >= ?2");
+        verify("c == ? && a > ? && e >= ?", "+c+a+id", "c == ?0 && a > ?1 && e >= ?2");
+        verify("c == ? && e < ? && a <= ?", "+c-e+id", "c == ?0 && e < ?1 && a <= ?2");
+        verify("c == ? && a < ? && e <= ?", "+c-e+id", "c == ?0 && a < ?1 && e <= ?2");
+        verify("c == ? && e < ? && a >= ?", "+c-e+id", "c == ?0 && e < ?1 && a >= ?2");
+        verify("c == ? && a > ? && e <= ?", "+c+a+id", "c == ?0 && a > ?1 && e <= ?2");
+
+        verify("c == ? && a == d", "+c+a+id", "c == ?0 && a == d");
+        verify("c == ? && a == e", "+c+a+id", "c == ?0 && a == e");
+        verify("c == ? && e == a", "+c-e+id", "c == ?0 && e == a");
+
+        verify("e != ? && c > ? && c < ?", "+c-e+id", "e != ?0 && c > ?1 && c < ?2");
+        verify("e != ? && c > ? && c < ? && c >= ?",
+               "+c-e+id", "e != ?0 && c > ?1 && c < ?2 && c >= ?3");
+        verify("e != ? && c > ? && c < ? && c >= ? && c < ?",
+               "+c-e+id", "e != ?0 && c > ?1 && c < ?2 && c >= ?3 && c < ?4");
     }
 
     @PrimaryKey("id")
-    @SecondaryIndex("a")
-    @SecondaryIndex("b")
-    @SecondaryIndex({"c", "b"})
-    @SecondaryIndex({"d", "b"})
-    @SecondaryIndex({"d", "c", "b"})
-    @SecondaryIndex({"e", "b"})
-    @SecondaryIndex({"b", "e"})
     public static interface Type1 {
         long id();
         void id(long id);
@@ -113,10 +166,29 @@ public class IndexSelectorTest {
         void e(String e);
     }
 
+    @PrimaryKey("id")
+    @SecondaryIndex("a")
+    @SecondaryIndex("b")
+    @SecondaryIndex({"c", "b"})
+    @SecondaryIndex({"d", "b"})
+    @SecondaryIndex({"d", "c", "b"})
+    @SecondaryIndex({"e", "b"})
+    @SecondaryIndex({"b", "e"})
+    public static interface Type2 extends Type1 {
+    }
+
+    @PrimaryKey("id")
+    @AlternateKey("a")
+    @SecondaryIndex({"b", "-c", "id", "d"})
+    @SecondaryIndex({"c", "a"})
+    @SecondaryIndex({"c", "-e"})
+    public static interface Type3 extends Type1 {
+    }
+
     private RowInfo mInfo;
 
     private void withType(Class<?> type) {
-        mInfo = RowInfo.find(Type1.class);
+        mInfo = RowInfo.find(type);
     }
 
     /**
