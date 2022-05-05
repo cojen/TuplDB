@@ -236,7 +236,7 @@ final class IndexSelector {
                     score += 2;
                 }
                 case HALF_RANGE -> {
-                    // Only consider the half range if it utilized a cursor find operation
+                    // Only consider the half range if it utilizes a cursor find operation
                     // instead of a filter check. A find is performed once per scan, but a
                     // filter check is performed for each row.
                     switch (term.mFilter.operator()) {
@@ -293,14 +293,16 @@ final class IndexSelector {
      */
     private int compareCovering(Set<String> required, ColumnSet cs1, ColumnSet cs2) {
         if (cs1.allColumns.keySet().containsAll(required)) {
-            if (!cs2.allColumns.keySet().containsAll(required)) {
+            if (cs2.allColumns.keySet().containsAll(required)) {
+                return Integer.compare(cs1.allColumns.size(), cs2.allColumns.size());
+            } else {
                 return -1;
             }
         } else if (cs2.allColumns.keySet().containsAll(required)) {
             return 1;
+        } else {
+            return 0;
         }
-
-        return Integer.compare(cs1.allColumns.size(), cs2.allColumns.size());
     }
 
     /**

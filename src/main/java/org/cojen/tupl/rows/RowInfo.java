@@ -23,7 +23,6 @@ import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.HashMap;
@@ -206,45 +205,15 @@ class RowInfo extends ColumnSet {
     }
 
     /**
-     * Returns each key prefixed with a '+' or '-' character.
-     */
-    String[] keySpec() {
-        Collection<ColumnInfo> columns = keyColumns.values();
-        var spec = new String[columns.size()];
-        Iterator<ColumnInfo> it = columns.iterator();
-        for (int i=0; i<spec.length; i++) {
-            ColumnInfo column = it.next();
-            String name = column.name;
-            name = (column.isDescending() ? '-' : '+') + name;
-            spec[i] = name;
-        }
-        return spec;
-    }
-
-    /**
      * Returns a string suitable for EventListener messages when building or dropping indexes.
      */
     String eventString() {
-        StringBuilder bob = new StringBuilder();
-
+        var bob = new StringBuilder();
         if (this instanceof SecondaryInfo) {
             bob.append(isAltKey() ? "alternate key" : "secondary index").append(' ');
         }
-
         bob.append(name).append('(');
-
-        for (ColumnInfo ci : keyColumns.values()) {
-            bob.append(ci.isDescending() ? '-' : '+').append(ci.name);
-        }
-
-        if (!isAltKey() && !valueColumns.isEmpty()) {
-            bob.append('|');
-            for (ColumnInfo ci : valueColumns.values()) {
-                bob.append('~').append(ci.name);
-            }
-        }
-
-        return bob.append(')').toString();
+        return appendIndexSpec(bob).append(')').toString();
     }
 
     @Override

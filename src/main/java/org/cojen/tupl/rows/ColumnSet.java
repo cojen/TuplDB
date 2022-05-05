@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.rows;
 
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.NavigableMap;
 
@@ -38,6 +40,48 @@ class ColumnSet {
     final boolean matches(ColumnSet other) {
         return allColumns.equals(other.allColumns) &&
             valueColumns.equals(other.valueColumns) && keyColumns.equals(other.keyColumns);
+    }
+
+    /**
+     * Returns each key prefixed with a '+' or '-' character.
+     */
+    String[] keySpec() {
+        Collection<ColumnInfo> columns = keyColumns.values();
+        var spec = new String[columns.size()];
+        Iterator<ColumnInfo> it = columns.iterator();
+        for (int i=0; i<spec.length; i++) {
+            ColumnInfo column = it.next();
+            String name = column.name;
+            name = (column.isDescending() ? '-' : '+') + name;
+            spec[i] = name;
+        }
+        return spec;
+    }
+
+    /**
+     * Returns a compact index specification string.
+     */
+    String indexSpec() {
+        return appendIndexSpec(new StringBuilder()).toString();
+    }
+
+    /**
+     * Appends a compact index specification string.
+     */
+    StringBuilder appendIndexSpec(StringBuilder bob) {
+        for (ColumnInfo ci : keyColumns.values()) {
+            bob.append(ci.isDescending() ? '-' : '+').append(ci.name);
+        }
+
+        if (this instanceof SecondaryInfo info && !info.isAltKey() && !valueColumns.isEmpty()) {
+            // Append covering index columns.
+            bob.append('|');
+            for (ColumnInfo ci : valueColumns.values()) {
+                bob.append('~').append(ci.name);
+            }
+        }
+
+        return bob;
     }
 
     @Override
