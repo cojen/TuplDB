@@ -131,6 +131,31 @@ class SoftCache<K, V> extends ReferenceQueue<Object> {
         return newEntry;
     }
 
+    protected synchronized void removeKey(K key) {
+        var entries = mEntries;
+        int index = key.hashCode() & (entries.length - 1);
+
+        for (Entry<K, V> e = entries[index], prev = null; e != null; e = e.mNext) {
+            if (e.matches(key)) {
+                e.clear();
+                if (prev == null) {
+                    entries[index] = e.mNext;
+                } else {
+                    prev.mNext = e.mNext;
+                }
+                mSize--;
+                break;
+            } else {
+                prev = e;
+            }
+        }
+
+        Object obj = poll();
+        if (obj != null) {
+            cleanup(obj);
+        }
+    }
+
     /**
      * Caller must be synchronized.
      *

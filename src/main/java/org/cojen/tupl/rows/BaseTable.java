@@ -26,7 +26,6 @@ import java.lang.invoke.VarHandle;
 import java.lang.ref.WeakReference;
 
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -55,8 +54,6 @@ import org.cojen.tupl.filter.TrueFilter;
 
 import org.cojen.tupl.io.Utils;
 
-import org.cojen.tupl.util.Latch;
-
 import org.cojen.tupl.views.ViewUtils;
 
 /**
@@ -70,10 +67,8 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
     protected final Index mSource;
 
-    private final SoftCache<String, ScanControllerFactory<R>> mFilterFactoryCache;
-    private final SoftCache<String, ScanControllerFactory<R>> mFilterFactoryCacheDoubleCheck;
-
-    private HashMap<String, Latch> mFilterLatchMap;
+    private final FilterFactoryCache mFilterFactoryCache;
+    private final FilterFactoryCache mFilterFactoryCacheDoubleCheck;
 
     private Trigger<R> mTrigger;
     private static final VarHandle cTriggerHandle;
@@ -109,9 +104,9 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
         mSource = Objects.requireNonNull(source);
 
-        mFilterFactoryCache = new SoftCache<>();
+        mFilterFactoryCache = new FilterFactoryCache();
         mFilterFactoryCacheDoubleCheck =
-            joinedPrimaryTableClass() == null ? null : new SoftCache<>();
+            joinedPrimaryTableClass() == null ? null : new FilterFactoryCache();
 
         if (supportsSecondaries()) {
             var trigger = new Trigger<R>();
@@ -120,6 +115,15 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         }
 
         mIndexLock = indexLock;
+    }
+
+    private class FilterFactoryCache
+        extends SoftLatchedCache<String, ScanControllerFactory<R>, FullFilter>
+    {
+        @Override
+        protected ScanControllerFactory<R> newValue(String filter, FullFilter ff) {
+            return newFilteredFactory(this, filter, ff);
+        }
     }
 
     public final TableManager<R> tableManager() {
@@ -176,17 +180,13 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     ScanControllerFactory<R> scannerFilteredFactory(Transaction txn, String filter) {
-        SoftCache<String, ScanControllerFactory<R>> cache;
+        FilterFactoryCache cache;
         // Need to double check the filter after joining to the primary, in case there were any
         // changes after the secondary entry was loaded.
         if (!RowUtils.isUnlocked(txn) || (cache = mFilterFactoryCacheDoubleCheck) == null) {
             cache = mFilterFactoryCache;
         }
-        ScanControllerFactory<R> factory = cache.get(filter);
-        if (factory == null) {
-            factory = findFilteredFactory(cache, filter, null);
-        }
-        return factory;
+        return cache.obtain(filter, null);
     }
 
     @Override
@@ -288,18 +288,14 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     ScanControllerFactory<R> updaterFilteredFactory(Transaction txn, String filter) {
-        SoftCache<String, ScanControllerFactory<R>> cache;
+        FilterFactoryCache cache;
         // Need to double check the filter after joining to the primary, in case there were any
         // changes after the secondary entry was loaded. Note that no double check is needed
         // with READ_UNCOMMITTED, because the updater for it still acquires locks.
         if (!RowUtils.isUnsafe(txn) || (cache = mFilterFactoryCacheDoubleCheck) == null) {
             cache = mFilterFactoryCache;
         }
-        ScanControllerFactory<R> factory = cache.get(filter);
-        if (factory == null) {
-            factory = findFilteredFactory(cache, filter, null);
-        }
-        return factory;
+        return cache.obtain(filter, null);
     }
 
     @Override
@@ -369,11 +365,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         if (filter == null) {
             return RowPredicate.all();
         }
-        ScanControllerFactory<R> factory = mFilterFactoryCache.get(filter);
-        if (factory == null) {
-            factory = findFilteredFactory(mFilterFactoryCache, filter, null);
-        }
-        return factory.predicate(args);
+        return mFilterFactoryCache.obtain(filter, null).predicate(args);
     }
 
     @Override
@@ -462,148 +454,96 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      * @param ff the parsed and reduced filter string; can be null initially
      */
     @SuppressWarnings("unchecked")
-    private ScanControllerFactory<R> findFilteredFactory
-        (SoftCache<String, ScanControllerFactory<R>> cache, String filter, FullFilter ff)
+    private ScanControllerFactory<R> newFilteredFactory
+        (FilterFactoryCache cache, String filter, FullFilter ff)
     {
-        Latch latch;
-        while (true) {
-            check: synchronized (cache) {
-                ScanControllerFactory<R> factory = cache.get(filter);
-                if (factory != null) {
-                    return factory;
-                }
-                if (mFilterLatchMap == null) {
-                    mFilterLatchMap = new HashMap<>();
-                } else if ((latch = mFilterLatchMap.get(filter)) != null) {
-                    // Wait for the latch outside the synchronized block.
-                    break check;
-                }
-                latch = new Latch(Latch.EXCLUSIVE);
-                mFilterLatchMap.put(filter, latch);
-                // Break out of the loop and do the work.
-                break;
-            }
-            // Wait for another thread to do the work and try again.
-            latch.acquireShared();
+        Class<?> rowType = rowType();
+        RowInfo rowInfo = RowInfo.find(rowType);
+        Map<String, ColumnInfo> allColumns = rowInfo.allColumns;
+        Map<String, ColumnInfo> availableColumns = allColumns;
+
+        RowGen primaryRowGen = null;
+        if (joinedPrimaryTableClass() != null) {
+            // Join to the primary.
+            primaryRowGen = rowInfo.rowGen();
         }
 
-        ScanControllerFactory<R> factory;
-        Throwable ex = null;
-
-        obtain: try {
-            Class<?> rowType = rowType();
-            RowInfo rowInfo = RowInfo.find(rowType);
-            Map<String, ColumnInfo> allColumns = rowInfo.allColumns;
-            Map<String, ColumnInfo> availableColumns = allColumns;
-
-            RowGen primaryRowGen = null;
-            if (joinedPrimaryTableClass() != null) {
-                // Join to the primary.
-                primaryRowGen = rowInfo.rowGen();
-            }
-
-            byte[] secondaryDesc = secondaryDescriptor();
-            if (secondaryDesc != null) {
-                rowInfo = RowStore.indexRowInfo(rowInfo, secondaryDesc);
-                if (joinedPrimaryTableClass() == null) {
-                    availableColumns = rowInfo.allColumns;
-                }
-            }
-
-            if (ff == null) {
-                ff = new Parser(allColumns, filter).parseFull(availableColumns).reduce();
-            }
-
-            RowFilter rf = ff.filter();
-
-            if (rf instanceof FalseFilter) {
-                factory = EmptyScanController.factory();
-                break obtain;
-            }
-
-            if (rf instanceof TrueFilter && ff.projection() == null) {
-                factory = this;
-                break obtain;
-            }
-
-            String canonical = ff.toString();
-            if (!canonical.equals(filter)) {
-                factory = findFilteredFactory(cache, canonical, ff);
-                break obtain;
-            }
-
-            var keyColumns = rowInfo.keyColumns.values().toArray(ColumnInfo[]::new);
-            RowFilter[][] ranges = multiRangeExtract(rf, keyColumns);
-            splitRemainders(rowInfo, ranges);
-
-            if (cache == mFilterFactoryCacheDoubleCheck && primaryRowGen != null) {
-                doubleCheckRemainder(ranges, primaryRowGen.info);
-            }
-
-            Class<? extends RowPredicate> baseClass;
-
-            // FIXME: Although no predicate lock is required, a row lock is required.
-            if (false && ranges.length == 1 && RowFilter.matchesOne(ranges[0], keyColumns)) {
-                // No predicate lock is required when the filter matches at most one row.
-                baseClass = null;
-            } else {
-                baseClass = mIndexLock == null ? null : mIndexLock.evaluatorClass();
-            }
-
-            RowGen rowGen = rowInfo.rowGen();
-
-            byte[] projectionSpec = DecodePartialMaker.makeFullSpec
-                (primaryRowGen != null ? primaryRowGen : rowGen, ff.projection());
-
-            Class<? extends RowPredicate> predClass = new RowPredicateMaker
-                (rowStoreRef(), baseClass, rowType, rowGen, primaryRowGen,
-                 mTableManager.mPrimaryIndex.id(), mSource.id(), rf, filter, ranges).finish();
-
-            if (ranges.length > 1) {
-                var rangeFactories = new ScanControllerFactory[ranges.length];
-                for (int i=0; i<ranges.length; i++) {
-                    rangeFactories[i] = newFilteredFactory
-                        (rowGen, ranges[i], predClass, projectionSpec);
-                }
-                factory = new RangeUnionScanControllerFactory(rangeFactories);
-                break obtain;
-            }
-
-            // Only one range to scan.
-            RowFilter[] range = ranges[0];
-
-            if (range[0] == null && range[1] == null) {
-                // Full scan, so just use the original reduced filter. It's possible that
-                // the dnf/cnf form is reduced even further, but when doing a full scan,
-                // let the user define the order in which the filter terms are examined.
-                range[2] = rf;
-                range[3] = null;
-                splitRemainders(rowInfo, range);
-            }
-
-            factory = newFilteredFactory(rowGen, range, predClass, projectionSpec);
-        } catch (Throwable e) {
-            factory = null;
-            ex = e;
-        }
-
-        synchronized (cache) {
-            if (factory != null) {
-                cache.put(filter, factory);
-            }
-            mFilterLatchMap.remove(filter, latch);
-            if (mFilterLatchMap.isEmpty()) {
-                mFilterLatchMap = null;
+        byte[] secondaryDesc = secondaryDescriptor();
+        if (secondaryDesc != null) {
+            rowInfo = RowStore.indexRowInfo(rowInfo, secondaryDesc);
+            if (joinedPrimaryTableClass() == null) {
+                availableColumns = rowInfo.allColumns;
             }
         }
 
-        latch.releaseExclusive();
-
-        if (ex != null) {
-            throw Utils.rethrow(ex);
+        if (ff == null) {
+            ff = new Parser(allColumns, filter).parseFull(availableColumns).reduce();
         }
 
-        return factory;
+        RowFilter rf = ff.filter();
+
+        if (rf instanceof FalseFilter) {
+            return EmptyScanController.factory();
+        }
+
+        if (rf instanceof TrueFilter && ff.projection() == null) {
+            return this;
+        }
+
+        String canonical = ff.toString();
+        if (!canonical.equals(filter)) {
+            return cache.obtain(canonical, ff);
+        }
+
+        var keyColumns = rowInfo.keyColumns.values().toArray(ColumnInfo[]::new);
+        RowFilter[][] ranges = multiRangeExtract(rf, keyColumns);
+        splitRemainders(rowInfo, ranges);
+
+        if (cache == mFilterFactoryCacheDoubleCheck && primaryRowGen != null) {
+            doubleCheckRemainder(ranges, primaryRowGen.info);
+        }
+
+        Class<? extends RowPredicate> baseClass;
+
+        // FIXME: Although no predicate lock is required, a row lock is required.
+        if (false && ranges.length == 1 && RowFilter.matchesOne(ranges[0], keyColumns)) {
+            // No predicate lock is required when the filter matches at most one row.
+            baseClass = null;
+        } else {
+            baseClass = mIndexLock == null ? null : mIndexLock.evaluatorClass();
+        }
+
+        RowGen rowGen = rowInfo.rowGen();
+
+        byte[] projectionSpec = DecodePartialMaker.makeFullSpec
+            (primaryRowGen != null ? primaryRowGen : rowGen, ff.projection());
+
+        Class<? extends RowPredicate> predClass = new RowPredicateMaker
+            (rowStoreRef(), baseClass, rowType, rowGen, primaryRowGen,
+             mTableManager.mPrimaryIndex.id(), mSource.id(), rf, filter, ranges).finish();
+
+        if (ranges.length > 1) {
+            var rangeFactories = new ScanControllerFactory[ranges.length];
+            for (int i=0; i<ranges.length; i++) {
+                rangeFactories[i] = newFilteredFactory
+                    (rowGen, ranges[i], predClass, projectionSpec);
+            }
+            return new RangeUnionScanControllerFactory(rangeFactories);
+        }
+
+        // Only one range to scan.
+        RowFilter[] range = ranges[0];
+
+        if (range[0] == null && range[1] == null) {
+            // Full scan, so just use the original reduced filter. It's possible that
+            // the dnf/cnf form is reduced even further, but when doing a full scan,
+            // let the user define the order in which the filter terms are examined.
+            range[2] = rf;
+            range[3] = null;
+            splitRemainders(rowInfo, range);
+        }
+
+        return newFilteredFactory(rowGen, range, predClass, projectionSpec);
     }
 
     @SuppressWarnings("unchecked")
