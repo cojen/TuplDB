@@ -20,8 +20,8 @@ package org.cojen.tupl.rows;
 import org.cojen.tupl.util.Latch;
 
 /**
- * Cache which makes missing entries on demand and uses an per entry latch to ensure that only
- * one thread does the work.
+ * Cache which makes missing entries on demand and uses an entry latch to ensure that only one
+ * thread does the work.
  *
  * @author Brian S O'Neill
  */
@@ -68,18 +68,21 @@ abstract class SoftLatchedCache<K, V, H> extends SoftCache<K, Object> {
             ex = e;
         }
 
-        try {
+        put: try {
             if (value != null) {
-                put(key, value);
-            } else {
-                removeKey(key);
+                try {
+                    put(key, value);
+                    break put;
+                } catch (Throwable e) {
+                    if (ex == null) {
+                        ex = e;
+                    } else {
+                        ex.addSuppressed(e);
+                    }
+                }
             }
-        } catch (Throwable e) {
-            if (ex == null) {
-                ex = e;
-            } else {
-                ex.addSuppressed(e);
-            }
+
+            removeKey(key);
         } finally {
             latch.releaseExclusive();
         }
