@@ -46,7 +46,7 @@ final class IndexSelector {
     private final FullFilter mFullFilter;
     private final boolean mReverse;
 
-    private int mTotalKeyMatchScore;
+    private boolean mAnyTermMatches;
 
     private ColumnSet[] mSelectedIndexes;
     private FullFilter[] mSelectedFilters;
@@ -81,7 +81,7 @@ final class IndexSelector {
 
             for (RowFilter group : orf.subFilters()) {
                 ColumnSet index = selectIndex(group);
-                fullScan |= mTotalKeyMatchScore == 0;
+                fullScan |= !mAnyTermMatches;
                 RowFilter existing = selections.get(index);
                 if (existing == null) {
                     selections.put(index, group);
@@ -155,7 +155,7 @@ final class IndexSelector {
      * @param group must be a single DNF group; no "or" filters
      */
     private ColumnSet selectIndex(RowFilter group) {
-        mTotalKeyMatchScore = 0;
+        mAnyTermMatches = false;
         var terms = makeTerms(group);
         ColumnSet best = mPrimaryInfo;
 
@@ -227,6 +227,8 @@ final class IndexSelector {
                 break scan;
             }
 
+            mAnyTermMatches = true;
+
             switch (term.mType) {
                 case EQUALITY -> {
                     score += 3;
@@ -257,8 +259,6 @@ final class IndexSelector {
             // Stop checking upon reaching a range match.
             break;
         }
-
-        mTotalKeyMatchScore += score;
 
         return score;
     }
@@ -421,7 +421,11 @@ final class IndexSelector {
      */
     private static List<Term> makeTerms(RowFilter group) {
         if (group instanceof ColumnFilter cf) {
-            return List.of(makeTerm(cf));
+            Term term = makeTerm(cf);
+            if (term.mType == CANDIDATE) {
+                term.mType = HALF_RANGE;
+            }
+            return List.of(term);
         }
 
         if (!(group instanceof AndFilter andf)) {

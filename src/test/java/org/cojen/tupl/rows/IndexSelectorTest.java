@@ -143,6 +143,8 @@ public class IndexSelectorTest {
                "+c-e+id", "e != ?0 && c > ?1 && c < ?2 && c >= ?3");
         verify("e != ? && c > ? && c < ? && c >= ? && c < ?",
                "+c-e+id", "e != ?0 && c > ?1 && c < ?2 && c >= ?3 && c < ?4");
+
+        verify("a == ? || id < ?", "+a", "a == ?0", "+id", "id < ?1 && a != ?0");
     }
 
     @PrimaryKey("id")
