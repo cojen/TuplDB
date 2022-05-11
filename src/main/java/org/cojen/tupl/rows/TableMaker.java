@@ -122,7 +122,7 @@ public class TableMaker {
 
     /**
      * Return a constructor which accepts a (TableManager, Index, RowPredicateLock) and returns
-     * a BaseTable implementation.
+     * a BaseTable or BaseTableIndex implementation.
      */
     MethodHandle finish() {
         {
@@ -285,7 +285,7 @@ public class TableMaker {
 
     /**
      * Return a constructor which accepts a (Index, RowPredicateLock, TableImpl primary,
-     * TableImpl unjoined) and returns a BaseTable implementation.
+     * TableImpl unjoined) and returns a BaseTableIndex implementation.
      *
      * @param primaryTableClass the primary table implementation class
      * @param unjoinedClass the table implementation which is passed as the last constructor

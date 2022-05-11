@@ -95,6 +95,11 @@ final class IndexSelector {
                 break one;
             }
 
+            if (selections.isEmpty()) {
+                theOne = mPrimaryInfo;
+                break one;
+            }
+
             if (fullScan) {
                 // If a full scan of at least one index is required, and multiple indexes are
                 // selected, then always do a full scan of the best covering index instead.

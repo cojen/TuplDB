@@ -42,6 +42,15 @@ public interface RowScanner<R> extends Closeable {
     R row();
 
     /**
+     * Returns a copy of the current row, or else return null if the scanner is closed.
+     *
+     * @param row copy into this row
+     * @return the given row or null if no more rows remain and scanner has been closed
+     * @throws NullPointerException if the given row object is null
+     */
+    R row(R row);
+
+    /**
      * Step to the next row.
      *
      * @return the next row or null if no more rows remain and scanner has been closed

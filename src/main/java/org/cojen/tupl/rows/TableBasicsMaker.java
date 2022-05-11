@@ -97,6 +97,23 @@ class TableBasicsMaker {
             }
         }
 
+        // Add the copyRow method.
+        {
+            MethodMaker mm = cm.addMethod(null, "copyRow", Object.class, Object.class).public_();
+            Variable srcRowVar = mm.param(0).cast(rowClass);
+            Variable dstRowVar = mm.param(1).cast(rowClass);
+
+            // Copy the column fields.
+            for (ColumnInfo info : rowGen.info.allColumns.values()) {
+                dstRowVar.field(info.name).set(srcRowVar.field(info.name));
+            }
+
+            // Copy the column state fields.
+            for (String name : rowGen.stateFields()) {
+                dstRowVar.field(name).set(srcRowVar.field(name));
+            }
+        }
+
         return cm.finish();
     }
 }

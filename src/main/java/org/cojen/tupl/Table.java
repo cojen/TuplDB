@@ -114,6 +114,11 @@ public interface Table<R> {
     public void unsetRow(R row);
 
     /**
+     * Copies all columns and states from one row to another.
+     */
+    public void copyRow(R from, R to);
+
+    /**
      * Returns a new scanner for all rows of this table.
      *
      * @param txn optional transaction for the scanner to use; pass null for auto-commit mode
@@ -315,7 +320,10 @@ public interface Table<R> {
      */
     public Predicate<R> predicate(String filter, Object... args);
 
-    // FIXME: Define a viewPrimaryKey method which disables automatic index selection.
+    /**
+     * Returns a view of this table which doesn't perform automatic index selection.
+     */
+    public Table<R> viewPrimaryKey();
 
     /**
      * Returns a view of this table where the primary key is specified by the columns of an
@@ -373,5 +381,5 @@ public interface Table<R> {
      * @param filter optional filter expression
      * @param args optional filter arguments
      */
-    public QueryPlan queryPlan(Transaction txn, String filter, Object... args);
+    public QueryPlan queryPlan(Transaction txn, String filter, Object... args) throws IOException;
 }

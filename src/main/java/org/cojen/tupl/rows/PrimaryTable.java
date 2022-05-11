@@ -32,15 +32,17 @@ import org.cojen.tupl.Transaction;
 import org.cojen.tupl.diag.QueryPlan;
 
 /**
- * 
+ * Wrapper which doesn't perform automatic index selection.
  *
  * @author Brian S O'Neill
  */
-class ReverseTable<R> implements Table<R> {
-    protected final BaseTable<R> mSource;
+final class PrimaryTable<R> implements Table<R> {
+    private final BaseTable<R> mSource;
+    private final boolean mReverse;
 
-    ReverseTable(BaseTable<R> source) {
+    PrimaryTable(BaseTable<R> source, boolean reverse) {
         mSource = source;
+        mReverse = reverse;
     }
 
     @Override
@@ -70,26 +72,42 @@ class ReverseTable<R> implements Table<R> {
 
     @Override
     public RowScanner<R> newRowScanner(Transaction txn) throws IOException {
-        return mSource.newRowScanner(txn, mSource.unfilteredReverse());
+        if (!mReverse) {
+            return mSource.newRowScanner(txn);
+        } else {
+            return mSource.newRowScanner(txn, mSource.unfilteredReverse());
+        }
     }
 
     @Override
     public RowScanner<R> newRowScanner(Transaction txn, String filter, Object... args)
         throws IOException
     {
-        return mSource.scannerQueryLauncher(txn, filter, true).newRowScanner(txn, args);
+        if (!mReverse) {
+            return mSource.newRowScannerThisTable(txn, filter, args);
+        } else {
+            return mSource.newRowScannerThisTableReverse(txn, filter, args);
+        }
     }
 
     @Override
     public RowUpdater<R> newRowUpdater(Transaction txn) throws IOException {
-        return mSource.newRowUpdater(txn, mSource.unfilteredReverse());
+        if (!mReverse) {
+            return mSource.newRowUpdater(txn);
+        } else {
+            return mSource.newRowUpdater(txn, mSource.unfilteredReverse());
+        }
     }
 
     @Override
     public RowUpdater<R> newRowUpdater(Transaction txn, String filter, Object... args)
-        throws IOException
+        throws IOException 
     {
-        return mSource.updaterQueryLauncher(txn, filter, true).newRowUpdater(txn, args);
+        if (!mReverse) {
+            return mSource.newRowUpdaterThisTable(txn, filter, args);
+        } else {
+            return mSource.newRowUpdaterThisTableReverse(txn, filter, args);
+        }
     }
 
     @Override
@@ -164,62 +182,38 @@ class ReverseTable<R> implements Table<R> {
 
     @Override
     public Table<R> viewPrimaryKey() {
-        return mSource.viewPrimaryKey().viewReverse();
+        return this;
     }
 
     @Override
     public Table<R> viewAlternateKey(String... columns) throws IOException {
-        return mSource.viewAlternateKey(columns).viewReverse();
+        return mSource.viewAlternateKey(columns);
     }
 
     @Override
     public Table<R> viewSecondaryIndex(String... columns) throws IOException {
-        return mSource.viewSecondaryIndex(columns).viewReverse();
+        return mSource.viewSecondaryIndex(columns);
     }
 
     @Override
     public Table<R> viewUnjoined() {
-        Table<R> unjoined = mSource.viewUnjoined();
-        return unjoined == mSource ? this : unjoined.viewReverse();
+        Table<R> unjoined = mSource;
+        if (mReverse) {
+            unjoined = unjoined.viewReverse();
+        }
+        return unjoined;
     }
 
     @Override
     public Table<R> viewReverse() {
-        return mSource;
+        return new PrimaryTable<R>(mSource, !mReverse);
     }
 
     @Override
-    public QueryPlan queryPlan(Transaction txn, String filter, Object... args) throws IOException {
-        if (filter == null) {
-            return mSource.planReverse(args);
+    public QueryPlan queryPlan(Transaction txn, String filter, Object... args) {
+        if (!mReverse) {
+            return mSource.queryPlanThisTable(txn, filter, args);
         } else {
-            return mSource.scannerQueryLauncher(txn, filter, true).plan(args);
-        }
-    }
-
-    static class This<R> extends ReverseTable<R> {
-        This(BaseTable<R> source) {
-            super(source);
-        }
-
-        @Override
-        public RowScanner<R> newRowScanner(Transaction txn, String filter, Object... args)
-            throws IOException
-        {
-            return mSource.newRowScannerThisTableReverse(txn, filter, args);
-        }
-
-        @Override
-        public RowUpdater<R> newRowUpdater(Transaction txn, String filter, Object... args)
-            throws IOException
-        {
-            return mSource.newRowUpdaterThisTableReverse(txn, filter, args);
-        }
-
-        @Override
-        public QueryPlan queryPlan(Transaction txn, String filter, Object... args)
-            throws IOException
-        {
             return mSource.queryPlanThisTableReverse(txn, filter, args);
         }
     }

@@ -449,13 +449,14 @@ public class RowStore {
     /**
      * @throws IllegalStateException if not found
      */
-    public <R> BaseTable<R> indexTable(BaseTable<R> primaryTable, boolean alt, String... columns)
+    public <R> BaseTableIndex<R> indexTable
+        (BaseTable<R> primaryTable, boolean alt, String... columns)
         throws IOException
     {
         Object key = ArrayKey.make(alt, columns);
-        WeakCache<Object, BaseTable<R>> indexTables = primaryTable.mTableManager.indexTables();
+        WeakCache<Object, BaseTableIndex<R>> indexTables = primaryTable.mTableManager.indexTables();
 
-        BaseTable<R> table = indexTables.get(key);
+        BaseTableIndex<R> table = indexTables.get(key);
 
         if (table == null) {
             synchronized (indexTables) {
@@ -480,9 +481,9 @@ public class RowStore {
      * @throws IllegalStateException if not found
      */
     @SuppressWarnings("unchecked")
-    private <R> BaseTable<R> makeIndexTable(WeakCache<Object, BaseTable<R>> indexTables,
-                                            BaseTable<R> primaryTable,
-                                            boolean alt, String... columns)
+    private <R> BaseTableIndex<R> makeIndexTable(WeakCache<Object, BaseTableIndex<R>> indexTables,
+                                                 BaseTable<R> primaryTable,
+                                                 boolean alt, String... columns)
         throws IOException
     {
         Class<R> rowType = primaryTable.rowType();
@@ -529,7 +530,7 @@ public class RowStore {
 
         Object key = ArrayKey.make(descriptor);
 
-        BaseTable<R> table = indexTables.get(key);
+        BaseTableIndex<R> table = indexTables.get(key);
 
         if (table != null) {
             return table;
@@ -553,7 +554,7 @@ public class RowStore {
             var mh = maker.finish();
             var unjoined = (BaseTable<R>) mh.invoke(primaryTable.mTableManager, ix, indexLock);
             mh = maker.finishJoined(primaryTable.getClass(), unjoined.getClass());
-            table = (BaseTable<R>) mh.invoke(ix, indexLock, primaryTable, unjoined);
+            table = (BaseTableIndex<R>) mh.invoke(ix, indexLock, primaryTable, unjoined);
         } catch (Throwable e) {
             throw rethrow(e);
         }

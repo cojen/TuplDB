@@ -20,12 +20,15 @@ package org.cojen.tupl.rows;
 import java.io.IOException;
 
 import org.cojen.tupl.Index;
+import org.cojen.tupl.RowScanner;
 import org.cojen.tupl.RowUpdater;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnmodifiableViewException;
 
 import org.cojen.tupl.core.RowPredicateLock;
+
+import org.cojen.tupl.diag.QueryPlan;
 
 /**
  * Base class for the tables returned by viewAlternateKey and viewSecondaryIndex.
@@ -90,6 +93,21 @@ public abstract class BaseTableIndex<R> extends BaseTable<R> {
     }
 
     @Override
+    public RowScanner<R> newRowScanner(Transaction txn, String filter, Object... args)
+        throws IOException
+    {
+        return newRowScannerThisTable(txn, filter, args);
+    }
+
+    @Override
+    public RowUpdater<R> newRowUpdater(Transaction txn, String filter, Object... args)
+        throws IOException
+    {
+        // By default, this will throw an UnmodifiableViewException. See below.
+        return newRowUpdaterThisTable(txn, filter, args);
+    }
+
+    @Override
     protected RowUpdater<R> newRowUpdater(Transaction txn, ScanController<R> controller)
         throws IOException
     {
@@ -101,5 +119,15 @@ public abstract class BaseTableIndex<R> extends BaseTable<R> {
         throws IOException
     {
         return primaryTable.newRowUpdater(txn, controller, this);
+    }
+
+    @Override
+    public Table<R> viewReverse() {
+        return new ReverseTable.This<R>(this);
+    }
+
+    @Override
+    public QueryPlan queryPlan(Transaction txn, String filter, Object... args) {
+        return queryPlanThisTable(txn, filter, args);
     }
 }

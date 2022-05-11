@@ -117,6 +117,16 @@ class BasicRowScanner<R> implements RowScanner<R> {
     }
 
     @Override
+    public final R row(R row) {
+        if (mRow == null) {
+            return null;
+        } else {
+            mTable.copyRow(mRow, row);
+            return row;
+        }
+    }
+
+    @Override
     public final R step() throws IOException {
         return doStep(null);
     }

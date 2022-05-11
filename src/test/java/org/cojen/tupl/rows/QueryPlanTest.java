@@ -101,21 +101,21 @@ public class QueryPlanTest {
                       new String[] {"+id"}, false, "id >= ?0", "id <= ?0"),
                      plan);
 
-        plan = mTable.queryPlan(null, "a == ?");
+        plan = mTable.viewPrimaryKey().queryPlan(null, "a == ?");
         assertEquals(new QueryPlan.Filter
                      ("a == ?0", new QueryPlan.FullScan
                       (TestRow.class.getName(), "primary key",
                        new String[] {"+id"}, false)),
                      plan);
 
-        plan = mTable.queryPlan(null, "id == ?0 && id != ?0 || b == ?1");
+        plan = mTable.viewPrimaryKey().queryPlan(null, "id == ?0 && id != ?0 || b == ?1");
         assertEquals(new QueryPlan.Filter
                      ("b == ?1", new QueryPlan.FullScan
                       (TestRow.class.getName(), "primary key",
                        new String[] {"+id"}, false)),
                      plan);
 
-        plan = mTable.queryPlan(null, "a == ? && id > ?");
+        plan = mTable.viewPrimaryKey().queryPlan(null, "a == ? && id > ?");
         assertEquals(new QueryPlan.Filter
                      ("a == ?0", new QueryPlan.RangeScan
                       (TestRow.class.getName(), "primary key",

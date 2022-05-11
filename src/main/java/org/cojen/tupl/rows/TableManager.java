@@ -55,7 +55,7 @@ public final class TableManager<R> {
 
     private WeakReference<Worker> mWorkerRef;
 
-    private volatile WeakCache<Object, BaseTable<R>> mIndexTables;
+    private volatile WeakCache<Object, BaseTableIndex<R>> mIndexTables;
 
     TableManager(Index primaryIndex) {
         mPrimaryIndex = primaryIndex;
@@ -115,8 +115,8 @@ public final class TableManager<R> {
     /**
      * Returns a cache of secondary indexes, as tables. See the RowStore.indexTable method.
      */
-    WeakCache<Object, BaseTable<R>> indexTables() {
-        WeakCache<Object, BaseTable<R>> indexTables = mIndexTables;
+    WeakCache<Object, BaseTableIndex<R>> indexTables() {
+        WeakCache<Object, BaseTableIndex<R>> indexTables = mIndexTables;
         if (indexTables == null) {
             synchronized (this) {
                 indexTables = mIndexTables;
