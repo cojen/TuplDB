@@ -224,6 +224,10 @@ public class RowCrudTest {
         row.str2("world");
         row.num1(123);
         TestRow copy = mTable.cloneRow(row);
+        assertEquals(row, copy);
+        TestRow copy2 = mTable.newRow();
+        mTable.copyRow(row, copy2);
+        assertEquals(copy, copy2);
         assertFalse(mTable.load(null, row));
         assertTrue(row.toString().contains("TestRow{*id=10}"));
 
