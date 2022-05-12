@@ -36,10 +36,10 @@ import org.cojen.maker.Variable;
  * @see Table#comparator
  * @author Brian S O'Neill
  */
-class ComparatorMaker<R> {
+final class ComparatorMaker<R> {
     private final Class<R> mRowType;
     private final RowInfo mRowInfo;
-    private final Map<String, Rule> mRules;
+    private final OrderBy mOrderBy;
 
     /**
      * Constructor for primary key ordering.
@@ -47,24 +47,17 @@ class ComparatorMaker<R> {
     ComparatorMaker(Class<R> rowType) {
         mRowType = rowType;
         mRowInfo = RowInfo.find(rowType);
-        mRules = new LinkedHashMap<String, Rule>();
-        for (ColumnInfo column : mRowInfo.keyColumns.values()) {
-            mRules.put(column.name, new Rule(column, column.isDescending() ? 1 : 0));
-        }
+        mOrderBy = OrderBy.forPrimaryKey(mRowInfo);
     }
 
     ComparatorMaker(Class<R> rowType, String spec) {
         mRowType = rowType;
         mRowInfo = RowInfo.find(rowType);
-        mRules = parseRules(mRowInfo, spec);
+        mOrderBy = OrderBy.forSpec(mRowInfo, spec);
     }
 
-    String cleanRules() {
-        var b = new StringBuilder();
-        for (Rule rule : mRules.values()) {
-            rule.appendTo(b);
-        }
-        return b.toString();
+    String cleanSpec() {
+        return mOrderBy.spec();
     }
 
     Comparator<R> finish() {
@@ -103,10 +96,10 @@ class ComparatorMaker<R> {
         var row0 = mm.param(0);
         var row1 = mm.param(1);
 
-        Iterator<Rule> it = mRules.values().iterator();
+        Iterator<OrderBy.Rule> it = mOrderBy.values().iterator();
         while (it.hasNext()) {
-            Rule rule = it.next();
-            ColumnInfo column = rule.column;
+            OrderBy.Rule rule = it.next();
+            ColumnInfo column = rule.column();
 
             Variable field0 = row0.field(column.name);
             Variable field1 = row1.field(column.name);
@@ -158,90 +151,5 @@ class ComparatorMaker<R> {
         }
 
         mm.return_(0);
-    }
-
-    private static Map<String, Rule> parseRules(RowInfo rowInfo, String spec) {
-        try {
-            Map<String, Rule> rules = doParseRules(rowInfo.allColumns, spec);
-            if (!rules.isEmpty()) {
-                return rules;
-            }
-        } catch (IndexOutOfBoundsException e) {
-        }
-
-        throw new IllegalArgumentException("Malformed ordering specification: " + spec);
-    }
-
-    private static Map<String, Rule> doParseRules(Map<String, ColumnInfo> columns, String spec) {
-        Map<String, Rule> rules = new LinkedHashMap<>();
-
-        int length = spec.length();
-        for (int pos = 0; pos < length; ) {
-            int flags = 0;
-
-            int order = spec.charAt(pos++);
-            if (order == '-') {
-                flags |= 1;
-            } else if (order != '+') {
-                break;
-            }
-
-            if (spec.charAt(pos) == '!') {
-                flags |= 2;
-                pos++;
-            }
-
-            int end = pos;
-            while (end < length) {
-                order = spec.charAt(end);
-                if (order == '-' || order == '+') {
-                    break;
-                }
-                end++;
-            }
-
-            if (end == pos) {
-                break;
-            }
-
-            String name = spec.substring(pos, end);
-            ColumnInfo column = columns.get(name);
-            if (column == null) {
-                throw new IllegalStateException
-                    ("Unknown column \"" + name + "\" in ordering specification: " + spec);
-            }
-
-            pos = end;
-
-            if (column.isPrimitive()) {
-                // Can't be null.
-                flags &= ~2;
-            }
-
-            if (!rules.containsKey(name)) {
-                rules.put(name, new Rule(column, flags));
-            }
-        }
-
-        return rules;
-    }
-
-    // flags: bit 0: descending,  bit 1: null low
-    private static record Rule(ColumnInfo column, int flags) {
-        boolean isDescending() {
-            return (flags & 1) != 0;
-        }
-
-        boolean isNullLow() {
-            return (flags & 2) != 0;
-        }
-
-        void appendTo(StringBuilder b) {
-            b.append(isDescending() ? '-' : '+');
-            if (isNullLow()) {
-                b.append('!');
-            }
-            b.append(column.name);
-        }
     }
 }

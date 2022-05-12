@@ -429,7 +429,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
         if (comparator == null) {
             var maker = new ComparatorMaker<R>(rowType(), spec);
-            String clean = maker.cleanRules();
+            String clean = maker.cleanSpec();
             if (spec.equals(clean)) {
                 comparator = maker.finish();
             } else {
