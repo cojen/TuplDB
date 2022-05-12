@@ -52,10 +52,10 @@ public class IndexSelectorTest {
         verify("c == ? && b == ?", "+c+b+id", "c == ?0 && b == ?1");
         verify("b == ? && c == ?", "+c+b+id", "b == ?0 && c == ?1");
         verify("c > ? && b == ?", "+b+id", "c > ?0 && b == ?1");
-        verify("c > ? && b > ?", "+c+b+id", "c > ?0 && b > ?1");
-        verify("c != ? && b > ?", "+b+id", "c != ?0 && b > ?1");
-        verify("d > ? && b > ? && c > ?", "+d+c+b+id", "d > ?0 && b > ?1 && c > ?2");
-        verify("b > ? && c > ? && d > ?", "+d+c+b+id", "b > ?0 && c > ?1 && d > ?2");
+        verify("c > ? && b > ?", "+id", "c > ?0 && b > ?1");
+        verify("c != ? && b > ?", "+id", "c != ?0 && b > ?1");
+        verify("d > ? && b > ? && c > ?", "+id", "d > ?0 && b > ?1 && c > ?2");
+        verify("b > ? && c > ? && d > ?", "+id", "b > ?0 && c > ?1 && d > ?2");
         verify("d > ? && d < ?", "+d+b+id", "d > ?0 && d < ?1");
         verify("d < ?", "+id", "d < ?0");
         verify("d == ? && b > ? && c >= ? && c < ?", "+d+c+b+id",
@@ -108,6 +108,16 @@ public class IndexSelectorTest {
         verify("{b, id}: b == ? && id == ?", "+b+id", "{b, id}: b == ?0 && id == ?1");
         verify("d == ? && c in ? && b > ?", "+d+b+id", "d == ?0 && c in ?1 && b > ?2");
         verify("d == ? && !(c in ?) && b in ?", "+d+c+b+id", "d == ?0 && !(c in ?1) && b in ?2");
+
+        verify("d == ? && c > ? && b > ?", "+d+c+b+id", "d == ?0 && c > ?1 && b > ?2");
+        verify("d == ? && c != ? && b > ?", "+d+b+id", "d == ?0 && c != ?1 && b > ?2");
+        verify("d == ? && b > ? && c > ?", "+d+c+b+id", "d == ?0 && b > ?1 && c > ?2");
+
+        // FIXME: Enable these cases when ordering can be specified.
+        //verify("c > ? && b > ?", "+c+b+id", "c > ?0 && b > ?1");
+        //verify("c != ? && b > ?", "+b+id", "c != ?0 && b > ?1");
+        //verify("d > ? && b > ? && c > ?", "+d+c+b+id", "d > ?0 && b > ?1 && c > ?2");
+        //verify("b > ? && c > ? && d > ?", "+d+c+b+id", "b > ?0 && c > ?1 && d > ?2");
     }
 
     @Test
@@ -120,17 +130,21 @@ public class IndexSelectorTest {
         verify("{b}: b != ? && d == ?", "+b-c+id", "{b}: b != ?0 && d == ?1");
         verify("{a, id}: a != ? || id == ?", "+a", "{a, id}: a != ?0 || id == ?1");
 
-        verify("c == ? && e > ? && a > ?", "+c+a+id", "c == ?0 && e > ?1 && a > ?2");
+        // FIXME: verify that reverse scan order is selected (when implemented)
+        verify("c == ? && e > ? && a > ?", "+c-e+id", "c == ?0 && e > ?1 && a > ?2");
         verify("c == ? && a > ? && e > ?", "+c+a+id", "c == ?0 && a > ?1 && e > ?2");
         verify("c == ? && e < ? && a < ?", "+c-e+id", "c == ?0 && e < ?1 && a < ?2");
-        verify("c == ? && a < ? && e < ?", "+c-e+id", "c == ?0 && a < ?1 && e < ?2");
+        // FIXME: verify that reverse scan order is selected (when implemented)
+        verify("c == ? && a < ? && e < ?", "+c+a+id", "c == ?0 && a < ?1 && e < ?2");
         verify("c == ? && e < ? && a > ?", "+c-e+id", "c == ?0 && e < ?1 && a > ?2");
         verify("c == ? && a > ? && e < ?", "+c+a+id", "c == ?0 && a > ?1 && e < ?2");
 
-        verify("c == ? && e > ? && a >= ?", "+c+a+id", "c == ?0 && e > ?1 && a >= ?2");
+        // FIXME: verify that reverse scan order is selected (when implemented)
+        verify("c == ? && e > ? && a >= ?", "+c-e+id", "c == ?0 && e > ?1 && a >= ?2");
         verify("c == ? && a > ? && e >= ?", "+c+a+id", "c == ?0 && a > ?1 && e >= ?2");
         verify("c == ? && e < ? && a <= ?", "+c-e+id", "c == ?0 && e < ?1 && a <= ?2");
-        verify("c == ? && a < ? && e <= ?", "+c-e+id", "c == ?0 && a < ?1 && e <= ?2");
+        // FIXME: verify that reverse scan order is selected (when implemented)
+        verify("c == ? && a < ? && e <= ?", "+c+a+id", "c == ?0 && a < ?1 && e <= ?2");
         verify("c == ? && e < ? && a >= ?", "+c-e+id", "c == ?0 && e < ?1 && a >= ?2");
         verify("c == ? && a > ? && e <= ?", "+c+a+id", "c == ?0 && a > ?1 && e <= ?2");
 
@@ -213,6 +227,6 @@ public class IndexSelectorTest {
     }
 
     private <R> IndexSelector selector(String filter) {
-        return new IndexSelector(mInfo, parse(filter), false);
+        return new IndexSelector(mInfo, parse(filter));
     }
 }

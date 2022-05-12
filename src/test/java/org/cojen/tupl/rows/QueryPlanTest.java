@@ -715,57 +715,6 @@ public class QueryPlanTest {
                      plan);
     }
 
-    @Test
-    public void reverse() throws Exception {
-        Table<TestRow> reverse = mTable.viewReverse();
-
-        QueryPlan plan = reverse.queryPlan(null, null);
-        assertEquals(new QueryPlan.FullScan
-                     (TestRow.class.getName(), "primary key",
-                      new String[] {"+id"}, true),
-                     plan);
-
-        plan = reverse.queryPlan(null, "id == ?0 || id != ?0");
-        assertEquals(new QueryPlan.FullScan
-                     (TestRow.class.getName(), "primary key",
-                      new String[] {"+id"}, true),
-                     plan);
-
-        plan = reverse.queryPlan(null, "a > ?");
-        assertEquals(new QueryPlan.Filter
-                     ("a > ?0", new QueryPlan.FullScan
-                      (TestRow.class.getName(), "primary key",
-                       new String[] {"+id"}, true)),
-                     plan);
-
-        Table<TestRow> reverseA = mIndexA.viewReverse();
-
-        plan = reverseA.queryPlan(null, null);
-        assertEquals(new QueryPlan.NaturalJoin
-                     (TestRow.class.getName(), "primary key", new String[] {"+id"},
-                      new QueryPlan.FullScan
-                      (TestRow.class.getName(), "alternate key",
-                       new String[] {"+a"}, true)),
-                     plan);
-
-        plan = reverseA.queryPlan(null, "a == ?0 || a != ?0");
-        assertEquals(new QueryPlan.NaturalJoin
-                     (TestRow.class.getName(), "primary key", new String[] {"+id"},
-                      new QueryPlan.FullScan
-                      (TestRow.class.getName(), "alternate key",
-                       new String[] {"+a"}, true)),
-                     plan);
-
-        plan = reverseA.queryPlan(null, "b == ?");
-        assertEquals(new QueryPlan.Filter
-                     ("b == ?0", new QueryPlan.NaturalJoin
-                      (TestRow.class.getName(), "primary key", new String[] {"+id"},
-                       new QueryPlan.FullScan
-                       (TestRow.class.getName(), "alternate key",
-                        new String[] {"+a"}, true))),
-                     plan);
-    }
-
     @PrimaryKey("id")
     @AlternateKey("a")
     @SecondaryIndex("b")

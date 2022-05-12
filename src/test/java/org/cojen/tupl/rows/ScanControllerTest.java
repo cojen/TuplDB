@@ -160,15 +160,6 @@ public class ScanControllerTest {
 
     @Test
     public void mergedScans() throws Exception {
-        mergedScans(false);
-    }
-
-    @Test
-    public void mergedScansReverse() throws Exception {
-        mergedScans(true);
-    }
-
-    private void mergedScans(boolean reverse) throws Exception {
         Database db = Database.open(new DatabaseConfig().directPageAccess(false));
         Table<MyRow> table = db.openTable(MyRow.class);
         Table<MyRow2> table2 = db.openTable(MyRow2.class);
@@ -208,21 +199,15 @@ public class ScanControllerTest {
 
             int total = 0;
             for (int j=0; j<10; j++) {
-                total += mergedScans(rnd, table, table2, filter, reverse);
+                total += mergedScans(rnd, table, table2, filter);
             }
             assertTrue(total > 0);
         }
     }
 
-    private int mergedScans(Random rnd, Table<MyRow> table, Table<MyRow2> table2,
-                            String filter, boolean reverse)
+    private int mergedScans(Random rnd, Table<MyRow> table, Table<MyRow2> table2, String filter)
         throws Exception
     {
-        if (reverse) {
-            table = table.viewReverse();
-            table2 = table2.viewReverse();
-        }
-
         var args = new Object[6];
         for (int i=0; i<args.length; i++) {
             args[i] = rnd.nextInt(10);

@@ -38,11 +38,9 @@ import org.cojen.tupl.diag.QueryPlan;
  */
 final class PrimaryTable<R> implements Table<R> {
     private final BaseTable<R> mSource;
-    private final boolean mReverse;
 
-    PrimaryTable(BaseTable<R> source, boolean reverse) {
+    PrimaryTable(BaseTable<R> source) {
         mSource = source;
-        mReverse = reverse;
     }
 
     @Override
@@ -72,42 +70,26 @@ final class PrimaryTable<R> implements Table<R> {
 
     @Override
     public RowScanner<R> newRowScanner(Transaction txn) throws IOException {
-        if (!mReverse) {
-            return mSource.newRowScanner(txn);
-        } else {
-            return mSource.newRowScanner(txn, mSource.unfilteredReverse());
-        }
+        return mSource.newRowScanner(txn);
     }
 
     @Override
     public RowScanner<R> newRowScanner(Transaction txn, String filter, Object... args)
         throws IOException
     {
-        if (!mReverse) {
-            return mSource.newRowScannerThisTable(txn, filter, args);
-        } else {
-            return mSource.newRowScannerThisTableReverse(txn, filter, args);
-        }
+        return mSource.newRowScannerThisTable(txn, filter, args);
     }
 
     @Override
     public RowUpdater<R> newRowUpdater(Transaction txn) throws IOException {
-        if (!mReverse) {
-            return mSource.newRowUpdater(txn);
-        } else {
-            return mSource.newRowUpdater(txn, mSource.unfilteredReverse());
-        }
+        return mSource.newRowUpdater(txn);
     }
 
     @Override
     public RowUpdater<R> newRowUpdater(Transaction txn, String filter, Object... args)
         throws IOException 
     {
-        if (!mReverse) {
-            return mSource.newRowUpdaterThisTable(txn, filter, args);
-        } else {
-            return mSource.newRowUpdaterThisTableReverse(txn, filter, args);
-        }
+        return mSource.newRowUpdaterThisTable(txn, filter, args);
     }
 
     @Override
@@ -197,24 +179,11 @@ final class PrimaryTable<R> implements Table<R> {
 
     @Override
     public Table<R> viewUnjoined() {
-        Table<R> unjoined = mSource;
-        if (mReverse) {
-            unjoined = unjoined.viewReverse();
-        }
-        return unjoined;
-    }
-
-    @Override
-    public Table<R> viewReverse() {
-        return new PrimaryTable<R>(mSource, !mReverse);
+        return mSource;
     }
 
     @Override
     public QueryPlan queryPlan(Transaction txn, String filter, Object... args) {
-        if (!mReverse) {
-            return mSource.queryPlanThisTable(txn, filter, args);
-        } else {
-            return mSource.queryPlanThisTableReverse(txn, filter, args);
-        }
+        return mSource.queryPlanThisTable(txn, filter, args);
     }
 }

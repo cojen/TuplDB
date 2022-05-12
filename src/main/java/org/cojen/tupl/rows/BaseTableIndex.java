@@ -122,11 +122,6 @@ public abstract class BaseTableIndex<R> extends BaseTable<R> {
     }
 
     @Override
-    public Table<R> viewReverse() {
-        return new ReverseTable.This<R>(this);
-    }
-
-    @Override
     public QueryPlan queryPlan(Transaction txn, String filter, Object... args) {
         return queryPlanThisTable(txn, filter, args);
     }

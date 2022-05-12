@@ -44,17 +44,15 @@ import org.cojen.tupl.filter.Visitor;
 final class IndexSelector {
     private final RowInfo mPrimaryInfo;
     private final FullFilter mFullFilter;
-    private final boolean mReverse;
 
-    private boolean mAnyTermMatches;
+    private int mAnyTermMatches;
 
     private ColumnSet[] mSelectedIndexes;
     private FullFilter[] mSelectedFilters;
 
-    IndexSelector(RowInfo primaryInfo, FullFilter filter, boolean reverse) {
+    IndexSelector(RowInfo primaryInfo, FullFilter filter) {
         mPrimaryInfo = primaryInfo;
         mFullFilter = filter;
-        mReverse = reverse;
     }
 
     /**
@@ -81,7 +79,7 @@ final class IndexSelector {
 
             for (RowFilter group : orf.subFilters()) {
                 ColumnSet index = selectIndex(group);
-                fullScan |= !mAnyTermMatches;
+                fullScan |= mAnyTermMatches == 0;
                 RowFilter existing = selections.get(index);
                 if (existing == null) {
                     selections.put(index, group);
@@ -160,7 +158,7 @@ final class IndexSelector {
      * @param group must be a single DNF group; no "or" filters
      */
     private ColumnSet selectIndex(RowFilter group) {
-        mAnyTermMatches = false;
+        mAnyTermMatches = 0;
         var terms = makeTerms(group);
         ColumnSet best = mPrimaryInfo;
 
@@ -232,8 +230,6 @@ final class IndexSelector {
                 break scan;
             }
 
-            mAnyTermMatches = true;
-
             switch (term.mType) {
                 case EQUALITY -> {
                     score += 3;
@@ -243,20 +239,10 @@ final class IndexSelector {
                     score += 2;
                 }
                 case HALF_RANGE -> {
-                    // Only consider the half range if it utilizes a cursor find operation
-                    // instead of a filter check. A find is performed once per scan, but a
-                    // filter check is performed for each row.
-                    switch (term.mFilter.operator()) {
-                        case ColumnFilter.OP_GT, ColumnFilter.OP_GE -> {
-                            if (mReverse == column.isDescending()) {
-                                score += 1;
-                            }
-                        }
-                        case ColumnFilter.OP_LT, ColumnFilter.OP_LE -> {
-                            if (mReverse != column.isDescending()) {
-                                score += 1;
-                            }
-                        }
+                    if (score > 0 || isCovering(terms, cs)) {
+                        // Only consider a half range match after the first index column, or if
+                        // no join is required.
+                        score += 1;
                     }
                 }
             }
@@ -265,7 +251,42 @@ final class IndexSelector {
             break;
         }
 
+        // This field is only compared against zero, and so the absolute value doesn't matter.
+        mAnyTermMatches += score;
+
         return score;
+    }
+
+    /**
+     * Returns true if the given index (cs) contains all the required columns.
+     */
+    private boolean isCovering(List<Term> terms, ColumnSet cs) {
+        if (cs == mPrimaryInfo) {
+            return true;
+        }
+
+        Map<String, ColumnInfo> pmap = mFullFilter.projection();
+        if (pmap == null) {
+            pmap = mPrimaryInfo.allColumns;
+        }
+
+        if (!cs.allColumns.keySet().containsAll(pmap.keySet())) {
+            return false;
+        }
+
+        for (Term term : terms) {
+            ColumnFilter filter = term.mFilter;
+            if (!cs.allColumns.containsKey(filter.column().name)) {
+                return false;
+            }
+            if (filter instanceof ColumnToColumnFilter ctc) {
+                if (!cs.allColumns.containsKey(ctc.otherColumn().name)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     /**
