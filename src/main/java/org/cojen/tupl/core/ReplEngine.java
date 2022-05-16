@@ -939,7 +939,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
 
     @Override
     public boolean cursorStore(long cursorId, long txnId, byte[] key, byte[] value)
-        throws LockFailureException
+        throws IOException
     {
         CursorEntry ce = getCursorEntry(cursorId);
         if (ce == null) {
@@ -949,7 +949,20 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         TxnEntry te = getTxnEntry(txnId);
         LocalTransaction txn = te.mTxn;
 
-        // FIXME: check mPredicateMode
+        if (te.mPredicateMode) {
+            // Acquire locks on behalf of the transaction, but push them using the correct thread.
+            long indexId = ce.mCursor.mTree.id();
+            Object locks = mDatabase.rowStore().acquireLocksNoPush(txn, indexId, key, value);
+
+            runCursorTask(ce, te, new Worker.Task() {
+                public void run() throws IOException {
+                    pushPredicateLocks(txn, locks);
+                    doCursorStore(ce, txn, key, value);
+                }
+            });
+
+            return true;
+        }
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
         ce.mKey = key;
@@ -960,24 +973,29 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
                 if (lock != null) {
                     txn.push(lock);
                 }
-
-                BTreeCursor tc = findAndRegister(ce, txn, key);
-
-                do {
-                    try {
-                        tc.store(value);
-                        tc.mValue = Cursor.NOT_LOADED;
-                        break;
-                    } catch (ClosedIndexException e) {
-                        tc = reopenCursor(e, ce);
-                    }
-                } while (tc != null);
-
-                redoListenerStore(ReplEngine.this, txn, tc.mTree, key, value);
+                doCursorStore(ce, txn, key, value);
             }
         });
 
         return true;
+    }
+
+    private void doCursorStore(CursorEntry ce, LocalTransaction txn, byte[] key, byte[] value)
+        throws IOException
+    {
+        BTreeCursor tc = findAndRegister(ce, txn, key);
+
+        do {
+            try {
+                tc.store(value);
+                tc.mValue = Cursor.NOT_LOADED;
+                break;
+            } catch (ClosedIndexException e) {
+                tc = reopenCursor(e, ce);
+            }
+        } while (tc != null);
+
+        redoListenerStore(ReplEngine.this, txn, tc.mTree, key, value);
     }
 
     @Override
