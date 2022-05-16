@@ -634,6 +634,44 @@ public class IndexLockTest {
 
         w1.await();
 
+        // Block replica scan when leader uses a RowUpdater.
+
+        var updater = leaderTable.newRowUpdater(txn1, "id == ?", 5);
+        updater.row().id(4);
+        updater.update();
+        txn1.flush();
+
+        scanTxn.reset();
+        scanTxn.lockTimeout(100, TimeUnit.MILLISECONDS);
+
+        try {
+            replicaTable.newRowScanner(scanTxn, "id == ?", 5);
+            fail();
+        } catch (LockTimeoutException e) {
+            predicateLockTimeout(e);
+        }
+
+        // Scan can start when txn1 finishes.
+
+        scanTxn.reset();
+        scanTxn.lockTimeout(2, TimeUnit.SECONDS);
+
+        Waiter w2 = start(() -> {
+            var scanner = replicaTable.newRowScanner(scanTxn, "id == ?", 5);
+            assertNull(scanner.row());
+            scanner.close();
+            scanner = replicaTable.newRowScanner(scanTxn, "id == ?", 4);
+            assertEquals(4, scanner.row().id());
+            assertEquals("name-5", scanner.row().name());
+            scanner.close();
+            scanTxn.reset();
+        });
+
+        txn1.commit();
+        fence(leaderRepl, replicaRepl);
+
+        w2.await();
+
         leaderDb.close();
         replicaDb.close();
     }
