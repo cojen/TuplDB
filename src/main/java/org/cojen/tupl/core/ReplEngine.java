@@ -702,7 +702,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         // Enter nested scope of an existing transaction.
         LocalTransaction txn = te.mTxn;
 
-        if (te.mPredicateMode) {
+        if (te.mPredicateMode && value != null) {
             // Acquire locks on behalf of the transaction, but push them using the correct thread.
             Object locks = mDatabase.rowStore().acquireLocksNoPush(txn, indexId, key, value);
 
@@ -740,7 +740,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         TxnEntry te = getTxnEntry(txnId);
         LocalTransaction txn = te.mTxn;
 
-        if (te.mPredicateMode) {
+        if (te.mPredicateMode && value != null) {
             // Acquire locks on behalf of the transaction, but push them using the correct thread.
             Object locks = mDatabase.rowStore().acquireLocksNoPush(txn, indexId, key, value);
 
@@ -780,18 +780,21 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         if (te.mPredicateMode) {
             te.mPredicateMode = false;
 
-            // Acquire locks on behalf of the transaction, but push them using the correct thread.
-            Object locks = mDatabase.rowStore().acquireLocksNoPush(txn, indexId, key, value);
+            if (value != null) {
+                // Acquire locks on behalf of the transaction, but push them using the correct
+                // thread.
+                Object locks = mDatabase.rowStore().acquireLocksNoPush(txn, indexId, key, value);
 
-            runTask(te, new Worker.Task() {
-                public void run() throws IOException {
-                    pushPredicateLocks(txn, locks);
-                    doStore(txn, indexId, key, value);
-                    txn.commit();
-                }
-            });
+                runTask(te, new Worker.Task() {
+                    public void run() throws IOException {
+                        pushPredicateLocks(txn, locks);
+                        doStore(txn, indexId, key, value);
+                        txn.commit();
+                    }
+                });
 
-            return true;
+                return true;
+            }
         }
 
         // Acquire the lock on behalf of the transaction, but push it using the correct thread.
@@ -839,7 +842,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
 
         LocalTransaction txn = te.mTxn;
 
-        if (te.mPredicateMode) {
+        if (te.mPredicateMode && value != null) {
             // Acquire locks on behalf of the transaction, but push them using the correct thread.
             Object locks = mDatabase.rowStore().acquireLocksNoPush(txn, indexId, key, value);
 
@@ -949,7 +952,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         TxnEntry te = getTxnEntry(txnId);
         LocalTransaction txn = te.mTxn;
 
-        if (te.mPredicateMode) {
+        if (te.mPredicateMode && value != null) {
             // Acquire locks on behalf of the transaction, but push them using the correct thread.
             long indexId = ce.mCursor.mTree.id();
             Object locks = mDatabase.rowStore().acquireLocksNoPush(txn, indexId, key, value);

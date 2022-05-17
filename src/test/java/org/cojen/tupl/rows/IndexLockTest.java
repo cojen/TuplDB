@@ -641,6 +641,8 @@ public class IndexLockTest {
         updater.update();
         txn1.flush();
 
+        fence(leaderRepl, replicaRepl);
+
         scanTxn.reset();
         scanTxn.lockTimeout(100, TimeUnit.MILLISECONDS);
 
