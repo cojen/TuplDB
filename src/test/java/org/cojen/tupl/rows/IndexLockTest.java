@@ -573,6 +573,15 @@ public class IndexLockTest {
 
     @Test
     public void replicaScanStall() throws Exception {
+        replicaScanStall(TestRow.class);
+    }
+
+    @Test
+    public void replicaScanStall2() throws Exception {
+        replicaScanStall(TestRow2.class);
+    }
+
+    private <R extends TestRow> void replicaScanStall(Class<R> type) throws Exception {
         // A replica RowScanner cannot start when an open transaction has inserted a row into
         // the range that will be scanned.
 
@@ -590,12 +599,12 @@ public class IndexLockTest {
         config.replicate(replicaRepl);
         var replicaDb = newTempDatabase(getClass(), config);
 
-        var leaderTable = leaderDb.openTable(TestRow.class);
+        var leaderTable = leaderDb.openTable(type);
 
         fill(leaderTable, 0, 3);
 
         Transaction txn1 = leaderDb.newTransaction();
-        TestRow row = leaderTable.newRow();
+        var row = leaderTable.newRow();
         row.id(5);
         row.name("name-5");
         leaderTable.insert(txn1, row);
@@ -603,7 +612,7 @@ public class IndexLockTest {
 
         fence(leaderRepl, replicaRepl);
 
-        var replicaTable = replicaDb.openTable(TestRow.class);
+        var replicaTable = replicaDb.openTable(type);
 
         // Scan is blocked.
 
@@ -673,6 +682,48 @@ public class IndexLockTest {
         fence(leaderRepl, replicaRepl);
 
         w2.await();
+
+        // Block replica scan when leader uses a RowUpdater, this time when key doesn't change.
+
+        updater = leaderTable.newRowUpdater(txn1, "id == ?", 4);
+        updater.row().name("newname");
+        updater.update();
+        txn1.flush();
+
+        fence(leaderRepl, replicaRepl);
+
+        scanTxn.reset();
+        scanTxn.lockTimeout(100, TimeUnit.MILLISECONDS);
+
+        try {
+            replicaTable.newRowScanner(scanTxn, "id == ?", 4);
+            fail();
+        } catch (LockTimeoutException e) {
+            if (type == TestRow.class) {
+                // No index means no trigger, which means no predicate mode with an update.
+                rowLockTimeout(e);
+            } else {
+                predicateLockTimeout(e);
+            }
+        }
+
+        // Scan can start when txn1 finishes.
+
+        scanTxn.reset();
+        scanTxn.lockTimeout(2, TimeUnit.SECONDS);
+
+        Waiter w3 = start(() -> {
+            var scanner = replicaTable.newRowScanner(scanTxn, "id == ?", 4);
+            assertEquals(4, scanner.row().id());
+            assertEquals("newname", scanner.row().name());
+            scanner.close();
+            scanTxn.reset();
+        });
+
+        txn1.commit();
+        fence(leaderRepl, replicaRepl);
+
+        w3.await();
 
         leaderDb.close();
         replicaDb.close();
