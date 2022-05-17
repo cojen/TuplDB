@@ -1,7 +1,7 @@
 Changelog
 =========
 
-v1.5.4
+v1.6.0
 ------
 * Fix race condition which can cause the JVM to crash when the database is closed.
 * Fix deadlock during compaction caused by releasing the wrong node latch.
@@ -14,6 +14,7 @@ v1.5.4
   complete.
 * Don't reset checkpoint duration stat when thresholds aren't met.
 * Depends on Java 17.
+* Add an API for supporting relational collections of persistent rows.
 
 v1.5.3.3 (2021-10-03)
 --------

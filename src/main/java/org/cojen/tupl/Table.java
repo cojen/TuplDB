@@ -48,7 +48,6 @@ import org.cojen.tupl.rows.RowSpliterator;
  *     void message(String str);
  * }
  * </pre>
- * <b>Note: The {@code Table} feature is experimental and is under heavy development.</b>
  *
  * <p>Supported column types:
  * <ul>
