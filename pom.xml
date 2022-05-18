@@ -19,19 +19,26 @@
     <url>https://github.com/cojen</url>
   </organization>
 
+  <licenses>
+    <license>
+      <name>AGPL-3.0</name>
+      <url>https://www.gnu.org/licenses/agpl-3.0.en.html</url>
+    </license>
+  </licenses>
+
   <developers>
     <developer>
-      <id>broneill</id>
-      <name>Brian S. O'Neill</name>
-      <email />
+      <name>Brian O'Neill</name>
+      <email>bronee@gmail.com</email>
+      <organization>Cojen</organization>
+      <organizationUrl>https://cojen.org</organizationUrl>
     </developer>
   </developers>
 
   <scm>
-    <connection>scm:git:git@github.com:cojen/Tupl.git</connection>
-    <developerConnection>scm:git:git@github.com:cojen/Tupl.git</developerConnection>
-    <url>git@github.com:cojen/Tupl.git</url>
-    <tag>HEAD</tag>
+    <connection>scm:git:https://github.com/cojen/Tupl.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com:cojen/Tupl.git</developerConnection>
+    <url>https://github.com/cojen/Tupl</url>
   </scm>
 
   <distributionManagement>
@@ -217,6 +224,15 @@
           <destDir>javadoc</destDir>
           <excludePackageNames>org.cojen.tupl.core:org.cojen.tupl.ev:org.cojen.tupl.jmx:org.cojen.tupl.views:org.cojen.tupl.filter:org.cojen.tupl.rows</excludePackageNames>
         </configuration>
+        <executions>
+          <execution>
+            <id>attach-javadocs</id>
+            <phase>deploy</phase>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
 
       <plugin>
@@ -231,6 +247,48 @@
           <parallel>classes</parallel>
           <perCoreThreadCount>false</perCoreThreadCount>
           <threadCount>6</threadCount>
+        </configuration>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>3.0.1</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <phase>deploy</phase>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-gpg-plugin</artifactId>
+        <version>1.6</version>
+        <executions>
+          <execution>
+            <id>sign-artifacts</id>
+            <phase>deploy</phase>
+            <goals>
+              <goal>sign</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.sonatype.plugins</groupId>
+        <artifactId>nexus-staging-maven-plugin</artifactId>
+        <version>1.6.8</version>
+        <extensions>true</extensions>
+        <configuration>
+          <serverId>ossrh</serverId>
+          <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+          <autoReleaseAfterClose>false</autoReleaseAfterClose>
         </configuration>
       </plugin>
 
