@@ -1,4 +1,4 @@
-[![](https://jitpack.io/v/cojen/Tupl.svg)](https://jitpack.io/#cojen/Tupl)
+[![Maven Central](https://img.shields.io/maven-central/v/org.cojen/tupl.svg?label=Maven%20Central)](https://search.maven.org/search?q=g:%22org.cojen%22%20AND%20a:%22tupl%22)
 
 The Unnamed Persistence Library
 
