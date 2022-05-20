@@ -468,7 +468,7 @@ public class FilteredScanMaker<R> {
             return;
         }
 
-        // Implement/override method as specified by RowDecoderEncoder.
+        // Implement/override method as specified by RowEvaluator.
 
         MethodMaker mm = mFilterMaker.addMethod
             (Object.class, "decodeRow", Cursor.class, LockResult.class, Object.class).public_();
@@ -571,7 +571,7 @@ public class FilteredScanMaker<R> {
     }
 
     private void addDecodeRowWithPrimaryCursorMethod() {
-        // Implement/override method as specified by RowDecoderEncoder.
+        // Implement/override method as specified by RowEvaluator.
 
         MethodMaker mm = mFilterMaker.addMethod
             (Object.class, "decodeRow", Cursor.class, LockResult.class, Object.class,

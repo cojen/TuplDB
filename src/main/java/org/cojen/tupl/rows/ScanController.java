@@ -49,9 +49,9 @@ public interface ScanController<R> {
     Cursor newCursor(View view, Transaction txn) throws IOException;
 
     /**
-     * Returns the decoder for the current scan batch.
+     * Returns the evaluator for the current scan batch.
      */
-    RowDecoderEncoder<R> decoder();
+    RowEvaluator<R> evaluator();
 
     /**
      * Move to the next batch, returning false if none.

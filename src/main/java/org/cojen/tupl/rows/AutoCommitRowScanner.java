@@ -34,7 +34,7 @@ final class AutoCommitRowScanner<R> extends BasicRowScanner<R> {
 
     @Override
     protected R decodeRow(Cursor c, LockResult result, R row) throws IOException {
-        R decoded = mDecoder.decodeRow(c, result, row);
+        R decoded = mEvaluator.decodeRow(c, result, row);
         // Always release the lock, which when joined, combines the secondary and primary locks.
         // When decoded is null, the caller (BasicRowScanner) releases the lock(s).
         if (decoded != null) {

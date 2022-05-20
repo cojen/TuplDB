@@ -39,7 +39,7 @@ class BasicRowScanner<R> implements RowScanner<R> {
     final ScanController<R> mController;
 
     Cursor mCursor;
-    RowDecoderEncoder<R> mDecoder;
+    RowEvaluator<R> mEvaluator;
 
     R mRow;
 
@@ -55,7 +55,7 @@ class BasicRowScanner<R> implements RowScanner<R> {
      */
     void init(Transaction txn) throws IOException {
         a: while (true) {
-            setDecoder(mController.decoder());
+            setEvaluator(mController.evaluator());
 
             Cursor c = mController.newCursor(mTable.mSource, txn);
             mCursor = c;
@@ -147,7 +147,7 @@ class BasicRowScanner<R> implements RowScanner<R> {
                         if (!mController.next()) {
                             break a;
                         }
-                        setDecoder(mController.decoder());
+                        setEvaluator(mController.evaluator());
                         Transaction txn = c.link();
                         mCursor = c = mController.newCursor(mTable.mSource, txn);
                         toFirst(c);
@@ -181,12 +181,12 @@ class BasicRowScanner<R> implements RowScanner<R> {
         return null;
     }
 
-    protected void setDecoder(RowDecoderEncoder<R> decoder) {
-        mDecoder = decoder;
+    protected void setEvaluator(RowEvaluator<R> evaluator) {
+        mEvaluator = evaluator;
     }
 
     protected R decodeRow(Cursor c, LockResult result, R row) throws IOException {
-        return mDecoder.decodeRow(c, result, row);
+        return mEvaluator.decodeRow(c, result, row);
     }
 
     @Override

@@ -20,8 +20,7 @@ package org.cojen.tupl.rows;
 import org.cojen.tupl.UnpositionedCursorException;
 
 /**
- * See FilteredScanMaker. Can be thrown from the RowDecoderEncoder.decodeRow method which
- * accepts a Cursor.
+ * See FilteredScanMaker. Can be thrown from the RowEvaluator.decodeRow method.
  *
  * @author Brian S O'Neill
  */

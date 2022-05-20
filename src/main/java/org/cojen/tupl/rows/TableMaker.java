@@ -2024,7 +2024,7 @@ public class TableMaker {
         }
 
         {
-            // Specified by RowDecoderEncoder.
+            // Specified by RowEvaluator.
             MethodMaker mm = cm.addMethod
                 (Object.class, "decodeRow", Cursor.class, LockResult.class, Object.class).public_();
             var tableVar = mm.var(lookup.lookupClass());
@@ -2041,7 +2041,7 @@ public class TableMaker {
         }
 
         {
-            // Specified by RowDecoderEncoder.
+            // Specified by RowEvaluator.
             MethodMaker mm = cm.addMethod
                 (byte[].class, "updateKey", Object.class, byte[].class).public_();
             var rowVar = mm.param(0).cast(rowClass);
@@ -2054,7 +2054,7 @@ public class TableMaker {
         }
 
         {
-            // Specified by RowDecoderEncoder.
+            // Specified by RowEvaluator.
             MethodMaker mm = cm.addMethod
                 (byte[].class, "updateValue", Object.class, byte[].class).public_();
             var rowVar = mm.param(0).cast(rowClass);
@@ -2273,16 +2273,16 @@ public class TableMaker {
             mm.return_(mm.var(tableClass).invoke("toPrimaryKey", mm.param(0)));
         }
 
-        // Note regarding the RowDecoderEncoder methods: The decode methods fully resolve rows
+        // Note regarding the RowEvaluator methods: The decode methods fully resolve rows
         // by joining to the primary table, and the encode methods return bytes for storing
         // into the primary table.
 
-        // Specified by RowDecoderEncoder.
+        // Specified by RowEvaluator.
         addJoinedDecodeRow(cm, codecGen, rowClass, tableClass, primaryTableClass, false);
         addJoinedDecodeRow(cm, codecGen, rowClass, tableClass, primaryTableClass, true);
 
         {
-            // Specified by RowDecoderEncoder.
+            // Specified by RowEvaluator.
             MethodMaker mm = cm.addMethod
                 (byte[].class, "updateKey", Object.class, byte[].class).public_();
             var rowVar = mm.param(0).cast(rowClass);
@@ -2291,7 +2291,7 @@ public class TableMaker {
         }
 
         {
-            // Specified by RowDecoderEncoder.
+            // Specified by RowEvaluator.
             MethodMaker mm = cm.addMethod
                 (byte[].class, "updateValue", Object.class, byte[].class).public_();
             var rowVar = mm.param(0).cast(rowClass);

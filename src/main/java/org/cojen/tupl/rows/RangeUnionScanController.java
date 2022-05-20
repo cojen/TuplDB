@@ -58,8 +58,8 @@ final class RangeUnionScanController<R> implements ScanController<R> {
     }
 
     @Override
-    public RowDecoderEncoder<R> decoder() {
-        return mCurrent.decoder();
+    public RowEvaluator<R> evaluator() {
+        return mCurrent.evaluator();
     }
 
     @Override

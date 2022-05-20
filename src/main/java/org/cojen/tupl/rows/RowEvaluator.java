@@ -28,7 +28,7 @@ import org.cojen.tupl.UnmodifiableViewException;
  *
  * @author Brian S O'Neill
  */
-public interface RowDecoderEncoder<R> {
+public interface RowEvaluator<R> {
     /**
      * @param result LockResult from cursor access
      * @param row can pass null to construct a new instance

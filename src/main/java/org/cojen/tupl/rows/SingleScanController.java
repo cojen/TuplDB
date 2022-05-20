@@ -30,7 +30,7 @@ import org.cojen.tupl.View;
  *
  * @author Brian S O'Neill
  */
-public abstract class SingleScanController<R> implements ScanController<R>, RowDecoderEncoder<R> {
+public abstract class SingleScanController<R> implements ScanController<R>, RowEvaluator<R> {
     private final byte[] mLowBound, mHighBound;
     private final boolean mLowInclusive, mHighInclusive;
     private final boolean mReverse;
@@ -106,7 +106,7 @@ public abstract class SingleScanController<R> implements ScanController<R>, RowD
     }
 
     @Override
-    public RowDecoderEncoder<R> decoder() {
+    public RowEvaluator<R> evaluator() {
         return this;
     }
 

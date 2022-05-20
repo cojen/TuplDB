@@ -87,7 +87,7 @@ final class MergedScanController<R> extends SingleScanController<R> {
     }
 
     private final SingleScanController<R> mLow, mHigh;
-    private final RowDecoderEncoder<R> mLowDecoder, mHighDecoder;
+    private final RowEvaluator<R> mLowEvaluator, mHighEvaluator;
 
     /* modes:
        0: in low range only (can transition to mode 1, 2 or 3)
@@ -105,15 +105,15 @@ final class MergedScanController<R> extends SingleScanController<R> {
         super(reverse, lowBound, lowInclusive, highBound, highInclusive);
         mLow = low;
         mHigh = high;
-        mLowDecoder = low.decoder();
-        mHighDecoder = high.decoder();
+        mLowEvaluator = low.evaluator();
+        mHighEvaluator = high.evaluator();
         mMode = mode;
     }
 
     @Override
     public R decodeRow(Cursor c, LockResult result, R row) throws IOException {
         if (mMode == 2) {
-            return mLowDecoder.decodeRow(c, result, row);
+            return mLowEvaluator.decodeRow(c, result, row);
         }
 
         if (mMode != 3) {
@@ -124,7 +124,7 @@ final class MergedScanController<R> extends SingleScanController<R> {
                 // Fallthrough to mode 3.
                 mMode = 3;
             } else {
-                R decoded = mLowDecoder.decodeRow(c, result, row);
+                R decoded = mLowEvaluator.decodeRow(c, result, row);
                 if (decoded != null) {
                     return decoded;
                 }
@@ -144,18 +144,18 @@ final class MergedScanController<R> extends SingleScanController<R> {
             }
         }
 
-        return mHighDecoder.decodeRow(c, result, row);
+        return mHighEvaluator.decodeRow(c, result, row);
     }
 
     @Override
     public byte[] updateKey(R row, byte[] original) throws IOException {
-        // Can call either decoder. They should do the same thing.
-        return mLowDecoder.updateKey(row, original);
+        // Can call either evaluator. They should do the same thing.
+        return mLowEvaluator.updateKey(row, original);
     }
 
     @Override
     public byte[] updateValue(R row, byte[] original) throws IOException {
-        // Can call either decoder. They should do the same thing.
-        return mLowDecoder.updateValue(row, original);
+        // Can call either evaluator. They should do the same thing.
+        return mLowEvaluator.updateValue(row, original);
     }
 }

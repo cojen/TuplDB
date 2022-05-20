@@ -84,9 +84,9 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
 
         byte[] key, value;
         {
-            RowDecoderEncoder<R> encoder = mDecoder;
-            key = encoder.updateKey(row, c.key());
-            value = encoder.updateValue(row, c.value());
+            RowEvaluator<R> evaluator = mEvaluator;
+            key = evaluator.updateKey(row, c.key());
+            value = evaluator.updateValue(row, c.value());
         }
 
         int cmp;
@@ -230,9 +230,9 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
 
             byte[] key, value;
             {
-                RowDecoderEncoder<R> encoder = mDecoder;
-                key = encoder.updateKey(current, c.key());
-                value = encoder.updateValue(current, c.value());
+                RowEvaluator<R> evaluator = mEvaluator;
+                key = evaluator.updateKey(current, c.key());
+                value = evaluator.updateValue(current, c.value());
             }
 
             if (Arrays.equals(key, c.key())) {
