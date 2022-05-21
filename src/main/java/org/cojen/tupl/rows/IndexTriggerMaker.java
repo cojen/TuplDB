@@ -660,7 +660,7 @@ public class IndexTriggerMaker<R> {
             available.put(colName, avail);
         }
 
-        var tm = new TransformMaker<R>(mRowType, mPrimaryGen.info, available, true);
+        var tm = new TransformMaker<R>(mRowType, mPrimaryGen.info, available);
 
         for (int i=0; i<mSecondaryInfos.length; i++) {
             RowInfo secondaryInfo = mSecondaryInfos[i];

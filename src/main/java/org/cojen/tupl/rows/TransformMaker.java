@@ -63,8 +63,8 @@ class TransformMaker<R> {
         this(rowType, rowInfo, available, true);
     }
 
-    public TransformMaker(Class<R> rowType, RowInfo rowInfo, Map<String, Availability> available,
-                          boolean validate)
+    private TransformMaker(Class<R> rowType, RowInfo rowInfo, Map<String, Availability> available,
+                           boolean validate)
     {
         if (validate) {
             if (rowInfo == null) {
@@ -276,7 +276,7 @@ class TransformMaker<R> {
     }
 
     /**
-     * Call after diffValueColumns has been called to make code which skips over targets that
+     * Call after beginValueDiff has been called to make code which skips over targets that
      * haven't changed.
      *
      * @param skip branch to this label when none of the specified targets have changed
@@ -556,30 +556,6 @@ class TransformMaker<R> {
      */
     private static long bitMapWordMask(int slot) {
         return 1L << (slot & 0x3f);
-    }
-
-    /**
-     * Compute the bit mask to use in conjunction with diffValueColumns to determine which
-     * targets have changed.
-     *
-     * @param masks to fill in
-     * @return false if target consists only of primary key columns
-     */
-    private boolean bitMask(RowInfo targetInfo, long[] masks) {
-        Arrays.fill(masks, 0);
-
-        boolean any = false;
-
-        for (String name : targetInfo.allColumns.keySet()) {
-            ColumnSource source = mColumnSources.get(name);
-            if (!source.mIsKey) {
-                any = true;
-                int slot = source.mSlot;
-                masks[bitMapWord(slot)] |= bitMapWordMask(slot);
-            }
-        }
-
-        return any;
     }
 
     /**
