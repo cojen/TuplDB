@@ -668,19 +668,19 @@ public class RowStore {
      * secondary indexes associated with the table and perform actions to build or drop them.
      */
     public void notifySchema(long indexId) throws IOException {
-        byte[] taskKey = newTaskKey(TASK_NOTIFY_SCHEMA, indexId);
-        Transaction txn = beginWorkflowTask(taskKey);
-
-        // Test mode only.
-        if (mStallTasks) {
-            txn.reset();
-            return;
-        }
-        
         // Must launch from a separate thread because locks are held by this thread until the
         // transaction finishes.
         Runner.start(() -> {
             try {
+                byte[] taskKey = newTaskKey(TASK_NOTIFY_SCHEMA, indexId);
+                Transaction txn = beginWorkflowTask(taskKey);
+
+                // Test mode only.
+                if (mStallTasks) {
+                    txn.reset();
+                    return;
+                }
+
                 try {
                     doNotifySchema(null, indexId);
                     mSchemata.delete(txn, taskKey);
