@@ -1844,6 +1844,14 @@ final class LocalDatabase extends CoreDatabase {
                     }
                     return;
                 }
+
+                if (mTrashed == null) {
+                    try {
+                        forceCheckpoint();
+                    } catch (IOException e) {
+                        // Ignore.
+                    }
+                }
             }
         }
     }
