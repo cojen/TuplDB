@@ -70,7 +70,11 @@ class ColumnSet {
      */
     StringBuilder appendIndexSpec(StringBuilder bob) {
         for (ColumnInfo ci : keyColumns.values()) {
-            bob.append(ci.isDescending() ? '-' : '+').append(ci.name);
+            bob.append(ci.isDescending() ? '-' : '+');
+            if (ci.isNullLow()) {
+                bob.append('!');
+            }
+            bob.append(ci.name);
         }
 
         if (this instanceof SecondaryInfo info && !info.isAltKey() && !valueColumns.isEmpty()) {

@@ -277,8 +277,11 @@ abstract class ColumnCodec {
      */
     protected abstract boolean doEquals(Object obj);
 
-    protected boolean equalOrdering(Object obj) {
-        return mInfo.isDescending() == ((ColumnCodec) obj).mInfo.isDescending();
+    protected final boolean equalOrdering(Object obj) {
+        // TODO: optimize transform which just alters the null ordering or if bits can be flipped
+        var other = (ColumnCodec) obj;
+        return mInfo.isDescending() == other.mInfo.isDescending()
+            && mInfo.isNullLow() == other.mInfo.isNullLow();
     }
 
     /**
@@ -470,32 +473,54 @@ abstract class ColumnCodec {
         return accumVar;
     }
 
+    protected final byte nullByte() {
+        return (mInfo.isDescending() == mInfo.isNullLow())
+            ? RowUtils.NULL_BYTE_HIGH : RowUtils.NULL_BYTE_LOW;
+    }
+
+    protected final byte notNullByte() {
+        return (mInfo.isDescending() == mInfo.isNullLow())
+            ? RowUtils.NOT_NULL_BYTE_HIGH : RowUtils.NOT_NULL_BYTE_LOW;
+    }
+
     /**
-     * Encodes a null header byte and jumps to the end if the runtime column value is null.
+     * Conditionally encodes a null header byte and jumps to the end if the runtime column
+     * value is null.
      *
-     * @param offsetVar int type; is incremented as a side-effect
      * @param end required
+     * @param offsetVar int type; can be null to use an offset of zero or else is incremented
+     * as a side-effect
      */
-    protected final void encodeNullHeader(Label end, Variable srcVar,
-                                          Variable dstVar, Variable offsetVar)
+    protected final void encodeNullHeaderIfNull(Label end, Variable srcVar,
+                                                Variable dstVar, Variable offsetVar)
     {
         Label notNull = mMaker.label();
         srcVar.ifNe(null, notNull);
 
-        byte nullHeader = NULL_BYTE_HIGH;
-        byte notNullHeader = NOT_NULL_BYTE_HIGH;
-
-        if (mInfo.isDescending()) {
-            nullHeader = (byte) ~nullHeader;
-            notNullHeader = (byte) ~notNullHeader;
+        byte nb = nullByte();
+        if (offsetVar == null) {
+            dstVar.aset(0, nb);
+        } else {
+            dstVar.aset(offsetVar, nb);
+            offsetVar.inc(1);
         }
-
-        dstVar.aset(offsetVar, nullHeader);
-        offsetVar.inc(1);
         mMaker.goto_(end);
 
         notNull.here();
-        dstVar.aset(offsetVar, notNullHeader);
+    }
+
+    /**
+     * Always encodes a null/not-null header byte and jumps to the end if the runtime column
+     * value is null.
+     *
+     * @param end required
+     * @param offsetVar int type; is incremented as a side-effect
+     */
+    protected final void encodeNullHeader(Label end, Variable srcVar,
+                                          Variable dstVar, Variable offsetVar)
+    {
+        encodeNullHeaderIfNull(end, srcVar, dstVar, offsetVar);
+        dstVar.aset(offsetVar, notNullByte());
         offsetVar.inc(1);
     }
 
@@ -512,10 +537,7 @@ abstract class ColumnCodec {
         var header = srcVar.aget(offsetVar);
         offsetVar.inc(1);
 
-        byte nullHeader = NULL_BYTE_HIGH;
-        if (mInfo.isDescending()) {
-            nullHeader = (byte) ~nullHeader;
-        }
+        byte nullHeader = nullByte();
 
         if (dstVar == null) {
             header.ifEq(nullHeader, end);

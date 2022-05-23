@@ -108,9 +108,17 @@ public class BigDecimalUtilsTest {
 
         for (int i=0; i<values.length; i++) {
             if (desc) {
-                encoded[i] = BigDecimalUtils.encodeBigDecimalLexDesc(values[i]);
+                if (values[i] == null) {
+                    encoded[i] = new byte[] {RowUtils.NULL_BYTE_LOW};
+                } else {
+                    encoded[i] = BigDecimalUtils.encodeBigDecimalLexDesc(values[i]);
+                }
             } else {
-                encoded[i] = BigDecimalUtils.encodeBigDecimalLex(values[i]);
+                if (values[i] == null) {
+                    encoded[i] = new byte[] {RowUtils.NULL_BYTE_HIGH};
+                } else {
+                    encoded[i] = BigDecimalUtils.encodeBigDecimalLex(values[i]);
+                }
             }
         }
 

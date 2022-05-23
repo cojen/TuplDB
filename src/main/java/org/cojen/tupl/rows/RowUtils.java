@@ -239,29 +239,31 @@ public class RowUtils extends Utils {
      * @param str String to encode, may be null
      */
     public static int lengthStringLex(String str) {
+        return str == null ? 1 : doLengthStringLex(str);
+    }
+
+    private static int doLengthStringLex(String str) {
         long encodedLen = 1;
 
-        if (str != null) {
-            int strLength = str.length();
-            for (int i = 0; i < strLength; i++) {
-                int c = str.charAt(i);
-                if (c <= (0x7f - 2)) {
-                    encodedLen++;
-                } else if (c <= (12415 - 2)) {
-                    encodedLen += 2;
-                } else {
-                    if (c >= 0xd800 && c <= 0xdbff) {
-                        // Found a high surrogate. Verify that surrogate pair is
-                        // well-formed. Low surrogate must follow high surrogate.
-                        if (i + 1 < strLength) {
-                            int c2 = str.charAt(i + 1);
-                            if (c2 >= 0xdc00 && c2 <= 0xdfff) {
-                                i++;
-                            }
+        int strLength = str.length();
+        for (int i = 0; i < strLength; i++) {
+            int c = str.charAt(i);
+            if (c <= (0x7f - 2)) {
+                encodedLen++;
+            } else if (c <= (12415 - 2)) {
+                encodedLen += 2;
+            } else {
+                if (c >= 0xd800 && c <= 0xdbff) {
+                    // Found a high surrogate. Verify that surrogate pair is
+                    // well-formed. Low surrogate must follow high surrogate.
+                    if (i + 1 < strLength) {
+                        int c2 = str.charAt(i + 1);
+                        if (c2 >= 0xdc00 && c2 <= 0xdfff) {
+                            i++;
                         }
                     }
-                    encodedLen += 3;
                 }
+                encodedLen += 3;
             }
         }
 
@@ -269,8 +271,9 @@ public class RowUtils extends Utils {
     }
 
     /**
-     * Encodes the given optional String into a variable amount of bytes. The amount written
-     * can be determined by calling lengthStringLex.
+     * Encodes the given non-null String into a variable amount of bytes. The amount written
+     * can be determined by calling lengthStringLex. If the String is null, caller must encode
+     * NULL_BYTE_HIGH or NULL_BYTE_LOW.
      *
      * <p>Strings are encoded in a fashion similar to UTF-8, in that ASCII characters are
      * usually written in one byte. This encoding is more efficient than UTF-8, but it isn't
@@ -278,7 +281,7 @@ public class RowUtils extends Utils {
      *
      * @param dst destination for encoded bytes
      * @param dstOffset offset into destination array
-     * @param str String str to encode, may be null
+     * @param str non-null String str to encode
      * @return new offset
      */
     public static int encodeStringLex(byte[] dst, int dstOffset, String str) {
@@ -293,11 +296,6 @@ public class RowUtils extends Utils {
      * @param xorMask 0 for normal encoding, -1 for descending encoding
      */
     private static int encodeStringLex(byte[] dst, int dstOffset, String str, int xorMask) {
-        if (str == null) {
-            dst[dstOffset] = (byte) (NULL_BYTE_HIGH ^ xorMask);
-            return dstOffset + 1;
-        }
-
         // All characters have an offset of 2 added, in order to reserve bytes 0 and 1 for
         // encoding nulls and terminators. This means the ASCII string "HelloWorld" is actually
         // encoded as "JgnnqYqtnf". This also means that the ASCII '~' and del characters are
@@ -467,31 +465,29 @@ public class RowUtils extends Utils {
 
     /**
      * Encodes the given optional BigInteger into a variable amount of bytes without any length
-     * prefix.
+     * prefix. If the BigInteger is null, then null is returned.
      */
     public static byte[] encodeBigInteger(BigInteger value) {
         return value == null ? null : value.toByteArray();
     }
 
     /**
+     * Encodes the given non-null BigInteger into a variable amount of bytes without any length
+     * prefix. If the BigInteger is null, caller must encode NULL_BYTE_HIGH or NULL_BYTE_LOW.
+     *
      * @param src BigInteger.toByteArray
      * @return new offset
      */
     public static int encodeBigIntegerLex(byte[] dst, int dstOffset, byte[] src) {
         /* Encoding of first byte:
 
-        0x00:       null low (unused)
+        0x00:       null low
         0x01:       negative signum; four bytes follow for value length
         0x02..0x7f: negative signum; value length 7e range, 1..126
         0x80..0xfd: positive signum; value length 7e range, 1..126
         0xfe:       positive signum; four bytes follow for value length
         0xff:       null high
         */
-
-        if (src == null) {
-            dst[dstOffset++] = NULL_BYTE_HIGH;
-            return dstOffset;
-        }
 
         // Length is always at least one.
         int len = src.length;
@@ -523,18 +519,13 @@ public class RowUtils extends Utils {
     public static int encodeBigIntegerLexDesc(byte[] dst, int dstOffset, byte[] src) {
         /* Encoding of first byte:
 
-        0x00:       null high (unused)
+        0x00:       null high
         0x01:       positive signum; four bytes follow for value length
         0x02..0x7f: positive signum; value length 7e range, 1..126
         0x80..0xfd: negative signum; value length 7e range, 1..126
         0xfe:       negative signum; four bytes follow for value length
         0xff:       null low
         */
-
-        if (src == null) {
-            dst[dstOffset++] = NULL_BYTE_LOW;
-            return dstOffset;
-        }
 
         // Length is always at least one.
         int len = src.length;

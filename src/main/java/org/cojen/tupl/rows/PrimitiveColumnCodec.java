@@ -122,7 +122,7 @@ final class PrimitiveColumnCodec extends ColumnCodec {
             case TYPE_BOOLEAN: case TYPE_BYTE: case TYPE_UBYTE: {
                 if (plain == TYPE_BOOLEAN) {
                     byte f, t, n;
-                    n = NULL_BYTE_HIGH;
+                    n = nullByte();
                     if (!mLex) {
                         f = 0;
                         t = 1;
@@ -132,7 +132,6 @@ final class PrimitiveColumnCodec extends ColumnCodec {
                         if (mInfo.isDescending()) {
                             f = (byte) ~f;
                             t = (byte) ~t;
-                            n = (byte) ~n;
                         }
                     }
 
@@ -252,10 +251,7 @@ final class PrimitiveColumnCodec extends ColumnCodec {
                         if (!isNullable) {
                             valueVar = mMaker.var(boolean.class);
                         } else {
-                            byte n = NULL_BYTE_HIGH;
-                            if (mInfo.isDescending()) {
-                                n = (byte) ~n;
-                            }
+                            byte n = nullByte();
                             valueVar = mMaker.var(Boolean.class);
                             Label notNull = mMaker.label();
                             byteVar.ifNe(n, notNull);

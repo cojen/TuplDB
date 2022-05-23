@@ -29,6 +29,10 @@ public class BigDecimalUtils extends RowUtils {
     static final BigInteger ONE_HUNDRED = BigInteger.valueOf(100);
     static final BigInteger ONE_THOUSAND = BigInteger.valueOf(1000);
 
+    /**
+     * Encodes the given non-null BigDecimal into a variable amount of bytes. If the
+     * BigDecimal is null, caller must encode NULL_BYTE_HIGH or NULL_BYTE_LOW.
+     */
     public static byte[] encodeBigDecimalLex(BigDecimal bd) {
         return encodeBigDecimalLex(bd, 0);
     }
@@ -56,10 +60,6 @@ public class BigDecimalUtils extends RowUtils {
            0xfe:       positive signum; four bytes follow for positive exponent
            0xff:       null high
         */
-
-        if (bd == null) {
-            return new byte[] {(byte) (NULL_BYTE_HIGH ^ xor)};
-        }
 
         if (bd.signum() == 0) {
             var bytes = new byte[5];

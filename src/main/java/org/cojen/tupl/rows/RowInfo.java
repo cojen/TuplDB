@@ -324,11 +324,11 @@ class RowInfo extends ColumnSet {
 
             if (method.isAnnotationPresent(Unsigned.class)) {
                 int typeCode = info.plainTypeCode();
-                if (typeCode >= 0b000_10000 || typeCode == TYPE_BOOLEAN) {
+                if (typeCode >= 0b10000 || typeCode == TYPE_BOOLEAN) {
                     messages.add("column \"" + info.type.getSimpleName() + ' ' + info.name +
                                  "\" cannot be unsigned");
                 } else {
-                    info.typeCode &= ~0b000_01000;
+                    info.typeCode &= ~0b01000;
                 }
             }
 
@@ -481,13 +481,21 @@ class RowInfo extends ColumnSet {
         }
 
         for (String name : columnNames) {
-            boolean descending = false;
+            int flags = 0;
 
-            if (name.startsWith("+")) {
-                name = name.substring(1);
-            } else if (name.startsWith("-")) {
-                name = name.substring(1);
-                descending = true;
+            ordered: {
+                if (name.startsWith("+")) {
+                    name = name.substring(1);
+                } else if (name.startsWith("-")) {
+                    name = name.substring(1);
+                    flags |= TYPE_DESCENDING;
+                } else {
+                    break ordered;
+                }
+                if (name.startsWith("!")) {
+                    name = name.substring(1);
+                    flags |= TYPE_NULL_LOW;
+                }
             }
 
             ColumnInfo info = allColumns.get(name);
@@ -497,12 +505,14 @@ class RowInfo extends ColumnSet {
                 return;
             }
 
+            if ((flags & TYPE_NULL_LOW) != 0 && !info.isNullable()) {
+                flags &= ~TYPE_NULL_LOW;
+            }
+
+            info.typeCode |= flags;
+
             // Use intern'd string.
             name = info.name;
-
-            if (descending) {
-                info.typeCode |= TYPE_DESCENDING;
-            }
 
             if (keyColumns == null) {
                 keyColumns = Map.of(name, info);
@@ -559,13 +569,22 @@ class RowInfo extends ColumnSet {
 
         for (String name : columnNames) {
             Boolean descending = null;
+            int flags = 0;
 
-            if (name.startsWith("+")) {
-                name = name.substring(1);
-                descending = false;
-            } else if (name.startsWith("-")) {
-                name = name.substring(1);
-                descending = true;
+            ordered: {
+                if (name.startsWith("+")) {
+                    name = name.substring(1);
+                    descending = false;
+                } else if (name.startsWith("-")) {
+                    name = name.substring(1);
+                    descending = true;
+                } else {
+                    break ordered;
+                }
+                if (name.startsWith("!")) {
+                    name = name.substring(1);
+                    flags |= TYPE_NULL_LOW;
+                }
             }
 
             ColumnInfo info = allColumns.get(name);
@@ -577,21 +596,34 @@ class RowInfo extends ColumnSet {
                 return null;
             }
 
+            if ((flags & TYPE_NULL_LOW) != 0 && !info.isNullable()) {
+                flags &= ~TYPE_NULL_LOW;
+            }
+
             // Use intern'd string.
             name = info.name;
 
             if (descending == null) {
                 // Initially use an unspecified type to aid with index set reduction.
                 info = withUnspecifiedType(info);
-            } else if (descending) {
-                if (!info.isDescending()) {
-                    info = info.copy();
-                    info.typeCode |= TYPE_DESCENDING;
-                }
             } else {
-                if (info.isDescending()) {
+                int typeCode = info.typeCode;
+
+                if (descending) {
+                    if (!info.isDescending()) {
+                        typeCode |= TYPE_DESCENDING;
+                    }
+                } else {
+                    if (info.isDescending()) {
+                        typeCode &= ~TYPE_DESCENDING;
+                    }
+                }
+
+                typeCode |= flags;
+
+                if (typeCode != info.typeCode) {
                     info = info.copy();
-                    info.typeCode &= ~TYPE_DESCENDING;
+                    info.typeCode = typeCode;
                 }
             }
 

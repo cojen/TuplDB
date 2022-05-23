@@ -130,15 +130,9 @@ final class BigDecimalColumnCodec extends ColumnCodec {
     @Override
     void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
         Label end = null;
-
         if (mInfo.isNullable()) {
             end = mMaker.label();
-            Label notNull = mMaker.label();
-            srcVar.ifNe(null, notNull);
-            dstVar.aset(offsetVar, RowUtils.NULL_BYTE_HIGH);
-            offsetVar.inc(1);
-            mMaker.goto_(end);
-            notNull.here();
+            encodeNullHeaderIfNull(end, srcVar, dstVar, offsetVar);
         }
 
         var rowUtils = mMaker.var(RowUtils.class);

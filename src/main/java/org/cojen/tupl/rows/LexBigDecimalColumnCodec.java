@@ -19,6 +19,7 @@ package org.cojen.tupl.rows;
 
 import java.math.BigDecimal;
 
+import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
@@ -75,8 +76,44 @@ final class LexBigDecimalColumnCodec extends ColumnCodec {
         if (mInfo.isDescending()) {
             methodName += "Desc";
         }
-        mBytesVar.set(mMaker.var(BigDecimalUtils.class).invoke(methodName, srcVar));
-        return accum(totalVar, mBytesVar.alength());
+
+        var utilsVar = mMaker.var(BigDecimalUtils.class);
+
+        if (!mInfo.isNullable()) {
+            mBytesVar.set(utilsVar.invoke(methodName, srcVar));
+            return accum(totalVar, mBytesVar.alength());
+        }
+
+        boolean unset = false;
+        if (totalVar == null) {
+            unset = true;
+            totalVar = mMaker.var(int.class);
+        }
+
+        Label notNull = mMaker.label();
+        srcVar.ifNe(null, notNull);
+
+        mBytesVar.set(mMaker.new_(byte[].class, 1));
+        mBytesVar.aset(0, nullByte());
+        if (unset) {
+            totalVar.set(1);
+        } else {
+            totalVar.inc(1);
+        }
+        Label end = mMaker.label().goto_();
+
+        notNull.here();
+        mBytesVar.set(utilsVar.invoke(methodName, srcVar));
+        var lenVar = mBytesVar.alength();
+        if (unset) {
+            totalVar.set(lenVar);
+        } else {
+            totalVar.inc(lenVar);
+        }
+
+        end.here();
+
+        return totalVar;
     }
 
     @Override

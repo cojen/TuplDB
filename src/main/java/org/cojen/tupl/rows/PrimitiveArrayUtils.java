@@ -335,8 +335,9 @@ public class PrimitiveArrayUtils extends RowUtils {
     }
 
     /**
-     * Encodes the given optional unsigned byte array into a variable amount of bytes using
-     * base-32768 encoding. The amount written can be determined by calling lengthBytes32K.
+     * Encodes the given non-null unsigned byte array into a variable amount of bytes using
+     * base-32768 encoding. The amount written can be determined by calling lengthBytes32K. If
+     * the array is null, caller must encode NULL_BYTE_HIGH or NULL_BYTE_LOW.
      *
      * @param dst destination for encoded bytes
      * @param dstOffset offset into destination array
@@ -355,11 +356,6 @@ public class PrimitiveArrayUtils extends RowUtils {
      * @param xorMask 0 for normal encoding, -1 for descending encoding
      */
     private static int encodeBytes32K(byte[] dst, int dstOffset, byte[] key, int xorMask) {
-        if (key == null) {
-            dst[dstOffset++] = (byte) (NULL_BYTE_HIGH ^ xorMask);
-            return dstOffset;
-        }
-
         int terminator;
 
         if (key.length == 0) {

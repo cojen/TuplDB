@@ -38,11 +38,6 @@ final class LexStringColumnCodec extends StringColumnCodec {
     }
 
     @Override
-    protected final boolean doEquals(Object obj) {
-        return equalOrdering(obj);
-    }
-
-    @Override
     boolean isLast() {
         return false;
     }
@@ -63,11 +58,33 @@ final class LexStringColumnCodec extends StringColumnCodec {
 
     @Override
     void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
+        doEncode(mMaker.var(RowUtils.class), srcVar, dstVar, offsetVar);
+    }
+
+    /**
+     * @param offsetVar can be null to use an offset of zero
+     */
+    private void doEncode(Variable rowUtils, Variable srcVar, Variable dstVar, Variable offsetVar) {
+        Label end = null;
+        if (mInfo.isNullable()) {
+            end = mMaker.label();
+            encodeNullHeaderIfNull(end, srcVar, dstVar, offsetVar);
+        }
+
         String methodName = "encodeStringLex";
         if (mInfo.isDescending()) {
             methodName += "Desc";
         }
-        offsetVar.set(mMaker.var(RowUtils.class).invoke(methodName, dstVar, offsetVar, srcVar));
+
+        if (offsetVar == null) {
+            rowUtils.invoke(methodName, dstVar, 0, srcVar);
+        } else {
+            offsetVar.set(rowUtils.invoke(methodName, dstVar, offsetVar, srcVar));
+        }
+
+        if (end != null) {
+            end.here();
+        }
     }
 
     @Override
@@ -93,11 +110,7 @@ final class LexStringColumnCodec extends StringColumnCodec {
         var rowUtils = mMaker.var(RowUtils.class);
         var lengthVar = rowUtils.invoke("lengthStringLex", strVar);
         var bytesVar = mMaker.new_(byte[].class, lengthVar);
-        String methodName = "encodeStringLex";
-        if (mInfo.isDescending()) {
-            methodName += "Desc";
-        }
-        rowUtils.invoke(methodName, bytesVar, 0, strVar);
+        doEncode(rowUtils, strVar, bytesVar, null);
         return bytesVar;
     }
 

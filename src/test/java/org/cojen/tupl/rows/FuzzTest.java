@@ -468,17 +468,26 @@ public class FuzzTest {
         var pkNames = new String[pkNum];
 
         for (int i=0; i<columns.length; i++) {
+            Column c = columns[i];
             if (i < pkNames.length) {
-                pkNames[i] = columns[i].name;
+                String name = c.name;
+                if (c.type.nullable && rnd.nextBoolean()) {
+                    // Nulls are low.
+                    c.nullLow = true;
+                    name = '!' + name;
+                }
                 if (rnd.nextBoolean()) {
                     // Descending order.
-                    pkNames[i] = '-' + pkNames[i];
-                    columns[i].pk = -1;
+                    name = '-' + name;
+                    c.pk = -1;
                 } else {
-                    columns[i].pk = 1;
+                    // Ascending order.
+                    name = '+' + name;
+                    c.pk = 1;
                 }
+                pkNames[i] = name;
             } else {
-                columns[i].pk = 0;
+                c.pk = 0;
             }
         }
 
@@ -529,10 +538,10 @@ public class FuzzTest {
                     if (b == null) {
                         result = 0;
                     } else {
-                        result = 1;
+                        result = c.nullLow ? -1 : 1;
                     }
                 } else if (b == null) {
-                    result = -1;
+                    result = c.nullLow ? 1 : -1;
                 } else if ((aClass = a.getClass()).isArray()) {
                     if (c.type.unsigned) {
                         if (aClass == byte[].class) {
@@ -611,6 +620,8 @@ public class FuzzTest {
 
         // 0: not part of primary key, 1: ascending order, -1: descending order
         int pk;
+
+        boolean nullLow;
 
         Column(Type type, String name) {
             this.type = type;

@@ -35,8 +35,8 @@ abstract class StringColumnCodec extends BytesColumnCodec {
     }
 
     @Override
-    protected boolean doEquals(Object obj) {
-        return true;
+    protected final boolean doEquals(Object obj) {
+        return equalOrdering(obj);
     }
     
     @Override

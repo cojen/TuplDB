@@ -517,7 +517,7 @@ public class RowStore {
                     }
                     if (c.value()[8] != 'A') {
                         // Not active.
-                        return null;
+                        continue;
                     }
                     indexId = decodeLongLE(c.value(), 0);
                     indexRowInfo = indexRowInfo(RowInfo.find(rowType), c.key());
@@ -1279,6 +1279,8 @@ public class RowStore {
                         c.store(null); // already deleted, so remove the entry
                     } else if (!secondaries.contains(key)) {
                         if (value[8] != 'D') {
+                            // TODO: The 'D' state can linger after the secondary has been
+                            // deleted. It eventually gets deleted when the index set changes.
                             value[8] = 'D'; // "deleting" state
                             c.store(value);
                         }

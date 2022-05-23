@@ -78,26 +78,27 @@ public class ColumnInfo implements Cloneable {
     */
 
     public static final int
-        TYPE_BOOLEAN     = 0b000_00000,
-        TYPE_UBYTE       = 0b000_00011,
-        TYPE_USHORT      = 0b000_00100,
-        TYPE_UINT        = 0b000_00101,
-        TYPE_ULONG       = 0b000_00110,
-        TYPE_BYTE        = 0b000_01011,
-        TYPE_SHORT       = 0b000_01100,
-        TYPE_INT         = 0b000_01101,
-        TYPE_LONG        = 0b000_01110,
-        TYPE_FLOAT       = 0b000_10001,
-        TYPE_DOUBLE      = 0b000_10010,
-        TYPE_CHAR        = 0b000_10100,
-        TYPE_UTF8        = 0b000_11000,
-        TYPE_BIG_INTEGER = 0b000_11100,
-        TYPE_BIG_DECIMAL = 0b000_11101;
+        TYPE_BOOLEAN     = 0b00000,
+        TYPE_UBYTE       = 0b00011,
+        TYPE_USHORT      = 0b00100,
+        TYPE_UINT        = 0b00101,
+        TYPE_ULONG       = 0b00110,
+        TYPE_BYTE        = 0b01011,
+        TYPE_SHORT       = 0b01100,
+        TYPE_INT         = 0b01101,
+        TYPE_LONG        = 0b01110,
+        TYPE_FLOAT       = 0b10001,
+        TYPE_DOUBLE      = 0b10010,
+        TYPE_CHAR        = 0b10100,
+        TYPE_UTF8        = 0b11000,
+        TYPE_BIG_INTEGER = 0b11100,
+        TYPE_BIG_DECIMAL = 0b11101;
 
     static final int
-        TYPE_DESCENDING  = 0b100_00000,
-        TYPE_NULLABLE    = 0b010_00000,
-        TYPE_ARRAY       = 0b001_00000;
+        TYPE_NULL_LOW    = 0b1000_00000,
+        TYPE_DESCENDING  = 0b0100_00000,
+        TYPE_NULLABLE    = 0b0010_00000,
+        TYPE_ARRAY       = 0b0001_00000;
 
     public String name;
     public Class<?> type;
@@ -118,7 +119,7 @@ public class ColumnInfo implements Cloneable {
     }
 
     static int plainTypeCode(int typeCode) {
-        return typeCode & 0b000_11111;
+        return typeCode & 0b11111;
     }
 
     public int unorderedTypeCode() {
@@ -134,7 +135,7 @@ public class ColumnInfo implements Cloneable {
     }
 
     static boolean isUnsigned(int typeCode) {
-        return plainTypeCode(typeCode) < 0b000_01000;
+        return plainTypeCode(typeCode) < 0b01000;
     }
 
     boolean isUnsignedInteger() {
@@ -143,6 +144,14 @@ public class ColumnInfo implements Cloneable {
 
     static boolean isUnsignedInteger(int typeCode) {
         return isUnsigned(typeCode) && plainTypeCode(typeCode) != TYPE_BOOLEAN;
+    }
+
+    boolean isNullLow() {
+        return isNullLow(typeCode);
+    }
+
+    static boolean isNullLow(int typeCode) {
+        return (typeCode & TYPE_NULL_LOW) != 0;
     }
 
     public boolean isDescending() {
@@ -180,14 +189,14 @@ public class ColumnInfo implements Cloneable {
      * @return true if type is primitive and not nullable
      */
     static boolean isPrimitive(int typeCode) {
-        return (typeCode & ~TYPE_DESCENDING) < 0b000_11000;
+        return (typeCode & ~TYPE_DESCENDING) < 0b11000;
     }
 
     /**
      * @param typeCode must be plain
      */
     static boolean isFloat(int typeCode) {
-        return 0b000_10000 <= typeCode && typeCode <= 0b000_10011;
+        return 0b10000 <= typeCode && typeCode <= 0b10011;
     }
 
     /**

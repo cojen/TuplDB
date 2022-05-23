@@ -81,10 +81,19 @@ final class LexPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
         doEncode(mMaker.var(PrimitiveArrayUtils.class), srcVar, dstVar, offsetVar);
     }
 
-    private void doEncode(Variable rowUtils, Variable srcVar, Variable dstVar, Object offset) {
+    /**
+     * @param offsetVar can be null to use an offset of zero
+     */
+    private void doEncode(Variable rowUtils, Variable srcVar, Variable dstVar, Variable offsetVar) {
         if (mInfo.plainTypeCode() != ColumnInfo.TYPE_UBYTE) {
             // Convert to a byte array, or flip the sign bits if already a byte array.
             srcVar = super.filterPrepareBytes(srcVar);
+        }
+
+        Label end = null;
+        if (mInfo.isNullable()) {
+            end = mMaker.label();
+            encodeNullHeaderIfNull(end, srcVar, dstVar, offsetVar);
         }
 
         String methodName = "encodeBytes32K";
@@ -92,10 +101,14 @@ final class LexPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
             methodName += "Desc";
         }
 
-        var newOffsetVar = rowUtils.invoke(methodName, dstVar, offset, srcVar);
+        if (offsetVar == null) {
+            rowUtils.invoke(methodName, dstVar, 0, srcVar);
+        } else {
+            offsetVar.set(rowUtils.invoke(methodName, dstVar, offsetVar, srcVar));
+        }
 
-        if (offset instanceof Variable v) {
-            v.set(newOffsetVar);
+        if (end != null) {
+            end.here();
         }
     }
 
@@ -151,7 +164,7 @@ final class LexPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
     protected Variable filterPrepareBytes(Variable argVar) {
         var rowUtils = mMaker.var(PrimitiveArrayUtils.class);
         var bytesVar = mMaker.new_(byte[].class, calcLength(rowUtils, argVar));
-        doEncode(rowUtils, argVar, bytesVar, 0);
+        doEncode(rowUtils, argVar, bytesVar, null);
         return bytesVar;
     }
 

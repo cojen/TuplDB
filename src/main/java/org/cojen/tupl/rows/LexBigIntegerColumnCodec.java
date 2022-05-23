@@ -89,11 +89,35 @@ final class LexBigIntegerColumnCodec extends BigIntegerColumnCodec {
 
     @Override
     void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
+        doEncode(mBytesVar, dstVar, offsetVar);
+    }
+
+    /**
+     * @param offsetVar can be null to use an offset of zero
+     */
+    private void doEncode(Variable srcVar, Variable dstVar, Variable offsetVar) {
+        Label end = null;
+        if (mInfo.isNullable()) {
+            end = mMaker.label();
+            encodeNullHeaderIfNull(end, srcVar, dstVar, offsetVar);
+        }
+
         String methodName = "encodeBigIntegerLex";
         if (mInfo.isDescending()) {
             methodName += "Desc";
         }
-        offsetVar.set(mMaker.var(RowUtils.class).invoke(methodName, dstVar, offsetVar, mBytesVar));
+
+        var rowUtils = mMaker.var(RowUtils.class);
+
+        if (offsetVar == null) {
+            rowUtils.invoke(methodName, dstVar, 0, srcVar);
+        } else {
+            offsetVar.set(rowUtils.invoke(methodName, dstVar, offsetVar, srcVar));
+        }
+
+        if (end != null) {
+            end.here();
+        }
     }
 
     @Override
@@ -134,14 +158,10 @@ final class LexBigIntegerColumnCodec extends BigIntegerColumnCodec {
 
     @Override
     protected Variable filterPrepareBytes(Variable argVar) {
-        String methodName = "encodeBigIntegerLex";
-        if (mInfo.isDescending()) {
-            methodName += "Desc";
-        }
         var bytesVar = mMaker.var(byte[].class);
         var lengthVar = encodeSize(argVar, mMaker.var(int.class).set(minSize()), bytesVar);
         var encodedBytesVar = mMaker.new_(byte[].class, lengthVar);
-        mMaker.var(RowUtils.class).invoke(methodName, encodedBytesVar, 0, bytesVar);
+        doEncode(bytesVar, encodedBytesVar, null);
         return encodedBytesVar;
     }
 
