@@ -1392,60 +1392,68 @@ public class RowStore {
      * If the given schemaVersion is 0, then the returned RowInfo only consists a primary key
      * and no value columns.
      *
-     * @param rowType can pass null if not available (unless schemaVersion is 0)
+     * @param rowType can pass null if not available
      * @throws CorruptDatabaseException if not found
      */
     RowInfo rowInfo(Class<?> rowType, long indexId, int schemaVersion)
         throws IOException, CorruptDatabaseException
     {
+        RowInfo info;
+
         if (schemaVersion == 0) {
             // No value columns to decode, and the primary key cannot change.
-            RowInfo fullInfo = RowInfo.find(rowType);
-            if (fullInfo.valueColumns.isEmpty()) {
-                return fullInfo;
-            }
-            RowInfo info = new RowInfo(fullInfo.name);
-            info.keyColumns = fullInfo.keyColumns;
-            info.valueColumns = Collections.emptyNavigableMap();
-            info.allColumns = new TreeMap<>(info.keyColumns);
-            return info;
-        }
-
-        // Can use NO_FLUSH because transaction will be only used for reading data.
-        Transaction txn = mSchemata.newTransaction(DurabilityMode.NO_FLUSH);
-        txn.lockMode(LockMode.REPEATABLE_READ);
-        try (Cursor c = mSchemata.newCursor(txn)) {
-            // Check if the indexId matches and the schemaVersion is the current one.
-            c.autoload(false);
-            c.find(key(indexId));
-            RowInfo current = null;
-            if (c.value() != null && rowType != null) {
-                var buf = new byte[4];
-                if (decodeIntLE(buf, 0) == schemaVersion) {
-                    // Matches, but don't simply return it. The current one might not have been
-                    // updated yet.
-                    current = RowInfo.find(rowType);
-                }
-            }
-
-            c.autoload(true);
-            c.findNearby(key(indexId, schemaVersion));
-
-            String typeName = rowType == null ? null : rowType.getName();
-            RowInfo info = decodeExisting(typeName, null, c.value());
-
-            if (current != null && current.allColumns.equals(info.allColumns)) {
-                // Current one matches, so use the canonical RowInfo instance.
-                return current;
-            } else if (info == null) {
-                throw new CorruptDatabaseException
-                    ("Schema version not found: " + schemaVersion + ", indexId=" + indexId);
+            if (rowType == null) {
+                info = decodePrimaryKey(null, null, indexId);
             } else {
+                RowInfo fullInfo = RowInfo.find(rowType);
+                if (fullInfo.valueColumns.isEmpty()) {
+                    return fullInfo;
+                }
+                info = new RowInfo(fullInfo.name);
+                info.keyColumns = fullInfo.keyColumns;
+                info.valueColumns = Collections.emptyNavigableMap();
+                info.allColumns = new TreeMap<>(info.keyColumns);
                 return info;
             }
-        } finally {
-            txn.reset();
+        } else {
+            // Can use NO_FLUSH because transaction will be only used for reading data.
+            Transaction txn = mSchemata.newTransaction(DurabilityMode.NO_FLUSH);
+            txn.lockMode(LockMode.REPEATABLE_READ);
+            try (Cursor c = mSchemata.newCursor(txn)) {
+                // Check if the indexId matches and the schemaVersion is the current one.
+                c.autoload(false);
+                c.find(key(indexId));
+                RowInfo current = null;
+                if (c.value() != null && rowType != null) {
+                    var buf = new byte[4];
+                    if (decodeIntLE(buf, 0) == schemaVersion) {
+                        // Matches, but don't simply return it. The current one might not have
+                        // been updated yet.
+                        current = RowInfo.find(rowType);
+                    }
+                }
+
+                c.autoload(true);
+                c.findNearby(key(indexId, schemaVersion));
+
+                String typeName = rowType == null ? null : rowType.getName();
+                info = decodeExisting(typeName, null, c.value());
+
+                if (info != null && current != null && current.allColumns.equals(info.allColumns)) {
+                    // Current one matches, so use the canonical RowInfo instance.
+                    return current;
+                }
+            } finally {
+                txn.reset();
+            }
         }
+
+        if (info == null) {
+            throw new CorruptDatabaseException
+                ("Schema version not found: " + schemaVersion + ", indexId=" + indexId);
+        }
+
+        return info;
     }
 
     /**
@@ -1577,6 +1585,39 @@ public class RowStore {
     }
 
     /**
+     * Decode the known primary key, which can't change.
+     *
+     * @param typeName pass null to decode the current type name
+     * @return null if not found
+     */
+    RowInfo decodePrimaryKey(Transaction txn, String typeName, long indexId) throws IOException {
+        // Select the smallest primary ColumnSet, although any should work fine.
+        byte[] primaryData = null;
+        View allVersions = mSchemata.viewGe(key(indexId, 1)).viewLe(key(indexId, 0x7fff_ffff));
+        try (Cursor c = allVersions.newCursor(txn)) {
+            for (c.first(); c.key() != null; c.next()) {
+                byte[] value = c.value();
+                if (primaryData == null || value.length < primaryData.length) {
+                    primaryData = value;
+                }
+            }
+        }
+
+        if (primaryData == null) {
+            return null;
+        }
+
+        RowInfo info = decodeExisting(currentName(txn, indexId), null, primaryData);
+
+        if (!info.valueColumns.isEmpty()) {
+            info.valueColumns = Collections.emptyNavigableMap();
+            info.allColumns = new TreeMap<>(info.keyColumns);
+        }
+
+        return info;
+    }
+
+    /**
      * Decode the existing RowInfo for the current schema version.
      *
      * @param typeName pass null to decode the current type name
@@ -1602,17 +1643,19 @@ public class RowStore {
         throws IOException
     {
         byte[] primaryData = mSchemata.load(txn, key(indexId, schemaVersion));
-
         if (typeName == null) {
-            byte[] currentName = viewExtended(indexId, K_TYPE_NAME).load(txn, EMPTY_BYTES);
-            if (currentName == null) {
-                typeName = String.valueOf(indexId);
-            } else {
-                typeName = decodeStringUTF(currentName, 0, currentName.length);
-            }
+            typeName = currentName(txn, indexId);
         }
-
         return decodeExisting(typeName, currentData, primaryData);
+    }
+
+    private String currentName(Transaction txn, long indexId) throws IOException {
+        byte[] currentName = viewExtended(indexId, K_TYPE_NAME).load(txn, EMPTY_BYTES);
+        if (currentName == null) {
+            return String.valueOf(indexId);
+        } else {
+            return decodeStringUTF(currentName, 0, currentName.length);
+        }
     }
 
     /**
