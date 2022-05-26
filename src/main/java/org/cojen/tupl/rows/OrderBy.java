@@ -20,6 +20,8 @@ package org.cojen.tupl.rows;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import static org.cojen.tupl.rows.ColumnInfo.*;
+
 /**
  * 
  * @see ComparatorMaker
@@ -29,7 +31,7 @@ final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
     static OrderBy forPrimaryKey(RowInfo rowInfo) {
         var orderBy = new OrderBy();
         for (ColumnInfo column : rowInfo.keyColumns.values()) {
-            orderBy.put(column.name, new Rule(column, column.isDescending() ? 1 : 0));
+            orderBy.put(column.name, new Rule(column, column.typeCode));
         }
         return orderBy;
     }
@@ -54,14 +56,25 @@ final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
         return b.toString();
     }
 
-    // flags: bit 0: descending,  bit 1: null low
-    static record Rule(ColumnInfo column, int flags) {
+    /**
+     * @param type only differs from the column typeCode for TYPE_NULL_LOW and TYPE_DESCENDING
+     */
+    static record Rule(ColumnInfo column, int type) {
+        ColumnInfo asColumn() {
+            ColumnInfo c = column;
+            if (c.typeCode != type) {
+                c = c.copy();
+                c.typeCode = type;
+            }
+            return c;
+        }
+
         boolean isDescending() {
-            return (flags & 1) != 0;
+            return ColumnInfo.isDescending(type);
         }
 
         boolean isNullLow() {
-            return (flags & 2) != 0;
+            return ColumnInfo.isNullLow(type);
         }
 
         void appendTo(StringBuilder b) {
@@ -78,17 +91,17 @@ final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
 
         int length = spec.length();
         for (int pos = 0; pos < length; ) {
-            int flags = 0;
+            int type = 0;
 
             int order = spec.charAt(pos++);
             if (order == '-') {
-                flags |= 1;
+                type |= TYPE_DESCENDING;
             } else if (order != '+') {
                 break;
             }
 
             if (spec.charAt(pos) == '!') {
-                flags |= 2;
+                type |= TYPE_NULL_LOW;
                 pos++;
             }
 
@@ -116,11 +129,12 @@ final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
 
             if (column.isPrimitive()) {
                 // Can't be null.
-                flags &= ~2;
+                type &= ~TYPE_NULL_LOW;
             }
 
             if (!orderBy.containsKey(name)) {
-                orderBy.put(name, new Rule(column, flags));
+                type |= column.typeCode & ~(TYPE_NULL_LOW | TYPE_DESCENDING);
+                orderBy.put(name, new Rule(column, type));
             }
         }
 

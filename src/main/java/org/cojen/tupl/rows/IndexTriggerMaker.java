@@ -177,7 +177,8 @@ public class IndexTriggerMaker<R> {
             tm.addKeyTarget(secondaryInfo, 0, true);
             tm.addValueTarget(secondaryInfo, 0, true);
 
-            tm.begin(mm, null, primaryKeyVar, primaryValueVar, -1);
+            int valueOffset = RowUtils.lengthPrefixPF(schemaVersion);
+            tm.begin(mm, null, primaryKeyVar, primaryValueVar, valueOffset);
 
             secondaryEntryVar.aset(offsetVar, tm.encode(0));
             secondaryEntryVar.aset(offsetVar.add(1), tm.encode(1));

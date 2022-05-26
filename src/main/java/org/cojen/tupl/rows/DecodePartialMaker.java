@@ -161,8 +161,7 @@ public class DecodePartialMaker {
                 }
             } else if (schemaVersion == 0) {
                 // No value columns to decode, so assign defaults.
-                addDefaultColumns(mm, toDecode, rowVar, dstRowGen,
-                                  dstRowInfo.valueColumns, null);
+                addDefaultColumns(mm, toDecode, rowVar, dstRowGen, dstRowInfo.valueColumns, null);
             } else {
                 RowInfo srcRowInfo;
                 try {
