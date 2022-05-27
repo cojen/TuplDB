@@ -1456,9 +1456,18 @@ public class RowStore {
         return info;
     }
 
+    static byte[] indexDescriptor(SecondaryInfo info) {
+        return indexDescriptor(info, info.isAltKey());
+    }
+
+    static byte[] indexDescriptor(ColumnSet cs, boolean isAltKey) {
+        var encoder = new Encoder(cs.allColumns.size() * 16); // with initial capacity guess
+        return EncodedRowInfo.encodeDescriptor(isAltKey ? 'A' : 'I', encoder, cs);
+    }
+
     /**
      * Decodes a RowInfo object for a secondary index, by parsing a binary descriptor which was
-     * created by EncodedRowInfo.encodeDescriptor.
+     * created by EncodedRowInfo.encodeDescriptor or indexDescriptor.
      */
     static SecondaryInfo indexRowInfo(RowInfo primaryInfo, byte[] desc) {
         byte type = desc[0];
