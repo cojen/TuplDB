@@ -251,6 +251,13 @@ public class ColumnInfo implements Cloneable {
     }
 
     /**
+     * Returns true if the given type is the same as this, ignoring the ordering specification.
+     */
+    boolean isCompatibleWith(ColumnInfo other) {
+        return (this.typeCode & 0b0011_11111) == (other.typeCode & 0b0011_11111);
+    }
+
+    /**
      * Returns true if the given type is the same as this one or can be primitively widened.
      */
     boolean isAssignableFrom(ColumnInfo other) {

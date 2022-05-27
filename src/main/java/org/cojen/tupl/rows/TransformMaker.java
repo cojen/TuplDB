@@ -31,8 +31,8 @@ import org.cojen.maker.Variable;
 
 /**
  * Utility for making code which transforms binary encoded rows to one or more other binary
- * encodings. This utility is designed for column placement and transcoding, but it doesn't
- * support type conversions.
+ * encodings. This utility is designed for column placement and transcoding, performing
+ * lossy type conversions if necessary.
  *
  * @author Brian S O'Neill
  */
@@ -514,7 +514,7 @@ class TransformMaker<R> {
             if (source.mustDecodeEagerly()) {
                 var columnVar = mMaker.var(codec.mInfo.type);
                 codec.decode(columnVar, srcVar, offsetVar, null);
-                source.mColumnVar = columnVar;
+                source.initColumnVar(columnVar);
             } else {
                 // Skip it for now. As side effect, the offsetVar is updated, and so the column
                 // can be decoded later if necessary.
@@ -772,6 +772,9 @@ class TransformMaker<R> {
         // Maps target codecs to additional state.
         final Map<ColumnCodec, ColumnTarget> mColumnTargets;
 
+        // Common target column type. A conversion is required when different from the source.
+        ColumnInfo mTargetInfo;
+
         // Is true if at least one target eagerly depends on this source.
         boolean mEager;
 
@@ -804,6 +807,16 @@ class TransformMaker<R> {
         }
 
         ColumnTarget addTarget(ColumnCodec targetCodec, boolean eager) {
+            if (mTargetInfo == null) {
+                mTargetInfo = targetCodec.mInfo;
+                if (mTargetInfo.type == null) {
+                    mTargetInfo.assignType();
+                }
+            } else if (!mTargetInfo.isCompatibleWith(targetCodec.mInfo)) {
+                // For now, all targets must have the same column type.
+                throw new IllegalStateException();
+            }
+
             mEager |= eager;
             ColumnTarget target = mColumnTargets.get(targetCodec);
             if (target == null) {
@@ -930,7 +943,7 @@ class TransformMaker<R> {
                 return;
             }
 
-            mColumnVar = tm.mMaker.var(mCodec.mInfo.type);
+            mColumnVar = tm.mMaker.var(mTargetInfo.type);
 
             if (mEager) {
                 if (mAvailability == Availability.CONDITIONAL) {
@@ -943,11 +956,38 @@ class TransformMaker<R> {
                 // Need to check if the column is set at runtime.
                 mColumnAccessCheck = true;
                 mColumnVar.clear(); // needs to be definitely assigned
-                if (isPrimitive() || mCodec.mInfo.isNullable()) {
+                if (isPrimitive() || mTargetInfo.isNullable()) {
                     // Need an additional variable for checking if set or not. A null check
                     // works fine for non-nullable object types.
                     mColumnSetVar = tm.mMaker.var(boolean.class).set(false);
                 }
+            }
+        }
+
+        /**
+         * @param columnVar must be assigned
+         */
+        void initColumnVar(Variable columnVar) {
+            if (mColumnVar != null) {
+                throw new IllegalStateException();
+            }
+            if (mCodec.mInfo.isCompatibleWith(mTargetInfo)) {
+                mColumnVar = columnVar;
+            } else {
+                mColumnVar = columnVar.methodMaker().var(mTargetInfo.type);
+                setToColumnVar(columnVar);
+            }
+        }
+
+        /**
+         * @param columnVar must be assigned
+         */
+        private void setToColumnVar(Variable columnVar) {
+            if (mCodec.mInfo.isCompatibleWith(mTargetInfo)) {
+                mColumnVar.set(columnVar);
+            } else {
+                MethodMaker mm = columnVar.methodMaker();
+                Converter.convertLossy(mm, mCodec.mInfo, columnVar, mTargetInfo, mColumnVar);
             }
         }
 
@@ -1000,7 +1040,7 @@ class TransformMaker<R> {
                 // The column field is dirty, so use it directly. The update method only
                 // examines dirty fields when encoding the key and value, and so clean fields
                 // cannot be trusted in case the underlying row changed concurrently.
-                mColumnVar.set(rowVar.field(columnName));
+                setToColumnVar(rowVar.field(columnName));
                 cont = mm.label().goto_();
                 mustDecode.here();
             }

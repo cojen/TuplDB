@@ -66,7 +66,7 @@ public class Converter {
                              final ColumnInfo srcInfo, final Variable srcVar,
                              final ColumnInfo dstInfo, final Variable dstVar)
     {
-        if (srcInfo.typeCode == dstInfo.typeCode) {
+        if (srcInfo.isCompatibleWith(dstInfo)) {
             dstVar.set(srcVar);
             return;
         }
