@@ -65,12 +65,7 @@ final class ComparatorMaker<R> {
         ClassMaker cm = mRowInfo.rowGen().anotherClassMaker
             (ComparatorMaker.class, rowClass, "Comparator").implement(Comparator.class).final_();
 
-        // Define a singleton cached instance.
-        cm.addField(Comparator.class, "THE").private_().static_();
-
         MethodMaker mm = cm.addConstructor().private_();
-        mm.invokeSuperConstructor();
-        mm.field("THE").set(mm.this_());
 
         makeCompare(cm.addMethod(int.class, "compare", rowClass, rowClass).public_());
 
