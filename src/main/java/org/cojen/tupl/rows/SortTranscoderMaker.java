@@ -137,9 +137,8 @@ public class SortTranscoderMaker<R> {
     }
 
     Transcoder<R> finish() {
-        ClassMaker cm = RowGen.beginClassMaker
-            (SortTranscoderMaker.class, null, mTargetInfo, null, null)
-            .implement(Transcoder.class).public_();
+        ClassMaker cm = mInfo.rowGen().anotherClassMaker
+            (SortTranscoderMaker.class, mRowClass, null).implement(Transcoder.class).final_();
 
         cm.addConstructor().private_();
 
