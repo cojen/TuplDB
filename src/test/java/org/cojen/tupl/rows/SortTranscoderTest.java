@@ -19,7 +19,9 @@ package org.cojen.tupl.rows;
 
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.junit.*;
 import static org.junit.Assert.*;
@@ -56,7 +58,149 @@ public class SortTranscoderTest {
         Index ix = mDb.openIndex("test");
         Table<TestRow> table = ix.asTable(TestRow.class);
 
-        for (int i=0; i<10; i++) {
+        fill(table);
+
+        permuteSpecs(spec -> {
+            var transcoder = newTranscoder(ix, table, null, spec, null);
+            Index sorted = sort(ix, transcoder);
+            verifyOrder(table, spec, transcoder, sorted);
+            mDb.deleteIndex(sorted);
+        }, "id", "name", "status");
+    }
+
+    @Test
+    public void distinct() throws Exception {
+        Index ix = mDb.openIndex("test");
+        Table<TestRow> table = ix.asTable(TestRow.class);
+
+        fill(table);
+
+        var expect = new TreeSet<Integer>();
+        try (var s = table.newRowScanner(null, "{status}")) {
+            for (var row = s.row(); row != null; row = s.step(row)) {
+                expect.add(row.status());
+            }
+        }
+
+        var projection = Set.of("status");
+        var transcoder = newTranscoder(ix, table, projection, "+status", projection);
+        Index sorted = sort(ix, transcoder);
+
+        Iterator<Integer> expectIt = expect.iterator();
+
+        try (Cursor c = sorted.newCursor(null)) {
+            TestRow row = table.newRow();
+            for (c.first(); c.key() != null; c.next()) {
+                transcoder.decodeRow(row, c.key(), c.value());
+
+                assertEquals((Integer) row.status(), expectIt.next());
+
+                try {
+                    row.id();
+                    fail();
+                } catch (UnsetColumnException e) {
+                }
+
+                try {
+                    row.name();
+                    fail();
+                } catch (UnsetColumnException e) {
+                }
+            }
+        }
+
+        assertTrue(!expectIt.hasNext());
+    }
+
+    @Test
+    public void duplicates() throws Exception {
+        Index ix = mDb.openIndex("test");
+        Table<TestRow> table = ix.asTable(TestRow.class);
+
+        int num = fill(table);
+
+        var projection = Set.of("status");
+        var transcoder = newTranscoder(ix, table, null, "+status", projection);
+        Index sorted = sort(ix, transcoder);
+
+        int count = 0;
+        int lastStatus = -1;
+        boolean duplicates = false;
+
+        try (Cursor c = sorted.newCursor(null)) {
+            TestRow row = table.newRow();
+            for (c.first(); c.key() != null; c.next()) {
+                count++;
+                transcoder.decodeRow(row, c.key(), c.value());
+
+                if (lastStatus >= 0) {
+                    assertTrue(row.status() >= lastStatus);
+                    duplicates |= row.status() == lastStatus;
+                }
+
+                lastStatus = row.status();
+
+                try {
+                    row.id();
+                    fail();
+                } catch (UnsetColumnException e) {
+                }
+
+                try {
+                    row.name();
+                    fail();
+                } catch (UnsetColumnException e) {
+                }
+            }
+        }
+
+        assertEquals(num, count);
+        assertTrue(duplicates);
+    }
+
+    @Test
+    public void secondary() throws Exception {
+        final Index ix = mDb.openIndex("test");
+        final Table<TestRow> table = ix.asTable(TestRow.class);
+
+        fill(table);
+
+        Table<TestRow> statusTable = table.viewSecondaryIndex("status").viewUnjoined();
+        Index statusIx = ((BaseTable) statusTable).mSource;
+
+        Class<TestRow> rowType = table.rowType();
+        RowInfo primaryInfo = RowInfo.find(rowType);
+        ColumnSet secondaryColumns = primaryInfo.secondaryIndexes.iterator().next();
+        byte[] secondaryDesc = RowStore.indexDescriptor(secondaryColumns, false);
+        SecondaryInfo secondaryInfo = RowStore.indexRowInfo(primaryInfo, secondaryDesc);
+        OrderBy orderBy = OrderBy.forSpec(secondaryInfo, "+id");
+        var transcoder = new SortTranscoderMaker<TestRow>
+            (mDb.rowStore(), rowType, table.newRow().getClass(), secondaryInfo, ix.id(),
+             null, orderBy, null).finish();
+
+        Index sorted = sort(statusIx, transcoder);
+
+        try (RowScanner<TestRow> s = table.viewPrimaryKey().newRowScanner(null, "{id, status}")) {
+            try (Cursor c = sorted.newCursor(null)) {
+                TestRow row = table.newRow();
+                for (c.first(); c.key() != null; c.next()) {
+                    transcoder.decodeRow(row, c.key(), c.value());
+
+                    TestRow expect = s.row();
+                    s.step();
+
+                    assertEquals(expect, row);
+                }
+            }
+
+            assertNull(s.row());
+        }
+    }
+
+    private int fill(Table<TestRow> table) throws Exception {
+        final int num = 10;
+
+        for (int i=0; i<num; i++) {
             var row = table.newRow();
             row.id(i);
 
@@ -71,12 +215,24 @@ public class SortTranscoderTest {
             table.store(null, row);
         }
 
-        permuteSpecs(spec -> {
-            var transcoder = newTranscoder(ix, table, null, spec, null);
-            Index sorted = sort(ix, transcoder);
-            verifyOrder(table, spec, transcoder, sorted);
-            mDb.deleteIndex(sorted);
-        }, "id", "name", "status");
+        return num;
+    }
+
+    private <R> void dump(Table<R> table) throws Exception {
+        try (var s = table.newRowScanner(null)) {
+            for (var row = s.row(); row != null; row = s.step(row)) {
+                System.out.println(row);
+            }
+        }
+    }
+    private <R> void dump(Table<R> table, Index sorted, Transcoder<R> transcoder) throws Exception {
+        try (Cursor c = sorted.newCursor(null)) {
+            R row = table.newRow();
+            for (c.first(); c.key() != null; c.next()) {
+                transcoder.decodeRow(row, c.key(), c.value());
+                System.out.println(row);
+            }
+        }
     }
 
     /**
@@ -220,6 +376,7 @@ public class SortTranscoderTest {
     }
 
     @PrimaryKey("id")
+    @SecondaryIndex("status")
     public static interface TestRow {
         int id();
         void id(int id);

@@ -266,16 +266,21 @@ public class SortTranscoderMaker<R> {
         var rowVar = mm.param(0).cast(mRowClass);
 
         RowGen targetRowGen = mTargetInfo.rowGen();
-
-        final ColumnCodec[] keyCodecs = targetRowGen.keyCodecs();
-        decodeColumns(mm, rowVar, mm.param(1), keyCodecs);
-
-        final ColumnCodec[] valueCodecs = targetRowGen.valueCodecs();
-        decodeColumns(mm, rowVar, mm.param(2), valueCodecs);
+        decodeColumns(mm, rowVar, mm.param(1), targetRowGen.keyCodecs());
+        decodeColumns(mm, rowVar, mm.param(2), targetRowGen.valueCodecs());
 
         // Mark projected columns as clean, all others are unset.
 
-        final int maxNum = mTargetInfo.allColumns.size();
+        RowInfo primaryInfo = mInfo;
+        if (primaryInfo instanceof SecondaryInfo s) {
+            primaryInfo = s.primaryInfo;
+        }
+
+        RowGen primaryGen = primaryInfo.rowGen();
+        ColumnCodec[] keyCodecs = primaryGen.keyCodecs();
+        ColumnCodec[] valueCodecs = primaryGen.valueCodecs();
+
+        int maxNum = primaryInfo.allColumns.size();
         int mask = 0;
 
         for (int num = 0; num < maxNum; ) {
