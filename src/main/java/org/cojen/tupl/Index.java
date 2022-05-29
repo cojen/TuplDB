@@ -52,6 +52,7 @@ public interface Index extends View, Closeable {
      * Table} and storing directly into this index should be avoided, since it interferes
      * with row encoding. Mixing encoding strategies can cause data corruption.
      *
+     * @see Database#openTable
      * @return shared {@code Table} instance
      */
     // Note: This method is defined on Index and not View because schema metadata is stored
