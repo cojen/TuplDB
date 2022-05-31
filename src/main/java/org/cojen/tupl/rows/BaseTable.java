@@ -652,6 +652,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
     /**
      * @param rowInfo for secondary (method does nothing if this is the primary table)
+     * @see RowFilter#multiRangeExtract
      */
     private void splitRemainders(RowInfo rowInfo, RowFilter[]... ranges) {
         if (joinedPrimaryTableClass() != null) {
@@ -664,22 +665,21 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      * Applies a double check of the remainder filter, applicable only to joins.
      *
      * @param rowInfo for primary
+     * @see RowFilter#multiRangeExtract
      */
     private static void doubleCheckRemainder(RowFilter[][] ranges, RowInfo rowInfo) {
         for (RowFilter[] r : ranges) {
-            // Build up a complete remainder that does full fully redundant filtering. Order
-            // the terms such that ones most likely to have any effect come first.
-            RowFilter remainder = r[3].and(r[2]);
-            if (r[0] != null) {
-                remainder = remainder.and(r[0]);
-            }
-            if (r[1] != null) {
-                remainder = remainder.and(r[1]);
-            }
+            // Build up a complete remainder that performs fully redundant filtering. Order the
+            // terms such that ones most likely to have any effect come first.
+            RowFilter remainder = and(and(and(r[3], r[2]), r[0]), r[1]);
             // Remove terms that only check the primary key, because they won't change with a join.
             remainder = remainder.retain(rowInfo.valueColumns, false, TrueFilter.THE);
             r[3] = remainder.reduceMore();
         }
+    }
+
+    private static RowFilter and(RowFilter a, RowFilter b) {
+        return a != null ? (b != null ? a.and(b) : a) : (b != null ? b : TrueFilter.THE);
     }
 
     private void complex(RowFilter rf, ComplexFilterException e) {
