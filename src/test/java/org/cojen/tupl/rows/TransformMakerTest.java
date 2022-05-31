@@ -18,7 +18,6 @@
 package org.cojen.tupl.rows;
 
 import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
 import java.lang.reflect.Method;
@@ -39,12 +38,8 @@ import static org.junit.Assert.*;
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
-import org.cojen.maker.Variable;
 
 import org.cojen.tupl.*;
-
-import static org.cojen.tupl.rows.RowTestUtils.*;
-import static org.cojen.tupl.rows.TransformMaker.Availability.*;
 
 /**
  * 

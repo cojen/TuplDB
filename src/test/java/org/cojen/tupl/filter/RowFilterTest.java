@@ -117,7 +117,7 @@ public class RowFilterTest {
             assertEquals(FalseFilter.THE, f4);
 
             RowFilter f5 = f1.retain(subMap(colMap), true, TrueFilter.THE);
-            assertEquals(TrueFilter.THE, f3);
+            assertEquals(TrueFilter.THE, f5);
         }
 
         {

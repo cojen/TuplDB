@@ -109,7 +109,7 @@ public class SortTranscoderTest {
             }
         }
 
-        assertTrue(!expectIt.hasNext());
+        assertFalse(expectIt.hasNext());
     }
 
     @Test

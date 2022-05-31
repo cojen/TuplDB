@@ -168,7 +168,7 @@ public class IndexUpdaterTest {
         assertEquals(10, count(mIndex.viewUnjoined()));
         assertEquals(10, count(mTable));
 
-        Consumer<TestRow> post = row -> {row.num1(row.num1() - 9000);};
+        Consumer<TestRow> post = row -> row.num1(row.num1() - 9000);
 
         fillCheck(mIndex, null, post, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
         fillCheck(mTable, null, post, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);

@@ -26,8 +26,6 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
-import org.cojen.tupl.diag.QueryPlan;
-
 /**
  * 
  *
@@ -223,7 +221,6 @@ public class ScanControllerTest {
         }
 
         var scanner = (BasicRowScanner<MyRow>) table.newRowScanner(null, filter, args);
-        var controller = (RangeUnionScanController<MyRow>) scanner.mController;
 
         var actual = new HashSet<MyRow>();
 
