@@ -18,6 +18,7 @@
 package org.cojen.tupl.rows;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -37,24 +38,60 @@ class ColumnSet {
     // Map order matches declaration order and excludes value columns.
     Map<String, ColumnInfo> keyColumns;
 
+    /**
+     * Compares all columns for equality based on their natural order.
+     */
     final boolean matches(ColumnSet other) {
-        return allColumns.equals(other.allColumns) &&
-            valueColumns.equals(other.valueColumns) && keyColumns.equals(other.keyColumns);
+        return matches(allColumns, other.allColumns) &&
+            matches(valueColumns, other.valueColumns) && matches(keyColumns, other.keyColumns);
+    }
+
+    /**
+     * Compares maps for equality based on their natural order.
+     */
+    private static <K, V> boolean matches(Map<K, V> a, Map<K, V> b) {
+        if (a.size() == b.size()) {
+            var ai = a.entrySet().iterator();
+            var bi = b.entrySet().iterator();
+            while (ai.hasNext()) {
+                if (!ai.next().equals(bi.next())) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
     }
 
     /**
      * Returns each key prefixed with a '+' or '-' character.
      */
     String[] keySpec() {
-        Collection<ColumnInfo> columns = keyColumns.values();
-        var spec = new String[columns.size()];
-        Iterator<ColumnInfo> it = columns.iterator();
-        for (int i=0; i<spec.length; i++) {
-            ColumnInfo column = it.next();
+        return fullSpec(keyColumns.values(), Collections.emptySet());
+    }
+
+    /**
+     * Returns each key prefixed with a '+' or '-' character, followed by unprefixed values
+     * columns.
+     */
+    String[] fullSpec() {
+        return fullSpec(keyColumns.values(), valueColumns.values());
+    }
+
+    private static String[] fullSpec(Collection<ColumnInfo> keys, Collection<ColumnInfo> values) {
+        var spec = new String[keys.size() + values.size()];
+        int i = 0;
+
+        for (ColumnInfo column : keys) {
             String name = column.name;
             name = (column.isDescending() ? '-' : '+') + name;
-            spec[i] = name;
+            spec[i++] = name;
         }
+
+        for (ColumnInfo column : values) {
+            spec[i++] = column.name;
+        }
+
         return spec;
     }
 

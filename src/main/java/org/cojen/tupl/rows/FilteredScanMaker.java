@@ -26,6 +26,8 @@ import java.lang.ref.WeakReference;
 
 import java.math.BigDecimal;
 
+import java.util.Map;
+
 import java.util.function.IntFunction;
 
 import org.cojen.maker.ClassMaker;
@@ -65,7 +67,8 @@ public class FilteredScanMaker<R> {
     private final RowGen mRowGen;
     private final long mIndexId;
     private final RowFilter mLowBound, mHighBound, mFilter, mJoinFilter;
-    private final byte[] mProjectionSpec;
+    private final byte[] mProjectionSpec, mJoinProjectionSpec;
+    private final boolean mAlwaysJoin;
     private final ClassMaker mFilterMaker;
     private final MethodMaker mFilterCtorMaker;
 
@@ -84,25 +87,54 @@ public class FilteredScanMaker<R> {
      * the RowFilter goes away, the filterStr is needed to create it again.
      *
      * @param storeRef is passed along to the generated code
-     * @param secondaryDescriptor non-null if table refers to a secondary index or alternate key
-     * @param primaryTableClass pass non-null to when joining a secondary to a primary
+     * @param table primary or secondary table
+     * @param rowGen primary or secondary rowGen
      * @param unfiltered defines the encode methods; the decode method will be overridden
      * @param predClass contains references to the argument fields
      * @param lowBound pass null for open bound
      * @param highBound pass null for open bound
      * @param filter the filter to apply to all rows which are in bounds, or null if none
      * @param joinFilter the filter to apply after joining, or null if none
-     * @param projectionSpec null if all columns are to be decoded; else see DecodePartialMaker
+     * @param projection null if all columns are to be decoded
      */
-    public FilteredScanMaker(WeakReference<RowStore> storeRef, byte[] secondaryDescriptor,
-                             BaseTable<R> table, Class<?> primaryTableClass,
+    public FilteredScanMaker(WeakReference<RowStore> storeRef, BaseTable<R> table, RowGen rowGen,
                              SingleScanController<R> unfiltered,
                              Class<? extends RowPredicate> predClass,
-                             Class<R> rowType, RowGen rowGen, long indexId,
                              RowFilter lowBound, RowFilter highBound,
                              RowFilter filter, RowFilter joinFilter,
-                             byte[] projectionSpec)
+                             Map<String, ColumnInfo> projection)
     {
+        Class<R> rowType = table.rowType();
+        byte[] secondaryDescriptor = table.secondaryDescriptor();
+        Class<?> primaryTableClass = table.joinedPrimaryTableClass();
+
+        if (primaryTableClass == null) {
+            // Not joining to the primary table.
+            mJoinProjectionSpec = null;
+            mAlwaysJoin = false;
+            if (secondaryDescriptor == null) {
+                mProjectionSpec = DecodePartialMaker.makeFullSpec(rowGen, null, projection);
+            } else {
+                RowGen primaryRowGen = RowInfo.find(rowType).rowGen();
+                mProjectionSpec = DecodePartialMaker.makeFullSpec
+                    (rowGen, primaryRowGen, projection);
+            }
+        } else {
+            RowGen primaryRowGen = RowInfo.find(rowType).rowGen();
+            mJoinProjectionSpec = DecodePartialMaker.makeFullSpec(primaryRowGen, null, projection);
+            if (isCovering(rowGen, primaryRowGen, projection)) {
+                // No need to join to the primary table when use a RowScanner. A RowUpdater
+                // performs a join step to position the cursor over the primary table.
+                mAlwaysJoin = false;
+                mProjectionSpec = DecodePartialMaker.makeFullSpec
+                    (rowGen, primaryRowGen, projection);
+            } else {
+                // Will always join to the primary and decode afterwards.
+                mAlwaysJoin = true;
+                mProjectionSpec = mJoinProjectionSpec;
+            }
+        }
+
         mStoreRef = storeRef;
         mSecondaryDescriptor = secondaryDescriptor;
         mTable = table;
@@ -110,15 +142,12 @@ public class FilteredScanMaker<R> {
         mUnfiltered = unfiltered;
         mPredicateClass = predClass;
         mRowType = rowType;
-
         mRowGen = rowGen;
-
-        mIndexId = indexId;
+        mIndexId = table.mSource.id();
         mLowBound = lowBound;
         mHighBound = highBound;
         mFilter = filter;
         mJoinFilter = joinFilter;
-        mProjectionSpec = projectionSpec;
 
         // Define in the same package as the predicate class, in order to access it, and to
         // facilitate class unloading.
@@ -149,6 +178,19 @@ public class FilteredScanMaker<R> {
         var from = ctor.param(0);
         ctor.invokeSuperConstructor(from);
         ctor.field("predicate").set(from.field("predicate"));
+    }
+
+    /**
+     * Returns true if a secondary index contains all the projected columns and thus no join to
+     * the primary table is required.
+     */
+    private static boolean isCovering(RowGen rowGen, RowGen primaryRowGen,
+                                      Map<String, ColumnInfo> projection)
+    {
+        if (projection == null) {
+            projection = primaryRowGen.info.allColumns;
+        }
+        return rowGen.info.allColumns.keySet().containsAll(projection.keySet());
     }
 
     public ScanControllerFactory<R> finish() {
@@ -203,7 +245,7 @@ public class FilteredScanMaker<R> {
             String name = i == 0b00 ? "plan" : "planReverse";
             MethodMaker mm = mFilterMaker.addMethod(QueryPlan.class, name).private_().static_();
 
-            int option = i + (mPrimaryTableClass == null ? 0b00 : 0b10);
+            int option = i + (mAlwaysJoin ? 0b10 : 0b00);
 
             var condy = mm.var(FilteredScanMaker.class).condy
                 ("condyPlan", mRowType, mSecondaryDescriptor, option,
@@ -513,8 +555,17 @@ public class FilteredScanMaker<R> {
             visitor.applyFilter(mFilter);
         }
 
-        if (mPrimaryTableClass == null) {
-            // Not joined to a primary.
+        if (mPrimaryTableClass != null) {
+            // Need to define additional methods for supporting joins to the primary
+            // table. These are strictly required by RowUpdater, which always must position a
+            // cursor over the primary table.
+            addJoinedDecode();
+            addDecodeRowWithPrimaryCursorMethod();
+        }
+
+        if (!mAlwaysJoin) {
+            // Either not joined to a primary, or this is a covering index, and so RowScanner
+            // doesn't need to join.
             MethodHandle decoder = null;
             if (mProjectionSpec != null) {
                 // Obtain the MethodHandle which decodes the key and value columns.
@@ -531,11 +582,7 @@ public class FilteredScanMaker<R> {
         var primaryValueVar = primaryVars[1];
 
         // Finish filter and decode using a shared private method.
-        addJoinedDecode();
         mm.return_(mm.invoke("joinedDecode", primaryKeyVar, primaryValueVar, rowVar));
-
-        // Also define the other decodeRow method which takes a primary cursor.
-        addDecodeRowWithPrimaryCursorMethod();
     }
 
     private void addJoinedDecode() {
@@ -562,7 +609,7 @@ public class FilteredScanMaker<R> {
 
         var indy = mm.var(FilteredScanMaker.class).indy
             ("indyFilter", mStoreRef, mPrimaryTableClass, mRowType, primaryIndexId,
-             filterRef, filterStr, mProjectionSpec, null, 0);
+             filterRef, filterStr, mJoinProjectionSpec, null, 0);
 
         var schemaVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", primaryValueVar);
 
@@ -570,6 +617,9 @@ public class FilteredScanMaker<R> {
                                primaryKeyVar, primaryValueVar, rowVar, predicateVar));
     }
 
+    /**
+     * Defines the other decodeRow method which takes a primary cursor, used by RowUpdater.
+     */
     private void addDecodeRowWithPrimaryCursorMethod() {
         // Implement/override method as specified by RowEvaluator.
 

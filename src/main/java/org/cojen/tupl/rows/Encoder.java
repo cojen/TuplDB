@@ -82,6 +82,17 @@ class Encoder {
         mLength += prefixLen + strLen;
     }
 
+    /**
+     * Write a non-null byte array with a length prefix.
+     */
+    public void writeBytes(byte[] bytes) {
+        int prefixLen = lengthPrefixPF(bytes.length);
+        ensureCapacity(prefixLen + bytes.length);
+        encodePrefixPF(mBuffer, mLength, bytes.length);
+        System.arraycopy(bytes, 0, mBuffer, mLength + prefixLen, bytes.length);
+        mLength += prefixLen + bytes.length;
+    }
+
     public byte[] toByteArray() {
         return Arrays.copyOf(mBuffer, mLength);
     }

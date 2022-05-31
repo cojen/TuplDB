@@ -736,16 +736,34 @@ public class QueryPlanTest {
 
     @Test
     public void covering() throws Exception {
+        var table = mDatabase.openTable(TestRow.class);
+
+        QueryPlan plan = table.queryPlan(null, "{b, id}: b == ? && c == ?");
+
+        assertEquals(new QueryPlan.RangeScan
+                     (TestRow.class.getName(), "secondary index",
+                      new String[] {"-c", "+b", "+id"}, false,
+                      "c == ?1 && b >= ?0", "c == ?1 && b <= ?0"),
+                     plan);
+    }
+
+    @Test
+    public void covering2() throws Exception {
         var table = mDatabase.openTable(TestRow2.class);
         var index = table.viewSecondaryIndex("b", "a", "c");
 
         QueryPlan plan = index.queryPlan(null, "b == ? && c == ?");
-        assertEquals(new QueryPlan.NaturalJoin
-                     (TestRow2.class.getName(), "primary key", new String[] {"+a", "+b"},
-                      new QueryPlan.Filter
-                      ("c == ?1", new QueryPlan.RangeScan
-                       (TestRow2.class.getName(), "secondary index",
-                        new String[] {"+b", "+a"}, false, "b >= ?0", "b <= ?0"))),
+        assertEquals(new QueryPlan.Filter
+                     ("c == ?1", new QueryPlan.RangeScan
+                      (TestRow2.class.getName(), "secondary index",
+                       new String[] {"+b", "+a"}, false, "b >= ?0", "b <= ?0")),
+                     plan);
+
+        plan = table.queryPlan(null, "b == ? && c == ?");
+        assertEquals(new QueryPlan.Filter
+                     ("c == ?1", new QueryPlan.RangeScan
+                      (TestRow2.class.getName(), "secondary index",
+                       new String[] {"+b", "+a"}, false, "b >= ?0", "b <= ?0")),
                      plan);
     }
 

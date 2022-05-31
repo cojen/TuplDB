@@ -589,9 +589,6 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
         RowGen rowGen = rowInfo.rowGen();
 
-        byte[] projectionSpec = DecodePartialMaker.makeFullSpec
-            (primaryRowGen != null ? primaryRowGen : rowGen, ff.projection());
-
         Class<? extends RowPredicate> predClass = new RowPredicateMaker
             (rowStoreRef(), baseClass, rowType, rowGen, primaryRowGen,
              mTableManager.mPrimaryIndex.id(), mSource.id(), rf, filter, ranges).finish();
@@ -600,7 +597,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             var rangeFactories = new ScanControllerFactory[ranges.length];
             for (int i=0; i<ranges.length; i++) {
                 rangeFactories[i] = newFilteredFactory
-                    (rowGen, ranges[i], predClass, projectionSpec);
+                    (rowGen, ranges[i], predClass, ff.projection());
             }
             return new RangeUnionScanControllerFactory(rangeFactories);
         }
@@ -617,13 +614,16 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             splitRemainders(rowInfo, range);
         }
 
-        return newFilteredFactory(rowGen, range, predClass, projectionSpec);
+        return newFilteredFactory(rowGen, range, predClass, ff.projection());
     }
 
+    /**
+     * @param primaryRowGen is non-null if this is a secondary
+     */
     @SuppressWarnings("unchecked")
     private ScanControllerFactory<R> newFilteredFactory(RowGen rowGen, RowFilter[] range,
                                                         Class<? extends RowPredicate> predClass,
-                                                        byte[] projectionSpec)
+                                                        Map<String, ColumnInfo> projection)
     {
         SingleScanController<R> unfiltered = unfiltered();
 
@@ -633,9 +633,8 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         RowFilter joinFilter = range[3];
 
         return new FilteredScanMaker<R>
-            (rowStoreRef(), secondaryDescriptor(), this, joinedPrimaryTableClass(),
-             unfiltered, predClass, rowType(), rowGen,
-             mSource.id(), lowBound, highBound, filter, joinFilter, projectionSpec).finish();
+            (rowStoreRef(), this, rowGen, unfiltered, predClass,
+             lowBound, highBound, filter, joinFilter, projection).finish();
     }
 
     private RowFilter[][] multiRangeExtract(RowFilter rf, ColumnInfo... keyColumns) {
@@ -736,7 +735,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             subTable = this;
         } else {
             boolean alt = rowInfo.alternateKeys.contains(subIndex);
-            subTable = viewIndexTable(alt, subIndex.keySpec());
+            subTable = viewIndexTable(alt, subIndex.fullSpec());
         }
 
         FilterFactoryCache ffc;

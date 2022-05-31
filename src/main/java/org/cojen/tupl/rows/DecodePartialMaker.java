@@ -48,60 +48,81 @@ public class DecodePartialMaker {
      * Makes a specification in which the columns to decode and the columns to mark clean are
      * the same.
      *
+     * @param primaryRowGen non-null if rowGen refers to a secondary
      * @param projection if null, then null is returned (implies all columns)
      */
-    public static byte[] makeFullSpec(RowGen rowGen, Map<String, ColumnInfo> projection) {
+    public static byte[] makeFullSpec(RowGen rowGen, RowGen primaryRowGen,
+                                      Map<String, ColumnInfo> projection)
+    {
         if (projection == null) {
             return null;
         }
 
-        var toDecode = new BitSet();
-
-        Map<String, Integer> columnNumbers = rowGen.columnNumbers();
-        for (String name : projection.keySet()) {
-            toDecode.set(columnNumbers.get(name));
+        BitSet toDecodeBits = new BitSet();
+        {
+            Map<String, Integer> columnNumbers = rowGen.columnNumbers();
+            for (String name : projection.keySet()) {
+                toDecodeBits.set(columnNumbers.get(name));
+            }
         }
 
-        byte[] bytes = toDecode.toByteArray();
-        return makeSpec(bytes, bytes);
+        BitSet toMarkCleanBits;
+        if (primaryRowGen == null) {
+            toMarkCleanBits = null;
+        } else {
+            toMarkCleanBits = new BitSet();
+            Map<String, Integer> columnNumbers = primaryRowGen.columnNumbers();
+            for (String name : projection.keySet()) {
+                toMarkCleanBits.set(columnNumbers.get(name));
+            }
+        }
+
+        return makeSpec(toDecodeBits, toMarkCleanBits);
     }
 
     /**
-     * Makes a specification in which only the value columns are decoded, but all projected
-     * columns are marked clean. This implies that any key columns are already decoded.
-     *
-     * @param projection if null, then null is returned (implies all columns)
+     * @param toDecodeBits bits correspond to column numbers of the decoded row, which can be a
+     * primary row or a secondary row
+     * @param toMarkCleanBits bits correspond to column numbers of the primary row; if null,
+     * then is same as toDecodeBits, which implies that the decoded row is a primary row
      */
-    public static byte[] makeValueSpec(RowGen rowGen, Map<String, ColumnInfo> projection) {
-        if (projection == null) {
-            return null;
+    private static byte[] makeSpec(BitSet toDecodeBits, BitSet toMarkCleanBits) {
+        byte[] toDecode = toDecodeBits.toByteArray();
+        byte[] toMarkClean = toMarkCleanBits == null ? null : toMarkCleanBits.toByteArray();
+
+        int capacity = 1 + toDecode.length;
+
+        Encoder encoder;
+        if (toMarkClean == null) {
+            encoder = new Encoder(capacity);
+            encoder.writeBytes(toDecode);
+        } else {
+            encoder = new Encoder(capacity + 1 + toMarkClean.length);
+            encoder.writeBytes(toDecode);
+            encoder.writeBytes(toMarkClean);
         }
 
-        var toDecode = new BitSet();
-        var toMarkClean = new BitSet();
+        return encoder.toByteArray();
+    }
 
-        Map<String, Integer> columnNumbers = rowGen.columnNumbers();
-        int numKeys = rowGen.info.keyColumns.size();
-        for (String name : projection.keySet()) {
-            int num = columnNumbers.get(name);
-            if (num >= numKeys) {
-                toDecode.set(num);
-            }
-            toMarkClean.set(num);
+    /**
+     * @return toDecode and toMarkClean
+     */
+    private static BitSet[] decodeSpec(byte[] spec) {
+        int len = RowUtils.decodePrefixPF(spec, 0);
+        int offset = RowUtils.lengthPrefixPF(len);
+        BitSet toDecode = BitSet.valueOf(Arrays.copyOfRange(spec, offset, offset += len));
+
+        BitSet toMarkClean;
+        if (offset >= spec.length) {
+            toMarkClean = toDecode;
+        } else {
+            len = RowUtils.decodePrefixPF(spec, offset);
+            offset += RowUtils.lengthPrefixPF(len);
+            toMarkClean = BitSet.valueOf(Arrays.copyOfRange(spec, offset, offset + len));
         }
-
-        return makeSpec(toDecode, toMarkClean);
-    }
-
-    private static byte[] makeSpec(BitSet toDecode, BitSet toMarkClean) {
-        return makeSpec(toDecode.toByteArray(), toMarkClean.toByteArray());
-    }
-
-    private static byte[] makeSpec(byte[] toDecode, byte[] toMarkClean) {
-        byte[] spec = new byte[Math.max(toDecode.length, toMarkClean.length) << 1];
-        System.arraycopy(toDecode, 0, spec, 0, toDecode.length);
-        System.arraycopy(toMarkClean, 0, spec, spec.length >> 1, toMarkClean.length);
-        return spec;
+        
+        return new BitSet[] {toDecode, toMarkClean};
     }
 
     /**
@@ -133,9 +154,9 @@ public class DecodePartialMaker {
             RowInfo dstRowInfo = RowInfo.find(rowType);
             RowGen dstRowGen = dstRowInfo.rowGen();
 
-            int specLen = spec.length;
-            BitSet toDecode = BitSet.valueOf(Arrays.copyOfRange(spec, 0, specLen >> 1));
-            BitSet toMarkClean = BitSet.valueOf(Arrays.copyOfRange(spec, specLen >> 1, specLen));
+            BitSet[] sets = decodeSpec(spec);
+            BitSet toDecode = sets[0];
+            BitSet toMarkClean = sets[1];
 
             // Decode the key columns.
             ColumnCodec[] keyCodecs = dstRowGen.keyCodecs();
@@ -227,9 +248,9 @@ public class DecodePartialMaker {
         RowInfo rowInfo = RowStore.indexRowInfo(primaryRowInfo, secondaryDesc);
         RowGen rowGen = rowInfo.rowGen();
 
-        int specLen = spec.length;
-        BitSet toDecode = BitSet.valueOf(Arrays.copyOfRange(spec, 0, specLen >> 1));
-        BitSet toMarkClean = BitSet.valueOf(Arrays.copyOfRange(spec, specLen >> 1, specLen));
+        BitSet[] sets = decodeSpec(spec);
+        BitSet toDecode = sets[0];
+        BitSet toMarkClean = sets[1];
 
         // Decode the key columns.
         ColumnCodec[] keyCodecs = rowGen.keyCodecs();
@@ -251,8 +272,6 @@ public class DecodePartialMaker {
 
         // Mark requested columns as clean, all others are unset.
         {
-            Map<Integer, String> numToName = flip(rowGen.columnNumbers());
-
             RowGen primaryRowGen = primaryRowInfo.rowGen();
             Map<String, Integer> primaryColumnNumbers = primaryRowGen.columnNumbers();
 
@@ -261,9 +280,7 @@ public class DecodePartialMaker {
 
             for (int num = 0; num < maxNum; ) {
                 if (toMarkClean.get(num)) {
-                    String name = numToName.get(num);
-                    int primaryNum = primaryColumnNumbers.get(name);
-                    mask |= RowGen.stateFieldMask(primaryNum, 0b01); // clean state
+                    mask |= RowGen.stateFieldMask(num, 0b01); // clean state
                 }
                 if ((++num & 0b1111) == 0 || num >= maxNum) {
                     rowVar.field(primaryRowGen.stateField(num - 1)).set(mask);
@@ -342,13 +359,5 @@ public class DecodePartialMaker {
                 }
             }
         }
-    }
-
-    private static <K, V> Map<V, K> flip(Map<K, V> map) {
-        var flipped = new HashMap<V, K>(map.size());
-        for (Map.Entry<K, V> e : map.entrySet()) {
-            flipped.put(e.getValue(), e.getKey());
-        }
-        return flipped;
     }
 }
