@@ -72,7 +72,7 @@ final class RangeUnionScanControllerFactory<R> implements ScanControllerFactory<
         var controllers = new SingleScanController[ranges.length];
 
         var first = (SingleScanController<R>) ranges[0].scanController(args);
-        RowPredicate predicate = first.predicate();
+        RowPredicate<R> predicate = first.predicate();
         controllers[0] = first;
 
         for (int i=1; i<controllers.length; i++) {
@@ -86,7 +86,7 @@ final class RangeUnionScanControllerFactory<R> implements ScanControllerFactory<
 
     @Override
     @SuppressWarnings("unchecked")
-    public ScanController<R> scanController(RowPredicate predicate) {
+    public ScanController<R> scanController(RowPredicate<R> predicate) {
         var ranges = mRanges;
         var controllers = new SingleScanController[ranges.length];
 

@@ -44,7 +44,7 @@ public interface ScanControllerFactory<R> {
     /**
      * Return a ScanController which references a RowPredicate as constructed by the first batch.
      */
-    default ScanController<R> scanController(RowPredicate predicate) {
+    default ScanController<R> scanController(RowPredicate<R> predicate) {
         throw new UnsupportedOperationException();
     }
 }

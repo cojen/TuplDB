@@ -503,7 +503,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             }
 
             @Override
-            public ScanController<R> scanController(RowPredicate predicate) {
+            public ScanController<R> scanController(RowPredicate<R> predicate) {
                 return unfilteredReverse();
             }
         };
@@ -520,7 +520,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     @Override // ScanControllerFactory
-    public final ScanController<R> scanController(RowPredicate predicate) {
+    public final ScanController<R> scanController(RowPredicate<R> predicate) {
         return unfiltered();
     }
 

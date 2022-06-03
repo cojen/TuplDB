@@ -106,7 +106,7 @@ public abstract class SingleScanController<R> implements ScanController<R>, RowE
     }
 
     @Override
-    public RowEvaluator<R> evaluator() {
+    public final RowEvaluator<R> evaluator() {
         return this;
     }
 
