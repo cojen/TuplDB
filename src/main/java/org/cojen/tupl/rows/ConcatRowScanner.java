@@ -30,7 +30,13 @@ abstract class ConcatRowScanner<R> implements RowScanner<R> {
     private RowScanner<R> mCurrent;
 
     ConcatRowScanner() throws IOException {
-        mCurrent = next();
+        RowScanner<R> next = next();
+        while (true) {
+            mCurrent = next;
+            if (row() != null || (next = next()) == null) {
+                return;
+            }
+        }
     }
 
     @Override
