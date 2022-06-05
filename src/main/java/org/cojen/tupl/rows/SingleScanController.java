@@ -80,6 +80,11 @@ public abstract class SingleScanController<R> implements ScanController<R>, RowE
     }
 
     @Override
+    public boolean isJoined() {
+        return false;
+    }
+
+    @Override
     public final Cursor newCursor(View view, Transaction txn) throws IOException {
         if (mReverse) {
             // Must reverse before applying bounds, because they're supposed to be swapped.

@@ -37,6 +37,11 @@ public interface ScanController<R> {
     static final byte[] EMPTY = new byte[0];
 
     /**
+     * Returns true if a natural join to the primary table is ever performed by this controller.
+     */
+    boolean isJoined();
+
+    /**
      * Returns a predicate which is shared by all scan batches.
      */
     default RowPredicate<R> predicate() {

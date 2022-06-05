@@ -176,7 +176,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         final BasicRowScanner<R> scanner;
         RowPredicateLock.Closer closer = null;
 
-        if (txn == null && controller instanceof JoinedScanController) {
+        if (txn == null && controller.isJoined()) {
             txn = mSource.newTransaction(null);
             txn.lockMode(LockMode.REPEATABLE_READ);
             scanner = new AutoCommitRowScanner<>(this, controller);

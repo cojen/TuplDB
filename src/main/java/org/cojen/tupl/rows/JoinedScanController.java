@@ -49,6 +49,11 @@ public abstract class JoinedScanController<R> extends SingleScanController<R> {
         mPrimaryIndex = from.mPrimaryIndex;
     }
 
+    @Override
+    public boolean isJoined() {
+        return true;
+    }
+
     // Subclass should implement one of these methods. The secondaryValue param is required
     // for alternate keys.
     //protected static byte[] toPrimaryKey(byte[] secondaryKey);

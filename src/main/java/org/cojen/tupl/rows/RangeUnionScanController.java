@@ -48,6 +48,16 @@ final class RangeUnionScanController<R> implements ScanController<R> {
     }
 
     @Override
+    public boolean isJoined() {
+        for (SingleScanController controller : mControllers) {
+            if (controller.isJoined()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
     public RowPredicate<R> predicate() {
         return mControllers[0].predicate();
     }
