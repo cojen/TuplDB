@@ -160,17 +160,27 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
     @Override
     public final RowScanner<R> newRowScanner(Transaction txn) throws IOException {
-        return newRowScanner(txn, unfiltered());
+        return newRowScanner(txn, (R) null);
+    }
+
+    final RowScanner<R> newRowScanner(Transaction txn, R row) throws IOException {
+        return newRowScanner(txn, row, unfiltered());
     }
 
     @Override
-    public RowScanner<R> newRowScanner(Transaction txn, String filter, Object... args)
+    public final RowScanner<R> newRowScanner(Transaction txn, String filter, Object... args)
         throws IOException
     {
-        return scannerQueryLauncher(txn, filter).newRowScanner(txn, args);
+        return newRowScanner(txn, (R) null, filter, args);
     }
 
-    final RowScanner<R> newRowScanner(Transaction txn, ScanController<R> controller)
+    RowScanner<R> newRowScanner(Transaction txn, R row, String filter, Object... args)
+        throws IOException
+    {
+        return scannerQueryLauncher(txn, filter).newRowScanner(txn, row, args);
+    }
+
+    final RowScanner<R> newRowScanner(Transaction txn, R row, ScanController<R> controller)
         throws IOException
     {
         final BasicRowScanner<R> scanner;
@@ -197,7 +207,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         }
 
         try {
-            scanner.init(txn);
+            scanner.init(txn, row);
             return scanner;
         } catch (Throwable e) {
             if (closer != null) {
@@ -207,10 +217,11 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         }
     }
 
-    final RowScanner<R> newRowScannerThisTable(Transaction txn, String filter, Object... args)
+    final RowScanner<R> newRowScannerThisTable(Transaction txn, R row,
+                                               String filter, Object... args)
         throws IOException
     {
-        return newRowScanner(txn, scannerFilteredFactory(txn, filter).scanController(args));
+        return newRowScanner(txn, row, scannerFilteredFactory(txn, filter).scanController(args));
     }
 
     final ScanControllerFactory<R> scannerFilteredFactory(Transaction txn, String filter) {
@@ -236,27 +247,37 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     @Override
-    public RowUpdater<R> newRowUpdater(Transaction txn) throws IOException {
-        return newRowUpdater(txn, unfiltered());
+    public final RowUpdater<R> newRowUpdater(Transaction txn) throws IOException {
+        return newRowUpdater(txn, (R) null);
+    }
+
+    final RowUpdater<R> newRowUpdater(Transaction txn, R row) throws IOException {
+        return newRowUpdater(txn, row, unfiltered());
     }
 
     @Override
-    public RowUpdater<R> newRowUpdater(Transaction txn, String filter, Object... args)
+    public final RowUpdater<R> newRowUpdater(Transaction txn, String filter, Object... args)
         throws IOException
     {
-        return updaterQueryLauncher(txn, filter).newRowUpdater(txn, args);
+        return newRowUpdater(txn, (R) null, filter, args);
     }
 
-    protected RowUpdater<R> newRowUpdater(Transaction txn, ScanController<R> controller)
+    RowUpdater<R> newRowUpdater(Transaction txn, R row, String filter, Object... args)
         throws IOException
     {
-        return newRowUpdater(txn, controller, null);
+        return updaterQueryLauncher(txn, filter).newRowUpdater(txn, row, args);
+    }
+
+    protected RowUpdater<R> newRowUpdater(Transaction txn, R row, ScanController<R> controller)
+        throws IOException
+    {
+        return newRowUpdater(txn, row, controller, null);
     }
 
     /**
      * @param secondary non-null if joining from a secondary index to this primary table
      */
-    final RowUpdater<R> newRowUpdater(Transaction txn, ScanController<R> controller,
+    final RowUpdater<R> newRowUpdater(Transaction txn, R row, ScanController<R> controller,
                                       BaseTableIndex<R> secondary)
         throws IOException
     {
@@ -318,11 +339,11 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
         try {
             if (secondary == null) {
-                updater.init(txn);
+                updater.init(txn, row);
                 return updater;
             } else {
                 var joined = new JoinedRowUpdater<>(secondary, controller, updater);
-                joined.init(txn);
+                joined.init(txn, row);
                 return joined;
             }
         } catch (Throwable e) {
@@ -333,10 +354,11 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         }
     }
 
-    final RowUpdater<R> newRowUpdaterThisTable(Transaction txn, String filter, Object... args)
+    final RowUpdater<R> newRowUpdaterThisTable(Transaction txn, R row,
+                                               String filter, Object... args)
         throws IOException
     {
-        return newRowUpdater(txn, updaterFilteredFactory(txn, filter).scanController(args));
+        return newRowUpdater(txn, row, updaterFilteredFactory(txn, filter).scanController(args));
     }
 
     final ScanControllerFactory<R> updaterFilteredFactory(Transaction txn, String filter) {

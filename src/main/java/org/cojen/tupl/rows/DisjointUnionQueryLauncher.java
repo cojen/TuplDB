@@ -43,17 +43,17 @@ final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
-    public RowScanner<R> newRowScanner(Transaction txn, Object... args) throws IOException {
-        return new ConcatRowScanner<R>() {
+    public RowScanner<R> newRowScanner(Transaction txn, R row, Object... args) throws IOException {
+        return new ConcatRowScanner<R>(row) {
             private int mWhich;
 
             @Override
-            public RowScanner<R> next() throws IOException {
+            public RowScanner<R> next(R dst) throws IOException {
                 int which = mWhich;
                 if (which >= mLaunchers.length) {
                     return null;
                 } else {
-                    RowScanner<R> next = mLaunchers[which].newRowScanner(txn, args);
+                    RowScanner<R> next = mLaunchers[which].newRowScanner(txn, dst, args);
                     mWhich = which + 1;
                     return next;
                 }
@@ -62,17 +62,17 @@ final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
-    public RowUpdater<R> newRowUpdater(Transaction txn, Object... args) throws IOException {
-        return new ConcatRowUpdater<R>() {
+    public RowUpdater<R> newRowUpdater(Transaction txn, R row, Object... args) throws IOException {
+        return new ConcatRowUpdater<R>(row) {
             private int mWhich;
 
             @Override
-            public RowUpdater<R> next() throws IOException {
+            public RowUpdater<R> next(R dst) throws IOException {
                 int which = mWhich;
                 if (which >= mLaunchers.length) {
                     return null;
                 } else {
-                    RowUpdater<R> next = mLaunchers[which].newRowUpdater(txn, args);
+                    RowUpdater<R> next = mLaunchers[which].newRowUpdater(txn, dst, args);
                     mWhich = which + 1;
                     return next;
                 }

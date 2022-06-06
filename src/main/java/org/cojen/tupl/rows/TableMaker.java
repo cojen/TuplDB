@@ -351,9 +351,10 @@ public class TableMaker {
 
         // Override the method inherited from BaseTableIndex.
         MethodMaker mm = mClassMaker.addMethod
-            (RowUpdater.class, "newRowUpdater", Transaction.class, ScanController.class);
+            (RowUpdater.class, "newRowUpdater",
+             Transaction.class, Object.class, ScanController.class);
         mm.protected_();
-        mm.return_(mm.invoke("newJoinedRowUpdater", mm.param(0), mm.param(1),
+        mm.return_(mm.invoke("newJoinedRowUpdater", mm.param(0), mm.param(1), mm.param(2),
                              mm.field("primaryTable")));
 
         return doFinish(mt);

@@ -42,13 +42,13 @@ final class BasicQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
-    public RowScanner<R> newRowScanner(Transaction txn, Object... args) throws IOException {
-        return mTable.newRowScanner(txn, mFactory.scanController(args));
+    public RowScanner<R> newRowScanner(Transaction txn, R row, Object... args) throws IOException {
+        return mTable.newRowScanner(txn, row, mFactory.scanController(args));
     }
 
     @Override
-    public RowUpdater<R> newRowUpdater(Transaction txn, Object... args) throws IOException {
-        return mTable.newRowUpdater(txn, mFactory.scanController(args));
+    public RowUpdater<R> newRowUpdater(Transaction txn, R row, Object... args) throws IOException {
+        return mTable.newRowUpdater(txn, row, mFactory.scanController(args));
     }
 
     @Override

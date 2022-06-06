@@ -33,9 +33,15 @@ import org.cojen.tupl.diag.QueryPlan;
  * @author Brian S O'Neill
  */
 interface QueryLauncher<R> {
-    RowScanner<R> newRowScanner(Transaction txn, Object... args) throws IOException;
+    /**
+     * @param row initial row; can be null
+     */
+    RowScanner<R> newRowScanner(Transaction txn, R row, Object... args) throws IOException;
 
-    RowUpdater<R> newRowUpdater(Transaction txn, Object... args) throws IOException;
+    /**
+     * @param row initial row; can be null
+     */
+    RowUpdater<R> newRowUpdater(Transaction txn, R row, Object... args) throws IOException;
 
     QueryPlan plan(Object... args);
 

@@ -77,7 +77,7 @@ final class PrimaryTable<R> implements Table<R> {
     public RowScanner<R> newRowScanner(Transaction txn, String filter, Object... args)
         throws IOException
     {
-        return mSource.newRowScannerThisTable(txn, filter, args);
+        return mSource.newRowScannerThisTable(txn, null, filter, args);
     }
 
     @Override
@@ -89,7 +89,7 @@ final class PrimaryTable<R> implements Table<R> {
     public RowUpdater<R> newRowUpdater(Transaction txn, String filter, Object... args)
         throws IOException 
     {
-        return mSource.newRowUpdaterThisTable(txn, filter, args);
+        return mSource.newRowUpdaterThisTable(txn, null, filter, args);
     }
 
     @Override

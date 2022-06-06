@@ -50,7 +50,7 @@ public abstract class JoinedScanController<R> extends SingleScanController<R> {
     }
 
     @Override
-    public boolean isJoined() {
+    public final boolean isJoined() {
         return true;
     }
 

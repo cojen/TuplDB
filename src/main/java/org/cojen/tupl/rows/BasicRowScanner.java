@@ -52,8 +52,9 @@ class BasicRowScanner<R> implements RowScanner<R> {
      * Must be called after construction.
      *
      * @param txn can be null
+     * @param row initial row; can be null
      */
-    void init(Transaction txn) throws IOException {
+    void init(Transaction txn, R row) throws IOException {
         a: while (true) {
             setEvaluator(mController.evaluator());
 
@@ -70,7 +71,7 @@ class BasicRowScanner<R> implements RowScanner<R> {
                     continue a;
                 }
                 try {
-                    R decoded = decodeRow(c, result, null);
+                    R decoded = decodeRow(c, result, row);
                     if (decoded != null) {
                         mRow = decoded;
                         return;
@@ -114,16 +115,6 @@ class BasicRowScanner<R> implements RowScanner<R> {
     @Override
     public final R row() {
         return mRow;
-    }
-
-    @Override
-    public final R row(R row) {
-        if (mRow == null) {
-            return null;
-        } else {
-            mTable.copyRow(mRow, row);
-            return row;
-        }
     }
 
     @Override

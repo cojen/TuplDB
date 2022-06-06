@@ -29,8 +29,17 @@ import org.cojen.tupl.RowUpdater;
 abstract class ConcatRowUpdater<R> implements RowUpdater<R> {
     private RowUpdater<R> mCurrent;
 
-    ConcatRowUpdater() throws IOException {
-        mCurrent = next();
+    /**
+     * @param dst can be null
+     */
+    ConcatRowUpdater(final R dst) throws IOException {
+        RowUpdater<R> next = next(dst);
+        while (true) {
+            mCurrent = next;
+            if (row() != null || (next = next(dst)) == null) {
+                return;
+            }
+        }
     }
 
     @Override
@@ -39,16 +48,11 @@ abstract class ConcatRowUpdater<R> implements RowUpdater<R> {
     }
 
     @Override
-    public R row(R row) {
-        return mCurrent.row(row);
-    }
-
-    @Override
     public R step() throws IOException {
         R row = mCurrent.step();
         while (true) {
             RowUpdater<R> next;
-            if (row != null || (next = next()) == null) {
+            if (row != null || (next = next(null)) == null) {
                 return row;
             }
             mCurrent = next;
@@ -61,11 +65,11 @@ abstract class ConcatRowUpdater<R> implements RowUpdater<R> {
         R row = mCurrent.step(dst);
         while (true) {
             RowUpdater<R> next;
-            if (row != null || (next = next()) == null) {
+            if (row != null || (next = next(dst)) == null) {
                 return row;
             }
             mCurrent = next;
-            row = dst == null ? next.row() : next.row(dst);
+            row = next.row();
         }
     }
 
@@ -116,7 +120,9 @@ abstract class ConcatRowUpdater<R> implements RowUpdater<R> {
     }
 
     /**
-     * Returns null if none left, but must always return at least one.
+     * Returns null if none left, but must always return at least one the first time.
+     *
+     * @param dst can be null
      */
-    protected abstract RowUpdater<R> next() throws IOException;
+    protected abstract RowUpdater<R> next(R dst) throws IOException;
 }

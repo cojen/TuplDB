@@ -29,11 +29,14 @@ import org.cojen.tupl.RowScanner;
 abstract class ConcatRowScanner<R> implements RowScanner<R> {
     private RowScanner<R> mCurrent;
 
-    ConcatRowScanner() throws IOException {
-        RowScanner<R> next = next();
+    /**
+     * @param dst can be null
+     */
+    ConcatRowScanner(final R dst) throws IOException {
+        RowScanner<R> next = next(dst);
         while (true) {
             mCurrent = next;
-            if (row() != null || (next = next()) == null) {
+            if (row() != null || (next = next(dst)) == null) {
                 return;
             }
         }
@@ -45,16 +48,11 @@ abstract class ConcatRowScanner<R> implements RowScanner<R> {
     }
 
     @Override
-    public R row(R row) {
-        return mCurrent.row(row);
-    }
-
-    @Override
     public R step() throws IOException {
         R row = mCurrent.step();
         while (true) {
             RowScanner<R> next;
-            if (row != null || (next = next()) == null) {
+            if (row != null || (next = next(null)) == null) {
                 return row;
             }
             mCurrent = next;
@@ -67,11 +65,11 @@ abstract class ConcatRowScanner<R> implements RowScanner<R> {
         R row = mCurrent.step(dst);
         while (true) {
             RowScanner<R> next;
-            if (row != null || (next = next()) == null) {
+            if (row != null || (next = next(dst)) == null) {
                 return row;
             }
             mCurrent = next;
-            row = dst == null ? next.row() : next.row(dst);
+            row = next.row();
         }
     }
 
@@ -81,7 +79,9 @@ abstract class ConcatRowScanner<R> implements RowScanner<R> {
     }
 
     /**
-     * Returns null if none left, but must always return at least one.
+     * Returns null if none left, but must always return at least one the first time.
+     *
+     * @param dst can be null
      */
-    protected abstract RowScanner<R> next() throws IOException;
+    protected abstract RowScanner<R> next(R dst) throws IOException;
 }

@@ -63,9 +63,9 @@ final class JoinedRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater
     }
 
     @Override
-    void init(Transaction txn) throws IOException {
+    void init(Transaction txn, R row) throws IOException {
         mPrimaryUpdater.mCursor = mPrimaryCursor = mPrimaryUpdater.mTable.mSource.newCursor(txn);
-        super.init(txn);
+        super.init(txn, row);
     }
 
     @Override
