@@ -13,23 +13,6 @@ powerful enough for supporting all the requirements of relational SQL databases 
 NoSQL databases. Because Tupl doesn't impose any structure or encoding for data, a high-level
 database is free to implement the most efficient format it requires.
 
-To depend on Tupl, use the following POM snippet:
-
-```xml
-  <repositories>
-    <repository>
-      <id>jitpack.io</id>
-      <url>https://jitpack.io</url>
-    </repository>
-  </repositories>
-
-  <dependency>
-    <groupId>com.github.cojen</groupId>
-    <artifactId>Tupl</artifactId>
-    <version>[1.5.0, 2.0.0)</version>
-  </dependency>
-```
-
 The main entry point is the [Database](https://tupl.cojen.org/javadoc/org.cojen.tupl/org/cojen/tupl/Database.html) class. Here is a simple example for opening a non-durable database:
 
 ```java
