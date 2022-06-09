@@ -142,18 +142,13 @@ extends <a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/ja
 <div class="block">Returns a reference to the current row, which is null if the scanner is closed.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="RowScanner.html" title="type parameter in RowScanner">R</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#row(R)" class="member-name-link">row</a><wbr>(<a href="RowScanner.html" title="type parameter in RowScanner">R</a>&nbsp;row)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#step()" class="member-name-link">step</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Returns a copy of the current row, or else return null if the scanner is closed.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="RowScanner.html" title="type parameter in RowScanner">R</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#step()" class="member-name-link">step</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Step to the next row.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="RowScanner.html" title="type parameter in RowScanner">R</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#step(R)" class="member-name-link">step</a><wbr>(<a href="RowScanner.html" title="type parameter in RowScanner">R</a>&nbsp;row)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="RowScanner.html" title="type parameter in RowScanner">R</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#step(R)" class="member-name-link">step</a><wbr>(<a href="RowScanner.html" title="type parameter in RowScanner">R</a>&nbsp;row)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Step to the next row.</div>
 </div>
 </div>
@@ -175,21 +170,6 @@ extends <a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/ja
 <h3>row</h3>
 <div class="member-signature"><span class="return-type"><a href="RowScanner.html" title="type parameter in RowScanner">R</a></span>&nbsp;<span class="element-name">row</span>()</div>
 <div class="block">Returns a reference to the current row, which is null if the scanner is closed.</div>
-</section>
-</li>
-<li>
-<section class="detail" id="row(R)">
-<h3 id="row(java.lang.Object)">row</h3>
-<div class="member-signature"><span class="return-type"><a href="RowScanner.html" title="type parameter in RowScanner">R</a></span>&nbsp;<span class="element-name">row</span><wbr><span class="parameters">(<a href="RowScanner.html" title="type parameter in RowScanner">R</a>&nbsp;row)</span></div>
-<div class="block">Returns a copy of the current row, or else return null if the scanner is closed.</div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>row</code> - copy into this row</dd>
-<dt>Returns:</dt>
-<dd>the given row or null if no more rows remain and scanner has been closed</dd>
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if the given row object is null</dd>
-</dl>
 </section>
 </li>
 <li>
