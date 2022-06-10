@@ -130,10 +130,10 @@ public class TableMaker {
             Class baseClass;
 
             if (isPrimaryTable()) {
-                suffix = "Table";
+                suffix = "table";
                 baseClass = BaseTable.class;
             } else {
-                suffix = "Unjoined";
+                suffix = "unjoined";
                 baseClass = BaseTableIndex.class;
             }
 
@@ -294,7 +294,7 @@ public class TableMaker {
     MethodHandle finishJoined(Class<?> primaryTableClass, Class<?> unjoinedClass) {
         Objects.requireNonNull(primaryTableClass);
 
-        mClassMaker = mCodecGen.beginClassMaker(getClass(), mRowType, "Joined").public_()
+        mClassMaker = mCodecGen.beginClassMaker(getClass(), mRowType, "joined").public_()
             .extend(unjoinedClass);
 
         {

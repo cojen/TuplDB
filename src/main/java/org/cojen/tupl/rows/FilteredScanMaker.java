@@ -151,7 +151,7 @@ public class FilteredScanMaker<R> {
 
         // Define in the same package as the predicate class, in order to access it, and to
         // facilitate class unloading.
-        mFilterMaker = mRowGen.anotherClassMaker(getClass(), predClass, "Filter")
+        mFilterMaker = mRowGen.anotherClassMaker(getClass(), predClass, "filter")
             .public_().final_()
             .extend(unfiltered.getClass()).implement(ScanControllerFactory.class);
 

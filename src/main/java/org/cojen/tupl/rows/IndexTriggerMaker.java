@@ -86,7 +86,7 @@ public class IndexTriggerMaker<R> {
     IndexBackfill<R> makeBackfill(RowStore rs, long primaryIndexId,
                                   TableManager<R> manager, int which)
     {
-        ClassMaker cm = mPrimaryGen.beginClassMaker(IndexTriggerMaker.class, mRowType, "Backfill");
+        ClassMaker cm = mPrimaryGen.beginClassMaker(IndexTriggerMaker.class, mRowType, "backfill");
         cm.extend(IndexBackfill.class).final_();
 
         MethodMaker mm = cm.addMethod
@@ -192,7 +192,7 @@ public class IndexTriggerMaker<R> {
      */
     @SuppressWarnings("unchecked")
     Trigger<R> makeTrigger(RowStore rs, long primaryIndexId) {
-        mClassMaker = mPrimaryGen.beginClassMaker(IndexTriggerMaker.class, mRowType, "Trigger");
+        mClassMaker = mPrimaryGen.beginClassMaker(IndexTriggerMaker.class, mRowType, "trigger");
         mClassMaker.extend(Trigger.class).final_();
 
         boolean hasBackfills = false;
@@ -521,7 +521,7 @@ public class IndexTriggerMaker<R> {
          IndexBackfill[] backfills)
     {
         ClassMaker cm = primaryInfo.rowGen().beginClassMaker
-            (IndexTriggerMaker.class, rowType, "TriggerDelete").final_();
+            (IndexTriggerMaker.class, rowType, "trigger-delete").final_();
 
         MethodType ctorMethodType;
         if (backfills == null) {

@@ -124,7 +124,7 @@ public class RowPredicateMaker {
         // Generate a sub-package with an increasing number to facilitate unloading.
         String packageName = "p" + (long) cPackageNumHandle.getAndAdd(1L);
 
-        mClassMaker = rowGen.beginClassMaker(getClass(), rowType, packageName, "Predicate")
+        mClassMaker = rowGen.beginClassMaker(getClass(), rowType, packageName, "predicate")
             .final_().extend(baseClass).implement(RowPredicate.class);
 
         mCtorMaker = mClassMaker.addConstructor(Object[].class).varargs();

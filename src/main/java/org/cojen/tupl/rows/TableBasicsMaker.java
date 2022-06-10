@@ -56,7 +56,7 @@ class TableBasicsMaker {
     private static Class<?> make(Class<?> rowType, RowGen rowGen) {
         Class<?> rowClass = RowMaker.find(rowType);
 
-        ClassMaker cm = rowGen.beginClassMaker(TableBasicsMaker.class, rowType, "Basics")
+        ClassMaker cm = rowGen.beginClassMaker(TableBasicsMaker.class, rowType, "basics")
             .interface_().implement(Table.class);
 
         // Add the simple rowType method.
