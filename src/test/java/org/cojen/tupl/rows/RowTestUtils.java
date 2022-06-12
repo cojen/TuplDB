@@ -69,7 +69,7 @@ public class RowTestUtils {
         if (rowTypeName == null) {
             cm = ClassMaker.begin(newRowTypeName());
         } else {
-            cm = ClassMaker.beginExternal(rowTypeName);
+            cm = ClassMaker.beginExplicit(rowTypeName, null, new Object());
         }
 
         cm.public_().interface_();
