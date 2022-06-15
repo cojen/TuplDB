@@ -176,7 +176,7 @@ public class ConverterTest {
             }
 
             if (tc == TYPE_FLOAT) {
-                bd = BigDecimal.valueOf(bd.floatValue());
+                bd = BigDecimalUtils.valueOf(bd.floatValue());
             } else if (tc == TYPE_DOUBLE) {
                 bd = BigDecimal.valueOf(bd.doubleValue());
             }
@@ -436,6 +436,18 @@ public class ConverterTest {
                             return;
                         }
                         break;
+                    }
+                    break;
+                }
+                break;
+
+            case TYPE_INT: case TYPE_UINT: case TYPE_LONG: case TYPE_ULONG:
+            case TYPE_BIG_INTEGER: case TYPE_BIG_DECIMAL:
+                switch (srcType.info.plainTypeCode()) {
+                case TYPE_FLOAT:
+                    if (((float) srcValue) == dstNum.floatValue()) {
+                        // pass
+                        return;
                     }
                     break;
                 }

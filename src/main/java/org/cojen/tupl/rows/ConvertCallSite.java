@@ -691,7 +691,7 @@ public class ConvertCallSite extends MutableCallSite {
     // Called by generated code.
     public static float bdToFloat(BigDecimal bd) {
         float f = bd.floatValue();
-        if (BigDecimal.valueOf(f).compareTo(bd) != 0) {
+        if (BigDecimalUtils.valueOf(f).compareTo(bd) != 0) {
             throw loss(Float.class, bd);
         }
         return f;

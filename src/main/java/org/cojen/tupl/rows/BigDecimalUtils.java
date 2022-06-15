@@ -322,6 +322,29 @@ public class BigDecimalUtils extends RowUtils {
     }
 
     /**
+     * Performs a more accurate conversion because BigDecimal doesn't currently have a valueOf
+     * that accepts a float.
+     */
+    public static BigDecimal valueOf(float f) {
+        return new BigDecimal(Float.toString(f));
+    }
+
+    /**
+     * Does a more accurate conversion by not adding more scale than exists.
+     *
+     * @throws NumberFormatException if given value is NaN or infinite
+     */
+    public static BigDecimal toBigDecimal(float f) {
+        if (f == 0) {
+            return BigDecimal.ZERO;
+        } else if (f == 1) {
+            return BigDecimal.ONE;
+        } else {
+            return toBigDecimal(Float.toString(f));
+        }
+    }
+
+    /**
      * Does a more accurate conversion by not adding more scale than exists.
      *
      * @throws NumberFormatException if given value is NaN or infinite
@@ -331,9 +354,12 @@ public class BigDecimalUtils extends RowUtils {
             return BigDecimal.ZERO;
         } else if (d == 1) {
             return BigDecimal.ONE;
+        } else {
+            return toBigDecimal(Double.toString(d));
         }
+    }
 
-        String str = String.valueOf(d);
+    private static BigDecimal toBigDecimal(String str) {
         if (str.endsWith(".0")) {
             str = str.substring(0, str.length() - 2);
         } else {
@@ -342,7 +368,6 @@ public class BigDecimalUtils extends RowUtils {
                 str = str.substring(0, ix) + str.substring(ix + 2);
             }
         }
-
         return new BigDecimal(str);
     }
 

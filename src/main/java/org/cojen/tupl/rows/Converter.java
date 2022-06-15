@@ -498,7 +498,9 @@ public class Converter {
                 case TYPE_BIG_DECIMAL -> dstVar.set(srcVar.invoke("toBigInteger"));
                 case TYPE_FLOAT, TYPE_DOUBLE -> {
                     Label tryStart = mm.label().here();
-                    dstVar.set(mm.var(BigDecimal.class).invoke("valueOf", srcVar)
+                    var clazz = srcPlainTypeCode == TYPE_FLOAT
+                        ? BigDecimalUtils.class : BigDecimal.class;
+                    dstVar.set(mm.var(clazz).invoke("valueOf", srcVar)
                                .invoke("toBigInteger"));
                     mm.catch_(tryStart, NumberFormatException.class, exVar -> {
                         setDefault(mm, dstInfo, dstVar);

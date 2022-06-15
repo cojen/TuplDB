@@ -80,11 +80,9 @@ public class BigDecimalColumnTest {
 
         expect(Set.of(row3), table.newRowScanner(null, "value1 == ?", new BigDecimal("0.0000001")));
         expect(Set.of(row3), table.newRowScanner(null, "value1 == ?", 0.0000001));
+        expect(Set.of(row3), table.newRowScanner(null, "value1 == ?", 0.0000001f));
 
-        // Won't find it due to float32 rounding error.
-        expect(Set.of(), table.newRowScanner(null, "value1 == ?", 0.0000001f));
-
-        // Need a range search.
+        // Also try a range search.
         float low = 0.0000001f;
         low -= Math.ulp(low);
         float high = 0.0000001f;

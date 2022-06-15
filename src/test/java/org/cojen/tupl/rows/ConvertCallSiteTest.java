@@ -167,12 +167,14 @@ public class ConvertCallSiteTest {
              0.0d/0.0d, 0.0f/0.0f,
              "10.1", 10.1f,
              BigInteger.valueOf(1234), 1234f,
-             BigDecimal.valueOf(1234.125), 1234.125f
+             BigDecimal.valueOf(1234.125), 1234.125f,
+             BigDecimal.valueOf(1234.1d), 1234.1f,
+             BigDecimalUtils.valueOf(1234.1f), 1234.1f
              );
 
         fail(handles,
              false, Integer.MAX_VALUE - 1, 10_000_000_001L, Math.PI, "hello",
-             BigInteger.valueOf(10_000_000_000L), BigDecimal.valueOf(1234.1d));
+             BigInteger.valueOf(10_000_000_000L));
     }
 
     @Test
