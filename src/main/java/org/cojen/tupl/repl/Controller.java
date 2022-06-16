@@ -195,7 +195,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private Controller(EventListener eventListener,
                        StateLog log, long groupToken, GroupFile gf, SocketFactory factory,
                        boolean proxyWrites, boolean writeCRCs)
-        throws IOException
     {
         mEventListener = eventListener;
         mStateLog = log;

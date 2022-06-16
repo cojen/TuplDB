@@ -24,7 +24,6 @@ import java.lang.invoke.VarHandle;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DatabaseException;

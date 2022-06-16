@@ -25,7 +25,6 @@ import java.io.IOException;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-import org.cojen.tupl.Database;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.UnmodifiableReplicaException;
 

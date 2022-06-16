@@ -34,8 +34,6 @@ public interface EntryFunction {
     default EntryFunction andThen(EntryFunction after) {
         Objects.requireNonNull(after);
 
-        return (key, value) -> {
-            return after.apply(key, apply(key, value));
-        };
+        return (key, value) -> after.apply(key, apply(key, value));
     }
 }

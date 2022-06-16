@@ -21,7 +21,6 @@ import java.io.Closeable;
 import java.io.Flushable;
 import java.io.IOException;
 
-import org.cojen.tupl.Database;
 import org.cojen.tupl.DurabilityMode;
 
 import org.cojen.tupl.diag.DatabaseStats;

@@ -24,8 +24,6 @@ import java.lang.invoke.MethodType;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Label;

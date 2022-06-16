@@ -25,7 +25,6 @@ import java.util.Comparator;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Filter;

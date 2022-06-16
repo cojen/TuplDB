@@ -55,7 +55,7 @@ public abstract class Delayed implements Comparable<Delayed>, Runnable {
         }
 
         @Override
-        protected void doRun() throws Throwable {
+        protected void doRun() {
             mTask.run();
         }
     }

@@ -32,7 +32,6 @@ import org.cojen.maker.Variable;
 import org.cojen.tupl.filter.ColumnFilter;
 
 import static org.cojen.tupl.rows.ColumnInfo.*;
-import static org.cojen.tupl.rows.RowUtils.*;
 
 /**
  * Makes code for encoding and decoding columns.

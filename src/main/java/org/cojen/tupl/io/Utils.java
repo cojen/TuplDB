@@ -122,7 +122,7 @@ public class Utils {
      * @param offset offset into byte array
      * @param v value to encode
      */
-    public static final void encodeShortBE(byte[] b, int offset, int v) {
+    public static void encodeShortBE(byte[] b, int offset, int v) {
         cShortArrayBEHandle.set(b, offset, (short) v);
     }
 
@@ -133,7 +133,7 @@ public class Utils {
      * @param offset offset into byte array
      * @param v value to encode
      */
-    public static final void encodeShortLE(byte[] b, int offset, int v) {
+    public static void encodeShortLE(byte[] b, int offset, int v) {
         cShortArrayLEHandle.set(b, offset, (short) v);
     }
 
@@ -144,7 +144,7 @@ public class Utils {
      * @param offset offset into byte array
      * @param v value to encode
      */
-    public static final void encodeIntBE(byte[] b, int offset, int v) {
+    public static void encodeIntBE(byte[] b, int offset, int v) {
         cIntArrayBEHandle.set(b, offset, v);
     }
 
@@ -155,7 +155,7 @@ public class Utils {
      * @param offset offset into byte array
      * @param v value to encode
      */
-    public static final void encodeIntLE(byte[] b, int offset, int v) {
+    public static void encodeIntLE(byte[] b, int offset, int v) {
         cIntArrayLEHandle.set(b, offset, v);
     }
 
@@ -166,7 +166,7 @@ public class Utils {
      * @param offset offset into byte array
      * @param v value to encode
      */
-    public static final void encodeInt48BE(byte[] b, int offset, long v) {
+    public static void encodeInt48BE(byte[] b, int offset, long v) {
         encodeShortBE(b, offset, (int) (v >> 32));
         encodeIntBE(b, offset + 2, (int) v);
     }
@@ -178,7 +178,7 @@ public class Utils {
      * @param offset offset into byte array
      * @param v value to encode
      */
-    public static final void encodeInt48LE(byte[] b, int offset, long v) {
+    public static void encodeInt48LE(byte[] b, int offset, long v) {
         encodeIntLE(b, offset, (int) v);
         encodeShortLE(b, offset + 4, (int) (v >> 32));
     }
@@ -190,7 +190,7 @@ public class Utils {
      * @param offset offset into byte array
      * @param v value to encode
      */
-    public static final void encodeLongBE(byte[] b, int offset, long v) {
+    public static void encodeLongBE(byte[] b, int offset, long v) {
         cLongArrayBEHandle.set(b, offset, v);
     }
 
@@ -201,7 +201,7 @@ public class Utils {
      * @param offset offset into byte array
      * @param v value to encode
      */
-    public static final void encodeLongLE(byte[] b, int offset, long v) {
+    public static void encodeLongLE(byte[] b, int offset, long v) {
         cLongArrayLEHandle.set(b, offset, v);
     }
 
@@ -212,7 +212,7 @@ public class Utils {
      * @param offset offset into byte array
      * @return decoded value
      */
-    public static final short decodeShortBE(byte[] b, int offset) {
+    public static short decodeShortBE(byte[] b, int offset) {
         return (short) cShortArrayBEHandle.get(b, offset);
     }
 
@@ -223,7 +223,7 @@ public class Utils {
      * @param offset offset into byte array
      * @return decoded value
      */
-    public static final short decodeShortLE(byte[] b, int offset) {
+    public static short decodeShortLE(byte[] b, int offset) {
         return (short) cShortArrayLEHandle.get(b, offset);
     }
 
@@ -234,7 +234,7 @@ public class Utils {
      * @param offset offset into byte array
      * @return decoded value
      */
-    public static final int decodeUnsignedShortBE(byte[] b, int offset) {
+    public static int decodeUnsignedShortBE(byte[] b, int offset) {
         return ((short) cShortArrayBEHandle.get(b, offset)) & 0xffff;
     }
 
@@ -245,7 +245,7 @@ public class Utils {
      * @param offset offset into byte array
      * @return decoded value
      */
-    public static final int decodeUnsignedShortLE(byte[] b, int offset) {
+    public static int decodeUnsignedShortLE(byte[] b, int offset) {
         return ((short) cShortArrayLEHandle.get(b, offset)) & 0xffff;
     }
 
@@ -256,7 +256,7 @@ public class Utils {
      * @param offset offset into byte array
      * @return decoded value
      */
-    public static final int decodeIntBE(byte[] b, int offset) {
+    public static int decodeIntBE(byte[] b, int offset) {
         return (int) cIntArrayBEHandle.get(b, offset);
     }
 
@@ -267,7 +267,7 @@ public class Utils {
      * @param offset offset into byte array
      * @return decoded value
      */
-    public static final int decodeIntLE(byte[] b, int offset) {
+    public static int decodeIntLE(byte[] b, int offset) {
         return (int) cIntArrayLEHandle.get(b, offset);
     }
 
@@ -278,7 +278,7 @@ public class Utils {
      * @param offset offset into byte array
      * @return decoded value
      */
-    public static final long decodeUnsignedIntBE(byte[] b, int offset) {
+    public static long decodeUnsignedIntBE(byte[] b, int offset) {
         return ((int) cIntArrayBEHandle.get(b, offset)) & 0xffff_ffffL;
     }
 
@@ -289,7 +289,7 @@ public class Utils {
      * @param offset offset into byte array
      * @return decoded value
      */
-    public static final long decodeUnsignedIntLE(byte[] b, int offset) {
+    public static long decodeUnsignedIntLE(byte[] b, int offset) {
         return ((int) cIntArrayLEHandle.get(b, offset)) & 0xffff_ffffL;
     }
 
@@ -300,7 +300,7 @@ public class Utils {
      * @param offset offset into byte array
      * @return decoded value
      */
-    public static final long decodeUnsignedInt48BE(byte[] b, int offset) {
+    public static long decodeUnsignedInt48BE(byte[] b, int offset) {
         return (((long) decodeUnsignedShortBE(b, offset)) << 32)
             | decodeUnsignedIntBE(b, offset + 2);
     }
@@ -312,7 +312,7 @@ public class Utils {
      * @param offset offset into byte array
      * @return decoded value
      */
-    public static final long decodeUnsignedInt48LE(byte[] b, int offset) {
+    public static long decodeUnsignedInt48LE(byte[] b, int offset) {
         return decodeUnsignedIntLE(b, offset)
             | (((long) decodeUnsignedShortLE(b, offset + 4)) << 32);
     }
@@ -324,7 +324,7 @@ public class Utils {
      * @param offset offset into byte array
      * @return decoded value
      */
-    public static final long decodeLongBE(byte[] b, int offset) {
+    public static long decodeLongBE(byte[] b, int offset) {
         return (long) cLongArrayBEHandle.get(b, offset);
     }
 
@@ -335,7 +335,7 @@ public class Utils {
      * @param offset offset into byte array
      * @return decoded value
      */
-    public static final long decodeLongLE(byte[] b, int offset) {
+    public static long decodeLongLE(byte[] b, int offset) {
         return (long) cLongArrayLEHandle.get(b, offset);
     }
 

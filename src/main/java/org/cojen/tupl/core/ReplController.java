@@ -26,7 +26,6 @@ import java.util.Objects;
 
 import org.cojen.tupl.ConfirmationFailureException;
 import org.cojen.tupl.ConfirmationTimeoutException;
-import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.UnmodifiableReplicaException;

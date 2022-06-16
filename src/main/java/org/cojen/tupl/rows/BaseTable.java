@@ -372,9 +372,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         return cache.obtain(filter, null);
     }
 
-    final QueryLauncher<R> updaterQueryLauncher(Transaction txn, String filter)
-        throws IOException
-    {
+    final QueryLauncher<R> updaterQueryLauncher(Transaction txn, String filter) {
         QueryLauncherCache cache;
         // Need to double check the filter after joining to the primary, in case there were any
         // changes after the secondary entry was loaded. Note that no double check is needed
@@ -639,9 +637,6 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         return newFilteredFactory(rowGen, range, predClass, ff.projection());
     }
 
-    /**
-     * @param primaryRowGen is non-null if this is a secondary
-     */
     @SuppressWarnings("unchecked")
     private ScanControllerFactory<R> newFilteredFactory(RowGen rowGen, RowFilter[] range,
                                                         Class<? extends RowPredicate> predClass,

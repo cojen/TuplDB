@@ -19,8 +19,6 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
-import java.util.Comparator;
-
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;

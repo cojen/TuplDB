@@ -200,9 +200,7 @@ final class ChannelManager {
     /**
      * Set the local member id to a non-zero value, which cannot be changed later.
      */
-    synchronized void setLocalMemberId(long localMemberId, ServerSocket ss)
-        throws IOException
-    {
+    synchronized void setLocalMemberId(long localMemberId, ServerSocket ss) {
         if (localMemberId == 0 || ss == null) {
             throw new IllegalArgumentException();
         }

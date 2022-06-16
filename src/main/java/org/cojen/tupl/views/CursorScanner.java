@@ -36,7 +36,7 @@ public class CursorScanner implements Scanner {
     /**
      * @param cursor positioned at the first entry
      */
-    public CursorScanner(Cursor cursor) throws IOException {
+    public CursorScanner(Cursor cursor) {
         mCursor = cursor;
     }
 

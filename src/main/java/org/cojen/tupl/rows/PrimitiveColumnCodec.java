@@ -22,7 +22,6 @@ import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 import static org.cojen.tupl.rows.ColumnInfo.*;
-import static org.cojen.tupl.rows.RowUtils.*;
 
 /**
  * Makes code for encoding and decoding primitive type columns.

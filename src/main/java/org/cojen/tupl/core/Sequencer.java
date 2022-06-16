@@ -191,7 +191,7 @@ final class Sequencer extends Latch {
 
             Waiter[] waiters = mWaiters;
             for (int i=0; i<waiters.length; i++) {
-                for (Waiter w = waiters[i], prev = null; w != null; ) {
+                for (Waiter w = waiters[i]; w != null; ) {
                     Parker.unpark(w.mThread);
                     Waiter next = w.mNext;
                     w.mNext = null;

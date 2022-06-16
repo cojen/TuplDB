@@ -225,7 +225,7 @@ final class CommitLock implements Lock {
         mShared.get().count--;
     }
 
-    private final void doReleaseShared() {
+    private void doReleaseShared() {
         mSharedRelease.increment();
         var t = (Thread) cExclusiveThreadHandle.getAcquire(this);
         if (t != null && !hasSharedLockers()) {
