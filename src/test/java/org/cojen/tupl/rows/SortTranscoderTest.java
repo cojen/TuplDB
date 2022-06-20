@@ -171,8 +171,8 @@ public class SortTranscoderTest {
         Class<TestRow> rowType = table.rowType();
         RowInfo primaryInfo = RowInfo.find(rowType);
         ColumnSet secondaryColumns = primaryInfo.secondaryIndexes.iterator().next();
-        byte[] secondaryDesc = RowStore.indexDescriptor(secondaryColumns, false);
-        SecondaryInfo secondaryInfo = RowStore.indexRowInfo(primaryInfo, secondaryDesc);
+        byte[] secondaryDesc = RowStore.secondaryDescriptor(secondaryColumns, false);
+        SecondaryInfo secondaryInfo = RowStore.secondaryRowInfo(primaryInfo, secondaryDesc);
         OrderBy orderBy = OrderBy.forSpec(secondaryInfo, "+id");
         var transcoder = new SortTranscoderMaker<TestRow>
             (mDb.rowStore(), rowType, table.newRow().getClass(), secondaryInfo, ix.id(),

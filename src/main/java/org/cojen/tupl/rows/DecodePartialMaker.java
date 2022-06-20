@@ -244,7 +244,7 @@ public class DecodePartialMaker {
         var valueVar = mm.param(2);
 
         RowInfo primaryRowInfo = RowInfo.find(rowType);
-        RowInfo rowInfo = RowStore.indexRowInfo(primaryRowInfo, secondaryDesc);
+        RowInfo rowInfo = RowStore.secondaryRowInfo(primaryRowInfo, secondaryDesc);
         RowGen rowGen = rowInfo.rowGen();
 
         BitSet[] sets = decodeSpec(spec);

@@ -164,7 +164,7 @@ public final class TableManager<R> {
         WeakReference<SecondaryInfo> infoRef = mIndexInfos.get(desc);
         SecondaryInfo info;
         if (infoRef == null || (info = infoRef.get()) == null) {
-            info = RowStore.indexRowInfo(primaryInfo, desc);
+            info = RowStore.secondaryRowInfo(primaryInfo, desc);
             mIndexInfos.put(desc, new WeakReference<>(info));
         }
         return info;

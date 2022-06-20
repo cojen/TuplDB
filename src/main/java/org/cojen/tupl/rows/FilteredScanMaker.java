@@ -513,7 +513,7 @@ public class FilteredScanMaker<R> {
         // Implement/override method as specified by RowEvaluator.
 
         MethodMaker mm = mFilterMaker.addMethod
-            (Object.class, "decodeRow", Cursor.class, LockResult.class, Object.class).public_();
+            (Object.class, "evalRow", Cursor.class, LockResult.class, Object.class).public_();
 
         var cursorVar = mm.param(0);
         var resultVar = mm.param(1);
@@ -542,7 +542,7 @@ public class FilteredScanMaker<R> {
 
             var schemaVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", valueVar);
 
-            mm.return_(indy.invoke(Object.class, "decodeRow", null, schemaVersion,
+            mm.return_(indy.invoke(Object.class, "evalRow", null, schemaVersion,
                                    cursorVar, rowVar, predicateVar));
             return;
         }
@@ -613,7 +613,7 @@ public class FilteredScanMaker<R> {
 
         var schemaVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", primaryValueVar);
 
-        mm.return_(indy.invoke(Object.class, "decodeRow", null, schemaVersion,
+        mm.return_(indy.invoke(Object.class, "evalRow", null, schemaVersion,
                                primaryKeyVar, primaryValueVar, rowVar, predicateVar));
     }
 
@@ -624,7 +624,7 @@ public class FilteredScanMaker<R> {
         // Implement/override method as specified by RowEvaluator.
 
         MethodMaker mm = mFilterMaker.addMethod
-            (Object.class, "decodeRow", Cursor.class, LockResult.class, Object.class,
+            (Object.class, "evalRow", Cursor.class, LockResult.class, Object.class,
              Cursor.class).public_();
 
         //var cursorVar = mm.param(0);
@@ -780,7 +780,7 @@ public class FilteredScanMaker<R> {
             rowInfo = primaryRowInfo;
             which = "primary key";
         } else {
-            rowInfo = RowStore.indexRowInfo(primaryRowInfo, secondaryDesc);
+            rowInfo = RowStore.secondaryRowInfo(primaryRowInfo, secondaryDesc);
             which = rowInfo.isAltKey() ? "alternate key" : "secondary index";
         }
 

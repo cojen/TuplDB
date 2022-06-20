@@ -56,7 +56,7 @@ class BasicRowScanner<R> implements RowScanner<R> {
      */
     void init(Transaction txn, R row) throws IOException {
         a: while (true) {
-            setEvaluator(mController.evaluator());
+            beginBatch(mController.evaluator());
 
             Cursor c = mController.newCursor(mTable.mSource, txn);
             mCursor = c;
@@ -71,7 +71,7 @@ class BasicRowScanner<R> implements RowScanner<R> {
                     continue a;
                 }
                 try {
-                    R decoded = decodeRow(c, result, row);
+                    R decoded = evalRow(c, result, row);
                     if (decoded != null) {
                         mRow = decoded;
                         return;
@@ -138,13 +138,13 @@ class BasicRowScanner<R> implements RowScanner<R> {
                         if (!mController.next()) {
                             break a;
                         }
-                        setEvaluator(mController.evaluator());
+                        beginBatch(mController.evaluator());
                         Transaction txn = c.link();
                         mCursor = c = mController.newCursor(mTable.mSource, txn);
                         toFirst(c);
                     }
                     try {
-                        R decoded = decodeRow(c, result, row);
+                        R decoded = evalRow(c, result, row);
                         if (decoded != null) {
                             mRow = decoded;
                             return decoded;
@@ -172,12 +172,12 @@ class BasicRowScanner<R> implements RowScanner<R> {
         return null;
     }
 
-    protected void setEvaluator(RowEvaluator<R> evaluator) {
+    protected void beginBatch(RowEvaluator<R> evaluator) {
         mEvaluator = evaluator;
     }
 
-    protected R decodeRow(Cursor c, LockResult result, R row) throws IOException {
-        return mEvaluator.decodeRow(c, result, row);
+    protected R evalRow(Cursor c, LockResult result, R row) throws IOException {
+        return mEvaluator.evalRow(c, result, row);
     }
 
     @Override

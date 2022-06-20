@@ -173,7 +173,7 @@ public class SortTranscoderMaker<R> {
         var offsetVar = mm.param(3);
 
         // A secondary index descriptor is suitable for reconstructing the target info.
-        byte[] targetDesc = RowStore.indexDescriptor(mTargetInfo, false);
+        byte[] targetDesc = RowStore.secondaryDescriptor(mTargetInfo, false);
 
         var indy = mm.var(SortTranscoderMaker.class).indy
             ("indyTranscode", mRowStore.ref(), mRowType, mIndexId, targetDesc);
@@ -249,7 +249,7 @@ public class SortTranscoderMaker<R> {
 
             MethodMaker mm = MethodMaker.begin(lookup, "transcode", mtx);
 
-            RowInfo targetInfo = RowStore.indexRowInfo(sourceInfo, targetDesc);
+            RowInfo targetInfo = RowStore.secondaryRowInfo(sourceInfo, targetDesc);
             int sourceOffset = RowUtils.lengthPrefixPF(schemaVersion);
 
             transcode(mm, sourceInfo, targetInfo, sourceOffset);

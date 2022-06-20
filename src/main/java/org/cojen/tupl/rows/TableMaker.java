@@ -2004,7 +2004,7 @@ public class TableMaker {
         RowGen codecGen = rowGen;
 
         if (secondaryDesc != null) {
-            codecGen = RowStore.indexRowInfo(rowInfo, secondaryDesc).rowGen();
+            codecGen = RowStore.secondaryRowInfo(rowInfo, secondaryDesc).rowGen();
         }
 
         ClassMaker cm = RowGen.beginClassMaker(TableMaker.class, rowType, rowInfo, null, name)
@@ -2027,7 +2027,7 @@ public class TableMaker {
         {
             // Specified by RowEvaluator.
             MethodMaker mm = cm.addMethod
-                (Object.class, "decodeRow", Cursor.class, LockResult.class, Object.class).public_();
+                (Object.class, "evalRow", Cursor.class, LockResult.class, Object.class).public_();
             var tableVar = mm.var(lookup.lookupClass());
             var rowVar = mm.param(2).cast(rowClass);
             Label hasRow = mm.label();
@@ -2108,7 +2108,7 @@ public class TableMaker {
             rowInfo = primaryRowInfo;
             which = "primary key";
         } else {
-            rowInfo = RowStore.indexRowInfo(primaryRowInfo, secondaryDesc);
+            rowInfo = RowStore.secondaryRowInfo(primaryRowInfo, secondaryDesc);
             which = rowInfo.isAltKey() ? "alternate key" : "secondary index";
         }
 
@@ -2170,7 +2170,7 @@ public class TableMaker {
                                         Class<?> rowType, byte[] secondaryDesc, int options)
     {
         RowInfo primaryInfo = RowInfo.find(rowType);
-        RowInfo secondaryInfo = RowStore.indexRowInfo(primaryInfo, secondaryDesc);
+        RowInfo secondaryInfo = RowStore.secondaryRowInfo(primaryInfo, secondaryDesc);
 
         MethodMaker mm = MethodMaker.begin(lookup, name, mt);
 
@@ -2241,7 +2241,7 @@ public class TableMaker {
     {
         RowInfo rowInfo = RowInfo.find(rowType);
         RowGen rowGen = rowInfo.rowGen();
-        RowGen codecGen = RowStore.indexRowInfo(rowInfo, secondaryDesc).rowGen();
+        RowGen codecGen = RowStore.secondaryRowInfo(rowInfo, secondaryDesc).rowGen();
 
         ClassMaker cm = RowGen.beginClassMaker
             (TableMaker.class, rowType, rowInfo, null, name)
@@ -2327,7 +2327,7 @@ public class TableMaker {
             params = new Object[] {Cursor.class, LockResult.class, Object.class, Cursor.class};
         }
 
-        MethodMaker mm = cm.addMethod(Object.class, "decodeRow", params).public_();
+        MethodMaker mm = cm.addMethod(Object.class, "evalRow", params).public_();
 
         var cursorVar = mm.param(0);
         var resultVar = mm.param(1);

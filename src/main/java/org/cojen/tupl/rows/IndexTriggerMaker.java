@@ -173,7 +173,7 @@ public class IndexTriggerMaker<R> {
 
             var tm = new TransformMaker<>(null, primaryInfo, null);
 
-            SecondaryInfo secondaryInfo = RowStore.indexRowInfo(primaryInfo, secondaryDesc);
+            SecondaryInfo secondaryInfo = RowStore.secondaryRowInfo(primaryInfo, secondaryDesc);
             tm.addKeyTarget(secondaryInfo, 0, true);
             tm.addValueTarget(secondaryInfo, 0, true);
 
@@ -496,7 +496,8 @@ public class IndexTriggerMaker<R> {
                 return new ExceptionCallSite.Failed(mtx, mm, e);
             }
 
-            SecondaryInfo[] secondaryInfos = RowStore.indexRowInfos(primaryInfo, secondaryDescs);
+            SecondaryInfo[] secondaryInfos =
+                RowStore.secondaryRowInfos(primaryInfo, secondaryDescs);
 
             IndexBackfill[] backfills = null;
             if (backfillRefs != null) {

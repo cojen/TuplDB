@@ -69,17 +69,17 @@ final class JoinedRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater
     }
 
     @Override
-    protected void setEvaluator(RowEvaluator<R> evaluator) {
-        super.setEvaluator(evaluator);
+    protected void beginBatch(RowEvaluator<R> evaluator) {
+        super.beginBatch(evaluator);
         mPrimaryUpdater.mEvaluator = evaluator;
     }
 
     @Override
-    protected R decodeRow(Cursor c, LockResult result, R row) throws IOException {
+    protected R evalRow(Cursor c, LockResult result, R row) throws IOException {
         if (mPrimaryUpdater.mKeysToSkip != null && mPrimaryUpdater.mKeysToSkip.remove(c.key())) {
             return null;
         }
-        return mEvaluator.decodeRow(c, result, row, mPrimaryCursor);
+        return mEvaluator.evalRow(c, result, row, mPrimaryCursor);
     }
 
     protected LockResult toFirst(Cursor c) throws IOException {

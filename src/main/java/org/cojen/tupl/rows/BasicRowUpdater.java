@@ -364,10 +364,10 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
     }
 
     @Override
-    protected final R decodeRow(Cursor c, LockResult result, R row) throws IOException {
+    protected final R evalRow(Cursor c, LockResult result, R row) throws IOException {
         if (mKeysToSkip != null && mKeysToSkip.remove(c.key())) {
             return null;
         }
-        return super.decodeRow(c, result, row);
+        return super.evalRow(c, result, row);
     }
 }

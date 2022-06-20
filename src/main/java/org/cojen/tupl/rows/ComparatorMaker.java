@@ -61,7 +61,7 @@ final class ComparatorMaker<R> {
     Comparator<R> finish() {
         Class rowClass = RowMaker.find(mRowType);
         ClassMaker cm = mRowInfo.rowGen().anotherClassMaker
-            (ComparatorMaker.class, rowClass, "Comparator").implement(Comparator.class).final_();
+            (ComparatorMaker.class, rowClass, "comparator").implement(Comparator.class).final_();
 
         // Keep a singleton instance, in order for a weakly cached reference to the comparator
         // to stick around until the class is unloaded.

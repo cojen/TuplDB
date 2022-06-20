@@ -34,10 +34,10 @@ public interface RowEvaluator<R> {
      * @param row can pass null to construct a new instance
      * @return null if row is filtered out
      */
-    R decodeRow(Cursor c, LockResult result, R row) throws IOException;
+    R evalRow(Cursor c, LockResult result, R row) throws IOException;
 
     /**
-     * Decode variant used when updating via a secondary index. By positioning a cursor over
+     * Eval variant used when updating via a secondary index. By positioning a cursor over
      * the primary table, it can be updated directly without the cost of an additional search.
      *
      * @param result LockResult from secondary cursor access
@@ -45,7 +45,7 @@ public interface RowEvaluator<R> {
      * @param primary cursor is positioned as a side effect
      * @return null if row is filtered out
      */
-    default R decodeRow(Cursor secondary, LockResult result, R row, Cursor primary)
+    default R evalRow(Cursor secondary, LockResult result, R row, Cursor primary)
         throws IOException
     {
         throw new UnsupportedOperationException();

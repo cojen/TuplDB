@@ -111,9 +111,9 @@ final class MergedScanController<R> extends SingleScanController<R> {
     }
 
     @Override
-    public R decodeRow(Cursor c, LockResult result, R row) throws IOException {
+    public R evalRow(Cursor c, LockResult result, R row) throws IOException {
         if (mMode == 2) {
-            return mLowEvaluator.decodeRow(c, result, row);
+            return mLowEvaluator.evalRow(c, result, row);
         }
 
         if (mMode != 3) {
@@ -124,7 +124,7 @@ final class MergedScanController<R> extends SingleScanController<R> {
                 // Fallthrough to mode 3.
                 mMode = 3;
             } else {
-                R decoded = mLowEvaluator.decodeRow(c, result, row);
+                R decoded = mLowEvaluator.evalRow(c, result, row);
                 if (decoded != null) {
                     return decoded;
                 }
@@ -144,7 +144,7 @@ final class MergedScanController<R> extends SingleScanController<R> {
             }
         }
 
-        return mHighEvaluator.decodeRow(c, result, row);
+        return mHighEvaluator.evalRow(c, result, row);
     }
 
     @Override

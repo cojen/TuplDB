@@ -520,7 +520,7 @@ public class RowStore {
                         continue;
                     }
                     indexId = decodeLongLE(c.value(), 0);
-                    indexRowInfo = indexRowInfo(RowInfo.find(rowType), c.key());
+                    indexRowInfo = secondaryRowInfo(RowInfo.find(rowType), c.key());
                     descriptor = c.key();
                     break find;
                 }
@@ -1049,7 +1049,7 @@ public class RowStore {
             SecondaryInfo secondaryInfo = null;
             try {
                 RowInfo primaryInfo = decodeExisting(null, null, primaryIndexId);
-                secondaryInfo = indexRowInfo(primaryInfo, descriptor);
+                secondaryInfo = secondaryRowInfo(primaryInfo, descriptor);
             } catch (Exception e) {
             }
 
@@ -1456,20 +1456,20 @@ public class RowStore {
         return info;
     }
 
-    static byte[] indexDescriptor(SecondaryInfo info) {
-        return indexDescriptor(info, info.isAltKey());
+    static byte[] secondaryDescriptor(SecondaryInfo info) {
+        return secondaryDescriptor(info, info.isAltKey());
     }
 
-    static byte[] indexDescriptor(ColumnSet cs, boolean isAltKey) {
+    static byte[] secondaryDescriptor(ColumnSet cs, boolean isAltKey) {
         var encoder = new Encoder(cs.allColumns.size() * 16); // with initial capacity guess
         return EncodedRowInfo.encodeDescriptor(isAltKey ? 'A' : 'I', encoder, cs);
     }
 
     /**
      * Decodes a RowInfo object for a secondary index, by parsing a binary descriptor which was
-     * created by EncodedRowInfo.encodeDescriptor or indexDescriptor.
+     * created by EncodedRowInfo.encodeDescriptor or secondaryDescriptor.
      */
-    static SecondaryInfo indexRowInfo(RowInfo primaryInfo, byte[] desc) {
+    static SecondaryInfo secondaryRowInfo(RowInfo primaryInfo, byte[] desc) {
         byte type = desc[0];
         int offset = 1;
 
@@ -1537,10 +1537,10 @@ public class RowStore {
     /**
      * Decodes a set of secondary index RowInfo objects.
      */
-    static SecondaryInfo[] indexRowInfos(RowInfo primaryInfo, byte[][] descriptors) {
+    static SecondaryInfo[] secondaryRowInfos(RowInfo primaryInfo, byte[][] descriptors) {
         var infos = new SecondaryInfo[descriptors.length];
         for (int i=0; i<descriptors.length; i++) {
-            infos[i] = indexRowInfo(primaryInfo, descriptors[i]);
+            infos[i] = secondaryRowInfo(primaryInfo, descriptors[i]);
         }
         return infos;
     }

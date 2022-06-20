@@ -62,7 +62,6 @@ import org.cojen.tupl.views.ViewUtils;
  * @author Brian S O'Neill
  */
 public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R> {
-    // Need a strong reference to this to prevent premature GC.
     final TableManager<R> mTableManager;
 
     protected final Index mSource;
@@ -470,11 +469,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     final BaseTableIndex<R> viewIndexTable(boolean alt, String... columns) throws IOException {
-        var rs = rowStoreRef().get();
-        if (rs == null) {
-            throw new DatabaseException("Closed");
-        }
-        return rs.indexTable(this, alt, columns);
+        return rowStore().indexTable(this, alt, columns);
     }
 
     @Override
@@ -564,7 +559,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
         byte[] secondaryDesc = secondaryDescriptor();
         if (secondaryDesc != null) {
-            rowInfo = RowStore.indexRowInfo(rowInfo, secondaryDesc);
+            rowInfo = RowStore.secondaryRowInfo(rowInfo, secondaryDesc);
             if (joinedPrimaryTableClass() == null) {
                 availableColumns = rowInfo.allColumns;
             }
@@ -767,10 +762,20 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         return new BasicQueryLauncher<>(subTable, subFactory);
     }
 
+    public abstract Class<? extends R> rowClass();
+
     /**
      * Partially decodes a row from a key.
      */
     protected abstract R toRow(byte[] key);
+
+    protected RowStore rowStore() throws DatabaseException {
+        var rs = rowStoreRef().get();
+        if (rs == null) {
+            throw new DatabaseException("Closed");
+        }
+        return rs;
+    }
 
     protected abstract WeakReference<RowStore> rowStoreRef();
 

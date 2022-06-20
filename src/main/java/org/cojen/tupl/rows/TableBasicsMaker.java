@@ -62,6 +62,9 @@ class TableBasicsMaker {
         // Add the simple rowType method.
         cm.addMethod(Class.class, "rowType").public_().return_(rowType);
 
+        // Add the simple rowClass method, defined in BaseTable.
+        cm.addMethod(Class.class, "rowClass").public_().return_(rowClass);
+
         // Add the newRow method and its bridge.
         {
             MethodMaker mm = cm.addMethod(rowType, "newRow").public_();
