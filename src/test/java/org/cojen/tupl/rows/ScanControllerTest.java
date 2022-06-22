@@ -141,7 +141,7 @@ public class ScanControllerTest {
         }
 
         @Override
-        public Object decodeRow(Cursor c, LockResult result, Object row) {
+        public Object evalRow(Cursor c, LockResult result, Object row) {
             throw new UnsupportedOperationException();
         }
 
