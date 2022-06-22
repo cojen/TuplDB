@@ -265,6 +265,7 @@ final class StoredPageDb extends PageDb {
                 try {
                     final /*P*/ byte[] header;
                     final int commitNumber;
+                    boolean issues = false;
                     findHeader: {
                         int pageSize0;
                         int commitNumber0, commitNumber1;
@@ -278,6 +279,10 @@ final class StoredPageDb extends PageDb {
                         } catch (IncompleteRestoreException e) {
                             throw e;
                         } catch (CorruptDatabaseException e) {
+                            if (debugListener != null) {
+                                debugListener.notify(EventType.DEBUG, e.toString());
+                            }
+                            issues = true;
                             header0 = p_null();
                             commitNumber0 = -1;
                             pageSize0 = pageSize;
@@ -298,6 +303,10 @@ final class StoredPageDb extends PageDb {
                                 // File is completely unusable.
                                 throw ex0;
                             }
+                            if (debugListener != null) {
+                                debugListener.notify(EventType.DEBUG, e.toString());
+                            }
+                            issues = true;
                             header = header0;
                             commitNumber = commitNumber0;
                             break findHeader;
@@ -338,7 +347,7 @@ final class StoredPageDb extends PageDb {
                     }
 
                     mPageManager = new PageManager
-                        (debugListener, mPageArray, header, I_MANAGER_HEADER);
+                        (debugListener, issues, mPageArray, header, I_MANAGER_HEADER);
 
                     mDatabaseId = p_longGetLE(header, I_DATABASE_ID);
                 } finally {

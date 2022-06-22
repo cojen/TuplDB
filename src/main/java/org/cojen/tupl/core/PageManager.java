@@ -79,22 +79,24 @@ final class PageManager {
      * Create a new PageManager.
      */
     PageManager(PageArray array) throws IOException {
-        this(null, false, array, PageOps.p_null(), 0);
+        this(null, false, false, array, PageOps.p_null(), 0);
     }
 
     /**
      * Create a restored PageManager.
      *
+     * @param issues pass true if any problems were encountered when opening the db
      * @param header source for reading allocator root structure
      * @param offset offset into header
      */
-    PageManager(EventListener debugListener, PageArray array, /*P*/ byte[] header, int offset)
+    PageManager(EventListener debugListener, boolean issues,
+                PageArray array, /*P*/ byte[] header, int offset)
         throws IOException
     {
-        this(debugListener, true, array, header, offset);
+        this(debugListener, issues, true, array, header, offset);
     }
 
-    private PageManager(EventListener debugListener,
+    private PageManager(EventListener debugListener, boolean issues,
                         boolean restored, PageArray array, /*P*/ byte[] header, int offset)
         throws IOException
     {
@@ -124,7 +126,7 @@ final class PageManager {
 
                 long actualPageCount = array.pageCount();
                 if (actualPageCount > mTotalPageCount) {
-                    if (!array.isReadOnly()) {
+                    if (!issues && !array.isReadOnly()) {
                         // Attempt to truncate extra uncommitted pages.
                         if (mTotalPageCount < 4) {
                             // Don't truncate to something obviously wrong.
