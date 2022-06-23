@@ -225,7 +225,7 @@ public class FilteredScanMaker<R> {
 
         mFilterCtorMaker.invokeSuperConstructor(ctorParams);
 
-        addDecodeRowMethod();
+        addEvalRowMethod();
 
         {
             // Override and return the predicate object.
@@ -502,7 +502,7 @@ public class FilteredScanMaker<R> {
         mm.return_(mm.new_(mFilterMaker, params));
     }
 
-    private void addDecodeRowMethod() {
+    private void addEvalRowMethod() {
         if (mProjectionSpec == null &&
             (mFilter == null || (mSecondaryDescriptor == null && mFilter == TrueFilter.THE)))
         {
@@ -521,7 +521,7 @@ public class FilteredScanMaker<R> {
         var predicateVar = mm.field("predicate");
 
         if (mSecondaryDescriptor == null) {
-            // The decode method is implemented using indy, to support multiple schema versions.
+            // The eval method is implemented using indy, to support multiple schema versions.
 
             WeakReference<RowFilter> filterRef;
             String filterStr;
@@ -559,8 +559,8 @@ public class FilteredScanMaker<R> {
             // Need to define additional methods for supporting joins to the primary
             // table. These are strictly required by RowUpdater, which always must position a
             // cursor over the primary table.
-            addJoinedDecode();
-            addDecodeRowWithPrimaryCursorMethod();
+            addJoinedEval();
+            addEvalRowWithPrimaryCursorMethod();
         }
 
         if (!mAlwaysJoin) {
@@ -582,12 +582,12 @@ public class FilteredScanMaker<R> {
         var primaryValueVar = primaryVars[1];
 
         // Finish filter and decode using a shared private method.
-        mm.return_(mm.invoke("joinedDecode", primaryKeyVar, primaryValueVar, rowVar));
+        mm.return_(mm.invoke("joinedEval", primaryKeyVar, primaryValueVar, rowVar));
     }
 
-    private void addJoinedDecode() {
+    private void addJoinedEval() {
         MethodMaker mm = mFilterMaker.addMethod
-            (Object.class, "joinedDecode", byte[].class, byte[].class, Object.class)
+            (Object.class, "joinedEval", byte[].class, byte[].class, Object.class)
             .private_();
 
         var primaryKeyVar = mm.param(0);
@@ -618,9 +618,9 @@ public class FilteredScanMaker<R> {
     }
 
     /**
-     * Defines the other decodeRow method which takes a primary cursor, used by RowUpdater.
+     * Defines the other evalRow method which takes a primary cursor, used by RowUpdater.
      */
-    private void addDecodeRowWithPrimaryCursorMethod() {
+    private void addEvalRowWithPrimaryCursorMethod() {
         // Implement/override method as specified by RowEvaluator.
 
         MethodMaker mm = mFilterMaker.addMethod
@@ -644,7 +644,7 @@ public class FilteredScanMaker<R> {
         var primaryKeyVar = primaryVars[0];
         var primaryValueVar = primaryVars[1];
 
-        mm.return_(mm.invoke("joinedDecode", primaryKeyVar, primaryValueVar, rowVar));
+        mm.return_(mm.invoke("joinedEval", primaryKeyVar, primaryValueVar, rowVar));
     }
 
     public static CallSite indyFilter(MethodHandles.Lookup lookup, String name, MethodType mt,
