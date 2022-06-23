@@ -685,7 +685,7 @@ public class RowUtils extends Utils {
      * Returns the bits in a form that can be compared as an int.
      */
     public static int floatToBitsCompare(float v) {
-        int bits = Float.floatToIntBits(v);
+        int bits = Float.floatToRawIntBits(v);
         if (bits < 0) {
             bits ^= 0x7fffffff;
         }
@@ -696,7 +696,7 @@ public class RowUtils extends Utils {
      * Returns the bits in a form that can be compared as a long.
      */
     public static long floatToBitsCompare(double v) {
-        long bits = Double.doubleToLongBits(v);
+        long bits = Double.doubleToRawLongBits(v);
         if (bits < 0) {
             bits ^= 0x7fffffffffffffffL;
         }

@@ -41,10 +41,14 @@ public class BigDecimalColumnTest {
     }
 
     @Test
-    public void equalMatch() throws Exception {
+    public void lenientMatch() throws Exception {
         // Filters must compare BigDecimals by fully decoding them instead of comparing the
         // encoded bytes. The problem is that 0 and 0.0 won't be considered equal. See how
         // CompareUtils handles this case. It calls BigDecimal.compareTo instead of equals.
+
+        // Also see FloatColumnTest. Float comparisons are precise, and so the user must use a
+        // range to be less precise. Range based comparisons with BigDecimal aren't feasible
+        // because the number of trailing zeros is unbounded.
 
         Database db = Database.open(new DatabaseConfig().directPageAccess(false));
         Table<Rec> table = db.openTable(Rec.class);

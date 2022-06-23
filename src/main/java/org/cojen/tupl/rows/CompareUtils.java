@@ -217,16 +217,14 @@ class CompareUtils {
                 signMismatch(colVar, argVar, op, pass, fail);
             }
         } else {
-            // If floating point, must perform bits comparison for finding NaN. Note that the
-            // "raw" bits form isn't used, and thus all NaN forms can be found. This is
-            // consistent with the Float.equals method.
-            // FIXME: When searching against a floating point key, must use a range for
-            // consistency. That code won't go here, however.
+            // If floating point, must perform bits comparison for finding NaN. This also
+            // affects the behavior of finding -0.0, which won't be considered the same as 0.0.
+            // A range search is required for finding all zero or NaN forms.
 
             if (colType == float.class) {
                 if (argType == float.class) {
-                    colVar = colVar.invoke("floatToIntBits", colVar);
-                    argVar = argVar.invoke("floatToIntBits", argVar);
+                    colVar = colVar.invoke("floatToRawIntBits", colVar);
+                    argVar = argVar.invoke("floatToRawIntBits", argVar);
                     break special;
                 }
                 if (argType != double.class) {
@@ -255,8 +253,8 @@ class CompareUtils {
                 break special;
             }
 
-            colVar = colVar.invoke("doubleToLongBits", colVar);
-            argVar = argVar.invoke("doubleToLongBits", argVar);
+            colVar = colVar.invoke("doubleToRawLongBits", colVar);
+            argVar = argVar.invoke("doubleToRawLongBits", argVar);
         }
 
         switch (op) {
