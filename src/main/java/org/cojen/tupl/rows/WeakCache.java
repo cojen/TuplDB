@@ -37,7 +37,7 @@ import java.util.function.Predicate;
  * @see WeakClassCache
  * @see SoftCache
  */
-class WeakCache<K, V> extends ReferenceQueue<Object> {
+class WeakCache<K, V, H> extends RefCache<K, V, H> {
     private Entry<K, V>[] mEntries;
     private int mSize;
 
@@ -51,15 +51,7 @@ class WeakCache<K, V> extends ReferenceQueue<Object> {
      * Can be called without explicit synchronization, but entries can appear to go missing.
      * Double check with synchronization.
      */
-    public V get(K key) {
-        WeakReference<V> ref = getRef(key);
-        return ref == null ? null : ref.get();
-    }
-
-    /**
-     * Can be called without explicit synchronization, but entries can appear to go missing.
-     * Double check with synchronization.
-     */
+    @Override
     public WeakReference<V> getRef(K key) {
         Object obj = poll();
         if (obj != null) {
@@ -81,6 +73,7 @@ class WeakCache<K, V> extends ReferenceQueue<Object> {
     /**
      * @return a new weak reference to the value
      */
+    @Override
     @SuppressWarnings({"unchecked"})
     public synchronized WeakReference<V> put(K key, V value) {
         Object obj = poll();
@@ -137,6 +130,32 @@ class WeakCache<K, V> extends ReferenceQueue<Object> {
         mSize++;
 
         return newEntry;
+    }
+
+    @Override
+    public synchronized void removeKey(K key) {
+        var entries = mEntries;
+        int index = key.hashCode() & (entries.length - 1);
+
+        for (Entry<K, V> e = entries[index], prev = null; e != null; e = e.mNext) {
+            if (e.matches(key)) {
+                e.clear();
+                if (prev == null) {
+                    entries[index] = e.mNext;
+                } else {
+                    prev.mNext = e.mNext;
+                }
+                mSize--;
+                break;
+            } else {
+                prev = e;
+            }
+        }
+
+        Object obj = poll();
+        if (obj != null) {
+            cleanup(obj);
+        }
     }
 
     /**

@@ -25,92 +25,92 @@ import java.util.Arrays;
  * @author Brian S O'Neill
  */
 abstract class ArrayKey {
-    static Object make(byte[] array) {
+    static Bytes make(byte[] array) {
         return new Bytes(array);
     }
 
-    static Object make(int prefix, byte[] array) {
+    static PrefixBytes make(int prefix, byte[] array) {
         return new PrefixBytes(prefix, array);
     }
 
-    static Object make(Object first, Object[] rest) {
+    static Obj make(Object first, Object[] rest) {
         var array = new Object[1 + rest.length];
         array[0] = first;
         System.arraycopy(rest, 0, array, 1, rest.length);
         return new Obj(array);
     }
 
-    private static final class Bytes {
-        private final byte[] mArray;
+    static final class Bytes {
+        final byte[] array;
 
         Bytes(byte[] array) {
-            mArray = array;
+            this.array = array;
         }
 
         @Override
         public int hashCode() {
-            return Arrays.hashCode(mArray);
+            return Arrays.hashCode(array);
         }
 
         @Override
         public boolean equals(Object obj) {
             return this == obj || obj instanceof Bytes other
-                && Arrays.equals(mArray, other.mArray);
+                && Arrays.equals(array, other.array);
         }
 
         @Override
         public String toString() {
-            return Arrays.toString(mArray);
+            return Arrays.toString(array);
         }
     }
 
-    private static final class PrefixBytes {
-        private final int mPrefix;
-        private final byte[] mArray;
+    static final class PrefixBytes {
+        final int prefix;
+        final byte[] array;
 
         PrefixBytes(int prefix, byte[] array) {
-            mPrefix = prefix;
-            mArray = array;
+            this.prefix = prefix;
+            this.array = array;
         }
 
         @Override
         public int hashCode() {
-            return Arrays.hashCode(mArray) * 31 + mPrefix;
+            return Arrays.hashCode(array) * 31 + prefix;
         }
 
         @Override
         public boolean equals(Object obj) {
             return this == obj || obj instanceof PrefixBytes other
-                && mPrefix == other.mPrefix && Arrays.equals(mArray, other.mArray);
+                && prefix == other.prefix && Arrays.equals(array, other.array);
         }
 
         @Override
         public String toString() {
-            return mPrefix + ", " + Arrays.toString(mArray);
+            return prefix + ", " + Arrays.toString(array);
         }
     }
 
-    private static final class Obj {
-        private final Object[] mArray;
+    static final class Obj {
+        final Object[] array;
 
         Obj(Object[] array) {
-            mArray = array;
+            this.array = array;
         }
 
         @Override
         public int hashCode() {
-            return Arrays.deepHashCode(mArray);
+            return Arrays.deepHashCode(array);
         }
 
         @Override
         public boolean equals(Object obj) {
             return this == obj || obj instanceof Obj other
-                && Arrays.deepEquals(mArray, other.mArray);
+                && Arrays.deepEquals(array, other.array);
         }
 
         @Override
         public String toString() {
-            return Arrays.deepToString(mArray);
+            return Arrays.deepToString(array);
         }
     }
 }

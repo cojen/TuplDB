@@ -103,7 +103,7 @@ public class RowStore {
      */
     private final Index mSchemata;
 
-    private final WeakCache<Index, TableManager<?>> mTableManagers;
+    private final WeakCache<Index, TableManager<?>, Object> mTableManagers;
 
     private final LHashTable.Obj<RowPredicateLock<?>> mIndexLocks;
 
@@ -454,7 +454,8 @@ public class RowStore {
         throws IOException
     {
         Object key = ArrayKey.make(alt, columns);
-        WeakCache<Object, BaseTableIndex<R>> indexTables = primaryTable.mTableManager.indexTables();
+        WeakCache<Object, BaseTableIndex<R>, Object> indexTables =
+            primaryTable.mTableManager.indexTables();
 
         BaseTableIndex<R> table = indexTables.get(key);
 
@@ -481,9 +482,10 @@ public class RowStore {
      * @throws IllegalStateException if not found
      */
     @SuppressWarnings("unchecked")
-    private <R> BaseTableIndex<R> makeIndexTable(WeakCache<Object, BaseTableIndex<R>> indexTables,
-                                                 BaseTable<R> primaryTable,
-                                                 boolean alt, String... columns)
+    private <R> BaseTableIndex<R> makeIndexTable
+        (WeakCache<Object, BaseTableIndex<R>, Object> indexTables,
+         BaseTable<R> primaryTable,
+         boolean alt, String... columns)
         throws IOException
     {
         Class<R> rowType = primaryTable.rowType();

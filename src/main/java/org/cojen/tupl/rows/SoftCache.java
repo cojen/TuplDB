@@ -29,7 +29,7 @@ import java.lang.ref.SoftReference;
  * @author Brian S O'Neill
  * @see WeakCache
  */
-class SoftCache<K, V> extends ReferenceQueue<Object> {
+class SoftCache<K, V, H> extends RefCache<K, V, H> {
     private Entry<K, V>[] mEntries;
     private int mSize;
 
@@ -43,15 +43,7 @@ class SoftCache<K, V> extends ReferenceQueue<Object> {
      * Can be called without explicit synchronization, but entries can appear to go missing.
      * Double check with synchronization.
      */
-    public V get(K key) {
-        SoftReference<V> ref = getRef(key);
-        return ref == null ? null : ref.get();
-    }
-
-    /**
-     * Can be called without explicit synchronization, but entries can appear to go missing.
-     * Double check with synchronization.
-     */
+    @Override
     public SoftReference<V> getRef(K key) {
         Object obj = poll();
         if (obj != null) {
@@ -73,6 +65,7 @@ class SoftCache<K, V> extends ReferenceQueue<Object> {
     /**
      * @return a new soft reference to the value
      */
+    @Override
     @SuppressWarnings({"unchecked"})
     public synchronized SoftReference<V> put(K key, V value) {
         Object obj = poll();
@@ -131,7 +124,8 @@ class SoftCache<K, V> extends ReferenceQueue<Object> {
         return newEntry;
     }
 
-    protected synchronized void removeKey(K key) {
+    @Override
+    public synchronized void removeKey(K key) {
         var entries = mEntries;
         int index = key.hashCode() & (entries.length - 1);
 

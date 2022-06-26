@@ -75,13 +75,13 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     private Trigger<R> mTrigger;
     private static final VarHandle cTriggerHandle;
 
-    private WeakCache<String, Comparator<R>> mComparatorCache;
+    private WeakCache<String, Comparator<R>, Object> mComparatorCache;
     private static final VarHandle cComparatorCacheHandle;
 
     // Is null if unsupported.
     protected final RowPredicateLock<R> mIndexLock;
 
-    private WeakCache<Object, MethodHandle> mPartialDecodeCache;
+    private WeakCache<Object, MethodHandle, byte[]> mPartialDecodeCache;
     private static final VarHandle cPartialDecodeCacheHandle;
 
     static {
@@ -126,7 +126,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     private final class FilterFactoryCache
-        extends SoftLatchedCache<String, ScanControllerFactory<R>, FullFilter>
+        extends SoftCache<String, ScanControllerFactory<R>, FullFilter>
     {
         @Override
         protected ScanControllerFactory<R> newValue(String filter, FullFilter ff) {
@@ -134,9 +134,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         }
     }
 
-    final class QueryLauncherCache
-        extends SoftLatchedCache<String, QueryLauncher<R>, Object>
-    {
+    final class QueryLauncherCache extends SoftCache<String, QueryLauncher<R>, Object> {
         private boolean mDoubleCheck;
 
         QueryLauncherCache(boolean doubleCheck) {
@@ -405,43 +403,27 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     @Override
     @SuppressWarnings("unchecked")
     public final Comparator<R> comparator(String spec) {
-        WeakCache<String, Comparator<R>> cache = mComparatorCache;
+        WeakCache<String, Comparator<R>, Object> cache = mComparatorCache;
 
         if (cache == null) {
-            cache = new WeakCache<>();
-            var existing = (WeakCache<String, Comparator<R>>)
+            cache = new WeakCache<>() {
+                @Override
+                protected Comparator<R> newValue(String spec, Object unused) {
+                    var maker = new ComparatorMaker<R>(rowType(), spec);
+                    String clean = maker.cleanSpec();
+                    return spec.equals(clean) ? maker.finish() : obtain(clean, null);
+                }
+            };
+
+            var existing = (WeakCache<String, Comparator<R>, Object>)
                 cComparatorCacheHandle.compareAndExchange(this, null, cache);
+
             if (existing != null) {
                 cache = existing;
             }
         }
 
-        Comparator<R> comparator = cache.get(spec);
-
-        if (comparator == null) {
-            synchronized (cache) {
-                comparator = makeComparator(cache, spec);
-            }
-        }
-
-        return comparator;
-    }
-
-    private Comparator<R> makeComparator(WeakCache<String, Comparator<R>> cache, String spec) {
-        Comparator<R> comparator = cache.get(spec);
-
-        if (comparator == null) {
-            var maker = new ComparatorMaker<R>(rowType(), spec);
-            String clean = maker.cleanSpec();
-            if (spec.equals(clean)) {
-                comparator = maker.finish();
-            } else {
-                comparator = makeComparator(cache, clean);
-            }
-            cache.put(spec, comparator);
-        }
-
-        return comparator;
+        return cache.obtain(spec, null);
     }
 
     @Override
@@ -804,12 +786,23 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      * half refers to columns to mark clean
      */
     protected final MethodHandle decodePartialHandle(byte[] spec, int schemaVersion) {
-        WeakCache<Object, MethodHandle> cache = mPartialDecodeCache;
+        WeakCache<Object, MethodHandle, byte[]> cache = mPartialDecodeCache;
 
         if (cache == null) {
-            cache = new WeakCache<>();
-            var existing = (WeakCache<Object, MethodHandle>)
+            cache = new WeakCache<>() {
+                @Override
+                protected MethodHandle newValue(Object key, byte[] spec) {
+                    int schemaVersion = 0;
+                    if (key instanceof ArrayKey.PrefixBytes pb) {
+                        schemaVersion = pb.prefix;
+                    }
+                    return makeDecodePartialHandle(spec, schemaVersion);
+                }
+            };
+
+            var existing = (WeakCache<Object, MethodHandle, byte[]>)
                 cPartialDecodeCacheHandle.compareAndExchange(this, null, cache);
+
             if (existing != null) {
                 cache = existing;
             }
@@ -818,19 +811,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         final Object key = schemaVersion == 0 ?
             ArrayKey.make(spec) : ArrayKey.make(schemaVersion, spec);
 
-        MethodHandle decoder = cache.get(key);
-
-        if (decoder == null) {
-            synchronized (cache) {
-                decoder = cache.get(key);
-                if (decoder == null) {
-                    decoder = makeDecodePartialHandle(spec, schemaVersion);
-                    cache.put(key, decoder);
-                }
-            }
-        }
-
-        return decoder;
+        return cache.obtain(key, spec);
     }
 
     protected abstract MethodHandle makeDecodePartialHandle(byte[] spec, int schemaVersion);

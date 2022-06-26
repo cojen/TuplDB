@@ -25,7 +25,7 @@ import java.lang.ref.WeakReference;
  *
  * @author Brian S O'Neill
  */
-class WeakClassCache<V> extends WeakCache<Class<?>, V> {
+class WeakClassCache<V> extends WeakCache<Class<?>, V, Object> {
     WeakClassCache() {
     }
 
