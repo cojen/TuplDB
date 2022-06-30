@@ -26,7 +26,7 @@ import org.cojen.tupl.RowScanner;
  *
  * @author Brian S O'Neill
  */
-abstract class ConcatRowScanner<R> implements RowScanner<R> {
+abstract class ConcatRowScanner<R> implements BaseRowScanner<R> {
     private RowScanner<R> mCurrent;
 
     /**

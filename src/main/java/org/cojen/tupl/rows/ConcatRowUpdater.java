@@ -26,7 +26,7 @@ import org.cojen.tupl.RowUpdater;
  *
  * @author Brian S O'Neill
  */
-abstract class ConcatRowUpdater<R> implements RowUpdater<R> {
+abstract class ConcatRowUpdater<R> implements BaseRowScanner<R>, RowUpdater<R> {
     private RowUpdater<R> mCurrent;
 
     /**

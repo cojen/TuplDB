@@ -23,7 +23,6 @@ import java.util.Objects;
 
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.LockResult;
-import org.cojen.tupl.RowScanner;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnpositionedCursorException;
 
@@ -34,7 +33,7 @@ import org.cojen.tupl.core.RowPredicate;
  *
  * @author Brian S O'Neill
  */
-class BasicRowScanner<R> implements RowScanner<R> {
+class BasicRowScanner<R> implements BaseRowScanner<R> {
     final BaseTable<R> mTable;
     final ScanController<R> mController;
 

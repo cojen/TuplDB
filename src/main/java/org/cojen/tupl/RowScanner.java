@@ -20,6 +20,8 @@ package org.cojen.tupl;
 import java.io.Closeable;
 import java.io.IOException;
 
+import java.util.Spliterator;
+
 /**
  * Support for scanning through all rows in a table. Any exception thrown when acting upon a
  * scanner automatically closes it.
@@ -35,7 +37,7 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-public interface RowScanner<R> extends Closeable {
+public interface RowScanner<R> extends Spliterator<R>, Closeable {
     /**
      * Returns a reference to the current row, which is null if the scanner is closed.
      */
@@ -58,5 +60,5 @@ public interface RowScanner<R> extends Closeable {
     R step(R row) throws IOException;
 
     @Override
-    public void close() throws IOException;
+    void close() throws IOException;
 }

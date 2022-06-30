@@ -24,12 +24,11 @@ import java.util.Comparator;
 import java.util.function.Predicate;
 
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.io.Utils;
-
-import org.cojen.tupl.rows.RowSpliterator;
 
 /**
  * Defines a relational collection of persistent rows. A row is defined by an interface
@@ -182,7 +181,7 @@ public interface Table<R> {
      */
     public default Stream<R> newStream(Transaction txn) {
         try {
-            return RowSpliterator.newStream(newRowScanner(txn));
+            return newStream(newRowScanner(txn));
         } catch (IOException e) {
             throw Utils.rethrow(e);
         }
@@ -200,10 +199,20 @@ public interface Table<R> {
      */
     public default Stream<R> newStream(Transaction txn, String filter, Object... args) {
         try {
-            return RowSpliterator.newStream(newRowScanner(txn, filter, args));
+            return newStream(newRowScanner(txn, filter, args));
         } catch (IOException e) {
             throw Utils.rethrow(e);
         }
+    }
+
+    private static <R> Stream<R> newStream(RowScanner<R> scanner) {
+        return StreamSupport.stream(scanner, false).onClose(() -> {
+            try {
+                scanner.close();
+            } catch (Throwable e) {
+                Utils.rethrow(e);
+            }
+        });
     }
 
     /**
