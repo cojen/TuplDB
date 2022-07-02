@@ -179,7 +179,7 @@ final class PrimaryTable<R> implements Table<R> {
 
     @Override
     public Table<R> viewUnjoined() {
-        return mSource;
+        return this;
     }
 
     @Override
