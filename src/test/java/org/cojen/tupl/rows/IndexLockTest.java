@@ -899,7 +899,6 @@ public class IndexLockTest {
     }
 
     @Test
-    @Ignore("Randomly fails with a timeout")
     public void deadlockWithScanner() throws Exception {
         tryDeadlockWithScanner(LockMode.UPGRADABLE_READ, true);
     }
@@ -931,7 +930,7 @@ public class IndexLockTest {
             TestRow2 row = table.newRow();
             row.id(5);
             row.name("newname");
-            table.store(txn, row); // FIXME: Times out here sometimes (deadlock = false).
+            table.store(txn, row);
             txn.commit();
         });
 
@@ -950,15 +949,24 @@ public class IndexLockTest {
 
         if (!deadlock) {
             w1.await();
+            w2.await();
         } else {
+            LockTimeoutException e1 = null;
             try {
                 w1.await();
-                fail(); // FIXME: Fails here sometimes (deadlock = false).
-            } catch (DeadlockException e) {
+            } catch (LockTimeoutException e) {
+                e1 = e;
             }
-        }
 
-        w2.await();
+            LockTimeoutException e2 = null;
+            try {
+                w2.await();
+            } catch (LockTimeoutException e) {
+                e2 = e;
+            }
+
+            assertTrue(e1 instanceof DeadlockException || e2 instanceof DeadlockException);
+        }
     }
 
     @Test
