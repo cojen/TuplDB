@@ -18,6 +18,7 @@
 package org.cojen.tupl.filter;
 
 import java.util.Map;
+import java.util.Set;
 
 import org.cojen.tupl.rows.ColumnInfo;
 import org.cojen.tupl.rows.OrderBy;
@@ -38,14 +39,19 @@ public record Query(Map<String, ColumnInfo> projection, OrderBy orderBy, RowFilt
 
     @Override
     public String toString() {
-        if (projection == null) {
+        Set<String> names;
+
+        if (projection != null) {
+            names = projection.keySet();
+        } else if (orderBy != null) {
+            names = orderBy.keySet();
+        } else {
             return filter.toString();
         }
 
-        var b = new StringBuilder();
+        var b = new StringBuilder().append('{');
 
-        b.append('{');
-        for (String name : projection.keySet()) {
+        for (String name : names) {
             if (b.length() != 1) {
                 b.append(',').append(' ');
             }
@@ -56,6 +62,11 @@ public record Query(Map<String, ColumnInfo> projection, OrderBy orderBy, RowFilt
                 b.append(name);
             }
         }
+
+        if (projection == null) {
+            b.append(", *");
+        }
+
         b.append('}');
 
         if (filter != TrueFilter.THE) {
