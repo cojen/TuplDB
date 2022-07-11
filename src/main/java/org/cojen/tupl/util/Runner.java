@@ -27,8 +27,8 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Shared pool of daemon threads. Intended as a faster alternative to launching new threads,
- * but not as fast as a work stealing pool.
+ * Implements an unbounded pool of daemon threads which automatically exit when idle. Intended
+ * as a faster alternative to launching new threads, but not as fast as a work stealing pool.
  *
  * @author Brian S O'Neill
  */
@@ -66,7 +66,7 @@ public final class Runner extends AbstractExecutorService {
     }
 
     /**
-     * Return an executor for the current thread's group or security manager.
+     * Return an executor for the current thread's group.
      */
     public static Runner current() {
         ThreadGroup group = Thread.currentThread().getThreadGroup();
