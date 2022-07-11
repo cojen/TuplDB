@@ -94,7 +94,7 @@ public class ColumnInfo implements Cloneable {
         TYPE_BIG_INTEGER = 0b11100,
         TYPE_BIG_DECIMAL = 0b11101;
 
-    static final int
+    public static final int
         TYPE_NULL_LOW    = 0b1000_00000,
         TYPE_DESCENDING  = 0b0100_00000,
         TYPE_NULLABLE    = 0b0010_00000,

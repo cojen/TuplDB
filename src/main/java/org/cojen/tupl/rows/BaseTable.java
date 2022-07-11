@@ -47,8 +47,8 @@ import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.filter.ComplexFilterException;
 import org.cojen.tupl.filter.FalseFilter;
-import org.cojen.tupl.filter.FullFilter;
 import org.cojen.tupl.filter.Parser;
+import org.cojen.tupl.filter.Query;
 import org.cojen.tupl.filter.RowFilter;
 import org.cojen.tupl.filter.TrueFilter;
 
@@ -126,11 +126,11 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     private final class FilterFactoryCache
-        extends SoftCache<String, ScanControllerFactory<R>, FullFilter>
+        extends SoftCache<String, ScanControllerFactory<R>, Query>
     {
         @Override
-        protected ScanControllerFactory<R> newValue(String filter, FullFilter ff) {
-            return newFilteredFactory(this, filter, ff);
+        protected ScanControllerFactory<R> newValue(String filter, Query query) {
+            return newFilteredFactory(this, filter, query);
         }
     }
 
@@ -522,11 +522,11 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     /**
-     * @param ff the parsed and reduced filter string; can be null initially
+     * @param query the parsed and reduced filter string; can be null initially
      */
     @SuppressWarnings("unchecked")
     private ScanControllerFactory<R> newFilteredFactory
-        (FilterFactoryCache cache, String filter, FullFilter ff)
+        (FilterFactoryCache cache, String filter, Query query)
     {
         Class<?> rowType = rowType();
         RowInfo rowInfo = RowInfo.find(rowType);
@@ -547,23 +547,23 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             }
         }
 
-        if (ff == null) {
-            ff = new Parser(allColumns, filter).parseFull(availableColumns).reduce();
+        if (query == null) {
+            query = new Parser(allColumns, filter).parseQuery(availableColumns).reduce();
         }
 
-        RowFilter rf = ff.filter();
+        RowFilter rf = query.filter();
 
         if (rf instanceof FalseFilter) {
             return EmptyScanController.factory();
         }
 
-        if (rf instanceof TrueFilter && ff.projection() == null) {
+        if (rf instanceof TrueFilter && query.projection() == null) {
             return this;
         }
 
-        String canonical = ff.toString();
+        String canonical = query.toString();
         if (!canonical.equals(filter)) {
-            return cache.obtain(canonical, ff);
+            return cache.obtain(canonical, query);
         }
 
         var keyColumns = rowInfo.keyColumns.values().toArray(ColumnInfo[]::new);
@@ -594,7 +594,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             var rangeFactories = new ScanControllerFactory[ranges.length];
             for (int i=0; i<ranges.length; i++) {
                 rangeFactories[i] = newFilteredFactory
-                    (rowGen, ranges[i], predClass, ff.projection());
+                    (rowGen, ranges[i], predClass, query.projection());
             }
             return new RangeUnionScanControllerFactory(rangeFactories);
         }
@@ -611,7 +611,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             splitRemainders(rowInfo, range);
         }
 
-        return newFilteredFactory(rowGen, range, predClass, ff.projection());
+        return newFilteredFactory(rowGen, range, predClass, query.projection());
     }
 
     @SuppressWarnings("unchecked")
@@ -694,9 +694,9 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     {
         RowInfo rowInfo = RowInfo.find(rowType());
         Map<String, ColumnInfo> allColumns = rowInfo.allColumns;
-        FullFilter ff = new Parser(allColumns, filter).parseFull(allColumns).reduce();
+        Query query = new Parser(allColumns, filter).parseQuery(allColumns).reduce();
 
-        var selector = new IndexSelector(rowInfo, ff);
+        var selector = new IndexSelector(rowInfo, query);
         int num = selector.analyze();
 
         if (num <= 1) {
@@ -717,7 +717,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         throws IOException
     {
         ColumnSet subIndex = selector.selectedIndex(i);
-        FullFilter subFilter = selector.selectedFilter(i);
+        Query subFilter = selector.selectedQuery(i);
 
         if (subFilterStr == null) {
             assert i == 0;

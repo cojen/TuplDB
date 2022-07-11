@@ -20,18 +20,20 @@ package org.cojen.tupl.filter;
 import java.util.Map;
 
 import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.OrderBy;
 
 /**
- * Describes a fully parsed filter specification.
+ * Describes a fully parsed query specification.
  *
  * @param projection null if projection is all columns
+ * @param orderBy can be null
  * @param filter never null
- * @see Parser#parseFull
+ * @see Parser#parseQuery
  */
-public record FullFilter(Map<String, ColumnInfo> projection, RowFilter filter) {
-    public FullFilter reduce() {
+public record Query(Map<String, ColumnInfo> projection, OrderBy orderBy, RowFilter filter) {
+    public Query reduce() {
         RowFilter rf = filter.reduce();
-        return rf.equals(filter) ? this : new FullFilter(projection, rf);
+        return rf.equals(filter) ? this : new Query(projection, orderBy, rf);
     }
 
     @Override
@@ -47,7 +49,12 @@ public record FullFilter(Map<String, ColumnInfo> projection, RowFilter filter) {
             if (b.length() != 1) {
                 b.append(',').append(' ');
             }
-            b.append(name);
+            OrderBy.Rule rule;
+            if (orderBy != null && (rule = orderBy.get(name)) != null) {
+                rule.appendTo(b);
+            } else {
+                b.append(name);
+            }
         }
         b.append('}');
 
@@ -57,5 +64,5 @@ public record FullFilter(Map<String, ColumnInfo> projection, RowFilter filter) {
         }
 
         return b.toString();
-    }    
+    }
 }

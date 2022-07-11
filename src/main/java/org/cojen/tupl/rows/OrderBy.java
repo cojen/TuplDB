@@ -27,7 +27,7 @@ import static org.cojen.tupl.rows.ColumnInfo.*;
  * @see ComparatorMaker
  * @author Brian S O'Neill
  */
-final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
+public final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
     static OrderBy forPrimaryKey(RowInfo rowInfo) {
         var orderBy = new OrderBy();
         for (ColumnInfo column : rowInfo.keyColumns.values()) {
@@ -59,8 +59,8 @@ final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
     /**
      * @param type only differs from the column typeCode for TYPE_NULL_LOW and TYPE_DESCENDING
      */
-    static record Rule(ColumnInfo column, int type) {
-        ColumnInfo asColumn() {
+    public static record Rule(ColumnInfo column, int type) {
+        public ColumnInfo asColumn() {
             ColumnInfo c = column;
             if (c.typeCode != type) {
                 c = c.copy();
@@ -69,15 +69,15 @@ final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
             return c;
         }
 
-        boolean isDescending() {
+        public boolean isDescending() {
             return ColumnInfo.isDescending(type);
         }
 
-        boolean isNullLow() {
+        public boolean isNullLow() {
             return ColumnInfo.isNullLow(type);
         }
 
-        void appendTo(StringBuilder b) {
+        public void appendTo(StringBuilder b) {
             b.append(isDescending() ? '-' : '+');
             if (isNullLow()) {
                 b.append('!');

@@ -22,8 +22,8 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
-import org.cojen.tupl.filter.FullFilter;
 import org.cojen.tupl.filter.Parser;
+import org.cojen.tupl.filter.Query;
 
 /**
  * 
@@ -93,7 +93,7 @@ public class IndexSelectorTest {
         verify("{c, b}: c != ? || b == ? || d == c",
                "+d+c+b+id", "{c, b}: c != ?0 || b == ?1 || d == c");
         verify("{c, b}: c != ? || b == ? || d == e", "+id", "{c, b}: c != ?0 || b == ?1 || d == e");
-        verify("~{}: c != ? || b == ? || d == e", "+id", "c != ?0 || b == ?1 || d == e");
+        verify("{*}: c != ? || b == ? || d == e", "+id", "c != ?0 || b == ?1 || d == e");
 
         verify("a == ? || a == ?", "+a+id", "a == ?0 || a == ?1");
         verify("a == ? || b == ? || a == ?",
@@ -218,12 +218,12 @@ public class IndexSelectorTest {
 
         for (int i=0; i<numSelected; i++) {
             assertEquals(expect[i * 2], selector.selectedIndex(i).indexSpec());
-            assertEquals(expect[i * 2 + 1], selector.selectedFilter(i).toString());
+            assertEquals(expect[i * 2 + 1], selector.selectedQuery(i).toString());
         }
     }
 
-    private FullFilter parse(String filter) {
-        return new Parser(mInfo.allColumns, filter).parseFull(null);
+    private Query parse(String filter) {
+        return new Parser(mInfo.allColumns, filter).parseQuery(null);
     }
 
     private <R> IndexSelector selector(String filter) {

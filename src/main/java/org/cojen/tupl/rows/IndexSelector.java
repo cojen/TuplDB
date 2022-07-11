@@ -31,8 +31,8 @@ import org.cojen.tupl.filter.AndFilter;
 import org.cojen.tupl.filter.ColumnFilter;
 import org.cojen.tupl.filter.ColumnToArgFilter;
 import org.cojen.tupl.filter.ColumnToColumnFilter;
-import org.cojen.tupl.filter.FullFilter;
 import org.cojen.tupl.filter.OrFilter;
+import org.cojen.tupl.filter.Query;
 import org.cojen.tupl.filter.RowFilter;
 import org.cojen.tupl.filter.Visitor;
 
@@ -43,16 +43,16 @@ import org.cojen.tupl.filter.Visitor;
  */
 final class IndexSelector {
     private final RowInfo mPrimaryInfo;
-    private final FullFilter mFullFilter;
+    private final Query mQuery;
 
     private int mAnyTermMatches;
 
     private ColumnSet[] mSelectedIndexes;
-    private FullFilter[] mSelectedFilters;
+    private Query[] mSelectedQueries;
 
-    IndexSelector(RowInfo primaryInfo, FullFilter filter) {
+    IndexSelector(RowInfo primaryInfo, Query query) {
         mPrimaryInfo = primaryInfo;
-        mFullFilter = filter;
+        mQuery = query;
     }
 
     /**
@@ -67,7 +67,7 @@ final class IndexSelector {
                 break one;
             }
         
-            RowFilter dnf = mFullFilter.filter().dnf();
+            RowFilter dnf = mQuery.filter().dnf();
 
             if (!(dnf instanceof OrFilter orf)) {
                 theOne = selectIndex(dnf);
@@ -112,7 +112,7 @@ final class IndexSelector {
             entries.sort(Comparator.comparingInt(e -> e.getValue().numTerms()));
 
             mSelectedIndexes = new ColumnSet[entries.size()];
-            mSelectedFilters = new FullFilter[mSelectedIndexes.length];
+            mSelectedQueries = new Query[mSelectedIndexes.length];
 
             Iterator<Map.Entry<ColumnSet, RowFilter>> it = entries.iterator();
             RowFilter reject = null;
@@ -128,7 +128,7 @@ final class IndexSelector {
                     reject = reject.and(filter.not());
                     filter = disjoint;
                 }
-                mSelectedFilters[i] = new FullFilter(mFullFilter.projection(), filter);
+                mSelectedQueries[i] = new Query(mQuery.projection(), mQuery.orderBy(), filter);
             }
 
             return mSelectedIndexes.length;
@@ -136,7 +136,7 @@ final class IndexSelector {
 
         // Reached when only one index was selected.
         mSelectedIndexes = new ColumnSet[] {theOne};
-        mSelectedFilters = new FullFilter[] {mFullFilter};
+        mSelectedQueries = new Query[] {mQuery};
         return 1;
     }
 
@@ -150,8 +150,8 @@ final class IndexSelector {
     /**
      * Must call analyze first.
      */
-    FullFilter selectedFilter(int i) {
-        return mSelectedFilters[i];
+    Query selectedQuery(int i) {
+        return mSelectedQueries[i];
     }
 
     /**
@@ -265,7 +265,7 @@ final class IndexSelector {
             return true;
         }
 
-        Map<String, ColumnInfo> pmap = mFullFilter.projection();
+        Map<String, ColumnInfo> pmap = mQuery.projection();
         if (pmap == null) {
             pmap = mPrimaryInfo.allColumns;
         }
@@ -293,7 +293,7 @@ final class IndexSelector {
      * Returns -1 if cs1 is better than cs2, ...
      */
     private int compareCovering(List<Term> terms, ColumnSet cs1, ColumnSet cs2) {
-        Map<String, ColumnInfo> pmap = mFullFilter.projection();
+        Map<String, ColumnInfo> pmap = mQuery.projection();
 
         Set<String> required;
         if (pmap == null) {
@@ -406,12 +406,12 @@ final class IndexSelector {
 
         ColumnSet best = mPrimaryInfo;
 
-        Map<String, ColumnInfo> pmap = mFullFilter.projection(); // is null if all are required
+        Map<String, ColumnInfo> pmap = mQuery.projection(); // is null if all are required
 
         if (pmap != null) {
             var required = new HashSet<>(pmap.keySet());
 
-            mFullFilter.filter().accept(new Visitor() {
+            mQuery.filter().accept(new Visitor() {
                 @Override
                 public void visit(ColumnToArgFilter filter) {
                     required.add(filter.column().name);

@@ -21,10 +21,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import org.cojen.tupl.rows.ColumnInfo;
 import org.cojen.tupl.rows.ConvertUtils;
+import org.cojen.tupl.rows.OrderBy;
 
 /**
  * 
@@ -40,6 +43,9 @@ public class Parser {
     private Map<Integer, Boolean> mInArgs;
     private boolean mNoFilter;
 
+    private LinkedHashMap<String, ColumnInfo> mProjection;
+    private OrderBy mOrderBy;
+
     public Parser(Map<String, ColumnInfo> allColumns, String filter) {
         mAllColumns = allColumns;
         mFilter = filter;
@@ -50,13 +56,15 @@ public class Parser {
      *
      * @param availableColumns can pass null if same as all columns
      */
-    public FullFilter parseFull(Map<String, ColumnInfo> availableColumns) {
-        return new FullFilter(parseProjection(availableColumns), parseFilter());
+    public Query parseQuery(Map<String, ColumnInfo> availableColumns) {
+        parseProjection(availableColumns);
+        return new Query(mProjection, mOrderBy, parseFilter());
     }
 
     /**
-     * Projection  = [ "~" ] "{" Columns "}" [ ':' RowFilter ]
-     * Columns     = [ ColumnName { "," ColumnName } ]
+     * Projection   = "{" ProjColumns "}" [ ':' RowFilter ]
+     * ProjColumns  = [ ProjColumn { "," ProjColumn } ]
+     * ProjColumn   = ( ( ( ( "+" | "-" ) [ "!" ] ) | "~" ) ColumnName ) | "*"
      *
      * Returns null if string doesn't start with a projection or if the projection is all of
      * the available columns. If the projection ends with a colon, then a subsequent call to
@@ -65,7 +73,7 @@ public class Parser {
      *
      * @param availableColumns can pass null if same as all columns
      */
-    public Map<String, ColumnInfo> parseProjection(Map<String, ColumnInfo> availableColumns) {
+    private void parseProjection(Map<String, ColumnInfo> availableColumns) {
         if (availableColumns == null) {
             availableColumns = mAllColumns;
         }
@@ -73,38 +81,91 @@ public class Parser {
         final int start = mPos;
 
         int c = nextCharIgnoreWhitespace();
-        boolean invert = false;
-        if (c == '~') {
-            c = nextCharIgnoreWhitespace();
-            if (c != '{') {
-                mPos--;
-                throw error("Left brace expected");
-            }
-            invert = true;
-        } else if (c != '{') {
+        if (c != '{') {
             mPos = start;
-            return null;
+            return;
         }
 
-        Map<String, ColumnInfo> projection;
-        if (invert) {
-            projection = new LinkedHashMap<>(availableColumns);
-            // Allow unavailable columns to be removed, although it won't have any effect.
-            availableColumns = mAllColumns;
-        } else {
-            projection = new LinkedHashMap<>();
-        }
+        var projection = new LinkedHashMap<String, ColumnInfo>();
+        OrderBy orderBy = null;
+        Set<String> excluded = null;
+        boolean wildcard = false;
 
-        if (nextCharIgnoreWhitespace() != '}') {
+        if ((c = nextCharIgnoreWhitespace()) != '}') {
             mPos--;
-            while (true) {
-                ColumnInfo column = parseColumn(availableColumns);
-                String name = column.name;
 
-                if (invert) {
-                    projection.remove(name);
+            while (true) {
+                if (c == '*') {
+                    wildcard = true;
+                    mPos++;
                 } else {
-                    projection.put(name, column);
+                    int colStart = mPos;
+
+                    //    -1: exclude
+                    // 0b000: plain
+                    // 0b010: ascending
+                    // 0b011: descending
+                    // 0b1xx: null low
+                    int prefix;
+                    prefix: {
+                        if (c == '~') {
+                            prefix = -1;
+                            skipCharIgnoreWhitespace();
+                        } else {
+                            if (c == '+') {
+                                prefix = 0b010;
+                            } else if (c == '-') {
+                                prefix = 0b011;
+                            } else {
+                                prefix = 0b000;
+                                break prefix;
+                            }
+                            if (skipCharIgnoreWhitespace() == '!') {
+                                prefix |= 0b100;
+                                skipCharIgnoreWhitespace();
+                            }
+                        }
+                    }
+
+                    // If column is to be excluded, pass all available columns to suppress an
+                    // error when attempting to remove a column that isn't available anyhow.
+                    ColumnInfo column = parseColumn(prefix < 0 ? null : availableColumns);
+
+                    String name = column.name;
+
+                    if (prefix < 0) {
+                        if (excluded == null) {
+                            excluded = new HashSet<>();
+                        }
+                        if (projection.containsKey(name)) {
+                            mPos = colStart;
+                            throw error("Cannot exclude a column which is explicitly selected");
+                        }
+                        excluded.add(name);
+                    } else {
+                        if (excluded != null && excluded.contains(name)) {
+                            mPos = colStart;
+                            throw error("Cannot select a column which is also excluded");
+                        }
+
+                        projection.put(name, column);
+
+                        if (prefix != 0) orderBy: {
+                            if (orderBy == null) {
+                                orderBy = new OrderBy();
+                            } else if (orderBy.containsKey(name)) {
+                                break orderBy;
+                            }
+                            int type = column.typeCode;
+                            if ((prefix & 0b011) == 0b011) {
+                                type |= ColumnInfo.TYPE_DESCENDING;
+                            }
+                            if ((prefix & 0b100) == 0b100) {
+                                type |= ColumnInfo.TYPE_NULL_LOW;
+                            }
+                            orderBy.put(name, new OrderBy.Rule(column, type));
+                        }
+                    }
                 }
 
                 c = nextCharIgnoreWhitespace();
@@ -129,7 +190,22 @@ public class Parser {
             }
         }
 
-        return projection.size() == availableColumns.size() ? null : projection;
+        if (wildcard) {
+            for (var e : availableColumns.entrySet()) {
+                projection.putIfAbsent(e.getKey(), e.getValue());
+            }
+        }
+
+        if (excluded != null) {
+            if (!wildcard) {
+                mPos = start;
+                throw error("Must include wildcard if any columns are excluded");
+            }
+            projection.keySet().removeAll(excluded);
+        }
+
+        mProjection = projection.size() == availableColumns.size() ? null : projection;
+        mOrderBy = orderBy;
     }
 
     /**
@@ -525,6 +601,13 @@ public class Parser {
                 return c;
             }
         }
+        return c;
+    }
+
+    private int skipCharIgnoreWhitespace() {
+        mPos++;
+        int c = nextCharIgnoreWhitespace();
+        mPos--;
         return c;
     }
 

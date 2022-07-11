@@ -82,7 +82,7 @@ public class RowUpdaterTest {
             }
         }
 
-        u = table.newRowUpdater(null, "~{path}: id == ? || name == ?", 2, "name-3!");
+        u = table.newRowUpdater(null, "{*, ~path}: id == ? || name == ?", 2, "name-3!");
         for (var row = u.row(); u.row() != null; ) {
             try {
                 row.path();
@@ -123,7 +123,7 @@ public class RowUpdaterTest {
             }
         }
 
-        u = table.newRowUpdater(null, "~{path}: id == ?", 4);
+        u = table.newRowUpdater(null, "{path, *}: id == ?", 4);
         for (var row = u.row(); u.row() != null; ) {
             row.state(row.state() + 1000);
             row = u.update(row);

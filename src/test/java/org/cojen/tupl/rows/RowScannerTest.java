@@ -46,16 +46,17 @@ public class RowScannerTest {
         verify(table.newRowScanner(null, "{id, id}"), 1, 5, "id");
         verify(table.newRowScanner(null, "{name, state}"), 1, 5, "name", "state");
 
-        verify(table.newRowScanner(null, "~{}"), 1, 5, "id", "name", "path", "state");
-        verify(table.newRowScanner(null, "~{id}"), 1, 5, "name", "path", "state");
-        verify(table.newRowScanner(null, "~{id, id}"), 1, 5, "name", "path", "state");
-        verify(table.newRowScanner(null, "~{name, state}"), 1, 5, "id", "path");
+        verify(table.newRowScanner(null, "{*}"), 1, 5, "id", "name", "path", "state");
+        verify(table.newRowScanner(null, "{~id, *}"), 1, 5, "name", "path", "state");
+        verify(table.newRowScanner(null, "{~id, ~id, *}"), 1, 5, "name", "path", "state");
+        verify(table.newRowScanner(null, "{~name, *, ~state}"), 1, 5, "id", "path");
 
         verify(table.newRowScanner(null, "{}: name == ?", "name-3"), 3, 3);
         verify(table.newRowScanner(null, "{path}: name == ?", "name-3"), 3, 3, "path");
         verify(table.newRowScanner(null, "{name}: id == ?", 3), 3, 3, "name");
         verify(table.newRowScanner(null, "{name}: id > ?", 3), 4, 5, "name");
-        verify(table.newRowScanner(null, "~{path, state}: name == ?", "name-3"), 3,3, "id", "name");
+        verify(table.newRowScanner
+               (null, "{*, ~path, ~state}: name == ?", "name-3"), 3, 3, "id", "name");
 
         var ix = table.viewSecondaryIndex("state");
 
@@ -64,16 +65,16 @@ public class RowScannerTest {
         verify(ix.newRowScanner(null, "{id, id}"), 1, 5, "id");
         verify(ix.newRowScanner(null, "{name, state}"), 1, 5, "name", "state");
 
-        verify(ix.newRowScanner(null, "~{}"), 1, 5, "id", "name", "path", "state");
-        verify(ix.newRowScanner(null, "~{id}"), 1, 5, "name", "path", "state");
-        verify(ix.newRowScanner(null, "~{id, id}"), 1, 5, "name", "path", "state");
-        verify(ix.newRowScanner(null, "~{name, state}"), 1, 5, "id", "path");
+        verify(ix.newRowScanner(null, "{*}"), 1, 5, "id", "name", "path", "state");
+        verify(ix.newRowScanner(null, "{~id, *}"), 1, 5, "name", "path", "state");
+        verify(ix.newRowScanner(null, "{*, ~id, ~id}"), 1, 5, "name", "path", "state");
+        verify(ix.newRowScanner(null, "{~name, ~state, *, *}"), 1, 5, "id", "path");
 
         verify(ix.newRowScanner(null, "{}: name == ?", "name-3"), 3, 3);
         verify(ix.newRowScanner(null, "{path}: name == ?", "name-3"), 3, 3, "path");
         verify(ix.newRowScanner(null, "{name}: id == ?", 3), 3, 3, "name");
         verify(ix.newRowScanner(null, "{name}: id > ?", 3), 4, 5, "name");
-        verify(ix.newRowScanner(null, "~{path, state}: name == ?", "name-3"), 3,3, "id", "name");
+        verify(ix.newRowScanner(null, "{~path, ~state, *}: name == ?", "name-3"), 3,3, "id", "name");
 
         ix = ix.viewUnjoined();
 
@@ -82,10 +83,10 @@ public class RowScannerTest {
         verify(ix.newRowScanner(null, "{id, id}"), 1, 5, "id");
         verify(ix.newRowScanner(null, "{name, state}"), 1, 5, "name", "state");
 
-        verify(ix.newRowScanner(null, "~{}"), 1, 5, "id", "name", "state");
-        verify(ix.newRowScanner(null, "~{id}"), 1, 5, "name", "state");
-        verify(ix.newRowScanner(null, "~{id, id}"), 1, 5, "name", "state");
-        verify(ix.newRowScanner(null, "~{name, state}"), 1, 5, "id");
+        verify(ix.newRowScanner(null, "{*}"), 1, 5, "id", "name", "state");
+        verify(ix.newRowScanner(null, "{~id, *}"), 1, 5, "name", "state");
+        verify(ix.newRowScanner(null, "{~id, ~id, *}"), 1, 5, "name", "state");
+        verify(ix.newRowScanner(null, "{~name, ~state, *, id}"), 1, 5, "id");
 
         verify(ix.newRowScanner(null, "{}: name == ?", "name-3"), 3, 3);
         try {
@@ -96,7 +97,8 @@ public class RowScannerTest {
         }
         verify(ix.newRowScanner(null, "{name}: id == ?", 3), 3, 3, "name");
         verify(ix.newRowScanner(null, "{name}: id > ?", 3), 4, 5, "name");
-        verify(ix.newRowScanner(null, "~{path, state}: name == ?", "name-3"), 3,3, "id", "name");
+        verify(ix.newRowScanner
+               (null, "{~path, ~state, *}: name == ?", "name-3"), 3,3, "id", "name");
     }
 
     private static void verify(RowScanner<TestRow> s, int start, int end, String... expect)

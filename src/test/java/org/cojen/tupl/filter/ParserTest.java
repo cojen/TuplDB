@@ -48,6 +48,12 @@ public class ParserTest {
         mColumnMap.put(info.name, info);
 
         info = new ColumnInfo();
+        info.name = "b";
+        info.typeCode = ColumnInfo.TYPE_INT;
+        info.assignType();
+        mColumnMap.put(info.name, info);
+
+        info = new ColumnInfo();
         info.name = "c\u1f600";
         info.typeCode = ColumnInfo.TYPE_BOOLEAN;
         info.assignType();
@@ -80,12 +86,17 @@ public class ParserTest {
         pf("1==?", "Not a valid character");
         pf("a<=?a", "Malformed argument number");
         pf("a<=?999999999999999999999999999999999999", "too large");
+        pf("{a, ~a}", "Cannot exclude");
+        pf("{~a, -a}", "Cannot select");
+        pf("{~*}", "Not a valid character");
+        pf("{~!a}", "Not a valid character");
+        pf("{~a}", "Must include wildcard");
     }
 
     // pf: parse failure
     private void pf(String filterStr, String message) {
         try {
-            new Parser(mColumnMap, filterStr).parseFilter();
+            new Parser(mColumnMap, filterStr).parseQuery(null);
             fail();
         } catch (IllegalArgumentException e) {
             assertTrue(e.getMessage(), e.getMessage().contains(message));
@@ -98,5 +109,31 @@ public class ParserTest {
         RowFilter filter = new Parser(mColumnMap, filterStr).parseFilter();
         assertEquals("a == ?0 && a == ?1 && a < ?0 && a != ?2 && a >= ?0 && a == ?3",
                      filter.toString());
+    }
+
+    @Test
+    public void basic() throws Exception {
+        pass("{}");
+        pass("{*}", "T");
+        pass("{~b, *}", "{a, c\u1f600}");
+        pass("{*, ~a}", "{b, c\u1f600}");
+        pass("{*, ~ a}", "{b, c\u1f600}");
+        pass("{+a}");
+        pass("{+ a}", "{+a}");
+        pass("{+a, *}");
+        pass("{+ a, *}", "{+a, *}");
+        pass("{+ !a}", "{+!a}");
+        pass("{+ ! a}", "{+!a}");
+        pass("{-b, + ! a, -a}", "{-b, +!a}");
+        pass("{-b, + ! a}", "{-b, +!a}");
+    }
+
+    private void pass(String filterStr) throws Exception {
+        pass(filterStr, filterStr);
+    }
+
+    private void pass(String filterStr, String expect) throws Exception {
+        Query q = new Parser(mColumnMap, filterStr).parseQuery(null);
+        assertEquals(expect, q.toString());
     }
 }
