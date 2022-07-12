@@ -47,6 +47,10 @@ final class IndexSelector {
 
     private int mAnyTermMatches;
 
+    private boolean mAnyFirstOrderMatches;
+
+    private boolean mMultipleSelections;
+
     private ColumnSet[] mSelectedIndexes;
     private Query[] mSelectedQueries;
 
@@ -75,17 +79,44 @@ final class IndexSelector {
             }
 
             var selections = new LinkedHashMap<ColumnSet, RowFilter>();
-            boolean fullScan = false;
 
-            for (RowFilter group : orf.subFilters()) {
-                ColumnSet index = selectIndex(group);
-                fullScan |= mAnyTermMatches == 0;
-                RowFilter existing = selections.get(index);
-                if (existing == null) {
-                    selections.put(index, group);
-                } else {
-                    selections.put(index, existing.or(group).reduce());
+            selectAll: while (true) {
+                boolean fullScan = false;
+
+                for (RowFilter group : orf.subFilters()) {
+                    ColumnSet index = selectIndex(group);
+                    fullScan |= mAnyTermMatches == 0;
+
+                    RowFilter existing = selections.get(index);
+                    if (existing == null) {
+                        selections.put(index, group);
+                    } else {
+                        selections.put(index, existing.or(group).reduce());
+                    }
+
+                    if (selections.size() > 1) {
+                        if (fullScan) {
+                            // If a full scan of at least one index is required, and multiple
+                            // indexes are selected, then always do a full scan of the best
+                            // covering index instead.
+                            theOne = findBestFullScanIndex();
+                            break one;
+                        }
+
+                        mMultipleSelections = true;
+
+                        if (mAnyFirstOrderMatches) {
+                            // A call to isFirstOrderByColumn returned true, but now that it's
+                            // known that multiple indexes are to be selected, the call to
+                            // isFirstOrderByColumn should have returned false. Start over.
+                            mAnyFirstOrderMatches = false;
+                            selections.clear();
+                            continue selectAll;
+                        }
+                    }
                 }
+
+                break;
             }
 
             if (selections.size() == 1) {
@@ -95,13 +126,6 @@ final class IndexSelector {
 
             if (selections.isEmpty()) {
                 theOne = mPrimaryInfo;
-                break one;
-            }
-
-            if (fullScan) {
-                // If a full scan of at least one index is required, and multiple indexes are
-                // selected, then always do a full scan of the best covering index instead.
-                theOne = findBestFullScanIndex();
                 break one;
             }
 
@@ -201,9 +225,21 @@ final class IndexSelector {
             return cmp;
         }
 
-        // Select an index based on the order in which it's key columns appear in the filter.
+        // Select an index based on how well its natural order matches the requested ordering.
+        cmp = compareOrdering(cs1, cs2);
+        if (cmp != 0) {
+            return cmp;
+        }
+
+        // Select an index based on the order in which its key columns appear in the filter.
         // This is the closest thing to an index selection "hint".
-        return comparePreference(group, cs1, cs2);
+        cmp = comparePreference(group, cs1, cs2);
+        if (cmp != 0) {
+            return cmp;
+        }
+
+        // Select the index with the fewest number of columns.
+        return Integer.compare(cs1.allColumns.size(), cs2.allColumns.size());
     }
 
     /**
@@ -239,9 +275,9 @@ final class IndexSelector {
                     score += 2;
                 }
                 case HALF_RANGE -> {
-                    if (score > 0 || isCovering(terms, cs)) {
+                    if (score > 0 || isCovering(terms, cs)|| isFirstOrderByColumn(column)) {
                         // Only consider a half range match after the first index column, or if
-                        // no join is required.
+                        // no join is required, or if the column is the first for ordering,
                         score += 1;
                     }
                 }
@@ -255,6 +291,48 @@ final class IndexSelector {
         mAnyTermMatches += score;
 
         return score;
+    }
+
+    private boolean isFirstOrderByColumn(ColumnInfo column) {
+        if (mMultipleSelections) {
+            // If an ordering is requested, and multiple indexes are selected, a sort must be
+            // performed, so don't select an index based on natural order.
+            return false;
+        }
+
+        OrderBy orderBy = mQuery.orderBy();
+        if (orderBy == null || orderBy.isEmpty()
+            || compareOrdering(column, orderBy.values().iterator().next()) == 0)
+        {
+            return false;
+        }
+
+        mAnyFirstOrderMatches = true;
+
+        return true;
+    }
+
+    /**
+     * @return 0 if not matched, 1 if matched exactly, or -1 if matched with a flipped direction
+     */
+    private static int compareOrdering(ColumnInfo column, OrderBy.Rule rule) {
+        int rt;
+        if (!column.name.equals(rule.column().name)
+            || column.unorderedTypeCode() != ColumnInfo.unorderedTypeCode(rt = rule.type()))
+        {
+            return 0;
+        } else {
+            return column.isDescending() == ColumnInfo.isDescending(rt) ? 1 : -1;
+        }
+    }
+
+    /**
+     * @param direction match results for previous columns, or 0 if this is the first column
+     * @return 0 if not matched, 1 if matched exactly, or -1 if matched with a flipped direction
+     */
+    private static int compareOrdering(ColumnInfo column, OrderBy.Rule rule, int direction) {
+        int cmp = compareOrdering(column, rule);
+        return (cmp == 0 || (direction != 0 && direction != cmp)) ? 0 : cmp;
     }
 
     /**
@@ -377,7 +455,7 @@ final class IndexSelector {
         return 0;
     }
 
-   /**
+    /**
      * Returns -1 if cs1 is better than cs2, ...
      */
     private static int comparePreference(ColumnFilter cf, ColumnSet cs1, ColumnSet cs2) {
@@ -394,6 +472,41 @@ final class IndexSelector {
             }
             if (name.equals(key2)) {
                 return 1;
+            }
+        }
+
+        return 0;
+    }
+
+    /**
+     * Returns -1 if cs1 is better than cs2, ...
+     */
+    private int compareOrdering(ColumnSet cs1, ColumnSet cs2) {
+        OrderBy orderBy = mQuery.orderBy();
+        if (orderBy == null || orderBy.isEmpty()) {
+            return 0;
+        }
+
+        Iterator<OrderBy.Rule> rules = orderBy.values().iterator();
+        Iterator<ColumnInfo> it1 = cs1.keyColumns.values().iterator();
+        Iterator<ColumnInfo> it2 = cs2.keyColumns.values().iterator();
+
+        int dir1 = 0;
+        int dir2 = 0;
+
+        while (rules.hasNext() && it1.hasNext() && it2.hasNext()) {
+            OrderBy.Rule rule = rules.next();
+
+            ColumnInfo col1 = it1.next();
+            ColumnInfo col2 = it2.next();
+
+            dir1 = compareOrdering(col1, rule, dir1);
+            dir2 = compareOrdering(col2, rule, dir2);
+
+            if (dir1 == 0) {
+                return dir2 == 0 ? 0 : 1;
+            } else if (dir2 == 0) {
+                return -1;
             }
         }
 

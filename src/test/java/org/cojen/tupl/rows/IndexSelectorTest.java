@@ -113,11 +113,31 @@ public class IndexSelectorTest {
         verify("d == ? && c != ? && b > ?", "+d+b+id", "d == ?0 && c != ?1 && b > ?2");
         verify("d == ? && b > ? && c > ?", "+d+c+b+id", "d == ?0 && b > ?1 && c > ?2");
 
-        // FIXME: Enable these cases when ordering can be specified.
-        //verify("c > ? && b > ?", "+c+b+id", "c > ?0 && b > ?1");
-        //verify("c != ? && b > ?", "+b+id", "c != ?0 && b > ?1");
-        //verify("d > ? && b > ? && c > ?", "+d+c+b+id", "d > ?0 && b > ?1 && c > ?2");
-        //verify("b > ? && c > ? && d > ?", "+d+c+b+id", "b > ?0 && c > ?1 && d > ?2");
+        verify("{+c, *}: c > ? && b > ?", "+c+b+id", "{+c, *}: c > ?0 && b > ?1");
+        verify("{+b, *}: c != ? && b > ?", "+b+id", "{+b, *}: c != ?0 && b > ?1");
+        verify("{+d, *}: d > ? && b > ? && c > ?",
+               "+d+c+b+id", "{+d, *}: d > ?0 && b > ?1 && c > ?2");
+        verify("{+d, +b, *}: b > ? && c > ? && d > ?",
+               "+d+c+b+id", "{+d, +b, *}: b > ?0 && c > ?1 && d > ?2");
+
+        verify("{+b, *}: e == ? && b == ?", "+b+e+id", "{+b, *}: e == ?0 && b == ?1");
+        verify("{-b, *}: e == ? && b == ?", "+b+e+id", "{-b, *}: e == ?0 && b == ?1");
+        verify("{+e, *}: e == ? && b == ?", "+e+b+id", "{+e, *}: e == ?0 && b == ?1");
+
+        verify("{+d, +c, *}: d == ?", "+d+c+b+id", "{+d, +c, *}: d == ?0");
+        verify("{-d, -c, *}: d == ?", "+d+c+b+id", "{-d, -c, *}: d == ?0");
+        verify("{+d, -c, *}: d == ?", "+d+b+id", "{+d, -c, *}: d == ?0");
+        verify("{-d, +c, *}: d == ?", "+d+b+id", "{-d, +c, *}: d == ?0");
+
+        verify("{+c, *}: c > ? && c < ? && b > ? && b < ? || d == ?",
+               "+d+b+id", "{+c, *}: d == ?4",
+               "+c+b+id", "{+c, *}: c > ?0 && c < ?1 && b > ?2 && b < ?3 && d != ?4");
+
+        verify("{+c, *}: c > ? && b > ? && b < ? || d == ?",
+               "+d+b+id", "{+c, *}: d == ?3",
+               "+b+id", "{+c, *}: c > ?0 && b > ?1 && b < ?2 && d != ?3");
+
+        verify("{+c, *}: c > ? && b > ? && b < ?", "+b+id", "{+c, *}: c > ?0 && b > ?1 && b < ?2");
     }
 
     @Test
@@ -159,6 +179,16 @@ public class IndexSelectorTest {
                "+c-e+id", "e != ?0 && c > ?1 && c < ?2 && c >= ?3 && c < ?4");
 
         verify("a == ? || id < ?", "+a", "a == ?0", "+id", "id < ?1 && a != ?0");
+
+        verify("{+a, *}: a > ? || (b > ? && b < ?)",
+               "+id", "{+a, *}: a > ?0 || (b > ?1 && b < ?2)");
+
+        verify("{+a, *}: (b > ? && b < ?) || a > ?",
+               "+id", "{+a, *}: (b > ?0 && b < ?1) || a > ?2");
+
+        verify("{-a, *}: (a > ? && a < ?) || (b > ? && b < ?)",
+               "+a", "{-a, *}: a > ?0 && a < ?1",
+               "+b-c+id", "{-a, *}: b > ?2 && b < ?3 && (a <= ?0 || a >= ?1)");
     }
 
     @PrimaryKey("id")
