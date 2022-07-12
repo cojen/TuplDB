@@ -3916,24 +3916,35 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
         final LocalDatabase db = mTree.mDatabase;
         final CommitLock commitLock = db.commitLock();
 
-        CommitLock.Shared shared = commitLock.acquireShared();
-        try {
-            // Close check is required because this method is called by the trashed tree
-            // deletion task. The tree isn't registered as an open tree, and so closing the
-            // database doesn't close the tree before deleting the node instances.
-            if (db.isClosed()) {
-                return false;
-            }
-            firstLeaf();
-        } finally {
+        final CommitLock.Shared shared = commitLock.acquireShared();
+
+        // Close check is required because this method is called by the trashed tree deletion
+        // task. The tree isn't registered as an open tree, and so closing the database doesn't
+        // close the tree before deleting the node instances.
+        if (db.isClosed()) {
             shared.release();
+            return false;
         }
 
+        try {
+            firstLeaf();
+        } catch (Throwable e) {
+            shared.release();
+            throw e;
+        }
+
+        final boolean result;
+
         while (true) {
-            shared = commitLock.acquireShared();
+            if (commitLock.hasQueuedThreads()) {
+                shared.release();
+                commitLock.acquireShared(shared);
+            }
+
             try {
                 if (db.isClosed()) {
-                    return false;
+                    result = false;
+                    break;
                 }
 
                 mFrame.acquireExclusive();
@@ -3958,12 +3969,18 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
                 if (!deleteLowestNode(mFrame, node)) {
                     mFrame = null;
                     reset();
-                    return true;
+                    result = true;
+                    break;
                 }
-            } finally {
+            } catch (Throwable e) {
                 shared.release();
+                throw e;
             }
         }
+
+        shared.release();
+
+        return result;
     }
 
     /**
@@ -3974,10 +3991,11 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
         final LocalDatabase db = mTree.mDatabase;
         final CommitLock commitLock = db.commitLock();
 
+        final CommitLock.Shared shared = commitLock.acquireShared();
+
         Node node;
 
         while (true) {
-            CommitLock.Shared shared = commitLock.acquireShared();
             try {
                 if (db.isClosed()) {
                     throw new ClosedIndexException();
@@ -4004,6 +4022,7 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
                 if (!deleteLowestNode(mFrame, node)) {
                     mFrame = null;
                     reset();
+                    shared.release();
                     return;
                 }
 
@@ -4017,10 +4036,18 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
                 }
 
                 node.releaseExclusive();
-            } finally {
+            } catch (Throwable e) {
                 shared.release();
+                throw e;
+            }
+
+            if (commitLock.hasQueuedThreads()) {
+                shared.release();
+                commitLock.acquireShared(shared);
             }
         }
+
+        shared.release();
 
         try {
             mKey = node.retrieveKey(0);
@@ -4098,10 +4125,11 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
         final LocalDatabase db = mTree.mDatabase;
         final CommitLock commitLock = db.commitLock();
 
+        final CommitLock.Shared shared = commitLock.acquireShared();
+
         Node node;
 
         while (true) {
-            CommitLock.Shared shared = commitLock.acquireShared();
             try {
                 if (db.isClosed()) {
                     throw new ClosedIndexException();
@@ -4128,6 +4156,7 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
                 if (!deleteHighestNode(mFrame, node)) {
                     mFrame = null;
                     reset();
+                    shared.release();
                     return;
                 }
 
@@ -4139,10 +4168,18 @@ class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
                 if (node.hasKeys()) {
                     break;
                 }
-            } finally {
+            } catch (Throwable e) {
                 shared.release();
+                throw e;
+            }
+
+            if (commitLock.hasQueuedThreads()) {
+                shared.release();
+                commitLock.acquireShared(shared);
             }
         }
+
+        shared.release();
 
         try {
             int pos = node.highestLeafPos();
