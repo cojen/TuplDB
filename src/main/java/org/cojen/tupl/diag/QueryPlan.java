@@ -72,6 +72,17 @@ public abstract sealed class QueryPlan implements Serializable {
         return a.append(indent).append("...").append(title).append(": ");
     }
 
+    private static Appendable appendArray(Appendable a, String[] array) throws IOException {
+        for (int i=0; i<array.length; i++) {
+            if (i > 0) {
+                a.append(", ");
+            }
+            a.append(array[i]);
+        }
+
+        return a;
+    }
+
     /**
      * Query plan node which accesses rows from a table.
      */
@@ -92,17 +103,8 @@ public abstract sealed class QueryPlan implements Serializable {
 
         Appendable appendKeyColumns(Appendable a, String indent) throws IOException {
             appendItem(a, indent, "key columns");
-
-            for (int i=0; i<keyColumns.length; i++) {
-                if (i > 0) {
-                    a.append(", ");
-                }
-                a.append(keyColumns[i]);
-            }
-
-            return a;
+            return appendArray(a, keyColumns);
         }
-
 
         boolean matches(Table other) {
             return Objects.equals(table, other.table) && Objects.equals(which, other.which) &&
@@ -288,6 +290,81 @@ public abstract sealed class QueryPlan implements Serializable {
         boolean matches(Filter other) {
             return Objects.equals(expression, other.expression) &&
                 Objects.equals(source, other.source);
+        }
+    }
+
+    /**
+     * Query plan node which sorts the rows.
+     */
+    public static sealed class Sort extends QueryPlan {
+        private static final long serialVersionUID = 1L;
+
+        public final String[] sortColumns;
+        public final QueryPlan source;
+
+        /**
+         * @param sortColumns columns with '+' or '-' prefix
+         * @param source child plan node
+         */
+        public Sort(String[] sortColumns, QueryPlan source) {
+            this.sortColumns = sortColumns;
+            this.source = source;
+        }
+
+        @Override
+        void appendTo(Appendable a, String in1, String in2) throws IOException {
+            a.append(in1).append("sort").append(": ");
+            appendArray(a, sortColumns).append('\n');
+            in2 += "  ";
+            source.appendTo(a, in2, in2);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof Sort sort && matches(sort);
+        }
+
+        boolean matches(Sort other) {
+            return Arrays.equals(sortColumns, other.sortColumns) &&
+                Objects.equals(source, other.source);
+        }
+    }
+
+    /**
+     * Query plan node which sorts rows within a group. The groups are already ordered
+     * correctly with respect to other groups, and so a full sort isn't required.
+     */
+    public static final class GroupSort extends Sort {
+        private static final long serialVersionUID = 1L;
+
+        public final String[] groupColumns;
+
+        /**
+         * @param groupColumns columns with '+' or '-' prefix
+         * @param sortColumns columns with '+' or '-' prefix
+         * @param source child plan node
+         */
+        public GroupSort(String[] groupColumns, String[] sortColumns, QueryPlan source) {
+            super(sortColumns, source);
+            this.groupColumns = groupColumns;
+        }
+
+        @Override
+        void appendTo(Appendable a, String in1, String in2) throws IOException {
+            a.append(in1).append("group sort").append(": [");
+            appendArray(a, groupColumns).append("], ");
+            appendArray(a, sortColumns).append('\n');
+            in2 += "  ";
+            source.appendTo(a, in2, in2);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof GroupSort sort && matches(sort);
+        }
+
+        boolean matches(GroupSort other) {
+            return super.equals(other) && Arrays.equals(groupColumns, other.groupColumns);
         }
     }
 
