@@ -744,8 +744,6 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         return new BasicQueryLauncher<>(subTable, subFactory);
     }
 
-    public abstract Class<? extends R> rowClass();
-
     /**
      * Partially decodes a row from a key.
      */
