@@ -27,12 +27,16 @@ import org.cojen.tupl.RowUpdater;
  * @author Brian S O'Neill
  */
 abstract class ConcatRowUpdater<R> implements BaseRowScanner<R>, RowUpdater<R> {
+    private final int mCharacteristics;
+
     private RowUpdater<R> mCurrent;
 
     /**
      * @param dst can be null
      */
-    ConcatRowUpdater(final R dst) throws IOException {
+    ConcatRowUpdater(int characteristics, final R dst) throws IOException {
+        mCharacteristics = characteristics;
+
         RowUpdater<R> next = next(dst);
         while (true) {
             mCurrent = next;
@@ -117,6 +121,11 @@ abstract class ConcatRowUpdater<R> implements BaseRowScanner<R>, RowUpdater<R> {
     @Override
     public void close() throws IOException {
         mCurrent.close();
+    }
+
+    @Override
+    public int characteristics() {
+        return mCharacteristics;
     }
 
     /**

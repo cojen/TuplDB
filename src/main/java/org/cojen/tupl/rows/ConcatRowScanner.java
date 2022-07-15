@@ -27,12 +27,16 @@ import org.cojen.tupl.RowScanner;
  * @author Brian S O'Neill
  */
 abstract class ConcatRowScanner<R> implements BaseRowScanner<R> {
+    private final int mCharacteristics;
+
     private RowScanner<R> mCurrent;
 
     /**
      * @param dst can be null
      */
-    ConcatRowScanner(final R dst) throws IOException {
+    ConcatRowScanner(int characteristics, final R dst) throws IOException {
+        mCharacteristics = characteristics;
+
         RowScanner<R> next = next(dst);
         while (true) {
             mCurrent = next;
@@ -76,6 +80,11 @@ abstract class ConcatRowScanner<R> implements BaseRowScanner<R> {
     @Override
     public void close() throws IOException {
         mCurrent.close();
+    }
+
+    @Override
+    public int characteristics() {
+        return mCharacteristics;
     }
 
     /**

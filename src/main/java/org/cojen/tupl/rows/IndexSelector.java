@@ -53,6 +53,10 @@ final class IndexSelector {
 
     private ColumnSet[] mSelectedIndexes;
     private Query[] mSelectedQueries;
+    private boolean[] mSelectedReverse;
+    private OrderBy mOrderBy;
+
+    private Set<String> mProjection;
 
     IndexSelector(RowInfo primaryInfo, Query query) {
         mPrimaryInfo = primaryInfo;
@@ -63,6 +67,65 @@ final class IndexSelector {
      * Returns the number of selected indexes.
      */
     int analyze() {
+        int num = selectIndexes();
+
+        // Decide scan order, and also decide if sorting is required.
+
+        OrderBy orderBy = mQuery.orderBy();
+        mOrderBy = orderBy;
+
+        if (orderBy == null || orderBy.isEmpty()) {
+            return num;
+        }
+
+        mSelectedReverse = new boolean[num];
+
+        forAllSelected: for (int i=0; i<num; i++) {
+            Iterator<ColumnInfo> columns = mSelectedIndexes[i].keyColumns.values().iterator();
+            Iterator<OrderBy.Rule> rules = orderBy.values().iterator();
+
+            int direction = 0;
+            int numMatches = 0;
+
+            while (true) {
+                if (!rules.hasNext()) {
+                    // The index order (or reversed) fully matches the requested ordering.
+                    if (num == 1) {
+                        // If the matched index is the only one, then there's no need sort.
+                        mOrderBy = null;
+                    }
+                    continue forAllSelected;
+                }
+
+                if (!columns.hasNext()) {
+                    break;
+                }
+
+                ColumnInfo column = columns.next();
+                OrderBy.Rule rule = rules.next();
+
+                int match = compareOrdering(column, rule, direction);
+
+                if (match == 0) {
+                    break;
+                }
+
+                if (direction == 0 && match < 0) {
+                    // Decide scan order based on first column only.
+                    mSelectedReverse[i] = true;
+                }
+
+                direction = match;
+                numMatches++;
+            }
+
+            mSelectedQueries[i] = mSelectedQueries[i].withOrderBy(orderBy.truncate(numMatches));
+        }
+
+        return num;
+    }
+
+    private int selectIndexes() {
         final ColumnSet theOne;
 
         one: {
@@ -152,7 +215,7 @@ final class IndexSelector {
                     reject = reject.and(filter.not());
                     filter = disjoint;
                 }
-                mSelectedQueries[i] = new Query(mQuery.projection(), mQuery.orderBy(), filter);
+                mSelectedQueries[i] = mQuery.withFilter(filter);
             }
 
             return mSelectedIndexes.length;
@@ -160,7 +223,7 @@ final class IndexSelector {
 
         // Reached when only one index was selected.
         mSelectedIndexes = new ColumnSet[] {theOne};
-        mSelectedQueries = new Query[] {mQuery};
+        mSelectedQueries = new Query[] {mQuery.withOrderBy(null)};
         return 1;
     }
 
@@ -172,10 +235,35 @@ final class IndexSelector {
     }
 
     /**
-     * Must call analyze first.
+     * Must call analyze first. Returns a query for the selected index with the effective
+     * projection and filter that must still be applied. The selected orderBy represents the
+     * portion of the complete orderBy which is satisified by the index order, possibly when
+     * reversed.
      */
     Query selectedQuery(int i) {
         return mSelectedQueries[i];
+    }
+
+    /**
+     * Must call analyze first. Returns true if index scan should go in reverse order
+     */
+    boolean selectedReverse(int i) {
+        return mSelectedReverse == null ? false : mSelectedReverse[i];
+    }
+
+    /**
+     * Must call analyze first. Returns null if no sort step is required
+     */
+    OrderBy orderBy() {
+        return mOrderBy;
+    }
+
+    Set<String> projection() {
+        if (mProjection == null && mQuery.projection() != null) {
+            // Create a copy to reduce the memory footprint of QueryLauncher instances.
+            mProjection = Set.of(mQuery.projection().keySet().toArray(String[]::new));
+        }
+        return mProjection;
     }
 
     /**

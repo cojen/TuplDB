@@ -23,11 +23,10 @@ import java.io.IOException;
  * 
  *
  * @author Brian S O'Neill
- * @see SortTranscoderMaker
  */
-public interface Transcoder {
+public interface RowDecoder<R> {
     /**
-     * Transcodes a source key/value into a target key/value pair.
+     * Decodes a target key and value into a row and marks all projected columns clean.
      */
-    void transcode(byte[] srcKey, byte[] srcValue, byte[][] kvPairs, int offset) throws IOException;
+    R decodeRow(R row, byte[] key, byte[] value) throws IOException;
 }

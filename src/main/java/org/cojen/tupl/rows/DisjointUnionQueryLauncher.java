@@ -19,6 +19,8 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
+import java.util.Set;
+
 import java.util.function.Predicate;
 
 import org.cojen.tupl.RowScanner;
@@ -26,6 +28,8 @@ import org.cojen.tupl.RowUpdater;
 import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.diag.QueryPlan;
+
+import static java.util.Spliterator.*;
 
 /**
  * Supports queries that scan over multiple tables.
@@ -36,7 +40,8 @@ final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
     private final QueryLauncher<R>[] mLaunchers;
 
     /**
-     * @param launchers at least one, and each launcher must provide a disjoint set of results
+     * @param launchers at least one, and each launcher must provide a disjoint set of results;
+     * each launcher must have the same projection
      */
     DisjointUnionQueryLauncher(QueryLauncher<R>[] launchers) {
         mLaunchers = launchers;
@@ -44,7 +49,10 @@ final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
 
     @Override
     public RowScanner<R> newRowScanner(Transaction txn, R row, Object... args) throws IOException {
-        return new ConcatRowScanner<R>(row) {
+        // FIXME: Depending on the projection, DISTINCT shouldn't be included.
+        int characteristics = ORDERED | DISTINCT | NONNULL | CONCURRENT;
+
+        return new ConcatRowScanner<R>(characteristics, row) {
             private int mWhich;
 
             @Override
@@ -63,7 +71,10 @@ final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
 
     @Override
     public RowUpdater<R> newRowUpdater(Transaction txn, R row, Object... args) throws IOException {
-        return new ConcatRowUpdater<R>(row) {
+        // FIXME: Depending on the projection, DISTINCT shouldn't be included.
+        int characteristics = ORDERED | DISTINCT | NONNULL | CONCURRENT;
+
+        return new ConcatRowUpdater<R>(characteristics, row) {
             private int mWhich;
 
             @Override
@@ -96,5 +107,10 @@ final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
             pred = pred.or(mLaunchers[i].predicate(args));
         }
         return pred;
+    }
+
+    @Override
+    public Set<String> projection() {
+        return mLaunchers[0].projection();
     }
 }

@@ -369,8 +369,6 @@ public interface Table<R> {
      */
     public Table<R> viewUnjoined();
 
-    //public Table<R> viewOrderBy(String... columns);
-
     //public Table<R> viewFiltered(String filter, Object... args);
 
     //public Table<R> viewUnmodifiable();

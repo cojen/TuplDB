@@ -70,7 +70,7 @@ class ColumnSet {
     }
 
     /**
-     * Returns each key prefixed with a '+' or '-' character, followed by unprefixed values
+     * Returns each key prefixed with a '+' or '-' character, followed by unprefixed value
      * columns.
      */
     String[] fullSpec() {
@@ -98,7 +98,7 @@ class ColumnSet {
      * Returns a compact index specification string.
      */
     String indexSpec() {
-        return appendIndexSpec(new StringBuilder()).toString();
+        return appendIndexSpec(new StringBuilder(keyColumns.size() << 1)).toString();
     }
 
     /**

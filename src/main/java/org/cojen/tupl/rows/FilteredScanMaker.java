@@ -571,24 +571,86 @@ public class FilteredScanMaker<R> {
                 // Obtain the MethodHandle which decodes the key and value columns.
                 decoder = mTable.decodePartialHandle(mProjectionSpec, 0 /*ignored*/);
             }
+
             Class<?> rowClass = RowMaker.find(mRowType);
             visitor.finishDecode(decoder, null, mTable.getClass(), rowClass, rowVar);
+
+            // Override the inherited method to return the secondary descriptor.
+            mm = mFilterMaker.addMethod(byte[].class, "secondaryDescriptor").public_();
+            mm.return_(mm.var(byte[].class).setExact(mSecondaryDescriptor));
+
+            if (decoder != null) {
+                // Override inherited method, specified by RowEvaluator.
+                mm = mFilterMaker.addMethod
+                    (Object.class, "decodeRow", Object.class, byte[].class, byte[].class)
+                    .public_().override();
+                rowVar = CodeUtils.castOrNew(mm.param(0), rowClass);
+                mm.invoke(decoder, rowVar, mm.param(1), mm.param(2));
+                mm.return_(rowVar);
+            }
+
             return;
         }
 
+        // Note: If no primary key is found, then the generated method returns null a this point.
         Variable[] primaryVars = visitor.joinToPrimary(resultVar, null);
 
+        // These runtime contents of these variables are guaranteed to not be null.
         var primaryKeyVar = primaryVars[0];
         var primaryValueVar = primaryVars[1];
 
         // Finish filter and decode using a shared private method.
         mm.return_(mm.invoke("joinedEval", primaryKeyVar, primaryValueVar, rowVar));
+
+        // Override the inherited decodeRow method for decoding primary rows.
+        overrideDecodeRowForJoin();
     }
 
+    /**
+     * Given a non-null primary key and value, fully or partially decodes the a row. The
+     * generated method never returns null.
+     *
+     * public R decodeRow(R row, byte[] primaryKey, byte[] primaryValue)
+     */
+    private void overrideDecodeRowForJoin() {
+        MethodMaker mm = mFilterMaker.addMethod
+            (Object.class, "decodeRow", Object.class, byte[].class, byte[].class).public_();
+
+        var rowVar = mm.param(0);
+        var primaryKeyVar = mm.param(1);
+        var primaryValueVar = mm.param(2);
+
+        if (mJoinFilter == null && mJoinFilter == TrueFilter.THE) {
+            // Can call the eval method because no redundant filtering will be applied.
+            mm.return_(mm.invoke("joinedEval", primaryKeyVar, primaryValueVar, rowVar));
+            return;
+        }
+
+        var predicateVar = mm.field("predicate");
+
+        // Use indy, to support multiple schema versions.
+
+        long primaryIndexId = ((JoinedScanController) mUnfiltered).mPrimaryIndex.id();
+
+        var indy = mm.var(FilteredScanMaker.class).indy
+            ("indyFilter", mStoreRef, mPrimaryTableClass, mRowType, primaryIndexId,
+             null, null, mJoinProjectionSpec, null, 0);
+
+        var schemaVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", primaryValueVar);
+
+        mm.return_(indy.invoke(Object.class, "decodeRow", null, schemaVersion,
+                               primaryKeyVar, primaryValueVar, rowVar, predicateVar));
+    }
+
+    /**
+     * Given a non-null primary key and value, applies a filtering step (optional) and fully or
+     * partially decodes the a row. The generated method returns null when rows are filtered out.
+     *
+     * private R joinedEval(byte[] primaryKey, byte[] primaryValue, R row)
+     */
     private void addJoinedEval() {
         MethodMaker mm = mFilterMaker.addMethod
-            (Object.class, "joinedEval", byte[].class, byte[].class, Object.class)
-            .private_();
+            (Object.class, "joinedEval", byte[].class, byte[].class, Object.class).private_();
 
         var primaryKeyVar = mm.param(0);
         var primaryValueVar = mm.param(1);
@@ -639,8 +701,10 @@ public class FilteredScanMaker<R> {
             visitor.applyFilter(mFilter);
         }
 
+        // Note: If no primary key is found, then the generated method returns null a this point.
         Variable[] primaryVars = visitor.joinToPrimary(resultVar, primaryCursorVar);
 
+        // These runtime contents of these variables are guaranteed to not be null.
         var primaryKeyVar = primaryVars[0];
         var primaryValueVar = primaryVars[1];
 

@@ -93,14 +93,14 @@ public abstract class BaseTableIndex<R> extends BaseTable<R> {
     }
 
     @Override
-    RowScanner<R> newRowScanner(Transaction txn, R row, String filter, Object... args)
+    protected RowScanner<R> newRowScanner(Transaction txn, R row, String filter, Object... args)
         throws IOException
     {
         return newRowScannerThisTable(txn, row, filter, args);
     }
 
     @Override
-    RowUpdater<R> newRowUpdater(Transaction txn, R row, String filter, Object... args)
+    protected RowUpdater<R> newRowUpdater(Transaction txn, R row, String filter, Object... args)
         throws IOException
     {
         // By default, this will throw an UnmodifiableViewException. See below.

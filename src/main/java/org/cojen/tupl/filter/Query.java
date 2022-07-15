@@ -18,6 +18,7 @@
 package org.cojen.tupl.filter;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import org.cojen.tupl.rows.ColumnInfo;
@@ -32,9 +33,16 @@ import org.cojen.tupl.rows.OrderBy;
  * @see Parser#parseQuery
  */
 public record Query(Map<String, ColumnInfo> projection, OrderBy orderBy, RowFilter filter) {
-    public Query reduce() {
-        RowFilter rf = filter.reduce();
+    public Query withOrderBy(OrderBy ob) {
+        return Objects.equals(orderBy, ob) ? this : new Query(projection, ob, filter);
+    }
+
+    public Query withFilter(RowFilter rf) {
         return rf.equals(filter) ? this : new Query(projection, orderBy, rf);
+    }
+
+    public Query reduce() {
+        return withFilter(filter.reduce());
     }
 
     @Override

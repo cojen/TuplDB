@@ -50,6 +50,11 @@ public abstract class JoinedScanController<R> extends SingleScanController<R> {
     }
 
     @Override
+    public final long tableId() {
+        return mPrimaryIndex.id();
+    }
+
+    @Override
     public final boolean isJoined() {
         return true;
     }

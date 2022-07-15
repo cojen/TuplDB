@@ -208,7 +208,7 @@ class DecodeVisitor extends Visitor {
      * @param rowVar refers to the row parameter to allocate or fill in
      */
     void finishDecode(MethodHandle decoder, MethodHandle valueDecoder,
-                      Class<?> tableClass, Class<?> rowClass, Variable rowVar)
+                      Class<?> tableClass, Class<?> rowClass, final Variable rowVar)
     {
         if (decoder != null && valueDecoder != null) {
             throw new IllegalArgumentException();
@@ -219,30 +219,31 @@ class DecodeVisitor extends Visitor {
         // Must call this in case applyFilter wasn't called, or it did nothing.
         initVars(true);
 
-        rowVar = rowVar.cast(rowClass);
-        Label hasRow = mMaker.label();
-        rowVar.ifNe(null, hasRow);
-        rowVar.set(mMaker.new_(rowClass));
-        hasRow.here();
+        final Label notRow = mMaker.label();
+        final var typedRowVar = CodeUtils.castOrNew(rowVar, rowClass, notRow);
 
         if (decoder != null) {
-            mMaker.invoke(decoder, rowVar, mKeyVar, mValueVar);
+            mMaker.invoke(decoder, typedRowVar, mKeyVar, mValueVar);
         } else {
             var tableVar = mMaker.var(tableClass); 
-            tableVar.invoke("decodePrimaryKey", rowVar, mKeyVar);
+            tableVar.invoke("decodePrimaryKey", typedRowVar, mKeyVar);
 
             // Invoke the schema-specific decoder directly, instead of calling the decodeValue
             // method which redundantly examines the schema version and switches on it.
             if (valueDecoder != null) {
-                mMaker.invoke(valueDecoder, rowVar, mValueVar);
+                mMaker.invoke(valueDecoder, typedRowVar, mValueVar);
             } else {
-                tableVar.invoke("decodeValue", rowVar, mValueVar);
+                tableVar.invoke("decodeValue", typedRowVar, mValueVar);
             }
 
-            tableVar.invoke("markAllClean", rowVar);
+            tableVar.invoke("markAllClean", typedRowVar);
         }
 
-        mMaker.return_(rowVar);
+        mMaker.return_(typedRowVar);
+
+        // Assume the passed in row is actually a RowConsumer.
+        notRow.here();
+        CodeUtils.acceptAsRowConsumerAndReturn(rowVar, rowClass, mKeyVar, mValueVar);
     }
 
     /**

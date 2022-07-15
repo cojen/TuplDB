@@ -67,6 +67,7 @@ public class TableMaker {
     private final RowInfo mRowInfo;
     private final RowGen mCodecGen;
     private final Class<?> mRowClass;
+    private final long mTableId;
     private final byte[] mSecondaryDescriptor;
     private final long mIndexId;
     private final boolean mSupportsIndexLock;
@@ -79,11 +80,12 @@ public class TableMaker {
      *
      * @param store generated class is pinned to this specific instance
      * @param rowGen describes row encoding
+     * @param tableId primary table index id
      */
     TableMaker(RowStore store, Class<?> type, RowGen rowGen,
-               long indexId, boolean supportsIndexLock)
+               long tableId, boolean supportsIndexLock)
     {
-        this(store, type, rowGen, rowGen, null, indexId, supportsIndexLock);
+        this(store, type, rowGen, rowGen, tableId, null, tableId, supportsIndexLock);
     }
 
     /**
@@ -92,10 +94,12 @@ public class TableMaker {
      * @param store generated class is pinned to this specific instance
      * @param rowGen describes row encoding
      * @param codecGen describes key and value codecs (different than rowGen)
+     * @param tableId primary table index id
      * @param secondaryDesc secondary index descriptor
+     * @param indexId secondary index id
      */
     TableMaker(RowStore store, Class<?> type, RowGen rowGen, RowGen codecGen,
-               byte[] secondaryDesc, long indexId, boolean supportsIndexLock)
+               long tableId, byte[] secondaryDesc, long indexId, boolean supportsIndexLock)
     {
         mStore = store;
         mRowType = type;
@@ -103,6 +107,7 @@ public class TableMaker {
         mRowInfo = rowGen.info;
         mCodecGen = codecGen;
         mRowClass = RowMaker.find(type);
+        mTableId = tableId;
         mSecondaryDescriptor = secondaryDesc;
         mIndexId = indexId;
         mSupportsIndexLock = supportsIndexLock;
@@ -1971,7 +1976,7 @@ public class TableMaker {
         MethodMaker mm = mClassMaker.addMethod
             (SingleScanController.class, "unfiltered").protected_();
         var condyClass = mm.var(TableMaker.class).condy
-            ("condyDefineUnfiltered", mRowType, mRowClass, mSecondaryDescriptor);
+            ("condyDefineUnfiltered", mRowType, mRowClass, mTableId, mSecondaryDescriptor);
         var scanControllerCtor = condyClass.invoke(MethodHandle.class, "unfiltered");
         Class<?>[] paramTypes = {
             byte[].class, boolean.class, byte[].class, boolean.class, boolean.class
@@ -1996,7 +2001,7 @@ public class TableMaker {
      */
     public static MethodHandle condyDefineUnfiltered
         (MethodHandles.Lookup lookup, String name, Class type,
-         Class rowType, Class rowClass, byte[] secondaryDesc)
+         Class rowType, Class rowClass, long tableId, byte[] secondaryDesc)
         throws Throwable
     {
         RowInfo rowInfo = RowInfo.find(rowType);
@@ -2024,19 +2029,47 @@ public class TableMaker {
             mm.invokeSuperConstructor(mm.param(0));
         }
 
+        // Specified by RowEvaluator.
+        cm.addMethod(long.class, "tableId").public_().return_(tableId);
+
+        if (secondaryDesc != null) {
+            // Specified by RowEvaluator.
+            MethodMaker mm = cm.addMethod(byte[].class, "secondaryDescriptor").public_();
+            mm.return_(mm.var(byte[].class).setExact(secondaryDesc));
+        }
+
         {
             // Specified by RowEvaluator.
             MethodMaker mm = cm.addMethod
                 (Object.class, "evalRow", Cursor.class, LockResult.class, Object.class).public_();
+
+            final var cursorVar = mm.param(0);
+            final var keyVar = cursorVar.invoke("key");
+            final var valueVar = cursorVar.invoke("value");
+            final var rowVar = mm.param(2);
+
+            final Label notRow = mm.label();
+            final var typedRowVar = CodeUtils.castOrNew(rowVar, rowClass, notRow);
+
             var tableVar = mm.var(lookup.lookupClass());
-            var rowVar = mm.param(2).cast(rowClass);
-            Label hasRow = mm.label();
-            rowVar.ifNe(null, hasRow);
-            rowVar.set(mm.new_(rowClass));
-            hasRow.here();
-            var cursorVar = mm.param(0);
-            tableVar.invoke("decodePrimaryKey", rowVar, cursorVar.invoke("key"));
-            tableVar.invoke("decodeValue", rowVar, cursorVar.invoke("value"));
+            tableVar.invoke("decodePrimaryKey", typedRowVar, keyVar);
+            tableVar.invoke("decodeValue", typedRowVar, valueVar);
+            markAllClean(typedRowVar, rowGen, codecGen);
+            mm.return_(typedRowVar);
+
+            // Assume the passed in row is actually a RowConsumer.
+            notRow.here();
+            CodeUtils.acceptAsRowConsumerAndReturn(rowVar, rowClass, keyVar, valueVar);
+        }
+
+        {
+            // Specified by RowEvaluator.
+            MethodMaker mm = cm.addMethod
+                (Object.class, "decodeRow", Object.class, byte[].class, byte[].class).public_();
+            var rowVar = CodeUtils.castOrNew(mm.param(0), rowClass);
+            var tableVar = mm.var(lookup.lookupClass());
+            tableVar.invoke("decodePrimaryKey", rowVar, mm.param(1));
+            tableVar.invoke("decodeValue", rowVar, mm.param(2));
             markAllClean(rowVar, rowGen, codecGen);
             mm.return_(rowVar);
         }
@@ -2210,7 +2243,7 @@ public class TableMaker {
         MethodMaker mm = mClassMaker.addMethod
             (SingleScanController.class, "unfiltered").protected_();
         var condyClass = mm.var(TableMaker.class).condy
-            ("condyDefineJoinedUnfiltered", mRowType, mRowClass,
+            ("condyDefineJoinedUnfiltered", mRowType, mRowClass, mTableId,
              mSecondaryDescriptor, mm.class_(), primaryTableClass);
         var scanControllerCtor = condyClass.invoke(MethodHandle.class, "unfiltered");
         Class<?>[] paramTypes = {
@@ -2235,7 +2268,7 @@ public class TableMaker {
      */
     public static MethodHandle condyDefineJoinedUnfiltered
         (MethodHandles.Lookup lookup, String name, Class type,
-         Class rowType, Class rowClass, byte[] secondaryDesc,
+         Class rowType, Class rowClass, long tableId, byte[] secondaryDesc,
          Class<?> tableClass, Class<?> primaryTableClass)
         throws Throwable
     {
@@ -2285,6 +2318,18 @@ public class TableMaker {
         {
             // Specified by RowEvaluator.
             MethodMaker mm = cm.addMethod
+                (Object.class, "decodeRow", Object.class, byte[].class, byte[].class).public_();
+            var rowVar = CodeUtils.castOrNew(mm.param(0), rowClass);
+            var tableVar = mm.var(primaryTableClass);
+            tableVar.invoke("decodePrimaryKey", rowVar, mm.param(1));
+            tableVar.invoke("decodeValue", rowVar, mm.param(2));
+            tableVar.invoke("markAllClean", rowVar);
+            mm.return_(rowVar);
+        }
+
+        {
+            // Specified by RowEvaluator.
+            MethodMaker mm = cm.addMethod
                 (byte[].class, "updateKey", Object.class, byte[].class).public_();
             var rowVar = mm.param(0).cast(rowClass);
             var tableVar = mm.var(primaryTableClass);
@@ -2329,9 +2374,10 @@ public class TableMaker {
 
         MethodMaker mm = cm.addMethod(Object.class, "evalRow", params).public_();
 
-        var cursorVar = mm.param(0);
-        var resultVar = mm.param(1);
-        var keyVar = cursorVar.invoke("key");
+        final var cursorVar = mm.param(0);
+        final var resultVar = mm.param(1);
+        final var rowVar = mm.param(2);
+        final var keyVar = cursorVar.invoke("key");
 
         Variable primaryKeyVar;
         {
@@ -2357,16 +2403,17 @@ public class TableMaker {
         mm.return_(null);
         hasValue.here();
 
-        var rowVar = mm.param(2).cast(rowClass);
-        Label hasRow = mm.label();
-        rowVar.ifNe(null, hasRow);
-        rowVar.set(mm.new_(rowClass));
-        hasRow.here();
+        final Label notRow = mm.label();
+        final var typedRowVar = CodeUtils.castOrNew(rowVar, rowClass, notRow);
 
         var tableVar = mm.var(primaryTableClass);
-        tableVar.invoke("decodePrimaryKey", rowVar, primaryKeyVar);
-        tableVar.invoke("decodeValue", rowVar, primaryValueVar);
-        tableVar.invoke("markAllClean", rowVar);
-        mm.return_(rowVar);
+        tableVar.invoke("decodePrimaryKey", typedRowVar, primaryKeyVar);
+        tableVar.invoke("decodeValue", typedRowVar, primaryValueVar);
+        tableVar.invoke("markAllClean", typedRowVar);
+        mm.return_(typedRowVar);
+
+        // Assume the passed in row is actually a RowConsumer.
+        notRow.here();
+        CodeUtils.acceptAsRowConsumerAndReturn(rowVar, rowClass, primaryKeyVar, primaryValueVar);
     }
 }

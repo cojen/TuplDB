@@ -141,7 +141,17 @@ public class ScanControllerTest {
         }
 
         @Override
+        public long tableId() {
+            return 0;
+        }
+
+        @Override
         public Object evalRow(Cursor c, LockResult result, Object row) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Object decodeRow(Object row, byte[] key, byte[] value) {
             throw new UnsupportedOperationException();
         }
 

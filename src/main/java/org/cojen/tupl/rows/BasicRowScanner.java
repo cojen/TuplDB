@@ -55,7 +55,7 @@ class BasicRowScanner<R> implements BaseRowScanner<R> {
      */
     void init(Transaction txn, R row) throws IOException {
         a: while (true) {
-            beginBatch(mController.evaluator());
+            beginBatch(row, mController.evaluator());
 
             Cursor c = mController.newCursor(mTable.mSource, txn);
             mCursor = c;
@@ -137,7 +137,7 @@ class BasicRowScanner<R> implements BaseRowScanner<R> {
                         if (!mController.next()) {
                             break a;
                         }
-                        beginBatch(mController.evaluator());
+                        beginBatch(row, mController.evaluator());
                         Transaction txn = c.link();
                         mCursor = c = mController.newCursor(mTable.mSource, txn);
                         toFirst(c);
@@ -171,8 +171,12 @@ class BasicRowScanner<R> implements BaseRowScanner<R> {
         return null;
     }
 
-    protected void beginBatch(RowEvaluator<R> evaluator) {
+    @SuppressWarnings("unchecked")
+    protected void beginBatch(R row, RowEvaluator<R> evaluator) throws IOException {
         mEvaluator = evaluator;
+        if (row instanceof RowConsumer consumer) {
+            consumer.beginBatch(evaluator);
+        }
     }
 
     protected R evalRow(Cursor c, LockResult result, R row) throws IOException {

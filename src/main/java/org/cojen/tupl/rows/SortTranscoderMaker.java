@@ -32,6 +32,7 @@ import java.util.TreeMap;
 import org.cojen.tupl.DatabaseException;
 
 import org.cojen.maker.ClassMaker;
+import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
@@ -40,148 +41,61 @@ import org.cojen.maker.Variable;
  *
  * @author Brian S O'Neill
  */
-public class SortTranscoderMaker<R> {
-    private final RowStore mRowStore;
-    private final Class<?> mRowType;
-    private final Class<?> mRowClass;
-    private final RowInfo mInfo;
-    private final long mIndexId;
-    private final Set<String> mProjection;
-    private final RowInfo mTargetInfo;
-
+public class SortTranscoderMaker {
     /**
-     * @param rowClass current row implementation
-     * @param info source info; can be a primary RowInfo or a SecondaryInfo
-     * @param indexId source index; only used for primary RowInfo
-     * @param available columns available in the source rows; can pass null if all are available
-     * @param orderBy ordering specification
-     * @param projection columns to keep; can pass null to project all available columns
-     * @throws IllegalArgumentException if any orderBy or projected columns aren't available
+     * @param rowInfo source info; can be a primary RowInfo or a SecondaryInfo
+     * @param tableId source index; ignored when source is a secondary index
+     * @param sortedInfo see SortDecoderMaker.findSortedInfo
      */
-    SortTranscoderMaker(RowStore rs,
-                        Class<?> rowType, Class<?> rowClass, RowInfo info, long indexId,
-                        Set<String> available, OrderBy orderBy, Set<String> projection)
+    static Transcoder makeTranscoder(RowStore rs, Class<?> rowType, RowInfo rowInfo,
+                                     long tableId, SecondaryInfo sortedInfo)
     {
-        if (available == null) {
-            available = info.allColumns.keySet();
-        }
-        if (projection == null) {
-            projection = available;
-        }
+        ClassMaker cm = rowInfo.rowGen().beginClassMaker
+            (SortTranscoderMaker.class, rowType, null).implement(Transcoder.class).final_();
 
-        mRowStore = rs;
-        mRowType = rowType;
-        mRowClass = rowClass;
-        mInfo = info;
-        mIndexId = indexId;
-        mProjection = projection;
+        // Keep a singleton instance, in order for a weakly cached reference to the Transcoder
+        // to stick around until the class is unloaded.
+        cm.addField(Transcoder.class, "THE").private_().static_();
 
-        var targetInfo = new RowInfo(info.name);
-        targetInfo.keyColumns = new LinkedHashMap<>();
-
-        for (Map.Entry<String, OrderBy.Rule> e : orderBy.entrySet()) {
-            ColumnInfo orderColumn = e.getValue().asColumn();
-            if (!available.contains(orderColumn.name)) {
-                throw new IllegalArgumentException();
-            }
-            targetInfo.keyColumns.put(orderColumn.name, orderColumn);
+        {
+            MethodMaker mm = cm.addConstructor().private_();
+            mm.invokeSuperConstructor();
+            mm.field("THE").set(mm.this_());
         }
 
-        boolean hasDuplicates = false;
-
-        for (ColumnInfo keyColumn : info.keyColumns.values()) {
-            if (!available.contains(keyColumn.name)) {
-                hasDuplicates = true;
-            } else if (!targetInfo.keyColumns.containsKey(keyColumn.name)) {
-                targetInfo.keyColumns.put(keyColumn.name, keyColumn);
-            }
-        }
-
-        if (!hasDuplicates) {
-            // All of the primary key columns are part of the target key, and so no duplicates
-            // can exist. Define the remaining projected columns in the target value.
-
-            for (String colName : projection) {
-                if (!available.contains(colName)) {
-                    throw new IllegalArgumentException();
-                }
-                if (!targetInfo.keyColumns.containsKey(colName)) {
-                    if (targetInfo.valueColumns == null) {
-                        targetInfo.valueColumns = new TreeMap<>();
-                    }
-                    targetInfo.valueColumns.put(colName, info.allColumns.get(colName));
-                }
-            }
-        } else {
-            // Because duplicate keys can exist, define all available columns in the target
-            // key. This doesn't fully prevent duplicates, and so any extra rows will be
-            // eliminated by the sorter. For supporting proper "select distinct" behavior, the
-            // given available set must be the same as the projected set.
-
-            for (String colName : available) {
-                if (!targetInfo.keyColumns.containsKey(colName)) {
-                    targetInfo.keyColumns.put(colName, info.allColumns.get(colName));
-                }
-            }
-        }
-
-        if (targetInfo.valueColumns == null) {
-            targetInfo.valueColumns = Collections.emptyNavigableMap();
-        }
-
-        targetInfo.allColumns = new TreeMap<>();
-        targetInfo.allColumns.putAll(targetInfo.keyColumns);
-        targetInfo.allColumns.putAll(targetInfo.valueColumns);
-
-        mTargetInfo = targetInfo;
-    }
-
-    Transcoder<R> finish() {
-        ClassMaker cm = mInfo.rowGen().anotherClassMaker
-            (SortTranscoderMaker.class, mRowClass, null).implement(Transcoder.class).final_();
-
-        cm.addConstructor().private_();
-
-        addTranscodeMethod(cm);
-        addDecodeRowMethod(cm);
-
-        MethodHandles.Lookup lookup = cm.finishHidden();
-
-        try {
-            MethodHandle mh = lookup.findConstructor
-                (lookup.lookupClass(), MethodType.methodType(void.class));
-            return (Transcoder<R>) mh.invoke();
-        } catch (Throwable e) {
-            throw RowUtils.rethrow(e);
-        }
-    }
-
-    private void addTranscodeMethod(ClassMaker cm) {
         MethodMaker mm = cm.addMethod
             (null, "transcode", byte[].class, byte[].class, byte[][].class, int.class);
         mm.public_();
 
-        if (mInfo instanceof SecondaryInfo) {
+        if (rowInfo instanceof SecondaryInfo) {
             // Secondary values don't support multiple schemas, so no need to use indy.
-            transcode(mm, mInfo, mTargetInfo, 0);
-            return;
+            transcode(mm, rowInfo, sortedInfo, 0);
+        } else {
+            var keyVar = mm.param(0);
+            var valueVar = mm.param(1);
+            var kvPairsVar = mm.param(2);
+            var offsetVar = mm.param(3);
+
+            // A secondary index descriptor is suitable for reconstructing the target info.
+            byte[] targetDesc = RowStore.secondaryDescriptor(sortedInfo, false);
+
+            var indy = mm.var(SortTranscoderMaker.class).indy
+                ("indyTranscode", rs.ref(), rowType, tableId, targetDesc);
+
+            var schemaVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", valueVar);
+
+            indy.invoke(null, "transcode", null, schemaVersion,
+                        keyVar, valueVar, kvPairsVar, offsetVar);
         }
 
-        var keyVar = mm.param(0);
-        var valueVar = mm.param(1);
-        var kvPairsVar = mm.param(2);
-        var offsetVar = mm.param(3);
-
-        // A secondary index descriptor is suitable for reconstructing the target info.
-        byte[] targetDesc = RowStore.secondaryDescriptor(mTargetInfo, false);
-
-        var indy = mm.var(SortTranscoderMaker.class).indy
-            ("indyTranscode", mRowStore.ref(), mRowType, mIndexId, targetDesc);
-
-        var schemaVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", valueVar);
-
-        indy.invoke(null, "transcode", null, schemaVersion,
-                    keyVar, valueVar, kvPairsVar, offsetVar);
+        try {
+            MethodHandles.Lookup lookup = cm.finishHidden();
+            MethodHandle mh = lookup.findConstructor
+                (lookup.lookupClass(), MethodType.methodType(void.class));
+            return (Transcoder) mh.invoke();
+        } catch (Throwable e) {
+            throw RowUtils.rethrow(e);
+        }
     }
 
     /**
@@ -256,66 +170,5 @@ public class SortTranscoderMaker<R> {
 
             return mm.finish();
         });
-    }
-
-    private void addDecodeRowMethod(ClassMaker cm) {
-        MethodMaker mm = cm.addMethod(null, "decodeRow", Object.class, byte[].class, byte[].class);
-        mm.public_();
-
-        var rowVar = mm.param(0).cast(mRowClass);
-
-        RowGen targetRowGen = mTargetInfo.rowGen();
-        decodeColumns(mm, rowVar, mm.param(1), targetRowGen.keyCodecs());
-        decodeColumns(mm, rowVar, mm.param(2), targetRowGen.valueCodecs());
-
-        // Mark projected columns as clean, all others are unset.
-
-        RowInfo primaryInfo = mInfo;
-        if (primaryInfo instanceof SecondaryInfo s) {
-            primaryInfo = s.primaryInfo;
-        }
-
-        RowGen primaryGen = primaryInfo.rowGen();
-        ColumnCodec[] keyCodecs = primaryGen.keyCodecs();
-        ColumnCodec[] valueCodecs = primaryGen.valueCodecs();
-
-        int maxNum = primaryInfo.allColumns.size();
-        int mask = 0;
-
-        for (int num = 0; num < maxNum; ) {
-            ColumnCodec codec;
-            if (num < keyCodecs.length) {
-                codec = keyCodecs[num];
-            } else {
-                codec = valueCodecs[num - keyCodecs.length];
-            }
-
-            if (mProjection.contains(codec.mInfo.name)) {
-                mask |= RowGen.stateFieldMask(num, 0b01); // clean state
-            }
-
-            if ((++num & 0b1111) == 0 || num >= maxNum) {
-                rowVar.field(targetRowGen.stateField(num - 1)).set(mask);
-                mask = 0;
-            }
-        }
-    }
-
-    private void decodeColumns(MethodMaker mm, Variable rowVar, Variable srcVar,
-                               ColumnCodec[] codecs)
-    {
-        if (codecs.length != 0) {
-            codecs = ColumnCodec.bind(codecs, mm);
-            var offsetVar = mm.var(int.class).set(0);
-            for (int i=0; i<codecs.length; i++) {
-                ColumnCodec codec = codecs[i];
-                String name = codec.mInfo.name;
-                if (mProjection.contains(name)) {
-                    codec.decode(rowVar.field(name), srcVar, offsetVar, null);
-                } else if (i < codecs.length - 1) {
-                    codec.decodeSkip(srcVar, offsetVar, null);
-                }
-            }
-        }
     }
 }

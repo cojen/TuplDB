@@ -69,8 +69,8 @@ final class JoinedRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater
     }
 
     @Override
-    protected void beginBatch(RowEvaluator<R> evaluator) {
-        super.beginBatch(evaluator);
+    protected void beginBatch(R row, RowEvaluator<R> evaluator) throws IOException {
+        super.beginBatch(row, evaluator);
         mPrimaryUpdater.mEvaluator = evaluator;
     }
 

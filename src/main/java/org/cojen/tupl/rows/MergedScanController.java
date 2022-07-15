@@ -148,14 +148,32 @@ final class MergedScanController<R> extends SingleScanController<R> {
     }
 
     @Override
+    public long tableId() {
+        // Can call either evaluator. They should be bound to the same table.
+        return mLowEvaluator.tableId();
+    }
+
+    @Override
+    public byte[] secondaryDescriptor() {
+        // Can call either evaluator. They should be bound to the same table.
+        return mLowEvaluator.secondaryDescriptor();
+    }
+
+    @Override
+    public R decodeRow(R row, byte[] key, byte[] value) throws IOException {
+        // Can call either evaluator. They should be bound to the same table.
+        return mLowEvaluator.decodeRow(row, key, value);
+    }
+
+    @Override
     public byte[] updateKey(R row, byte[] original) throws IOException {
-        // Can call either evaluator. They should do the same thing.
+        // Can call either evaluator. They should be bound to the same table.
         return mLowEvaluator.updateKey(row, original);
     }
 
     @Override
     public byte[] updateValue(R row, byte[] original) throws IOException {
-        // Can call either evaluator. They should do the same thing.
+        // Can call either evaluator. They should be bound to the same table.
         return mLowEvaluator.updateValue(row, original);
     }
 }

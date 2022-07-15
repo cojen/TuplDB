@@ -133,6 +133,7 @@ class RowGen {
     /**
      * @param who the class which is making a class (can be null)
      * @param peer defines the package to define the new class in
+     * @param suffix appended to class name (can be null)
      */
     public ClassMaker anotherClassMaker(Class<?> who, Class<?> peer, String suffix) {
         String name = info.name;

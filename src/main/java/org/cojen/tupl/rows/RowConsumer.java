@@ -19,15 +19,13 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
+import org.cojen.tupl.EntryConsumer;
+
 /**
- * 
+ * Can be passed to a RowScanner as if it was a row, in order to obtain undecoded row entries.
  *
  * @author Brian S O'Neill
- * @see SortTranscoderMaker
  */
-public interface Transcoder {
-    /**
-     * Transcodes a source key/value into a target key/value pair.
-     */
-    void transcode(byte[] srcKey, byte[] srcValue, byte[][] kvPairs, int offset) throws IOException;
+public interface RowConsumer<R> extends EntryConsumer {
+    void beginBatch(RowEvaluator<R> evaluator) throws IOException;
 }

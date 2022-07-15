@@ -171,7 +171,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         return newRowScanner(txn, (R) null, filter, args);
     }
 
-    RowScanner<R> newRowScanner(Transaction txn, R row, String filter, Object... args)
+    protected RowScanner<R> newRowScanner(Transaction txn, R row, String filter, Object... args)
         throws IOException
     {
         return scannerQueryLauncher(txn, filter).newRowScanner(txn, row, args);
@@ -218,10 +218,11 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
                                                String filter, Object... args)
         throws IOException
     {
+        // FIXME: Support sorting.
         return newRowScanner(txn, row, scannerFilteredFactory(txn, filter).scanController(args));
     }
 
-    final ScanControllerFactory<R> scannerFilteredFactory(Transaction txn, String filter) {
+    private ScanControllerFactory<R> scannerFilteredFactory(Transaction txn, String filter) {
         FilterFactoryCache cache;
         // Need to double check the filter after joining to the primary, in case there were any
         // changes after the secondary entry was loaded.
@@ -231,7 +232,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         return cache.obtain(filter, null);
     }
 
-    final QueryLauncher<R> scannerQueryLauncher(Transaction txn, String filter)
+    private QueryLauncher<R> scannerQueryLauncher(Transaction txn, String filter)
         throws IOException
     {
         QueryLauncherCache cache;
@@ -259,7 +260,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         return newRowUpdater(txn, (R) null, filter, args);
     }
 
-    RowUpdater<R> newRowUpdater(Transaction txn, R row, String filter, Object... args)
+    protected RowUpdater<R> newRowUpdater(Transaction txn, R row, String filter, Object... args)
         throws IOException
     {
         return updaterQueryLauncher(txn, filter).newRowUpdater(txn, row, args);
@@ -355,10 +356,11 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
                                                String filter, Object... args)
         throws IOException
     {
+        // FIXME: Support sorting.
         return newRowUpdater(txn, row, updaterFilteredFactory(txn, filter).scanController(args));
     }
 
-    final ScanControllerFactory<R> updaterFilteredFactory(Transaction txn, String filter) {
+    private ScanControllerFactory<R> updaterFilteredFactory(Transaction txn, String filter) {
         FilterFactoryCache cache;
         // Need to double check the filter after joining to the primary, in case there were any
         // changes after the secondary entry was loaded. Note that no double check is needed
@@ -369,7 +371,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         return cache.obtain(filter, null);
     }
 
-    final QueryLauncher<R> updaterQueryLauncher(Transaction txn, String filter) {
+    private QueryLauncher<R> updaterQueryLauncher(Transaction txn, String filter) {
         QueryLauncherCache cache;
         // Need to double check the filter after joining to the primary, in case there were any
         // changes after the secondary entry was loaded. Note that no double check is needed
@@ -472,6 +474,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         if (filter == null) {
             return plan(args);
         } else {
+            // FIXME: Support sorting.
             return scannerFilteredFactory(txn, filter).plan(args);
         }
     }
@@ -699,29 +702,36 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         var selector = new IndexSelector(rowInfo, query);
         int num = selector.analyze();
 
+        QueryLauncher<R> launcher;
+
         if (num <= 1) {
-            return newSubLauncher(doubleCheck, rowInfo, selector, 0, filter);
+            launcher = newSubLauncher(doubleCheck, rowInfo, selector, 0, filter);
+        } else {
+            var launchers = new QueryLauncher[num];
+            for (int i=0; i<num; i++) {
+                launchers[i] = newSubLauncher(doubleCheck, rowInfo, selector, i, null);
+            }
+            launcher = new DisjointUnionQueryLauncher<R>(launchers);
         }
 
-        var launchers = new QueryLauncher[num];
-
-        for (int i=0; i<num; i++) {
-            launchers[i] = newSubLauncher(doubleCheck, rowInfo, selector, i, null);
+        OrderBy orderBy = selector.orderBy();
+        if (orderBy != null) {
+            launcher = new SortedQueryLauncher<R>(this, launcher, orderBy);
         }
 
-        return new DisjointUnionQueryLauncher<R>(launchers);
+        return launcher;
     }
 
     private QueryLauncher<R> newSubLauncher(boolean doubleCheck, RowInfo rowInfo,
-                                            IndexSelector selector, int i, String subFilterStr)
+                                            IndexSelector selector, int i, String subQueryStr)
         throws IOException
     {
         ColumnSet subIndex = selector.selectedIndex(i);
-        Query subFilter = selector.selectedQuery(i);
+        Query subQuery = selector.selectedQuery(i);
 
-        if (subFilterStr == null) {
+        if (subQueryStr == null) {
             assert i == 0;
-            subFilterStr = subFilter.toString();
+            subQueryStr = subQuery.toString();
         }
 
         BaseTable<R> subTable;
@@ -739,9 +749,13 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             ffc = subTable.mFilterFactoryCache;
         }
 
-        ScanControllerFactory<R> subFactory = ffc.obtain(subFilterStr, subFilter);
+        ScanControllerFactory<R> subFactory = ffc.obtain(subQueryStr, subQuery);
 
-        return new BasicQueryLauncher<>(subTable, subFactory);
+        if (selector.selectedReverse(i)) {
+            subFactory = subFactory.reverse();
+        }
+
+        return new BasicQueryLauncher<>(subTable, subFactory, selector.projection());
     }
 
     /**

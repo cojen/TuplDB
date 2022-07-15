@@ -74,7 +74,8 @@ public class RowScannerTest {
         verify(ix.newRowScanner(null, "{path}: name == ?", "name-3"), 3, 3, "path");
         verify(ix.newRowScanner(null, "{name}: id == ?", 3), 3, 3, "name");
         verify(ix.newRowScanner(null, "{name}: id > ?", 3), 4, 5, "name");
-        verify(ix.newRowScanner(null, "{~path, ~state, *}: name == ?", "name-3"), 3,3, "id", "name");
+        verify(ix.newRowScanner
+               (null, "{~path, ~state, *}: name == ?", "name-3"), 3, 3, "id", "name");
 
         ix = ix.viewUnjoined();
 
@@ -98,7 +99,7 @@ public class RowScannerTest {
         verify(ix.newRowScanner(null, "{name}: id == ?", 3), 3, 3, "name");
         verify(ix.newRowScanner(null, "{name}: id > ?", 3), 4, 5, "name");
         verify(ix.newRowScanner
-               (null, "{~path, ~state, *}: name == ?", "name-3"), 3,3, "id", "name");
+               (null, "{~path, ~state, *}: name == ?", "name-3"), 3, 3, "id", "name");
     }
 
     private static void verify(RowScanner<TestRow> s, int start, int end, String... expect)

@@ -19,6 +19,7 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
+import java.util.Comparator;
 import java.util.Set;
 
 import java.util.function.Predicate;
@@ -30,45 +31,46 @@ import org.cojen.tupl.Transaction;
 import org.cojen.tupl.diag.QueryPlan;
 
 /**
- * Supports queries that only scan over one table.
+ * 
  *
  * @author Brian S O'Neill
  */
-final class BasicQueryLauncher<R> implements QueryLauncher<R> {
+final class SortedQueryLauncher<R> implements QueryLauncher<R> {
     private final BaseTable<R> mTable;
-    private final ScanControllerFactory<R> mFactory;
-    private final Set<String> mProjection;
+    private final QueryLauncher<R> mSource;
+    private final String mSpec;
+    private final Comparator<R> mComparator;
 
-    BasicQueryLauncher(BaseTable<R> table, ScanControllerFactory<R> factory,
-                       Set<String> projection)
-    {
+    SortedQueryLauncher(BaseTable<R> table, QueryLauncher<R> source, OrderBy orderBy) {
         mTable = table;
-        mFactory = factory;
-        mProjection = projection;
+        mSource = source;
+        mSpec = orderBy.spec();
+        mComparator = table.comparator(mSpec);
     }
 
     @Override
     public RowScanner<R> newRowScanner(Transaction txn, R row, Object... args) throws IOException {
-        return mTable.newRowScanner(txn, row, mFactory.scanController(args));
+        return new SortedRowScanner<R>(mTable, mSpec, mComparator, mSource, txn, args);
     }
 
     @Override
     public RowUpdater<R> newRowUpdater(Transaction txn, R row, Object... args) throws IOException {
-        return mTable.newRowUpdater(txn, row, mFactory.scanController(args));
+        // FIXME: Sorted RowUpdater.
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public QueryPlan plan(Object... args) {
-        return mFactory.plan(args);
+        return new QueryPlan.Sort(OrderBy.splitSpec(mSpec), mSource.plan(args));
     }
 
     @Override
     public Predicate<R> predicate(Object... args) {
-        return mFactory.predicate(args);
+        return mSource.predicate(args);
     }
 
     @Override
     public Set<String> projection() {
-        return mProjection;
+        return mSource.projection();
     }
 }

@@ -71,9 +71,8 @@ interface BaseRowScanner<R> extends RowScanner<R> {
 
     @Override
     default int characteristics() {
-        // FIXME: Unless the query plan is disjoint union, include SORTED. A sorted RowScanner
-        // should also report IMMUTABLE, SIZED, and not CONCURRENT. Also, depending on the
-        // projection, DISTINCT shouldn't be included.
+        // FIXME: Unless the query plan is disjoint union, include SORTED and provide a
+        // Comparator. Also, depending on the projection, DISTINCT shouldn't be included.
         return ORDERED | DISTINCT | NONNULL | CONCURRENT;
     }
 }

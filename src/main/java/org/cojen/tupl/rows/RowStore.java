@@ -19,6 +19,7 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
+import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
 import java.lang.ref.WeakReference;
@@ -106,6 +107,19 @@ public class RowStore {
     private final WeakCache<Index, TableManager<?>, Object> mTableManagers;
 
     private final LHashTable.Obj<RowPredicateLock<?>> mIndexLocks;
+
+    private WeakCache<TranscoderKey, Transcoder, SecondaryInfo> mSortTranscoderCache;
+    private static final VarHandle cSortTranscoderCacheHandle;
+
+    static {
+        try {
+            MethodHandles.Lookup lookup = MethodHandles.lookup();
+            cSortTranscoderCacheHandle = lookup.findVarHandle
+                (RowStore.class, "mSortTranscoderCache", WeakCache.class);
+        } catch (Throwable e) {
+            throw RowUtils.rethrow(e);
+        }
+    }
 
     // Used by tests.
     volatile boolean mStallTasks;
@@ -551,8 +565,9 @@ public class RowStore {
         RowPredicateLock<R> indexLock = indexLock(ix);
 
         try {
-            var maker = new TableMaker(this, rowType, rowInfo.rowGen(), indexRowInfo.rowGen(),
-                                       descriptor, ix.id(), indexLock != null);
+            var maker = new TableMaker
+                (this, rowType, rowInfo.rowGen(), indexRowInfo.rowGen(),
+                 primaryTable.mSource.id(), descriptor, ix.id(), indexLock != null);
             var mh = maker.finish();
             var unjoined = (BaseTable<R>) mh.invoke(primaryTable.mTableManager, ix, indexLock);
             mh = maker.finishJoined(primaryTable.getClass(), unjoined.getClass());
@@ -1800,6 +1815,71 @@ public class RowStore {
         encodeLongBE(key, 0, indexId);
         encodeIntBE(key, 8, suffix);
         return key;
+    }
+
+    <R> Transcoder findSortTranscoder(Class<?> rowType, RowEvaluator<R> evaluator,
+                                      SecondaryInfo sortedInfo)
+    {
+        WeakCache<TranscoderKey, Transcoder, SecondaryInfo> cache = mSortTranscoderCache;
+
+        if (cache == null) {
+            cache = new WeakCache<TranscoderKey, Transcoder, SecondaryInfo>() {
+                @Override
+                protected Transcoder newValue(TranscoderKey key, SecondaryInfo sortedInfo) {
+                    Class<?> rowType = key.mRowType;
+                    RowInfo rowInfo = RowInfo.find(rowType);
+
+                    if (key.mSecondaryDesc != null) {
+                        rowInfo = secondaryRowInfo(rowInfo, key.mSecondaryDesc);
+                    }
+
+                    return SortTranscoderMaker.makeTranscoder
+                        (RowStore.this, rowType, rowInfo, key.mTableId, sortedInfo);
+                }
+            };
+
+            var existing = (WeakCache<TranscoderKey, Transcoder, SecondaryInfo>)
+                cSortTranscoderCacheHandle.compareAndExchange(this, null, cache);
+
+            if (existing != null) {
+                cache = existing;
+            }
+        }
+
+        var key = new TranscoderKey(rowType, evaluator, sortedInfo.indexSpec());
+
+        return cache.obtain(key, sortedInfo);
+    }
+
+    private static final class TranscoderKey {
+        final Class<?> mRowType;
+        final long mTableId;
+        final byte[] mSecondaryDesc;
+        final String mSortedInfoSpec;
+
+        TranscoderKey(Class<?> rowType, RowEvaluator<?> evaluator, String sortedInfoSpec) {
+            mRowType = rowType;
+            mTableId = evaluator.tableId();
+            mSecondaryDesc = evaluator.secondaryDescriptor();
+            mSortedInfoSpec = sortedInfoSpec;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = mRowType.hashCode();
+            hash = hash * 31 + (int) mTableId;
+            hash = hash * 31 + Arrays.hashCode(mSecondaryDesc);
+            hash = hash * 31 + mSortedInfoSpec.hashCode();
+            return hash;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj || obj instanceof TranscoderKey other
+                && mRowType == other.mRowType && mTableId == other.mTableId
+                && Arrays.equals(mSecondaryDesc, other.mSecondaryDesc)
+                && mSortedInfoSpec.equals(other.mSortedInfoSpec);
+        }
     }
 
     private static class EncodedRowInfo {

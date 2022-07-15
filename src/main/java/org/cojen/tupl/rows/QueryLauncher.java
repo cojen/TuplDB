@@ -19,6 +19,8 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
+import java.util.Set;
+
 import java.util.function.Predicate;
 
 import org.cojen.tupl.RowScanner;
@@ -45,5 +47,11 @@ interface QueryLauncher<R> {
 
     QueryPlan plan(Object... args);
 
+    // FIXME: remove (is unused)
     Predicate<R> predicate(Object... args);
+
+    /**
+     * Returns the projected columns, which can be null if all are projected.
+     */
+    Set<String> projection();
 }

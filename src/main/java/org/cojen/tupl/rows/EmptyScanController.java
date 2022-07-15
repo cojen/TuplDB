@@ -72,7 +72,22 @@ final class EmptyScanController extends SingleScanController implements ScanCont
     }
 
     @Override
+    public long tableId() {
+        return 0;
+    }
+
+    @Override
+    public byte[] secondaryDescriptor() {
+        return null;
+    }
+
+    @Override
     public Object evalRow(Cursor c, LockResult result, Object row) {
+        throw new AssertionError();
+    }
+
+    @Override
+    public Object decodeRow(Object row, byte[] key, byte[] value) {
         throw new AssertionError();
     }
 

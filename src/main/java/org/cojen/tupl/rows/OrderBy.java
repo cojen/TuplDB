@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.rows;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -29,7 +30,7 @@ import static org.cojen.tupl.rows.ColumnInfo.*;
  */
 public final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
     static OrderBy forPrimaryKey(RowInfo rowInfo) {
-        var orderBy = new OrderBy();
+        var orderBy = new OrderBy(rowInfo.keyColumns.size());
         for (ColumnInfo column : rowInfo.keyColumns.values()) {
             orderBy.put(column.name, new Rule(column, column.typeCode));
         }
@@ -48,12 +49,75 @@ public final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
         throw new IllegalArgumentException("Malformed ordering specification: " + spec);
     }
 
+    public OrderBy() {
+        super();
+    }
+
+    private OrderBy(int capacity) {
+        super(capacity, 1);
+    }
+
+    /**
+     * Return an OrderBy which only preserves the first number of rules. If the number is zero,
+     * then null is returned.
+     */
+    OrderBy truncate(int num) {
+        if (num <= 0) {
+            return null;
+        }
+
+        if (num >= size()) {
+            return this;
+        }
+
+        var ob = new OrderBy(num);
+
+        for (var e : entrySet()) {
+            ob.put(e.getKey(), e.getValue());
+            if (--num <= 0) {
+                break;
+            }
+        }
+
+        return ob;
+    }
+
     String spec() {
         var b = new StringBuilder();
         for (OrderBy.Rule rule : values()) {
             rule.appendTo(b);
         }
         return b.toString();
+    }
+
+    static String[] splitSpec(String spec) {
+        int end = nextSubSpec(spec, 0);
+        if (end < 0) {
+            return new String[] {spec};
+        }
+        var list = new ArrayList<String>();
+        int start = 0;
+        while (true) {
+            list.add(spec.substring(start, end));
+            start = end;
+            end = nextSubSpec(spec, end);
+            if (end < 0) {
+                list.add(spec.substring(start));
+                break;
+            }
+        }
+        return list.toArray(String[]::new);
+    }
+
+    private static int nextSubSpec(String spec, int pos) {
+        int length = spec.length();
+        while (++pos < length) {
+            char c = spec.charAt(pos);
+            if (c == '-' || c == '+') {
+                return pos;
+            }
+        }
+        return -1;
     }
 
     /**

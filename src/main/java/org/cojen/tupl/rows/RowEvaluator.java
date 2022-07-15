@@ -28,10 +28,25 @@ import org.cojen.tupl.UnmodifiableViewException;
  *
  * @author Brian S O'Neill
  */
-public interface RowEvaluator<R> {
+public interface RowEvaluator<R> extends RowDecoder<R> {
+    /**
+     * Returns the index id for the primary table that this evaluator is bound to.
+     */
+    long tableId();
+
+    /**
+     * Returns the encoding descriptor, which is required for for secondary indexes. Returns
+     * null if this evaluator decodes against the primary table.
+     *
+     * @see RowStore#secondaryDescriptor
+     */
+    default byte[] secondaryDescriptor() {
+        return null;
+    }
+
     /**
      * @param result LockResult from cursor access
-     * @param row can pass null to construct a new instance
+     * @param row can pass null to construct a new instance; can also be a RowConsumer
      * @return null if row is filtered out
      */
     R evalRow(Cursor c, LockResult result, R row) throws IOException;
@@ -41,7 +56,7 @@ public interface RowEvaluator<R> {
      * the primary table, it can be updated directly without the cost of an additional search.
      *
      * @param result LockResult from secondary cursor access
-     * @param row can pass null to construct a new instance
+     * @param row can pass null to construct a new instance; can also be a RowConsumer
      * @param primary cursor is positioned as a side effect
      * @return null if row is filtered out
      */
@@ -50,6 +65,14 @@ public interface RowEvaluator<R> {
     {
         throw new UnsupportedOperationException();
     }
+
+    /**
+     * Decode a row without filtering it out.
+     *
+     * @param row can pass null to construct a new instance
+     * @return non-null row
+     */
+    R decodeRow(R row, byte[] key, byte[] value) throws IOException;
 
     /**
      * Called by BasicRowUpdater.
