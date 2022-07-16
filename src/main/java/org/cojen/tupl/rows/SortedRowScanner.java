@@ -50,7 +50,7 @@ class SortedRowScanner<R> extends ScanBatch<R> implements BaseRowScanner<R>, Row
     {
         init(table, orderBySpec, comparator, null,
              // Pass `this` as if it's a row, but it's actually a RowConsumer.
-             table.newRowScanner(txn, (R) this, table.unfiltered()), txn);
+             table.newRowScanner(txn, (R) this, controller), txn);
     }
 
     @SuppressWarnings("unchecked")
