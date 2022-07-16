@@ -116,8 +116,7 @@ public class IndexSelectorTest {
         verify("{+c, *}: c > ? && b > ?", "+c+b+id", "c > ?0 && b > ?1");
         verify("{+b, *}: c != ? && b > ?", "+b+id", "c != ?0 && b > ?1");
         verify("{+d, *}: d > ? && b > ? && c > ?", "+d+c+b+id", "d > ?0 && b > ?1 && c > ?2");
-        verify("{+d, +b, *}: b > ? && c > ? && d > ?",
-               "+d+c+b+id", "{+d, *}: b > ?0 && c > ?1 && d > ?2");
+        verify("{+d, +b, *}: b > ? && c > ? && d > ?", "+d+c+b+id", "b > ?0 && c > ?1 && d > ?2");
 
         verify("{+b, *}: e == ? && b == ?", "+b+e+id", "e == ?0 && b == ?1");
         verify("{-b, *}: e == ? && b == ?", "+b+e+id", "e == ?0 && b == ?1");
@@ -125,12 +124,12 @@ public class IndexSelectorTest {
 
         verify("{+d, +c, *}: d == ?", "+d+c+b+id", "d == ?0");
         verify("{-d, -c, *}: d == ?", "+d+c+b+id", "d == ?0");
-        verify("{+d, -c, *}: d == ?", "+d+b+id", "{+d, *}: d == ?0");
-        verify("{-d, +c, *}: d == ?", "+d+b+id", "{-d, *}: d == ?0");
+        verify("{+d, -c, *}: d == ?", "+d+b+id", "d == ?0");
+        verify("{-d, +c, *}: d == ?", "+d+b+id", "d == ?0");
 
         verify("{+c, *}: c > ? && c < ? && b > ? && b < ? || d == ?",
                "+d+b+id", "d == ?4",
-               "+c+b+id", "{+c, *}: c > ?0 && c < ?1 && b > ?2 && b < ?3 && d != ?4");
+               "+c+b+id", "c > ?0 && c < ?1 && b > ?2 && b < ?3 && d != ?4");
 
         verify("{+c, *}: c > ? && b > ? && b < ? || d == ?",
                "+d+b+id", "d == ?3",
@@ -184,7 +183,7 @@ public class IndexSelectorTest {
         verify("{+a, *}: (b > ? && b < ?) || a > ?", "+id", "(b > ?0 && b < ?1) || a > ?2");
 
         verify("{-a, *}: (a > ? && a < ?) || (b > ? && b < ?)",
-               "+a", "{-a, *}: a > ?0 && a < ?1",
+               "+a", "a > ?0 && a < ?1",
                "+b-c+id", "b > ?2 && b < ?3 && (a <= ?0 || a >= ?1)");
     }
 

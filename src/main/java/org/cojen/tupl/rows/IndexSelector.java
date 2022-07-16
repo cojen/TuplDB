@@ -55,6 +55,7 @@ final class IndexSelector {
     private Query[] mSelectedQueries;
     private boolean[] mSelectedReverse;
     private OrderBy mOrderBy;
+    private OrderBy mGrouping;
 
     private Set<String> mProjection;
 
@@ -111,7 +112,7 @@ final class IndexSelector {
                 }
 
                 if (direction == 0 && match < 0) {
-                    // Decide scan order based on first column only.
+                    // Decide scan order based on the first column only.
                     mSelectedReverse[i] = true;
                 }
 
@@ -119,7 +120,9 @@ final class IndexSelector {
                 numMatches++;
             }
 
-            mSelectedQueries[i] = mSelectedQueries[i].withOrderBy(orderBy.truncate(numMatches));
+            if (num == 1) {
+                mGrouping = orderBy.truncate(numMatches);
+            }
         }
 
         return num;
@@ -215,7 +218,7 @@ final class IndexSelector {
                     reject = reject.and(filter.not());
                     filter = disjoint;
                 }
-                mSelectedQueries[i] = mQuery.withFilter(filter);
+                mSelectedQueries[i] = mQuery.withFilter(filter).withOrderBy(null);
             }
 
             return mSelectedIndexes.length;
@@ -236,26 +239,32 @@ final class IndexSelector {
 
     /**
      * Must call analyze first. Returns a query for the selected index with the effective
-     * projection and filter that must still be applied. The selected orderBy represents the
-     * portion of the complete orderBy which is satisified by the index order, possibly when
-     * reversed.
+     * projection and filter that must still be applied.
      */
     Query selectedQuery(int i) {
         return mSelectedQueries[i];
     }
 
     /**
-     * Must call analyze first. Returns true if index scan should go in reverse order
+     * Must call analyze first. Returns true if index scan should go in reverse order.
      */
     boolean selectedReverse(int i) {
         return mSelectedReverse == null ? false : mSelectedReverse[i];
     }
 
     /**
-     * Must call analyze first. Returns null if no sort step is required
+     * Must call analyze first. Returns null if no sort step is required.
      */
     OrderBy orderBy() {
         return mOrderBy;
+    }
+
+    /**
+     * Must call analyze first. If a sort step is required, the grouping represents the natural
+     * partial ordering before sorting. If no sort step is required, then null is returned.
+     */
+    OrderBy grouping() {
+        return mGrouping;
     }
 
     Set<String> projection() {
