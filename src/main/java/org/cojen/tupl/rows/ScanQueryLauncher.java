@@ -34,13 +34,13 @@ import org.cojen.tupl.diag.QueryPlan;
  *
  * @author Brian S O'Neill
  */
-final class BasicQueryLauncher<R> implements QueryLauncher<R> {
+final class ScanQueryLauncher<R> implements QueryLauncher<R> {
     private final BaseTable<R> mTable;
     private final ScanControllerFactory<R> mFactory;
     private final Set<String> mProjection;
 
-    BasicQueryLauncher(BaseTable<R> table, ScanControllerFactory<R> factory,
-                       Set<String> projection)
+    ScanQueryLauncher(BaseTable<R> table, ScanControllerFactory<R> factory,
+                      Set<String> projection)
     {
         mTable = table;
         mFactory = factory;

@@ -751,7 +751,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             subFactory = subFactory.reverse();
         }
 
-        return new BasicQueryLauncher<>(subTable, subFactory, selector.projection());
+        return new ScanQueryLauncher<>(subTable, subFactory, selector.projection());
     }
 
     /**
