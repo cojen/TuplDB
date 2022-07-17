@@ -705,11 +705,11 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         QueryLauncher<R> launcher;
 
         if (num <= 1) {
-            launcher = newSubLauncher(doubleCheck, rowInfo, selector, 0, filter);
+            launcher = newSubLauncher(doubleCheck, rowInfo, selector, 0);
         } else {
             var launchers = new QueryLauncher[num];
             for (int i=0; i<num; i++) {
-                launchers[i] = newSubLauncher(doubleCheck, rowInfo, selector, i, null);
+                launchers[i] = newSubLauncher(doubleCheck, rowInfo, selector, i);
             }
             launcher = new DisjointUnionQueryLauncher<R>(launchers);
         }
@@ -723,16 +723,12 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     private QueryLauncher<R> newSubLauncher(boolean doubleCheck, RowInfo rowInfo,
-                                            IndexSelector selector, int i, String subQueryStr)
+                                            IndexSelector selector, int i)
         throws IOException
     {
         ColumnSet subIndex = selector.selectedIndex(i);
         Query subQuery = selector.selectedQuery(i);
-
-        if (subQueryStr == null) {
-            assert i == 0;
-            subQueryStr = subQuery.toString();
-        }
+        String subQueryStr = subQuery.toString();
 
         BaseTable<R> subTable;
         if (subIndex.matches(rowInfo)) {
