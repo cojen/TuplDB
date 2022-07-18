@@ -75,7 +75,7 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code><a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></code></div>
 <div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../../Table.html#queryPlan(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">queryPlan</a><wbr>(<a href="../../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- <a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;filter,
+ <a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
  <a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Returns a query plan used by <a href="../../Table.html#newRowScanner(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>newRowScanner</code></a> et al.</div>
@@ -113,35 +113,45 @@ loadScripts(document, 'script');</script>
 <div class="block">Query plan node which scans all rows of a table.</div>
 </div>
 <div class="col-first even-row-color"><code>static final class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="../QueryPlan.LoadOne.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.LoadOne</a></code></div>
+<div class="col-second even-row-color"><code><a href="../QueryPlan.GroupSort.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.GroupSort</a></code></div>
 <div class="col-last even-row-color">
+<div class="block">Query plan node which sorts rows within a group.</div>
+</div>
+<div class="col-first odd-row-color"><code>static final class&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="../QueryPlan.LoadOne.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.LoadOne</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Query plan node which loads at most one row from a table.</div>
 </div>
-<div class="col-first odd-row-color"><code>static final class&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="../QueryPlan.NaturalJoin.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.NaturalJoin</a></code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code>static final class&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="../QueryPlan.NaturalJoin.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.NaturalJoin</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Query plan node which joins rows to another table by a fully specified key.</div>
 </div>
-<div class="col-first even-row-color"><code>static final class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="../QueryPlan.RangeScan.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.RangeScan</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code>static final class&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="../QueryPlan.RangeScan.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.RangeScan</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Query plan node which scans a range of rows from a table.</div>
 </div>
-<div class="col-first odd-row-color"><code>static final class&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="../QueryPlan.RangeUnion.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.RangeUnion</a></code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code>static final class&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="../QueryPlan.RangeUnion.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.RangeUnion</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Query plan node which represents a union set of plans, where each source plan is limited
  to a range, and all sources produce rows in the same order.</div>
 </div>
-<div class="col-first even-row-color"><code>static class&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="../QueryPlan.Scan.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.Scan</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code>static class&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="../QueryPlan.Scan.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.Scan</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Query plan node which scans a table.</div>
 </div>
-<div class="col-first odd-row-color"><code>static class&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="../QueryPlan.Set.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.Set</a></code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code>static class&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="../QueryPlan.Set.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.Set</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Query plan node which represents a set of plans.</div>
+</div>
+<div class="col-first odd-row-color"><code>static class&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="../QueryPlan.Sort.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.Sort</a></code></div>
+<div class="col-last odd-row-color">
+<div class="block">Query plan node which sorts the rows.</div>
 </div>
 <div class="col-first even-row-color"><code>static class&nbsp;</code></div>
 <div class="col-second even-row-color"><code><a href="../QueryPlan.Table.html" class="type-name-link" title="class in org.cojen.tupl.diag">QueryPlan.Table</a></code></div>
@@ -165,9 +175,12 @@ loadScripts(document, 'script');</script>
 <div class="col-first odd-row-color"><code>final <a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">QueryPlan.NaturalJoin.</span><code><a href="../QueryPlan.NaturalJoin.html#source" class="member-name-link">source</a></code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
-<div class="col-first even-row-color"><code>final <a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a>[]</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">QueryPlan.Set.</span><code><a href="../QueryPlan.Set.html#sources" class="member-name-link">sources</a></code></div>
+<div class="col-first even-row-color"><code>final <a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">QueryPlan.Sort.</span><code><a href="../QueryPlan.Sort.html#source" class="member-name-link">source</a></code></div>
 <div class="col-last even-row-color">&nbsp;</div>
+<div class="col-first odd-row-color"><code>final <a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a>[]</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">QueryPlan.Set.</span><code><a href="../QueryPlan.Set.html#sources" class="member-name-link">sources</a></code></div>
+<div class="col-last odd-row-color">&nbsp;</div>
 </div>
 <div class="caption"><span>Constructors in <a href="../package-summary.html">org.cojen.tupl.diag</a> with parameters of type <a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></span></div>
 <div class="summary-table three-column-summary">
@@ -182,13 +195,22 @@ loadScripts(document, 'script');</script>
  <a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a>&nbsp;source)</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
 <div class="col-first even-row-color"><code>&nbsp;</code></div>
-<div class="col-second even-row-color"><code><a href="../QueryPlan.NaturalJoin.html#%3Cinit%3E(java.lang.String,java.lang.String,java.lang.String%5B%5D,org.cojen.tupl.diag.QueryPlan)" class="member-name-link">NaturalJoin</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;table,
- <a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;which,
- <a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;keyColumns,
+<div class="col-second even-row-color"><code><a href="../QueryPlan.GroupSort.html#%3Cinit%3E(java.lang.String%5B%5D,java.lang.String%5B%5D,org.cojen.tupl.diag.QueryPlan)" class="member-name-link">GroupSort</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;groupColumns,
+ <a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;sortColumns,
  <a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a>&nbsp;source)</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
 <div class="col-first odd-row-color"><code>&nbsp;</code></div>
-<div class="col-second odd-row-color"><code><a href="../QueryPlan.RangeUnion.html#%3Cinit%3E(org.cojen.tupl.diag.QueryPlan...)" class="member-name-link">RangeUnion</a><wbr>(<a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a>...&nbsp;sources)</code></div>
+<div class="col-second odd-row-color"><code><a href="../QueryPlan.NaturalJoin.html#%3Cinit%3E(java.lang.String,java.lang.String,java.lang.String%5B%5D,org.cojen.tupl.diag.QueryPlan)" class="member-name-link">NaturalJoin</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;table,
+ <a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;which,
+ <a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;keyColumns,
+ <a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a>&nbsp;source)</code></div>
+<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-first even-row-color"><code>&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="../QueryPlan.RangeUnion.html#%3Cinit%3E(org.cojen.tupl.diag.QueryPlan...)" class="member-name-link">RangeUnion</a><wbr>(<a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a>...&nbsp;sources)</code></div>
+<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-first odd-row-color"><code>&nbsp;</code></div>
+<div class="col-second odd-row-color"><code><a href="../QueryPlan.Sort.html#%3Cinit%3E(java.lang.String%5B%5D,org.cojen.tupl.diag.QueryPlan)" class="member-name-link">Sort</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;sortColumns,
+ <a href="../QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a>&nbsp;source)</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
 </div>
 </section>

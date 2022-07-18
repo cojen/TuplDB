@@ -219,11 +219,6 @@ the order they are declared.</div>
 <dd>
 <div class="block">Mapping of keys to values, in no particular order.</div>
 </dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/Table.html#viewAlternateKey(java.lang.String...)" class="member-name-link">viewAlternateKey(String...)</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
-<dd>
-<div class="block">Returns a view of this table where the primary key is specified by the columns of an
- alternate key, and the row is fully resolved by joining to the primary table.</div>
-</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/ViewConstraintException.html" class="type-name-link" title="class in org.cojen.tupl">ViewConstraintException</a> - Exception Class in <a href="../org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
 <div class="block">Thrown when attempting to perform an illegal view alteration.</div>
@@ -274,18 +269,9 @@ the order they are declared.</div>
 <dd>
 <div class="block">Returns a sub-view, backed by this one, whose keys start with the given prefix.</div>
 </dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/Table.html#viewPrimaryKey()" class="member-name-link">viewPrimaryKey()</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
-<dd>
-<div class="block">Returns a view of this table which doesn't perform automatic index selection.</div>
-</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/View.html#viewReverse()" class="member-name-link">viewReverse()</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
 <dd>
 <div class="block">Returns a view, backed by this one, whose natural order is reversed.</div>
-</dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/Table.html#viewSecondaryIndex(java.lang.String...)" class="member-name-link">viewSecondaryIndex(String...)</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
-<dd>
-<div class="block">Returns a view of this table where the primary key is specified by the columns of a
- secondary index, and the row is fully resolved by joining to the primary table.</div>
 </dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/View.html#viewTransformed(org.cojen.tupl.Transformer)" class="member-name-link">viewTransformed(Transformer)</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
 <dd>
@@ -296,11 +282,6 @@ the order they are declared.</div>
 <dd>
 <div class="block">Returns a view which represents the <a href="https://en.wikipedia.org/wiki/Union_(set_theory)"><cite>set union</cite></a> of
  this view and a second one.</div>
-</dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/Table.html#viewUnjoined()" class="member-name-link">viewUnjoined()</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
-<dd>
-<div class="block">Returns a direct view of an alternate key or secondary index, in the form of an
- unmodifiable table.</div>
 </dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/View.html#viewUnmodifiable()" class="member-name-link">viewUnmodifiable()</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/View.html" title="interface in org.cojen.tupl">View</a></dt>
 <dd>
