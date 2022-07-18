@@ -330,52 +330,6 @@ public interface Table<R> {
     public Predicate<R> predicate(String query, Object... args);
 
     /**
-     * Returns a view of this table which doesn't perform automatic index selection.
-     */
-    public Table<R> viewPrimaryKey();
-
-    /**
-     * Returns a view of this table where the primary key is specified by the columns of an
-     * alternate key, and the row is fully resolved by joining to the primary table. Direct
-     * stores against the returned table aren't permitted, and an {@link
-     * UnmodifiableViewException} is thrown when attempting to do so. Modifications are
-     * permitted when using a {@link RowUpdater}.
-     *
-     * @param columns column specifications for the alternate key
-     * @return alternate key as a table
-     * @throws IllegalStateException if alternate key wasn't found
-     */
-    public Table<R> viewAlternateKey(String... columns) throws IOException;
-
-    /**
-     * Returns a view of this table where the primary key is specified by the columns of a
-     * secondary index, and the row is fully resolved by joining to the primary table. Direct
-     * stores against the returned table aren't permitted, and an {@link
-     * UnmodifiableViewException} is thrown when attempting to do so. Modifications are
-     * permitted when using a {@link RowUpdater}.
-     *
-     * @param columns column specifications for the secondary index
-     * @return secondary index as a table
-     * @throws IllegalStateException if secondary index wasn't found
-     */
-    public Table<R> viewSecondaryIndex(String... columns) throws IOException;
-
-    /**
-     * Returns a direct view of an alternate key or secondary index, in the form of an
-     * unmodifiable table. The rows of the table only contain the columns of the alternate key
-     * or secondary index.
-     *
-     * @return an unjoined table, or else this table if it's not joined
-     */
-    public Table<R> viewUnjoined();
-
-    //public Table<R> viewQuery(String query, Object... args);
-
-    //public Table<R> viewUnmodifiable();
-
-    //public boolean isUnmodifiable();
-
-    /**
      * Returns a query plan used by {@link #newRowScanner(Transaction, String, Object...)
      * newRowScanner} et al.
      *

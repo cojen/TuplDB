@@ -38,7 +38,7 @@ public class RowUpdaterTest {
     @Test
     public void projection() throws Exception {
         var db = Database.open(new DatabaseConfig());
-        var table = db.openTable(TestRow.class);
+        var table = (BaseTable<TestRow>) db.openTable(TestRow.class);
         var ix = table.viewSecondaryIndex("state");
         fill(table, 1, 5);
 

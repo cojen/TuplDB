@@ -38,7 +38,7 @@ public class RowScannerTest {
     @Test
     public void projection() throws Exception {
         var db = Database.open(new DatabaseConfig());
-        var table = db.openTable(TestRow.class);
+        var table = (BaseTable<TestRow>)  db.openTable(TestRow.class);
         fill(table, 1, 5);
 
         verify(table.newRowScanner(null, "{}"), 1, 5);
@@ -77,28 +77,28 @@ public class RowScannerTest {
         verify(ix.newRowScanner
                (null, "{~path, ~state, *}: name == ?", "name-3"), 3, 3, "id", "name");
 
-        ix = ix.viewUnjoined();
+        var ix2 = ix.viewUnjoined();
 
-        verify(ix.newRowScanner(null, "{}"), 1, 5);
-        verify(ix.newRowScanner(null, "{id}"), 1, 5, "id");
-        verify(ix.newRowScanner(null, "{id, id}"), 1, 5, "id");
-        verify(ix.newRowScanner(null, "{name, state}"), 1, 5, "name", "state");
+        verify(ix2.newRowScanner(null, "{}"), 1, 5);
+        verify(ix2.newRowScanner(null, "{id}"), 1, 5, "id");
+        verify(ix2.newRowScanner(null, "{id, id}"), 1, 5, "id");
+        verify(ix2.newRowScanner(null, "{name, state}"), 1, 5, "name", "state");
 
-        verify(ix.newRowScanner(null, "{*}"), 1, 5, "id", "name", "state");
-        verify(ix.newRowScanner(null, "{~id, *}"), 1, 5, "name", "state");
-        verify(ix.newRowScanner(null, "{~id, ~id, *}"), 1, 5, "name", "state");
-        verify(ix.newRowScanner(null, "{~name, ~state, *, id}"), 1, 5, "id");
+        verify(ix2.newRowScanner(null, "{*}"), 1, 5, "id", "name", "state");
+        verify(ix2.newRowScanner(null, "{~id, *}"), 1, 5, "name", "state");
+        verify(ix2.newRowScanner(null, "{~id, ~id, *}"), 1, 5, "name", "state");
+        verify(ix2.newRowScanner(null, "{~name, ~state, *, id}"), 1, 5, "id");
 
-        verify(ix.newRowScanner(null, "{}: name == ?", "name-3"), 3, 3);
+        verify(ix2.newRowScanner(null, "{}: name == ?", "name-3"), 3, 3);
         try {
-            ix.newRowScanner(null, "{path}: name == ?", "name-3");
+            ix2.newRowScanner(null, "{path}: name == ?", "name-3");
             fail();
         } catch (IllegalArgumentException e) {
             assertTrue(e.getMessage().contains("unavailable for selection: path"));
         }
-        verify(ix.newRowScanner(null, "{name}: id == ?", 3), 3, 3, "name");
-        verify(ix.newRowScanner(null, "{name}: id > ?", 3), 4, 5, "name");
-        verify(ix.newRowScanner
+        verify(ix2.newRowScanner(null, "{name}: id == ?", 3), 3, 3, "name");
+        verify(ix2.newRowScanner(null, "{name}: id > ?", 3), 4, 5, "name");
+        verify(ix2.newRowScanner
                (null, "{~path, ~state, *}: name == ?", "name-3"), 3, 3, "id", "name");
     }
 

@@ -161,7 +161,7 @@ public class SortTranscoderTest {
     @Test
     public void secondary() throws Exception {
         final Index ix = mDb.openIndex("test");
-        final Table<TestRow> table = ix.asTable(TestRow.class);
+        final var table = (BaseTable<TestRow>) ix.asTable(TestRow.class);
 
         fill(table);
 

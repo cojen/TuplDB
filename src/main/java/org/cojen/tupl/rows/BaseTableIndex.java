@@ -83,12 +83,12 @@ public abstract class BaseTableIndex<R> extends BaseTable<R> {
     }
 
     @Override
-    public Table<R> viewAlternateKey(String... columns) throws IOException {
+    protected BaseTableIndex<R> viewAlternateKey(String... columns) throws IOException {
         throw new IllegalStateException();
     }
 
     @Override
-    public Table<R> viewSecondaryIndex(String... columns) throws IOException {
+    protected BaseTableIndex<R> viewSecondaryIndex(String... columns) throws IOException {
         throw new IllegalStateException();
     }
 

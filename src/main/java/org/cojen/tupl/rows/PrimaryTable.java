@@ -163,26 +163,6 @@ final class PrimaryTable<R> implements Table<R> {
     }
 
     @Override
-    public Table<R> viewPrimaryKey() {
-        return this;
-    }
-
-    @Override
-    public Table<R> viewAlternateKey(String... columns) throws IOException {
-        return mSource.viewAlternateKey(columns);
-    }
-
-    @Override
-    public Table<R> viewSecondaryIndex(String... columns) throws IOException {
-        return mSource.viewSecondaryIndex(columns);
-    }
-
-    @Override
-    public Table<R> viewUnjoined() {
-        return this;
-    }
-
-    @Override
     public QueryPlan queryPlan(Transaction txn, String filter, Object... args) {
         return mSource.queryPlanThisTable(txn, filter, args);
     }

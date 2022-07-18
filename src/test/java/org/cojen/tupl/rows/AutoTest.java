@@ -85,7 +85,7 @@ public class AutoTest {
 
     @Test
     public void basicLong() throws Exception {
-        Table<TestRow2> table = mDb.openTable(TestRow2.class);
+        var table = (BaseTable<TestRow2>) mDb.openTable(TestRow2.class);
 
         for (int i=1; i<=1000; i++) {
             var row = table.newRow();
@@ -135,7 +135,7 @@ public class AutoTest {
 
     @Test
     public void basicUInt() throws Exception {
-        Table<TestRow3> table = mDb.openTable(TestRow3.class);
+        var table = (BaseTable<TestRow3>) mDb.openTable(TestRow3.class);
 
         for (int i=1; i<=1000; i++) {
             var row = table.newRow();

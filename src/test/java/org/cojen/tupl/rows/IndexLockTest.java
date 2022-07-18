@@ -86,7 +86,7 @@ public class IndexLockTest {
         // A RowScanner cannot start when an open transaction has inserted a row into the range
         // that will be scanned.
 
-        var table = mDatabase.openTable(type);
+        var table = (BaseTable<R>) mDatabase.openTable(type);
 
         fill(table, 0, 3);
 
@@ -854,7 +854,7 @@ public class IndexLockTest {
         // entry is actually inserted, then this test should fail unless special attention is
         // given to covering indexes.
 
-        Table<TestRow4> table = mDatabase.openTable(TestRow4.class);
+        var table = (BaseTable<TestRow4>) mDatabase.openTable(TestRow4.class);
 
         for (int i=1; i<=3; i++) {
             TestRow4 row = table.newRow();
@@ -909,7 +909,7 @@ public class IndexLockTest {
         // before updating secondaries, and then acquire an exclusive row lock at the end.
         // This technique doesn't prevent deadlocks when using UPGRADABLE_READ, however.
 
-        Table<TestRow2> table = mDatabase.openTable(TestRow2.class);
+        var table = (BaseTable<TestRow2>) mDatabase.openTable(TestRow2.class);
         Table<TestRow2> ix = table.viewSecondaryIndex("name");
 
         fill(table, 1, 9);
@@ -973,7 +973,7 @@ public class IndexLockTest {
     public void filterLockRelease() throws Exception {
         // Test that secondary and primary row locks are released when row is filtered out.
 
-        Table<TestRow3> table = mDatabase.openTable(TestRow3.class);
+        var table = (BaseTable<TestRow3>) mDatabase.openTable(TestRow3.class);
         Table<TestRow3> nameIx = table.viewSecondaryIndex("name");
 
         for (int i=1; i<=3; i++) {
@@ -1047,7 +1047,7 @@ public class IndexLockTest {
         // Similar test as filterLockRelease, except the locks were already held before the
         // scanner started. They should be retained even when filtered out.
 
-        Table<TestRow3> table = mDatabase.openTable(TestRow3.class);
+        var table = (BaseTable<TestRow3>) mDatabase.openTable(TestRow3.class);
         Table<TestRow3> nameIx = table.viewSecondaryIndex("name");
 
         for (int i=1; i<=3; i++) {
@@ -1112,10 +1112,10 @@ public class IndexLockTest {
         mDatabase = Database.open(new DatabaseConfig().lockTimeout(2, TimeUnit.SECONDS));
 
         Index tableSource = mDatabase.openIndex("test");
-        Table<TestRow2> table = tableSource.asTable(TestRow2.class);
-        Table<TestRow2> nameIx = table.viewSecondaryIndex("name");
+        var table = (BaseTable<TestRow2>) tableSource.asTable(TestRow2.class);
+        var nameIx = (BaseTable<TestRow2>) table.viewSecondaryIndex("name");
 
-        Index nameIxSouce = ((BaseTable) nameIx).mSource;
+        Index nameIxSouce = nameIx.mSource;
 
         fill(table, 1, 3);
 

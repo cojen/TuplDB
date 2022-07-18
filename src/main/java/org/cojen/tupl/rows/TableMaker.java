@@ -44,6 +44,7 @@ import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.RowUpdater;
+import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnmodifiableViewException;
 
@@ -331,7 +332,7 @@ public class TableMaker {
         ctor.field("unjoined").set(unjoinedVar);
 
         {
-            MethodMaker mm = mClassMaker.addMethod(BaseTable.class, "viewUnjoined").public_();
+            MethodMaker mm = mClassMaker.addMethod(Table.class, "viewUnjoined").protected_();
             mm.return_(mm.field("unjoined"));
         }
 
