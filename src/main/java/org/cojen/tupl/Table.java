@@ -68,10 +68,10 @@ import org.cojen.tupl.io.Utils;
  * methods defined in the row interface are never overridden by the generated class, unless the
  * method is defined in the {@link Object} class.
  *
- * <p>Scans over the rows of the table can be reduced by a filter, described by this syntax:
+ * <p>Scans over the rows of the table can be reduced by a query, described by this syntax:
  *
  * <blockquote><pre>{@code
- * Filter       = RowFilter
+ * Query        = RowFilter
  *              | Projection [ ':' RowFilter ]
  * RowFilter    = AndFilter { "||" AndFilter }
  * AndFilter    = EntityFilter { "&&" EntityFilter }
@@ -128,15 +128,15 @@ public interface Table<R> {
     public RowScanner<R> newRowScanner(Transaction txn) throws IOException;
 
     /**
-     * Returns a new scanner for a subset of rows of this table, as specified by the filter
+     * Returns a new scanner for a subset of rows of this table, as specified by the query
      * expression.
      *
      * @param txn optional transaction for the scanner to use; pass null for auto-commit mode
-     * @return a new scanner positioned at the first row in the table accepted by the filter
+     * @return a new scanner positioned at the first row in the table accepted by the query
      * @throws IllegalStateException if transaction belongs to another database instance
      * @see #queryPlan queryPlan
      */
-    public RowScanner<R> newRowScanner(Transaction txn, String filter, Object... args)
+    public RowScanner<R> newRowScanner(Transaction txn, String query, Object... args)
         throws IOException;
 
     /**
@@ -155,7 +155,7 @@ public interface Table<R> {
     public RowUpdater<R> newRowUpdater(Transaction txn) throws IOException;
 
     /**
-     * Returns a new updater for a subset of rows of this table, as specified by the filter
+     * Returns a new updater for a subset of rows of this table, as specified by the query
      * expression.
      *
      * <p>When providing a transaction which acquires locks (or the transaction is null),
@@ -165,10 +165,10 @@ public interface Table<R> {
      * and become visible to other transactions as the updater moves along.
      *
      * @param txn optional transaction for the updater to use; pass null for auto-commit mode
-     * @return a new updater positioned at the first row in the table accepted by the filter
+     * @return a new updater positioned at the first row in the table accepted by the query
      * @throws IllegalStateException if transaction belongs to another database instance
      */
-    public RowUpdater<R> newRowUpdater(Transaction txn, String filter, Object... args)
+    public RowUpdater<R> newRowUpdater(Transaction txn, String query, Object... args)
         throws IOException;
 
     /**
@@ -189,18 +189,18 @@ public interface Table<R> {
     }
 
     /**
-     * Returns a new stream for a subset of rows of this table, as specified by the filter
+     * Returns a new stream for a subset of rows of this table, as specified by the query
      * expression. The stream must be explicitly closed when no longer used, or else it must be
      * used with a try-with-resources statement. If an underlying {@code IOException} is
      * generated, it's thrown as if it was unchecked.
      *
      * @param txn optional transaction for the stream to use; pass null for auto-commit mode
-     * @return a new stream positioned at the first row in the table accepted by the filter
+     * @return a new stream positioned at the first row in the table accepted by the query
      * @throws IllegalStateException if transaction belongs to another database instance
      */
-    public default Stream<R> newStream(Transaction txn, String filter, Object... args) {
+    public default Stream<R> newStream(Transaction txn, String query, Object... args) {
         try {
-            return newStream(newRowScanner(txn, filter, args));
+            return newStream(newRowScanner(txn, query, args));
         } catch (IOException e) {
             throw Utils.rethrow(e);
         }
@@ -325,9 +325,9 @@ public interface Table<R> {
     public Comparator<R> comparator(String spec);
 
     /**
-     * Returns a row predicate for the given filter expression and arguments.
+     * Returns a row predicate for the given query expression and arguments.
      */
-    public Predicate<R> predicate(String filter, Object... args);
+    public Predicate<R> predicate(String query, Object... args);
 
     /**
      * Returns a view of this table which doesn't perform automatic index selection.
@@ -369,7 +369,7 @@ public interface Table<R> {
      */
     public Table<R> viewUnjoined();
 
-    //public Table<R> viewFiltered(String filter, Object... args);
+    //public Table<R> viewQuery(String query, Object... args);
 
     //public Table<R> viewUnmodifiable();
 
@@ -380,8 +380,8 @@ public interface Table<R> {
      * newRowScanner} et al.
      *
      * @param txn optional transaction to be used; pass null for auto-commit mode
-     * @param filter optional filter expression
-     * @param args optional filter arguments
+     * @param query optional query expression
+     * @param args optional query arguments
      */
-    public QueryPlan queryPlan(Transaction txn, String filter, Object... args) throws IOException;
+    public QueryPlan queryPlan(Transaction txn, String query, Object... args) throws IOException;
 }

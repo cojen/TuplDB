@@ -214,7 +214,7 @@ public class Parser {
     public void skipProjection() {
         final int start = mPos;
         int c = nextCharIgnoreWhitespace();
-        if (c == '~' || c == '{') {
+        if (c == '{') {
             mPos = mFilter.indexOf(':', mPos);
             if (mPos < 0) {
                 mPos = mFilter.length();
