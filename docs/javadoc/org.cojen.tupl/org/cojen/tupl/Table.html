@@ -142,7 +142,7 @@ loadScripts(document, 'script');</script>
  ColumnFilter = ColumnName RelOp ( ArgRef | ColumnName )
               | ColumnName "in" ArgRef
  RelOp        = "==" | "!=" | "&gt;=" | "&lt;" | "&lt;=" | "&gt;"
- Projection   = "{" ProjColumns "}" [ ':' RowFilter ]
+ Projection   = "{" ProjColumns "}"
  ProjColumns  = [ ProjColumn { "," ProjColumn } ]
  ProjColumn   = ( ( ( ( "+" | "-" ) [ "!" ] ) | "~" ) ColumnName ) | "*"
  ColumnName   = string

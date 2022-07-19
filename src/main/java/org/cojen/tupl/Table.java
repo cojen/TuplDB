@@ -80,7 +80,7 @@ import org.cojen.tupl.io.Utils;
  * ColumnFilter = ColumnName RelOp ( ArgRef | ColumnName )
  *              | ColumnName "in" ArgRef
  * RelOp        = "==" | "!=" | ">=" | "<" | "<=" | ">"
- * Projection   = "{" ProjColumns "}" [ ':' RowFilter ]
+ * Projection   = "{" ProjColumns "}"
  * ProjColumns  = [ ProjColumn { "," ProjColumn } ]
  * ProjColumn   = ( ( ( ( "+" | "-" ) [ "!" ] ) | "~" ) ColumnName ) | "*"
  * ColumnName   = string
