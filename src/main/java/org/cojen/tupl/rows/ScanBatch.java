@@ -60,8 +60,12 @@ class ScanBatch<R> {
      *
      * @return updated offset
      */
-    final int decodeRows(R[] rows, int offset) throws IOException {
+    private int decodeRows(R[] rows, int offset) throws IOException {
         Block block = mFirstBlock;
+
+        mFirstBlock = null;
+        mLastBlock = null;
+
         do {
             byte[][] entries = block.mEntries;
             for (int i=0; i<entries.length; i+=2) {
@@ -86,7 +90,7 @@ class ScanBatch<R> {
         ScanBatch<R> batch = this;
         do {
             offset = batch.decodeRows(rows, offset);
-        } while ((batch = batch.mNextBatch) != null);
+        } while ((batch = batch.detachNext()) != null);
         return offset;
     }
 
@@ -137,8 +141,8 @@ class ScanBatch<R> {
     }
 
     static final class Block {
-        private static final int FIRST_BLOCK_CAPACITY = 8;
-        private static final int HIGHEST_BLOCK_CAPACITY = 256;
+        private static final int FIRST_BLOCK_CAPACITY = 16;
+        private static final int HIGHEST_BLOCK_CAPACITY = 1024;
 
         // Alternating key and values.
         private final byte[][] mEntries;

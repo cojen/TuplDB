@@ -81,13 +81,10 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
         }
 
         var rows = (R[]) new Object[numRows];
-
-        if (mFirstBatch != null) {
-            mFirstBatch.decodeAllRows(rows, 0);
-        }
-
+        ScanBatch first = mFirstBatch;
         mFirstBatch = null;
         mLastBatch = null;
+        first.decodeAllRows(rows, 0);
 
         // FIXME: This can be a problem if the projection eliminates any necessary sort
         // columns. Will need to transcode always in this case.
