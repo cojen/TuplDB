@@ -23,9 +23,9 @@ import org.cojen.tupl.Table;
  * A RowScanner backed by an array of decoded rows.
  *
  * @author Brian S O'Neill
- * @see SortedRowScanner
+ * @see RowSorter
  */
-final class ArrayRowScanner<R> implements BaseRowScanner<R> {
+class ArrayRowScanner<R> implements BaseRowScanner<R> {
     private static final Object[] EMPTY = new Object[1];
 
     private final Table<R> mTable;
@@ -47,12 +47,12 @@ final class ArrayRowScanner<R> implements BaseRowScanner<R> {
     }
 
     @Override
-    public R row() {
+    public final R row() {
         return mRows[mPosition];
     }
 
     @Override
-    public R step() {
+    public final R step() {
         R[] rows = mRows;
         int pos = mPosition;
         rows[pos++] = null; // help GC
@@ -65,7 +65,7 @@ final class ArrayRowScanner<R> implements BaseRowScanner<R> {
     }
 
     @Override
-    public R step(R dst) {
+    public final R step(R dst) {
         R row = step();
         if (row == null) {
             return null;
@@ -77,13 +77,19 @@ final class ArrayRowScanner<R> implements BaseRowScanner<R> {
 
     @Override
     @SuppressWarnings("unchecked")
-    public void close() {
+    public final void close() {
         mRows = (R[]) EMPTY;
         mPosition = 0;
     }
 
     @Override
-    public long estimateSize() {
+    public final long estimateSize() {
         return mRows.length - mPosition;
+    }
+
+    @Override
+    public int characteristics() {
+        // FIXME: Depending on the projection, DISTINCT shouldn't be included.
+        return ORDERED | DISTINCT | NONNULL | IMMUTABLE | SIZED;
     }
 }

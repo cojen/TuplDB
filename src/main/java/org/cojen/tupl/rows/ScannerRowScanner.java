@@ -25,9 +25,9 @@ import org.cojen.tupl.Scanner;
  * A RowScanner backed by a plain Scanner, and rows are decoded along the way.
  *
  * @author Brian S O'Neill
- * @see SortedRowScanner
+ * @see RowSorter
  */
-final class ScannerRowScanner<R> implements BaseRowScanner<R> {
+class ScannerRowScanner<R> implements BaseRowScanner<R> {
     private final Scanner mScanner;
     private final RowDecoder<R> mDecoder;
 
@@ -43,17 +43,17 @@ final class ScannerRowScanner<R> implements BaseRowScanner<R> {
     }
 
     @Override
-    public R row() {
+    public final R row() {
         return mRow;
     }
 
     @Override
-    public R step() throws IOException {
+    public final R step() throws IOException {
         return step(null);
     }
 
     @Override
-    public R step(R dst) throws IOException {
+    public final R step(R dst) throws IOException {
         Scanner s = mScanner;
         R row;
         if (s.step()) {
@@ -66,7 +66,7 @@ final class ScannerRowScanner<R> implements BaseRowScanner<R> {
     }
 
     @Override
-    public void close() throws IOException {
+    public final void close() throws IOException {
         mRow = null;
         mScanner.close();
     }

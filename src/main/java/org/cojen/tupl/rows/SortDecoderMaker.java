@@ -36,7 +36,7 @@ import org.cojen.maker.Variable;
  * 
  *
  * @author Brian S O'Neill
- * @see SortedRowScanner
+ * @see RowSorter
  * @see SortTranscoderMaker
  */
 class SortDecoderMaker {

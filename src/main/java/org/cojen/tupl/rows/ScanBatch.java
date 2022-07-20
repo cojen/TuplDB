@@ -23,13 +23,13 @@ import org.cojen.tupl.Sorter;
 
 /**
  * @author Brian S O'Neill
- * @see SortedRowScanner
+ * @see RowSorter
  */
 class ScanBatch<R> {
-    private final Block mFirstBlock;
+    private Block mFirstBlock;
     private Block mLastBlock;
 
-    ScanBatch<R> mNextBatch;
+    private ScanBatch<R> mNextBatch;
 
     RowEvaluator<R> mEvaluator;
 
@@ -37,7 +37,7 @@ class ScanBatch<R> {
         mFirstBlock = mLastBlock = new Block();
     }
 
-    void addEntry(byte[] key, byte[] value) {
+    final void addEntry(byte[] key, byte[] value) {
         Block block = mLastBlock;
 
         byte[][] entries = block.mEntries;
@@ -60,7 +60,7 @@ class ScanBatch<R> {
      *
      * @return updated offset
      */
-    int decodeRows(R[] rows, int offset) throws IOException {
+    final int decodeRows(R[] rows, int offset) throws IOException {
         Block block = mFirstBlock;
         do {
             byte[][] entries = block.mEntries;
@@ -82,7 +82,7 @@ class ScanBatch<R> {
      *
      * @return updated offset
      */
-    int decodeAllRows(R[] rows, int offset) throws IOException {
+    final int decodeAllRows(R[] rows, int offset) throws IOException {
         ScanBatch<R> batch = this;
         do {
             offset = batch.decodeRows(rows, offset);
@@ -96,7 +96,7 @@ class ScanBatch<R> {
      * @param kvPairs temporary workspace; can pass null initially
      * @return new or original kvPairs
      */
-    byte[][] transcode(Transcoder t, Sorter sorter, byte[][] kvPairs) throws IOException {
+    final byte[][] transcode(Transcoder t, Sorter sorter, byte[][] kvPairs) throws IOException {
         {
             int capacity = mLastBlock.mEntries.length;
             if (kvPairs == null || kvPairs.length < capacity) {
@@ -105,6 +105,10 @@ class ScanBatch<R> {
         }
 
         Block block = mFirstBlock;
+
+        mFirstBlock = null;
+        mLastBlock = null;
+
         do {
             byte[][] entries = block.mEntries;
             int i = 0;
@@ -121,7 +125,18 @@ class ScanBatch<R> {
         return kvPairs;
     }
 
-    static class Block {
+    final void appendNext(ScanBatch<R> batch) {
+        mNextBatch = batch;
+    }
+
+    final ScanBatch<R> detachNext() {
+        ScanBatch<R> next = mNextBatch;
+        mNextBatch = null;
+        mEvaluator = null;
+        return next;
+    }
+
+    static final class Block {
         private static final int FIRST_BLOCK_CAPACITY = 8;
         private static final int HIGHEST_BLOCK_CAPACITY = 256;
 

@@ -50,7 +50,7 @@ final class SortedQueryLauncher<R> implements QueryLauncher<R> {
 
     @Override
     public RowScanner<R> newRowScanner(Transaction txn, R row, Object... args) throws IOException {
-        return new SortedRowScanner<R>(mTable, mSpec, mComparator, mSource, txn, args);
+        return RowSorter.sort(mTable, mSpec, mComparator, mSource, txn, args);
     }
 
     @Override
