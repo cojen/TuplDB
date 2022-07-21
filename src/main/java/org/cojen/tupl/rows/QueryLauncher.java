@@ -47,9 +47,6 @@ interface QueryLauncher<R> {
 
     QueryPlan plan(Object... args);
 
-    // FIXME: remove (is unused)
-    Predicate<R> predicate(Object... args);
-
     /**
      * Returns the projected columns, which can be null if all are projected.
      */

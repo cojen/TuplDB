@@ -86,8 +86,6 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
         mLastBatch = null;
         first.decodeAllRows(rows, 0);
 
-        // FIXME: This can be a problem if the projection eliminates any necessary sort
-        // columns. Will need to transcode always in this case.
         Arrays.parallelSort(rows, comparator);
 
         return new ARS<>(table, rows, comparator);

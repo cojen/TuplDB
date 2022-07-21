@@ -63,11 +63,6 @@ final class ScanQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
-    public Predicate<R> predicate(Object... args) {
-        return mFactory.predicate(args);
-    }
-
-    @Override
     public Set<String> projection() {
         return mProjection;
     }

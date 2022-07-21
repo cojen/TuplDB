@@ -101,15 +101,6 @@ final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
-    public Predicate<R> predicate(Object... args) {
-        Predicate<R> pred = mLaunchers[0].predicate(args);
-        for (int i=1; i<mLaunchers.length; i++) {
-            pred = pred.or(mLaunchers[i].predicate(args));
-        }
-        return pred;
-    }
-
-    @Override
     public Set<String> projection() {
         return mLaunchers[0].projection();
     }

@@ -65,11 +65,6 @@ final class SortedQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
-    public Predicate<R> predicate(Object... args) {
-        return mSource.predicate(args);
-    }
-
-    @Override
     public Set<String> projection() {
         return mSource.projection();
     }
