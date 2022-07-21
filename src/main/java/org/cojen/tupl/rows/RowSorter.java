@@ -34,8 +34,8 @@ import org.cojen.tupl.Transaction;
  * @author Brian S O'Neill
  */
 final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
-    // FIXME: Make configrable and/or "smart".
-    private static int EXTERNAL_THRESHOLD = 1_000_000;
+    // FIXME: Make configurable and/or "smart".
+    private static final int EXTERNAL_THRESHOLD = 1_000_000;
 
     private ScanBatch<R> mFirstBatch, mLastBatch;
 
