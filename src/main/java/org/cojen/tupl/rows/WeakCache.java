@@ -93,6 +93,7 @@ class WeakCache<K, V, H> extends RefCache<K, V, H> {
                     newEntry.mNext = e.mNext;
                 } else {
                     prev.mNext = e.mNext;
+                    newEntry.mNext = entries[index];
                 }
                 VarHandle.storeStoreFence(); // ensure that entry value is safely visible
                 entries[index] = newEntry;
