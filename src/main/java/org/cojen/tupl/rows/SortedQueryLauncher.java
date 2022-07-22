@@ -24,6 +24,7 @@ import java.util.Set;
 
 import java.util.function.Predicate;
 
+import org.cojen.tupl.LockMode;
 import org.cojen.tupl.RowScanner;
 import org.cojen.tupl.RowUpdater;
 import org.cojen.tupl.Transaction;
@@ -55,8 +56,85 @@ final class SortedQueryLauncher<R> implements QueryLauncher<R> {
 
     @Override
     public RowUpdater<R> newRowUpdater(Transaction txn, R row, Object... args) throws IOException {
-        // FIXME: Sorted RowUpdater.
-        throw new UnsupportedOperationException();
+        if (txn != null) {
+            if (txn.lockMode() != LockMode.UNSAFE) {
+                txn.enter();
+            }
+
+            RowScanner<R> scanner;
+            try {
+                scanner = newRowScanner(txn, row, args);
+                txn.commit(); // keep the locks
+            } finally {
+                txn.exit();
+            }
+
+            return new WrappedRowUpdater<>(mTable, txn, scanner);
+        }
+
+        // Need to create a transaction to acquire locks, but true auto-commit behevior isn't
+        // really feasible because update order won't match lock acquisition order. Instead,
+        // keep the transaction open until the updater finishes and always commit.
+        // Unfortunately, if the commit fails then all updates fail instead of just one.
+
+        txn = mTable.mSource.newTransaction(null);
+
+        RowScanner<R> scanner;
+        try {
+            scanner = newRowScanner(txn, row, args);
+        } catch (Throwable e) {
+            txn.exit();
+            throw e;
+        }
+
+        return new WrappedRowUpdater<>(mTable, txn, scanner) {
+            @Override
+            public R step() throws IOException {
+                try {
+                    R row = mScanner.step();
+                    if (row == null) {
+                        exception(null);
+                    }
+                    return row;
+                } catch (Throwable e) {
+                    exception(e);
+                    throw e;
+                }
+            }
+
+            @Override
+            public R step(R row) throws IOException {
+                try {
+                    row = mScanner.step(row);
+                    if (row == null) {
+                        exception(null);
+                    }
+                    return row;
+                } catch (Throwable e) {
+                    exception(e);
+                    throw e;
+                }
+            }
+
+            @Override
+            public void close() throws IOException {
+                exception(null);
+                mScanner.close();
+            }
+
+            @Override
+            protected void exception(Throwable e) throws IOException {
+                try {
+                    mTxn.commit();
+                } catch (Throwable e2) {
+                    if (e == null) {
+                        throw e2;
+                    } else {
+                        RowUtils.suppress(e, e2);
+                    }
+                }
+            }
+        };
     }
 
     @Override
