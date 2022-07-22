@@ -775,9 +775,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         }
 
         FilterFactoryCache ffc;
-        if (doubleCheck) {
-            ffc = subTable.mFilterFactoryCacheDoubleCheck;
-        } else {
+        if (!doubleCheck || (ffc = subTable.mFilterFactoryCacheDoubleCheck) == null) {
             ffc = subTable.mFilterFactoryCache;
         }
 
