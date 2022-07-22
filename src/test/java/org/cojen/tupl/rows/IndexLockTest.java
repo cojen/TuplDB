@@ -965,6 +965,7 @@ public class IndexLockTest {
                 e2 = e;
             }
 
+            // FIXME: still fails sometimes
             assertTrue(e1 instanceof DeadlockException || e2 instanceof DeadlockException);
         }
     }
