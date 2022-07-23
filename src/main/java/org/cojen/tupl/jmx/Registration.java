@@ -25,13 +25,25 @@ import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 
+import java.util.Map;
+
+import java.util.concurrent.ConcurrentHashMap;
+
 import javax.management.JMException;
+import javax.management.ListenerNotFoundException;
+import javax.management.MBeanNotificationInfo;
+import javax.management.NotCompliantMBeanException;
+import javax.management.Notification;
+import javax.management.NotificationEmitter;
+import javax.management.NotificationFilter;
+import javax.management.NotificationListener;
 import javax.management.ObjectName;
 import javax.management.StandardMBean;
 
 import org.cojen.tupl.Database;
 
 import org.cojen.tupl.diag.DatabaseStats;
+import org.cojen.tupl.diag.VerificationObserver;
 
 import org.cojen.tupl.io.Utils;
 
@@ -50,7 +62,7 @@ public class Registration {
         base = sanitize(base);
         var server = ManagementFactory.getPlatformMBeanServer();
         try {
-            var bean = new StandardMBean(new DbBean(db, base), DatabaseMBean.class);
+            var bean = new DbBeanWrapper(db, base);
             var name = newObjectName(base);
             if (server.isRegistered(name)) {
                 server.unregisterMBean(name);
@@ -92,17 +104,131 @@ public class Registration {
         return new ObjectName("org.cojen.tupl", "database", base);
     }
 
-    private static class DbBean extends WeakReference<Database> implements DatabaseMBean {
+    private static record Listener(NotificationListener listener,
+                                   NotificationFilter filter, Object handback) { }
+
+    private static class DbBeanWrapper extends StandardMBean implements NotificationEmitter {
+        DbBeanWrapper(Database db, String base) throws NotCompliantMBeanException {
+            super(new DbBean(db, base), DatabaseMBean.class);
+            dbBean().mSource = this;
+        }
+
+        @Override
+        public void addNotificationListener(NotificationListener listener,
+                                            NotificationFilter filter, Object handback)
+        {
+            dbBean().addNotificationListener(listener, filter, handback);
+        }
+
+        @Override
+        public void removeNotificationListener(NotificationListener listener)
+            throws ListenerNotFoundException
+        {
+            dbBean().removeNotificationListener(listener);
+        }
+
+        @Override
+        public void removeNotificationListener(NotificationListener listener,
+                                               NotificationFilter filter, Object handback)
+            throws ListenerNotFoundException
+        {
+            dbBean().removeNotificationListener(listener, filter, handback);
+        }
+
+        @Override
+        public MBeanNotificationInfo[] getNotificationInfo() {
+            return dbBean().getNotificationInfo();
+        }
+
+        private DbBean dbBean() {
+            return (DbBean) getImplementation();
+        }
+    }
+
+    private static class DbBean extends WeakReference<Database>
+        implements DatabaseMBean, NotificationEmitter
+    {
         private final String mBase;
+        private Object mSource;
 
         private DatabaseStats mStats;
         private long mStatsTimestamp;
 
         private boolean mAsyncRunning;
 
+        private final Map<Listener, Boolean> mListeners = new ConcurrentHashMap<>(2);
+
+        private long mSequenceNumber;
+
         DbBean(Database db, String base) {
-            super(db, queue);
+            super(db);
             mBase = base;
+        }
+
+        @Override
+        public void addNotificationListener(NotificationListener listener,
+                                            NotificationFilter filter, Object handback)
+        {
+            mListeners.put(new Listener(listener, filter, handback), true);
+        }
+
+        @Override
+        public void removeNotificationListener(NotificationListener listener)
+            throws ListenerNotFoundException
+        {
+            removeNotificationListener(listener, null, null);
+        }
+
+        @Override
+        public void removeNotificationListener(NotificationListener listener,
+                                               NotificationFilter filter, Object handback)
+            throws ListenerNotFoundException
+        {
+            if (!mListeners.remove(new Listener(listener, filter, handback))) {
+                throw new ListenerNotFoundException();
+            }
+        }
+
+        @Override
+        public MBeanNotificationInfo[] getNotificationInfo() {
+            return new MBeanNotificationInfo[0];
+        }
+
+        private Notification newNotification(String type, String message) {
+            return newNotification(type, message, null);
+        }
+
+        private Notification newNotification(String type, Throwable ex) {
+            return newNotification(type, ex.toString());
+        }
+
+        private Notification newNotification(String type, String message, Object param) {
+            String prefix = "Database." + type;
+            if (param != null) {
+                prefix = prefix + '(' + param + ')';
+            }
+            message = prefix + ' ' + message;
+
+            type = Database.class.getName() + '.' + type;
+
+            long num;
+            synchronized (this) {
+                num = ++mSequenceNumber;
+            }
+
+            return new Notification(type, mSource, num, System.currentTimeMillis(), message);
+        }
+
+        private void notifyAll(Notification n) {
+            for (Listener listener : mListeners.keySet()) {
+                if (listener.filter == null || listener.filter.isNotificationEnabled(n)) {
+                    try {
+                        listener.listener.handleNotification(n, listener.handback);
+                    } catch (Throwable e) {
+                        Utils.uncaught(e);
+                    }
+                }
+            }
         }
 
         @Override
@@ -167,17 +293,88 @@ public class Registration {
 
         @Override
         public void flush() {
-            asyncOp(Database::flush);
+            asyncOp(db -> {
+                try {
+                    db.flush();
+                    return newNotification("flush", "finished");
+                } catch (Throwable e) {
+                    return newNotification("flush", e);
+                }
+            });
         }
 
         @Override
         public void sync() {
-            asyncOp(Database::sync);
+            asyncOp(db -> {
+                try {
+                    db.sync();
+                    return newNotification("sync", "finished");
+                } catch (Throwable e) {
+                    return newNotification("sync", e);
+                }
+            });
         }
 
         @Override
         public void checkpoint() {
-            asyncOp(Database::checkpoint);
+            asyncOp(db -> {
+                try {
+                    db.checkpoint();
+                    return newNotification("checkpoint", "finished");
+                } catch (Throwable e) {
+                    return newNotification("checkpoint", e);
+                }
+            });
+        }
+
+        @Override
+        public void compactFile(double target) {
+            if (target < 0 || target > 1) {
+                throw new IllegalArgumentException("Illegal compaction target: " + target);
+            }
+            asyncOp(db -> {
+                try {
+                    boolean result = db.compactFile(null, target);
+                    return newNotification("compactFile", result ? "finished" : "aborted", target);
+                } catch (Throwable e) {
+                    return newNotification("compactFile", e);
+                }
+            });
+        }
+
+        @Override
+        public void verify() {
+            asyncOp(db -> {
+                try {
+                    return newNotification("verify", doVerify(db));
+                } catch (Throwable e) {
+                    return newNotification("verify", e);
+                }
+            });
+        }
+
+        private String doVerify(Database db) throws IOException {
+            var observer = new VerificationObserver() {
+                volatile String failed;
+
+                @Override
+                public boolean indexNodeFailed(long id, int level, String message) {
+                    var b = new StringBuilder("failed: ");
+                    appendFailedMessage(b, id, level, message);
+                    failed = b.toString();
+                    return false;
+                }
+            };
+
+            if (db.verify(observer)) {
+                return "passed";
+            } else {
+                String message = observer.failed;
+                if (message == null) {
+                    message = "failed";
+                }
+                return message;
+            }
         }
 
         private DatabaseStats stats() {
@@ -186,39 +383,40 @@ public class Registration {
                 if (stats != null && (System.nanoTime() - mStatsTimestamp) < 1_000_000) { // 1ms
                     return stats;
                 }
-                Database db = get();
-                if (db != null && !db.isClosed()) {
+                Database db = db();
+                if (db != null) {
                     mStats = stats = db.stats();
                     mStatsTimestamp = System.nanoTime();
                     return stats;
                 }
             }
-            closed();
             return null;
         }
 
         private void asyncOp(Op op) {
-            Database db = get();
+            Database db = db();
 
-            if (db == null || db.isClosed()) {
-                closed();
-                return;
+            if (db == null) {
+                throw new IllegalStateException("Database is closed");
             }
 
             synchronized (this) {
                 if (mAsyncRunning) {
-                    return;
+                    throw new IllegalStateException("Another operation is in progress");
                 }
 
                 Runner.start(() -> {
+                    Notification n;
                     try {
-                        op.run(db);
-                    } catch (IOException e) {
-                        // Ignore.
+                        n = op.run(db);
                     } finally {
                         synchronized (DbBean.this) {
                             mAsyncRunning = false;
                         }
+                    }
+
+                    if (n != null) {
+                        notifyAll(n);
                     }
                 });
 
@@ -231,18 +429,14 @@ public class Registration {
             if (db != null && !db.isClosed()) {
                 return db;
             }
-            closed();
-            return null;
-        }
-
-        private void closed() {
             clear();
             Runner.start(() -> cleanup());
+            return null;
         }
     }
 
     @FunctionalInterface
     private static interface Op {
-        void run(Database db) throws IOException;
+        Notification run(Database db);
     }
 }

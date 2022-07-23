@@ -48,4 +48,8 @@ public interface DatabaseMBean {
     void sync();
 
     void checkpoint();
+
+    void compactFile(double target);
+
+    void verify();
 }

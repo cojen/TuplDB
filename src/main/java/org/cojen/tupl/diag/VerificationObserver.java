@@ -98,21 +98,31 @@ public class VerificationObserver {
      * @return false if verification should stop
      */
     public boolean indexNodeFailed(long id, int level, String message) {
-        var b = new StringBuilder("Verification failure: index=");
+        var b = new StringBuilder("Verification failure: ");
+        appendFailedMessage(b, id, level, message);
+        reportFailure(b.toString());
+        return true;
+    }
+
+    /**
+     * Invoked by default implementation of {@link #indexNodeFailed indexNodeFailed}.
+     */
+    protected void appendFailedMessage(StringBuilder b, long id, int level, String message) {
+        b.append("index=");
 
         Index index = this.index;
         if (index == null) {
             b.append("null");
         } else {
             b.append(index.id());
+            String name = index.nameString();
+            if (name != null) {
+                b.append(" (").append(name).append(')');
+            }
         }
 
         b.append(", node=").append(id).append(", level=").append(level)
             .append(": ").append(message);
-
-        reportFailure(b.toString());
-
-        return true;
     }
 
     /**
