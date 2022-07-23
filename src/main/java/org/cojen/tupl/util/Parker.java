@@ -36,6 +36,7 @@ import org.cojen.tupl.io.Utils;
  */
 public abstract class Parker {
     private static final Parker PARKER;
+    private static final MethodHandle THREAD_ID;
 
     static {
         // Reduce the risk of "lost unpark" due to classloading.
@@ -53,6 +54,21 @@ public abstract class Parker {
             } catch (Throwable e) {
                 throw Utils.rethrow(Utils.rootCause(e));
             }
+        }
+
+        var lookup = MethodHandles.lookup();
+        var mt = MethodType.methodType(long.class);
+
+        try {
+            MethodHandle threadId;
+            try {
+                threadId = lookup.findVirtual(Thread.class, "threadId", mt);
+            } catch (NoSuchMethodException e) {
+                threadId = lookup.findVirtual(Thread.class, "getId", mt);
+            }
+            THREAD_ID = threadId;
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
         }
     }
 
@@ -90,6 +106,14 @@ public abstract class Parker {
      */
     public static void parkNanosNow(Object blocker, long nanos) {
         PARKER.doParkNanosNow(blocker, nanos);
+    }
+
+    public static long threadId(Thread thread) {
+        try {
+            return (long) THREAD_ID.invokeExact(thread);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
     }
 
     Parker() {
@@ -413,7 +437,7 @@ public abstract class Parker {
         }
 
         private int hash(Thread thread) {
-            int hash = Long.hashCode(thread.getId());
+            int hash = Long.hashCode(threadId(thread));
             hash ^= (hash >>> 20) ^ (hash >>> 12);
             hash ^= (hash >>> 7) ^ (hash >>> 4);
             return hash;

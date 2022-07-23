@@ -51,6 +51,7 @@ import org.cojen.tupl.rows.RowStore;
 
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.LatchCondition;
+import org.cojen.tupl.util.Parker;
 import org.cojen.tupl.util.Runner;
 import org.cojen.tupl.util.WeakPool;
 import org.cojen.tupl.util.Worker;
@@ -343,7 +344,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     private Thread newThread(Runnable r, String namePrefix) {
         var t = new Thread(r);
         t.setDaemon(true);
-        t.setName(namePrefix + '-' + Long.toUnsignedString(t.getId()));
+        t.setName(namePrefix + '-' + Long.toUnsignedString(Parker.threadId(t)));
         t.setUncaughtExceptionHandler((thread, exception) -> fail(exception, true));
         return t;
     }

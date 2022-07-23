@@ -599,7 +599,7 @@ public abstract class Clutch extends Latch {
 
             if (!cIntArrayHandle.compareAndSet(counters, slot + stripe, cv, cv + delta)) {
                 stripe = ThreadLocalRandom.current().nextInt(mCores) * mSlots.length;
-                int id = xorshift((int) Thread.currentThread().getId());
+                int id = xorshift((int) Parker.threadId(Thread.currentThread()));
                 mThreadStripes[id & (mThreadStripes.length - 1)] = stripe;
                 add(slot, delta, stripe);
             }
@@ -612,7 +612,7 @@ public abstract class Clutch extends Latch {
         }
 
         private int threadStripe() {
-            int id = xorshift((int) Thread.currentThread().getId());
+            int id = xorshift((int) Parker.threadId(Thread.currentThread()));
             return mThreadStripes[id & (mThreadStripes.length - 1)];
         }
 
