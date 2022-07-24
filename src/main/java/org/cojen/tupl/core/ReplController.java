@@ -89,7 +89,7 @@ final class ReplController extends ReplWriter {
         releaseExclusive();
     }
 
-    public void ready(long initialPosition, long initialTxnId) throws IOException {
+    public ReplDecoder ready(long initialPosition, long initialTxnId) throws IOException {
         acquireExclusive();
         try {
             mLeaderNotifyCondition = new LatchCondition();
@@ -104,7 +104,7 @@ final class ReplController extends ReplWriter {
 
         if (decoder == null) {
             // Failed to start, and database has been closed with an exception.
-            return;
+            return null;
         }
 
         CoreDatabase db = mEngine.mDatabase;
@@ -135,7 +135,18 @@ final class ReplController extends ReplWriter {
         // Update the local member role.
         mRepl.start();
 
-        // Wait until replication has "caught up" before returning.
+        return decoder;
+    }
+
+    /**
+     * Waits until replication has "caught up" before returning.
+     */
+    public void catchup(ReplDecoder decoder) throws IOException {
+        if (decoder == null) {
+            // Failed to start.
+            return;
+        }
+
         boolean isLeader = decoder.catchup();
 
         // We're not truly caught up until all outstanding redo operations have been applied.

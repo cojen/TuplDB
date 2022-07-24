@@ -949,7 +949,6 @@ final class LocalDatabase extends CoreDatabase {
     /**
      * Post construction, allow additional threads access to the database.
      */
-    @SuppressWarnings("unchecked")
     private void finishInit(Launcher launcher) throws IOException {
         if (mCheckpointer == null) {
             // Nothing is stored and nothing to ever clean up.
@@ -979,38 +978,50 @@ final class LocalDatabase extends CoreDatabase {
             }
         }
 
+        if (!(mRedoWriter instanceof ReplController controller)) {
+            finishInit2(launcher);
+            return;
+        }
+
+        // Start replication and recovery.
+
+        if (mEventListener != null) {
+            mEventListener.notify(EventType.RECOVERY_PROGRESS, "Starting replication recovery");
+        }
+
+        // Until ready is called, checkpoints cannot be performed.
+        ReplDecoder decoder = controller.ready
+            (launcher.mReplInitialPosition, launcher.mReplInitialTxnId);
+
+        finishInit2(launcher);
+
+        controller.catchup(decoder);
+
+        recoveryComplete(launcher.mReplRecoveryStartNanos);
+    }
+
+    /**
+     * Starts the checkpointer and any tasks that depend on it.
+     */
+    @SuppressWarnings("unchecked")
+    private void finishInit2(Launcher launcher) throws IOException {
+        mCheckpointer.start(false);
+
         BTree trashed = openNextTrashedTree(null);
 
         if (trashed != null) {
             Runner.start("IndexDeletion", new Deletion(trashed, true, mEventListener));
         }
 
-        mCheckpointer.start(false);
-
-        emptyLingeringTrash(null); // only for non-replicated transactions
-
-        if (!(mRedoWriter instanceof ReplController controller)) {
+        if (!(mRedoWriter instanceof ReplController)) {
             LHashTable.Obj<LocalTransaction> unfinished = launcher.mUnfinished;
             if (unfinished != null) {
                 Runner.start(() -> invokeRecoveryHandler(unfinished, mRedoWriter));
                 launcher.mUnfinished = null;
             }
-        } else {
-            // Start replication and recovery.
-
-            if (mEventListener != null) {
-                mEventListener.notify(EventType.RECOVERY_PROGRESS, "Starting replication recovery");
-            }
-
-            try {
-                controller.ready(launcher.mReplInitialPosition, launcher.mReplInitialTxnId);
-            } catch (Throwable e) {
-                closeQuietly(this, e);
-                throw e;
-            }
-
-            recoveryComplete(launcher.mReplRecoveryStartNanos);
         }
+
+        emptyLingeringTrash(null); // only for non-replicated transactions
     }
 
     /**
