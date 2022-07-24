@@ -17,6 +17,10 @@
 
 package org.cojen.tupl.rows;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 
@@ -29,6 +33,41 @@ import org.cojen.tupl.util.Latch;
  * @author Brian S O'Neill
  */
 abstract class RefCache<K, V, H> extends ReferenceQueue<Object> {
+    private static final MethodHandle START_VIRTUAL_THREAD;
+
+    static {
+        MethodHandle mh;
+        try {
+            var mt = MethodType.methodType(Thread.class, Runnable.class);
+            mh = MethodHandles.lookup().findStatic(Thread.class, "startVirtualThread", mt);
+            // Test if feature is enabled.
+            var t = (Thread) mh.invokeExact((Runnable) () -> { });
+        } catch (Throwable e) {
+            mh = null;
+        }
+
+        START_VIRTUAL_THREAD = mh;
+    }
+
+    public RefCache() {
+        if (START_VIRTUAL_THREAD != null) {
+            try {
+                var t = (Thread) START_VIRTUAL_THREAD.invokeExact((Runnable) () -> {
+                    try {
+                        while (true) {
+                            Object ref = remove();
+                            synchronized (RefCache.this) {
+                                cleanup(ref);
+                            }
+                        }
+                    } catch (InterruptedException e) {
+                    }
+                });
+            } catch (Throwable e) {
+            }
+        }
+    }
+
     /**
      * Can be called without explicit synchronization, but entries can appear to go missing.
      * Double check with synchronization.
@@ -130,4 +169,11 @@ abstract class RefCache<K, V, H> extends ReferenceQueue<Object> {
     protected V newValue(K key, H helper) {
         throw new UnsupportedOperationException();
     }
+
+    /**
+     * Caller must be synchronized.
+     *
+     * @param obj not null
+     */
+    protected abstract void cleanup(Object ref);
 }

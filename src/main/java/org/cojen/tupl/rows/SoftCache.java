@@ -45,10 +45,10 @@ class SoftCache<K, V, H> extends RefCache<K, V, H> {
      */
     @Override
     public SoftReference<V> getRef(K key) {
-        Object obj = poll();
-        if (obj != null) {
+        Object ref = poll();
+        if (ref != null) {
             synchronized (this) {
-                cleanup(obj);
+                cleanup(ref);
             }
         }
 
@@ -68,9 +68,9 @@ class SoftCache<K, V, H> extends RefCache<K, V, H> {
     @Override
     @SuppressWarnings({"unchecked"})
     public synchronized SoftReference<V> put(K key, V value) {
-        Object obj = poll();
-        if (obj != null) {
-            cleanup(obj);
+        Object ref = poll();
+        if (ref != null) {
+            cleanup(ref);
         }
 
         var entries = mEntries;
@@ -145,22 +145,23 @@ class SoftCache<K, V, H> extends RefCache<K, V, H> {
             }
         }
 
-        Object obj = poll();
-        if (obj != null) {
-            cleanup(obj);
+        Object ref = poll();
+        if (ref != null) {
+            cleanup(ref);
         }
     }
 
     /**
      * Caller must be synchronized.
      *
-     * @param obj not null
+     * @param ref not null
      */
+    @Override
     @SuppressWarnings({"unchecked"})
-    private void cleanup(Object obj) {
+    protected void cleanup(Object ref) {
         var entries = mEntries;
         do {
-            var cleared = (Entry<K, V>) obj;
+            var cleared = (Entry<K, V>) ref;
             int ix = cleared.mHash & (entries.length - 1);
             for (Entry<K, V> e = entries[ix], prev = null; e != null; e = e.mNext) {
                 if (e == cleared) {
@@ -175,7 +176,7 @@ class SoftCache<K, V, H> extends RefCache<K, V, H> {
                     prev = e;
                 }
             }
-        } while ((obj = poll()) != null);
+        } while ((ref = poll()) != null);
     }
 
     protected Entry<K, V> newEntry(K key, V value, int hash) {
