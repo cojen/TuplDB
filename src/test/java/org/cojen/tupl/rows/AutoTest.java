@@ -34,7 +34,7 @@ public class AutoTest {
 
     @Before
     public void setup() throws Exception {
-        mDb = Database.open(new DatabaseConfig());
+        mDb = Database.open(new DatabaseConfig().maxCacheSize(10_000_000));
     }
 
     @After
