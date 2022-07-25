@@ -717,10 +717,45 @@ public class QueryPlanTest {
 
     @Test
     public void disjointAndSort() throws Exception {
-        QueryPlan plan = mTable.queryPlan
-            (null, "{+a}: a == ? || a == ? || (b == ? && b != ?) || id >= ?");
+        {
+            var row = mTable.newRow();
+            row.id(1);
+            row.a(1);
+            row.b("hello1");
+            row.c(101L);
+            mTable.insert(null, row);
 
-        //System.out.println(plan);
+            row = mTable.newRow();
+            row.id(2);
+            row.a(2);
+            row.b("hello2");
+            row.c(102L);
+            mTable.insert(null, row);
+
+            row = mTable.newRow();
+            row.id(3);
+            row.a(3);
+            row.b("hello3");
+            row.c(103L);
+            mTable.insert(null, row);
+
+            row = mTable.newRow();
+            row.id(4);
+            row.a(4);
+            row.b("world");
+            row.c(104L);
+            mTable.insert(null, row);
+
+            row = mTable.newRow();
+            row.id(555);
+            row.a(-555);
+            row.b("-world");
+            row.c(-555L);
+            mTable.insert(null, row);
+        }
+
+        String query = "{+a}: a == ? || a == ? || (b == ? && b != ?) || id >= ?";
+        QueryPlan plan = mTable.queryPlan(null, query);
 
         assertEquals(new QueryPlan.Sort
                      (new String[] {"+a"}, new QueryPlan.DisjointUnion
@@ -744,10 +779,15 @@ public class QueryPlanTest {
                            false, "b >= ?2", "b == ?2 && id < ?4")))))),
                      plan);
 
-        plan = mTable.queryPlan
-            (null, "{+c}: c == ? || c == ? || (b == ? && b != ?) || id >= ?");
+        List<TestRow> results = mTable.newStream(null, query, 1, 2, "world", "x", 100).toList();
+        assertEquals(4, results.size());
+        assertEquals(-555, results.get(0).a());
+        assertEquals(1, results.get(1).a());
+        assertEquals(2, results.get(2).a());
+        assertEquals(4, results.get(3).a());
 
-        //System.out.println(plan);
+        query = "{+c}: c == ? || c == ? || (b == ? && b != ?) || id >= ?";
+        plan = mTable.queryPlan(null, query);
 
         assertEquals(new QueryPlan.Sort
                      (new String[] {"+c"}, new QueryPlan.DisjointUnion
@@ -771,10 +811,15 @@ public class QueryPlanTest {
                           (TestRow.class.getName(), "secondary index", new String[] {"+b", "+id"},
                            false, "b >= ?2", "b == ?2 && id < ?4")))))), plan);
 
-        plan = mTable.queryPlan
-            (null, "{+b}: b == ? || b == ? || (a == ? && a != ?) || id >= ?");
+        results = mTable.newStream(null, query, 101, 102, "world", "x", 100).toList();
+        assertEquals(4, results.size());
+        assertEquals(-555, (long) results.get(0).c());
+        assertEquals(101, (long) results.get(1).c());
+        assertEquals(102, (long) results.get(2).c());
+        assertEquals(104, (long) results.get(3).c());
 
-        //System.out.println(plan);
+        query = "{+b}: b == ? || b == ? || (a == ? && a != ?) || id >= ?";
+        plan = mTable.queryPlan(null, query);
 
         assertEquals(new QueryPlan.Sort
                      (new String[] {"+b"}, new QueryPlan.DisjointUnion
@@ -795,6 +840,13 @@ public class QueryPlanTest {
                          ("a != ?3 && id < ?4", new QueryPlan.RangeScan
                           (TestRow.class.getName(), "alternate key", new String[] {"+a"},
                            false, "a >= ?2", "a <= ?2")))))), plan);
+
+        results = mTable.newStream(null, query, "hello1", "hello2", 4, 1, 4).toList();
+        assertEquals(4, results.size());
+        assertEquals("-world", results.get(0).b());
+        assertEquals("hello1", results.get(1).b());
+        assertEquals("hello2", results.get(2).b());
+        assertEquals("world", results.get(3).b());
     }
 
     @PrimaryKey("id")
