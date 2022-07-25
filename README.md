@@ -9,8 +9,8 @@ Tupl is a high-performance, concurrent, transactional, scalable, low-level embed
 * [Replication](https://github.com/cojen/Tupl/wiki/Replication)
 
 Tupl can be used directly, or it can be used for implementing a high-level database. Tupl is
-powerful enough for supporting all the requirements of relational SQL databases as well as
-NoSQL databases. Because Tupl doesn't impose any structure or encoding for data, a high-level
+powerful enough to support all the requirements of relational SQL databases as well as
+NoSQL databases. Tupl doesn't impose any structure or encoding for data, so a high-level
 database is free to implement the most efficient format it requires.
 
 The main entry point is the [Database](https://tupl.cojen.org/javadoc/org.cojen.tupl/org/cojen/tupl/Database.html) class. Here is a simple example for opening a non-durable database:
