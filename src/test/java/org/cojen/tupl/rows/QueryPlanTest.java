@@ -715,6 +715,88 @@ public class QueryPlanTest {
                      plan);
     }
 
+    @Test
+    public void disjointAndSort() throws Exception {
+        QueryPlan plan = mTable.queryPlan
+            (null, "{+a}: a == ? || a == ? || (b == ? && b != ?) || id >= ?");
+
+        //System.out.println(plan);
+
+        assertEquals(new QueryPlan.Sort
+                     (new String[] {"+a"}, new QueryPlan.DisjointUnion
+                      (new QueryPlan.RangeScan
+                       (TestRow.class.getName(), "primary key", new String[] {"+id"}, false,
+                        "id >= ?4", null), new QueryPlan.RangeUnion
+                       (new QueryPlan.Filter
+                        ("id < ?4", new QueryPlan.RangeScan
+                         (TestRow.class.getName(), "alternate key",
+                          new String[] {"+a"}, false, "a >= ?0", "a <= ?0")),
+                        new QueryPlan.Filter
+                        ("id < ?4", new QueryPlan.RangeScan
+                         (TestRow.class.getName(), "alternate key", new String[] {"+a"}, false,
+                          "a >= ?1", "a <= ?1"))),
+                       new QueryPlan.Filter
+                       ("a != ?0 && a != ?1", new QueryPlan.NaturalJoin
+                        (TestRow.class.getName(), "primary key", new String[] {"+id"},
+                         new QueryPlan.Filter
+                         ("b != ?3", new QueryPlan.RangeScan
+                          (TestRow.class.getName(), "secondary index", new String[] {"+b", "+id"},
+                           false, "b >= ?2", "b == ?2 && id < ?4")))))),
+                     plan);
+
+        plan = mTable.queryPlan
+            (null, "{+c}: c == ? || c == ? || (b == ? && b != ?) || id >= ?");
+
+        //System.out.println(plan);
+
+        assertEquals(new QueryPlan.Sort
+                     (new String[] {"+c"}, new QueryPlan.DisjointUnion
+                      (new QueryPlan.RangeScan
+                       (TestRow.class.getName(), "primary key", new String[] {"+id"}, false,
+                        "id >= ?4", null), new QueryPlan.RangeUnion
+                       (new QueryPlan.Filter
+                        ("id < ?4", new QueryPlan.RangeScan
+                         (TestRow.class.getName(), "secondary index",
+                          new String[] {"-c", "+b", "+id"}, true, "c >= ?1", "c <= ?1")),
+                        new QueryPlan.Filter
+                        ("id < ?4", new QueryPlan.RangeScan
+                         (TestRow.class.getName(), "secondary index",
+                          new String[] {"-c", "+b", "+id"}, true, "c >= ?0", "c <= ?0"))),
+                       new QueryPlan.Filter
+                       ("c != ?0 && c != ?1",
+                        new QueryPlan.NaturalJoin
+                        (TestRow.class.getName(), "primary key", new String[] {"+id"},
+                         new QueryPlan.Filter
+                         ("b != ?3", new QueryPlan.RangeScan
+                          (TestRow.class.getName(), "secondary index", new String[] {"+b", "+id"},
+                           false, "b >= ?2", "b == ?2 && id < ?4")))))), plan);
+
+        plan = mTable.queryPlan
+            (null, "{+b}: b == ? || b == ? || (a == ? && a != ?) || id >= ?");
+
+        //System.out.println(plan);
+
+        assertEquals(new QueryPlan.Sort
+                     (new String[] {"+b"}, new QueryPlan.DisjointUnion
+                      (new QueryPlan.RangeScan
+                       (TestRow.class.getName(), "primary key", new String[] {"+id"}, false,
+                        "id >= ?4", null), new QueryPlan.RangeUnion
+                       (new QueryPlan.RangeScan
+                        (TestRow.class.getName(), "secondary index",
+                         new String[] {"+b", "+id"}, false, "b >= ?0", "b == ?0 && id < ?4"),
+                        new QueryPlan.RangeScan
+                        (TestRow.class.getName(), "secondary index", new String[] {"+b", "+id"},
+                         false, "b >= ?1", "b == ?1 && id < ?4")),
+                       new QueryPlan.Filter
+                       ("b != ?0 && b != ?1",
+                        new QueryPlan.NaturalJoin
+                        (TestRow.class.getName(), "primary key", new String[] {"+id"},
+                         new QueryPlan.Filter
+                         ("a != ?3 && id < ?4", new QueryPlan.RangeScan
+                          (TestRow.class.getName(), "alternate key", new String[] {"+a"},
+                           false, "a >= ?2", "a <= ?2")))))), plan);
+    }
+
     @PrimaryKey("id")
     @AlternateKey("a")
     @SecondaryIndex("b")

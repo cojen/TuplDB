@@ -769,9 +769,12 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         BaseTable<R> subTable;
         if (subIndex.matches(rowInfo)) {
             subTable = this;
+        } else if (rowInfo.alternateKeys.contains(subIndex)) {
+            // Alternate key.
+            subTable = viewIndexTable(true, subIndex.keySpec());
         } else {
-            boolean alt = rowInfo.alternateKeys.contains(subIndex);
-            subTable = viewIndexTable(alt, subIndex.fullSpec());
+            // Secondary index.
+            subTable = viewIndexTable(false, subIndex.fullSpec());
         }
 
         FilterFactoryCache ffc;
