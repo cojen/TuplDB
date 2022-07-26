@@ -45,6 +45,7 @@ public interface RowEvaluator<R> extends RowDecoder<R> {
     }
 
     /**
+     * @param c refers the key and value to evaluate and decode
      * @param result LockResult from cursor access
      * @param row can pass null to construct a new instance; can also be a RowConsumer
      * @return null if row is filtered out
@@ -55,6 +56,7 @@ public interface RowEvaluator<R> extends RowDecoder<R> {
      * Eval variant used when updating via a secondary index. By positioning a cursor over
      * the primary table, it can be updated directly without the cost of an additional search.
      *
+     * @param secondary refers the key and value to evaluate and decode
      * @param result LockResult from secondary cursor access
      * @param row can pass null to construct a new instance; can also be a RowConsumer
      * @param primary cursor is positioned as a side effect

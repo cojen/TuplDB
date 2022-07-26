@@ -46,9 +46,9 @@ final class JoinedRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater
         super(table, controller);
         mPrimaryUpdater = primaryUpdater;
 
-        // Although TriggerIndexAccessor could be an interface, and then JoinedRowUpdater could
-        // simply implement it. This can be a problem if someone decided to attach the
-        // RowUpdater to a transaction. This composition approach is safer.
+        // TriggerIndexAccessor could be an interface, and then JoinedRowUpdater could simply
+        // implement it. This can be a problem if someone decided to attach the RowUpdater to a
+        // transaction, and so the composition approach is safer.
         mAccessor = new TriggerIndexAccessor() {
             @Override
             public void stored(Index ix, byte[] key, byte[] value) throws IOException {
@@ -66,6 +66,9 @@ final class JoinedRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater
     void init(Transaction txn, R row) throws IOException {
         mPrimaryUpdater.mCursor = mPrimaryCursor = mPrimaryUpdater.mTable.mSource.newCursor(txn);
         super.init(txn, row);
+        // At this point, mPrimaryUpdater and mPrimaryCursor refer to the primary index, but
+        // the cursor is unpositioned. The mCursor in this class refers to the secondary index,
+        // and it's at the first row.
     }
 
     @Override
@@ -79,14 +82,22 @@ final class JoinedRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater
         if (mPrimaryUpdater.mKeysToSkip != null && mPrimaryUpdater.mKeysToSkip.remove(c.key())) {
             return null;
         }
+        // By passing mPrimaryCursor to the evalRow method, it gets positioned to the primary
+        // index row as a side effect.
         return mEvaluator.evalRow(c, result, row, mPrimaryCursor);
     }
 
+    @Override
     protected LockResult toFirst(Cursor c) throws IOException {
+        // This method affects locking and registration behavior, but it doesn't care what the
+        // cursor refers to. In this case, the cursor refers to the secondary index.
         return mPrimaryUpdater.toFirst(c);
     }
 
+    @Override
     protected LockResult toNext(Cursor c) throws IOException {
+        // This method affects locking behavior, but it doesn't care what the cursor refers to.
+        // In this case, the cursor refers to the secondary index.
         return mPrimaryUpdater.toNext(c);
     }
 
