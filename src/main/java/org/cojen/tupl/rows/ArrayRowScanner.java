@@ -66,13 +66,17 @@ class ArrayRowScanner<R> implements BaseRowScanner<R> {
 
     @Override
     public final R step(R dst) {
-        R row = step();
-        if (row == null) {
-            return null;
-        } else {
-            mTable.copyRow(row, dst);
+        R[] rows = mRows;
+        int pos = mPosition;
+        rows[pos++] = null; // help GC
+        if (pos < rows.length) {
+            mTable.copyRow(rows[pos], dst);
+            rows[pos] = dst;
+            mPosition = pos;
             return dst;
         }
+        close();
+        return null;
     }
 
     @Override
