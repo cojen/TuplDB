@@ -30,7 +30,7 @@ import org.cojen.tupl.Transaction;
 import org.cojen.tupl.diag.QueryPlan;
 
 /**
- * Supports queries that only scan over one table.
+ * Supports queries that only scan over one table, although it might still perform a join.
  *
  * @author Brian S O'Neill
  */

@@ -616,6 +616,8 @@ final class IndexSelector {
         // The best contains all projected columns and all filter terms, but with the fewest
         // extraneous columns. When all are required, the best is the primary index.
 
+        // FIXME: If "for update", then always choose the primary index, avoiding a join.
+
         ColumnSet best = mPrimaryInfo;
 
         Map<String, ColumnInfo> pmap = mQuery.projection(); // is null if all are required
