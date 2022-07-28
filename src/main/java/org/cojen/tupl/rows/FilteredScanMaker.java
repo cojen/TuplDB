@@ -544,6 +544,11 @@ public class FilteredScanMaker<R> {
 
             mm.return_(indy.invoke(Object.class, "evalRow", null, schemaVersion,
                                    cursorVar, rowVar, predicateVar));
+
+            if (mProjectionSpec != null) {
+                overrideDecodeRow();
+            }
+
             return;
         }
 
@@ -604,6 +609,34 @@ public class FilteredScanMaker<R> {
 
         // Override the inherited decodeRow method for decoding primary rows.
         overrideDecodeRowForJoin();
+    }
+
+    /**
+     * Given a non-null primary key and value, fully or partially decodes the a row. The
+     * generated method never returns null.
+     *
+     * This method should only needs to be called when a projection is defined.
+     *
+     * public R decodeRow(R row, byte[] primaryKey, byte[] primaryValue)
+     */
+    private void overrideDecodeRow() {
+        var mm = mFilterMaker.addMethod
+            (Object.class, "decodeRow", Object.class, byte[].class, byte[].class)
+            .public_().override();
+
+        var indy = mm.var(FilteredScanMaker.class).indy
+            ("indyFilter", mStoreRef, mTable.getClass(), mRowType, mIndexId,
+             null, null, mProjectionSpec, mStopColumn, mStopArgument);
+
+        var rowVar = mm.param(0);
+        var keyVar = mm.param(1);
+        var valueVar = mm.param(2);
+        var predicateVar = mm.field("predicate");
+
+        var schemaVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", valueVar);
+
+        mm.return_(indy.invoke(Object.class, "decodeRow", null, schemaVersion,
+                               keyVar, valueVar, rowVar, predicateVar));
     }
 
     /**
