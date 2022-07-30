@@ -25,6 +25,8 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
+import org.cojen.tupl.diag.QueryPlan;
+
 /**
  * 
  *
@@ -45,10 +47,39 @@ public class RowUpdaterTest {
         Set<TestRow> copy1 = copy(table);
         assertEquals(5, copy1.size());
 
-        var u = table.newRowUpdater(null, "{name}: id == ? || name == ?", 2, "name-3");
+        try {
+            table.newRowUpdater(null, "{name}: id == ? || name == ?", 2, "name-3");
+            fail();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().contains("primary key"));
+        }
+
+        {
+            // Full scan with a projection might choose the secondary index because it has
+            // fewer columns.
+            QueryPlan plan = table.scannerPlan(null, "{name, id}: id == ? || name == ?");
+            assertEquals(new QueryPlan.Filter
+                         ("id == ?0 || name == ?1", new QueryPlan.FullScan
+                          (TestRow.class.getName(), "secondary index",
+                           new String[] {"+state", "+id", "+name"}, false)),
+                         plan);
+        }
+
+        {
+            // Full scan for update with chooses the primary index to avoid an extra join, as
+            // needed by the update operation itself.
+            QueryPlan plan = table.updaterPlan(null, "{name, id}: id == ? || name == ?");
+            assertEquals(new QueryPlan.Filter
+                         ("id == ?0 || name == ?1", new QueryPlan.FullScan
+                          (TestRow.class.getName(), "primary key",
+                           new String[] {"+id", "+name"}, false)),
+                         plan);
+        }
+
+        var u = table.newRowUpdater(null, "{name, id}: id == ? || name == ?", 2, "name-3");
         for (var row = u.row(); u.row() != null; ) {
             try {
-                row.id();
+                row.state();
                 fail();
             } catch (UnsetColumnException e) {
             }

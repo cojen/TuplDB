@@ -26,7 +26,10 @@ import java.io.IOException;
  */
 public interface RowDecoder<R> {
     /**
-     * Decodes a target key and value into a row and marks all projected columns clean.
+     * Decodes a key and value into a row and marks all projected columns clean.
+     *
+     * @param row can pass null to construct a new instance
+     * @return non-null row
      */
     R decodeRow(R row, byte[] key, byte[] value) throws IOException;
 }

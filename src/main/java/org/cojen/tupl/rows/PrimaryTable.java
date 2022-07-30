@@ -163,7 +163,12 @@ final class PrimaryTable<R> implements Table<R> {
     }
 
     @Override
-    public QueryPlan queryPlan(Transaction txn, String filter, Object... args) {
-        return mSource.queryPlanThisTable(txn, filter, args);
+    public QueryPlan scannerPlan(Transaction txn, String filter, Object... args) {
+        return mSource.scannerPlanThisTable(txn, filter, args);
+    }
+
+    @Override
+    public QueryPlan updaterPlan(Transaction txn, String filter, Object... args) {
+        return scannerPlan(txn, filter, args);
     }
 }

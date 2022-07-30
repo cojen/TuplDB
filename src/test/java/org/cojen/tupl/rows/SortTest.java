@@ -111,16 +111,15 @@ public class SortTest {
         lastV2 = Integer.MAX_VALUE;
         total = 0;
 
-        try (RowUpdater<TestRow> s = table.newRowUpdater(null, "{-v1, -v2}")) {
-            for (TestRow row = s.row(); row != null; row = s.step(row)) {
-                if (total == 0) {
-                    try {
-                        row.id();
-                        fail();
-                    } catch (IllegalStateException e) {
-                    }
-                }
+        try {
+            table.newRowUpdater(null, "{-v1, -v2}");
+            fail();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().contains("primary key"));
+        }
 
+        try (RowUpdater<TestRow> s = table.newRowUpdater(null, "{-v1, -v2, id}")) {
+            for (TestRow row = s.row(); row != null; row = s.step(row)) {
                 byte v1 = row.v1();
                 int v2 = row.v2();
 
@@ -145,19 +144,8 @@ public class SortTest {
 
         long expected = 0;
 
-        // Note: For now, must manually include the primary key for sorted updaters.
         try (RowUpdater<TestRow> s = table.newRowUpdater(null, "{+v1, -v2, id}")) {
             for (TestRow row = s.row(); row != null; ) {
-                /*
-                if (expected == 0) {
-                    try {
-                        row.id();
-                        fail();
-                    } catch (IllegalStateException e) {
-                    }
-                }
-                */
-
                 if (row.v2() == 0) {
                     row.v2(-1);
                     row = s.update(row);

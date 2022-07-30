@@ -44,6 +44,7 @@ import org.cojen.tupl.filter.Visitor;
 final class IndexSelector {
     private final RowInfo mPrimaryInfo;
     private final Query mQuery;
+    private final boolean mForUpdate;
 
     private int mAnyTermMatches;
 
@@ -59,9 +60,12 @@ final class IndexSelector {
 
     private Set<String> mProjection;
 
-    IndexSelector(RowInfo primaryInfo, Query query) {
+    private boolean mForUpdateRule;
+
+    IndexSelector(RowInfo primaryInfo, Query query, boolean forUpdate) {
         mPrimaryInfo = primaryInfo;
         mQuery = query;
+        mForUpdate = forUpdate;
     }
 
     /**
@@ -275,6 +279,13 @@ final class IndexSelector {
             mProjection = Set.of(mQuery.projection().keySet().toArray(String[]::new));
         }
         return mProjection;
+    }
+
+    /**
+     * Returns true if the forUpdate parameter was true and it had an effect on index selection.
+     */
+    boolean forUpdateRuleChosen() {
+        return mForUpdateRule;
     }
 
     /**
@@ -616,8 +627,6 @@ final class IndexSelector {
         // The best contains all projected columns and all filter terms, but with the fewest
         // extraneous columns. When all are required, the best is the primary index.
 
-        // FIXME: If "for update", then always choose the primary index, avoiding a join.
-
         ColumnSet best = mPrimaryInfo;
 
         Map<String, ColumnInfo> pmap = mQuery.projection(); // is null if all are required
@@ -649,6 +658,12 @@ final class IndexSelector {
                     best = cs;
                 }
             }
+        }
+
+        if (mForUpdate && best != mPrimaryInfo) {
+            // Always choose the primary index, avoiding a join.
+            best = mPrimaryInfo;
+            mForUpdateRule = true;
         }
 
         return best;

@@ -45,6 +45,9 @@ public interface RowEvaluator<R> extends RowDecoder<R> {
     }
 
     /**
+     * Decodes a row unless it's filtered out. If a row instance is returned, then all
+     * projected columns are marked clean.
+     *
      * @param c refers the key and value to evaluate and decode
      * @param result LockResult from cursor access
      * @param row can pass null to construct a new instance; can also be a RowConsumer
@@ -74,6 +77,7 @@ public interface RowEvaluator<R> extends RowDecoder<R> {
      * @param row can pass null to construct a new instance
      * @return non-null row
      */
+    @Override
     R decodeRow(R row, byte[] key, byte[] value) throws IOException;
 
     /**

@@ -66,11 +66,12 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
     protected final Index mSource;
 
-    private final FilterFactoryCache mFilterFactoryCache;
-    private final FilterFactoryCache mFilterFactoryCacheDoubleCheck;
+    // MultiCache types.
+    private static final int PLAIN = 0b00, DOUBLE_CHECK = 0b01,
+        FOR_UPDATE = 0b10, FOR_UPDATE_DOUBLE_CHECK = FOR_UPDATE | DOUBLE_CHECK;
 
-    private final QueryLauncherCache mQueryLauncherCache;
-    private final QueryLauncherCache mQueryLauncherCacheDoubleCheck;
+    private final MultiCache<String, ScanControllerFactory<R>, Query> mFilterFactoryCache;
+    private final MultiCache<String, QueryLauncher<R>, Query> mQueryLauncherCache;
 
     private Trigger<R> mTrigger;
     private static final VarHandle cTriggerHandle;
@@ -106,49 +107,38 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
         mSource = Objects.requireNonNull(source);
 
-        mFilterFactoryCache = new FilterFactoryCache();
-        mFilterFactoryCacheDoubleCheck =
-            joinedPrimaryTableClass() == null ? null : new FilterFactoryCache();
+        {
+            int[] typeMap = {PLAIN, DOUBLE_CHECK};
+            if (joinedPrimaryTableClass() == null) {
+                // Won't need to double check.
+                typeMap[DOUBLE_CHECK] = PLAIN;
+            }
+            mFilterFactoryCache = MultiCache.newSoftCache(typeMap, this::newFilteredFactory);
+        }
 
         if (supportsSecondaries()) {
-            mQueryLauncherCache = new QueryLauncherCache(false);
-            mQueryLauncherCacheDoubleCheck = new QueryLauncherCache(true);
+            int[] typeMap = {PLAIN, DOUBLE_CHECK, FOR_UPDATE, FOR_UPDATE_DOUBLE_CHECK};
+            if (joinedPrimaryTableClass() == null) {
+                // Won't need to double check.
+                typeMap[DOUBLE_CHECK] = PLAIN;
+                typeMap[FOR_UPDATE_DOUBLE_CHECK] = FOR_UPDATE;
+            }
+            mQueryLauncherCache = MultiCache.newSoftCache(typeMap, (type, queryStr, query) -> {
+                try {
+                    return newQueryLauncher(type, queryStr, query);
+                } catch (IOException e) {
+                    throw RowUtils.rethrow(e);
+                }
+            });
 
             var trigger = new Trigger<R>();
             trigger.mMode = Trigger.SKIP;
             cTriggerHandle.setRelease(this, trigger);
         } else {
             mQueryLauncherCache = null;
-            mQueryLauncherCacheDoubleCheck = null;
         }
 
         mIndexLock = indexLock;
-    }
-
-    private final class FilterFactoryCache
-        extends SoftCache<String, ScanControllerFactory<R>, Query>
-    {
-        @Override
-        protected ScanControllerFactory<R> newValue(String queryStr, Query query) {
-            return newFilteredFactory(this, queryStr, query);
-        }
-    }
-
-    final class QueryLauncherCache extends SoftCache<String, QueryLauncher<R>, Object> {
-        private boolean mDoubleCheck;
-
-        QueryLauncherCache(boolean doubleCheck) {
-            mDoubleCheck = doubleCheck;
-        }
-
-        @Override
-        protected QueryLauncher<R> newValue(String queryStr, Object unused) {
-            try {
-                return newQueryLauncher(queryStr, mDoubleCheck);
-            } catch (IOException e) {
-                throw RowUtils.rethrow(e);
-            }
-        }
     }
 
     public final TableManager<R> tableManager() {
@@ -225,25 +215,19 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     private ScanControllerFactory<R> scannerFilteredFactory(Transaction txn, String queryStr) {
-        FilterFactoryCache cache;
-        // Need to double check the filter after joining to the primary, in case there were any
-        // changes after the secondary entry was loaded.
-        if (!RowUtils.isUnlocked(txn) || (cache = mFilterFactoryCacheDoubleCheck) == null) {
-            cache = mFilterFactoryCache;
-        }
-        return cache.obtain(queryStr, null);
+        // Might need to double check the filter after joining to the primary, in case there
+        // were any changes after the secondary entry was loaded.
+        int type = RowUtils.isUnlocked(txn) ? DOUBLE_CHECK : PLAIN;
+        return mFilterFactoryCache.obtain(type, queryStr, null);
     }
 
     private QueryLauncher<R> scannerQueryLauncher(Transaction txn, String queryStr)
         throws IOException
     {
-        QueryLauncherCache cache;
-        // Need to double check the filter after joining to the primary, in case there were any
-        // changes after the secondary entry was loaded.
-        if (!RowUtils.isUnlocked(txn) || (cache = mQueryLauncherCacheDoubleCheck) == null) {
-            cache = mQueryLauncherCache;
-        }
-        return cache.obtain(queryStr, null);
+        // Might need to double check the filter after joining to the primary, in case there
+        // were any changes after the secondary entry was loaded.
+        int type = RowUtils.isUnlocked(txn) ? DOUBLE_CHECK : PLAIN;
+        return mQueryLauncherCache.obtain(type, queryStr, null);
     }
 
     @Override
@@ -365,25 +349,20 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     private ScanControllerFactory<R> updaterFilteredFactory(Transaction txn, String queryStr) {
-        FilterFactoryCache cache;
-        // Need to double check the filter after joining to the primary, in case there were any
-        // changes after the secondary entry was loaded. Note that no double check is needed
-        // with READ_UNCOMMITTED, because the updater for it still acquires locks.
-        if (!RowUtils.isUnsafe(txn) || (cache = mFilterFactoryCacheDoubleCheck) == null) {
-            cache = mFilterFactoryCache;
-        }
-        return cache.obtain(queryStr, null);
+        // Might need to double check the filter after joining to the primary, in case there
+        // were any changes after the secondary entry was loaded. Note that no double check is
+        // needed with READ_UNCOMMITTED, because the updater for it still acquires locks. Also
+        // note that FOR_UPDATE isn't used, because mFilterFactoryCache doesn't support it.
+        int type = RowUtils.isUnsafe(txn) ? DOUBLE_CHECK : PLAIN;
+        return mFilterFactoryCache.obtain(type, queryStr, null);
     }
 
     private QueryLauncher<R> updaterQueryLauncher(Transaction txn, String queryStr) {
-        QueryLauncherCache cache;
-        // Need to double check the filter after joining to the primary, in case there were any
-        // changes after the secondary entry was loaded. Note that no double check is needed
-        // with READ_UNCOMMITTED, because the updater for it still acquires locks.
-        if (!RowUtils.isUnsafe(txn) || (cache = mQueryLauncherCacheDoubleCheck) == null) {
-            cache = mQueryLauncherCache;
-        }
-        return cache.obtain(queryStr, null);
+        // Might need to double check the filter after joining to the primary, in case there
+        // were any changes after the secondary entry was loaded. Note that no double check is
+        // needed with READ_UNCOMMITTED, because the updater for it still acquires locks.
+        int type = RowUtils.isUnsafe(txn) ? FOR_UPDATE_DOUBLE_CHECK : FOR_UPDATE;
+        return mQueryLauncherCache.obtain(type, queryStr, null);
     }
 
     @Override
@@ -437,7 +416,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         if (queryStr == null) {
             return RowPredicate.all();
         } else {
-            return mFilterFactoryCache.obtain(queryStr, null).predicate(args);
+            return mFilterFactoryCache.obtain(PLAIN, queryStr, null).predicate(args);
         }
     }
 
@@ -494,7 +473,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     @Override
-    public QueryPlan queryPlan(Transaction txn, String queryStr, Object... args)
+    public QueryPlan scannerPlan(Transaction txn, String queryStr, Object... args)
         throws IOException
     {
         if (queryStr == null) {
@@ -504,10 +483,21 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         }
     }
 
+    @Override
+    public QueryPlan updaterPlan(Transaction txn, String queryStr, Object... args)
+        throws IOException
+    {
+        if (queryStr == null) {
+            return plan(args);
+        } else {
+            return updaterQueryLauncher(txn, queryStr).plan(args);
+        }
+    }
+
     /**
      * Note: Doesn't support orderBy.
      */
-    final QueryPlan queryPlanThisTable(Transaction txn, String queryStr, Object... args) {
+    final QueryPlan scannerPlanThisTable(Transaction txn, String queryStr, Object... args) {
         if (queryStr == null) {
             return plan(args);
         } else {
@@ -561,12 +551,11 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     /**
+     * @param type PLAIN or DOUBLE_CHECK
      * @param queryStr the parsed and reduced query string; can be null initially
      */
     @SuppressWarnings("unchecked")
-    private ScanControllerFactory<R> newFilteredFactory
-        (FilterFactoryCache cache, String queryStr, Query query)
-    {
+    private ScanControllerFactory<R> newFilteredFactory(int type, String queryStr, Query query) {
         Class<?> rowType = rowType();
         RowInfo rowInfo = RowInfo.find(rowType);
         Map<String, ColumnInfo> allColumns = rowInfo.allColumns;
@@ -602,14 +591,15 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
         String canonical = query.toString();
         if (!canonical.equals(queryStr)) {
-            return cache.obtain(canonical, query);
+            // Don't actually return a specialized instance because it will be same.
+            return mFilterFactoryCache.obtain(type, canonical, query);
         }
 
         var keyColumns = rowInfo.keyColumns.values().toArray(ColumnInfo[]::new);
         RowFilter[][] ranges = multiRangeExtract(rf, keyColumns);
         splitRemainders(rowInfo, ranges);
 
-        if (cache == mFilterFactoryCacheDoubleCheck && primaryRowGen != null) {
+        if ((type & DOUBLE_CHECK) != 0 && primaryRowGen != null) {
             doubleCheckRemainder(ranges, primaryRowGen.info);
         }
 
@@ -727,25 +717,52 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         }
     }
 
+    /**
+     * @param type PLAIN, DOUBLE_CHECK, etc.
+     */
     @SuppressWarnings("unchecked")
-    private QueryLauncher<R> newQueryLauncher(String queryStr, boolean doubleCheck)
+    private QueryLauncher<R> newQueryLauncher(int type, String queryStr, Query query)
         throws IOException
     {
         RowInfo rowInfo = RowInfo.find(rowType());
-        Map<String, ColumnInfo> allColumns = rowInfo.allColumns;
-        Query query = new Parser(allColumns, queryStr).parseQuery(allColumns).reduce();
 
-        var selector = new IndexSelector(rowInfo, query);
+        if (query == null) {
+            Map<String, ColumnInfo> allColumns = rowInfo.allColumns;
+            query = new Parser(allColumns, queryStr).parseQuery(allColumns).reduce();
+        }
+
+        if ((type & FOR_UPDATE) != 0) {
+            // All primary key columns must be projected. This helps with query planning
+            // because a natural join is always required, but it's also required for sorted
+            // updaters. In order to update or delete after the sort, the primary key is
+            // required because the operation is performed against the resolved row instance.
+
+            // At the very least, requiring the primary key eliminates any ambiguities because
+            // the row being updated is fully identified.
+
+            Map<String, ColumnInfo> proj = query.projection();
+            if (proj != null && !proj.keySet().containsAll(rowInfo.keyColumns.keySet())) {
+                throw new IllegalStateException
+                    ("RowUpdater query must select all primary key columns");
+            }
+        }
+
+        var selector = new IndexSelector(rowInfo, query, (type & FOR_UPDATE) != 0);
         int num = selector.analyze();
+
+        if ((type & FOR_UPDATE) != 0 && !selector.forUpdateRuleChosen()) {
+            // Don't actually return a specialized instance because it will be the same.
+            return mQueryLauncherCache.obtain(type & ~FOR_UPDATE, queryStr, query);
+        }
 
         QueryLauncher<R> launcher;
 
         if (num <= 1) {
-            launcher = newSubLauncher(doubleCheck, rowInfo, selector, 0);
+            launcher = newSubLauncher(type, rowInfo, selector, 0);
         } else {
             var launchers = new QueryLauncher[num];
             for (int i=0; i<num; i++) {
-                launchers[i] = newSubLauncher(doubleCheck, rowInfo, selector, i);
+                launchers[i] = newSubLauncher(type, rowInfo, selector, i);
             }
             launcher = new DisjointUnionQueryLauncher<R>(launchers);
         }
@@ -758,7 +775,10 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         return launcher;
     }
 
-    private QueryLauncher<R> newSubLauncher(boolean doubleCheck, RowInfo rowInfo,
+    /**
+     * @param type PLAIN, DOUBLE_CHECK, etc.
+     */
+    private QueryLauncher<R> newSubLauncher(int type, RowInfo rowInfo,
                                             IndexSelector selector, int i)
         throws IOException
     {
@@ -777,12 +797,8 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             subTable = viewIndexTable(false, subIndex.fullSpec());
         }
 
-        FilterFactoryCache ffc;
-        if (!doubleCheck || (ffc = subTable.mFilterFactoryCacheDoubleCheck) == null) {
-            ffc = subTable.mFilterFactoryCache;
-        }
-
-        ScanControllerFactory<R> subFactory = ffc.obtain(subQueryStr, subQuery);
+        ScanControllerFactory<R> subFactory =
+           subTable.mFilterFactoryCache.obtain(type & ~FOR_UPDATE, subQueryStr, subQuery);
 
         if (selector.selectedReverse(i)) {
             subFactory = subFactory.reverse();

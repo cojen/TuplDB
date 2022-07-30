@@ -253,6 +253,6 @@ public class IndexSelectorTest {
     }
 
     private <R> IndexSelector selector(String filter) {
-        return new IndexSelector(mInfo, parse(filter));
+        return new IndexSelector(mInfo, parse(filter), false);
     }
 }

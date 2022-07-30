@@ -123,7 +123,7 @@ public interface Table<R> {
      * @param txn optional transaction for the scanner to use; pass null for auto-commit mode
      * @return a new scanner positioned at the first row in the table
      * @throws IllegalStateException if transaction belongs to another database instance
-     * @see #queryPlan queryPlan
+     * @see #scannerPlan scannerPlan
      */
     public RowScanner<R> newRowScanner(Transaction txn) throws IOException;
 
@@ -134,7 +134,7 @@ public interface Table<R> {
      * @param txn optional transaction for the scanner to use; pass null for auto-commit mode
      * @return a new scanner positioned at the first row in the table accepted by the query
      * @throws IllegalStateException if transaction belongs to another database instance
-     * @see #queryPlan queryPlan
+     * @see #scannerPlan scannerPlan
      */
     public RowScanner<R> newRowScanner(Transaction txn, String query, Object... args)
         throws IOException;
@@ -151,6 +151,7 @@ public interface Table<R> {
      * @param txn optional transaction for the updater to use; pass null for auto-commit mode
      * @return a new updater positioned at the first row in the table
      * @throws IllegalStateException if transaction belongs to another database instance
+     * @see #updaterPlan updaterPlan
      */
     public RowUpdater<R> newRowUpdater(Transaction txn) throws IOException;
 
@@ -167,6 +168,7 @@ public interface Table<R> {
      * @param txn optional transaction for the updater to use; pass null for auto-commit mode
      * @return a new updater positioned at the first row in the table accepted by the query
      * @throws IllegalStateException if transaction belongs to another database instance
+     * @see #updaterPlan updaterPlan
      */
     public RowUpdater<R> newRowUpdater(Transaction txn, String query, Object... args)
         throws IOException;
@@ -179,6 +181,7 @@ public interface Table<R> {
      * @param txn optional transaction for the stream to use; pass null for auto-commit mode
      * @return a new stream positioned at the first row in the table
      * @throws IllegalStateException if transaction belongs to another database instance
+     * @see #streamPlan streamPlan
      */
     public default Stream<R> newStream(Transaction txn) {
         try {
@@ -197,6 +200,7 @@ public interface Table<R> {
      * @param txn optional transaction for the stream to use; pass null for auto-commit mode
      * @return a new stream positioned at the first row in the table accepted by the query
      * @throws IllegalStateException if transaction belongs to another database instance
+     * @see #streamPlan streamPlan
      */
     public default Stream<R> newStream(Transaction txn, String query, Object... args) {
         try {
@@ -331,11 +335,35 @@ public interface Table<R> {
 
     /**
      * Returns a query plan used by {@link #newRowScanner(Transaction, String, Object...)
-     * newRowScanner} et al.
+     * newRowScanner}.
      *
      * @param txn optional transaction to be used; pass null for auto-commit mode
      * @param query optional query expression
      * @param args optional query arguments
      */
-    public QueryPlan queryPlan(Transaction txn, String query, Object... args) throws IOException;
+    public QueryPlan scannerPlan(Transaction txn, String query, Object... args) throws IOException;
+
+    /**
+     * Returns a query plan used by {@link #newRowUpdater(Transaction, String, Object...)
+     * newRowUpdater}.
+     *
+     * @param txn optional transaction to be used; pass null for auto-commit mode
+     * @param query optional query expression
+     * @param args optional query arguments
+     */
+    public QueryPlan updaterPlan(Transaction txn, String query, Object... args) throws IOException;
+
+    /**
+     * Returns a query plan used by {@link #newStream(Transaction, String, Object...)
+     * newStream}.
+     *
+     * @param txn optional transaction to be used; pass null for auto-commit mode
+     * @param query optional query expression
+     * @param args optional query arguments
+     */
+    public default QueryPlan streamPlan(Transaction txn, String query, Object... args)
+        throws IOException
+    {
+        return scannerPlan(txn, query, args);
+    }
 }

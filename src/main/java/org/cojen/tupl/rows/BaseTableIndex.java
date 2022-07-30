@@ -123,7 +123,12 @@ public abstract class BaseTableIndex<R> extends BaseTable<R> {
     }
 
     @Override
-    public QueryPlan queryPlan(Transaction txn, String filter, Object... args) {
-        return queryPlanThisTable(txn, filter, args);
+    public QueryPlan scannerPlan(Transaction txn, String filter, Object... args) {
+        return scannerPlanThisTable(txn, filter, args);
+    }
+
+    @Override
+    public QueryPlan updaterPlan(Transaction txn, String filter, Object... args) {
+        return scannerPlan(txn, filter, args);
     }
 }
