@@ -79,7 +79,7 @@ public class QueryPlanTest {
         plan = mTable.scannerPlan(null, "id < ?");
         assertEquals(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "primary key",
-                      new String[] {"+id"}, false, null, "id < ?0"),
+                      new String[] {"+id"}, true, null, "id < ?0"),
                      plan);
 
         plan = mTable.scannerPlan(null, "id >= ?");
@@ -913,5 +913,50 @@ public class QueryPlanTest {
         @Nullable
         Long c();
         void c(Long c);
+    }
+
+    @Test
+    public void reverseScanOverSecondaryIndex() throws Exception {
+        // Even though no ordering is specified, a reverse scan over a secondary index is
+        // preferred when no join needs to be performed, and the query specifies an open range.
+        // A search is performed for positioning the cursor initially, but then no predicate
+        // needs to be checked for each row. If the scan wasn't reversed, the cursor would be
+        // positioned at the start of the index and a predicate must be checked to determine
+        // when to stop scanning.
+
+        QueryPlan plan = mTable.scannerPlan(null, "{b, id}: b <= ?");
+
+        assertEquals(new QueryPlan.RangeScan
+                     (TestRow.class.getName(), "secondary index",
+                      new String[] {"+b", "+id"}, true, null, "b <= ?0"),
+                     plan);
+
+        plan = mTable.scannerPlan(null, "{c, b}: c >= ?");
+
+        assertEquals(new QueryPlan.RangeScan
+                     (TestRow.class.getName(), "secondary index",
+                      new String[] {"-c", "+b", "+id"}, true, null, "c <= ?0"),
+                     plan);
+
+        for (int i=1; i<=5; i++) {
+            var row = mTable.newRow();
+            row.id(i);
+            row.a(i);
+            row.b("" + i);
+            row.c((long) i);
+            mTable.insert(null, row);
+        }
+
+        List<TestRow> results = mTable.newStream(null, "{b, id}: b <= ?", 3).toList();
+        assertEquals(3, results.size());
+        assertEquals("3", results.get(0).b());
+        assertEquals("2", results.get(1).b());
+        assertEquals("1", results.get(2).b());
+
+        results = mTable.newStream(null, "{c, b}: c >= ?", 3).toList();
+        assertEquals(3, results.size());
+        assertEquals(3L, (long) results.get(0).c());
+        assertEquals(4L, (long) results.get(1).c());
+        assertEquals(5L, (long) results.get(2).c());
     }
 }

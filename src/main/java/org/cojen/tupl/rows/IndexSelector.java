@@ -80,6 +80,15 @@ final class IndexSelector {
         mOrderBy = orderBy;
 
         if (orderBy == null || orderBy.isEmpty()) {
+            for (int i=0; i<num; i++) {
+                if (shouldReverseScan(i)) {
+                    if (mSelectedReverse == null) {
+                        mSelectedReverse = new boolean[num];
+                    }
+                    mSelectedReverse[i] = true;
+                }
+            }
+
             return num;
         }
 
@@ -286,6 +295,39 @@ final class IndexSelector {
      */
     boolean forUpdateRuleChosen() {
         return mForUpdateRule;
+    }
+
+    /**
+     * Checks if an open range scan should scan in reverse, which is more efficient because no
+     * predicate needs to be checked for each row.
+     */
+    private boolean shouldReverseScan(int i) {
+        RowFilter rf = mSelectedQueries[i].filter();
+        if (!(rf instanceof ColumnToArgFilter cf)) {
+            return false;
+        }
+
+        int descending;
+
+        switch (cf.operator()) {
+            case ColumnFilter.OP_LT, ColumnFilter.OP_LE -> {
+                descending = 0;
+            }
+            case ColumnFilter.OP_GT, ColumnFilter.OP_GE -> {
+                descending = ColumnInfo.TYPE_DESCENDING;
+            }
+            default -> {
+                return false;
+            }
+        }
+
+        ColumnInfo ixColumn = mSelectedIndexes[i].keyColumns.values().iterator().next();
+
+        if ((ixColumn.typeCode & ColumnInfo.TYPE_DESCENDING) != descending) {
+            return false;
+        }
+
+        return ixColumn.name.equals(cf.column().name);
     }
 
     /**

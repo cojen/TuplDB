@@ -92,7 +92,8 @@ public class IndexSelectorTest {
                "+d+c+b+id", "{c, b}: c != ?0 || b == ?1 || d == ?2");
         verify("{c, b}: c != ? || b == ? || d == c",
                "+d+c+b+id", "{c, b}: c != ?0 || b == ?1 || d == c");
-        verify("{c, b}: c != ? || b == ? || d == e", "+id", "{c, b}: c != ?0 || b == ?1 || d == e");
+        verify("{c, b}: c != ? || b == ? || d == e",
+               "+id", "{c, b}: c != ?0 || b == ?1 || d == e");
         verify("{*}: c != ? || b == ? || d == e", "+id", "c != ?0 || b == ?1 || d == e");
 
         verify("a == ? || a == ?", "+a+id", "a == ?0 || a == ?1");
@@ -119,13 +120,13 @@ public class IndexSelectorTest {
         verify("{+d, +b, *}: b > ? && c > ? && d > ?", "+d+c+b+id", "b > ?0 && c > ?1 && d > ?2");
 
         verify("{+b, *}: e == ? && b == ?", "+b+e+id", "e == ?0 && b == ?1");
-        verify("{-b, *}: e == ? && b == ?", "+b+e+id", "e == ?0 && b == ?1");
+        verify("{-b, *}: e == ? && b == ?", "R+b+e+id", "e == ?0 && b == ?1");
         verify("{+e, *}: e == ? && b == ?", "+e+b+id", "e == ?0 && b == ?1");
 
         verify("{+d, +c, *}: d == ?", "+d+c+b+id", "d == ?0");
-        verify("{-d, -c, *}: d == ?", "+d+c+b+id", "d == ?0");
+        verify("{-d, -c, *}: d == ?", "R+d+c+b+id", "d == ?0");
         verify("{+d, -c, *}: d == ?", "+d+b+id", "d == ?0");
-        verify("{-d, +c, *}: d == ?", "+d+b+id", "d == ?0");
+        verify("{-d, +c, *}: d == ?", "R+d+b+id", "d == ?0");
 
         verify("{+c, *}: c > ? && c < ? && b > ? && b < ? || d == ?",
                "+d+b+id", "d == ?4",
@@ -148,20 +149,16 @@ public class IndexSelectorTest {
         verify("{b}: b != ? && d == ?", "+b-c+id", "{b}: b != ?0 && d == ?1");
         verify("{a, id}: a != ? || id == ?", "+a", "{a, id}: a != ?0 || id == ?1");
 
-        // FIXME: verify that reverse scan order is selected (when implemented)
         verify("c == ? && e > ? && a > ?", "+c-e+id", "c == ?0 && e > ?1 && a > ?2");
         verify("c == ? && a > ? && e > ?", "+c+a+id", "c == ?0 && a > ?1 && e > ?2");
         verify("c == ? && e < ? && a < ?", "+c-e+id", "c == ?0 && e < ?1 && a < ?2");
-        // FIXME: verify that reverse scan order is selected (when implemented)
         verify("c == ? && a < ? && e < ?", "+c+a+id", "c == ?0 && a < ?1 && e < ?2");
         verify("c == ? && e < ? && a > ?", "+c-e+id", "c == ?0 && e < ?1 && a > ?2");
         verify("c == ? && a > ? && e < ?", "+c+a+id", "c == ?0 && a > ?1 && e < ?2");
 
-        // FIXME: verify that reverse scan order is selected (when implemented)
         verify("c == ? && e > ? && a >= ?", "+c-e+id", "c == ?0 && e > ?1 && a >= ?2");
         verify("c == ? && a > ? && e >= ?", "+c+a+id", "c == ?0 && a > ?1 && e >= ?2");
         verify("c == ? && e < ? && a <= ?", "+c-e+id", "c == ?0 && e < ?1 && a <= ?2");
-        // FIXME: verify that reverse scan order is selected (when implemented)
         verify("c == ? && a < ? && e <= ?", "+c+a+id", "c == ?0 && a < ?1 && e <= ?2");
         verify("c == ? && e < ? && a >= ?", "+c-e+id", "c == ?0 && e < ?1 && a >= ?2");
         verify("c == ? && a > ? && e <= ?", "+c+a+id", "c == ?0 && a > ?1 && e <= ?2");
@@ -183,8 +180,27 @@ public class IndexSelectorTest {
         verify("{+a, *}: (b > ? && b < ?) || a > ?", "+id", "(b > ?0 && b < ?1) || a > ?2");
 
         verify("{-a, *}: (a > ? && a < ?) || (b > ? && b < ?)",
-               "+a", "a > ?0 && a < ?1",
+               "R+a", "a > ?0 && a < ?1",
                "+b-c+id", "b > ?2 && b < ?3 && (a <= ?0 || a >= ?1)");
+
+        // A few of these should do a reverse scan from a starting point, which is more
+        // efficient than checking a predicate for each row.
+        verify("id > ?", "+id", "id > ?0");
+        verify("id < ?", "R+id", "id < ?0");
+        verify("{a}: a > ?", "+a", "{a}: a > ?0");
+        verify("{a}: a < ?", "R+a", "{a}: a < ?0");
+    }
+
+    @Test
+    public void set4() throws Exception {
+        withType(Type4.class);
+
+        // A few of these should do a reverse scan from a starting point, which is more
+        // efficient than checking a predicate for each row.
+        verify("id > ?", "R-id", "id > ?0");
+        verify("id < ?", "-id", "id < ?0");
+        verify("{a}: a > ?", "R-a+b-id", "{a}: a > ?0");
+        verify("{a}: a < ?", "-a+b-id", "{a}: a < ?0");
     }
 
     @PrimaryKey("id")
@@ -227,6 +243,11 @@ public class IndexSelectorTest {
     public static interface Type3 extends Type1 {
     }
 
+    @PrimaryKey("-id")
+    @SecondaryIndex({"-a", "b"})
+    public static interface Type4 extends Type1 {
+    }
+
     private RowInfo mInfo;
 
     private void withType(Class<?> type) {
@@ -234,7 +255,8 @@ public class IndexSelectorTest {
     }
 
     /**
-     * @param expect index/filter string pairs
+     * @param expect index/filter string pairs; if the index spec starts with 'R', then a
+     * reverse scan is expected
      */
     private void verify(String filter, String... expect) {
         var selector = selector(filter);
@@ -243,8 +265,18 @@ public class IndexSelectorTest {
         assertEquals(expect.length, numSelected * 2);
 
         for (int i=0; i<numSelected; i++) {
-            assertEquals(expect[i * 2], selector.selectedIndex(i).indexSpec());
-            assertEquals(expect[i * 2 + 1], selector.selectedQuery(i).toString());
+            String indexSpec = expect[i * 2];
+            String subFilter = expect[i* 2 + 1];
+
+            boolean reverse = false;
+            if (indexSpec.startsWith("R")) {
+                indexSpec = indexSpec.substring(1);
+                reverse = true;
+            }
+
+            assertEquals(indexSpec, selector.selectedIndex(i).indexSpec());
+            assertEquals(subFilter, selector.selectedQuery(i).toString());
+            assertEquals(reverse, selector.selectedReverse(i));
         }
     }
 
