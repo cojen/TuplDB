@@ -71,7 +71,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         FOR_UPDATE = 0b10, FOR_UPDATE_DOUBLE_CHECK = FOR_UPDATE | DOUBLE_CHECK;
 
     private final MultiCache<String, ScanControllerFactory<R>, Query> mFilterFactoryCache;
-    private final MultiCache<String, QueryLauncher<R>, Query> mQueryLauncherCache;
+    private final MultiCache<String, QueryLauncher<R>, IndexSelector> mQueryLauncherCache;
 
     private Trigger<R> mTrigger;
     private static final VarHandle cTriggerHandle;
@@ -123,9 +123,9 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
                 typeMap[DOUBLE_CHECK] = PLAIN;
                 typeMap[FOR_UPDATE_DOUBLE_CHECK] = FOR_UPDATE;
             }
-            mQueryLauncherCache = MultiCache.newSoftCache(typeMap, (type, queryStr, query) -> {
+            mQueryLauncherCache = MultiCache.newSoftCache(typeMap, (type, queryStr, selector) -> {
                 try {
-                    return newQueryLauncher(type, queryStr, query);
+                    return newQueryLauncher(type, queryStr, selector);
                 } catch (IOException e) {
                     throw RowUtils.rethrow(e);
                 }
@@ -721,40 +721,42 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      * @param type PLAIN, DOUBLE_CHECK, etc.
      */
     @SuppressWarnings("unchecked")
-    private QueryLauncher<R> newQueryLauncher(int type, String queryStr, Query query)
+    private QueryLauncher<R> newQueryLauncher(int type, String queryStr, IndexSelector selector)
         throws IOException
     {
-        RowInfo rowInfo = RowInfo.find(rowType());
+        RowInfo rowInfo;
 
-        if (query == null) {
+        if (selector != null) {
+            rowInfo = selector.primaryInfo();
+        } else {
+            rowInfo = RowInfo.find(rowType());
             Map<String, ColumnInfo> allColumns = rowInfo.allColumns;
-            query = new Parser(allColumns, queryStr).parseQuery(allColumns).reduce();
+            Query query = new Parser(allColumns, queryStr).parseQuery(allColumns).reduce();
+            selector = new IndexSelector(rowInfo, query, (type & FOR_UPDATE) != 0);
         }
 
         if ((type & FOR_UPDATE) != 0) {
-            // All primary key columns must be projected. This helps with query planning
-            // because a natural join is always required, but it's also required for sorted
-            // updaters. In order to update or delete after the sort, the primary key is
-            // required because the operation is performed against the resolved row instance.
+            if (selector.orderBy() != null) {
+                // The RowUpdater needs to have a sort step applied, and so it needs access to
+                // the primary key. This is because the update/delete operation is performed
+                // by calling Table.update or Table.delete. See WrappedRowUpdater.
+                // TODO: Remove this requirement by automatically decoding the primary key and
+                // hiding the result.
+                Map<String, ColumnInfo> proj = selector.query().projection();
+                if (proj != null && !proj.keySet().containsAll(rowInfo.keyColumns.keySet())) {
+                    throw new IllegalStateException
+                        ("Sorted RowUpdater query must select all primary key columns");
+                }
+            }
 
-            // At the very least, requiring the primary key eliminates any ambiguities because
-            // the row being updated is fully identified.
-
-            Map<String, ColumnInfo> proj = query.projection();
-            if (proj != null && !proj.keySet().containsAll(rowInfo.keyColumns.keySet())) {
-                throw new IllegalStateException
-                    ("RowUpdater query must select all primary key columns");
+            if (!selector.forUpdateRuleChosen()) {
+                // Don't actually return a specialized updater instance because it will be the
+                // same as the scanner instance.
+                return mQueryLauncherCache.obtain(type & ~FOR_UPDATE, queryStr, selector);
             }
         }
 
-        var selector = new IndexSelector(rowInfo, query, (type & FOR_UPDATE) != 0);
-        int num = selector.analyze();
-
-        if ((type & FOR_UPDATE) != 0 && !selector.forUpdateRuleChosen()) {
-            // Don't actually return a specialized instance because it will be the same.
-            return mQueryLauncherCache.obtain(type & ~FOR_UPDATE, queryStr, query);
-        }
-
+        int num = selector.numSelected();
         QueryLauncher<R> launcher;
 
         if (num <= 1) {

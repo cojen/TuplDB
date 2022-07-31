@@ -66,13 +66,13 @@ final class IndexSelector {
         mPrimaryInfo = primaryInfo;
         mQuery = query;
         mForUpdate = forUpdate;
+
+        analyze();
     }
 
-    /**
-     * Returns the number of selected indexes.
-     */
-    int analyze() {
-        int num = selectIndexes();
+    private void analyze() {
+        selectIndexes();
+        int num = numSelected();
 
         // Decide scan order, and also decide if sorting is required.
 
@@ -89,7 +89,7 @@ final class IndexSelector {
                 }
             }
 
-            return num;
+            return;
         }
 
         mSelectedReverse = new boolean[num];
@@ -137,11 +137,9 @@ final class IndexSelector {
                 mGrouping = orderBy.truncate(numMatches);
             }
         }
-
-        return num;
     }
 
-    private int selectIndexes() {
+    private void selectIndexes() {
         final ColumnSet theOne;
 
         one: {
@@ -234,47 +232,71 @@ final class IndexSelector {
                 mSelectedQueries[i] = mQuery.withFilter(filter).withOrderBy(null);
             }
 
-            return mSelectedIndexes.length;
+            return;
         }
 
         // Reached when only one index was selected.
         mSelectedIndexes = new ColumnSet[] {theOne};
         mSelectedQueries = new Query[] {mQuery.withOrderBy(null)};
-        return 1;
     }
 
     /**
-     * Must call analyze first.
+     * Returns the constructor parameter.
      */
+    RowInfo primaryInfo() {
+        return mPrimaryInfo;
+    }
+
+    /**
+     * Returns the constructor parameter.
+     */
+    Query query() {
+        return mQuery;
+    }
+
+    /**
+     * Returns the constructor parameter.
+     */
+    boolean forUpdate() {
+        return mForUpdate;
+    }
+
+    /**
+     * Returns the number of selected indexes.
+     */
+    int numSelected() {
+        return mSelectedIndexes.length;
+    }
+
     ColumnSet selectedIndex(int i) {
         return mSelectedIndexes[i];
     }
 
     /**
-     * Must call analyze first. Returns a query for the selected index with the effective
-     * projection and filter that must still be applied.
+     * Returns a query for the selected index with the effective projection and filter that
+     * must still be applied.
      */
     Query selectedQuery(int i) {
         return mSelectedQueries[i];
     }
 
     /**
-     * Must call analyze first. Returns true if index scan should go in reverse order.
+     * Returns true if index scan should go in reverse order.
      */
     boolean selectedReverse(int i) {
         return mSelectedReverse == null ? false : mSelectedReverse[i];
     }
 
     /**
-     * Must call analyze first. Returns null if no sort step is required.
+     * Returns null if no sort step is required.
      */
     OrderBy orderBy() {
         return mOrderBy;
     }
 
     /**
-     * Must call analyze first. If a sort step is required, the grouping represents the natural
-     * partial ordering before sorting. If no sort step is required, then null is returned.
+     * If a sort step is required, the grouping represents the natural partial ordering before
+     * sorting. If no sort step is required, then null is returned.
      */
     OrderBy grouping() {
         return mGrouping;

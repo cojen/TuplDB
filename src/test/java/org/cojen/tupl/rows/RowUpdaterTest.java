@@ -47,13 +47,6 @@ public class RowUpdaterTest {
         Set<TestRow> copy1 = copy(table);
         assertEquals(5, copy1.size());
 
-        try {
-            table.newRowUpdater(null, "{name}: id == ? || name == ?", 2, "name-3");
-            fail();
-        } catch (IllegalStateException e) {
-            assertTrue(e.getMessage().contains("primary key"));
-        }
-
         {
             // Full scan with a projection might choose the secondary index because it has
             // fewer columns.

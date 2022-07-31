@@ -260,7 +260,7 @@ public class IndexSelectorTest {
      */
     private void verify(String filter, String... expect) {
         var selector = selector(filter);
-        int numSelected = selector.analyze();
+        int numSelected = selector.numSelected();
 
         assertEquals(expect.length, numSelected * 2);
 
