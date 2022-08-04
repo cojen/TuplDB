@@ -178,8 +178,8 @@ public abstract class ColumnFilter extends RowFilter {
      *
      * - MIN_VALUE if not reducible
      * - MAX_VALUE if complementation (entire group goes away)
-     * - operator if idempotence
-     * - ~operator if elimination
+     * - operator if idempotence (one of the operators is redundant)
+     * - ~operator if elimination (operators are merged into a different operator)
      */
     int reduceOperatorForAnd(ColumnFilter other) {
         if (!isReducible(other)) {
@@ -195,6 +195,14 @@ public abstract class ColumnFilter extends RowFilter {
         return MIN_VALUE;
     }
 
+    /**
+     * Returns:
+     *
+     * - MIN_VALUE if not reducible
+     * - MAX_VALUE if complementation (entire group goes away)
+     * - operator if idempotence (one of the operators is redundant)
+     * - ~operator if elimination (operators are merged into a different operator)
+     */
     int reduceOperatorForOr(ColumnFilter other) {
         if (!isReducible(other)) {
             return MIN_VALUE;

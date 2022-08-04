@@ -55,13 +55,6 @@ public class AndFilter extends GroupFilter {
             }
         }
 
-        if (count == len) {
-            if (off != 0 || len != subFilters.length) {
-                subFilters = Arrays.copyOfRange(subFilters, off, off + len);
-            }
-            return new AndFilter(subFilters);
-        }
-
         if (count == 0) {
             return TrueFilter.THE;
         }

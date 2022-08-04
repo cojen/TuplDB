@@ -51,13 +51,6 @@ public class OrFilter extends GroupFilter {
             }
         }
 
-        if (count == len) {
-            if (off != 0 || len != subFilters.length) {
-                subFilters = Arrays.copyOfRange(subFilters, off, off + len);
-            }
-            return new OrFilter(subFilters);
-        }
-
         if (count == 0) {
             return FalseFilter.THE;
         }

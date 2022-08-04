@@ -18,7 +18,7 @@
 package org.cojen.tupl.filter;
 
 /**
- * An empty 'and' filter always evaluates to true.
+ * An empty "and" filter which always evaluates to true.
  *
  * @author Brian S O'Neill
  */

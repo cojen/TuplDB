@@ -406,6 +406,7 @@ public abstract class GroupFilter extends RowFilter {
                                 if (subFilters == mSubFilters) {
                                     subFilters = subFilters.clone();
                                 }
+                                // Elimination when negative, else idempotence.
                                 if (op < 0) {
                                     repeat = true;
                                     op = ~op;
