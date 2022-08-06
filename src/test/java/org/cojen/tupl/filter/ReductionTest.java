@@ -37,12 +37,18 @@ public class ReductionTest {
     }
 
     private static HashMap<String, ColumnInfo> newColMap() {
+        return newColMap("a");
+    }
+
+    private static HashMap<String, ColumnInfo> newColMap(String... names) {
         var colMap = new HashMap<String, ColumnInfo>();
-        var info = new ColumnInfo();
-        info.name = "a";
-        info.typeCode = ColumnInfo.TYPE_UTF8;
-        info.assignType();
-        colMap.put(info.name, info);
+        for (String name : names) {
+            var info = new ColumnInfo();
+            info.name = name;
+            info.typeCode = ColumnInfo.TYPE_UTF8;
+            info.assignType();
+            colMap.put(info.name, info);
+        }
         return colMap;
     }
 
@@ -177,6 +183,37 @@ public class ReductionTest {
             };
             assertEquals(2, reduced.numTerms());
             assertEquals("a > ?1 && a > ?2", reduced.toString());
+        }
+    }
+
+    @Test
+    public void dnfOperatorReduction() throws Exception {
+        String[] cases = {
+            "a > ?0 || (a >= ?0 && b > ?1)",
+            "a > ?0 || (a == ?0 && b > ?1)",
+
+            "(a > ?0 && b > ?1) || (a >= ?0 && b > ?1)",
+            "(a > ?0 && b > ?1) || (a == ?0 && b > ?1)",
+
+            "a > ?0 || (a >= ?0 && b > ?1) || (a >= ?0 && b == ?1 && c > ?2)",
+            "a > ?0 || (a == ?0 && b > ?1) || (a == ?0 && b == ?1 && c > ?2)",
+
+            "a > ?0 || (a >= ?0 && b > ?1) || (a == ?0 && b == ?1 && c > ?2)",
+            "a > ?0 || (a == ?0 && b > ?1) || (a == ?0 && b == ?1 && c > ?2)",
+
+            "a > ?0 || (a == ?0 && b > ?1) || (a == ?0 && b == ?1 && c > ?2)",
+            "a > ?0 || (a == ?0 && b > ?1) || (a == ?0 && b == ?1 && c > ?2)",
+
+            "a >= ?0 && (a > ?0 || b >= ?1) && (a > ?0 || b > ?1 || c > ?2)",
+            "a > ?0 || (a == ?0 && b > ?1) || (a == ?0 && b == ?1 && c > ?2)",
+        };
+
+        var colMap = newColMap("a", "b", "c");
+
+        for (int i=0; i<cases.length; i+=2) {
+            RowFilter filter = new Parser(colMap, cases[i]).parseFilter();
+            RowFilter dnf = filter.dnf();
+            assertEquals(cases[i + 1], dnf.toString());
         }
     }
 

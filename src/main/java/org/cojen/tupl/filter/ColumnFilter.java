@@ -84,6 +84,26 @@ public abstract class ColumnFilter extends RowFilter {
     }
 
     @Override
+    RowFilter reduce(long limit, boolean merge) {
+        return this;
+    }
+
+    @Override
+    RowFilter expandOperators(boolean force) {
+        if (!force) {
+            return this;
+        } else {
+            int op1;
+            switch (mOperator) {
+            default: return this;
+            case OP_GE: op1 = OP_GT; break;
+            case OP_LE: op1 = OP_LT; break;
+            };
+            return new OrFilter(withOperator(op1), withOperator(OP_EQ));
+        }
+    }
+
+    @Override
     public boolean isDnf() {
         return true;
     }
@@ -94,12 +114,22 @@ public abstract class ColumnFilter extends RowFilter {
     }
 
     @Override
+    ColumnFilter dnf(long limit, boolean merge) {
+        return this;
+    }
+
+    @Override
     public boolean isCnf() {
         return true;
     }
 
     @Override
     public ColumnFilter cnf() {
+        return this;
+    }
+
+    @Override
+    ColumnFilter cnf(long limit, boolean merge) {
         return this;
     }
 

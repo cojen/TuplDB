@@ -75,6 +75,24 @@ public abstract class RowFilter implements Comparable<RowFilter> {
     }
 
     /**
+     * @param limit complexity limit
+     * @param merge when true, also perform operator reduction
+     */
+    abstract RowFilter reduce(long limit, boolean merge);
+
+    /**
+     * Returns this filter with some operators expanded into "or" filters.
+     *
+     * <ul>
+     * <li>"a >= ?0" expands to "a > ?0 || a == ?0"
+     * <li>"a <= ?0" expands to "a < ?0 || a == ?0"
+     * </ul>
+     *
+     * @param force when false, only expand if the filter has multiple levels
+     */
+    abstract RowFilter expandOperators(boolean force);
+
+    /**
      * @return true if this filter is in disjunctive normal form
      */
     public abstract boolean isDnf();
@@ -87,6 +105,12 @@ public abstract class RowFilter implements Comparable<RowFilter> {
     public abstract RowFilter dnf();
 
     /**
+     * @param limit complexity limit
+     * @param merge when true, also perform operator reduction
+     */
+    abstract RowFilter dnf(long limit, boolean merge);
+
+    /**
      * @return true if this filter is in conjunctive normal form
      */
     public abstract boolean isCnf();
@@ -97,6 +121,12 @@ public abstract class RowFilter implements Comparable<RowFilter> {
      * @throws ComplexFilterException if cannot be quickly transformed
      */
     public abstract RowFilter cnf();
+
+    /**
+     * @param limit complexity limit
+     * @param merge when true, also perform operator reduction
+     */
+    abstract RowFilter cnf(long limit, boolean merge);
 
     /**
      * Checks if the given filter (or its inverse) matches this one. If the filter consists of

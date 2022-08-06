@@ -60,7 +60,7 @@ public abstract class GroupFilter extends RowFilter {
 
     int mFlags;
 
-    RowFilter mReduced, mDnf, mCnf;
+    RowFilter mReduced, mReducedNoMerge, mDnf, mCnf;
 
     GroupFilter(int hash, RowFilter... subFilters) {
         super(hash);
@@ -178,7 +178,7 @@ public abstract class GroupFilter extends RowFilter {
     }
 
     @Override
-    public int numTerms() {
+    public final int numTerms() {
         int num = 0;
         for (RowFilter sub : mSubFilters) {
             num += sub.numTerms();
@@ -260,19 +260,33 @@ public abstract class GroupFilter extends RowFilter {
         return hash;
     }
 
-    // Used to track cumulative work performed by the reduce method. When exceeded, a
-    // ComplexFilterException is thrown.
-    static final ThreadLocal<long[]> cReduceLimit = new ThreadLocal<>();
-
     @Override
     public final RowFilter reduce() {
         if (mReduced == null) {
-            mReduced = doReduce();
+            mReduced = doReduce(0, true);
         }
         return mReduced;
     }
 
-    private RowFilter doReduce() {
+    /**
+     * @param limit complexity limit
+     * @param merge when true, also perform operator reduction
+     */
+    final RowFilter reduce(long limit, boolean merge) {
+        if (merge) {
+            if (mReduced == null) {
+                mReduced = doReduce(limit, true);
+            }
+            return mReduced;
+        } else {
+            if (mReducedNoMerge == null) {
+                mReducedNoMerge = doReduce(limit, false);
+            }
+            return mReducedNoMerge;
+        }
+    }
+
+    private RowFilter doReduce(long limit, boolean merge) {
         /*
           Reduce the group filter by eliminating redundant sub-filters. The following
           transformations are applied:
@@ -297,27 +311,17 @@ public abstract class GroupFilter extends RowFilter {
             (A && B) || (A && !B) => A
             (A || B) && (A || !B) => A
 
-          Operator reduction is also applied, which can result in complementation, idempotence,
-          or elimination. The elimination case occurs when two operators combine into a
-          different one. A full reduction pass is required, for performing compound reduction.
-
+          When merge is true, operator reduction is also applied, which can result in
+          complementation, idempotence, or elimination. The elimination case occurs when two
+          operators combine into a different one. A full reduction pass is required, for
+          performing compound reduction.
          */
 
         RowFilter[] subFilters = mSubFilters;
 
-        if (subFilters.length > REDUCE_LIMIT_SQRT) {
-            // Too complex, might take forever to compute the result.
-            return this;
-        }
-
-        long[] limitRef = cReduceLimit.get();
-        if (limitRef != null) {
-            long limit = limitRef[0];
-            limit += (long) subFilters.length * subFilters.length;
-            if (limit > REDUCE_LIMIT) {
-                throw new ComplexFilterException(null, limit);
-            }
-            limitRef[0] = limit;
+        limit += (long) subFilters.length * subFilters.length;
+        if (limit > REDUCE_LIMIT) {
+            throw new ComplexFilterException(null, limit);
         }
 
         int numRemoved = 0;
@@ -334,7 +338,7 @@ public abstract class GroupFilter extends RowFilter {
                     continue loopi;
                 }
 
-                RowFilter subReduced = sub.reduce();
+                RowFilter subReduced = sub.reduce(limit, merge);
                 if (sub != subReduced) {
                     if (subReduced == emptyFlippedInstance()) {
                         return subReduced;
@@ -392,8 +396,9 @@ public abstract class GroupFilter extends RowFilter {
                             }
                         }
 
-                        // Try operator reduction.
-                        if (j > i // check is commutative, so only needs to be checked once 
+                        // Try operator reduction. Check is commutative, so only needs to be
+                        // checked once (hence the j > i test).
+                        if (merge && j > i
                             && sub.getClass() == check.getClass() && sub instanceof ColumnFilter)
                         {
                             var columnSub = (ColumnFilter) sub;
@@ -503,40 +508,114 @@ public abstract class GroupFilter extends RowFilter {
     }
 
     @Override
-    public final RowFilter dnf() {
-        if (mDnf != null) {
-            return mDnf;
+    RowFilter expandOperators(boolean force) {
+        if (!force) check: {
+            // Check if has multiple levels.
+            for (RowFilter sub : mSubFilters) {
+                if (!(sub instanceof ColumnFilter)) {
+                    break check;
+                }
+            }
+            return this;
         }
+
+        RowFilter[] subFilters = mSubFilters;
+
+        for (int i=0; i<subFilters.length; i++) {
+            RowFilter sub = subFilters[i];
+            RowFilter expanded = sub.expandOperators(true);
+            if (expanded != sub) {
+                if (subFilters == mSubFilters) {
+                    subFilters = subFilters.clone();
+                }
+                subFilters[i] = expanded;
+            }
+        }
+
+        return subFilters == mSubFilters ? this : newInstance(subFilters);
+    }
+
+    @Override
+    public final RowFilter dnf() {
+        RowFilter dnf = mDnf;
+        if (dnf == null) {
+            dnf = dnf(0, true);
+
+            // Try to reduce further by eliminating overlapping ranges.
+            try {
+                RowFilter expanded = dnf.expandOperators(false);
+                if (expanded != dnf) {
+                    RowFilter reduced = expanded.dnf(0, false).reduce();
+                    if (!reduced.equals(dnf) && reduced.numTerms() <= dnf.numTerms()) {
+                        if (!reduced.isDnf()) {
+                            throw new AssertionError();
+                        }
+                        dnf = reduced;
+                    }
+                }
+            } catch (ComplexFilterException e) {
+            }
+
+            mDnf = dnf;
+        }
+
+        return dnf;
+    }
+
+    @Override
+    public final RowFilter dnf(long limit, boolean merge) {
         RowFilter filter = this;
         while (true) {
-            filter = filter.reduce();
+            filter = filter.reduce(limit, merge);
             if (filter.isDnf()) {
-                mDnf = filter;
                 return filter;
             }
             if (!(filter instanceof GroupFilter group)) {
-                return filter.dnf();
+                return filter.dnf(limit, merge);
             }
-            filter = group.distribute(true);
+            filter = group.distribute(limit, merge, true);
         }
     }
 
     @Override
     public final RowFilter cnf() {
-        if (mCnf != null) {
-            return mCnf;
+        RowFilter cnf = mCnf;
+        if (cnf == null) {
+            cnf = cnf(0, true);
+
+            // Try to reduce further by eliminating overlapping ranges.
+            try {
+                RowFilter expanded = cnf.expandOperators(false);
+                if (expanded != cnf) {
+                    RowFilter reduced = expanded.cnf(0, false).reduce();
+                    if (!reduced.equals(cnf) && reduced.numTerms() <= cnf.numTerms()) {
+                        if (!reduced.isCnf()) {
+                            throw new AssertionError();
+                        }
+                        cnf = reduced;
+                    }
+                }
+            } catch (ComplexFilterException e) {
+            }
+
+            mCnf = cnf;
         }
+
+        return cnf;
+    }
+
+    @Override
+    public final RowFilter cnf(long limit, boolean merge) {
         RowFilter filter = this;
         while (true) {
-            filter = filter.reduce();
+            filter = filter.reduce(limit, merge);
             if (filter.isCnf()) {
-                mCnf = filter;
                 return filter;
             }
             if (!(filter instanceof GroupFilter group)) {
-                return filter.cnf();
+                return filter.cnf(limit, merge);
             }
-            filter = group.distribute(false);
+            filter = group.distribute(limit, merge, false);
         }
     }
 
@@ -544,9 +623,11 @@ public abstract class GroupFilter extends RowFilter {
      * Applies the distributive law to this filter such it becomes flattened into disjunctive
      * or conjunctive normal form.
      *
+     * @param limit complexity limit
+     * @param merge when true, also perform operator reduction
      * @param dnf true if called by dnf method, false if called by cnf method
      */
-    private RowFilter distribute(boolean dnf) {
+    private RowFilter distribute(long limit, boolean merge, boolean dnf) {
         RowFilter[] subFilters = mSubFilters;
 
         long count = 1;
@@ -554,7 +635,7 @@ public abstract class GroupFilter extends RowFilter {
             if (sub instanceof GroupFilter group) {
                 count *= group.mSubFilters.length;
                 if (count > SPLIT_LIMIT && subFilters.length > 2) {
-                    RowFilter filter = trySplitDistribute(dnf);
+                    RowFilter filter = trySplitDistribute(limit, merge, dnf);
                     if (filter != null) {
                         return filter;
                     }
@@ -582,7 +663,9 @@ public abstract class GroupFilter extends RowFilter {
                 }
             }
 
-            newSubFilters[i] = newInstance(newGroupSubFilters).reduce();
+            var newSub = newInstance(newGroupSubFilters).reduce(limit, merge);
+
+            newSubFilters[i] = newSub;
         }
 
         return newFlippedInstance(newSubFilters);
@@ -591,15 +674,15 @@ public abstract class GroupFilter extends RowFilter {
     /**
      * @return null if no change
      */
-    private RowFilter trySplitDistribute(boolean dnf) {
+    private RowFilter trySplitDistribute(long limit, boolean merge, boolean dnf) {
         int mid = mSubFilters.length >> 1;
-        RowFilter filter = splitDistribute(dnf, mid);
+        RowFilter filter = splitDistribute(limit, merge, dnf, mid);
         if (!equals(filter)) {
             return filter;
         }
         for (int pos = 1; pos < mSubFilters.length; pos++) {
             if (pos != mid) {
-                filter = splitDistribute(dnf, pos);
+                filter = splitDistribute(limit, merge, dnf, pos);
                 if (!equals(filter)) {
                     return filter;
                 }
@@ -608,15 +691,15 @@ public abstract class GroupFilter extends RowFilter {
         return null;
     }
 
-    private RowFilter splitDistribute(boolean dnf, int pos) {
+    private RowFilter splitDistribute(long limit, boolean merge, boolean dnf, int pos) {
         RowFilter left = newInstance(mSubFilters, 0, pos);
         RowFilter right = newInstance(mSubFilters, pos, mSubFilters.length - pos);
         if (dnf) {
-            left = left.dnf();
-            right = right.dnf();
+            left = left.dnf(limit, merge);
+            right = right.dnf(limit, merge);
         } else {
-            left = left.cnf();
-            right = right.cnf();
+            left = left.cnf(limit, merge);
+            right = right.cnf(limit, merge);
         }
         return newInstance(left, right);
     }

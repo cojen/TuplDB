@@ -97,6 +97,16 @@ public class OrFilter extends GroupFilter {
     }
 
     @Override
+    RowFilter expandOperators(boolean force) {
+        RowFilter expanded = super.expandOperators(force);
+        if (expanded == this) {
+            return this;
+        }
+        RowFilter[] subFilters = ((OrFilter) expanded).mSubFilters;
+        return flatten(subFilters, 0, subFilters.length);
+    }
+
+    @Override
     public boolean isDnf() {
         if ((mFlags & FLAG_DNF_SET) != 0) {
             return (mFlags & FLAG_IS_DNF) != 0;
@@ -177,12 +187,7 @@ public class OrFilter extends GroupFilter {
         if (mSubFilters.length <= 1) {
             return super.multiRangeExtract(disjoint, reverse, keyColumns);
         }
-        GroupFilter.cReduceLimit.set(new long[1]);
-        try {
-            return doMultiRangeExtract(disjoint, reverse, keyColumns);
-        } finally {
-            GroupFilter.cReduceLimit.remove();
-        }
+        return doMultiRangeExtract(disjoint, reverse, keyColumns);
     }
 
     private RowFilter[][] doMultiRangeExtract(boolean disjoint,
