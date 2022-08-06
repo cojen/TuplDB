@@ -134,7 +134,7 @@ public abstract sealed class QueryPlan implements Serializable {
                 a.append("reverse ");
             }
             a.append(title).append(" scan over ").append(which)
-                .append(": ").append(table).append('\n');
+                .append(" of ").append(table).append('\n');
             appendKeyColumns(a, in2).append('\n');
         }
 
@@ -242,7 +242,7 @@ public abstract sealed class QueryPlan implements Serializable {
         @Override
         void appendTo(Appendable a, String in1, String in2) throws IOException {
             a.append(in1).append("load one using ").append(which)
-                .append(": ").append(table).append('\n');
+                .append(" of ").append(table).append('\n');
             appendKeyColumns(a, in2).append('\n');
             appendItem(a, in2, "expression").append(expression).append('\n');
         }
@@ -389,7 +389,7 @@ public abstract sealed class QueryPlan implements Serializable {
         @Override
         void appendTo(Appendable a, String in1, String in2) throws IOException {
             a.append(in1).append("natural join to ").append(which)
-                .append(": ").append(table).append('\n');
+                .append(" of ").append(table).append('\n');
             appendKeyColumns(a, in2).append('\n');
             in2 += "  ";
             source.appendTo(a, in2, in2);
