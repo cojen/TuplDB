@@ -73,13 +73,40 @@ public abstract sealed class QueryPlan implements Serializable {
     }
 
     private static Appendable appendArray(Appendable a, String[] array) throws IOException {
-        for (int i=0; i<array.length; i++) {
-            if (i > 0) {
-                a.append(", ");
+        if (array != null) {
+            for (int i=0; i<array.length; i++) {
+                if (i > 0) {
+                    a.append(", ");
+                }
+                a.append(array[i]);
             }
-            a.append(array[i]);
         }
+        return a;
+    }
 
+    private static Appendable appendSource(Appendable a, String in1, String in2, QueryPlan source)
+        throws IOException
+    {
+        if (source != null) {
+            source.appendTo(a, in1, in2);
+        }
+        return a;
+    }
+
+    private static Appendable appendSources(Appendable a, String in1, String in2,
+                                            QueryPlan[] sources)
+        throws IOException
+    {
+        if (sources != null) {
+            String subIn2 = null;
+            for (int i=0; i<sources.length; i++) {
+                String subIn1 = in2 + "- ";
+                if (subIn2 == null || subIn2.length() < subIn1.length()) {
+                    subIn2 = " ".repeat(subIn1.length());
+                }
+                appendSource(a, subIn1, subIn2, sources[i]);
+            }
+        }
         return a;
     }
 
@@ -110,6 +137,14 @@ public abstract sealed class QueryPlan implements Serializable {
             return Objects.equals(table, other.table) && Objects.equals(which, other.which) &&
                 Arrays.equals(keyColumns, other.keyColumns);
         }
+
+        @Override
+        public int hashCode() {
+            int hash = Objects.hashCode(table);
+            hash = hash * 31 + Objects.hashCode(which);
+            hash = hash * 31 + Arrays.hashCode(keyColumns);
+            return hash;
+        }
     }
 
     /**
@@ -133,13 +168,18 @@ public abstract sealed class QueryPlan implements Serializable {
             if (reverse) {
                 a.append("reverse ");
             }
-            a.append(title).append(" scan over ").append(which)
-                .append(" of ").append(table).append('\n');
+            a.append(title).append(" scan over ").append(which).append('\n');
+            appendItem(a, in2, "table").append(table).append('\n');
             appendKeyColumns(a, in2).append('\n');
         }
 
         boolean matches(Scan other) {
             return super.matches(other) && reverse == other.reverse;
+        }
+
+        @Override
+        public int hashCode() {
+            return super.hashCode() ^ (reverse ? 754613080 : 1644587376);
         }
     }
 
@@ -166,6 +206,11 @@ public abstract sealed class QueryPlan implements Serializable {
         @Override
         public boolean equals(Object obj) {
             return obj instanceof FullScan scan && matches(scan);
+        }
+
+        @Override
+        public int hashCode() {
+            return super.hashCode() ^ 1727515038;
         }
     }
 
@@ -219,6 +264,14 @@ public abstract sealed class QueryPlan implements Serializable {
             return super.matches(other) &&
                 Objects.equals(low, other.low) && Objects.equals(high, other.high);
         }
+
+        @Override
+        public int hashCode() {
+            int hash = super.hashCode();
+            hash = hash * 31 + Objects.hashCode(low);
+            hash = hash * 31 + Objects.hashCode(high);
+            return hash ^ 169742416;
+        }
     }
 
     /**
@@ -241,8 +294,8 @@ public abstract sealed class QueryPlan implements Serializable {
 
         @Override
         void appendTo(Appendable a, String in1, String in2) throws IOException {
-            a.append(in1).append("load one using ").append(which)
-                .append(" of ").append(table).append('\n');
+            a.append(in1).append("load one using ").append(which).append('\n');
+            appendItem(a, in2, "table").append(table).append('\n');
             appendKeyColumns(a, in2).append('\n');
             appendItem(a, in2, "expression").append(expression).append('\n');
         }
@@ -254,6 +307,13 @@ public abstract sealed class QueryPlan implements Serializable {
 
         boolean matches(LoadOne other) {
             return super.matches(other) && Objects.equals(expression, other.expression);
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = super.hashCode();
+            hash = hash * 31 + Objects.hashCode(expression);
+            return hash ^ -1241565554;
         }
     }
 
@@ -279,7 +339,7 @@ public abstract sealed class QueryPlan implements Serializable {
         void appendTo(Appendable a, String in1, String in2) throws IOException {
             a.append(in1).append("filter").append(": ").append(expression).append('\n');
             in2 += "  ";
-            source.appendTo(a, in2, in2);
+            appendSource(a, in2, in2, source);
         }
 
         @Override
@@ -290,6 +350,13 @@ public abstract sealed class QueryPlan implements Serializable {
         boolean matches(Filter other) {
             return Objects.equals(expression, other.expression) &&
                 Objects.equals(source, other.source);
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = Objects.hashCode(expression);
+            hash = hash * 31 + Objects.hashCode(source);
+            return hash ^ -274869396;
         }
     }
 
@@ -316,7 +383,7 @@ public abstract sealed class QueryPlan implements Serializable {
             a.append(in1).append("sort").append(": ");
             appendArray(a, sortColumns).append('\n');
             in2 += "  ";
-            source.appendTo(a, in2, in2);
+            appendSource(a, in2, in2, source);
         }
 
         @Override
@@ -327,6 +394,13 @@ public abstract sealed class QueryPlan implements Serializable {
         boolean matches(Sort other) {
             return Arrays.equals(sortColumns, other.sortColumns) &&
                 Objects.equals(source, other.source);
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = Arrays.hashCode(sortColumns);
+            hash = hash * 31 + Objects.hashCode(source);
+            return hash ^ -419131761;
         }
     }
 
@@ -355,7 +429,7 @@ public abstract sealed class QueryPlan implements Serializable {
             appendArray(a, groupColumns).append("], ");
             appendArray(a, sortColumns).append('\n');
             in2 += "  ";
-            source.appendTo(a, in2, in2);
+            appendSource(a, in2, in2, source);
         }
 
         @Override
@@ -365,6 +439,13 @@ public abstract sealed class QueryPlan implements Serializable {
 
         boolean matches(GroupSort other) {
             return super.equals(other) && Arrays.equals(groupColumns, other.groupColumns);
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = super.hashCode();
+            hash = hash * 31 + Arrays.hashCode(groupColumns);
+            return hash ^ 1586560018;
         }
     }
 
@@ -388,11 +469,11 @@ public abstract sealed class QueryPlan implements Serializable {
 
         @Override
         void appendTo(Appendable a, String in1, String in2) throws IOException {
-            a.append(in1).append("natural join to ").append(which)
-                .append(" of ").append(table).append('\n');
+            a.append(in1).append("natural join to ").append(which).append('\n');
+            appendItem(a, in2, "table").append(table).append('\n');
             appendKeyColumns(a, in2).append('\n');
             in2 += "  ";
-            source.appendTo(a, in2, in2);
+            appendSource(a, in2, in2, source);
         }
 
         @Override
@@ -402,6 +483,13 @@ public abstract sealed class QueryPlan implements Serializable {
 
         boolean matches(NaturalJoin other) {
             return super.matches(other) && Objects.equals(source, other.source);
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = super.hashCode();
+            hash = hash * 31 + Objects.hashCode(source);
+            return hash ^ 2047385165;
         }
     }
 
@@ -420,18 +508,16 @@ public abstract sealed class QueryPlan implements Serializable {
 
         void appendTo(Appendable a, String in1, String in2, String title) throws IOException {
             a.append(in1).append(title).append('\n');
-            String subIn2 = null;
-            for (int i=0; i<sources.length; i++) {
-                String subIn1 = in2 + "- ";
-                if (subIn2 == null || subIn2.length() < subIn1.length()) {
-                    subIn2 = " ".repeat(subIn1.length());
-                }
-                sources[i].appendTo(a, subIn1, subIn2);
-            }
+            appendSources(a, in1, in2, sources);
         }
 
         boolean matches(Set other) {
             return Arrays.equals(sources, other.sources);
+        }
+
+        @Override
+        public int hashCode() {
+            return Arrays.hashCode(sources) ^ 849140774;
         }
     }
 
@@ -451,6 +537,11 @@ public abstract sealed class QueryPlan implements Serializable {
         public boolean equals(Object obj) {
             return obj instanceof Empty;
         }
+
+        @Override
+        public int hashCode() {
+            return 791511942;
+        }
     }
 
     /**
@@ -462,6 +553,11 @@ public abstract sealed class QueryPlan implements Serializable {
          */
         Union(QueryPlan... sources) {
             super(sources);
+        }
+
+        @Override
+        public int hashCode() {
+            return super.hashCode() ^ 1505076886;
         }
     }
 
@@ -488,6 +584,11 @@ public abstract sealed class QueryPlan implements Serializable {
         public boolean equals(Object obj) {
             return obj instanceof DisjointUnion union && matches(union);
         }
+
+        @Override
+        public int hashCode() {
+            return super.hashCode() ^ 672122059;
+        }
     }
 
     /**
@@ -512,6 +613,11 @@ public abstract sealed class QueryPlan implements Serializable {
         @Override
         public boolean equals(Object obj) {
             return obj instanceof RangeUnion union && matches(union);
+        }
+
+        @Override
+        public int hashCode() {
+            return super.hashCode() ^ -1637108271;
         }
     }
 }
