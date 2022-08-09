@@ -2031,7 +2031,7 @@ public class TableMaker {
         }
 
         // Specified by RowEvaluator.
-        cm.addMethod(long.class, "tableId").public_().return_(tableId);
+        cm.addMethod(long.class, "tableId").public_().final_().return_(tableId);
 
         if (secondaryDesc != null) {
             // Specified by RowEvaluator.
@@ -2244,7 +2244,7 @@ public class TableMaker {
         MethodMaker mm = mClassMaker.addMethod
             (SingleScanController.class, "unfiltered").protected_();
         var condyClass = mm.var(TableMaker.class).condy
-            ("condyDefineJoinedUnfiltered", mRowType, mRowClass, mTableId,
+            ("condyDefineJoinedUnfiltered", mRowType, mRowClass,
              mSecondaryDescriptor, mm.class_(), primaryTableClass);
         var scanControllerCtor = condyClass.invoke(MethodHandle.class, "unfiltered");
         Class<?>[] paramTypes = {
@@ -2269,7 +2269,7 @@ public class TableMaker {
      */
     public static MethodHandle condyDefineJoinedUnfiltered
         (MethodHandles.Lookup lookup, String name, Class type,
-         Class rowType, Class rowClass, long tableId, byte[] secondaryDesc,
+         Class rowType, Class rowClass, byte[] secondaryDesc,
          Class<?> tableClass, Class<?> primaryTableClass)
         throws Throwable
     {
