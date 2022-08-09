@@ -25,7 +25,7 @@ import org.cojen.tupl.Table;
  * @author Brian S O'Neill
  * @see RowSorter
  */
-class ArrayRowScanner<R> implements BaseRowScanner<R> {
+abstract class ArrayRowScanner<R> implements BaseRowScanner<R> {
     private static final Object[] EMPTY = new Object[1];
 
     private final Table<R> mTable;
@@ -89,11 +89,5 @@ class ArrayRowScanner<R> implements BaseRowScanner<R> {
     @Override
     public final long estimateSize() {
         return mRows.length - mPosition;
-    }
-
-    @Override
-    public int characteristics() {
-        // FIXME: Depending on the projection, DISTINCT shouldn't be included.
-        return ORDERED | DISTINCT | NONNULL | IMMUTABLE | SIZED;
     }
 }

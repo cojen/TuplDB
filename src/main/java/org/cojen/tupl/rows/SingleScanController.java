@@ -25,6 +25,8 @@ import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
 
+import static java.util.Spliterator.*;
+
 /**
  * Only supports one scan batch.
  *
@@ -82,6 +84,16 @@ public abstract class SingleScanController<R> implements ScanController<R>, RowE
     @Override
     public boolean isJoined() {
         return false;
+    }
+
+    @Override
+    public long estimateSize() {
+        return Long.MAX_VALUE;
+    }
+
+    @Override
+    public int characteristics() {
+        return NONNULL | ORDERED | CONCURRENT | DISTINCT;
     }
 
     @Override

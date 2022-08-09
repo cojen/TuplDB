@@ -51,6 +51,8 @@ import org.cojen.tupl.filter.Visitor;
 
 import org.cojen.tupl.io.Utils;
 
+import static java.util.Spliterator.*;
+
 /**
  * Makes ScanControllerFactory classes which perform basic filtering.
  *
@@ -69,6 +71,7 @@ public class FilteredScanMaker<R> {
     private final RowFilter mLowBound, mHighBound, mFilter, mJoinFilter;
     private final byte[] mProjectionSpec, mJoinProjectionSpec;
     private final boolean mAlwaysJoin;
+    private final boolean mDistinct;
     private final ClassMaker mFilterMaker;
     private final MethodMaker mFilterCtorMaker;
 
@@ -108,19 +111,22 @@ public class FilteredScanMaker<R> {
         byte[] secondaryDescriptor = table.secondaryDescriptor();
         Class<?> primaryTableClass = table.joinedPrimaryTableClass();
 
+        RowGen primaryRowGen;
+
         if (primaryTableClass == null) {
             // Not joining to the primary table.
             mJoinProjectionSpec = null;
             mAlwaysJoin = false;
             if (secondaryDescriptor == null) {
+                primaryRowGen = rowGen;
                 mProjectionSpec = DecodePartialMaker.makeFullSpec(rowGen, null, projection);
             } else {
-                RowGen primaryRowGen = RowInfo.find(rowType).rowGen();
+                primaryRowGen = RowInfo.find(rowType).rowGen();
                 mProjectionSpec = DecodePartialMaker.makeFullSpec
                     (rowGen, primaryRowGen, projection);
             }
         } else {
-            RowGen primaryRowGen = RowInfo.find(rowType).rowGen();
+            primaryRowGen = RowInfo.find(rowType).rowGen();
             mJoinProjectionSpec = DecodePartialMaker.makeFullSpec(primaryRowGen, null, projection);
             if (isCovering(rowGen, primaryRowGen, projection)) {
                 // No need to join to the primary table when use a RowScanner. A RowUpdater
@@ -133,6 +139,12 @@ public class FilteredScanMaker<R> {
                 mAlwaysJoin = true;
                 mProjectionSpec = mJoinProjectionSpec;
             }
+        }
+
+        if (projection == null) {
+            mDistinct = true;
+        } else {
+            mDistinct = primaryRowGen.info.isDistinct(projection.keySet());
         }
 
         mStoreRef = storeRef;
@@ -279,6 +291,13 @@ public class FilteredScanMaker<R> {
                 (ScanControllerFactory.class, "reverse").public_();
             // Invoke the reverse scan copy constructor.
             mm.return_(mm.new_(mFilterMaker, mm.this_()));
+        }
+
+        if (!mDistinct) {
+            // Override the method specified by ScanController and implemented by
+            // SingleScanController. Return the same value except without DISTINCT.
+            MethodMaker mm = mFilterMaker.addMethod(int.class, "characteristics").public_();
+            mm.return_(NONNULL | ORDERED | CONCURRENT);
         }
 
         // Define the factory methods.

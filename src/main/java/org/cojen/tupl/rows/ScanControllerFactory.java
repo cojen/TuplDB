@@ -37,6 +37,11 @@ public interface ScanControllerFactory<R> {
     RowPredicate<R> predicate(Object... args);
 
     /**
+     * Returns Spliterator characteristics which is shared by all scan batches.
+     */
+    int characteristics();
+
+    /**
      * Return a ScanController which constructs a RowPredicate from the given filter arguments.
      */
     ScanController<R> scanController(Object... args);

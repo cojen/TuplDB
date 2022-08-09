@@ -112,6 +112,16 @@ class BasicRowScanner<R> implements BaseRowScanner<R> {
     }
 
     @Override
+    public final long estimateSize() {
+        return mController.estimateSize();
+    }
+
+    @Override
+    public final int characteristics() {
+        return mController.characteristics();
+    }
+
+    @Override
     public final R row() {
         return mRow;
     }

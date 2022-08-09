@@ -46,6 +46,13 @@ public interface ScanController<R> {
         return RowPredicate.all();
     }
 
+    long estimateSize();
+
+    /**
+     * Returns Spliterator characteristics.
+     */
+    int characteristics();
+
     /**
      * Returns a new cursor for the current scan batch.
      */

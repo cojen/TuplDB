@@ -51,4 +51,9 @@ interface QueryLauncher<R> {
      * Returns the projected columns, which can be null if all are projected.
      */
     Set<String> projection();
+
+    /**
+     * Returns Spliterator characteristics.
+     */
+    int characteristics();
 }

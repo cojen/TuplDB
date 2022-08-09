@@ -56,6 +56,8 @@ import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.views.ViewUtils;
 
+import static java.util.Spliterator.*;
+
 /**
  * Base class for all generated table classes.
  *
@@ -420,6 +422,11 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         }
     }
 
+    @Override
+    public int characteristics() {
+        return NONNULL | ORDERED | CONCURRENT | DISTINCT;
+    }
+
     /**
      * Returns a view of this table which doesn't perform automatic index selection.
      */
@@ -521,6 +528,11 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             @Override
             public RowPredicate<R> predicate(Object... args) {
                 return RowPredicate.all();
+            }
+
+            @Override
+            public int characteristics() {
+                return BaseTable.this.characteristics();
             }
 
             @Override

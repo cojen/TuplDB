@@ -63,16 +63,4 @@ interface BaseRowScanner<R> extends RowScanner<R> {
     default Spliterator<R> trySplit() {
         return null;
     }
-
-    @Override
-    default long estimateSize() {
-        return Long.MAX_VALUE;
-    }
-
-    @Override
-    default int characteristics() {
-        // FIXME: Unless the query plan is disjoint union, include SORTED and provide a
-        // Comparator. Also, depending on the projection, DISTINCT shouldn't be included.
-        return ORDERED | DISTINCT | NONNULL | CONCURRENT;
-    }
 }

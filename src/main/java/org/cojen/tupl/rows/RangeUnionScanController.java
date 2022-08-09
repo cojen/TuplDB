@@ -63,6 +63,28 @@ final class RangeUnionScanController<R> implements ScanController<R> {
     }
 
     @Override
+    public long estimateSize() {
+        try {
+            long size = mControllers[0].estimateSize();
+            for (int i = 1; size != Long.MAX_VALUE && i < mControllers.length; i++) {
+                long nextSize = mControllers[i].estimateSize();
+                if (nextSize == Long.MAX_VALUE) {
+                    return nextSize;
+                }
+                size = Math.addExact(size, nextSize);
+            }
+            return size;
+        } catch (ArithmeticException e) {
+            return Long.MAX_VALUE;
+        }
+    }
+
+    @Override
+    public int characteristics() {
+        return mControllers[0].characteristics();
+    }
+
+    @Override
     public Cursor newCursor(View view, Transaction txn) throws IOException {
         return mCurrent.newCursor(view, txn);
     }

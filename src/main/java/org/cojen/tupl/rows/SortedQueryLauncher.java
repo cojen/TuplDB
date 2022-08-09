@@ -146,4 +146,9 @@ final class SortedQueryLauncher<R> implements QueryLauncher<R> {
     public Set<String> projection() {
         return mSource.projection();
     }
+
+    @Override
+    public int characteristics() {
+        return mSource.characteristics();
+    }
 }

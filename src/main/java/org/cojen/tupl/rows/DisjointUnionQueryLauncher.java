@@ -49,10 +49,7 @@ final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
 
     @Override
     public RowScanner<R> newRowScanner(Transaction txn, R row, Object... args) throws IOException {
-        // FIXME: Depending on the projection, DISTINCT shouldn't be included.
-        int characteristics = ORDERED | DISTINCT | NONNULL | CONCURRENT;
-
-        return new ConcatRowScanner<R>(characteristics, row) {
+        return new ConcatRowScanner<R>(characteristics(), row) {
             private int mWhich;
 
             @Override
@@ -71,10 +68,7 @@ final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
 
     @Override
     public RowUpdater<R> newRowUpdater(Transaction txn, R row, Object... args) throws IOException {
-        // FIXME: Depending on the projection, DISTINCT shouldn't be included.
-        int characteristics = ORDERED | DISTINCT | NONNULL | CONCURRENT;
-
-        return new ConcatRowUpdater<R>(characteristics, row) {
+        return new ConcatRowUpdater<R>(characteristics(), row) {
             private int mWhich;
 
             @Override
@@ -103,5 +97,10 @@ final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
     @Override
     public Set<String> projection() {
         return mLaunchers[0].projection();
+    }
+
+    @Override
+    public int characteristics() {
+        return mLaunchers[0].characteristics();
     }
 }

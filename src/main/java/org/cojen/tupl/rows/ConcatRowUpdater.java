@@ -124,6 +124,11 @@ abstract class ConcatRowUpdater<R> implements BaseRowScanner<R>, RowUpdater<R> {
     }
 
     @Override
+    public long estimateSize() {
+        return Long.MAX_VALUE;
+    }
+
+    @Override
     public int characteristics() {
         return mCharacteristics;
     }

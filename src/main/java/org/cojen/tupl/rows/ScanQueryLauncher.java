@@ -66,4 +66,9 @@ final class ScanQueryLauncher<R> implements QueryLauncher<R> {
     public Set<String> projection() {
         return mProjection;
     }
+
+    @Override
+    public int characteristics() {
+        return mFactory.characteristics();
+    }
 }

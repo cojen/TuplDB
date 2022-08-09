@@ -168,6 +168,23 @@ class RowInfo extends ColumnSet {
     }
 
     /**
+     * Returns true if the projection includes all columns of a primary or alternate key.
+     */
+    boolean isDistinct(Set<String> projection) {
+        if (projection.containsAll(keyColumns.keySet())) {
+            return true;
+        }
+        if (alternateKeys != null) {
+            for (ColumnSet alt : alternateKeys) {
+                if (projection.containsAll(alt.keyColumns.keySet())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
      * Returns a new or cached RowGen instance.
      */
     RowGen rowGen() {

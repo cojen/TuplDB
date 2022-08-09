@@ -28,6 +28,8 @@ import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Sorter;
 import org.cojen.tupl.Transaction;
 
+import static java.util.Spliterator.*;
+
 /**
  * 
  *
@@ -41,17 +43,6 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
 
     @SuppressWarnings("unchecked")
     static <R> RowScanner<R> sort(BaseTable<R> table, String orderBySpec, Comparator<R> comparator,
-                                  SingleScanController<R> controller, Transaction txn)
-        throws IOException
-    {
-        var sorter = new RowSorter<R>();
-        // Pass sorter as if it's a row, but it's actually a RowConsumer.
-        RowScanner<R> source = table.newRowScanner(txn, (R) sorter, controller);
-        return sorter.sort(table, orderBySpec, comparator, null, source);
-    }
-
-    @SuppressWarnings("unchecked")
-    static <R> RowScanner<R> sort(BaseTable<R> table, String orderBySpec, Comparator<R> comparator,
                                   QueryLauncher<R> launcher, Transaction txn, Object... args)
         throws IOException
     {
@@ -61,9 +52,6 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
         return sorter.sort(table, orderBySpec, comparator, launcher, source);
     }
 
-    /**
-     * @param launcher optional; only used to obtain the projection
-     */
     @SuppressWarnings("unchecked")
     private RowScanner<R> sort(BaseTable<R> table, String orderBySpec, Comparator<R> comparator,
                                QueryLauncher<R> launcher, RowScanner source)
@@ -77,7 +65,8 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
         }
 
         if (numRows == 0) {
-            return new ARS<>(comparator);
+            int characteristics = NONNULL | ORDERED | IMMUTABLE | SIZED | SORTED | DISTINCT;
+            return new ARS<>(characteristics, comparator);
         }
 
         var rows = (R[]) new Object[numRows];
@@ -88,7 +77,7 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
 
         Arrays.parallelSort(rows, comparator);
 
-        return new ARS<>(table, rows, comparator);
+        return new ARS<>(table, rows, sortedCharacteristics(launcher), comparator);
     }
 
     @Override
@@ -109,22 +98,31 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
         mLastBatch.addEntry(key, value);
     }
 
+    private static int sortedCharacteristics(QueryLauncher launcher) {
+        int characteristics = launcher.characteristics();
+        characteristics |= (NONNULL | ORDERED | IMMUTABLE | SIZED | SORTED);
+        characteristics &= ~CONCURRENT;
+        return characteristics;
+    }
+
     private static class ARS<R> extends ArrayRowScanner<R> {
+        private final int mCharacteristics;
         private final Comparator<R> mComparator;
 
-        ARS(Comparator<R> comparator) {
+        ARS(int characteristics, Comparator<R> comparator) {
+            mCharacteristics = characteristics;
             mComparator = comparator;
         }
 
-        ARS(BaseTable<R> table, R[] rows, Comparator<R> comparator) {
+        ARS(BaseTable<R> table, R[] rows, int characteristics, Comparator<R> comparator) {
             super(table, rows);
+            mCharacteristics = characteristics;
             mComparator = comparator;
         }
 
         @Override
         public int characteristics() {
-            // FIXME: Depending on the projection, DISTINCT shouldn't be included.
-            return ORDERED | DISTINCT | SORTED | NONNULL | IMMUTABLE | SIZED;
+            return mCharacteristics;
         }
 
         @Override
@@ -134,17 +132,21 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
     }
 
     private static class SRS<R> extends ScannerRowScanner<R> {
+        private final int mCharacteristics;
         private final Comparator<R> mComparator;
 
-        SRS(Scanner scanner, RowDecoder<R> decoder, Comparator<R> comparator) throws IOException {
+        SRS(Scanner scanner, RowDecoder<R> decoder,
+            int characteristics, Comparator<R> comparator)
+            throws IOException
+        {
             super(scanner, decoder);
+            mCharacteristics = characteristics;
             mComparator = comparator;
         }
 
         @Override
         public int characteristics() {
-            // FIXME: Depending on the projection, DISTINCT shouldn't be included.
-            return ORDERED | DISTINCT | SORTED | NONNULL | IMMUTABLE;
+            return mCharacteristics;
         }
 
         @Override
@@ -159,6 +161,7 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
         private final Class<?> mRowType;
         private final SecondaryInfo mSortedInfo;
         private final RowDecoder mDecoder;
+        private final int mCharacteristics;
 
         private Transcoder mTranscoder;
 
@@ -171,9 +174,10 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
             mRowStore = table.rowStore();
             mSorter = mRowStore.mDatabase.newSorter();
             mRowType = table.rowType();
-            Set<String> projection = launcher == null ? null : launcher.projection();
+            Set<String> projection = launcher.projection();
             mSortedInfo = SortDecoderMaker.findSortedInfo(mRowType, orderBySpec, projection, true);
             mDecoder = SortDecoderMaker.findDecoder(mRowType, mSortedInfo, projection);
+            mCharacteristics = sortedCharacteristics(launcher);
         }
 
         RowScanner<R> sort(Comparator<R> comparator, RowScanner source) throws IOException {
@@ -213,7 +217,7 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
             flush();
             mBatch = null;
 
-            return new SRS<>(mSorter.finishScan(), mDecoder, comparator);
+            return new SRS<>(mSorter.finishScan(), mDecoder, mCharacteristics, comparator);
         }
 
         private Transcoder transcoder(RowEvaluator<R> evaluator) {

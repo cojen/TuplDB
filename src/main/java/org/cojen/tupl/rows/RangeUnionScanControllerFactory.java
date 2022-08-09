@@ -66,6 +66,11 @@ final class RangeUnionScanControllerFactory<R> implements ScanControllerFactory<
     }
 
     @Override
+    public int characteristics() {
+        return mRanges[0].characteristics();
+    }
+
+    @Override
     @SuppressWarnings("unchecked")
     public ScanController<R> scanController(Object... args) {
         var ranges = mRanges;

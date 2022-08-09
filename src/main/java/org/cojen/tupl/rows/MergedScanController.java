@@ -148,6 +148,29 @@ final class MergedScanController<R> extends SingleScanController<R> {
     }
 
     @Override
+    public long estimateSize() {
+        try {
+            long size = mLow.estimateSize();
+            if (size != Long.MAX_VALUE) {
+                long nextSize = mHigh.estimateSize();
+                if (nextSize == Long.MAX_VALUE) {
+                    return nextSize;
+                }
+                size = Math.addExact(size, nextSize);
+            }
+            return size;
+        } catch (ArithmeticException e) {
+            return Long.MAX_VALUE;
+        }
+    }
+
+    @Override
+    public int characteristics() {
+        // Can call either controller. They should have the same characteristics.
+        return mLow.characteristics();
+    }
+
+    @Override
     public long tableId() {
         // Can call either evaluator. They should be bound to the same table.
         return mLowEvaluator.tableId();

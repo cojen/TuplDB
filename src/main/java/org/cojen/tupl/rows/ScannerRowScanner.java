@@ -27,7 +27,7 @@ import org.cojen.tupl.Scanner;
  * @author Brian S O'Neill
  * @see RowSorter
  */
-class ScannerRowScanner<R> implements BaseRowScanner<R> {
+abstract class ScannerRowScanner<R> implements BaseRowScanner<R> {
     private final Scanner mScanner;
     private final RowDecoder<R> mDecoder;
 
@@ -69,5 +69,10 @@ class ScannerRowScanner<R> implements BaseRowScanner<R> {
     public final void close() throws IOException {
         mRow = null;
         mScanner.close();
+    }
+
+    @Override
+    public final long estimateSize() {
+        return Long.MAX_VALUE;
     }
 }

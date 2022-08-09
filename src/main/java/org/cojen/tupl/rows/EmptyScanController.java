@@ -24,6 +24,8 @@ import org.cojen.tupl.core.RowPredicate;
 
 import org.cojen.tupl.diag.QueryPlan;
 
+import static java.util.Spliterator.*;
+
 /**
  * Scan of nothing.
  *
@@ -64,6 +66,16 @@ final class EmptyScanController extends SingleScanController implements ScanCont
     @Override
     public RowPredicate predicate(Object... args) {
         return predicate();
+    }
+
+    @Override
+    public long estimateSize() {
+        return 0;
+    }
+
+    @Override
+    public int characteristics() {
+        return NONNULL | ORDERED | IMMUTABLE | SIZED | DISTINCT;
     }
 
     @Override
