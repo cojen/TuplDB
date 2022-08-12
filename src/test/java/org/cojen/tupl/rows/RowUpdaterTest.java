@@ -52,7 +52,7 @@ public class RowUpdaterTest {
             // fewer columns.
             QueryPlan plan = table.scannerPlan(null, "{name, id}: id == ? || name == ?");
             assertEquals(new QueryPlan.Filter
-                         ("id == ?0 || name == ?1", new QueryPlan.FullScan
+                         ("id == ?1 || name == ?2", new QueryPlan.FullScan
                           (TestRow.class.getName(), "secondary index",
                            new String[] {"+state", "+id", "+name"}, false)),
                          plan);
@@ -63,7 +63,7 @@ public class RowUpdaterTest {
             // needed by the update operation itself.
             QueryPlan plan = table.updaterPlan(null, "{name, id}: id == ? || name == ?");
             assertEquals(new QueryPlan.Filter
-                         ("id == ?0 || name == ?1", new QueryPlan.FullScan
+                         ("id == ?1 || name == ?2", new QueryPlan.FullScan
                           (TestRow.class.getName(), "primary key",
                            new String[] {"+id", "+name"}, false)),
                          plan);

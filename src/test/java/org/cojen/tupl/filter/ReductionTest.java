@@ -61,7 +61,7 @@ public class ReductionTest {
         for (String op : ops) {
             for (String relOp1 : relOps) {
                 for (String relOp2 : relOps) {
-                    String filterStr = "a" + relOp1 + "?0" + op + "a" + relOp2 + "?0";
+                    String filterStr = "a" + relOp1 + "?1" + op + "a" + relOp2 + "?1";
                     RowFilter filter = new Parser(colMap, filterStr).parseFilter();
                     RowFilter reduced = filter.reduce();
 
@@ -168,7 +168,7 @@ public class ReductionTest {
         // The reduce method isn't guaranteed to be complete, but a call to dnf or cnf can help
         // the reduction along.
 
-        String filterStr = "((a > ?1 && a > ?2) || (a > ?3)) && (a > ?1 && a > ?2)";
+        String filterStr = "((a > ?2 && a > ?3) || (a > ?4)) && (a > ?2 && a > ?3)";
         RowFilter filter = new Parser(newColMap(), filterStr).parseFilter().reduce();
 
         assertEquals(5, filter.numTerms());
@@ -182,30 +182,30 @@ public class ReductionTest {
             default -> filter.reduceMore();
             };
             assertEquals(2, reduced.numTerms());
-            assertEquals("a > ?1 && a > ?2", reduced.toString());
+            assertEquals("a > ?2 && a > ?3", reduced.toString());
         }
     }
 
     @Test
     public void dnfOperatorReduction() throws Exception {
         String[] cases = {
-            "a > ?0 || (a >= ?0 && b > ?1)",
-            "a > ?0 || (a == ?0 && b > ?1)",
+            "a > ?1 || (a >= ?1 && b > ?2)",
+            "a > ?1 || (a == ?1 && b > ?2)",
 
-            "(a > ?0 && b > ?1) || (a >= ?0 && b > ?1)",
-            "(a > ?0 && b > ?1) || (a == ?0 && b > ?1)",
+            "(a > ?1 && b > ?2) || (a >= ?1 && b > ?2)",
+            "(a > ?1 && b > ?2) || (a == ?1 && b > ?2)",
 
-            "a > ?0 || (a >= ?0 && b > ?1) || (a >= ?0 && b == ?1 && c > ?2)",
-            "a > ?0 || (a == ?0 && b > ?1) || (a == ?0 && b == ?1 && c > ?2)",
+            "a > ?1 || (a >= ?1 && b > ?2) || (a >= ?1 && b == ?2 && c > ?3)",
+            "a > ?1 || (a == ?1 && b > ?2) || (a == ?1 && b == ?2 && c > ?3)",
 
-            "a > ?0 || (a >= ?0 && b > ?1) || (a == ?0 && b == ?1 && c > ?2)",
-            "a > ?0 || (a == ?0 && b > ?1) || (a == ?0 && b == ?1 && c > ?2)",
+            "a > ?1 || (a >= ?1 && b > ?2) || (a == ?1 && b == ?2 && c > ?3)",
+            "a > ?1 || (a == ?1 && b > ?2) || (a == ?1 && b == ?2 && c > ?3)",
 
-            "a > ?0 || (a == ?0 && b > ?1) || (a == ?0 && b == ?1 && c > ?2)",
-            "a > ?0 || (a == ?0 && b > ?1) || (a == ?0 && b == ?1 && c > ?2)",
+            "a > ?1 || (a == ?1 && b > ?2) || (a == ?1 && b == ?2 && c > ?3)",
+            "a > ?1 || (a == ?1 && b > ?2) || (a == ?1 && b == ?2 && c > ?3)",
 
-            "a >= ?0 && (a > ?0 || b >= ?1) && (a > ?0 || b > ?1 || c > ?2)",
-            "a > ?0 || (a == ?0 && b > ?1) || (a == ?0 && b == ?1 && c > ?2)",
+            "a >= ?1 && (a > ?1 || b >= ?2) && (a > ?1 || b > ?2 || c > ?3)",
+            "a > ?1 || (a == ?1 && b > ?2) || (a == ?1 && b == ?2 && c > ?3)",
         };
 
         var colMap = newColMap("a", "b", "c");

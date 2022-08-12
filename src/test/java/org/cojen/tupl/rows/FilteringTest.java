@@ -591,7 +591,7 @@ public class FilteringTest {
         }
 
         // This filter expression always returns true.
-        var scanner = table.newRowScanner(null, "name >= ?0 || name < ?0");
+        var scanner = table.newRowScanner(null, "name >= ?1 || name < ?1");
         int count = 0;
         for (MyRow row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(count, row.id());
@@ -600,7 +600,7 @@ public class FilteringTest {
         assertEquals(3, count);
 
         // This filter expression always returns false.
-        scanner = table.newRowScanner(null, "name >= ?0 && name < ?0");
+        scanner = table.newRowScanner(null, "name >= ?1 && name < ?1");
         count = 0;
         for (MyRow row = scanner.row(); row != null; row = scanner.step(row)) {
             count++;
@@ -617,7 +617,7 @@ public class FilteringTest {
             table.delete(txn, row);
         }
 
-        table.newRowScanner(null, "name >= ?0 && name < ?0");
+        table.newRowScanner(null, "name >= ?1 && name < ?1");
 
         txn.reset();
     }

@@ -79,7 +79,7 @@ public class ParserTest {
         pf("(a==)", "Not a valid character");
         pf("a in a", "Argument number");
         pf("a<c\u1f600", "type mismatch");
-        pf("a in ?0 || a == ?0", "Mismatched argument usage");
+        pf("a in ?1 || a == ?1", "Mismatched argument usage");
         pf("!(a==\u2003a)||a>?5||a in?5", "Mismatched argument usage");
         pf("!(a\u2003== ?", "Right paren");
         pf("a inx", "Unknown operator");
@@ -91,6 +91,7 @@ public class ParserTest {
         pf("{~*}", "Not a valid character");
         pf("{~!a}", "Not a valid character");
         pf("{~a}", "Must include wildcard");
+        pf("a<=?0", "at least one");
     }
 
     // pf: parse failure
@@ -105,9 +106,9 @@ public class ParserTest {
 
     @Test
     public void flatten() throws Exception {
-        String filterStr = "a == ? && (a == ? && a < ?0) && !((a == ? || a < ?0) || a != ?)";
+        String filterStr = "a == ? && (a == ? && a < ?1) && !((a == ? || a < ?1) || a != ?)";
         RowFilter filter = new Parser(mColumnMap, filterStr).parseFilter();
-        assertEquals("a == ?0 && a == ?1 && a < ?0 && a != ?2 && a >= ?0 && a == ?3",
+        assertEquals("a == ?1 && a == ?2 && a < ?1 && a != ?3 && a >= ?1 && a == ?4",
                      filter.toString());
     }
 

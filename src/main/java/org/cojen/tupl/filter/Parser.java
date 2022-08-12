@@ -426,7 +426,7 @@ public class Parser {
             // column-to-arg comparison
             arg = tryParseArgNumber();
             if (arg < 0) {
-                arg = mNextArg++;
+                arg = ++mNextArg;
             }
         } else {
             // column-to-column comparison
@@ -572,6 +572,11 @@ public class Parser {
                 mPos--;
                 break;
             }
+        }
+
+        if (arg <= 0) {
+            mPos = start;
+            throw error("Argument number must be at least one");
         }
 
         return (int) arg;

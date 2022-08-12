@@ -46,8 +46,8 @@ public class RangeExtractTest {
         RowFilter[] range = f0.cnf().rangeExtract(colMap.get("a"), colMap.get("b"));
 
         check(range, new String[] {
-            "a >= ?0", "a <= ?0",
-            "(b > ?1 || b > ?2) && (b > ?3 || b > ?4) && (b > ?5 || b > ?6)",
+            "a >= ?1", "a <= ?1",
+            "(b > ?2 || b > ?3) && (b > ?4 || b > ?5) && (b > ?6 || b > ?7)",
             null
         });
 
@@ -56,19 +56,19 @@ public class RangeExtractTest {
             (false, false, colMap.get("a"), colMap.get("b"));
 
         check(ranges, new String[][] {
-            {"a == ?0 && b > ?1", "a <= ?0",
-             "(b > ?4 || b > ?3) && (b > ?6 || b > ?5)", null},
-            {"a == ?0 && b > ?2", "a <= ?0",
-             "(b > ?4 || b > ?3) && (b > ?6 || b > ?5)", null}
+            {"a == ?1 && b > ?2", "a <= ?1",
+             "(b > ?5 || b > ?4) && (b > ?7 || b > ?6)", null},
+            {"a == ?1 && b > ?3", "a <= ?1",
+             "(b > ?5 || b > ?4) && (b > ?7 || b > ?6)", null}
         });
 
         ranges = f1.multiRangeExtract(true, false, colMap.get("a"), colMap.get("b"));
 
         check(ranges, new String[][] {
-            {"a == ?0 && b > ?1", "a <= ?0",
-             "(b > ?4 || b > ?3) && (b > ?6 || b > ?5)", null},
-            {"a == ?0 && b > ?2", "a == ?0 && b <= ?1",
-             "(b > ?4 || b > ?3) && (b > ?6 || b > ?5)", null}
+            {"a == ?1 && b > ?2", "a <= ?1",
+             "(b > ?5 || b > ?4) && (b > ?7 || b > ?6)", null},
+            {"a == ?1 && b > ?3", "a == ?1 && b <= ?2",
+             "(b > ?5 || b > ?4) && (b > ?7 || b > ?6)", null}
         });
 
         // Switch the direction of a few operators.
@@ -76,27 +76,27 @@ public class RangeExtractTest {
         range = f2.cnf().rangeExtract(colMap.get("a"), colMap.get("b"));
 
         check(range, new String[] {
-            "a >= ?0", "a <= ?0", 
-            "(b < ?1 || b < ?2) && (b > ?3 || b > ?4) && (b > ?5 || b > ?6)", null
+            "a >= ?1", "a <= ?1", 
+            "(b < ?2 || b < ?3) && (b > ?4 || b > ?5) && (b > ?6 || b > ?7)", null
         });
 
         RowFilter f3 = f2.dnf();
         ranges = f3.multiRangeExtract(false, true, colMap.get("a"), colMap.get("b"));
 
         check(ranges, new String[][] {
-            {"a >= ?0", "a == ?0 && b < ?1",
-             "(b > ?4 || b > ?3) && (b > ?6 || b > ?5)", null},
-            {"a >= ?0", "a == ?0 && b < ?2",
-             "(b > ?4 || b > ?3) && (b > ?6 || b > ?5)", null}
+            {"a >= ?1", "a == ?1 && b < ?2",
+             "(b > ?5 || b > ?4) && (b > ?7 || b > ?6)", null},
+            {"a >= ?1", "a == ?1 && b < ?3",
+             "(b > ?5 || b > ?4) && (b > ?7 || b > ?6)", null}
         });
 
         ranges = f3.multiRangeExtract(true, true, colMap.get("a"), colMap.get("b"));
 
         check(ranges, new String[][] {
-            {"a >= ?0", "a == ?0 && b < ?1",
-             "(b > ?4 || b > ?3) && (b > ?6 || b > ?5)", null},
-            {"a == ?0 && b >= ?1", "a == ?0 && b < ?2",
-             "(b > ?4 || b > ?3) && (b > ?6 || b > ?5)", null}
+            {"a >= ?1", "a == ?1 && b < ?2",
+             "(b > ?5 || b > ?4) && (b > ?7 || b > ?6)", null},
+            {"a == ?1 && b >= ?2", "a == ?1 && b < ?3",
+             "(b > ?5 || b > ?4) && (b > ?7 || b > ?6)", null}
         });
     }
 

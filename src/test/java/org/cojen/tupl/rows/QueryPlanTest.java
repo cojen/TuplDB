@@ -58,10 +58,10 @@ public class QueryPlanTest {
 
     @Test
     public void primaryKey() throws Exception {
-        QueryPlan plan = mTable.scannerPlan(null, "id == ?0 && id != ?0");
+        QueryPlan plan = mTable.scannerPlan(null, "id == ?1 && id != ?1");
         comparePlans(new QueryPlan.Empty(), plan);
 
-        plan = mTable.scannerPlan(null, "id == ?0 && id != ?0 && a == ?");
+        plan = mTable.scannerPlan(null, "id == ?1 && id != ?1 && a == ?");
         comparePlans(new QueryPlan.Empty(), plan);
 
         plan = mTable.scannerPlan(null, null);
@@ -70,7 +70,7 @@ public class QueryPlanTest {
                       new String[] {"+id"}, false),
                      plan);
 
-        plan = mTable.scannerPlan(null, "id == ?0 || id != ?0");
+        plan = mTable.scannerPlan(null, "id == ?1 || id != ?1");
         comparePlans(new QueryPlan.FullScan
                      (TestRow.class.getName(), "primary key",
                       new String[] {"+id"}, false),
@@ -79,52 +79,52 @@ public class QueryPlanTest {
         plan = mTable.scannerPlan(null, "id < ?");
         comparePlans(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "primary key",
-                      new String[] {"+id"}, true, null, "id < ?0"),
+                      new String[] {"+id"}, true, null, "id < ?1"),
                      plan);
 
         plan = mTable.scannerPlan(null, "id >= ?");
         comparePlans(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "primary key",
-                      new String[] {"+id"}, false, "id >= ?0", null),
+                      new String[] {"+id"}, false, "id >= ?1", null),
                      plan);
 
         plan = mTable.scannerPlan(null, "id >= ? && id < ?");
         comparePlans(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "primary key",
-                      new String[] {"+id"}, false, "id >= ?0", "id < ?1"),
+                      new String[] {"+id"}, false, "id >= ?1", "id < ?2"),
                      plan);
 
         // This test should fail when LoadOne is supported.
         plan = mTable.scannerPlan(null, "id == ?");
         comparePlans(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "primary key",
-                      new String[] {"+id"}, false, "id >= ?0", "id <= ?0"),
+                      new String[] {"+id"}, false, "id >= ?1", "id <= ?1"),
                      plan);
 
         plan = mTable.viewPrimaryKey().scannerPlan(null, "a == ?");
         comparePlans(new QueryPlan.Filter
-                     ("a == ?0", new QueryPlan.FullScan
+                     ("a == ?1", new QueryPlan.FullScan
                       (TestRow.class.getName(), "primary key",
                        new String[] {"+id"}, false)),
                      plan);
 
-        plan = mTable.viewPrimaryKey().scannerPlan(null, "id == ?0 && id != ?0 || b == ?1");
+        plan = mTable.viewPrimaryKey().scannerPlan(null, "id == ?1 && id != ?1 || b == ?2");
         comparePlans(new QueryPlan.Filter
-                     ("b == ?1", new QueryPlan.FullScan
+                     ("b == ?2", new QueryPlan.FullScan
                       (TestRow.class.getName(), "primary key",
                        new String[] {"+id"}, false)),
                      plan);
 
         plan = mTable.viewPrimaryKey().scannerPlan(null, "a == ? && id > ?");
         comparePlans(new QueryPlan.Filter
-                     ("a == ?0", new QueryPlan.RangeScan
+                     ("a == ?1", new QueryPlan.RangeScan
                       (TestRow.class.getName(), "primary key",
-                       new String[] {"+id"}, false, "id > ?1", null)),
+                       new String[] {"+id"}, false, "id > ?2", null)),
                      plan);
 
         plan = mTable.scannerPlan(null, "id != ?");
         comparePlans(new QueryPlan.Filter
-                     ("id != ?0", new QueryPlan.FullScan
+                     ("id != ?1", new QueryPlan.FullScan
                       (TestRow.class.getName(), "primary key",
                        new String[] {"+id"}, false)),
                      plan);
@@ -133,43 +133,43 @@ public class QueryPlanTest {
         comparePlans(new QueryPlan.RangeUnion
                      (new QueryPlan.RangeScan
                       (TestRow.class.getName(), "primary key",
-                       new String[] {"+id"}, false, "id >= ?0", "id < ?1"),
+                       new String[] {"+id"}, false, "id >= ?1", "id < ?2"),
                       new QueryPlan.RangeScan
                       (TestRow.class.getName(), "primary key",
-                       new String[] {"+id"}, false, "id > ?2", "id <= ?3")
+                       new String[] {"+id"}, false, "id > ?3", "id <= ?4")
                       ), plan);
 
         plan = mTable.scannerPlan(null, "id >= ? && id < ? || !(id > ? && id <= ?)");
         comparePlans(new QueryPlan.RangeUnion
                      (new QueryPlan.RangeScan
                       (TestRow.class.getName(), "primary key",
-                       new String[] {"+id"}, false, "id >= ?0", "id < ?1"),
+                       new String[] {"+id"}, false, "id >= ?1", "id < ?2"),
                       new QueryPlan.RangeScan
                       (TestRow.class.getName(), "primary key",
-                       new String[] {"+id"}, false, null, "id <= ?2"),
+                       new String[] {"+id"}, false, null, "id <= ?3"),
                       new QueryPlan.RangeScan
                       (TestRow.class.getName(), "primary key",
-                       new String[] {"+id"}, false, "id > ?3", null)
+                       new String[] {"+id"}, false, "id > ?4", null)
                       ), plan);
                      
         plan = mTable.scannerPlan(null, "id >= ? && id < ? || (id > ? && id <= ? && c != ?)");
         comparePlans(new QueryPlan.RangeUnion
                      (new QueryPlan.RangeScan
                       (TestRow.class.getName(), "primary key",
-                       new String[] {"+id"}, false, "id >= ?0", "id < ?1"),
-                      new QueryPlan.Filter("c != ?4", new QueryPlan.RangeScan
+                       new String[] {"+id"}, false, "id >= ?1", "id < ?2"),
+                      new QueryPlan.Filter("c != ?5", new QueryPlan.RangeScan
                       (TestRow.class.getName(), "primary key",
-                       new String[] {"+id"}, false, "id > ?2", "id <= ?3"))
+                       new String[] {"+id"}, false, "id > ?3", "id <= ?4"))
                       ), plan);
 
         plan = mTable.scannerPlan(null, "(id >= ? && id < ? || id > ? && id <= ?) && c != ?");
         comparePlans(new QueryPlan.RangeUnion
-                     (new QueryPlan.Filter("c != ?4", new QueryPlan.RangeScan
+                     (new QueryPlan.Filter("c != ?5", new QueryPlan.RangeScan
                       (TestRow.class.getName(), "primary key",
-                       new String[] {"+id"}, false, "id >= ?0", "id < ?1")),
-                      new QueryPlan.Filter("c != ?4", new QueryPlan.RangeScan
+                       new String[] {"+id"}, false, "id >= ?1", "id < ?2")),
+                      new QueryPlan.Filter("c != ?5", new QueryPlan.RangeScan
                       (TestRow.class.getName(), "primary key",
-                       new String[] {"+id"}, false, "id > ?2", "id <= ?3"))
+                       new String[] {"+id"}, false, "id > ?3", "id <= ?4"))
                       ), plan);
     }
 
@@ -177,10 +177,10 @@ public class QueryPlanTest {
     public void alternateKeyUnjoined() throws Exception {
         Table<TestRow> indexA = mIndexA.viewUnjoined();
 
-        QueryPlan plan = indexA.scannerPlan(null, "a == ?0 && a != ?0");
+        QueryPlan plan = indexA.scannerPlan(null, "a == ?1 && a != ?1");
         comparePlans(new QueryPlan.Empty(), plan);
 
-        plan = indexA.scannerPlan(null, "a == ?0 && a != ?0 && id == ?");
+        plan = indexA.scannerPlan(null, "a == ?1 && a != ?1 && id == ?");
         comparePlans(new QueryPlan.Empty(), plan);
 
         plan = indexA.scannerPlan(null, null);
@@ -189,7 +189,7 @@ public class QueryPlanTest {
                       new String[] {"+a"}, false),
                      plan);
 
-        plan = indexA.scannerPlan(null, "a == ?0 || a != ?0");
+        plan = indexA.scannerPlan(null, "a == ?1 || a != ?1");
         comparePlans(new QueryPlan.FullScan
                      (TestRow.class.getName(), "alternate key",
                       new String[] {"+a"}, false),
@@ -198,26 +198,26 @@ public class QueryPlanTest {
         plan = indexA.scannerPlan(null, "a < ?");
         comparePlans(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "alternate key",
-                      new String[] {"+a"}, false, null, "a < ?0"),
+                      new String[] {"+a"}, false, null, "a < ?1"),
                      plan);
 
         plan = indexA.scannerPlan(null, "a >= ?");
         comparePlans(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "alternate key",
-                      new String[] {"+a"}, false, "a >= ?0", null),
+                      new String[] {"+a"}, false, "a >= ?1", null),
                      plan);
 
         plan = indexA.scannerPlan(null, "a >= ? && a < ?");
         comparePlans(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "alternate key",
-                      new String[] {"+a"}, false, "a >= ?0", "a < ?1"),
+                      new String[] {"+a"}, false, "a >= ?1", "a < ?2"),
                      plan);
 
         // This test should fail when LoadOne is supported.
         plan = indexA.scannerPlan(null, "a == ?");
         comparePlans(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "alternate key",
-                      new String[] {"+a"}, false, "a >= ?0", "a <= ?0"),
+                      new String[] {"+a"}, false, "a >= ?1", "a <= ?1"),
                      plan);
 
         try {
@@ -229,28 +229,28 @@ public class QueryPlanTest {
 
         plan = indexA.scannerPlan(null, "id == ?");
         comparePlans(new QueryPlan.Filter
-                     ("id == ?0", new QueryPlan.FullScan
+                     ("id == ?1", new QueryPlan.FullScan
                       (TestRow.class.getName(), "alternate key",
                        new String[] {"+a"}, false)),
                      plan);
 
-        plan = indexA.scannerPlan(null, "a == ?0 && a != ?0 || id == ?1");
+        plan = indexA.scannerPlan(null, "a == ?1 && a != ?1 || id == ?2");
         comparePlans(new QueryPlan.Filter
-                     ("id == ?1", new QueryPlan.FullScan
+                     ("id == ?2", new QueryPlan.FullScan
                       (TestRow.class.getName(), "alternate key",
                        new String[] {"+a"}, false)),
                      plan);
 
         plan = indexA.scannerPlan(null, "id == ? && a > ?");
         comparePlans(new QueryPlan.Filter
-                     ("id == ?0", new QueryPlan.RangeScan
+                     ("id == ?1", new QueryPlan.RangeScan
                       (TestRow.class.getName(), "alternate key",
-                       new String[] {"+a"}, false, "a > ?1", null)),
+                       new String[] {"+a"}, false, "a > ?2", null)),
                      plan);
 
         plan = indexA.scannerPlan(null, "a != ?");
         comparePlans(new QueryPlan.Filter
-                     ("a != ?0", new QueryPlan.FullScan
+                     ("a != ?1", new QueryPlan.FullScan
                       (TestRow.class.getName(), "alternate key",
                        new String[] {"+a"}, false)),
                      plan);
@@ -259,52 +259,52 @@ public class QueryPlanTest {
         comparePlans(new QueryPlan.RangeUnion
                      (new QueryPlan.RangeScan
                       (TestRow.class.getName(), "alternate key",
-                       new String[] {"+a"}, false, "a >= ?0", "a < ?1"),
+                       new String[] {"+a"}, false, "a >= ?1", "a < ?2"),
                       new QueryPlan.RangeScan
                       (TestRow.class.getName(), "alternate key",
-                       new String[] {"+a"}, false, "a > ?2", "a <= ?3")
+                       new String[] {"+a"}, false, "a > ?3", "a <= ?4")
                       ), plan);
 
         plan = indexA.scannerPlan(null, "a >= ? && a < ? || !(a > ? && a <= ?)");
         comparePlans(new QueryPlan.RangeUnion
                      (new QueryPlan.RangeScan
                       (TestRow.class.getName(), "alternate key",
-                       new String[] {"+a"}, false, "a >= ?0", "a < ?1"),
+                       new String[] {"+a"}, false, "a >= ?1", "a < ?2"),
                       new QueryPlan.RangeScan
                       (TestRow.class.getName(), "alternate key",
-                       new String[] {"+a"}, false, null, "a <= ?2"),
+                       new String[] {"+a"}, false, null, "a <= ?3"),
                       new QueryPlan.RangeScan
                       (TestRow.class.getName(), "alternate key",
-                       new String[] {"+a"}, false, "a > ?3", null)
+                       new String[] {"+a"}, false, "a > ?4", null)
                       ), plan);
                      
         plan = indexA.scannerPlan(null, "a >= ? && a < ? || (a > ? && a <= ? && id != ?)");
         comparePlans(new QueryPlan.RangeUnion
                      (new QueryPlan.RangeScan
                       (TestRow.class.getName(), "alternate key",
-                       new String[] {"+a"}, false, "a >= ?0", "a < ?1"),
-                      new QueryPlan.Filter("id != ?4", new QueryPlan.RangeScan
+                       new String[] {"+a"}, false, "a >= ?1", "a < ?2"),
+                      new QueryPlan.Filter("id != ?5", new QueryPlan.RangeScan
                       (TestRow.class.getName(), "alternate key",
-                       new String[] {"+a"}, false, "a > ?2", "a <= ?3"))
+                       new String[] {"+a"}, false, "a > ?3", "a <= ?4"))
                       ), plan);
 
         plan = indexA.scannerPlan(null, "(a >= ? && a < ? || a > ? && a <= ?) && id != ?");
         comparePlans(new QueryPlan.RangeUnion
-                     (new QueryPlan.Filter("id != ?4", new QueryPlan.RangeScan
+                     (new QueryPlan.Filter("id != ?5", new QueryPlan.RangeScan
                       (TestRow.class.getName(), "alternate key",
-                       new String[] {"+a"}, false, "a >= ?0", "a < ?1")),
-                      new QueryPlan.Filter("id != ?4", new QueryPlan.RangeScan
+                       new String[] {"+a"}, false, "a >= ?1", "a < ?2")),
+                      new QueryPlan.Filter("id != ?5", new QueryPlan.RangeScan
                       (TestRow.class.getName(), "alternate key",
-                       new String[] {"+a"}, false, "a > ?2", "a <= ?3"))
+                       new String[] {"+a"}, false, "a > ?3", "a <= ?4"))
                       ), plan);
     }
 
     @Test
     public void alternateKey() throws Exception {
-        QueryPlan plan = mIndexA.scannerPlan(null, "a == ?0 && a != ?0");
+        QueryPlan plan = mIndexA.scannerPlan(null, "a == ?1 && a != ?1");
         comparePlans(new QueryPlan.Empty(), plan);
 
-        plan = mIndexA.scannerPlan(null, "a == ?0 && a != ?0 && id == ?");
+        plan = mIndexA.scannerPlan(null, "a == ?1 && a != ?1 && id == ?");
         comparePlans(new QueryPlan.Empty(), plan);
 
         plan = mIndexA.scannerPlan(null, null);
@@ -317,7 +317,7 @@ public class QueryPlanTest {
 
         plan = mIndexA.scannerPlan(null, "b == ?");
         comparePlans(new QueryPlan.Filter
-                     ("b == ?0", new QueryPlan.NaturalJoin
+                     ("b == ?1", new QueryPlan.NaturalJoin
                       (TestRow.class.getName(), "primary key", new String[] {"+id"},
                        new QueryPlan.FullScan
                        (TestRow.class.getName(), "alternate key",
@@ -326,20 +326,20 @@ public class QueryPlanTest {
 
         plan = mIndexA.scannerPlan(null, "a >= ? && a < ? && b == ?");
         comparePlans(new QueryPlan.Filter
-                     ("b == ?2", new QueryPlan.NaturalJoin
+                     ("b == ?3", new QueryPlan.NaturalJoin
                       (TestRow.class.getName(), "primary key", new String[] {"+id"},
                        new QueryPlan.RangeScan
                        (TestRow.class.getName(), "alternate key",
-                        new String[] {"+a"}, false, "a >= ?0", "a < ?1"))),
+                        new String[] {"+a"}, false, "a >= ?1", "a < ?2"))),
                      plan);
 
         plan = mIndexA.scannerPlan(null, "a > ? && id != ?");
         comparePlans(new QueryPlan.NaturalJoin
                      (TestRow.class.getName(), "primary key", new String[] {"+id"},
                       new QueryPlan.Filter
-                      ("id != ?1", new QueryPlan.RangeScan
+                      ("id != ?2", new QueryPlan.RangeScan
                        (TestRow.class.getName(), "alternate key",
-                        new String[] {"+a"}, false, "a > ?0", null))),
+                        new String[] {"+a"}, false, "a > ?1", null))),
                      plan);
     }
 
@@ -347,10 +347,10 @@ public class QueryPlanTest {
     public void secondaryIndexUnjoined() throws Exception {
         Table<TestRow> indexB = mIndexB.viewUnjoined();
 
-        QueryPlan plan = indexB.scannerPlan(null, "b == ?0 && b != ?0");
+        QueryPlan plan = indexB.scannerPlan(null, "b == ?1 && b != ?1");
         comparePlans(new QueryPlan.Empty(), plan);
 
-        plan = indexB.scannerPlan(null, "b == ?0 && b != ?0 && id == ?");
+        plan = indexB.scannerPlan(null, "b == ?1 && b != ?1 && id == ?");
         comparePlans(new QueryPlan.Empty(), plan);
 
         plan = indexB.scannerPlan(null, null);
@@ -359,7 +359,7 @@ public class QueryPlanTest {
                       new String[] {"+b", "+id"}, false),
                      plan);
 
-        plan = indexB.scannerPlan(null, "b == ?0 || b != ?0");
+        plan = indexB.scannerPlan(null, "b == ?1 || b != ?1");
         comparePlans(new QueryPlan.FullScan
                      (TestRow.class.getName(), "secondary index",
                       new String[] {"+b", "+id"}, false),
@@ -368,31 +368,31 @@ public class QueryPlanTest {
         plan = indexB.scannerPlan(null, "b < ?");
         comparePlans(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "secondary index",
-                      new String[] {"+b", "+id"}, false, null, "b < ?0"),
+                      new String[] {"+b", "+id"}, false, null, "b < ?1"),
                      plan);
 
         plan = indexB.scannerPlan(null, "b >= ?");
         comparePlans(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "secondary index",
-                      new String[] {"+b", "+id"}, false, "b >= ?0", null),
+                      new String[] {"+b", "+id"}, false, "b >= ?1", null),
                      plan);
 
         plan = indexB.scannerPlan(null, "b >= ? && b < ?");
         comparePlans(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "secondary index",
-                      new String[] {"+b", "+id"}, false, "b >= ?0", "b < ?1"),
+                      new String[] {"+b", "+id"}, false, "b >= ?1", "b < ?2"),
                      plan);
 
         plan = indexB.scannerPlan(null, "b == ?");
         comparePlans(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "secondary index",
-                      new String[] {"+b", "+id"}, false, "b >= ?0", "b <= ?0"),
+                      new String[] {"+b", "+id"}, false, "b >= ?1", "b <= ?1"),
                      plan);
 
         plan = indexB.scannerPlan(null, "b == ? && id > ?");
         comparePlans(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "secondary index",
-                      new String[] {"+b", "+id"}, false, "b == ?0 && id > ?1", "b <= ?0"),
+                      new String[] {"+b", "+id"}, false, "b == ?1 && id > ?2", "b <= ?1"),
                      plan);
 
         // Double check that the above plan is correct.
@@ -424,7 +424,7 @@ public class QueryPlanTest {
         comparePlans(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "secondary index",
                       new String[] {"+b", "+id"}, false,
-                      "b == ?0 && id >= ?1", "b == ?0 && id <= ?1"),
+                      "b == ?1 && id >= ?2", "b == ?1 && id <= ?2"),
                      plan);
 
         try {
@@ -436,35 +436,35 @@ public class QueryPlanTest {
 
         plan = indexB.scannerPlan(null, "id == ?");
         comparePlans(new QueryPlan.Filter
-                     ("id == ?0", new QueryPlan.FullScan
+                     ("id == ?1", new QueryPlan.FullScan
                       (TestRow.class.getName(), "secondary index",
                        new String[] {"+b", "+id"}, false)),
                      plan);
 
-        plan = indexB.scannerPlan(null, "b == ?0 && b != ?0 || id == ?1");
+        plan = indexB.scannerPlan(null, "b == ?1 && b != ?1 || id == ?2");
         comparePlans(new QueryPlan.Filter
-                     ("id == ?1", new QueryPlan.FullScan
+                     ("id == ?2", new QueryPlan.FullScan
                       (TestRow.class.getName(), "secondary index",
                        new String[] {"+b", "+id"}, false)),
                      plan);
 
         plan = indexB.scannerPlan(null, "id == ? && b > ?");
         comparePlans(new QueryPlan.Filter
-                     ("id == ?0", new QueryPlan.RangeScan
+                     ("id == ?1", new QueryPlan.RangeScan
                       (TestRow.class.getName(), "secondary index",
-                       new String[] {"+b", "+id"}, false, "b > ?1", null)),
+                       new String[] {"+b", "+id"}, false, "b > ?2", null)),
                      plan);
 
         plan = indexB.scannerPlan(null, "b != ?");
         comparePlans(new QueryPlan.Filter
-                     ("b != ?0", new QueryPlan.FullScan
+                     ("b != ?1", new QueryPlan.FullScan
                       (TestRow.class.getName(), "secondary index",
                        new String[] {"+b", "+id"}, false)),
                      plan);
 
-        plan = indexB.scannerPlan(null, "b < ?0 || b > ?0");
+        plan = indexB.scannerPlan(null, "b < ?1 || b > ?1");
         comparePlans(new QueryPlan.Filter
-                     ("b != ?0", new QueryPlan.FullScan
+                     ("b != ?1", new QueryPlan.FullScan
                       (TestRow.class.getName(), "secondary index",
                        new String[] {"+b", "+id"}, false)),
                      plan);
@@ -473,43 +473,43 @@ public class QueryPlanTest {
         comparePlans(new QueryPlan.RangeUnion
                      (new QueryPlan.RangeScan
                       (TestRow.class.getName(), "secondary index",
-                       new String[] {"+b", "+id"}, false, "b >= ?0", "b < ?1"),
+                       new String[] {"+b", "+id"}, false, "b >= ?1", "b < ?2"),
                       new QueryPlan.RangeScan
                       (TestRow.class.getName(), "secondary index",
-                       new String[] {"+b", "+id"}, false, "b > ?2", "b <= ?3")
+                       new String[] {"+b", "+id"}, false, "b > ?3", "b <= ?4")
                       ), plan);
 
         plan = indexB.scannerPlan(null, "b >= ? && b < ? || !(b > ? && b <= ?)");
         comparePlans(new QueryPlan.RangeUnion
                      (new QueryPlan.RangeScan
                       (TestRow.class.getName(), "secondary index",
-                       new String[] {"+b", "+id"}, false, "b >= ?0", "b < ?1"),
+                       new String[] {"+b", "+id"}, false, "b >= ?1", "b < ?2"),
                       new QueryPlan.RangeScan
                       (TestRow.class.getName(), "secondary index",
-                       new String[] {"+b", "+id"}, false, null, "b <= ?2"),
+                       new String[] {"+b", "+id"}, false, null, "b <= ?3"),
                       new QueryPlan.RangeScan
                       (TestRow.class.getName(), "secondary index",
-                       new String[] {"+b", "+id"}, false, "b > ?3", null)
+                       new String[] {"+b", "+id"}, false, "b > ?4", null)
                       ), plan);
                      
         plan = indexB.scannerPlan(null, "b >= ? && b < ? || (b > ? && b <= ? && id != ?)");
         comparePlans(new QueryPlan.RangeUnion
                      (new QueryPlan.RangeScan
                       (TestRow.class.getName(), "secondary index",
-                       new String[] {"+b", "+id"}, false, "b >= ?0", "b < ?1"),
-                      new QueryPlan.Filter("id != ?4", new QueryPlan.RangeScan
+                       new String[] {"+b", "+id"}, false, "b >= ?1", "b < ?2"),
+                      new QueryPlan.Filter("id != ?5", new QueryPlan.RangeScan
                       (TestRow.class.getName(), "secondary index",
-                       new String[] {"+b", "+id"}, false, "b > ?2", "b <= ?3"))
+                       new String[] {"+b", "+id"}, false, "b > ?3", "b <= ?4"))
                       ), plan);
 
         plan = indexB.scannerPlan(null, "(b >= ? && b < ? || b > ? && b <= ?) && id != ?");
         comparePlans(new QueryPlan.RangeUnion
-                     (new QueryPlan.Filter("id != ?4", new QueryPlan.RangeScan
+                     (new QueryPlan.Filter("id != ?5", new QueryPlan.RangeScan
                       (TestRow.class.getName(), "secondary index",
-                       new String[] {"+b", "+id"}, false, "b >= ?0", "b < ?1")),
-                      new QueryPlan.Filter("id != ?4", new QueryPlan.RangeScan
+                       new String[] {"+b", "+id"}, false, "b >= ?1", "b < ?2")),
+                      new QueryPlan.Filter("id != ?5", new QueryPlan.RangeScan
                       (TestRow.class.getName(), "secondary index",
-                       new String[] {"+b", "+id"}, false, "b > ?2", "b <= ?3"))
+                       new String[] {"+b", "+id"}, false, "b > ?3", "b <= ?4"))
                       ), plan);
     }
 
@@ -518,10 +518,10 @@ public class QueryPlanTest {
         QueryPlan plan = mIndexB.scannerPlan(null, "(c > ? || c <= ?) && b != ? && a != ?");
 
         comparePlans(new QueryPlan.Filter
-                     ("(c > ?0 || c <= ?1) && a != ?3", new QueryPlan.NaturalJoin
+                     ("(c > ?1 || c <= ?2) && a != ?4", new QueryPlan.NaturalJoin
                       (TestRow.class.getName(), "primary key", new String[] {"+id"},
                        new QueryPlan.Filter
-                       ("b != ?2", new QueryPlan.FullScan
+                       ("b != ?3", new QueryPlan.FullScan
                         (TestRow.class.getName(), "secondary index", new String[] { "+b", "+id"},
                          false)))),
                      plan);
@@ -530,31 +530,31 @@ public class QueryPlanTest {
 
         comparePlans(new QueryPlan.RangeUnion
                      (new QueryPlan.Filter
-                      ("c != ?2", new QueryPlan.NaturalJoin
+                      ("c != ?3", new QueryPlan.NaturalJoin
                        (TestRow.class.getName(), "primary key", new String[] {"+id"},
                         new QueryPlan.Filter
-                        ("id != ?1", new QueryPlan.RangeScan
+                        ("id != ?2", new QueryPlan.RangeScan
                          (TestRow.class.getName(), "secondary index", new String[] { "+b", "+id"},
-                          false, "b >= ?0", "b <= ?0")))),
+                          false, "b >= ?1", "b <= ?1")))),
                       new QueryPlan.Filter
-                      ("c > ?4", new QueryPlan.NaturalJoin
+                      ("c > ?5", new QueryPlan.NaturalJoin
                        (TestRow.class.getName(), "primary key", new String[] {"+id"},
                         new QueryPlan.RangeScan
                         (TestRow.class.getName(), "secondary index", new String[] { "+b", "+id"},
-                         false, "b >= ?3", "b <= ?3")))),
+                         false, "b >= ?4", "b <= ?4")))),
                      plan);
 
         // With this plan, the range over 'b' is the same, and so it doesn't open multiple
         // cursors which do the exact same thing.
-        plan = mIndexB.scannerPlan(null, "(b == ? && id != ? && c != ?) || (b == ?0 && c > ?)");
+        plan = mIndexB.scannerPlan(null, "(b == ? && id != ? && c != ?) || (b == ?1 && c > ?)");
 
 
         comparePlans(new QueryPlan.Filter
-                     ("c > ?3 || (id != ?1 && c != ?2)", new QueryPlan.NaturalJoin
+                     ("c > ?4 || (id != ?2 && c != ?3)", new QueryPlan.NaturalJoin
                       (TestRow.class.getName(), "primary key", new String[] {"+id"},
                        new QueryPlan.RangeScan
                        (TestRow.class.getName(), "secondary index", new String[] { "+b", "+id"},
-                        false, "b >= ?0", "b <= ?0"))),
+                        false, "b >= ?1", "b <= ?1"))),
                      plan);
     }
 
@@ -565,20 +565,20 @@ public class QueryPlanTest {
         QueryPlan plan = indexC.scannerPlan(null, "c >= ?");
         comparePlans(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "secondary index",
-                      new String[] {"-c", "+b", "+id"}, false, null, "c <= ?0"),
+                      new String[] {"-c", "+b", "+id"}, false, null, "c <= ?1"),
                      plan);
 
         plan = indexC.scannerPlan(null, "c > ?");
         comparePlans(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "secondary index",
-                      new String[] {"-c", "+b", "+id"}, false, null, "c < ?0"),
+                      new String[] {"-c", "+b", "+id"}, false, null, "c < ?1"),
                      plan);
 
         plan = indexC.scannerPlan(null, "b == ? && c > ? && c <= ?");
         comparePlans(new QueryPlan.Filter
-                     ("b == ?0", new QueryPlan.RangeScan
+                     ("b == ?1", new QueryPlan.RangeScan
                       (TestRow.class.getName(), "secondary index",
-                       new String[] {"-c", "+b", "+id"}, false, "c >= ?2", "c < ?1")),
+                       new String[] {"-c", "+b", "+id"}, false, "c >= ?3", "c < ?2")),
                      plan);
 
         // Double check that the above plans are correct.
@@ -608,27 +608,27 @@ public class QueryPlanTest {
         }
 
         plan = indexC.scannerPlan
-            (null, "c == ?6 && b == ?5 && id <= ?4 || c == ?3 && b >= ?2 && b <= ?1 || c == ?0");
+            (null, "c == ?7 && b == ?6 && id <= ?5 || c == ?4 && b >= ?3 && b <= ?2 || c == ?1");
         comparePlans(new QueryPlan.RangeUnion
                      (new QueryPlan.RangeScan
                       (TestRow.class.getName(), "secondary index",
                        new String[] {"-c", "+b", "+id"}, false,
-                       "c == ?6 && b >= ?5", "c == ?6 && b == ?5 && id <= ?4"),
+                       "c == ?7 && b >= ?6", "c == ?7 && b == ?6 && id <= ?5"),
                       new QueryPlan.RangeScan
                       (TestRow.class.getName(), "secondary index",
                        new String[] {"-c", "+b", "+id"}, false,
-                       "c == ?3 && b >= ?2", "c == ?3 && b <= ?1"),
+                       "c == ?4 && b >= ?3", "c == ?4 && b <= ?2"),
                       new QueryPlan.RangeScan
                       (TestRow.class.getName(), "secondary index",
                        new String[] {"-c", "+b", "+id"}, false,
-                       "c >= ?0", "c <= ?0")
+                       "c >= ?1", "c <= ?1")
                       ), plan);
 
         plan = indexC.scannerPlan(null, "c < ? && b == ?");
         comparePlans(new QueryPlan.Filter
-                     ("b == ?1", new QueryPlan.RangeScan
+                     ("b == ?2", new QueryPlan.RangeScan
                       (TestRow.class.getName(), "secondary index",
-                       new String[] {"-c", "+b", "+id"}, false, "c > ?0", null)),
+                       new String[] {"-c", "+b", "+id"}, false, "c > ?1", null)),
                      plan);
     }
 
@@ -638,19 +638,19 @@ public class QueryPlanTest {
 
         comparePlans(new QueryPlan.RangeUnion
                      (new QueryPlan.Filter
-                      ("a != ?3", new QueryPlan.NaturalJoin
+                      ("a != ?4", new QueryPlan.NaturalJoin
                        (TestRow.class.getName(), "primary key", new String[] {"+id"},
                         new QueryPlan.Filter
-                        ("b != ?2", new QueryPlan.RangeScan
+                        ("b != ?3", new QueryPlan.RangeScan
                          (TestRow.class.getName(), "secondary index", new String[]{"-c","+b","+id"},
-                          false, null, "c < ?0")))),
+                          false, null, "c < ?1")))),
                      (new QueryPlan.Filter
-                      ("a != ?3", new QueryPlan.NaturalJoin
+                      ("a != ?4", new QueryPlan.NaturalJoin
                        (TestRow.class.getName(), "primary key", new String[] {"+id"},
                         new QueryPlan.Filter
-                        ("b != ?2", new QueryPlan.RangeScan
+                        ("b != ?3", new QueryPlan.RangeScan
                          (TestRow.class.getName(), "secondary index", new String[]{"-c","+b","+id"},
-                          false, "c >= ?1", null)))))),
+                          false, "c >= ?2", null)))))),
                      plan);
 
         // Double check that the above plan is correct.
@@ -682,18 +682,18 @@ public class QueryPlanTest {
 
         comparePlans(new QueryPlan.RangeUnion
                      (new QueryPlan.Filter
-                      ("c != ?2 && b == ?0", new QueryPlan.NaturalJoin
+                      ("c != ?3 && b == ?1", new QueryPlan.NaturalJoin
                        (TestRow.class.getName(), "primary key", new String[] {"+id"},
                         new QueryPlan.Filter
-                        ("id != ?1", new QueryPlan.RangeScan
+                        ("id != ?2", new QueryPlan.RangeScan
                          (TestRow.class.getName(), "secondary index", new String[] { "+b", "+id"},
-                          false, "b >= ?0", "b <= ?0")))),
+                          false, "b >= ?1", "b <= ?1")))),
                       new QueryPlan.Filter
-                      ("c > ?4 && b == ?3", new QueryPlan.NaturalJoin
+                      ("c > ?5 && b == ?4", new QueryPlan.NaturalJoin
                        (TestRow.class.getName(), "primary key", new String[] {"+id"},
                         new QueryPlan.RangeScan
                         (TestRow.class.getName(), "secondary index", new String[] { "+b", "+id"},
-                         false, "b >= ?3", "b <= ?3")))),
+                         false, "b >= ?4", "b <= ?4")))),
                      plan);
 
         plan = mIndexB.scannerPlan
@@ -701,17 +701,17 @@ public class QueryPlanTest {
 
         comparePlans(new QueryPlan.RangeUnion
                      (new QueryPlan.Filter
-                      ("id != c && c != ?1 && b == ?0", new QueryPlan.NaturalJoin
+                      ("id != c && c != ?2 && b == ?1", new QueryPlan.NaturalJoin
                        (TestRow.class.getName(), "primary key", new String[] {"+id"},
                         new QueryPlan.RangeScan
                         (TestRow.class.getName(), "secondary index", new String[] { "+b", "+id"},
-                         false, "b >= ?0", "b <= ?0"))),
+                         false, "b >= ?1", "b <= ?1"))),
                       new QueryPlan.Filter
-                      ("c > ?3 && b == ?2", new QueryPlan.NaturalJoin
+                      ("c > ?4 && b == ?3", new QueryPlan.NaturalJoin
                        (TestRow.class.getName(), "primary key", new String[] {"+id"},
                         new QueryPlan.RangeScan
                         (TestRow.class.getName(), "secondary index", new String[] { "+b", "+id"},
-                         false, "b >= ?2", "b <= ?2")))),
+                         false, "b >= ?3", "b <= ?3")))),
                      plan);
     }
 
@@ -761,22 +761,22 @@ public class QueryPlanTest {
                      (new String[] {"+a"}, new QueryPlan.DisjointUnion
                       (new QueryPlan.RangeScan
                        (TestRow.class.getName(), "primary key", new String[] {"+id"}, false,
-                        "id >= ?4", null), new QueryPlan.RangeUnion
+                        "id >= ?5", null), new QueryPlan.RangeUnion
                        (new QueryPlan.Filter
-                        ("id < ?4", new QueryPlan.RangeScan
+                        ("id < ?5", new QueryPlan.RangeScan
                          (TestRow.class.getName(), "alternate key",
-                          new String[] {"+a"}, false, "a >= ?0", "a <= ?0")),
+                          new String[] {"+a"}, false, "a >= ?1", "a <= ?1")),
                         new QueryPlan.Filter
-                        ("id < ?4", new QueryPlan.RangeScan
+                        ("id < ?5", new QueryPlan.RangeScan
                          (TestRow.class.getName(), "alternate key", new String[] {"+a"}, false,
-                          "a >= ?1", "a <= ?1"))),
+                          "a >= ?2", "a <= ?2"))),
                        new QueryPlan.Filter
-                       ("a != ?0 && a != ?1", new QueryPlan.NaturalJoin
+                       ("a != ?1 && a != ?2", new QueryPlan.NaturalJoin
                         (TestRow.class.getName(), "primary key", new String[] {"+id"},
                          new QueryPlan.Filter
-                         ("b != ?3", new QueryPlan.RangeScan
+                         ("b != ?4", new QueryPlan.RangeScan
                           (TestRow.class.getName(), "secondary index", new String[] {"+b", "+id"},
-                           false, "b >= ?2", "b == ?2 && id < ?4")))))),
+                           false, "b >= ?3", "b == ?3 && id < ?5")))))),
                      plan);
 
         List<TestRow> results = mTable.newStream(null, query, 1, 2, "world", "x", 100).toList();
@@ -793,23 +793,23 @@ public class QueryPlanTest {
                      (new String[] {"+c"}, new QueryPlan.DisjointUnion
                       (new QueryPlan.RangeScan
                        (TestRow.class.getName(), "primary key", new String[] {"+id"}, false,
-                        "id >= ?4", null), new QueryPlan.RangeUnion
+                        "id >= ?5", null), new QueryPlan.RangeUnion
                        (new QueryPlan.Filter
-                        ("id < ?4", new QueryPlan.RangeScan
+                        ("id < ?5", new QueryPlan.RangeScan
                          (TestRow.class.getName(), "secondary index",
-                          new String[] {"-c", "+b", "+id"}, true, "c >= ?1", "c <= ?1")),
+                          new String[] {"-c", "+b", "+id"}, true, "c >= ?2", "c <= ?2")),
                         new QueryPlan.Filter
-                        ("id < ?4", new QueryPlan.RangeScan
+                        ("id < ?5", new QueryPlan.RangeScan
                          (TestRow.class.getName(), "secondary index",
-                          new String[] {"-c", "+b", "+id"}, true, "c >= ?0", "c <= ?0"))),
+                          new String[] {"-c", "+b", "+id"}, true, "c >= ?1", "c <= ?1"))),
                        new QueryPlan.Filter
-                       ("c != ?0 && c != ?1",
+                       ("c != ?1 && c != ?2",
                         new QueryPlan.NaturalJoin
                         (TestRow.class.getName(), "primary key", new String[] {"+id"},
                          new QueryPlan.Filter
-                         ("b != ?3", new QueryPlan.RangeScan
+                         ("b != ?4", new QueryPlan.RangeScan
                           (TestRow.class.getName(), "secondary index", new String[] {"+b", "+id"},
-                           false, "b >= ?2", "b == ?2 && id < ?4")))))), plan);
+                           false, "b >= ?3", "b == ?3 && id < ?5")))))), plan);
 
         results = mTable.newStream(null, query, 101, 102, "world", "x", 100).toList();
         assertEquals(4, results.size());
@@ -825,21 +825,21 @@ public class QueryPlanTest {
                      (new String[] {"+b"}, new QueryPlan.DisjointUnion
                       (new QueryPlan.RangeScan
                        (TestRow.class.getName(), "primary key", new String[] {"+id"}, false,
-                        "id >= ?4", null), new QueryPlan.RangeUnion
+                        "id >= ?5", null), new QueryPlan.RangeUnion
                        (new QueryPlan.RangeScan
                         (TestRow.class.getName(), "secondary index",
-                         new String[] {"+b", "+id"}, false, "b >= ?0", "b == ?0 && id < ?4"),
+                         new String[] {"+b", "+id"}, false, "b >= ?1", "b == ?1 && id < ?5"),
                         new QueryPlan.RangeScan
                         (TestRow.class.getName(), "secondary index", new String[] {"+b", "+id"},
-                         false, "b >= ?1", "b == ?1 && id < ?4")),
+                         false, "b >= ?2", "b == ?2 && id < ?5")),
                        new QueryPlan.Filter
-                       ("b != ?0 && b != ?1",
+                       ("b != ?1 && b != ?2",
                         new QueryPlan.NaturalJoin
                         (TestRow.class.getName(), "primary key", new String[] {"+id"},
                          new QueryPlan.Filter
-                         ("a != ?3 && id < ?4", new QueryPlan.RangeScan
+                         ("a != ?4 && id < ?5", new QueryPlan.RangeScan
                           (TestRow.class.getName(), "alternate key", new String[] {"+a"},
-                           false, "a >= ?2", "a <= ?2")))))), plan);
+                           false, "a >= ?3", "a <= ?3")))))), plan);
 
         results = mTable.newStream(null, query, "hello1", "hello2", 4, 1, 4).toList();
         assertEquals(4, results.size());
@@ -877,7 +877,7 @@ public class QueryPlanTest {
         comparePlans(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "secondary index",
                       new String[] {"-c", "+b", "+id"}, false,
-                      "c == ?1 && b >= ?0", "c == ?1 && b <= ?0"),
+                      "c == ?2 && b >= ?1", "c == ?2 && b <= ?1"),
                      plan);
     }
 
@@ -888,16 +888,16 @@ public class QueryPlanTest {
 
         QueryPlan plan = index.scannerPlan(null, "b == ? && c == ?");
         comparePlans(new QueryPlan.Filter
-                     ("c == ?1", new QueryPlan.RangeScan
+                     ("c == ?2", new QueryPlan.RangeScan
                       (TestRow2.class.getName(), "secondary index",
-                       new String[] {"+b", "+a"}, false, "b >= ?0", "b <= ?0")),
+                       new String[] {"+b", "+a"}, false, "b >= ?1", "b <= ?1")),
                      plan);
 
         plan = table.scannerPlan(null, "b == ? && c == ?");
         comparePlans(new QueryPlan.Filter
-                     ("c == ?1", new QueryPlan.RangeScan
+                     ("c == ?2", new QueryPlan.RangeScan
                       (TestRow2.class.getName(), "secondary index",
-                       new String[] {"+b", "+a"}, false, "b >= ?0", "b <= ?0")),
+                       new String[] {"+b", "+a"}, false, "b >= ?1", "b <= ?1")),
                      plan);
     }
 
@@ -928,14 +928,14 @@ public class QueryPlanTest {
 
         comparePlans(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "secondary index",
-                      new String[] {"+b", "+id"}, true, null, "b <= ?0"),
+                      new String[] {"+b", "+id"}, true, null, "b <= ?1"),
                      plan);
 
         plan = mTable.scannerPlan(null, "{c, b}: c >= ?");
 
         comparePlans(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "secondary index",
-                      new String[] {"-c", "+b", "+id"}, true, null, "c <= ?0"),
+                      new String[] {"-c", "+b", "+id"}, true, null, "c <= ?1"),
                      plan);
 
         for (int i=1; i<=5; i++) {

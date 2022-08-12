@@ -239,7 +239,7 @@ public class RowPredicateMaker {
                 argType = argType.arrayType();
             }
 
-            Variable argVar = mCtorMaker.param(0).aget(filter.argument());
+            Variable argVar = mCtorMaker.param(0).aget(filter.argument() - 1);
             argVar = ConvertCallSite.make(mCtorMaker, argType, argVar);
 
             if (!hasField) {

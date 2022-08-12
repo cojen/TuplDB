@@ -332,8 +332,8 @@ public class FuzzTest {
                 bob.append(" && ");
             }
             Column c = columns[i];
-            bob.append(c.name).append(" >= ?").append(i).append(" && ");
-            bob.append(c.name).append(" <= ?").append(i);
+            bob.append(c.name).append(" >= ?").append(i + 1).append(" && ");
+            bob.append(c.name).append(" <= ?").append(i + 1);
         }
         return bob.toString();
     }
