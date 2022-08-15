@@ -67,8 +67,8 @@ public class IndexSelectorTest {
         verify("e == ? && b == ?", "+e+b+id", "e == ?1 && b == ?2");
         verify("b == ? && e == ?", "+b+e+id", "b == ?1 && e == ?2");
 
-        verify("{c, b}: c != ? && b != ?", "+c+b+id", "{c, b}: c != ?1 && b != ?2");
-        verify("{c, b, e}: c != ? && b != ?", "+id", "{c, b, e}: c != ?1 && b != ?2");
+        verify("{c, b} c != ? && b != ?", "+c+b+id", "{c, b} c != ?1 && b != ?2");
+        verify("{c, b, e} c != ? && b != ?", "+id", "{c, b, e} c != ?1 && b != ?2");
 
         verify("a == ? || b == ?", "+a+id", "a == ?1", "+b+id", "b == ?2 && a != ?1");
         verify("a == ? || b == ? || id == ?", "+a+id", "a == ?1", "+b+id", "b == ?2 && a != ?1",
@@ -79,34 +79,34 @@ public class IndexSelectorTest {
                "+c+b+id", "c == ?3 && b == ?4 && a != ?1 && b != ?2",
                "+d+c+b+id", "d == ?5 && c != ?6 && a != ?1 && b != ?2 && (c != ?3 || b != ?4)");
 
-        verify("{c, b}: c > ? && b > ? || id == ?",
-               "+id", "{c, b}: id == ?3",
-               "+c+b+id", "{c, b}: c > ?1 && b > ?2 && id != ?3");
+        verify("{c, b} c > ? && b > ? || id == ?",
+               "+id", "{c, b} id == ?3",
+               "+c+b+id", "{c, b} c > ?1 && b > ?2 && id != ?3");
 
-        verify("{c, b}: c != ? || b == ?", "+c+b+id", "{c, b}: c != ?1 || b == ?2");
+        verify("{c, b} c != ? || b == ?", "+c+b+id", "{c, b} c != ?1 || b == ?2");
 
-        verify("{c, b}: c != ? || b == ? && d != ?",
-               "+d+c+b+id", "{c, b}: c != ?1 || (b == ?2 && d != ?3)");
+        verify("{c, b} c != ? || b == ? && d != ?",
+               "+d+c+b+id", "{c, b} c != ?1 || (b == ?2 && d != ?3)");
 
-        verify("{c, b}: c != ? || b == ? || d == ?",
-               "+d+c+b+id", "{c, b}: c != ?1 || b == ?2 || d == ?3");
-        verify("{c, b}: c != ? || b == ? || d == c",
-               "+d+c+b+id", "{c, b}: c != ?1 || b == ?2 || d == c");
-        verify("{c, b}: c != ? || b == ? || d == e",
-               "+id", "{c, b}: c != ?1 || b == ?2 || d == e");
-        verify("{*}: c != ? || b == ? || d == e", "+id", "c != ?1 || b == ?2 || d == e");
+        verify("{c, b} c != ? || b == ? || d == ?",
+               "+d+c+b+id", "{c, b} c != ?1 || b == ?2 || d == ?3");
+        verify("{c, b} c != ? || b == ? || d == c",
+               "+d+c+b+id", "{c, b} c != ?1 || b == ?2 || d == c");
+        verify("{c, b} c != ? || b == ? || d == e",
+               "+id", "{c, b} c != ?1 || b == ?2 || d == e");
+        verify("{*} c != ? || b == ? || d == e", "+id", "c != ?1 || b == ?2 || d == e");
 
         verify("a == ? || a == ?", "+a+id", "a == ?1 || a == ?2");
         verify("a == ? || b == ? || a == ?",
                "+b+id", "b == ?2", "+a+id", "(a == ?1 || a == ?3) && b != ?2");
 
         verify("e == b", "+id", "e == b");
-        verify("{e, b}: e == b", "+e+b+id", "{e, b}: e == b");
-        verify("{e, b}: b == e", "+b+e+id", "{e, b}: b == e");
-        verify("{b, e}: b == e", "+b+e+id", "{b, e}: b == e");
-        verify("{b, e}: e != ? && b in ?", "+e+b+id", "{b, e}: e != ?1 && b in ?2");
+        verify("{e, b} e == b", "+e+b+id", "{e, b} e == b");
+        verify("{e, b} b == e", "+b+e+id", "{e, b} b == e");
+        verify("{b, e} b == e", "+b+e+id", "{b, e} b == e");
+        verify("{b, e} e != ? && b in ?", "+e+b+id", "{b, e} e != ?1 && b in ?2");
 
-        verify("{b, id}: b == ? && id == ?", "+b+id", "{b, id}: b == ?1 && id == ?2");
+        verify("{b, id} b == ? && id == ?", "+b+id", "{b, id} b == ?1 && id == ?2");
         verify("d == ? && c in ? && b > ?", "+d+b+id", "d == ?1 && c in ?2 && b > ?3");
         verify("d == ? && !(c in ?) && b in ?", "+d+c+b+id", "d == ?1 && !(c in ?2) && b in ?3");
 
@@ -114,29 +114,29 @@ public class IndexSelectorTest {
         verify("d == ? && c != ? && b > ?", "+d+b+id", "d == ?1 && c != ?2 && b > ?3");
         verify("d == ? && b > ? && c > ?", "+d+c+b+id", "d == ?1 && b > ?2 && c > ?3");
 
-        verify("{+c, *}: c > ? && b > ?", "+c+b+id", "c > ?1 && b > ?2");
-        verify("{+b, *}: c != ? && b > ?", "+b+id", "c != ?1 && b > ?2");
-        verify("{+d, *}: d > ? && b > ? && c > ?", "+d+c+b+id", "d > ?1 && b > ?2 && c > ?3");
-        verify("{+d, +b, *}: b > ? && c > ? && d > ?", "+d+c+b+id", "b > ?1 && c > ?2 && d > ?3");
+        verify("{+c, *} c > ? && b > ?", "+c+b+id", "c > ?1 && b > ?2");
+        verify("{+b, *} c != ? && b > ?", "+b+id", "c != ?1 && b > ?2");
+        verify("{+d, *} d > ? && b > ? && c > ?", "+d+c+b+id", "d > ?1 && b > ?2 && c > ?3");
+        verify("{+d, +b, *} b > ? && c > ? && d > ?", "+d+c+b+id", "b > ?1 && c > ?2 && d > ?3");
 
-        verify("{+b, *}: e == ? && b == ?", "+b+e+id", "e == ?1 && b == ?2");
-        verify("{-b, *}: e == ? && b == ?", "R+b+e+id", "e == ?1 && b == ?2");
-        verify("{+e, *}: e == ? && b == ?", "+e+b+id", "e == ?1 && b == ?2");
+        verify("{+b, *} e == ? && b == ?", "+b+e+id", "e == ?1 && b == ?2");
+        verify("{-b, *} e == ? && b == ?", "R+b+e+id", "e == ?1 && b == ?2");
+        verify("{+e, *} e == ? && b == ?", "+e+b+id", "e == ?1 && b == ?2");
 
-        verify("{+d, +c, *}: d == ?", "+d+c+b+id", "d == ?1");
-        verify("{-d, -c, *}: d == ?", "R+d+c+b+id", "d == ?1");
-        verify("{+d, -c, *}: d == ?", "+d+b+id", "d == ?1");
-        verify("{-d, +c, *}: d == ?", "R+d+b+id", "d == ?1");
+        verify("{+d, +c, *} d == ?", "+d+c+b+id", "d == ?1");
+        verify("{-d, -c, *} d == ?", "R+d+c+b+id", "d == ?1");
+        verify("{+d, -c, *} d == ?", "+d+b+id", "d == ?1");
+        verify("{-d, +c, *} d == ?", "R+d+b+id", "d == ?1");
 
-        verify("{+c, *}: c > ? && c < ? && b > ? && b < ? || d == ?",
+        verify("{+c, *} c > ? && c < ? && b > ? && b < ? || d == ?",
                "+d+b+id", "d == ?5",
                "+c+b+id", "c > ?1 && c < ?2 && b > ?3 && b < ?4 && d != ?5");
 
-        verify("{+c, *}: c > ? && b > ? && b < ? || d == ?",
+        verify("{+c, *} c > ? && b > ? && b < ? || d == ?",
                "+d+b+id", "d == ?4",
                "+b+id", "c > ?1 && b > ?2 && b < ?3 && d != ?4");
 
-        verify("{+c, *}: c > ? && b > ? && b < ?", "+b+id", "c > ?1 && b > ?2 && b < ?3");
+        verify("{+c, *} c > ? && b > ? && b < ?", "+b+id", "c > ?1 && b > ?2 && b < ?3");
     }
 
     @Test
@@ -146,8 +146,8 @@ public class IndexSelectorTest {
         verify("id == ?", "+id", "id == ?1");
         verify("a == ?", "+a", "a == ?1");
         verify("b == ?", "+b-c+id", "b == ?1");
-        verify("{b}: b != ? && d == ?", "+b-c+id", "{b}: b != ?1 && d == ?2");
-        verify("{a, id}: a != ? || id == ?", "+a", "{a, id}: a != ?1 || id == ?2");
+        verify("{b} b != ? && d == ?", "+b-c+id", "{b} b != ?1 && d == ?2");
+        verify("{a, id} a != ? || id == ?", "+a", "{a, id} a != ?1 || id == ?2");
 
         verify("c == ? && e > ? && a > ?", "+c-e+id", "c == ?1 && e > ?2 && a > ?3");
         verify("c == ? && a > ? && e > ?", "+c+a+id", "c == ?1 && a > ?2 && e > ?3");
@@ -175,11 +175,11 @@ public class IndexSelectorTest {
 
         verify("a == ? || id < ?", "+a", "a == ?1", "+id", "id < ?2 && a != ?1");
 
-        verify("{+a, *}: a > ? || (b > ? && b < ?)", "+id", "a > ?1 || (b > ?2 && b < ?3)");
+        verify("{+a, *} a > ? || (b > ? && b < ?)", "+id", "a > ?1 || (b > ?2 && b < ?3)");
 
-        verify("{+a, *}: (b > ? && b < ?) || a > ?", "+id", "(b > ?1 && b < ?2) || a > ?3");
+        verify("{+a, *} (b > ? && b < ?) || a > ?", "+id", "(b > ?1 && b < ?2) || a > ?3");
 
-        verify("{-a, *}: (a > ? && a < ?) || (b > ? && b < ?)",
+        verify("{-a, *} (a > ? && a < ?) || (b > ? && b < ?)",
                "R+a", "a > ?1 && a < ?2",
                "+b-c+id", "b > ?3 && b < ?4 && (a <= ?1 || a >= ?2)");
 
@@ -187,8 +187,8 @@ public class IndexSelectorTest {
         // efficient than checking a predicate for each row.
         verify("id > ?", "+id", "id > ?1");
         verify("id < ?", "R+id", "id < ?1");
-        verify("{a}: a > ?", "+a", "{a}: a > ?1");
-        verify("{a}: a < ?", "R+a", "{a}: a < ?1");
+        verify("{a} a > ?", "+a", "{a} a > ?1");
+        verify("{a} a < ?", "R+a", "{a} a < ?1");
     }
 
     @Test
@@ -199,8 +199,8 @@ public class IndexSelectorTest {
         // efficient than checking a predicate for each row.
         verify("id > ?", "R-id", "id > ?1");
         verify("id < ?", "-id", "id < ?1");
-        verify("{a}: a > ?", "R-a+b-id", "{a}: a > ?1");
-        verify("{a}: a < ?", "-a+b-id", "{a}: a < ?1");
+        verify("{a} a > ?", "R-a+b-id", "{a} a > ?1");
+        verify("{a} a < ?", "-a+b-id", "{a} a < ?1");
     }
 
     @PrimaryKey("id")

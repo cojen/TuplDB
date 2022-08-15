@@ -78,7 +78,7 @@ public record Query(Map<String, ColumnInfo> projection, OrderBy orderBy, RowFilt
         b.append('}');
 
         if (filter != TrueFilter.THE) {
-            b.append(':').append(' ');
+            b.append(' ');
             filter.appendTo(b);
         }
 

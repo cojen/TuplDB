@@ -754,7 +754,7 @@ public class QueryPlanTest {
             mTable.insert(null, row);
         }
 
-        String query = "{+a}: a == ? || a == ? || (b == ? && b != ?) || id >= ?";
+        String query = "{+a} a == ? || a == ? || (b == ? && b != ?) || id >= ?";
         QueryPlan plan = mTable.scannerPlan(null, query);
 
         comparePlans(new QueryPlan.Sort
@@ -786,7 +786,7 @@ public class QueryPlanTest {
         assertEquals(2, results.get(2).a());
         assertEquals(4, results.get(3).a());
 
-        query = "{+c}: c == ? || c == ? || (b == ? && b != ?) || id >= ?";
+        query = "{+c} c == ? || c == ? || (b == ? && b != ?) || id >= ?";
         plan = mTable.scannerPlan(null, query);
 
         comparePlans(new QueryPlan.Sort
@@ -818,7 +818,7 @@ public class QueryPlanTest {
         assertEquals(102, (long) results.get(2).c());
         assertEquals(104, (long) results.get(3).c());
 
-        query = "{+b}: b == ? || b == ? || (a == ? && a != ?) || id >= ?";
+        query = "{+b} b == ? || b == ? || (a == ? && a != ?) || id >= ?";
         plan = mTable.scannerPlan(null, query);
 
         comparePlans(new QueryPlan.Sort
@@ -872,7 +872,7 @@ public class QueryPlanTest {
     public void covering() throws Exception {
         var table = mDatabase.openTable(TestRow.class);
 
-        QueryPlan plan = table.scannerPlan(null, "{b, id}: b == ? && c == ?");
+        QueryPlan plan = table.scannerPlan(null, "{b, id} b == ? && c == ?");
 
         comparePlans(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "secondary index",
@@ -924,14 +924,14 @@ public class QueryPlanTest {
         // positioned at the start of the index and a predicate must be checked to determine
         // when to stop scanning.
 
-        QueryPlan plan = mTable.scannerPlan(null, "{b, id}: b <= ?");
+        QueryPlan plan = mTable.scannerPlan(null, "{b, id} b <= ?");
 
         comparePlans(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "secondary index",
                       new String[] {"+b", "+id"}, true, null, "b <= ?1"),
                      plan);
 
-        plan = mTable.scannerPlan(null, "{c, b}: c >= ?");
+        plan = mTable.scannerPlan(null, "{c, b} c >= ?");
 
         comparePlans(new QueryPlan.RangeScan
                      (TestRow.class.getName(), "secondary index",
@@ -947,13 +947,13 @@ public class QueryPlanTest {
             mTable.insert(null, row);
         }
 
-        List<TestRow> results = mTable.newStream(null, "{b, id}: b <= ?", 3).toList();
+        List<TestRow> results = mTable.newStream(null, "{b, id} b <= ?", 3).toList();
         assertEquals(3, results.size());
         assertEquals("3", results.get(0).b());
         assertEquals("2", results.get(1).b());
         assertEquals("1", results.get(2).b());
 
-        results = mTable.newStream(null, "{c, b}: c >= ?", 3).toList();
+        results = mTable.newStream(null, "{c, b} c >= ?", 3).toList();
         assertEquals(3, results.size());
         assertEquals(3L, (long) results.get(0).c());
         assertEquals(4L, (long) results.get(1).c());

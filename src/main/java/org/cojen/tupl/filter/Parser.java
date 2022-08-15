@@ -62,7 +62,7 @@ public class Parser {
     }
 
     /**
-     * Projection   = "{" ProjColumns "}" [ ':' RowFilter ]
+     * Projection   = "{" ProjColumns "}" [ RowFilter ]
      * ProjColumns  = [ ProjColumn { "," ProjColumn } ]
      * ProjColumn   = ( ( ( ( "+" | "-" ) [ "!" ] ) | "~" ) ColumnName ) | "*"
      *
@@ -181,13 +181,10 @@ public class Parser {
             }
         }
 
-        if (nextCharIgnoreWhitespace() != ':') {
-            if (mPos - 1 >= mFilter.length()) {
-                mNoFilter = true;
-            } else {
-                mPos--;
-                throw error("Colon expected");
-            }
+        if (nextCharIgnoreWhitespace() < 0) {
+            mNoFilter = true;
+        } else {
+            mPos--;
         }
 
         if (wildcard) {
@@ -215,7 +212,7 @@ public class Parser {
         final int start = mPos;
         int c = nextCharIgnoreWhitespace();
         if (c == '{') {
-            mPos = mFilter.indexOf(':', mPos);
+            mPos = mFilter.indexOf('}', mPos);
             if (mPos < 0) {
                 mPos = mFilter.length();
                 mNoFilter = true;

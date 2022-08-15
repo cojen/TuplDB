@@ -164,7 +164,7 @@ public class SortTest {
 
         total = 0;
 
-        try (RowScanner<TestRow> s = table.newRowScanner(null, "{id}: v2 == ?", 0)) {
+        try (RowScanner<TestRow> s = table.newRowScanner(null, "{id} v2 == ?", 0)) {
             for (TestRow row = s.row(); row != null; row = s.step(row)) {
                 total++;
             }

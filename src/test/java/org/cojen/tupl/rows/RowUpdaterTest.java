@@ -50,7 +50,7 @@ public class RowUpdaterTest {
         {
             // Full scan with a projection might choose the secondary index because it has
             // fewer columns.
-            QueryPlan plan = table.scannerPlan(null, "{name, id}: id == ? || name == ?");
+            QueryPlan plan = table.scannerPlan(null, "{name, id} id == ? || name == ?");
             assertEquals(new QueryPlan.Filter
                          ("id == ?1 || name == ?2", new QueryPlan.FullScan
                           (TestRow.class.getName(), "secondary index",
@@ -61,7 +61,7 @@ public class RowUpdaterTest {
         {
             // Full scan for update with chooses the primary index to avoid an extra join, as
             // needed by the update operation itself.
-            QueryPlan plan = table.updaterPlan(null, "{name, id}: id == ? || name == ?");
+            QueryPlan plan = table.updaterPlan(null, "{name, id} id == ? || name == ?");
             assertEquals(new QueryPlan.Filter
                          ("id == ?1 || name == ?2", new QueryPlan.FullScan
                           (TestRow.class.getName(), "primary key",
@@ -69,7 +69,7 @@ public class RowUpdaterTest {
                          plan);
         }
 
-        var u = table.newRowUpdater(null, "{name, id}: id == ? || name == ?", 2, "name-3");
+        var u = table.newRowUpdater(null, "{name, id} id == ? || name == ?", 2, "name-3");
         for (var row = u.row(); u.row() != null; ) {
             try {
                 row.state();
@@ -106,7 +106,7 @@ public class RowUpdaterTest {
             }
         }
 
-        u = table.newRowUpdater(null, "{*, ~path}: id == ? || name == ?", 2, "name-3!");
+        u = table.newRowUpdater(null, "{*, ~path} id == ? || name == ?", 2, "name-3!");
         for (var row = u.row(); u.row() != null; ) {
             try {
                 row.path();
@@ -147,7 +147,7 @@ public class RowUpdaterTest {
             }
         }
 
-        u = table.newRowUpdater(null, "{path, *}: id == ?", 4);
+        u = table.newRowUpdater(null, "{path, *} id == ?", 4);
         for (var row = u.row(); u.row() != null; ) {
             row.state(row.state() + 1000);
             row = u.update(row);

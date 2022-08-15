@@ -72,7 +72,7 @@ import org.cojen.tupl.io.Utils;
  *
  * <blockquote><pre>{@code
  * Query        = RowFilter
- *              | Projection [ ':' RowFilter ]
+ *              | Projection [ RowFilter ]
  * RowFilter    = AndFilter { "||" AndFilter }
  * AndFilter    = EntityFilter { "&&" EntityFilter }
  * EntityFilter = ColumnFilter | ParenFilter
