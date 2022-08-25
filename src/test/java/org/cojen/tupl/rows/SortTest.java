@@ -38,7 +38,7 @@ public class SortTest {
     public void setup() throws Exception {
         mDb = TestUtils.newTempDatabase(SortTest.class, new DatabaseConfig()
                                         .durabilityMode(DurabilityMode.NO_FLUSH)
-                                        .maxCacheSize(10_000_000L));
+                                        .maxCacheSize(100_000_000L));
     }
 
     @After
