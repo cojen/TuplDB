@@ -156,7 +156,7 @@ public interface Cursor extends ValueAccessor, Closeable {
      * <p>To be effective, cursor registration must be performed <i>after</i> the cursor is
      * initially positioned:
      *
-     * <pre>
+     * {@snippet lang="java" :
      * Cursor c = ...
      * c.findGe(startKey);
      * c.register(); // register after initial positioning
@@ -164,7 +164,7 @@ public interface Cursor extends ValueAccessor, Closeable {
      *     c.store(...);
      *     c.next(); // incremental move
      * }
-     * </pre>
+     * }
      */
     public default boolean register() throws IOException {
         return false;

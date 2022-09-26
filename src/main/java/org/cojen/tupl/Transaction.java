@@ -37,7 +37,7 @@ import org.cojen.tupl.core.LocalTransaction;
  * acquire and release locks automatically. Direct control over locks is
  * provided for advanced use cases. One such use is record filtering:
  *
- * <pre>
+ * {@snippet lang="java" :
  * Transaction txn = ...
  * Cursor c = index.newCursor(txn);
  * for (LockResult result = c.first(); c.key() != null; result = c.next()) {
@@ -48,7 +48,7 @@ import org.cojen.tupl.core.LocalTransaction;
  *     }
  *     ...
  * }
- * </pre>
+ * }
  *
  * <p>Note: Transaction instances are never fully closed after they are reset
  * or have fully exited. Any operation which acts upon a reset transaction can
@@ -154,12 +154,12 @@ public interface Transaction extends Flushable {
     /**
      * Exits all transaction scopes, rolling back all uncommitted modifications. Equivalent to:
      *
-     * <pre>
+     * {@snippet lang="java" :
      * while (txn.isNested()) {
      *     txn.exit();
      * }
      * txn.exit();
-     * </pre>
+     * }
      */
     void reset() throws IOException;
 

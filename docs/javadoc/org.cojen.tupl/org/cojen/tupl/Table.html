@@ -93,19 +93,22 @@ loadScripts(document, 'script');</script>
 <div class="block">Defines a relational collection of persistent rows. A row is defined by an interface
  consisting of accessor/mutator methods corresponding to each column:
 
- <pre>
- &#64;PrimaryKey("id")
- public interface MyRow {
-     long id();
-     void id(long id);
+ 
+<div class="snippet-container"><button class="copy snippet-copy" onclick="copySnippet(this)"><span data-copied="Copied!">Copy</span><img src="../../../../copy.svg" alt="Copy"></button>
+<pre class="snippet"><code class="language-java">@PrimaryKey("id")
+public interface MyRow {
+    long id();
+    void id(long id);
 
-     String name();
-     void name(String str);
+    String name();
+    void name(String str);
 
-     String message();
-     void message(String str);
- }
- </pre>
+    String message();
+    void message(String str);
+}
+</code></pre>
+</div>
+
 
  <p>Supported column types:
  <ul>

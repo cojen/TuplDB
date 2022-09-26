@@ -45,16 +45,16 @@ import static org.cojen.tupl.core.Utils.*;
  *
  * <p>Open a non-durable database, limited to a max size of 100MB:
  *
- * <pre>
+ * {@snippet lang="java" :
  * var config = new DatabaseConfig().maxCacheSize(100_000_000);
  * Database db = Database.open(config);
  * Index data = db.openIndex("mydata");
- * </pre>
+ * }
  *
  * <p>Open a regular database, with a fixed cache size, and a weak {@linkplain DurabilityMode
  * durability mode} for the best transactional commit performance.
  *
- * <pre>
+ * {@snippet lang="java" :
  * var config = new DatabaseConfig()
  *    .baseFilePath("/var/lib/tupl/myapp")
  *    .cacheSize(100_000_000)
@@ -62,7 +62,7 @@ import static org.cojen.tupl.core.Utils.*;
  *
  * Database db = Database.open(config);
  * Index data = db.openIndex("mydata");
- * </pre>
+ * }
  *
  * <p>The following files are created by the above example:
  *

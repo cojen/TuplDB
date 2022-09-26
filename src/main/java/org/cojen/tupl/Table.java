@@ -34,8 +34,8 @@ import org.cojen.tupl.io.Utils;
  * Defines a relational collection of persistent rows. A row is defined by an interface
  * consisting of accessor/mutator methods corresponding to each column:
  *
- * <pre>
- * &#64;PrimaryKey("id")
+ * {@snippet lang="java" :
+ * @PrimaryKey("id")
  * public interface MyRow {
  *     long id();
  *     void id(long id);
@@ -46,7 +46,7 @@ import org.cojen.tupl.io.Utils;
  *     String message();
  *     void message(String str);
  * }
- * </pre>
+ * }
  *
  * <p>Supported column types:
  * <ul>

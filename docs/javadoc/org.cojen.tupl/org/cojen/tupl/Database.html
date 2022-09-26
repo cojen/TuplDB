@@ -99,23 +99,29 @@ extends <a href="io/CauseCloseable.html" title="interface in org.cojen.tupl.io">
 
  <p>Open a non-durable database, limited to a max size of 100MB:
 
- <pre>
- var config = new DatabaseConfig().maxCacheSize(100_000_000);
- Database db = Database.open(config);
- Index data = db.openIndex("mydata");
- </pre>
+ 
+<div class="snippet-container"><button class="copy snippet-copy" onclick="copySnippet(this)"><span data-copied="Copied!">Copy</span><img src="../../../../copy.svg" alt="Copy"></button>
+<pre class="snippet"><code class="language-java">var config = new DatabaseConfig().maxCacheSize(100_000_000);
+Database db = Database.open(config);
+Index data = db.openIndex("mydata");
+</code></pre>
+</div>
+
 
  <p>Open a regular database, with a fixed cache size, and a weak <a href="DurabilityMode.html" title="enum class in org.cojen.tupl">durability mode</a> for the best transactional commit performance.
 
- <pre>
- var config = new DatabaseConfig()
-    .baseFilePath("/var/lib/tupl/myapp")
-    .cacheSize(100_000_000)
-    .durabilityMode(DurabilityMode.NO_FLUSH);
+ 
+<div class="snippet-container"><button class="copy snippet-copy" onclick="copySnippet(this)"><span data-copied="Copied!">Copy</span><img src="../../../../copy.svg" alt="Copy"></button>
+<pre class="snippet"><code class="language-java">var config = new DatabaseConfig()
+   .baseFilePath("/var/lib/tupl/myapp")
+   .cacheSize(100_000_000)
+   .durabilityMode(DurabilityMode.NO_FLUSH);
 
- Database db = Database.open(config);
- Index data = db.openIndex("mydata");
- </pre>
+Database db = Database.open(config);
+Index data = db.openIndex("mydata");
+</code></pre>
+</div>
+
 
  <p>The following files are created by the above example:
 

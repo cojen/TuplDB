@@ -107,18 +107,21 @@ extends <a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/ja
  acquire and release locks automatically. Direct control over locks is
  provided for advanced use cases. One such use is record filtering:
 
- <pre>
- Transaction txn = ...
- Cursor c = index.newCursor(txn);
- for (LockResult result = c.first(); c.key() != null; result = c.next()) {
-     if (shouldDiscard(c.value()) &amp;&amp; result == LockResult.ACQUIRED) {
-         // Unlock record which doesn't belong in the transaction.
-         txn.unlock();
-         continue;
-     }
-     ...
- }
- </pre>
+ 
+<div class="snippet-container"><button class="copy snippet-copy" onclick="copySnippet(this)"><span data-copied="Copied!">Copy</span><img src="../../../../copy.svg" alt="Copy"></button>
+<pre class="snippet"><code class="language-java">Transaction txn = ...
+Cursor c = index.newCursor(txn);
+for (LockResult result = c.first(); c.key() != null; result = c.next()) {
+    if (shouldDiscard(c.value()) &amp;amp;&amp;amp; result == LockResult.ACQUIRED) {
+        // Unlock record which doesn't belong in the transaction.
+        txn.unlock();
+        continue;
+    }
+    ...
+}
+</code></pre>
+</div>
+
 
  <p>Note: Transaction instances are never fully closed after they are reset
  or have fully exited. Any operation which acts upon a reset transaction can
@@ -557,12 +560,15 @@ extends <a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/ja
     throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Exits all transaction scopes, rolling back all uncommitted modifications. Equivalent to:
 
- <pre>
- while (txn.isNested()) {
-     txn.exit();
- }
- txn.exit();
- </pre></div>
+ 
+<div class="snippet-container"><button class="copy snippet-copy" onclick="copySnippet(this)"><span data-copied="Copied!">Copy</span><img src="../../../../copy.svg" alt="Copy"></button>
+<pre class="snippet"><code class="language-java">while (txn.isNested()) {
+    txn.exit();
+}
+txn.exit();
+</code></pre>
+</div>
+</div>
 <dl class="notes">
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
