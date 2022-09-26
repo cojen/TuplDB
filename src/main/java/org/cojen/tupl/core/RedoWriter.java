@@ -56,7 +56,7 @@ abstract class RedoWriter extends Latch implements Closeable, Flushable {
     }
 
     /**
-     * Returns true of the database instance is currently the leader.
+     * Returns true if the database instance is currently the leader.
      */
     boolean isLeader() {
         return true;

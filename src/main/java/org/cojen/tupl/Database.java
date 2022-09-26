@@ -477,7 +477,7 @@ public interface Database extends CauseCloseable, Flushable {
     public abstract boolean verify(VerificationObserver observer) throws IOException;
 
     /**
-     * Returns true of the database instance is currently the leader.
+     * Returns true if the database instance is currently the leader.
      */
     public abstract boolean isLeader();
 
