@@ -162,15 +162,15 @@ extends <a href="Handler.html" title="interface in org.cojen.tupl.ext">Handler</
 <h3>redo</h3>
 <div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">redo</span><wbr><span class="parameters">(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;message)</span>
-   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Called to write or apply an idempotent redo operation.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>txn</code> - transaction the operation applies to; can be modified</dd>
 <dd><code>message</code> - custom message</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if transaction or message is null</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if transaction or message is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -181,7 +181,7 @@ extends <a href="Handler.html" title="interface in org.cojen.tupl.ext">Handler</
  byte[]&nbsp;message,
  long&nbsp;indexId,
  byte[]&nbsp;key)</span>
-   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Called to write or apply an idempotent redo operation which locked an index key. The
  lock ensures that redo operations are ordered with respect to other transactions which
  locked the same key.</div>
@@ -192,10 +192,10 @@ extends <a href="Handler.html" title="interface in org.cojen.tupl.ext">Handler</
 <dd><code>indexId</code> - non-zero index for lock acquisition</dd>
 <dd><code>key</code> - non-null key which has been locked exclusively</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if transaction or message is null</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if index and key are provided but lock isn't held</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if index id is zero and key is non-null</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if transaction or message is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if index and key are provided but lock isn't held</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if index id is zero and key is non-null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -204,16 +204,16 @@ extends <a href="Handler.html" title="interface in org.cojen.tupl.ext">Handler</
 <h3>undo</h3>
 <div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">undo</span><wbr><span class="parameters">(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;message)</span>
-   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+   throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Called to write or apply an idempotent undo operation.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>txn</code> - transaction the operation applies to; is null when rolling back</dd>
 <dd><code>message</code> - custom message</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if transaction or message is null; applicable to writer
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if transaction or message is null; applicable to writer
  instance only</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/18/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
