@@ -223,6 +223,7 @@
           <reportOutputDirectory>${basedir}/docs</reportOutputDirectory>
           <destDir>javadoc</destDir>
           <excludePackageNames>org.cojen.tupl.core:org.cojen.tupl.ev:org.cojen.tupl.jmx:org.cojen.tupl.views:org.cojen.tupl.filter:org.cojen.tupl.rows</excludePackageNames>
+          <!-- <additionalOptions>-Xdoclint:none</additionalOptions> -->
         </configuration>
         <executions>
           <execution>
