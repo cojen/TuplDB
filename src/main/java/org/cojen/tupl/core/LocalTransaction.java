@@ -179,7 +179,8 @@ public final class LocalTransaction extends Locker implements CoreTransaction {
 
     @Override
     public final long lockTimeout(TimeUnit unit) {
-        return unit.convert(mLockTimeoutNanos, TimeUnit.NANOSECONDS);
+        long timeoutNanos = mLockTimeoutNanos;
+        return timeoutNanos < 0 ? -1 : unit.convert(timeoutNanos, TimeUnit.NANOSECONDS);
     }
 
     @Override
