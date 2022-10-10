@@ -17,7 +17,6 @@
 
 package org.cojen.tupl;
 
-import java.io.Flushable;
 import java.io.IOException;
 
 /**
@@ -43,7 +42,7 @@ import java.io.IOException;
  *
  * @author Brian S O'Neill
  */
-public interface RowUpdater<R> extends RowScanner<R>, Flushable {
+public interface RowUpdater<R> extends RowScanner<R> {
     /**
      * Update the current row and then step to the next row.
      *
@@ -81,12 +80,4 @@ public interface RowUpdater<R> extends RowScanner<R>, Flushable {
      * @throws IllegalStateException if no current row
      */
     R delete(R row) throws IOException;
-
-    /**
-     * Ensures that any queued update operations are applied; flushing is automatically
-     * performed when the updater is closed.
-     */
-    @Override
-    default void flush() throws IOException {
-    }
 }

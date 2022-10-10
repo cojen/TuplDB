@@ -114,11 +114,6 @@ abstract class ConcatRowUpdater<R> implements BaseRowScanner<R>, RowUpdater<R> {
     }
 
     @Override
-    public void flush() throws IOException {
-        mCurrent.flush();
-    }
-
-    @Override
     public void close() throws IOException {
         mCurrent.close();
     }

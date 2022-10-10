@@ -90,11 +90,11 @@ loadScripts(document, 'script');</script>
 <section class="class-description" id="class-description">
 <dl class="notes">
 <dt>All Superinterfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/Flushable.html" title="class or interface in java.io" class="external-link">Flushable</a></code>, <code><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></code>, <code><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a></code></dd>
 </dl>
 <hr>
 <div class="type-signature"><span class="modifiers">public interface </span><span class="element-name type-name-label">Updater</span><span class="extends-implements">
-extends <a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/Flushable.html" title="class or interface in java.io" class="external-link">Flushable</a></span></div>
+extends <a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a></span></div>
 <div class="block">Scans through all entries in a view, updating them along the way. Updater implementations
  which perform pre-fetching can be more efficient than a <a href="Cursor.html" title="interface in org.cojen.tupl">cursor</a>. Any
  exception thrown by an updating action automatically closes the Updater.
@@ -144,20 +144,14 @@ extends <a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>, 
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#flush()" class="member-name-link">flush</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
-<div class="block">Ensures that any queued update operations are applied; flushing is automatically
- performed when the updater is closed.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#update(byte%5B%5D)" class="member-name-link">update</a><wbr>(byte[]&nbsp;value)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#update(byte%5B%5D)" class="member-name-link">update</a><wbr>(byte[]&nbsp;value)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Update the current value and then step to the next entry.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#updateAll(org.cojen.tupl.EntryFunction)" class="member-name-link">updateAll</a><wbr>(<a href="EntryFunction.html" title="interface in org.cojen.tupl">EntryFunction</a>&nbsp;action)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#updateAll(org.cojen.tupl.EntryFunction)" class="member-name-link">updateAll</a><wbr>(<a href="EntryFunction.html" title="interface in org.cojen.tupl">EntryFunction</a>&nbsp;action)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Applies the given updating action for each remaining entry, and then closes the updater.</div>
 </div>
 </div>
@@ -216,21 +210,6 @@ extends <a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>, 
  An entry is updated to the value returned by the action, or it's deleted when the action
  returns null. If the action returns <a href="#NO_UPDATE"><code>NO_UPDATE</code></a>, then no update is performed.</div>
 <dl class="notes">
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="flush()">
-<h3>flush</h3>
-<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">flush</span>()
-            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Ensures that any queued update operations are applied; flushing is automatically
- performed when the updater is closed.</div>
-<dl class="notes">
-<dt>Specified by:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/Flushable.html#flush()" title="class or interface in java.io" class="external-link">flush</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/Flushable.html" title="class or interface in java.io" class="external-link">Flushable</a></code></dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>

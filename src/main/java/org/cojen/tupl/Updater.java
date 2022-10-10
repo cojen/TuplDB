@@ -17,7 +17,6 @@
 
 package org.cojen.tupl;
 
-import java.io.Flushable;
 import java.io.IOException;
 
 import org.cojen.tupl.core.Utils;
@@ -36,7 +35,7 @@ import org.cojen.tupl.core.Utils;
  * @see View#newUpdater View.newUpdater
  * @see Scanner
  */
-public interface Updater extends Scanner, Flushable {
+public interface Updater extends Scanner {
     /**
      * Empty marker returned by {@link EntryFunction} to indicate that no update should be
      * performed.
@@ -72,13 +71,5 @@ public interface Updater extends Scanner, Flushable {
                 step();
             }
         }
-    }
-
-    /**
-     * Ensures that any queued update operations are applied; flushing is automatically
-     * performed when the updater is closed.
-     */
-    @Override
-    default void flush() throws IOException {
     }
 }
