@@ -23,7 +23,7 @@ import org.cojen.tupl.Cursor;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnpositionedCursorException;
-import org.cojen.tupl.Updater;
+import org.cojen.tupl.EntryUpdater;
 
 import org.cojen.tupl.core.Utils;
 
@@ -34,7 +34,7 @@ import org.cojen.tupl.core.Utils;
  *
  * @author Brian S O'Neill
  */
-public final class CursorAutoCommitUpdater extends CursorScanner implements Updater {
+public final class CursorAutoCommitUpdater extends CursorScanner implements EntryUpdater {
     private LockResult mLockResult;
 
     /**

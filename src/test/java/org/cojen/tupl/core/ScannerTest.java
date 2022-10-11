@@ -53,7 +53,7 @@ public class ScannerTest {
         mDb = null;
     }
 
-    protected Scanner newScanner(View view, Transaction txn) throws Exception {
+    protected EntryScanner newScanner(View view, Transaction txn) throws Exception {
         return view.newScanner(txn);
     }
 
@@ -63,7 +63,7 @@ public class ScannerTest {
     public void empty() throws Exception {
         Index ix = mDb.openIndex("test");
 
-        Scanner s = newScanner(ix, null);
+        EntryScanner s = newScanner(ix, null);
         assertNull(s.key());
         assertNull(s.value());
         assertFalse(s.step());
@@ -96,7 +96,7 @@ public class ScannerTest {
         byte[] value = "world".getBytes();
         ix.store(null, key, value);
 
-        Scanner s = newScanner(ix, null);
+        EntryScanner s = newScanner(ix, null);
         fastAssertArrayEquals(key, s.key());
         fastAssertArrayEquals(value, s.value());
         assertFalse(s.step());
@@ -148,7 +148,7 @@ public class ScannerTest {
         }
 
         var list = new ArrayList<SimpleEntry<byte[], byte[]>>();
-        Scanner s = newScanner(ix, null);
+        EntryScanner s = newScanner(ix, null);
         s.scanAll((k, v) -> {
             list.add(new SimpleEntry<>(k, v));
         });
@@ -186,7 +186,7 @@ public class ScannerTest {
         var list = new ArrayList<SimpleEntry<byte[], byte[]>>();
         Transaction txn = mDb.newTransaction();
         assertEquals(LockMode.UPGRADABLE_READ, txn.lockMode());
-        Scanner s = newScanner(ix, txn);
+        EntryScanner s = newScanner(ix, txn);
         s.scanAll((k, v) -> {
             list.add(new SimpleEntry<>(k, v));
         });

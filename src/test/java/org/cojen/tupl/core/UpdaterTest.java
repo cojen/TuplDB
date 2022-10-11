@@ -37,11 +37,11 @@ public class UpdaterTest extends ScannerTest {
     }
 
     @Override
-    protected Scanner newScanner(View view, Transaction txn) throws Exception {
+    protected EntryScanner newScanner(View view, Transaction txn) throws Exception {
         return newUpdater(view, txn);
     }
 
-    protected Updater newUpdater(View view, Transaction txn) throws Exception {
+    protected EntryUpdater newUpdater(View view, Transaction txn) throws Exception {
         return view.newUpdater(txn);
     }
 
@@ -74,7 +74,7 @@ public class UpdaterTest extends ScannerTest {
     private void empty(Transaction txn) throws Exception {
         Index ix = mDb.openIndex("test");
 
-        Updater u = newUpdater(ix, txn);
+        EntryUpdater u = newUpdater(ix, txn);
         assertNull(u.key());
         assertNull(u.value());
         assertFalse(u.step());
@@ -132,7 +132,7 @@ public class UpdaterTest extends ScannerTest {
         byte[] value = "world".getBytes();
         ix.store(null, key, value);
 
-        Updater u = newUpdater(ix, txn);
+        EntryUpdater u = newUpdater(ix, txn);
         u.updateAll((k, v) -> null);
         assertNull(u.key());
         assertNull(u.value());
@@ -177,7 +177,7 @@ public class UpdaterTest extends ScannerTest {
         byte[] value = "world".getBytes();
         ix.store(null, key, value);
 
-        Updater u = newUpdater(ix, txn);
+        EntryUpdater u = newUpdater(ix, txn);
         byte[] value2 = "world!".getBytes();
         u.updateAll((k, v) -> value2);
         assertNull(u.key());
@@ -234,7 +234,7 @@ public class UpdaterTest extends ScannerTest {
             ix.store(null, ("key-" + i).getBytes(), ("value-" + i).getBytes());
         }
 
-        Updater u = newUpdater(ix, txn);
+        EntryUpdater u = newUpdater(ix, txn);
         u.updateAll((k, v) -> {
             return (new String(v) + "-v2").getBytes();
         });
@@ -276,7 +276,7 @@ public class UpdaterTest extends ScannerTest {
         newUpdater(ix, null).updateAll((k, v) -> {
             int i = k[0] - '0';
             if ((i & 1) == 1) {
-                return Updater.NO_UPDATE;
+                return EntryUpdater.NO_UPDATE;
             }
             return ("updated-" + i).getBytes();
         });

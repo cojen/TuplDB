@@ -282,7 +282,7 @@ public class SorterTest {
             expected.put(key, value);
         }
 
-        Scanner scanner = reverse ? s.finishScanReverse() : s.finishScan();
+        EntryScanner scanner = reverse ? s.finishScanReverse() : s.finishScan();
 
         if (close) {
             scanner.close();
@@ -341,7 +341,7 @@ public class SorterTest {
             }
         });
 
-        Scanner result = mDatabase.newSorter().finishScan(view.newScanner(null));
+        EntryScanner result = mDatabase.newSorter().finishScan(view.newScanner(null));
         checkResults(expect.newScanner(null), result);
 
         // Again, in reverse.
@@ -349,7 +349,7 @@ public class SorterTest {
         checkResults(expect.viewReverse().newScanner(null), result);
     }
 
-    private void checkResults(Scanner expect, Scanner result) throws Exception {
+    private void checkResults(EntryScanner expect, EntryScanner result) throws Exception {
         while (true) {
             fastAssertArrayEquals(expect.key(), result.key());
             fastAssertArrayEquals(expect.value(), result.value());

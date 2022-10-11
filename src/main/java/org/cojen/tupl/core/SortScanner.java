@@ -22,19 +22,19 @@ import java.io.IOException;
 import java.util.Comparator;
 
 import org.cojen.tupl.ClosedIndexException;
-import org.cojen.tupl.Scanner;
+import org.cojen.tupl.EntryScanner;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnpositionedCursorException;
 
 /**
- * Scanner implementation intended for scanning and deleting sort results. No other threads
+ * EntryScanner implementation intended for scanning and deleting sort results. No other threads
  * should be accessing the source temporary tree, which is deleted when the scan is complete,
  * or when the scanner is closed.
  *
  * @author Brian S O'Neill
  */
 /*P*/
-class SortScanner implements Scanner {
+class SortScanner implements EntryScanner {
     private final LocalDatabase mDatabase;
     private BTreeCursor mCursor;
     private Supplier mSupplier;

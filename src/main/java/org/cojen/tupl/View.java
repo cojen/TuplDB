@@ -63,7 +63,7 @@ public interface View {
      * Returns a new cursor over this view.
      *
      * <p>Note that passing null for the transaction doesn't provide cursor stability with
-     * respect to updates. Either use an {@link #newUpdater Updater}, or pass an explicit
+     * respect to updates. Either use an {@link #newUpdater EntryUpdater}, or pass an explicit
      * transaction and call {@link Cursor#commit commit} to apply each update.
      *
      * @param txn optional transaction for Cursor to {@link Cursor#link link} to; pass null for
@@ -76,11 +76,11 @@ public interface View {
     /**
      * Returns a new scanner over this view.
      *
-     * @param txn optional transaction for Scanner to use; pass null for auto-commit mode
+     * @param txn optional transaction for EntryScanner to use; pass null for auto-commit mode
      * @return a new scanner positioned at the first entry in the view
      * @throws IllegalStateException if transaction belongs to another database instance
      */
-    public default Scanner newScanner(Transaction txn) throws IOException {
+    public default EntryScanner newScanner(Transaction txn) throws IOException {
         Cursor c = newCursor(txn);
         c.first();
         return new CursorScanner(c);
@@ -95,11 +95,11 @@ public interface View {
      * are released when moving to the next entry. Updates with a null transaction are
      * auto-committed and become visible to other transactions as the updater moves along.
      *
-     * @param txn optional transaction for Updater to use; pass null for auto-commit mode
+     * @param txn optional transaction for EntryUpdater to use; pass null for auto-commit mode
      * @return a new updater positioned at the first entry in the view
      * @throws IllegalStateException if transaction belongs to another database instance
      */
-    public default Updater newUpdater(Transaction txn) throws IOException {
+    public default EntryUpdater newUpdater(Transaction txn) throws IOException {
         if (txn == null) {
             txn = newTransaction(null);
             Cursor c = newCursor(txn);

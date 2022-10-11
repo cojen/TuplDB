@@ -24,16 +24,16 @@ import org.cojen.tupl.LockMode;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnpositionedCursorException;
-import org.cojen.tupl.Updater;
+import org.cojen.tupl.EntryUpdater;
 
 import org.cojen.tupl.core.Utils;
 
 /**
- * Updater which releases acquired locks for entries which are stepped over.
+ * EntryUpdater which releases acquired locks for entries which are stepped over.
  *
  * @author Brian S O'Neill
  */
-public final class CursorNonRepeatableUpdater extends CursorScanner implements Updater {
+public final class CursorNonRepeatableUpdater extends CursorScanner implements EntryUpdater {
     private LockResult mLockResult;
 
     /**

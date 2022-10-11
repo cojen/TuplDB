@@ -22,15 +22,15 @@ import java.io.IOException;
 import java.util.Comparator;
 
 import org.cojen.tupl.Cursor;
-import org.cojen.tupl.Scanner;
+import org.cojen.tupl.EntryScanner;
 
 /**
- * Interface which combines Scanner and Cursor together.
+ * Interface which combines EntryScanner and Cursor together.
  *
  * @author Brian S O'Neill
  * @see CursorScanner
  */
-public interface ScannerCursor extends Scanner, Cursor {
+public interface ScannerCursor extends EntryScanner, Cursor {
     @Override
     public Comparator<byte[]> comparator();
 

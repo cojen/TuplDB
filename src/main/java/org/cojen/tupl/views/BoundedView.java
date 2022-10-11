@@ -24,7 +24,7 @@ import static org.cojen.tupl.core.Utils.*;
 import static java.util.Arrays.compareUnsigned;
 
 import org.cojen.tupl.Cursor;
-import org.cojen.tupl.Scanner;
+import org.cojen.tupl.EntryScanner;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
 
@@ -95,7 +95,7 @@ public final class BoundedView extends SubView {
     }
 
     @Override
-    public Scanner newScanner(Transaction txn) throws IOException {
+    public EntryScanner newScanner(Transaction txn) throws IOException {
         var c = new BoundedCursor(this, mSource.newCursor(txn));
         c.first();
         return c;

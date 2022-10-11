@@ -21,7 +21,7 @@ import java.io.IOException;
 
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.UnpositionedCursorException;
-import org.cojen.tupl.Updater;
+import org.cojen.tupl.EntryUpdater;
 
 import org.cojen.tupl.core.Utils;
 
@@ -30,7 +30,7 @@ import org.cojen.tupl.core.Utils;
  *
  * @author Brian S O'Neill
  */
-public final class CursorSimpleUpdater extends CursorScanner implements Updater {
+public final class CursorSimpleUpdater extends CursorScanner implements EntryUpdater {
     /**
      * @param cursor unpositioned cursor
      */

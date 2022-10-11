@@ -28,7 +28,7 @@ import java.util.concurrent.Executor;
 
 import java.util.concurrent.atomic.LongAdder;
 
-import org.cojen.tupl.Scanner;
+import org.cojen.tupl.EntryScanner;
 import org.cojen.tupl.Sorter;
 import org.cojen.tupl.Transaction;
 
@@ -222,7 +222,7 @@ final class ParallelSorter implements Sorter, Node.Supplier {
     }
 
     @Override
-    public void addAll(Scanner s) throws IOException {
+    public void addAll(EntryScanner s) throws IOException {
         byte[][] kvPairs = new byte[200][];
         int size = 0;
 
@@ -266,26 +266,26 @@ final class ParallelSorter implements Sorter, Node.Supplier {
     }
 
     @Override
-    public Scanner finishScan() throws IOException {
+    public EntryScanner finishScan() throws IOException {
         return finishScan(new SortScanner(mDatabase));
     }
 
     @Override
-    public Scanner finishScan(Scanner src) throws IOException {
+    public EntryScanner finishScan(EntryScanner src) throws IOException {
         return finishScan(new SortScanner(mDatabase), src);
     }
 
     @Override
-    public Scanner finishScanReverse() throws IOException {
+    public EntryScanner finishScanReverse() throws IOException {
         return finishScan(new SortReverseScanner(mDatabase));
     }
 
     @Override
-    public Scanner finishScanReverse(Scanner src) throws IOException {
+    public EntryScanner finishScanReverse(EntryScanner src) throws IOException {
         return finishScan(new SortReverseScanner(mDatabase), src);
     }
 
-    private Scanner finishScan(SortScanner dst) throws IOException {
+    private EntryScanner finishScan(SortScanner dst) throws IOException {
         try {
             BTree tree = doFinish(dst);
             if (tree != null) {
@@ -299,7 +299,7 @@ final class ParallelSorter implements Sorter, Node.Supplier {
         }
     }
 
-    private Scanner finishScan(SortScanner dst, Scanner src) throws IOException {
+    private EntryScanner finishScan(SortScanner dst, EntryScanner src) throws IOException {
         if (src == null) {
             return finishScan(dst);
         }

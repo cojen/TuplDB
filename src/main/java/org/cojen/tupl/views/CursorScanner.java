@@ -22,15 +22,15 @@ import java.io.IOException;
 import java.util.Comparator;
 
 import org.cojen.tupl.Cursor;
-import org.cojen.tupl.Scanner;
+import org.cojen.tupl.EntryScanner;
 
 /**
- * Simple Scanner implementation which wraps a Cursor.
+ * Simple EntryScanner implementation which wraps a Cursor.
  *
  * @author Brian S O'Neill
  * @see ScannerCursor
  */
-public class CursorScanner implements Scanner {
+public class CursorScanner implements EntryScanner {
     protected final Cursor mCursor;
 
     /**

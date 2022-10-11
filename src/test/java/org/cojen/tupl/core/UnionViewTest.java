@@ -77,7 +77,7 @@ public class UnionViewTest {
         Transaction txn = mDb.newTransaction();
 
         // Null transaction means that another one should be defined internally.
-        Updater up = union.newUpdater(null);
+        EntryUpdater up = union.newUpdater(null);
 
         byte[] value = "value-0".getBytes();
 

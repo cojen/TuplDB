@@ -25,7 +25,7 @@ import java.util.Objects;
  * java.util.function.BiConsumer BiConsumer}.
  *
  * @author Brian S O'Neill
- * @see Scanner
+ * @see EntryScanner
  */
 @FunctionalInterface
 public interface EntryConsumer {

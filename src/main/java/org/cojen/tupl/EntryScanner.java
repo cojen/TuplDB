@@ -25,20 +25,20 @@ import java.util.Comparator;
 import org.cojen.tupl.core.Utils;
 
 /**
- * Scans through all entries in a view and passes them to a consumer. Scanner implementations
+ * Scans through all entries in a view and passes them to a consumer. EntryScanner implementations
  * which perform pre-fetching can be more efficient than a {@linkplain Cursor cursor}. Any
- * exception thrown by a scan action automatically closes the Scanner.
+ * exception thrown by a scan action automatically closes the EntryScanner.
  *
- * <p>Scanner instances can only be safely used by one thread at a time, and they must be
+ * <p>EntryScanner instances can only be safely used by one thread at a time, and they must be
  * closed when no longer needed. Instances can be exchanged by threads, as long as a
  * happens-before relationship is established. Without proper exclusion, multiple threads
- * interacting with a Scanner instance may cause database corruption.
+ * interacting with a EntryScanner instance may cause database corruption.
  *
  * @author Brian S O'Neill
  * @see View#newScanner View.newScanner
- * @see Updater
+ * @see EntryUpdater
  */
-public interface Scanner extends Closeable {
+public interface EntryScanner extends Closeable {
     /**
      * Returns a comparator for the ordering of this scanner, or null if unordered.
      */

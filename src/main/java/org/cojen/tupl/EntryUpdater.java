@@ -22,26 +22,26 @@ import java.io.IOException;
 import org.cojen.tupl.core.Utils;
 
 /**
- * Scans through all entries in a view, updating them along the way. Updater implementations
+ * Scans through all entries in a view, updating them along the way. EntryUpdater implementations
  * which perform pre-fetching can be more efficient than a {@linkplain Cursor cursor}. Any
- * exception thrown by an updating action automatically closes the Updater.
+ * exception thrown by an updating action automatically closes the EntryUpdater.
  *
- * <p>Updater instances can only be safely used by one thread at a time, and they must be
+ * <p>EntryUpdater instances can only be safely used by one thread at a time, and they must be
  * closed when no longer needed. Instances can be exchanged by threads, as long as a
  * happens-before relationship is established. Without proper exclusion, multiple threads
- * interacting with an Updater instance may cause database corruption.
+ * interacting with an EntryUpdater instance may cause database corruption.
  *
  * @author Brian S O'Neill
  * @see View#newUpdater View.newUpdater
- * @see Scanner
+ * @see EntryScanner
  */
-public interface Updater extends Scanner {
+public interface EntryUpdater extends EntryScanner {
     /**
      * Empty marker returned by {@link EntryFunction} to indicate that no update should be
      * performed.
      */
     // Note: Constant is intentionally the same as NOT_LOADED, to protect against a broken
-    // Updater which is acting upon a Cursor with autoload mode off. A dumb action which
+    // EntryUpdater which is acting upon a Cursor with autoload mode off. A dumb action which
     // returns the value instance (thus forcing an update) won't accidentally destroy anything.
     public static final byte[] NO_UPDATE = Cursor.NOT_LOADED;
 

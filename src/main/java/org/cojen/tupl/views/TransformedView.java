@@ -26,7 +26,7 @@ import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Ordering;
-import org.cojen.tupl.Scanner;
+import org.cojen.tupl.EntryScanner;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.Transformer;
 import org.cojen.tupl.View;
@@ -71,7 +71,7 @@ public final class TransformedView implements View {
     }
 
     @Override
-    public Scanner newScanner(Transaction txn) throws IOException {
+    public EntryScanner newScanner(Transaction txn) throws IOException {
         var c = new TransformedCursor(mSource.newCursor(txn), mTransformer);
         c.first();
         return c;

@@ -25,7 +25,7 @@ import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Transaction;
 
 /**
- * Updater which uses the {@link LockMode#UPGRADABLE_READ} mode.
+ * EntryUpdater which uses the {@link LockMode#UPGRADABLE_READ} mode.
  *
  * @author Brian S O'Neill
  */

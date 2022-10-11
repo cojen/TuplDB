@@ -25,7 +25,7 @@ import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Transaction;
 
 /**
- * Updater which releases acquired locks for rows which are stepped over.
+ * EntryUpdater which releases acquired locks for rows which are stepped over.
  *
  * @author Brian S O'Neill
  */

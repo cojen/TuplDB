@@ -25,7 +25,7 @@ import java.util.Objects;
  * java.util.function.BiFunction BiFunction}.
  *
  * @author Brian S O'Neill
- * @see Updater
+ * @see EntryUpdater
  */
 @FunctionalInterface
 public interface EntryFunction {
