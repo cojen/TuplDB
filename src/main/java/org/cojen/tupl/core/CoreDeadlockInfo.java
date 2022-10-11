@@ -27,7 +27,7 @@ import java.util.Objects;
  *
  * @author Brian S O'Neill
  */
-final class CoreDeadlockInfo implements DeadlockInfo {
+public final class CoreDeadlockInfo implements DeadlockInfo {
     private static final long serialVersionUID = 1L;
 
     Object mRow;
@@ -35,6 +35,17 @@ final class CoreDeadlockInfo implements DeadlockInfo {
     byte[] mIndexName;
     byte[] mKey;
     Object mAttachment;
+
+    CoreDeadlockInfo() {
+    }
+
+    public CoreDeadlockInfo(Object row, long indexId, byte[] indexName, byte[] key, Object att) {
+        mRow = row;
+        mIndexId = indexId;
+        mIndexName = indexName;
+        mKey = key;
+        mAttachment = att;
+    }
 
     @Override
     public Object row() {

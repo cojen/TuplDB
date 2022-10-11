@@ -53,6 +53,10 @@ public class LockTimeoutException extends LockFailureException {
         mOwnerAttachment = attachment;
     }
 
+    public long timeoutNanos() {
+        return mNanosTimeout;
+    }
+
     @Override
     public String getMessage() {
         return timeoutMessage(mNanosTimeout);

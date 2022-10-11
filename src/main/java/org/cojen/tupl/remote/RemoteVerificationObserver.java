@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2021 Cojen.org
+ *  Copyright (C) 2022 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -15,43 +15,15 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.core;
+package org.cojen.tupl.remote;
 
-import org.cojen.tupl.diag.DeadlockInfo;
+import org.cojen.dirmi.Remote;
 
 /**
  * 
  *
  * @author Brian S O'Neill
  */
-public record DetachedDeadlockInfo(String desc, Object ownerAttachment) implements DeadlockInfo {
-    private static final long serialVersionUID = 1L;
-
-    @Override
-    public Object row() {
-        return null;
-    }
-
-    @Override
-    public long indexId() {
-        return 0;
-    }
-
-    @Override
-    public byte[] indexName() {
-        return null;
-    }
-
-    @Override
-    public byte[] key() {
-        return null;
-    }
-
-    @Override
-    public String toString() {
-        if (ownerAttachment == null) {
-            return desc;
-        }
-        return desc + "; attachment: " + ownerAttachment;
-    }
+public interface RemoteVerificationObserver extends Remote {
+    // FIXME
 }
