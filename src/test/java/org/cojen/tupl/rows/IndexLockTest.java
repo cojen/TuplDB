@@ -83,7 +83,7 @@ public class IndexLockTest {
     }
 
     private <R extends TestRow> void scanStall(Class<R> type, boolean updater) throws Exception {
-        // A RowScanner cannot start when an open transaction has inserted a row into the range
+        // A Scanner cannot start when an open transaction has inserted a row into the range
         // that will be scanned.
 
         var table = (BaseTable<R>) mDatabase.openTable(type);
@@ -98,7 +98,7 @@ public class IndexLockTest {
 
         Transaction scanTxn = mDatabase.newTransaction();
         try {
-            newRowScanner(table, updater, scanTxn, "id >= ? && id <= ?", 3, 7);
+            newScanner(table, updater, scanTxn, "id >= ? && id <= ?", 3, 7);
             fail();
         } catch (LockTimeoutException e) {
             predicateLockTimeout(e);
@@ -110,16 +110,16 @@ public class IndexLockTest {
         // right away, it would still stall once it hit the row with the lock held. Filtering
         // operations cannot skip lock acquisition.
         try {
-            newRowScanner(table, updater, scanTxn,
-                          "id >= ? && id <= ? && name != ?", 3, 7, "name-5");
+            newScanner(table, updater, scanTxn,
+                       "id >= ? && id <= ? && name != ?", 3, 7, "name-5");
             fail();
         } catch (LockTimeoutException e) {
             predicateLockTimeout(e);
         }
 
         // Exclude the row being inserted by key, and then the scan can begin.
-        var scanner = newRowScanner(table, updater, scanTxn,
-                                    "id >= ? && id <= ? && id != ?", 3, 7, 5);
+        var scanner = newScanner(table, updater, scanTxn,
+                                 "id >= ? && id <= ? && id != ?", 3, 7, 5);
         assertEquals(3, scanner.row().id());
         try {
             scanner.step();
@@ -137,7 +137,7 @@ public class IndexLockTest {
             Transaction txn = mDatabase.newTransaction();
             try {
                 txn.lockMode(LockMode.READ_COMMITTED);
-                newRowScanner(table, updater, txn, "id >= ? && id <= ?", 3, 7);
+                newScanner(table, updater, txn, "id >= ? && id <= ?", 3, 7);
             } finally {
                 txn.exit();
             }
@@ -152,14 +152,14 @@ public class IndexLockTest {
             var nameIx = table.viewSecondaryIndex("name").viewUnjoined();
 
             try {
-                nameIx.newRowScanner(scanTxn, "name >= ? && name <= ?", "name-3", "name-7");
+                nameIx.newScanner(scanTxn, "name >= ? && name <= ?", "name-3", "name-7");
                 fail();
             } catch (LockTimeoutException e) {
                 predicateLockTimeout(e);
             }
 
             // Exclude the row being inserted, and then the scan can begin.
-            scanner = nameIx.newRowScanner(scanTxn, "name >= ? && name <= ? && name != ?",
+            scanner = nameIx.newScanner(scanTxn, "name >= ? && name <= ? && name != ?",
                                            "name-3", "name-7", "name-5");
             assertEquals(3, scanner.row().id());
             try {
@@ -173,7 +173,7 @@ public class IndexLockTest {
             scanTxn.reset();
 
             // Also works when checking by id, because id is part of the secondary key.
-            scanner = nameIx.newRowScanner(scanTxn, "name >= ? && name <= ? && id != ?",
+            scanner = nameIx.newScanner(scanTxn, "name >= ? && name <= ? && id != ?",
                                            "name-3", "name-7", 5);
             assertEquals(3, scanner.row().id());
             try {
@@ -191,7 +191,7 @@ public class IndexLockTest {
         Waiter w2 = start(() -> {
             Transaction scanTxn2 = mDatabase.newTransaction();
             scanTxn2.lockTimeout(2, TimeUnit.SECONDS);
-            var scanner2 = newRowScanner(table, updater, scanTxn2, "id >= ? && id <= ?", 3, 7);
+            var scanner2 = newScanner(table, updater, scanTxn2, "id >= ? && id <= ?", 3, 7);
             assertEquals(3, scanner2.row().id());
             scanner2.step();
             assertEquals(5, scanner2.row().id());
@@ -209,7 +209,7 @@ public class IndexLockTest {
             w3 = start(() -> {
                 Transaction scanTxn2 = mDatabase.newTransaction();
                 scanTxn2.lockTimeout(2, TimeUnit.SECONDS);
-                var scanner2 = nameIx.newRowScanner
+                var scanner2 = nameIx.newScanner
                     (scanTxn2, "name >= ? && name <= ?", "name-3", "name-7");
                 assertEquals(3, scanner2.row().id());
                 scanner2.step();
@@ -230,7 +230,7 @@ public class IndexLockTest {
 
     @Test
     public void rowLockStall() throws Exception {
-        // A RowScanner which returns at most one row doesn't need to install a predicate lock,
+        // A Scanner which returns at most one row doesn't need to install a predicate lock,
         // but it can still stall on a row lock held by another transaction.
 
         var table = mDatabase.openTable(TestRow.class);
@@ -245,7 +245,7 @@ public class IndexLockTest {
 
         Transaction scanTxn = mDatabase.newTransaction();
         try {
-            table.newRowScanner(scanTxn, "id == ?", 5);
+            table.newScanner(scanTxn, "id == ?", 5);
             fail();
         } catch (LockTimeoutException e) {
             // Can be caused by a row lock timeout or a predicate lock timeout.
@@ -254,13 +254,13 @@ public class IndexLockTest {
 
     @Test
     public void rowLockStall2() throws Exception {
-        // A RowScanner which returns at most one row doesn't need to install a predicate lock,
+        // A Scanner which returns at most one row doesn't need to install a predicate lock,
         // but it should still acquire a lock even when the row doesn't exist.
 
         var table = mDatabase.openTable(TestRow.class);
 
         Transaction txn1 = mDatabase.newTransaction();
-        table.newRowScanner(txn1, "id == ?", 5);
+        table.newScanner(txn1, "id == ?", 5);
 
         Transaction txn2 = mDatabase.newTransaction();
         TestRow row = table.newRow();
@@ -308,7 +308,7 @@ public class IndexLockTest {
         fill(table, 0, 3);
 
         Transaction txn1 = mDatabase.newTransaction();
-        var scanner = newRowScanner(table, updater, txn1, "id >= ? && id <= ? && id != ?", 3, 7, 6);
+        var scanner = newScanner(table, updater, txn1, "id >= ? && id <= ? && id != ?", 3, 7, 6);
 
         Transaction insertTxn = mDatabase.newTransaction();
         R row = table.newRow();
@@ -339,7 +339,7 @@ public class IndexLockTest {
             // Scanners don't block each other, except via row locks.
             Transaction txn2 = mDatabase.newTransaction();
             txn2.lockMode(LockMode.READ_COMMITTED);
-            var scanner2 = table.newRowScanner(txn2, "id >= ? && id <= ?", 3, 7);
+            var scanner2 = table.newScanner(txn2, "id >= ? && id <= ?", 3, 7);
             assertEquals(3, scanner2.row().id());
             scanner2.step();
             assertEquals(6, scanner2.row().id());
@@ -348,7 +348,7 @@ public class IndexLockTest {
 
             // Null transaction doesn't add a predicate lock. This scan doesn't require it
             // because no concurrent inserts are being performed.
-            scanner2 = table.newRowScanner(null, "id >= ? && id <= ?", 3, 7);
+            scanner2 = table.newScanner(null, "id >= ? && id <= ?", 3, 7);
             assertEquals(3, scanner2.row().id());
             scanner2.step();
             assertEquals(6, scanner2.row().id());
@@ -356,9 +356,9 @@ public class IndexLockTest {
         }
 
         if (!updater) {
-            // RowUpdater is blocked when updating out of order.
+            // Updater is blocked when updating out of order.
             Transaction txn2 = mDatabase.newTransaction();
-            var updater2 = table.newRowUpdater(txn2, "id >= ?", 5);
+            var updater2 = table.newUpdater(txn2, "id >= ?", 5);
             assertEquals(6, updater2.row().id());
             updater2.row().id(5);
 
@@ -391,7 +391,7 @@ public class IndexLockTest {
         scanner.close();
         // Null transaction doesn't add a predicate lock. This scan doesn't require it
         // because no concurrent inserts are being performed.
-        scanner = newRowScanner(table, updater, null, "id >= ? && id <= ?", 3, 7);
+        scanner = newScanner(table, updater, null, "id >= ? && id <= ?", 3, 7);
         assertEquals(3, scanner.row().id());
         scanner.step();
         assertEquals(5, scanner.row().id());
@@ -421,12 +421,12 @@ public class IndexLockTest {
         // Be nice and don't retain row locks, but this isn't enough.
         txn1.lockMode(LockMode.READ_COMMITTED);
 
-        RowScanner<TestRow> scanner;
+        Scanner<TestRow> scanner;
         if (!withFilter) {
-            scanner = table.newRowScanner(txn1);
+            scanner = table.newScanner(txn1);
         } else {
             // This shouldn't actually filter anything out.
-            scanner = table.newRowScanner(txn1, "id >= ? && name != ?", -123, "xxx");
+            scanner = table.newScanner(txn1, "id >= ? && name != ?", -123, "xxx");
         }
 
         // Move a row by deleting before inserting. Deletes don't acquire a predicate lock.
@@ -514,7 +514,7 @@ public class IndexLockTest {
 
         Transaction txn1 = mDatabase.newTransaction();
         txn1.lockMode(scanLockMode);
-        var scanner = table.newRowScanner(txn1);
+        var scanner = table.newScanner(txn1);
 
         Transaction txn2 = mDatabase.newTransaction();
         var row = table.newRow();
@@ -558,7 +558,7 @@ public class IndexLockTest {
 
         // Null transaction doesn't add a predicate lock. This scan doesn't require it
         // because no concurrent inserts are being performed.
-        scanner = table.newRowScanner(null);
+        scanner = table.newScanner(null);
 
         long[] expect = {0, 2, 3, 100};
 
@@ -582,7 +582,7 @@ public class IndexLockTest {
     }
 
     private <R extends TestRow> void replicaScanStall(Class<R> type) throws Exception {
-        // A replica RowScanner cannot start when an open transaction has inserted a row into
+        // A replica Scanner cannot start when an open transaction has inserted a row into
         // the range that will be scanned.
 
         teardown(); // discard pre-built Database instance
@@ -618,7 +618,7 @@ public class IndexLockTest {
 
         Transaction scanTxn = replicaDb.newTransaction();
         try {
-            replicaTable.newRowScanner(scanTxn, "id >= ? && id <= ?", 3, 7);
+            replicaTable.newScanner(scanTxn, "id >= ? && id <= ?", 3, 7);
             fail();
         } catch (LockTimeoutException e) {
             predicateLockTimeout(e);
@@ -630,7 +630,7 @@ public class IndexLockTest {
         scanTxn.lockTimeout(2, TimeUnit.SECONDS);
 
         Waiter w1 = start(() -> {
-            var scanner = replicaTable.newRowScanner(scanTxn, "id >= ? && id <= ?", 3, 7);
+            var scanner = replicaTable.newScanner(scanTxn, "id >= ? && id <= ?", 3, 7);
             assertEquals(3, scanner.row().id());
             scanner.step();
             assertEquals(5, scanner.row().id());
@@ -643,9 +643,9 @@ public class IndexLockTest {
 
         w1.await();
 
-        // Block replica scan when leader uses a RowUpdater.
+        // Block replica scan when leader uses a Updater.
 
-        var updater = leaderTable.newRowUpdater(txn1, "id == ?", 5);
+        var updater = leaderTable.newUpdater(txn1, "id == ?", 5);
         updater.row().id(4);
         updater.update();
         txn1.flush();
@@ -656,7 +656,7 @@ public class IndexLockTest {
         scanTxn.lockTimeout(100, TimeUnit.MILLISECONDS);
 
         try {
-            replicaTable.newRowScanner(scanTxn, "id == ?", 5);
+            replicaTable.newScanner(scanTxn, "id == ?", 5);
             fail();
         } catch (LockTimeoutException e) {
             predicateLockTimeout(e);
@@ -668,10 +668,10 @@ public class IndexLockTest {
         scanTxn.lockTimeout(2, TimeUnit.SECONDS);
 
         Waiter w2 = start(() -> {
-            var scanner = replicaTable.newRowScanner(scanTxn, "id == ?", 5);
+            var scanner = replicaTable.newScanner(scanTxn, "id == ?", 5);
             assertNull(scanner.row());
             scanner.close();
-            scanner = replicaTable.newRowScanner(scanTxn, "id == ?", 4);
+            scanner = replicaTable.newScanner(scanTxn, "id == ?", 4);
             assertEquals(4, scanner.row().id());
             assertEquals("name-5", scanner.row().name());
             scanner.close();
@@ -683,9 +683,9 @@ public class IndexLockTest {
 
         w2.await();
 
-        // Block replica scan when leader uses a RowUpdater, this time when key doesn't change.
+        // Block replica scan when leader uses a Updater, this time when key doesn't change.
 
-        updater = leaderTable.newRowUpdater(txn1, "id == ?", 4);
+        updater = leaderTable.newUpdater(txn1, "id == ?", 4);
         updater.row().name("newname");
         updater.update();
         txn1.flush();
@@ -696,7 +696,7 @@ public class IndexLockTest {
         scanTxn.lockTimeout(100, TimeUnit.MILLISECONDS);
 
         try {
-            replicaTable.newRowScanner(scanTxn, "id == ?", 4);
+            replicaTable.newScanner(scanTxn, "id == ?", 4);
             fail();
         } catch (LockTimeoutException e) {
             if (type == TestRow.class) {
@@ -713,7 +713,7 @@ public class IndexLockTest {
         scanTxn.lockTimeout(2, TimeUnit.SECONDS);
 
         Waiter w3 = start(() -> {
-            var scanner = replicaTable.newRowScanner(scanTxn, "id == ?", 4);
+            var scanner = replicaTable.newScanner(scanTxn, "id == ?", 4);
             assertEquals(4, scanner.row().id());
             assertEquals("newname", scanner.row().name());
             scanner.close();
@@ -759,7 +759,7 @@ public class IndexLockTest {
         Transaction txn1 = replicaDb.newTransaction();
         txn1.lockMode(LockMode.READ_COMMITTED);
 
-        var scanner = replicaTable.newRowScanner(txn1, "id >= ? && id <= ?", 3, 7);
+        var scanner = replicaTable.newScanner(txn1, "id >= ? && id <= ?", 3, 7);
 
         // This store is blocked on the replica side.
         TestRow row = leaderTable.newRow();
@@ -823,7 +823,7 @@ public class IndexLockTest {
 
         var replicaTable = replicaDb.openTable(TestRow.class);
 
-        var scanner = replicaTable.newRowScanner(null, "id >= ? && id <= ?", 3, 7);
+        var scanner = replicaTable.newScanner(null, "id >= ? && id <= ?", 3, 7);
 
         // This store shouldn't be blocked on the replica side.
         TestRow row = leaderTable.newRow();
@@ -866,7 +866,7 @@ public class IndexLockTest {
 
         Table<TestRow4> ix = table.viewSecondaryIndex("name", "id", "path").viewUnjoined();
         Transaction txn = mDatabase.newTransaction();
-        RowScanner<TestRow4> scanner = ix.newRowScanner(txn);
+        Scanner<TestRow4> scanner = ix.newScanner(txn);
 
         TestRow4 row = table.newRow();
         row.id(-2);
@@ -939,7 +939,7 @@ public class IndexLockTest {
             Transaction txn = mDatabase.newTransaction();
             txn.lockMode(mode);
             txn.lockTimeout(3, TimeUnit.SECONDS);
-            var scanner = ix.newRowScanner(txn, "name >= ?", "name-5");
+            var scanner = ix.newScanner(txn, "name >= ?", "name-5");
             scanner.step();
             scanner.close();
             txn.reset();
@@ -986,7 +986,7 @@ public class IndexLockTest {
         }
 
         Transaction txn = mDatabase.newTransaction();
-        RowScanner<TestRow3> scanner = nameIx.newRowScanner(txn, "path != ?", "path-2");
+        Scanner<TestRow3> scanner = nameIx.newScanner(txn, "path != ?", "path-2");
         assertEquals(1, scanner.row().id());
         scanner.step();
         assertEquals(3, scanner.row().id());
@@ -1009,12 +1009,12 @@ public class IndexLockTest {
         } catch (LockTimeoutException e) {
         }
         try {
-            nameIx.newRowScanner(txn2, "name == ?", "name-1");
+            nameIx.newScanner(txn2, "name == ?", "name-1");
             fail();
         } catch (LockTimeoutException e) {
         }
         try {
-            nameIx.newRowScanner(txn2, "name == ?", "name-3");
+            nameIx.newScanner(txn2, "name == ?", "name-3");
             fail();
         } catch (LockTimeoutException e) {
         }
@@ -1023,7 +1023,7 @@ public class IndexLockTest {
         row.id(2);
         table.load(txn2, row);
         assertEquals("name-2", row.name());
-        RowScanner<TestRow3> scanner2 = nameIx.newRowScanner(txn2, "name == ?", "name-2");
+        Scanner<TestRow3> scanner2 = nameIx.newScanner(txn2, "name == ?", "name-2");
         assertEquals(2, scanner2.row().id());
 
         txn2.reset();
@@ -1063,14 +1063,14 @@ public class IndexLockTest {
 
         // Acquire the row lock beforehand.
         if (lockSecondary) {
-            nameIx.newRowScanner(txn, "name == ?", "name-2").close();
+            nameIx.newScanner(txn, "name == ?", "name-2").close();
         } else {
             TestRow3 row = table.newRow();
             row.id(2);
             table.load(txn, row);
         }
 
-        RowScanner<TestRow3> scanner = nameIx.newRowScanner(txn, "path != ?", "path-2");
+        Scanner<TestRow3> scanner = nameIx.newScanner(txn, "path != ?", "path-2");
         assertEquals(1, scanner.row().id());
         scanner.step();
         assertEquals(3, scanner.row().id());
@@ -1088,7 +1088,7 @@ public class IndexLockTest {
             } catch (LockTimeoutException e) {
             }
             try {
-                nameIx.newRowScanner(txn2, "name == ?", "name-" + i);
+                nameIx.newScanner(txn2, "name == ?", "name-" + i);
                 fail();
             } catch (LockTimeoutException e) {
             }
@@ -1148,7 +1148,7 @@ public class IndexLockTest {
 
         // Blocked on secondary key lock until txn1 rolls back.
         Waiter w3 = start(() -> {
-            var scanner = nameIx.newRowScanner(null, "name == ?", "name-2");
+            var scanner = nameIx.newScanner(null, "name == ?", "name-2");
         });
 
         // This causes w2 to acquire the primary key lock, and now w3 should be waiting on w2.
@@ -1198,12 +1198,12 @@ public class IndexLockTest {
         replicaRepl.waitForControl(message);
     }
 
-    private static <R extends TestRow> RowScanner<R> newRowScanner
+    private static <R extends TestRow> Scanner<R> newScanner
         (Table<R> table, boolean updater, Transaction txn, String filter, Object... args)
         throws Exception
     {
-        return updater ? table.newRowUpdater(txn, filter, args)
-            : table.newRowScanner(txn, filter, args);
+        return updater ? table.newUpdater(txn, filter, args)
+            : table.newScanner(txn, filter, args);
     }
 
     private static void predicateLockTimeout(LockTimeoutException e) throws LockTimeoutException {

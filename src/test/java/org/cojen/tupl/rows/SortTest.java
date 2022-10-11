@@ -80,7 +80,7 @@ public class SortTest {
         int lastV2 = Integer.MIN_VALUE;
         int total = 0;
 
-        try (RowScanner<TestRow> s = table.newRowScanner(null, "{+v1, +v2}")) {
+        try (Scanner<TestRow> s = table.newScanner(null, "{+v1, +v2}")) {
             for (TestRow row = s.row(); row != null; row = s.step(row)) {
                 if (total == 0) {
                     try {
@@ -112,13 +112,13 @@ public class SortTest {
         total = 0;
 
         try {
-            table.newRowUpdater(null, "{-v1, -v2}");
+            table.newUpdater(null, "{-v1, -v2}");
             fail();
         } catch (IllegalStateException e) {
             assertTrue(e.getMessage().contains("primary key"));
         }
 
-        try (RowUpdater<TestRow> s = table.newRowUpdater(null, "{-v1, -v2, id}")) {
+        try (Updater<TestRow> s = table.newUpdater(null, "{-v1, -v2, id}")) {
             for (TestRow row = s.row(); row != null; row = s.step(row)) {
                 byte v1 = row.v1();
                 int v2 = row.v2();
@@ -144,7 +144,7 @@ public class SortTest {
 
         long expected = 0;
 
-        try (RowUpdater<TestRow> s = table.newRowUpdater(null, "{+v1, -v2, id}")) {
+        try (Updater<TestRow> s = table.newUpdater(null, "{+v1, -v2, id}")) {
             for (TestRow row = s.row(); row != null; ) {
                 if (row.v2() == 0) {
                     row.v2(-1);
@@ -164,7 +164,7 @@ public class SortTest {
 
         total = 0;
 
-        try (RowScanner<TestRow> s = table.newRowScanner(null, "{id} v2 == ?", 0)) {
+        try (Scanner<TestRow> s = table.newScanner(null, "{id} v2 == ?", 0)) {
             for (TestRow row = s.row(); row != null; row = s.step(row)) {
                 total++;
             }
@@ -174,7 +174,7 @@ public class SortTest {
 
         total = 0;
 
-        try (RowScanner<TestRow> s = table.newRowScanner(null, "{id}")) {
+        try (Scanner<TestRow> s = table.newScanner(null, "{id}")) {
             for (TestRow row = s.row(); row != null; row = s.step(row)) {
                 total++;
             }

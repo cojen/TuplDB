@@ -69,7 +69,7 @@ public class IndexUpdaterTest {
         fill(1, 10);
 
         Transaction txn = mDb.newTransaction();
-        RowUpdater<TestRow> updater = mIndex.newRowUpdater(txn);
+        Updater<TestRow> updater = mIndex.newUpdater(txn);
 
         try (updater) {
             for (TestRow row; (row = updater.row()) != null; ) {
@@ -89,7 +89,7 @@ public class IndexUpdaterTest {
         fill(1, 10);
 
         Transaction txn = mDb.newTransaction();
-        RowUpdater<TestRow> updater = mIndex.newRowUpdater(txn, "id == ? || str1 == ?", 1, "str-5");
+        Updater<TestRow> updater = mIndex.newUpdater(txn, "id == ? || str1 == ?", 1, "str-5");
 
         try (updater) {
             for (TestRow row; (row = updater.row()) != null; ) {
@@ -126,7 +126,7 @@ public class IndexUpdaterTest {
         fill(1, 10);
 
         Transaction txn = mDb.newTransaction();
-        RowUpdater<TestRow> updater = mIndex.newRowUpdater(txn);
+        Updater<TestRow> updater = mIndex.newUpdater(txn);
 
         try (updater) {
             for (TestRow row; (row = updater.row()) != null; ) {
@@ -153,7 +153,7 @@ public class IndexUpdaterTest {
         fill(1, 10);
 
         Transaction txn = mDb.newTransaction();
-        RowUpdater<TestRow> updater = mIndex.newRowUpdater(txn);
+        Updater<TestRow> updater = mIndex.newUpdater(txn);
 
         try (updater) {
             for (TestRow row; (row = updater.row()) != null; ) {
@@ -179,7 +179,7 @@ public class IndexUpdaterTest {
         fill(1, 10);
 
         Transaction txn = mDb.newTransaction();
-        RowUpdater<TestRow> updater = mIndex.newRowUpdater(txn, "id == ? || str1 == ?", 1, "str-5");
+        Updater<TestRow> updater = mIndex.newUpdater(txn, "id == ? || str1 == ?", 1, "str-5");
 
         try (updater) {
             for (TestRow row; (row = updater.row()) != null; ) {
@@ -209,7 +209,7 @@ public class IndexUpdaterTest {
         fill(1, 10);
 
         Transaction txn = mDb.newTransaction();
-        RowUpdater<TestRow> updater = mIndex.newRowUpdater(txn);
+        Updater<TestRow> updater = mIndex.newUpdater(txn);
 
         try (updater) {
             for (TestRow row; (row = updater.row()) != null; ) {
@@ -256,7 +256,7 @@ public class IndexUpdaterTest {
         fill(1, 10);
 
         Transaction txn = mDb.newTransaction();
-        RowUpdater<TestRow> updater = mIndex.newRowUpdater(txn, "id >= ? && num1 <= ?", 3, 108);
+        Updater<TestRow> updater = mIndex.newUpdater(txn, "id >= ? && num1 <= ?", 3, 108);
 
         try (updater) {
             for (TestRow row; (row = updater.row()) != null; ) {
@@ -342,7 +342,7 @@ public class IndexUpdaterTest {
 
     private <R> void dump(Table<R> table) throws Exception {
         System.out.println("dump: " + table);
-        try (RowScanner<R> scanner = table.newRowScanner(null)) {
+        try (Scanner<R> scanner = table.newScanner(null)) {
             for (R row = scanner.row(); row != null; row = scanner.step(row)) {
                 System.out.println(row);
             }

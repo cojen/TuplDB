@@ -32,9 +32,9 @@ import org.cojen.tupl.diag.QueryPlan;
  *
  * @author Brian S O'Neill
  */
-public class RowUpdaterTest {
+public class UpdaterTest {
     public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(RowUpdaterTest.class.getName());
+        org.junit.runner.JUnitCore.main(UpdaterTest.class.getName());
     }
 
     @Test
@@ -69,7 +69,7 @@ public class RowUpdaterTest {
                          plan);
         }
 
-        var u = table.newRowUpdater(null, "{name, id} id == ? || name == ?", 2, "name-3");
+        var u = table.newUpdater(null, "{name, id} id == ? || name == ?", 2, "name-3");
         for (var row = u.row(); u.row() != null; ) {
             try {
                 row.state();
@@ -106,7 +106,7 @@ public class RowUpdaterTest {
             }
         }
 
-        u = table.newRowUpdater(null, "{*, ~path} id == ? || name == ?", 2, "name-3!");
+        u = table.newUpdater(null, "{*, ~path} id == ? || name == ?", 2, "name-3!");
         for (var row = u.row(); u.row() != null; ) {
             try {
                 row.path();
@@ -147,14 +147,14 @@ public class RowUpdaterTest {
             }
         }
 
-        u = table.newRowUpdater(null, "{path, *} id == ?", 4);
+        u = table.newUpdater(null, "{path, *} id == ?", 4);
         for (var row = u.row(); u.row() != null; ) {
             row.state(row.state() + 1000);
             row = u.update(row);
         }
 
         {
-            var s = ix.newRowScanner(null, "state == ?", 1104);
+            var s = ix.newScanner(null, "state == ?", 1104);
             var row = s.row();
             assertNull(s.step());
             assertEquals(4, row.id());
@@ -164,7 +164,7 @@ public class RowUpdaterTest {
         }
 
         try {
-            ix.viewUnjoined().newRowUpdater(null, "{state}");
+            ix.viewUnjoined().newUpdater(null, "{state}");
             fail();
         } catch (UnmodifiableViewException e) {
         }
@@ -183,7 +183,7 @@ public class RowUpdaterTest {
 
     private static <R> Set<R> copy(Table<R> table) throws Exception {
         var set = new LinkedHashSet<R>();
-        RowScanner<R> s = table.newRowScanner(null);
+        Scanner<R> s = table.newScanner(null);
         for (R row = s.row(); s.row() != null; row = s.step()) {
             set.add(row);
         }
@@ -192,7 +192,7 @@ public class RowUpdaterTest {
 
     private static <R> long count(Table<R> table) throws Exception {
         long count = 0;
-        RowScanner<R> s = table.newRowScanner(null);
+        Scanner<R> s = table.newScanner(null);
         for (R row = s.row(); s.row() != null; row = s.step(row)) {
             count++;
         }
@@ -200,7 +200,7 @@ public class RowUpdaterTest {
     }
 
     private static <R> void dump(Table<R> table) throws Exception {
-        RowScanner<R> s = table.newRowScanner(null);
+        Scanner<R> s = table.newScanner(null);
         for (R row = s.row(); s.row() != null; row = s.step(row)) {
             System.out.println(row);
         }

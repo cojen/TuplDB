@@ -63,7 +63,7 @@ public class AutoTest {
 
         int count = 0;
 
-        try (var scanner = table.newRowScanner(null)) {
+        try (var scanner = table.newScanner(null)) {
             for (var row = scanner.row(); row != null; row = scanner.step()) {
                 count++;
                 assertTrue(row.id() >= 1);
@@ -101,7 +101,7 @@ public class AutoTest {
 
         int count = 0;
 
-        try (var scanner = table.newRowScanner(null)) {
+        try (var scanner = table.newScanner(null)) {
             for (var row = scanner.row(); row != null; row = scanner.step()) {
                 count++;
                 assertTrue(row.id() >= 1);
@@ -113,7 +113,7 @@ public class AutoTest {
         Table<TestRow2> valIx = table.viewSecondaryIndex("val").viewUnjoined();
         count = 0;
 
-        try (var scanner = valIx.newRowScanner(null)) {
+        try (var scanner = valIx.newScanner(null)) {
             for (var row = scanner.row(); row != null; row = scanner.step()) {
                 count++;
             }
@@ -151,7 +151,7 @@ public class AutoTest {
 
         int count = 0;
 
-        try (var scanner = table.newRowScanner(null)) {
+        try (var scanner = table.newScanner(null)) {
             for (var row = scanner.row(); row != null; row = scanner.step()) {
                 count++;
                 assertTrue(row.id() >= 1);
@@ -163,7 +163,7 @@ public class AutoTest {
         Table<TestRow3> valIx = table.viewSecondaryIndex("val").viewUnjoined();
         count = 0;
 
-        try (var scanner = valIx.newRowScanner(null)) {
+        try (var scanner = valIx.newScanner(null)) {
             for (var row = scanner.row(); row != null; row = scanner.step()) {
                 count++;
             }
@@ -201,7 +201,7 @@ public class AutoTest {
 
         int count = 0;
 
-        try (var scanner = table.newRowScanner(null)) {
+        try (var scanner = table.newScanner(null)) {
             for (var row = scanner.row(); row != null; row = scanner.step()) {
                 count++;
                 assertTrue(row.id() >= 1);
@@ -239,7 +239,7 @@ public class AutoTest {
 
         int count = 0;
 
-        try (var scanner = table.newRowScanner(null)) {
+        try (var scanner = table.newScanner(null)) {
             for (var row = scanner.row(); row != null; row = scanner.step()) {
                 count++;
                 assertTrue(row.id() >= 1);
@@ -277,7 +277,7 @@ public class AutoTest {
 
         int count = 0;
 
-        try (var scanner = table.newRowScanner(null)) {
+        try (var scanner = table.newScanner(null)) {
             for (var row = scanner.row(); row != null; row = scanner.step()) {
                 count++;
                 assertTrue(row.id() >= 1);
@@ -317,7 +317,7 @@ public class AutoTest {
 
         int count = 0;
 
-        try (var scanner = table.newRowScanner(null)) {
+        try (var scanner = table.newScanner(null)) {
             for (var row = scanner.row(); row != null; row = scanner.step()) {
                 count++;
                 assertNotEquals(0, row.id());
@@ -357,7 +357,7 @@ public class AutoTest {
 
         int count = 0;
 
-        try (var scanner = table.newRowScanner(null)) {
+        try (var scanner = table.newScanner(null)) {
             for (var row = scanner.row(); row != null; row = scanner.step()) {
                 count++;
                 assertNotEquals(0, row.id());
@@ -404,7 +404,7 @@ public class AutoTest {
 
         int count = 0;
 
-        try (var scanner = table.newRowScanner(null)) {
+        try (var scanner = table.newScanner(null)) {
             for (var row = scanner.row(); row != null; row = scanner.step()) {
                 count++;
                 assertNotEquals(0, row.id());
@@ -428,7 +428,7 @@ public class AutoTest {
         }
 
         Transaction txn = mDb.newTransaction();
-        var scanner = table.newRowScanner(txn, "id >= ?", -10);
+        var scanner = table.newScanner(txn, "id >= ?", -10);
 
         int i = 0;
         try {
@@ -446,7 +446,7 @@ public class AutoTest {
 
         int count = 0;
 
-        try (var scanner2 = table.newRowScanner(null)) {
+        try (var scanner2 = table.newScanner(null)) {
             for (var row = scanner2.row(); row != null; row = scanner2.step()) {
                 count++;
                 int id = row.id();

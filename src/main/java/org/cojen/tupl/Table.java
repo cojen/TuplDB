@@ -125,7 +125,7 @@ public interface Table<R> {
      * @throws IllegalStateException if transaction belongs to another database instance
      * @see #scannerPlan scannerPlan
      */
-    public RowScanner<R> newRowScanner(Transaction txn) throws IOException;
+    public Scanner<R> newScanner(Transaction txn) throws IOException;
 
     /**
      * Returns a new scanner for a subset of rows of this table, as specified by the query
@@ -136,7 +136,7 @@ public interface Table<R> {
      * @throws IllegalStateException if transaction belongs to another database instance
      * @see #scannerPlan scannerPlan
      */
-    public RowScanner<R> newRowScanner(Transaction txn, String query, Object... args)
+    public Scanner<R> newScanner(Transaction txn, String query, Object... args)
         throws IOException;
 
     /**
@@ -153,7 +153,7 @@ public interface Table<R> {
      * @throws IllegalStateException if transaction belongs to another database instance
      * @see #updaterPlan updaterPlan
      */
-    public RowUpdater<R> newRowUpdater(Transaction txn) throws IOException;
+    public Updater<R> newUpdater(Transaction txn) throws IOException;
 
     /**
      * Returns a new updater for a subset of rows of this table, as specified by the query
@@ -170,7 +170,7 @@ public interface Table<R> {
      * @throws IllegalStateException if transaction belongs to another database instance
      * @see #updaterPlan updaterPlan
      */
-    public RowUpdater<R> newRowUpdater(Transaction txn, String query, Object... args)
+    public Updater<R> newUpdater(Transaction txn, String query, Object... args)
         throws IOException;
 
     /**
@@ -185,7 +185,7 @@ public interface Table<R> {
      */
     public default Stream<R> newStream(Transaction txn) {
         try {
-            return newStream(newRowScanner(txn));
+            return newStream(newScanner(txn));
         } catch (IOException e) {
             throw Utils.rethrow(e);
         }
@@ -204,13 +204,13 @@ public interface Table<R> {
      */
     public default Stream<R> newStream(Transaction txn, String query, Object... args) {
         try {
-            return newStream(newRowScanner(txn, query, args));
+            return newStream(newScanner(txn, query, args));
         } catch (IOException e) {
             throw Utils.rethrow(e);
         }
     }
 
-    private static <R> Stream<R> newStream(RowScanner<R> scanner) {
+    private static <R> Stream<R> newStream(Scanner<R> scanner) {
         return StreamSupport.stream(scanner, false).onClose(() -> {
             try {
                 scanner.close();
@@ -334,8 +334,8 @@ public interface Table<R> {
     public Predicate<R> predicate(String query, Object... args);
 
     /**
-     * Returns a query plan used by {@link #newRowScanner(Transaction, String, Object...)
-     * newRowScanner}.
+     * Returns a query plan used by {@link #newScanner(Transaction, String, Object...)
+     * newScanner}.
      *
      * @param txn optional transaction to be used; pass null for auto-commit mode
      * @param query optional query expression
@@ -344,8 +344,8 @@ public interface Table<R> {
     public QueryPlan scannerPlan(Transaction txn, String query, Object... args) throws IOException;
 
     /**
-     * Returns a query plan used by {@link #newRowUpdater(Transaction, String, Object...)
-     * newRowUpdater}.
+     * Returns a query plan used by {@link #newUpdater(Transaction, String, Object...)
+     * newUpdater}.
      *
      * @param txn optional transaction to be used; pass null for auto-commit mode
      * @param query optional query expression

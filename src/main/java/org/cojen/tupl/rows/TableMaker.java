@@ -43,7 +43,7 @@ import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockResult;
-import org.cojen.tupl.RowUpdater;
+import org.cojen.tupl.Updater;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnmodifiableViewException;
@@ -357,10 +357,10 @@ public class TableMaker {
 
         // Override the method inherited from BaseTableIndex.
         MethodMaker mm = mClassMaker.addMethod
-            (RowUpdater.class, "newRowUpdater",
+            (Updater.class, "newUpdater",
              Transaction.class, Object.class, ScanController.class);
         mm.protected_();
-        mm.return_(mm.invoke("newJoinedRowUpdater", mm.param(0), mm.param(1), mm.param(2),
+        mm.return_(mm.invoke("newJoinedUpdater", mm.param(0), mm.param(1), mm.param(2),
                              mm.field("primaryTable")));
 
         return doFinish(mt);

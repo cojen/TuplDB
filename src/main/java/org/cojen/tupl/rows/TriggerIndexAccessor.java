@@ -23,7 +23,7 @@ import org.cojen.tupl.Index;
 
 /**
  * @author Brian S O'Neill
- * @see JoinedRowUpdater
+ * @see JoinedUpdater
  */
 public abstract class TriggerIndexAccessor {
     TriggerIndexAccessor() {

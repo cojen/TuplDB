@@ -19,25 +19,25 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
-import org.cojen.tupl.RowUpdater;
+import org.cojen.tupl.Scanner;
 
 /**
- * Concatenates multiple RowUpdaters into a single RowUpdater.
+ * Concatenates multiple Scanners into a single Scanner.
  *
  * @author Brian S O'Neill
  */
-abstract class ConcatRowUpdater<R> implements BaseRowScanner<R>, RowUpdater<R> {
+abstract class ConcatScanner<R> implements BaseScanner<R> {
     private final int mCharacteristics;
 
-    private RowUpdater<R> mCurrent;
+    private Scanner<R> mCurrent;
 
     /**
      * @param dst can be null
      */
-    ConcatRowUpdater(int characteristics, final R dst) throws IOException {
+    ConcatScanner(int characteristics, final R dst) throws IOException {
         mCharacteristics = characteristics;
 
-        RowUpdater<R> next = next(dst);
+        Scanner<R> next = next(dst);
         while (true) {
             mCurrent = next;
             if (row() != null || (next = next(dst)) == null) {
@@ -55,7 +55,7 @@ abstract class ConcatRowUpdater<R> implements BaseRowScanner<R>, RowUpdater<R> {
     public R step() throws IOException {
         R row = mCurrent.step();
         while (true) {
-            RowUpdater<R> next;
+            Scanner<R> next;
             if (row != null || (next = next(null)) == null) {
                 return row;
             }
@@ -68,49 +68,13 @@ abstract class ConcatRowUpdater<R> implements BaseRowScanner<R>, RowUpdater<R> {
     public R step(final R dst) throws IOException {
         R row = mCurrent.step(dst);
         while (true) {
-            RowUpdater<R> next;
+            Scanner<R> next;
             if (row != null || (next = next(dst)) == null) {
                 return row;
             }
             mCurrent = next;
             row = next.row();
         }
-    }
-
-    @Override
-    public R update() throws IOException {
-        R row = mCurrent.update();
-        if (row == null) {
-            row = step();
-        }
-        return row;
-    }
-
-    @Override
-    public R update(final R dst) throws IOException {
-        R row = mCurrent.update(dst);
-        if (row == null) {
-            row = step(dst);
-        }
-        return row;
-    }
-
-    @Override
-    public R delete() throws IOException {
-        R row = mCurrent.delete();
-        if (row == null) {
-            row = step();
-        }
-        return row;
-    }
-
-    @Override
-    public R delete(final R dst) throws IOException {
-        R row = mCurrent.delete(dst);
-        if (row == null) {
-            row = step(dst);
-        }
-        return row;
     }
 
     @Override
@@ -133,5 +97,5 @@ abstract class ConcatRowUpdater<R> implements BaseRowScanner<R>, RowUpdater<R> {
      *
      * @param dst can be null
      */
-    protected abstract RowUpdater<R> next(R dst) throws IOException;
+    protected abstract Scanner<R> next(R dst) throws IOException;
 }

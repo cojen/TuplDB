@@ -31,18 +31,18 @@ import java.io.IOException;
  * against the original row. For debugging, call the row's {@code toString} method to identify
  * which columns are modified. The name of a modified column is prefixed with an asterisk.
  *
- * <p>RowUpdater instances can only be safely used by one thread at a time, and they must be
+ * <p>Updater instances can only be safely used by one thread at a time, and they must be
  * closed when no longer needed. Instances can be exchanged by threads, as long as a
  * happens-before relationship is established. Without proper exclusion, multiple threads
- * interacting with a RowUpdater instance may cause database corruption.
+ * interacting with a Updater instance may cause database corruption.
  *
  * @author Brian S O'Neill
- * @see Table#newRowUpdater Table.newRowUpdater
- * @see RowScanner
+ * @see Table#newUpdater Table.newUpdater
+ * @see Scanner
  *
  * @author Brian S O'Neill
  */
-public interface RowUpdater<R> extends RowScanner<R> {
+public interface Updater<R> extends Scanner<R> {
     /**
      * Update the current row and then step to the next row.
      *

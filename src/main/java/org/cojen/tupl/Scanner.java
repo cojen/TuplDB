@@ -26,18 +26,18 @@ import java.util.Spliterator;
  * Support for scanning through all rows in a table. Any exception thrown when acting upon a
  * scanner automatically closes it.
  *
- * <p>RowScanner instances can only be safely used by one thread at a time, and they must be
+ * <p>Scanner instances can only be safely used by one thread at a time, and they must be
  * closed when no longer needed. Instances can be exchanged by threads, as long as a
  * happens-before relationship is established. Without proper exclusion, multiple threads
- * interacting with a RowScanner instance may cause database corruption.
+ * interacting with a Scanner instance may cause database corruption.
  *
  * @author Brian S O'Neill
- * @see Table#newRowScanner Table.newRowScanner
- * @see RowUpdater
+ * @see Table#newScanner Table.newScanner
+ * @see Updater
  *
  * @author Brian S O'Neill
  */
-public interface RowScanner<R> extends Spliterator<R>, Closeable {
+public interface Scanner<R> extends Spliterator<R>, Closeable {
     /**
      * Returns a reference to the current row, which is null if the scanner is closed.
      */

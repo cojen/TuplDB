@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2022 Cojen.org
+ *  Copyright (C) 2021 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -20,32 +20,41 @@ package org.cojen.tupl.rows;
 import java.io.IOException;
 
 import org.cojen.tupl.Cursor;
+import org.cojen.tupl.LockMode;
 import org.cojen.tupl.LockResult;
+import org.cojen.tupl.Transaction;
 
 /**
- * Unlocks every row acquired; must only be used with a fresh REPEATABLE_READ transaction.
+ * EntryUpdater which uses the {@link LockMode#UPGRADABLE_READ} mode.
  *
  * @author Brian S O'Neill
  */
-final class AutoCommitRowScanner<R> extends BasicRowScanner<R> {
-    AutoCommitRowScanner(BaseTable<R> table, ScanController<R> controller) {
+final class UpgradableUpdater<R> extends BasicUpdater<R> {
+    UpgradableUpdater(BaseTable<R> table, ScanController<R> controller) {
         super(table, controller);
     }
 
     @Override
-    protected R evalRow(Cursor c, LockResult result, R row) throws IOException {
-        R decoded = mEvaluator.evalRow(c, result, row);
-        // Always release the lock, which when joined, combines the secondary and primary locks.
-        // When decoded is null, the caller (BasicRowScanner) releases the lock(s).
-        if (decoded != null) {
-            c.link().unlock();
+    protected LockResult toFirst(Cursor c) throws IOException {
+        Transaction txn = c.link();
+        LockMode original = txn.lockMode();
+        txn.lockMode(LockMode.UPGRADABLE_READ);
+        try {
+            return super.toFirst(c);
+        } finally {
+            txn.lockMode(original);
         }
-        return decoded;
     }
 
     @Override
-    protected void finished() throws IOException {
-        mRow = null;
-        mCursor.link().reset();
+    protected LockResult toNext(Cursor c) throws IOException {
+        Transaction txn = c.link();
+        LockMode original = txn.lockMode();
+        txn.lockMode(LockMode.UPGRADABLE_READ);
+        try {
+            return super.toNext(c);
+        } finally {
+            txn.lockMode(original);
+        }
     }
 }

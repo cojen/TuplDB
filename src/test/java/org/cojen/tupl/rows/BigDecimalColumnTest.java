@@ -27,7 +27,7 @@ import static org.junit.Assert.*;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseConfig;
 import org.cojen.tupl.PrimaryKey;
-import org.cojen.tupl.RowScanner;
+import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 
 /**
@@ -71,30 +71,30 @@ public class BigDecimalColumnTest {
         row3.value2(new BigDecimal("-1.0000000000000001"));
         table.store(null, row3);
 
-        expect(Set.of(row1, row2), table.newRowScanner(null, "id == ?", 1));
-        expect(Set.of(row1, row2), table.newRowScanner(null, "value1 == ?", 0.0));
-        expect(Set.of(row1, row2), table.newRowScanner(null, "value2 == ?", -1));
+        expect(Set.of(row1, row2), table.newScanner(null, "id == ?", 1));
+        expect(Set.of(row1, row2), table.newScanner(null, "value1 == ?", 0.0));
+        expect(Set.of(row1, row2), table.newScanner(null, "value2 == ?", -1));
 
-        expect(Set.of(row2), table.newRowScanner(null, "id == ?", new BigDecimal("1.000")));
-        expect(Set.of(row1), table.newRowScanner(null, "value1 == ?", new BigDecimal("0.00")));
+        expect(Set.of(row2), table.newScanner(null, "id == ?", new BigDecimal("1.000")));
+        expect(Set.of(row1), table.newScanner(null, "value1 == ?", new BigDecimal("0.00")));
 
-        expect(Set.of(row3), table.newRowScanner(null, "id == ?", 1.125));
-        expect(Set.of(row3), table.newRowScanner(null, "value1 > ?", new BigDecimal("0.0")));
-        expect(Set.of(row1, row2, row3), table.newRowScanner(null, "value2 <= ?", -1));
+        expect(Set.of(row3), table.newScanner(null, "id == ?", 1.125));
+        expect(Set.of(row3), table.newScanner(null, "value1 > ?", new BigDecimal("0.0")));
+        expect(Set.of(row1, row2, row3), table.newScanner(null, "value2 <= ?", -1));
 
-        expect(Set.of(row3), table.newRowScanner(null, "value1 == ?", new BigDecimal("0.0000001")));
-        expect(Set.of(row3), table.newRowScanner(null, "value1 == ?", 0.0000001));
-        expect(Set.of(row3), table.newRowScanner(null, "value1 == ?", 0.0000001f));
+        expect(Set.of(row3), table.newScanner(null, "value1 == ?", new BigDecimal("0.0000001")));
+        expect(Set.of(row3), table.newScanner(null, "value1 == ?", 0.0000001));
+        expect(Set.of(row3), table.newScanner(null, "value1 == ?", 0.0000001f));
 
         // Also try a range search.
         float low = 0.0000001f;
         low -= Math.ulp(low);
         float high = 0.0000001f;
         high += Math.ulp(high);
-        expect(Set.of(row3), table.newRowScanner(null, "value1 >= ? && value1 <= ?", low, high));
+        expect(Set.of(row3), table.newScanner(null, "value1 >= ? && value1 <= ?", low, high));
     }
 
-    private static void expect(Set<Rec> set, RowScanner<Rec> scanner) throws Exception {
+    private static void expect(Set<Rec> set, Scanner<Rec> scanner) throws Exception {
         Rec last = null;
         int count = 0;
         for (Rec row = scanner.row(); row != null; row = scanner.step()) {

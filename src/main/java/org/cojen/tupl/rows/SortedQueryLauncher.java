@@ -22,11 +22,9 @@ import java.io.IOException;
 import java.util.Comparator;
 import java.util.Set;
 
-import java.util.function.Predicate;
-
 import org.cojen.tupl.LockMode;
-import org.cojen.tupl.RowScanner;
-import org.cojen.tupl.RowUpdater;
+import org.cojen.tupl.Scanner;
+import org.cojen.tupl.Updater;
 import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.diag.QueryPlan;
@@ -50,26 +48,26 @@ final class SortedQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
-    public RowScanner<R> newRowScanner(Transaction txn, R row, Object... args) throws IOException {
+    public Scanner<R> newScanner(Transaction txn, R row, Object... args) throws IOException {
         return RowSorter.sort(mTable, mSpec, mComparator, mSource, txn, args);
     }
 
     @Override
-    public RowUpdater<R> newRowUpdater(Transaction txn, R row, Object... args) throws IOException {
+    public Updater<R> newUpdater(Transaction txn, R row, Object... args) throws IOException {
         if (txn != null) {
             if (txn.lockMode() != LockMode.UNSAFE) {
                 txn.enter();
             }
 
-            RowScanner<R> scanner;
+            Scanner<R> scanner;
             try {
-                scanner = newRowScanner(txn, row, args);
+                scanner = newScanner(txn, row, args);
                 txn.commit(); // keep the locks
             } finally {
                 txn.exit();
             }
 
-            return new WrappedRowUpdater<>(mTable, txn, scanner);
+            return new WrappedUpdater<>(mTable, txn, scanner);
         }
 
         // Need to create a transaction to acquire locks, but true auto-commit behevior isn't
@@ -79,15 +77,15 @@ final class SortedQueryLauncher<R> implements QueryLauncher<R> {
 
         txn = mTable.mSource.newTransaction(null);
 
-        RowScanner<R> scanner;
+        Scanner<R> scanner;
         try {
-            scanner = newRowScanner(txn, row, args);
+            scanner = newScanner(txn, row, args);
         } catch (Throwable e) {
             txn.exit();
             throw e;
         }
 
-        return new WrappedRowUpdater<>(mTable, txn, scanner) {
+        return new WrappedUpdater<>(mTable, txn, scanner) {
             @Override
             public R step() throws IOException {
                 try {

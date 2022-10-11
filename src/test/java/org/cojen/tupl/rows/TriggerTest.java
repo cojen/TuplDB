@@ -412,7 +412,7 @@ public class TriggerTest {
 
         mTable.setTrigger(trigger);
 
-        RowUpdater<TestRow> updater = mTable.newRowUpdater(null, "value == ?", "v3");
+        Updater<TestRow> updater = mTable.newUpdater(null, "value == ?", "v3");
         while (updater.row() != null) {
             updater.delete();
         }
@@ -430,7 +430,7 @@ public class TriggerTest {
         assertFalse(mTable.load(null, row));
 
         Transaction txn = mDb.newTransaction();
-        updater = mTable.newRowUpdater(txn, "value == ?", "v2");
+        updater = mTable.newUpdater(txn, "value == ?", "v2");
         while (updater.row() != null) {
             updater.delete();
         }
@@ -464,7 +464,7 @@ public class TriggerTest {
 
         mTable.setTrigger(trigger);
 
-        RowUpdater<TestRow> updater = mTable.newRowUpdater(null, "value == ?", "v3");
+        Updater<TestRow> updater = mTable.newUpdater(null, "value == ?", "v3");
         while (updater.row() != null) {
             updater.row().extra("extra!");
             updater.update();
@@ -485,7 +485,7 @@ public class TriggerTest {
         assertEquals("extra!", row.extra());
 
         Transaction txn = mDb.newTransaction();
-        updater = mTable.newRowUpdater(txn, "value == ?", "v2");
+        updater = mTable.newUpdater(txn, "value == ?", "v2");
         while (updater.row() != null) {
             updater.row().extra("extra!!!");
             updater.update();
@@ -523,7 +523,7 @@ public class TriggerTest {
 
         mTable.setTrigger(trigger);
 
-        RowUpdater<TestRow> updater = mTable.newRowUpdater(null, "value == ?", "v3");
+        Updater<TestRow> updater = mTable.newUpdater(null, "value == ?", "v3");
         while (updater.row() != null) {
             updater.row().id(103);
             updater.update();
@@ -543,7 +543,7 @@ public class TriggerTest {
         assertEquals("v3", row.value());
 
         Transaction txn = mDb.newTransaction();
-        updater = mTable.newRowUpdater(txn, "value == ?", "v2");
+        updater = mTable.newUpdater(txn, "value == ?", "v2");
         while (updater.row() != null) {
             updater.row().id(102);
             updater.update();

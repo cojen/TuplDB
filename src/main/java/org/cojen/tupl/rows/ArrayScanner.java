@@ -20,12 +20,12 @@ package org.cojen.tupl.rows;
 import org.cojen.tupl.Table;
 
 /**
- * A RowScanner backed by an array of decoded rows.
+ * A Scanner backed by an array of decoded rows.
  *
  * @author Brian S O'Neill
  * @see RowSorter
  */
-abstract class ArrayRowScanner<R> implements BaseRowScanner<R> {
+abstract class ArrayScanner<R> implements BaseScanner<R> {
     private static final Object[] EMPTY = new Object[1];
 
     private final Table<R> mTable;
@@ -36,12 +36,12 @@ abstract class ArrayRowScanner<R> implements BaseRowScanner<R> {
     /**
      * Construct an empty scanner.
      */
-    ArrayRowScanner() {
+    ArrayScanner() {
         mTable = null;
         close();
     }
 
-    ArrayRowScanner(Table<R> table, R[] rows) {
+    ArrayScanner(Table<R> table, R[] rows) {
         mTable = table;
         mRows = rows;
     }

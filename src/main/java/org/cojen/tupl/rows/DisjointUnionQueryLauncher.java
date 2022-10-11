@@ -21,15 +21,11 @@ import java.io.IOException;
 
 import java.util.Set;
 
-import java.util.function.Predicate;
-
-import org.cojen.tupl.RowScanner;
-import org.cojen.tupl.RowUpdater;
+import org.cojen.tupl.Scanner;
+import org.cojen.tupl.Updater;
 import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.diag.QueryPlan;
-
-import static java.util.Spliterator.*;
 
 /**
  * Supports queries that scan over multiple tables.
@@ -48,17 +44,17 @@ final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
-    public RowScanner<R> newRowScanner(Transaction txn, R row, Object... args) throws IOException {
-        return new ConcatRowScanner<R>(characteristics(), row) {
+    public Scanner<R> newScanner(Transaction txn, R row, Object... args) throws IOException {
+        return new ConcatScanner<R>(characteristics(), row) {
             private int mWhich;
 
             @Override
-            public RowScanner<R> next(R dst) throws IOException {
+            public Scanner<R> next(R dst) throws IOException {
                 int which = mWhich;
                 if (which >= mLaunchers.length) {
                     return null;
                 } else {
-                    RowScanner<R> next = mLaunchers[which].newRowScanner(txn, dst, args);
+                    Scanner<R> next = mLaunchers[which].newScanner(txn, dst, args);
                     mWhich = which + 1;
                     return next;
                 }
@@ -67,17 +63,17 @@ final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
-    public RowUpdater<R> newRowUpdater(Transaction txn, R row, Object... args) throws IOException {
-        return new ConcatRowUpdater<R>(characteristics(), row) {
+    public Updater<R> newUpdater(Transaction txn, R row, Object... args) throws IOException {
+        return new ConcatUpdater<R>(characteristics(), row) {
             private int mWhich;
 
             @Override
-            public RowUpdater<R> next(R dst) throws IOException {
+            public Updater<R> next(R dst) throws IOException {
                 int which = mWhich;
                 if (which >= mLaunchers.length) {
                     return null;
                 } else {
-                    RowUpdater<R> next = mLaunchers[which].newRowUpdater(txn, dst, args);
+                    Updater<R> next = mLaunchers[which].newUpdater(txn, dst, args);
                     mWhich = which + 1;
                     return next;
                 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2021 Cojen.org
+ *  Copyright (C) 2022 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -20,41 +20,32 @@ package org.cojen.tupl.rows;
 import java.io.IOException;
 
 import org.cojen.tupl.Cursor;
-import org.cojen.tupl.LockMode;
 import org.cojen.tupl.LockResult;
-import org.cojen.tupl.Transaction;
 
 /**
- * EntryUpdater which uses the {@link LockMode#UPGRADABLE_READ} mode.
+ * Unlocks every row acquired; must only be used with a fresh REPEATABLE_READ transaction.
  *
  * @author Brian S O'Neill
  */
-final class UpgradableRowUpdater<R> extends BasicRowUpdater<R> {
-    UpgradableRowUpdater(BaseTable<R> table, ScanController<R> controller) {
+final class AutoCommitScanner<R> extends BasicScanner<R> {
+    AutoCommitScanner(BaseTable<R> table, ScanController<R> controller) {
         super(table, controller);
     }
 
     @Override
-    protected LockResult toFirst(Cursor c) throws IOException {
-        Transaction txn = c.link();
-        LockMode original = txn.lockMode();
-        txn.lockMode(LockMode.UPGRADABLE_READ);
-        try {
-            return super.toFirst(c);
-        } finally {
-            txn.lockMode(original);
+    protected R evalRow(Cursor c, LockResult result, R row) throws IOException {
+        R decoded = mEvaluator.evalRow(c, result, row);
+        // Always release the lock, which when joined, combines the secondary and primary locks.
+        // When decoded is null, the caller (BasicScanner) releases the lock(s).
+        if (decoded != null) {
+            c.link().unlock();
         }
+        return decoded;
     }
 
     @Override
-    protected LockResult toNext(Cursor c) throws IOException {
-        Transaction txn = c.link();
-        LockMode original = txn.lockMode();
-        txn.lockMode(LockMode.UPGRADABLE_READ);
-        try {
-            return super.toNext(c);
-        } finally {
-            txn.lockMode(original);
-        }
+    protected void finished() throws IOException {
+        mRow = null;
+        mCursor.link().reset();
     }
 }

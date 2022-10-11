@@ -21,14 +21,14 @@ import java.util.Spliterator;
 
 import java.util.function.Consumer;
 
-import org.cojen.tupl.RowScanner;
+import org.cojen.tupl.Scanner;
 
 /**
  * 
  *
  * @author Brian S O'Neill
  */
-interface BaseRowScanner<R> extends RowScanner<R> {
+interface BaseScanner<R> extends Scanner<R> {
     @Override
     default boolean tryAdvance(Consumer<? super R> action) {
         try {

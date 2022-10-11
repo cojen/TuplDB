@@ -25,7 +25,7 @@ import java.util.Objects;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockResult;
-import org.cojen.tupl.RowUpdater;
+import org.cojen.tupl.Updater;
 import org.cojen.tupl.Transaction;
 
 /**
@@ -33,21 +33,21 @@ import org.cojen.tupl.Transaction;
  *
  * @author Brian S O'Neill
  */
-final class JoinedRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
-    private final BasicRowUpdater<R> mPrimaryUpdater;
+final class JoinedUpdater<R> extends BasicScanner<R> implements Updater<R> {
+    private final BasicUpdater<R> mPrimaryUpdater;
 
     private final TriggerIndexAccessor mAccessor;
 
     private Cursor mPrimaryCursor;
 
-    JoinedRowUpdater(BaseTableIndex<R> table, ScanController<R> controller,
-                     BasicRowUpdater<R> primaryUpdater)
+    JoinedUpdater(BaseTableIndex<R> table, ScanController<R> controller,
+                  BasicUpdater<R> primaryUpdater)
     {
         super(table, controller);
         mPrimaryUpdater = primaryUpdater;
 
-        // TriggerIndexAccessor could be an interface, and then JoinedRowUpdater could simply
-        // implement it. This can be a problem if someone decided to attach the RowUpdater to a
+        // TriggerIndexAccessor could be an interface, and then JoinedUpdater could simply
+        // implement it. This can be a problem if someone decided to attach the Updater to a
         // transaction, and so the composition approach is safer.
         mAccessor = new TriggerIndexAccessor() {
             @Override

@@ -21,10 +21,8 @@ import java.io.IOException;
 
 import java.util.Set;
 
-import java.util.function.Predicate;
-
-import org.cojen.tupl.RowScanner;
-import org.cojen.tupl.RowUpdater;
+import org.cojen.tupl.Scanner;
+import org.cojen.tupl.Updater;
 import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.diag.QueryPlan;
@@ -38,12 +36,12 @@ interface QueryLauncher<R> {
     /**
      * @param row initial row; can be null
      */
-    RowScanner<R> newRowScanner(Transaction txn, R row, Object... args) throws IOException;
+    Scanner<R> newScanner(Transaction txn, R row, Object... args) throws IOException;
 
     /**
      * @param row initial row; can be null
      */
-    RowUpdater<R> newRowUpdater(Transaction txn, R row, Object... args) throws IOException;
+    Updater<R> newUpdater(Transaction txn, R row, Object... args) throws IOException;
 
     QueryPlan plan(Object... args);
 

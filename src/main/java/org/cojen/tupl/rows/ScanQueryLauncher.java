@@ -21,10 +21,8 @@ import java.io.IOException;
 
 import java.util.Set;
 
-import java.util.function.Predicate;
-
-import org.cojen.tupl.RowScanner;
-import org.cojen.tupl.RowUpdater;
+import org.cojen.tupl.Scanner;
+import org.cojen.tupl.Updater;
 import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.diag.QueryPlan;
@@ -48,13 +46,13 @@ final class ScanQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
-    public RowScanner<R> newRowScanner(Transaction txn, R row, Object... args) throws IOException {
-        return mTable.newRowScanner(txn, row, mFactory.scanController(args));
+    public Scanner<R> newScanner(Transaction txn, R row, Object... args) throws IOException {
+        return mTable.newScanner(txn, row, mFactory.scanController(args));
     }
 
     @Override
-    public RowUpdater<R> newRowUpdater(Transaction txn, R row, Object... args) throws IOException {
-        return mTable.newRowUpdater(txn, row, mFactory.scanController(args));
+    public Updater<R> newUpdater(Transaction txn, R row, Object... args) throws IOException {
+        return mTable.newUpdater(txn, row, mFactory.scanController(args));
     }
 
     @Override

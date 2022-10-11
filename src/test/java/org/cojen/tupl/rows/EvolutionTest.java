@@ -33,7 +33,7 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseConfig;
-import org.cojen.tupl.RowScanner;
+import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 
 /**
@@ -181,7 +181,7 @@ public class EvolutionTest {
 
             Method[] getters = RowTestUtils.access(spec, table.rowType())[0];
 
-            RowScanner scanner = table.newRowScanner(null);
+            Scanner scanner = table.newScanner(null);
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
                 TreeMap<String, Object> columns = extractColumns(getters, row);
                 Object key = columns.remove("key");
@@ -468,7 +468,7 @@ public class EvolutionTest {
 
         // Now test some filters.
 
-        RowScanner scanner = table.newRowScanner(null, "a == ?", "0.0");
+        Scanner scanner = table.newScanner(null, "a == ?", "0.0");
         int count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(4, getKey.invoke(row));
@@ -482,7 +482,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = table.newRowScanner(null, "b >= ?", "11");
+        scanner = table.newScanner(null, "b >= ?", "11");
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -514,7 +514,7 @@ public class EvolutionTest {
 
         assertEquals(3, count);
 
-        scanner = table.newRowScanner(null, "c == ?", "");
+        scanner = table.newScanner(null, "c == ?", "");
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(3, getKey.invoke(row));
@@ -528,7 +528,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = table.newRowScanner(null, "d >= ?", "300");
+        scanner = table.newScanner(null, "d >= ?", "300");
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(3, getKey.invoke(row));
@@ -542,7 +542,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = table.newRowScanner(null, "e > ? || e == ?", "123.456", "");
+        scanner = table.newScanner(null, "e > ? || e == ?", "123.456", "");
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -705,7 +705,7 @@ public class EvolutionTest {
 
         // Now test some filters.
 
-        RowScanner scanner = table.newRowScanner(null, "a == ?", "0");
+        Scanner scanner = table.newScanner(null, "a == ?", "0");
         int count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -737,7 +737,7 @@ public class EvolutionTest {
 
         assertEquals(3, count);
 
-        scanner = table.newRowScanner(null, "b > ?", 2);
+        scanner = table.newScanner(null, "b > ?", 2);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -762,7 +762,7 @@ public class EvolutionTest {
 
         assertEquals(2, count);
 
-        scanner = table.newRowScanner(null, "c == ?", 0);
+        scanner = table.newScanner(null, "c == ?", 0);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(3, getKey.invoke(row));
@@ -776,7 +776,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = table.newRowScanner(null, "d <= ?", 0);
+        scanner = table.newScanner(null, "d <= ?", 0);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -801,7 +801,7 @@ public class EvolutionTest {
 
         assertEquals(2, count);
 
-        scanner = table.newRowScanner(null, "e == ?", new BigInteger("999999999999999"));
+        scanner = table.newScanner(null, "e == ?", new BigInteger("999999999999999"));
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(4, getKey.invoke(row));
@@ -953,7 +953,7 @@ public class EvolutionTest {
 
         // Now test some filters.
 
-        RowScanner scanner = table.newRowScanner(null, "a == ?", "0");
+        Scanner scanner = table.newScanner(null, "a == ?", "0");
         int count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -985,7 +985,7 @@ public class EvolutionTest {
 
         assertEquals(3, count);
 
-        scanner = table.newRowScanner(null, "b >= ?", 11);
+        scanner = table.newScanner(null, "b >= ?", 11);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -1010,7 +1010,7 @@ public class EvolutionTest {
 
         assertEquals(2, count);
 
-        scanner = table.newRowScanner(null, "c == ?", 0);
+        scanner = table.newScanner(null, "c == ?", 0);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(3, getKey.invoke(row));
@@ -1024,7 +1024,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = table.newRowScanner(null, "d <= ? && d > ?", 0, -100);
+        scanner = table.newScanner(null, "d <= ? && d > ?", 0, -100);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(2, getKey.invoke(row));
@@ -1038,7 +1038,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = table.newRowScanner(null, "e == ? || e == ?", 0, "999999999999999.1");
+        scanner = table.newScanner(null, "e == ? || e == ?", 0, "999999999999999.1");
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -1208,7 +1208,7 @@ public class EvolutionTest {
 
         // Now test some filters.
 
-        RowScanner scanner = table.newRowScanner(null, "a == ?", "0");
+        Scanner scanner = table.newScanner(null, "a == ?", "0");
         int count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(2, getKey.invoke(row));
@@ -1222,7 +1222,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = table.newRowScanner(null, "b > ?", 2);
+        scanner = table.newScanner(null, "b > ?", 2);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(3, getKey.invoke(row));
@@ -1236,7 +1236,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = table.newRowScanner(null, "c == ?", 0);
+        scanner = table.newScanner(null, "c == ?", 0);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(3, getKey.invoke(row));
@@ -1250,7 +1250,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = table.newRowScanner(null, "d > ?", 250);
+        scanner = table.newScanner(null, "d > ?", 250);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -1275,7 +1275,7 @@ public class EvolutionTest {
 
         assertEquals(2, count);
 
-        scanner = table.newRowScanner(null, "e == ?", Integer.MAX_VALUE);
+        scanner = table.newScanner(null, "e == ?", Integer.MAX_VALUE);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(4, getKey.invoke(row));
@@ -1427,7 +1427,7 @@ public class EvolutionTest {
 
         // Now test some filters.
 
-        RowScanner scanner = table.newRowScanner(null, "a == ?", "NaN");
+        Scanner scanner = table.newScanner(null, "a == ?", "NaN");
         int count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(2, getKey.invoke(row));
@@ -1441,7 +1441,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = table.newRowScanner(null, "b > ?", 2);
+        scanner = table.newScanner(null, "b > ?", 2);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(3, getKey.invoke(row));
@@ -1455,7 +1455,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = table.newRowScanner(null, "c == ?", 0.0);
+        scanner = table.newScanner(null, "c == ?", 0.0);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(3, getKey.invoke(row));
@@ -1469,7 +1469,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = table.newRowScanner(null, "d > ?", 250);
+        scanner = table.newScanner(null, "d > ?", 250);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -1494,7 +1494,7 @@ public class EvolutionTest {
 
         assertEquals(2, count);
 
-        scanner = table.newRowScanner(null, "d == ? || d == ?", null, 300);
+        scanner = table.newScanner(null, "d == ? || d == ?", null, 300);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -1519,7 +1519,7 @@ public class EvolutionTest {
 
         assertEquals(2, count);
 
-        scanner = table.newRowScanner(null, "e == ?", 999999999999999.0f);
+        scanner = table.newScanner(null, "e == ?", 999999999999999.0f);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(4, getKey.invoke(row));
@@ -1671,7 +1671,7 @@ public class EvolutionTest {
 
         // Now test some filters.
 
-        RowScanner scanner = table.newRowScanner(null, "a == ?", "true");
+        Scanner scanner = table.newScanner(null, "a == ?", "true");
         int count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(1, getKey.invoke(row));
@@ -1685,7 +1685,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = table.newRowScanner(null, "b != ?", false);
+        scanner = table.newScanner(null, "b != ?", false);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(1, getKey.invoke(row));
@@ -1699,7 +1699,7 @@ public class EvolutionTest {
 
         assertEquals(1, count);
 
-        scanner = table.newRowScanner(null, "c == ?", false);
+        scanner = table.newScanner(null, "c == ?", false);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -1731,7 +1731,7 @@ public class EvolutionTest {
 
         assertEquals(3, count);
 
-        scanner = table.newRowScanner(null, "d == ?", (Object) null);
+        scanner = table.newScanner(null, "d == ?", (Object) null);
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -1756,7 +1756,7 @@ public class EvolutionTest {
 
         assertEquals(2, count);
 
-        scanner = table.newRowScanner(null, "e == ?", "TRUe");
+        scanner = table.newScanner(null, "e == ?", "TRUe");
         count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {
@@ -1832,7 +1832,7 @@ public class EvolutionTest {
                 table.store(null, row);
             }
 
-            RowScanner scanner = table.newRowScanner(null, "a == ? && b == ? && c == ?",
+            Scanner scanner = table.newScanner(null, "a == ? && b == ? && c == ?",
                                                     0.0, "", BigInteger.ZERO);
             int count = 0;
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
@@ -1884,7 +1884,7 @@ public class EvolutionTest {
             table.store(null, row);
         }
 
-        RowScanner scanner = table.newRowScanner(null, "d == ? && e == ?", BigDecimal.ZERO, null);
+        Scanner scanner = table.newScanner(null, "d == ? && e == ?", BigDecimal.ZERO, null);
         int count = 0;
         for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
             switch ((int) getKey.invoke(row)) {

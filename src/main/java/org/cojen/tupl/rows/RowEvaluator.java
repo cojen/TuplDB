@@ -24,7 +24,7 @@ import org.cojen.tupl.LockResult;
 import org.cojen.tupl.UnmodifiableViewException;
 
 /**
- * See BasicRowScanner.
+ * See BasicScanner.
  *
  * @author Brian S O'Neill
  */
@@ -81,7 +81,7 @@ public interface RowEvaluator<R> extends RowDecoder<R> {
     R decodeRow(R row, byte[] key, byte[] value) throws IOException;
 
     /**
-     * Called by BasicRowUpdater.
+     * Called by BasicUpdater.
      *
      * @return null if the key columns didn't change
      */
@@ -90,7 +90,7 @@ public interface RowEvaluator<R> extends RowDecoder<R> {
     }
 
     /**
-     * Called by BasicRowUpdater.
+     * Called by BasicUpdater.
      *
      * @return non-null value
      */

@@ -58,9 +58,13 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Calls the given action for each remaining entry, and then closes the scanner.</div>
 </dd>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/Scanner.html" class="type-name-link" title="interface in org.cojen.tupl">Scanner</a>&lt;<a href="../org.cojen.tupl/org/cojen/tupl/Scanner.html" title="type parameter in Scanner">R</a>&gt; - Interface in <a href="../org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
+<dd>
+<div class="block">Support for scanning through all rows in a table.</div>
+</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/Table.html#scannerPlan(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">scannerPlan(Transaction, String, Object...)</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
 <dd>
-<div class="block">Returns a query plan used by <a href="../org.cojen.tupl/org/cojen/tupl/Table.html#newRowScanner(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>newRowScanner</code></a>.</div>
+<div class="block">Returns a query plan used by <a href="../org.cojen.tupl/org/cojen/tupl/Table.html#newScanner(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>newScanner</code></a>.</div>
 </dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/SchemaChangeException.html" class="type-name-link" title="class in org.cojen.tupl">SchemaChangeException</a> - Exception Class in <a href="../org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>
@@ -203,11 +207,11 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Step to the next entry.</div>
 </dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/RowScanner.html#step()" class="member-name-link">step()</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/RowScanner.html" title="interface in org.cojen.tupl">RowScanner</a></dt>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/Scanner.html#step()" class="member-name-link">step()</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a></dt>
 <dd>
 <div class="block">Step to the next row.</div>
 </dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/RowScanner.html#step(R)" class="member-name-link">step(R)</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/RowScanner.html" title="interface in org.cojen.tupl">RowScanner</a></dt>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/Scanner.html#step(R)" class="member-name-link">step(R)</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a></dt>
 <dd>
 <div class="block">Step to the next row.</div>
 </dd>

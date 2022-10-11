@@ -22,7 +22,7 @@ import java.io.IOException;
 import org.cojen.tupl.EntryConsumer;
 
 /**
- * Can be passed to a RowScanner as if it was a row, in order to obtain undecoded row entries.
+ * Can be passed to a Scanner as if it was a row, in order to obtain undecoded row entries.
  *
  * @author Brian S O'Neill
  */

@@ -27,6 +27,7 @@ import org.junit.*;
 import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
+import org.cojen.tupl.Scanner;
 
 /**
  * 
@@ -289,7 +290,7 @@ public class FilteringTest {
                 }
             }
 
-            RowScanner scanner = table.newRowScanner(null, filter, new int[] {arg});
+            Scanner scanner = table.newScanner(null, filter, new int[] {arg});
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
                 if (method == null) {
                     method = row.getClass().getMethod(column);
@@ -352,7 +353,7 @@ public class FilteringTest {
                 }
             }
 
-            RowScanner scanner = table.newRowScanner(null, filter, new int[] {arg});
+            Scanner scanner = table.newScanner(null, filter, new int[] {arg});
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
                 if (method == null) {
                     method = row.getClass().getMethod(column);
@@ -409,7 +410,7 @@ public class FilteringTest {
                 }
             }
 
-            RowScanner scanner = table.newRowScanner(null, filter, new float[] {arg});
+            Scanner scanner = table.newScanner(null, filter, new float[] {arg});
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
                 if (method == null) {
                     method = row.getClass().getMethod(column);
@@ -591,7 +592,7 @@ public class FilteringTest {
         }
 
         // This filter expression always returns true.
-        var scanner = table.newRowScanner(null, "name >= ?1 || name < ?1");
+        var scanner = table.newScanner(null, "name >= ?1 || name < ?1");
         int count = 0;
         for (MyRow row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(count, row.id());
@@ -600,7 +601,7 @@ public class FilteringTest {
         assertEquals(3, count);
 
         // This filter expression always returns false.
-        scanner = table.newRowScanner(null, "name >= ?1 && name < ?1");
+        scanner = table.newScanner(null, "name >= ?1 && name < ?1");
         count = 0;
         for (MyRow row = scanner.row(); row != null; row = scanner.step(row)) {
             count++;
@@ -617,7 +618,7 @@ public class FilteringTest {
             table.delete(txn, row);
         }
 
-        table.newRowScanner(null, "name >= ?1 && name < ?1");
+        table.newScanner(null, "name >= ?1 && name < ?1");
 
         txn.reset();
     }
@@ -646,7 +647,7 @@ public class FilteringTest {
             table.insert(null, row);
         }
 
-        var scanner = table.newRowScanner(null, "name1 == name2");
+        var scanner = table.newScanner(null, "name1 == name2");
         int count = 0;
         for (MyRow2 row = scanner.row(); row != null; row = scanner.step(row)) {
             assertEquals(row.name1(), row.name2());
@@ -659,7 +660,7 @@ public class FilteringTest {
         assertEquals(5, table.newStream(null, "name1 == name2").count());
         assertEquals(5, table.newStream(null).filter(table.predicate("name1 == name2")).count());
 
-        scanner = table.newRowScanner(null, "name1 != name2 && id >= ? && name1 != name2", 6);
+        scanner = table.newScanner(null, "name1 != name2 && id >= ? && name1 != name2", 6);
         count = 0;
         for (MyRow2 row = scanner.row(); row != null; row = scanner.step(row)) {
             assertNotEquals(row.name1(), row.name2());
@@ -688,34 +689,34 @@ public class FilteringTest {
         Database db = Database.open(new DatabaseConfig().directPageAccess(false));
         Table<MyRow3> table = db.openTable(MyRow3.class);
 
-        String str = table.newRowScanner(null).toString();
+        String str = table.newScanner(null).toString();
         assertTrue(str.contains("unfiltered"));
 
-        str = table.newRowScanner(null, "name == ?", "x").toString();
+        str = table.newScanner(null, "name == ?", "x").toString();
         assertTrue(str.contains("name == \"x\""));
 
-        str = table.newRowScanner
+        str = table.newScanner
             (null, "(id == ? || array1 != ?) && num1 > ?", -10, new int[] {1, 2}, 5).toString();
         assertTrue(str.contains("(id == -10 || array1 != [1, 2]) && num1 > 5"));
 
-        str = table.newRowScanner
+        str = table.newScanner
             (null, "(num2 != ? || num3 < ?) || num3 <= ?", -1, null, -1).toString();
         assertTrue(str.contains("num2 != 4294967295 || num3 < null || num3 <= -1"));
 
-        str = table.newRowScanner
+        str = table.newScanner
             (null, "num4 != ? && num4 < ? && num5 <= ?", null, -1, -1).toString();
         assertTrue(str.contains
                    ("num4 != null && num4 < 4294967295 && num5 <= 18446744073709551615"));
 
-        str = table.newRowScanner(null, "!(id in ?)", new int[] {1, -2}).toString();
+        str = table.newScanner(null, "!(id in ?)", new int[] {1, -2}).toString();
         assertTrue(str.contains("!(id in [1, -2])"));
 
         int[][] a = {{1, 2}, {3, 4}};
-        str = table.newRowScanner(null, "array1 in ?", (Object) a).toString();
+        str = table.newScanner(null, "array1 in ?", (Object) a).toString();
         assertTrue(str.contains("array1 in [[1, 2], [3, 4]]"));
 
         int[][] b = {{-1, 2}, {-3, 4}};
-        str = table.newRowScanner(null, "array2 in ?", (Object) b).toString();
+        str = table.newScanner(null, "array2 in ?", (Object) b).toString();
         assertTrue(str.contains("array2 in [[4294967295, 2], [4294967293, 4]]"));
     }
 

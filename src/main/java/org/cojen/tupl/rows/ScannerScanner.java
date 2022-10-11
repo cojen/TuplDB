@@ -22,12 +22,12 @@ import java.io.IOException;
 import org.cojen.tupl.EntryScanner;
 
 /**
- * A RowScanner backed by a plain EntryScanner, and rows are decoded along the way.
+ * A Scanner backed by a plain EntryScanner, and rows are decoded along the way.
  *
  * @author Brian S O'Neill
  * @see RowSorter
  */
-abstract class ScannerRowScanner<R> implements BaseRowScanner<R> {
+abstract class ScannerScanner<R> implements BaseScanner<R> {
     private final EntryScanner mScanner;
     private final RowDecoder<R> mDecoder;
 
@@ -36,7 +36,7 @@ abstract class ScannerRowScanner<R> implements BaseRowScanner<R> {
     /**
      * @param scanner must produce at least one row
      */
-    ScannerRowScanner(EntryScanner scanner, RowDecoder<R> decoder) throws IOException {
+    ScannerScanner(EntryScanner scanner, RowDecoder<R> decoder) throws IOException {
         mScanner = scanner;
         mDecoder = decoder;
         mRow = decoder.decodeRow(null, scanner.key(), scanner.value());

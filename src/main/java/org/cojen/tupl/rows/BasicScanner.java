@@ -33,7 +33,7 @@ import org.cojen.tupl.core.RowPredicate;
  *
  * @author Brian S O'Neill
  */
-class BasicRowScanner<R> implements BaseRowScanner<R> {
+class BasicScanner<R> implements BaseScanner<R> {
     final BaseTable<R> mTable;
     final ScanController<R> mController;
 
@@ -42,7 +42,7 @@ class BasicRowScanner<R> implements BaseRowScanner<R> {
 
     R mRow;
 
-    BasicRowScanner(BaseTable<R> table, ScanController<R> controller) {
+    BasicScanner(BaseTable<R> table, ScanController<R> controller) {
         mTable = table;
         mController = controller;
     }

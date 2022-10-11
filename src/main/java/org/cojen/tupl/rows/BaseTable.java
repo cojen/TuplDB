@@ -33,8 +33,8 @@ import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockMode;
-import org.cojen.tupl.RowScanner;
-import org.cojen.tupl.RowUpdater;
+import org.cojen.tupl.Scanner;
+import org.cojen.tupl.Updater;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 
@@ -148,39 +148,39 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     @Override
-    public final RowScanner<R> newRowScanner(Transaction txn) throws IOException {
-        return newRowScanner(txn, (R) null);
+    public final Scanner<R> newScanner(Transaction txn) throws IOException {
+        return newScanner(txn, (R) null);
     }
 
-    final RowScanner<R> newRowScanner(Transaction txn, R row) throws IOException {
-        return newRowScanner(txn, row, unfiltered());
+    final Scanner<R> newScanner(Transaction txn, R row) throws IOException {
+        return newScanner(txn, row, unfiltered());
     }
 
     @Override
-    public final RowScanner<R> newRowScanner(Transaction txn, String queryStr, Object... args)
+    public final Scanner<R> newScanner(Transaction txn, String queryStr, Object... args)
         throws IOException
     {
-        return newRowScanner(txn, (R) null, queryStr, args);
+        return newScanner(txn, (R) null, queryStr, args);
     }
 
-    protected RowScanner<R> newRowScanner(Transaction txn, R row, String queryStr, Object... args)
+    protected Scanner<R> newScanner(Transaction txn, R row, String queryStr, Object... args)
         throws IOException
     {
-        return scannerQueryLauncher(txn, queryStr).newRowScanner(txn, row, args);
+        return scannerQueryLauncher(txn, queryStr).newScanner(txn, row, args);
     }
 
-    final RowScanner<R> newRowScanner(Transaction txn, R row, ScanController<R> controller)
+    final Scanner<R> newScanner(Transaction txn, R row, ScanController<R> controller)
         throws IOException
     {
-        final BasicRowScanner<R> scanner;
+        final BasicScanner<R> scanner;
         RowPredicateLock.Closer closer = null;
 
         if (txn == null && controller.isJoined()) {
             txn = mSource.newTransaction(null);
             txn.lockMode(LockMode.REPEATABLE_READ);
-            scanner = new AutoCommitRowScanner<>(this, controller);
+            scanner = new AutoCommitScanner<>(this, controller);
         } else {
-            scanner = new BasicRowScanner<>(this, controller);
+            scanner = new BasicScanner<>(this, controller);
 
             if (txn != null && !txn.lockMode().noReadLock) {
                 RowPredicateLock<R> lock = mIndexLock;
@@ -209,11 +209,11 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     /**
      * Note: Doesn't support orderBy.
      */
-    final RowScanner<R> newRowScannerThisTable(Transaction txn, R row,
-                                               String queryStr, Object... args)
+    final Scanner<R> newScannerThisTable(Transaction txn, R row,
+                                         String queryStr, Object... args)
         throws IOException
     {
-        return newRowScanner(txn, row, scannerFilteredFactory(txn, queryStr).scanController(args));
+        return newScanner(txn, row, scannerFilteredFactory(txn, queryStr).scanController(args));
     }
 
     private ScanControllerFactory<R> scannerFilteredFactory(Transaction txn, String queryStr) {
@@ -233,61 +233,61 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     @Override
-    public final RowUpdater<R> newRowUpdater(Transaction txn) throws IOException {
-        return newRowUpdater(txn, (R) null);
+    public final Updater<R> newUpdater(Transaction txn) throws IOException {
+        return newUpdater(txn, (R) null);
     }
 
-    final RowUpdater<R> newRowUpdater(Transaction txn, R row) throws IOException {
-        return newRowUpdater(txn, row, unfiltered());
+    final Updater<R> newUpdater(Transaction txn, R row) throws IOException {
+        return newUpdater(txn, row, unfiltered());
     }
 
     @Override
-    public final RowUpdater<R> newRowUpdater(Transaction txn, String queryStr, Object... args)
+    public final Updater<R> newUpdater(Transaction txn, String queryStr, Object... args)
         throws IOException
     {
-        return newRowUpdater(txn, (R) null, queryStr, args);
+        return newUpdater(txn, (R) null, queryStr, args);
     }
 
-    protected RowUpdater<R> newRowUpdater(Transaction txn, R row, String queryStr, Object... args)
+    protected Updater<R> newUpdater(Transaction txn, R row, String queryStr, Object... args)
         throws IOException
     {
-        return updaterQueryLauncher(txn, queryStr).newRowUpdater(txn, row, args);
+        return updaterQueryLauncher(txn, queryStr).newUpdater(txn, row, args);
     }
 
-    protected RowUpdater<R> newRowUpdater(Transaction txn, R row, ScanController<R> controller)
+    protected Updater<R> newUpdater(Transaction txn, R row, ScanController<R> controller)
         throws IOException
     {
-        return newRowUpdater(txn, row, controller, null);
+        return newUpdater(txn, row, controller, null);
     }
 
     /**
      * @param secondary non-null if joining from a secondary index to this primary table
      */
-    final RowUpdater<R> newRowUpdater(Transaction txn, R row, ScanController<R> controller,
-                                      BaseTableIndex<R> secondary)
+    final Updater<R> newUpdater(Transaction txn, R row, ScanController<R> controller,
+                                BaseTableIndex<R> secondary)
         throws IOException
     {
-        final BasicRowUpdater<R> updater;
+        final BasicUpdater<R> updater;
         RowPredicateLock.Closer closer = null;
 
         addPredicate: {
 
             if (txn == null) {
                 txn = mSource.newTransaction(null);
-                updater = new AutoCommitRowUpdater<>(this, controller);
+                updater = new AutoCommitUpdater<>(this, controller);
                 // Don't add a predicate lock.
                 break addPredicate;
             }
 
             switch (txn.lockMode()) {
             case UPGRADABLE_READ: default: {
-                updater = new BasicRowUpdater<>(this, controller);
+                updater = new BasicUpdater<>(this, controller);
                 break;
             }
 
             case REPEATABLE_READ: {
                 // Need to use upgradable locks to prevent deadlocks.
-                updater = new UpgradableRowUpdater<>(this, controller);
+                updater = new UpgradableUpdater<>(this, controller);
                 break;
             }
 
@@ -295,17 +295,17 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
                 // Row locks are released when possible, but a predicate lock will still be
                 // held for the duration of the transaction. It's not worth the trouble to
                 // determine if it can be safely released when the updater finishes.
-                updater = new NonRepeatableRowUpdater<>(this, controller);
+                updater = new NonRepeatableUpdater<>(this, controller);
                 break;
             }
 
             case READ_UNCOMMITTED:
-                updater = new NonRepeatableRowUpdater<>(this, controller);
+                updater = new NonRepeatableUpdater<>(this, controller);
                 // Don't add a predicate lock.
                 break addPredicate;
 
             case UNSAFE:
-                updater = new BasicRowUpdater<>(this, controller);
+                updater = new BasicUpdater<>(this, controller);
                 // Don't add a predicate lock.
                 break addPredicate;
             }
@@ -328,7 +328,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
                 updater.init(txn, row);
                 return updater;
             } else {
-                var joined = new JoinedRowUpdater<>(secondary, controller, updater);
+                var joined = new JoinedUpdater<>(secondary, controller, updater);
                 joined.init(txn, row);
                 return joined;
             }
@@ -343,11 +343,11 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     /**
      * Note: Doesn't support orderBy.
      */
-    final RowUpdater<R> newRowUpdaterThisTable(Transaction txn, R row,
-                                               String queryStr, Object... args)
+    final Updater<R> newUpdaterThisTable(Transaction txn, R row,
+                                         String queryStr, Object... args)
         throws IOException
     {
-        return newRowUpdater(txn, row, updaterFilteredFactory(txn, queryStr).scanController(args));
+        return newUpdater(txn, row, updaterFilteredFactory(txn, queryStr).scanController(args));
     }
 
     private ScanControllerFactory<R> updaterFilteredFactory(Transaction txn, String queryStr) {
@@ -439,7 +439,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      * alternate key, and the row is fully resolved by joining to the primary table. Direct
      * stores against the returned table aren't permitted, and an {@link
      * UnmodifiableViewException} is thrown when attempting to do so. Modifications are
-     * permitted when using a {@link RowUpdater}.
+     * permitted when using a {@link Updater}.
      *
      * @param columns column specifications for the alternate key
      * @return alternate key as a table
@@ -454,7 +454,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      * secondary index, and the row is fully resolved by joining to the primary table. Direct
      * stores against the returned table aren't permitted, and an {@link
      * UnmodifiableViewException} is thrown when attempting to do so. Modifications are
-     * permitted when using a {@link RowUpdater}.
+     * permitted when using a {@link Updater}.
      *
      * @param columns column specifications for the secondary index
      * @return secondary index as a table
@@ -749,15 +749,15 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
         if ((type & FOR_UPDATE) != 0) {
             if (selector.orderBy() != null) {
-                // The RowUpdater needs to have a sort step applied, and so it needs access to
+                // The Updater needs to have a sort step applied, and so it needs access to
                 // the primary key. This is because the update/delete operation is performed
-                // by calling Table.update or Table.delete. See WrappedRowUpdater.
+                // by calling Table.update or Table.delete. See WrappedUpdater.
                 // TODO: Remove this requirement by automatically decoding the primary key and
                 // hiding the result.
                 Map<String, ColumnInfo> proj = selector.query().projection();
                 if (proj != null && !proj.keySet().containsAll(rowInfo.keyColumns.keySet())) {
                     throw new IllegalStateException
-                        ("Sorted RowUpdater query must select all primary key columns");
+                        ("Sorted Updater query must select all primary key columns");
                 }
             }
 

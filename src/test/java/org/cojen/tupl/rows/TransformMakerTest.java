@@ -184,7 +184,7 @@ public class TransformMakerTest {
 
         for (int i=0; i<dstTables.length; i++) {
             Object dstRow;
-            try (RowScanner s = dstTables[i].newRowScanner(null)) {
+            try (Scanner s = dstTables[i].newScanner(null)) {
                 dstRow = s.row();
             }
             verifyTransform(columns, row, dstRow);
@@ -447,7 +447,7 @@ public class TransformMakerTest {
 
         for (int i=0; i<dstTables.length; i++) {
             Object dstRow;
-            try (RowScanner s = dstTables[i].newRowScanner(null)) {
+            try (Scanner s = dstTables[i].newScanner(null)) {
                 dstRow = s.row();
             }
             dstRows2[i] = dstRow;
@@ -472,7 +472,7 @@ public class TransformMakerTest {
 
         for (int i=0; i<dstTables.length; i++) {
             Object dstRow;
-            try (RowScanner s = dstTables[i].newRowScanner(null)) {
+            try (Scanner s = dstTables[i].newScanner(null)) {
                 dstRow = s.row();
             }
             dstRows1[i] = dstRow;
