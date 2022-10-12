@@ -121,7 +121,7 @@ loadScripts(document, 'script');</script>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;byte[]&gt;</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#comparator()" class="member-name-link">comparator</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
-<div class="block">Returns a comparator for the ordering of this view, or null if unordered.</div>
+<div class="block">Returns a key comparator for the ordering of this view, or null if unordered.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default long</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#count(byte%5B%5D,boolean,byte%5B%5D,boolean)" class="member-name-link">count</a><wbr>(byte[]&nbsp;lowKey,
@@ -143,251 +143,256 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Unconditionally removes the entry associated with the given key.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default byte[]</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#exchange(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)" class="member-name-link">exchange</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;<a href="Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#entryComparator()" class="member-name-link">entryComparator</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Returns an entry comparator for the ordering of this view, or null if unordered.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default byte[]</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#exchange(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)" class="member-name-link">exchange</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;key,
  byte[]&nbsp;value)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Unconditionally associates a value with the given key, returning the previous value.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#exists(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">exists</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#exists(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">exists</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;key)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Checks if an entry for the given key exists.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#insert(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)" class="member-name-link">insert</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#insert(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)" class="member-name-link">insert</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;key,
  byte[]&nbsp;value)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Associates a value with the given key, unless a corresponding value already
  exists.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#isEmpty()" class="member-name-link">isEmpty</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#isEmpty()" class="member-name-link">isEmpty</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Non-transactionally determines if the view has nothing in it.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#isModifyAtomic()" class="member-name-link">isModifyAtomic</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#isModifyAtomic()" class="member-name-link">isModifyAtomic</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns true if the value-modifying methods of this view are atomic, even when not using
  transactions.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#isUnmodifiable()" class="member-name-link">isUnmodifiable</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#isUnmodifiable()" class="member-name-link">isUnmodifiable</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Returns true if any attempt to modify this view causes an <a href="UnmodifiableViewException.html" title="class in org.cojen.tupl"><code>UnmodifiableViewException</code></a> to be thrown.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default byte[]</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#load(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">load</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default byte[]</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#load(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">load</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;key)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a copy of the value for the given key, or null if no matching entry exists.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#lockCheck(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">lockCheck</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- byte[]&nbsp;key)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Checks the lock ownership for the given key.</div>
-</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#lockExclusive(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">lockExclusive</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#lockCheck(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">lockCheck</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;key)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Checks the lock ownership for the given key.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#lockExclusive(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">lockExclusive</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ byte[]&nbsp;key)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Explicitly acquire an exclusive lock for the given key, denying any additional
  locks.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#lockShared(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">lockShared</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- byte[]&nbsp;key)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Explicitly acquire a shared lock for the given key, denying exclusive locks.</div>
-</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#lockUpgradable(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">lockUpgradable</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#lockShared(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">lockShared</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;key)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Explicitly acquire a shared lock for the given key, denying exclusive locks.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#lockUpgradable(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">lockUpgradable</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ byte[]&nbsp;key)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Explicitly acquire an upgradable lock for the given key, denying exclusive and
  additional upgradable locks.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#newAccessor(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">newAccessor</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#newAccessor(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">newAccessor</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;key)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a cursor intended for <a href="ValueAccessor.html" title="interface in org.cojen.tupl">accessing</a> values in chunks,
  permitting them to be larger than what can fit in main memory.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#newCursor(org.cojen.tupl.Transaction)" class="member-name-link">newCursor</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#newCursor(org.cojen.tupl.Transaction)" class="member-name-link">newCursor</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Returns a new cursor over this view.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="EntryScanner.html" title="interface in org.cojen.tupl">EntryScanner</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#newScanner(org.cojen.tupl.Transaction)" class="member-name-link">newScanner</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="EntryScanner.html" title="interface in org.cojen.tupl">EntryScanner</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#newScanner(org.cojen.tupl.Transaction)" class="member-name-link">newScanner</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a new scanner over this view.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#newTransaction(org.cojen.tupl.DurabilityMode)" class="member-name-link">newTransaction</a><wbr>(<a href="DurabilityMode.html" title="enum class in org.cojen.tupl">DurabilityMode</a>&nbsp;durabilityMode)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#newTransaction(org.cojen.tupl.DurabilityMode)" class="member-name-link">newTransaction</a><wbr>(<a href="DurabilityMode.html" title="enum class in org.cojen.tupl">DurabilityMode</a>&nbsp;durabilityMode)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a new transaction which is compatible with this view.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="EntryUpdater.html" title="interface in org.cojen.tupl">EntryUpdater</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#newUpdater(org.cojen.tupl.Transaction)" class="member-name-link">newUpdater</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="EntryUpdater.html" title="interface in org.cojen.tupl">EntryUpdater</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#newUpdater(org.cojen.tupl.Transaction)" class="member-name-link">newUpdater</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a new updater over this view.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Ordering.html" title="enum class in org.cojen.tupl">Ordering</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#ordering()" class="member-name-link">ordering</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Ordering.html" title="enum class in org.cojen.tupl">Ordering</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#ordering()" class="member-name-link">ordering</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Returns the key ordering for this view.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#remove(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)" class="member-name-link">remove</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#remove(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)" class="member-name-link">remove</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;key,
  byte[]&nbsp;value)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Removes the entry associated with the given key, but only if the given value
  matches.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#replace(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)" class="member-name-link">replace</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- byte[]&nbsp;key,
- byte[]&nbsp;value)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
-<div class="block">Associates a value with the given key, but only if a corresponding value already exists.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#store(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)" class="member-name-link">store</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#replace(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)" class="member-name-link">replace</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;key,
  byte[]&nbsp;value)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Associates a value with the given key, but only if a corresponding value already exists.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#store(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)" class="member-name-link">store</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ byte[]&nbsp;key,
+ byte[]&nbsp;value)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Unconditionally associates a value with the given key.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#touch(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">touch</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#touch(org.cojen.tupl.Transaction,byte%5B%5D)" class="member-name-link">touch</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;key)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Touch the given key as if calling <a href="#load(org.cojen.tupl.Transaction,byte%5B%5D)"><code>load</code></a>, but instead only acquiring any
  necessary locks.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#tryLockExclusive(org.cojen.tupl.Transaction,byte%5B%5D,long)" class="member-name-link">tryLockExclusive</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#tryLockExclusive(org.cojen.tupl.Transaction,byte%5B%5D,long)" class="member-name-link">tryLockExclusive</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;key,
  long&nbsp;nanosTimeout)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Explicitly acquire an exclusive lock for the given key, denying any additional
  locks.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#tryLockShared(org.cojen.tupl.Transaction,byte%5B%5D,long)" class="member-name-link">tryLockShared</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- byte[]&nbsp;key,
- long&nbsp;nanosTimeout)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
-<div class="block">Explicitly acquire a shared lock for the given key, denying exclusive locks.</div>
-</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#tryLockUpgradable(org.cojen.tupl.Transaction,byte%5B%5D,long)" class="member-name-link">tryLockUpgradable</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#tryLockShared(org.cojen.tupl.Transaction,byte%5B%5D,long)" class="member-name-link">tryLockShared</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;key,
  long&nbsp;nanosTimeout)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Explicitly acquire a shared lock for the given key, denying exclusive locks.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#tryLockUpgradable(org.cojen.tupl.Transaction,byte%5B%5D,long)" class="member-name-link">tryLockUpgradable</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ byte[]&nbsp;key,
+ long&nbsp;nanosTimeout)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Explicitly acquire an upgradable lock for the given key, denying exclusive and
  additional upgradable locks.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#update(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)" class="member-name-link">update</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#update(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)" class="member-name-link">update</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;key,
  byte[]&nbsp;value)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Associates a value with the given key, but only if the given value differs from the
  existing value.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#update(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D,byte%5B%5D)" class="member-name-link">update</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#update(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D,byte%5B%5D)" class="member-name-link">update</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  byte[]&nbsp;key,
  byte[]&nbsp;oldValue,
  byte[]&nbsp;newValue)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Associates a value with the given key, but only if the given old value matches the
  existing value.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#viewDifference(org.cojen.tupl.Combiner,org.cojen.tupl.View)" class="member-name-link">viewDifference</a><wbr>(<a href="Combiner.html" title="interface in org.cojen.tupl">Combiner</a>&nbsp;combiner,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#viewDifference(org.cojen.tupl.Combiner,org.cojen.tupl.View)" class="member-name-link">viewDifference</a><wbr>(<a href="Combiner.html" title="interface in org.cojen.tupl">Combiner</a>&nbsp;combiner,
  <a href="View.html" title="interface in org.cojen.tupl">View</a>&nbsp;second)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a view which represents the <a href="https://en.wikipedia.org/wiki/Complement_(set_theory)#Relative_complement"><cite>set
  difference</cite></a> of this view and a second one.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#viewFiltered(org.cojen.tupl.Filter)" class="member-name-link">viewFiltered</a><wbr>(<a href="Filter.html" title="interface in org.cojen.tupl">Filter</a>&nbsp;filter)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#viewFiltered(org.cojen.tupl.Filter)" class="member-name-link">viewFiltered</a><wbr>(<a href="Filter.html" title="interface in org.cojen.tupl">Filter</a>&nbsp;filter)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a sub-view, backed by this one, whose entries have been filtered out.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#viewGe(byte%5B%5D)" class="member-name-link">viewGe</a><wbr>(byte[]&nbsp;key)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#viewGe(byte%5B%5D)" class="member-name-link">viewGe</a><wbr>(byte[]&nbsp;key)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a sub-view, backed by this one, whose keys are greater than or
  equal to the given key.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#viewGt(byte%5B%5D)" class="member-name-link">viewGt</a><wbr>(byte[]&nbsp;key)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#viewGt(byte%5B%5D)" class="member-name-link">viewGt</a><wbr>(byte[]&nbsp;key)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a sub-view, backed by this one, whose keys are greater than the
  given key.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#viewIntersection(org.cojen.tupl.Combiner,org.cojen.tupl.View)" class="member-name-link">viewIntersection</a><wbr>(<a href="Combiner.html" title="interface in org.cojen.tupl">Combiner</a>&nbsp;combiner,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#viewIntersection(org.cojen.tupl.Combiner,org.cojen.tupl.View)" class="member-name-link">viewIntersection</a><wbr>(<a href="Combiner.html" title="interface in org.cojen.tupl">Combiner</a>&nbsp;combiner,
  <a href="View.html" title="interface in org.cojen.tupl">View</a>&nbsp;second)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a view which represents the <a href="https://en.wikipedia.org/wiki/Intersection_(set_theory)"><cite>set
  intersection</cite></a> of this view and a second one.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#viewKeys()" class="member-name-link">viewKeys</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#viewKeys()" class="member-name-link">viewKeys</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a view, backed by this one, which only provides the keys.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#viewLe(byte%5B%5D)" class="member-name-link">viewLe</a><wbr>(byte[]&nbsp;key)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#viewLe(byte%5B%5D)" class="member-name-link">viewLe</a><wbr>(byte[]&nbsp;key)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a sub-view, backed by this one, whose keys are less than or
  equal to the given key.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#viewLt(byte%5B%5D)" class="member-name-link">viewLt</a><wbr>(byte[]&nbsp;key)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#viewLt(byte%5B%5D)" class="member-name-link">viewLt</a><wbr>(byte[]&nbsp;key)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a sub-view, backed by this one, whose keys are less than the
  given key.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#viewPrefix(byte%5B%5D,int)" class="member-name-link">viewPrefix</a><wbr>(byte[]&nbsp;prefix,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#viewPrefix(byte%5B%5D,int)" class="member-name-link">viewPrefix</a><wbr>(byte[]&nbsp;prefix,
  int&nbsp;trim)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a sub-view, backed by this one, whose keys start with the given prefix.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#viewReverse()" class="member-name-link">viewReverse</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#viewReverse()" class="member-name-link">viewReverse</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a view, backed by this one, whose natural order is reversed.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#viewTransformed(org.cojen.tupl.Transformer)" class="member-name-link">viewTransformed</a><wbr>(<a href="Transformer.html" title="interface in org.cojen.tupl">Transformer</a>&nbsp;transformer)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#viewTransformed(org.cojen.tupl.Transformer)" class="member-name-link">viewTransformed</a><wbr>(<a href="Transformer.html" title="interface in org.cojen.tupl">Transformer</a>&nbsp;transformer)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a sub-view, backed by this one, whose entries have been filtered out and
  transformed.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#viewUnion(org.cojen.tupl.Combiner,org.cojen.tupl.View)" class="member-name-link">viewUnion</a><wbr>(<a href="Combiner.html" title="interface in org.cojen.tupl">Combiner</a>&nbsp;combiner,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#viewUnion(org.cojen.tupl.Combiner,org.cojen.tupl.View)" class="member-name-link">viewUnion</a><wbr>(<a href="Combiner.html" title="interface in org.cojen.tupl">Combiner</a>&nbsp;combiner,
  <a href="View.html" title="interface in org.cojen.tupl">View</a>&nbsp;second)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a view which represents the <a href="https://en.wikipedia.org/wiki/Union_(set_theory)"><cite>set union</cite></a> of
  this view and a second one.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#viewUnmodifiable()" class="member-name-link">viewUnmodifiable</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="View.html" title="interface in org.cojen.tupl">View</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#viewUnmodifiable()" class="member-name-link">viewUnmodifiable</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a view, backed by this one, whose entries cannot be modified.</div>
 </div>
 </div>
@@ -415,7 +420,14 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="comparator()">
 <h3>comparator</h3>
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;byte[]&gt;</span>&nbsp;<span class="element-name">comparator</span>()</div>
-<div class="block">Returns a comparator for the ordering of this view, or null if unordered.</div>
+<div class="block">Returns a key comparator for the ordering of this view, or null if unordered.</div>
+</section>
+</li>
+<li>
+<section class="detail" id="entryComparator()">
+<h3>entryComparator</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;<a href="Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;</span>&nbsp;<span class="element-name">entryComparator</span>()</div>
+<div class="block">Returns an entry comparator for the ordering of this view, or null if unordered.</div>
 </section>
 </li>
 <li>

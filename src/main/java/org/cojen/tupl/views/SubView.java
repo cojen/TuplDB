@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.Comparator;
 
 import org.cojen.tupl.DurabilityMode;
+import org.cojen.tupl.Entry;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Ordering;
@@ -50,6 +51,11 @@ abstract class SubView implements View {
     @Override
     public Comparator<byte[]> comparator() {
         return mSource.comparator();
+    }
+
+    @Override
+    public Comparator<Entry> entryComparator() {
+        return mSource.entryComparator();
     }
 
     @Override

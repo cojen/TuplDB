@@ -42,7 +42,7 @@ public interface EntryScanner extends Closeable {
     /**
      * Returns a comparator for the ordering of this scanner, or null if unordered.
      */
-    Comparator<byte[]> comparator();
+    Comparator<Entry> getComparator();
 
     /**
      * Returns an uncopied reference to the current key, or null if closed. Array contents

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2018 Cojen.org
+ *  Copyright (C) 2022 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -12,40 +12,28 @@
  *  GNU Affero General Public License for more details.
  *
  *  You should have received a copy of the GNU Affero General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package org.cojen.tupl.core;
-
-import java.io.IOException;
 
 import java.util.Comparator;
 
 import org.cojen.tupl.Entry;
 
 /**
- * Overrides inherited methods to scan in reverse order.
+ * 
  *
  * @author Brian S O'Neill
  */
-/*P*/
-class SortReverseScanner extends SortScanner {
-    SortReverseScanner(LocalDatabase db) {
-        super(db);
+public final class EntryComparator implements Comparator<Entry> {
+    public static final EntryComparator THE = new EntryComparator();
+
+    private EntryComparator() {
     }
 
     @Override
-    public Comparator<Entry> getComparator() {
-        return super.getComparator().reversed();
-    }
-
-    @Override
-    protected void doStep(BTreeCursor c) throws IOException {
-        c.deletePrevious();
-    }
-
-    @Override
-    protected void initPosition(BTreeCursor c) throws IOException {
-        c.last();
+    public int compare(Entry a, Entry b) {
+        return Utils.KEY_COMPARATOR.compare(a.key(), b.key());
     }
 }

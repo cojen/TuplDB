@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.Comparator;
 
 import org.cojen.tupl.Cursor;
+import org.cojen.tupl.Entry;
 import org.cojen.tupl.EntryScanner;
 
 /**
@@ -41,8 +42,8 @@ public class CursorScanner implements EntryScanner {
     }
 
     @Override
-    public Comparator<byte[]> comparator() {
-        return mCursor.comparator();
+    public Comparator<Entry> getComparator() {
+        return mCursor.entryComparator();
     }
 
     @Override

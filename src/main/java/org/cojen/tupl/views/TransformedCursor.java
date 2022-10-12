@@ -24,6 +24,7 @@ import java.util.Comparator;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.cojen.tupl.Cursor;
+import org.cojen.tupl.Entry;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Ordering;
@@ -58,6 +59,11 @@ public final class TransformedCursor extends CoreValueAccessor implements Scanne
     @Override
     public Comparator<byte[]> comparator() {
         return mTransformer.transformedComparator(mSource.comparator());
+    }
+
+    @Override
+    public Comparator<Entry> entryComparator() {
+        return mTransformer.transformedEntryComparator(mSource.entryComparator());
     }
 
     @Override

@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.Comparator;
 
 import org.cojen.tupl.Cursor;
+import org.cojen.tupl.Entry;
 import org.cojen.tupl.EntryScanner;
 
 /**
@@ -32,7 +33,9 @@ import org.cojen.tupl.EntryScanner;
  */
 public interface ScannerCursor extends EntryScanner, Cursor {
     @Override
-    public Comparator<byte[]> comparator();
+    public default Comparator<Entry> getComparator() {
+        return entryComparator();
+    }
 
     @Override
     public default boolean step() throws IOException {

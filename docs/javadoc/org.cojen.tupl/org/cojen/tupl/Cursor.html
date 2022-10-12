@@ -173,7 +173,7 @@ extends <a href="ValueAccessor.html" title="interface in org.cojen.tupl">ValueAc
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;byte[]&gt;</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#comparator()" class="member-name-link">comparator</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
-<div class="block">Returns a comparator for the ordering of this view, or null if unordered.</div>
+<div class="block">Returns a key comparator for the ordering of this view, or null if unordered.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default int</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#compareKeyTo(byte%5B%5D)" class="member-name-link">compareKeyTo</a><wbr>(byte[]&nbsp;rkey)</code></div>
@@ -198,197 +198,202 @@ extends <a href="ValueAccessor.html" title="interface in org.cojen.tupl">ValueAc
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Deletes the value for the current entry, leaving the position unchanged.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#exists()" class="member-name-link">exists</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;<a href="Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#entryComparator()" class="member-name-link">entryComparator</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="block">Returns an entry comparator for the ordering of this view, or null if unordered.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#exists()" class="member-name-link">exists</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Quickly check if the value still exists without locking it.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#find(byte%5B%5D)" class="member-name-link">find</a><wbr>(byte[]&nbsp;key)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#find(byte%5B%5D)" class="member-name-link">find</a><wbr>(byte[]&nbsp;key)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Moves the Cursor to find the given key.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#findGe(byte%5B%5D)" class="member-name-link">findGe</a><wbr>(byte[]&nbsp;key)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#findGe(byte%5B%5D)" class="member-name-link">findGe</a><wbr>(byte[]&nbsp;key)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Moves the Cursor to find the closest available entry greater than or equal to the given
  key.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#findGt(byte%5B%5D)" class="member-name-link">findGt</a><wbr>(byte[]&nbsp;key)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#findGt(byte%5B%5D)" class="member-name-link">findGt</a><wbr>(byte[]&nbsp;key)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Moves the Cursor to find the closest available entry greater than the given key.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#findLe(byte%5B%5D)" class="member-name-link">findLe</a><wbr>(byte[]&nbsp;key)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#findLe(byte%5B%5D)" class="member-name-link">findLe</a><wbr>(byte[]&nbsp;key)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Moves the Cursor to find the closest available entry less than or equal to the given
  key.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#findLt(byte%5B%5D)" class="member-name-link">findLt</a><wbr>(byte[]&nbsp;key)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#findLt(byte%5B%5D)" class="member-name-link">findLt</a><wbr>(byte[]&nbsp;key)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Moves the Cursor to find the closest available entry less than the given key.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#findNearby(byte%5B%5D)" class="member-name-link">findNearby</a><wbr>(byte[]&nbsp;key)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#findNearby(byte%5B%5D)" class="member-name-link">findNearby</a><wbr>(byte[]&nbsp;key)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Optimized version of the regular <a href="#find(byte%5B%5D)"><code>find</code></a> method, which can perform fewer
  search steps if the given key is in close proximity to the current one.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#findNearbyGe(byte%5B%5D)" class="member-name-link">findNearbyGe</a><wbr>(byte[]&nbsp;key)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#findNearbyGe(byte%5B%5D)" class="member-name-link">findNearbyGe</a><wbr>(byte[]&nbsp;key)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Optimized version of the regular <a href="#findGe(byte%5B%5D)"><code>findGe</code></a> method, which can perform fewer
  search steps if the given key is in close proximity to the current one.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#findNearbyGt(byte%5B%5D)" class="member-name-link">findNearbyGt</a><wbr>(byte[]&nbsp;key)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#findNearbyGt(byte%5B%5D)" class="member-name-link">findNearbyGt</a><wbr>(byte[]&nbsp;key)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Optimized version of the regular <a href="#findGt(byte%5B%5D)"><code>findGt</code></a> method, which can perform fewer
  search steps if the given key is in close proximity to the current one.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#findNearbyLe(byte%5B%5D)" class="member-name-link">findNearbyLe</a><wbr>(byte[]&nbsp;key)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#findNearbyLe(byte%5B%5D)" class="member-name-link">findNearbyLe</a><wbr>(byte[]&nbsp;key)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Optimized version of the regular <a href="#findLe(byte%5B%5D)"><code>findLe</code></a> method, which can perform fewer
  search steps if the given key is in close proximity to the current one.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#findNearbyLt(byte%5B%5D)" class="member-name-link">findNearbyLt</a><wbr>(byte[]&nbsp;key)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#findNearbyLt(byte%5B%5D)" class="member-name-link">findNearbyLt</a><wbr>(byte[]&nbsp;key)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Optimized version of the regular <a href="#findLt(byte%5B%5D)"><code>findLt</code></a> method, which can perform fewer
  search steps if the given key is in close proximity to the current one.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#first()" class="member-name-link">first</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#first()" class="member-name-link">first</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Moves the Cursor to find the first available entry.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>byte[]</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#key()" class="member-name-link">key</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>byte[]</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#key()" class="member-name-link">key</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Returns an uncopied reference to the current key, or null if Cursor is
  unpositioned.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#last()" class="member-name-link">last</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#last()" class="member-name-link">last</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Moves the Cursor to find the last available entry.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#link()" class="member-name-link">link</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#link()" class="member-name-link">link</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Returns the transaction the cursor is currently linked to.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#link(org.cojen.tupl.Transaction)" class="member-name-link">link</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#link(org.cojen.tupl.Transaction)" class="member-name-link">link</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Link to a transaction, which can be null for auto-commit mode.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#load()" class="member-name-link">load</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#load()" class="member-name-link">load</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Loads or reloads the value at the cursor's current position.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#lock()" class="member-name-link">lock</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#lock()" class="member-name-link">lock</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Locks the current entry, as if by calling load.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#next()" class="member-name-link">next</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#next()" class="member-name-link">next</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Moves to the Cursor to the next available entry.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#nextLe(byte%5B%5D)" class="member-name-link">nextLe</a><wbr>(byte[]&nbsp;limitKey)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#nextLe(byte%5B%5D)" class="member-name-link">nextLe</a><wbr>(byte[]&nbsp;limitKey)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Moves to the Cursor to the next available entry, but only when less than
  or equal to the given limit key.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#nextLt(byte%5B%5D)" class="member-name-link">nextLt</a><wbr>(byte[]&nbsp;limitKey)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#nextLt(byte%5B%5D)" class="member-name-link">nextLt</a><wbr>(byte[]&nbsp;limitKey)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Moves to the Cursor to the next available entry, but only when less than
  the given limit key.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Ordering.html" title="enum class in org.cojen.tupl">Ordering</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#ordering()" class="member-name-link">ordering</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Ordering.html" title="enum class in org.cojen.tupl">Ordering</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#ordering()" class="member-name-link">ordering</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Returns the key ordering for this cursor.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#previous()" class="member-name-link">previous</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#previous()" class="member-name-link">previous</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Moves to the Cursor to the previous available entry.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#previousGe(byte%5B%5D)" class="member-name-link">previousGe</a><wbr>(byte[]&nbsp;limitKey)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#previousGe(byte%5B%5D)" class="member-name-link">previousGe</a><wbr>(byte[]&nbsp;limitKey)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Moves to the Cursor to the previous available entry, but only when
  greater than or equal to the given limit key.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#previousGt(byte%5B%5D)" class="member-name-link">previousGt</a><wbr>(byte[]&nbsp;limitKey)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#previousGt(byte%5B%5D)" class="member-name-link">previousGt</a><wbr>(byte[]&nbsp;limitKey)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Moves to the Cursor to the previous available entry, but only when
  greater than the given limit key.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#random(byte%5B%5D,boolean,byte%5B%5D,boolean)" class="member-name-link">random</a><wbr>(byte[]&nbsp;lowKey,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#random(byte%5B%5D,boolean,byte%5B%5D,boolean)" class="member-name-link">random</a><wbr>(byte[]&nbsp;lowKey,
  boolean&nbsp;lowInclusive,
  byte[]&nbsp;highKey,
  boolean&nbsp;highInclusive)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Moves the Cursor to a random entry, but not guaranteed to be chosen from a uniform
  distribution.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#random(byte%5B%5D,byte%5B%5D)" class="member-name-link">random</a><wbr>(byte[]&nbsp;lowKey,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#random(byte%5B%5D,byte%5B%5D)" class="member-name-link">random</a><wbr>(byte[]&nbsp;lowKey,
  byte[]&nbsp;highKey)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Moves the Cursor to a random entry, but not guaranteed to be chosen from a uniform
  distribution.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#register()" class="member-name-link">register</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#register()" class="member-name-link">register</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Attempt to register this cursor for direct redo operations, which can improve
  replication performance when modifying a range of values.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#reset()" class="member-name-link">reset</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#reset()" class="member-name-link">reset</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Resets the Cursor and moves it to an undefined position.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#skip(long)" class="member-name-link">skip</a><wbr>(long&nbsp;amount)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#skip(long)" class="member-name-link">skip</a><wbr>(long&nbsp;amount)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Moves the Cursor by a relative amount of entries.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#skip(long,byte%5B%5D,boolean)" class="member-name-link">skip</a><wbr>(long&nbsp;amount,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="LockResult.html" title="enum class in org.cojen.tupl">LockResult</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#skip(long,byte%5B%5D,boolean)" class="member-name-link">skip</a><wbr>(long&nbsp;amount,
  byte[]&nbsp;limitKey,
  boolean&nbsp;inclusive)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Moves the Cursor by a relative amount of entries, stopping sooner if the limit key is
  reached.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#store(byte%5B%5D)" class="member-name-link">store</a><wbr>(byte[]&nbsp;value)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#store(byte%5B%5D)" class="member-name-link">store</a><wbr>(byte[]&nbsp;value)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Stores a value into the current entry, leaving the position
  unchanged.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#unregister()" class="member-name-link">unregister</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#unregister()" class="member-name-link">unregister</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Unregisters the cursor for direct redo operations.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>byte[]</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#value()" class="member-name-link">value</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>byte[]</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#value()" class="member-name-link">value</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Returns an uncopied reference to the current value, which might be null or <a href="#NOT_LOADED"><code>NOT_LOADED</code></a>.</div>
 </div>
 </div>
@@ -434,7 +439,14 @@ extends <a href="ValueAccessor.html" title="interface in org.cojen.tupl">ValueAc
 <section class="detail" id="comparator()">
 <h3>comparator</h3>
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;byte[]&gt;</span>&nbsp;<span class="element-name">comparator</span>()</div>
-<div class="block">Returns a comparator for the ordering of this view, or null if unordered.</div>
+<div class="block">Returns a key comparator for the ordering of this view, or null if unordered.</div>
+</section>
+</li>
+<li>
+<section class="detail" id="entryComparator()">
+<h3>entryComparator</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;<a href="Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;</span>&nbsp;<span class="element-name">entryComparator</span>()</div>
+<div class="block">Returns an entry comparator for the ordering of this view, or null if unordered.</div>
 </section>
 </li>
 <li>

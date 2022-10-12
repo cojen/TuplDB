@@ -23,12 +23,13 @@ import java.util.Comparator;
 
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DurabilityMode;
+import org.cojen.tupl.Entry;
+import org.cojen.tupl.EntryScanner;
 import org.cojen.tupl.Filter;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Ordering;
-import org.cojen.tupl.EntryScanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.Transformer;
@@ -71,6 +72,11 @@ public final class UnmodifiableView implements Index {
     @Override
     public Comparator<byte[]> comparator() {
         return mSource.comparator();
+    }
+
+    @Override
+    public Comparator<Entry> entryComparator() {
+        return mSource.entryComparator();
     }
 
     @Override

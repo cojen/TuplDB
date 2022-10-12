@@ -23,10 +23,11 @@ import java.util.Comparator;
 
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DurabilityMode;
+import org.cojen.tupl.Entry;
+import org.cojen.tupl.EntryScanner;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Ordering;
-import org.cojen.tupl.EntryScanner;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.Transformer;
 import org.cojen.tupl.View;
@@ -52,6 +53,11 @@ public final class ReverseView implements View {
     @Override
     public Comparator<byte[]> comparator() {
         return mSource.comparator().reversed();
+    }
+
+    @Override
+    public Comparator<Entry> entryComparator() {
+        return mSource.entryComparator().reversed();
     }
 
     @Override

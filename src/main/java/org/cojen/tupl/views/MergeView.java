@@ -24,6 +24,7 @@ import java.util.Comparator;
 import org.cojen.tupl.Combiner;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DurabilityMode;
+import org.cojen.tupl.Entry;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.LockResult;
@@ -72,6 +73,12 @@ abstract class MergeView implements View {
     @Override
     public Comparator<byte[]> comparator() {
         return mComparator;
+    }
+
+    @Override
+    public Comparator<Entry> entryComparator() {
+        // Assume both are the same.
+        return mFirst.entryComparator();
     }
 
     @Override

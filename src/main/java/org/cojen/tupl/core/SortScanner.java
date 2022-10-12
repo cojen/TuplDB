@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.Comparator;
 
 import org.cojen.tupl.ClosedIndexException;
+import org.cojen.tupl.Entry;
 import org.cojen.tupl.EntryScanner;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnpositionedCursorException;
@@ -47,12 +48,12 @@ class SortScanner implements EntryScanner {
     }
 
     @Override
-    public Comparator<byte[]> comparator() {
+    public Comparator<Entry> getComparator() {
         BTreeCursor c = mCursor;
         if (c == null && (c = tryOpenCursor()) == null) {
-            return Utils.KEY_COMPARATOR;
+            return EntryComparator.THE;
         }
-        return c.comparator();
+        return c.entryComparator();
     }
 
     @Override
