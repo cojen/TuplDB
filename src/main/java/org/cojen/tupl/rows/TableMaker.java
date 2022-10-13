@@ -272,7 +272,6 @@ public class TableMaker {
 
         addMarkAllCleanMethod();
         addToRowMethod();
-        addRowStoreRefMethod();
 
         addUnfilteredMethods();
 
@@ -1955,11 +1954,6 @@ public class TableMaker {
 
         mm = mClassMaker.addMethod(Object.class, "toRow", byte[].class).protected_().bridge();
         mm.return_(mm.this_().invoke(mRowType, "toRow", null, mm.param(0)));
-    }
-
-    private void addRowStoreRefMethod() {
-        MethodMaker mm = mClassMaker.addMethod(WeakReference.class, "rowStoreRef").protected_();
-        mm.return_(mm.var(WeakReference.class).setExact(mStore.ref()));
     }
 
     private void addSecondaryDescriptorMethod() {

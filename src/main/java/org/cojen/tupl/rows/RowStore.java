@@ -222,7 +222,7 @@ public class RowStore {
             synchronized (mTableManagers) {
                 manager = mTableManagers.get(ix);
                 if (manager == null) {
-                    manager = new TableManager<>(ix);
+                    manager = new TableManager<>(this, ix);
                     mTableManagers.put(ix, manager);
                 }
             }

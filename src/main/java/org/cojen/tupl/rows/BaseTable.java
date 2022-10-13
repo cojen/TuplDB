@@ -834,7 +834,9 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         return rs;
     }
 
-    protected abstract WeakReference<RowStore> rowStoreRef();
+    protected final WeakReference<RowStore> rowStoreRef() {
+        return mTableManager.mRowStoreRef;
+    }
 
     protected abstract QueryPlan planReverse(Object... args);
 
