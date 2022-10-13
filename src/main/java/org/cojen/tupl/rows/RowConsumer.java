@@ -19,13 +19,13 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
-import org.cojen.tupl.EntryConsumer;
-
 /**
  * Can be passed to a Scanner as if it was a row, in order to obtain undecoded row entries.
  *
  * @author Brian S O'Neill
  */
-public interface RowConsumer<R> extends EntryConsumer {
+public interface RowConsumer<R> {
+    void accept(byte[] key, byte[] value) throws IOException;
+
     void beginBatch(RowEvaluator<R> evaluator) throws IOException;
 }

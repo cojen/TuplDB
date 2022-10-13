@@ -26,7 +26,7 @@ import org.cojen.tupl.Updater;
  *
  * @author Brian S O'Neill
  */
-abstract class ConcatUpdater<R> implements BaseScanner<R>, Updater<R> {
+abstract class ConcatUpdater<R> implements Updater<R> {
     private final int mCharacteristics;
 
     private Updater<R> mCurrent;

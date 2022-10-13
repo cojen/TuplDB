@@ -50,6 +50,7 @@ public class UnionViewTest {
 
     protected Database mDb;
 
+    /* FIXME: remove
     @Test
     public void unlockCombine() throws Exception {
         // Stepping over entries with an updater should combine locks and then unlock them
@@ -121,6 +122,7 @@ public class UnionViewTest {
 
         txn.reset();
     }
+    */
 
     @Test
     public void doubleReverseCount() throws Exception {

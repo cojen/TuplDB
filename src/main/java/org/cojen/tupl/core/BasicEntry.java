@@ -15,19 +15,24 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl;
+package org.cojen.tupl.core;
+
+import org.cojen.tupl.Entry;
 
 /**
  * 
  *
  * @author Brian S O'Neill
  */
-public class BasicEntry implements Entry {
+final class BasicEntry implements Entry {
     private byte[] key, value;
 
-    public BasicEntry(byte[] key, byte[] value) {
-        this.key = key;
-        this.value = value;
+    BasicEntry() {
+    }
+
+    BasicEntry(byte[] key, byte[] value) {
+        key(key);
+        value(value);
     }
 
     @Override
@@ -50,3 +55,4 @@ public class BasicEntry implements Entry {
         this.value = value;
     }
 }
+

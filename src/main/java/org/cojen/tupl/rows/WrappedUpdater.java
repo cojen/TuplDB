@@ -31,7 +31,7 @@ import org.cojen.tupl.Transaction;
  *
  * @author Brian S O'Neill
  */
-class WrappedUpdater<R> implements BaseScanner<R>, Updater<R> {
+class WrappedUpdater<R> implements Updater<R> {
     protected final Table<R> mTable;
     protected final Transaction mTxn;
     protected final Scanner<R> mScanner;

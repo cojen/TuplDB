@@ -39,7 +39,7 @@ import org.cojen.tupl.core.Utils;
  *
  * @author Brian S O'Neill
  */
-public final class TransformedCursor extends CoreValueAccessor implements ScannerCursor {
+public final class TransformedCursor extends CoreValueAccessor implements Cursor {
     private final Cursor mSource;
     private final Transformer mTransformer;
 

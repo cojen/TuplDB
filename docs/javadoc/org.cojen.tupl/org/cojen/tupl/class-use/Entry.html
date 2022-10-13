@@ -80,14 +80,31 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color">
 <div class="block">Returns an entry comparator for the ordering of this view, or null if unordered.</div>
 </div>
-<div class="col-first even-row-color"><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;<a href="../Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">EntryScanner.</span><code><a href="../EntryScanner.html#getComparator()" class="member-name-link">getComparator</a>()</code></div>
+<div class="col-first even-row-color"><code><a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&lt;<a href="../Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Sorter.</span><code><a href="../Sorter.html#finishScan()" class="member-name-link">finishScan</a>()</code></div>
 <div class="col-last even-row-color">
-<div class="block">Returns a comparator for the ordering of this scanner, or null if unordered.</div>
+<div class="block">Returns a single-use Scanner over the sorted results, which deletes temporary resources
+ as it goes.</div>
 </div>
-<div class="col-first odd-row-color"><code>default <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;<a href="../Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">Transformer.</span><code><a href="../Transformer.html#transformedEntryComparator(java.util.Comparator)" class="member-name-link">transformedEntryComparator</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;<a href="../Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;&nbsp;original)</code></div>
+<div class="col-first odd-row-color"><code><a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&lt;<a href="../Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Sorter.</span><code><a href="../Sorter.html#finishScan(org.cojen.tupl.Scanner)" class="member-name-link">finishScan</a><wbr>(<a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&lt;<a href="../Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;&nbsp;s)</code></div>
 <div class="col-last odd-row-color">
+<div class="block">Returns a single-use Scanner over the sorted results, which deletes temporary resources
+ as it goes.</div>
+</div>
+<div class="col-first even-row-color"><code><a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&lt;<a href="../Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Sorter.</span><code><a href="../Sorter.html#finishScanReverse()" class="member-name-link">finishScanReverse</a>()</code></div>
+<div class="col-last even-row-color">
+<div class="block">Same as <a href="../Sorter.html#finishScan()"><code>finishScan</code></a>, but in reverse order.</div>
+</div>
+<div class="col-first odd-row-color"><code><a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&lt;<a href="../Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Sorter.</span><code><a href="../Sorter.html#finishScanReverse(org.cojen.tupl.Scanner)" class="member-name-link">finishScanReverse</a><wbr>(<a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&lt;<a href="../Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;&nbsp;s)</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Same as <a href="../Sorter.html#finishScan(org.cojen.tupl.Scanner)"><code>finishScan</code></a>, but in reverse order.</div>
+</div>
+<div class="col-first even-row-color"><code>default <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;<a href="../Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Transformer.</span><code><a href="../Transformer.html#transformedEntryComparator(java.util.Comparator)" class="member-name-link">transformedEntryComparator</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;<a href="../Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;&nbsp;original)</code></div>
+<div class="col-last even-row-color">
 <div class="block">Returns the view comparator, after transformation.</div>
 </div>
 </div>
@@ -96,9 +113,25 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color"><code>default <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;<a href="../Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">Transformer.</span><code><a href="../Transformer.html#transformedEntryComparator(java.util.Comparator)" class="member-name-link">transformedEntryComparator</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;<a href="../Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;&nbsp;original)</code></div>
+<div class="col-first even-row-color"><code>void</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Sorter.</span><code><a href="../Sorter.html#addAll(org.cojen.tupl.Scanner)" class="member-name-link">addAll</a><wbr>(<a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&lt;<a href="../Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;&nbsp;s)</code></div>
 <div class="col-last even-row-color">
+<div class="block">Add all remaining items from the given scanner into the sorter.</div>
+</div>
+<div class="col-first odd-row-color"><code><a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&lt;<a href="../Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Sorter.</span><code><a href="../Sorter.html#finishScan(org.cojen.tupl.Scanner)" class="member-name-link">finishScan</a><wbr>(<a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&lt;<a href="../Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;&nbsp;s)</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Returns a single-use Scanner over the sorted results, which deletes temporary resources
+ as it goes.</div>
+</div>
+<div class="col-first even-row-color"><code><a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&lt;<a href="../Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Sorter.</span><code><a href="../Sorter.html#finishScanReverse(org.cojen.tupl.Scanner)" class="member-name-link">finishScanReverse</a><wbr>(<a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&lt;<a href="../Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;&nbsp;s)</code></div>
+<div class="col-last even-row-color">
+<div class="block">Same as <a href="../Sorter.html#finishScan(org.cojen.tupl.Scanner)"><code>finishScan</code></a>, but in reverse order.</div>
+</div>
+<div class="col-first odd-row-color"><code>default <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;<a href="../Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Transformer.</span><code><a href="../Transformer.html#transformedEntryComparator(java.util.Comparator)" class="member-name-link">transformedEntryComparator</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;<a href="../Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;&nbsp;original)</code></div>
+<div class="col-last odd-row-color">
 <div class="block">Returns the view comparator, after transformation.</div>
 </div>
 </div>

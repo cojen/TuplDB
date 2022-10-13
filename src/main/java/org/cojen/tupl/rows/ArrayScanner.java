@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.rows;
 
+import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 
 /**
@@ -25,7 +26,7 @@ import org.cojen.tupl.Table;
  * @author Brian S O'Neill
  * @see RowSorter
  */
-abstract class ArrayScanner<R> implements BaseScanner<R> {
+abstract class ArrayScanner<R> implements Scanner<R> {
     private static final Object[] EMPTY = new Object[1];
 
     private final Table<R> mTable;

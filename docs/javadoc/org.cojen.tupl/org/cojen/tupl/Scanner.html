@@ -141,7 +141,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/ja
 <section class="method-summary" id="method-summary">
 <h2>Method Summary</h2>
 <div id="method-summary-table">
-<div class="table-tabs" role="tablist" aria-orientation="horizontal"><button id="method-summary-table-tab0" role="tab" aria-selected="true" aria-controls="method-summary-table.tabpanel" tabindex="0" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table', 3)" class="active-table-tab">All Methods</button><button id="method-summary-table-tab2" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab2', 3)" class="table-tab">Instance Methods</button><button id="method-summary-table-tab3" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab3', 3)" class="table-tab">Abstract Methods</button></div>
+<div class="table-tabs" role="tablist" aria-orientation="horizontal"><button id="method-summary-table-tab0" role="tab" aria-selected="true" aria-controls="method-summary-table.tabpanel" tabindex="0" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table', 3)" class="active-table-tab">All Methods</button><button id="method-summary-table-tab2" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab2', 3)" class="table-tab">Instance Methods</button><button id="method-summary-table-tab3" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab3', 3)" class="table-tab">Abstract Methods</button><button id="method-summary-table-tab5" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab5', 3)" class="table-tab">Default Methods</button></div>
 <div id="method-summary-table.tabpanel" role="tabpanel">
 <div class="summary-table three-column-summary" aria-labelledby="method-summary-table-tab0">
 <div class="table-header col-first">Modifier and Type</div>
@@ -150,27 +150,36 @@ extends <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/ja
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#close()" class="member-name-link">close</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">&nbsp;</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Scanner.html" title="type parameter in Scanner">R</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#row()" class="member-name-link">row</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#forEachRemaining(java.util.function.Consumer)" class="member-name-link">forEachRemaining</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;? super <a href="Scanner.html" title="type parameter in Scanner">R</a>&gt;&nbsp;action)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Scanner.html" title="type parameter in Scanner">R</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#row()" class="member-name-link">row</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Returns a reference to the current row, which is null if the scanner is closed.</div>
 </div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Scanner.html" title="type parameter in Scanner">R</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#step()" class="member-name-link">step</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Step to the next row.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Scanner.html" title="type parameter in Scanner">R</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#step()" class="member-name-link">step</a>()</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#step(R)" class="member-name-link">step</a><wbr>(<a href="Scanner.html" title="type parameter in Scanner">R</a>&nbsp;row)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Step to the next row.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Scanner.html" title="type parameter in Scanner">R</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#step(R)" class="member-name-link">step</a><wbr>(<a href="Scanner.html" title="type parameter in Scanner">R</a>&nbsp;row)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Step to the next row.</div>
-</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#tryAdvance(java.util.function.Consumer)" class="member-name-link">tryAdvance</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;? super <a href="Scanner.html" title="type parameter in Scanner">R</a>&gt;&nbsp;action)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html" title="class or interface in java.util" class="external-link">Spliterator</a>&lt;<a href="Scanner.html" title="type parameter in Scanner">R</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#trySplit()" class="member-name-link">trySplit</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"></div>
 </div>
 </div>
 </div>
 <div class="inherited-list">
 <h3 id="methods-inherited-from-class-java.util.Spliterator">Methods inherited from interface&nbsp;java.util.<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html" title="class or interface in java.util" class="external-link">Spliterator</a></h3>
-<code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#characteristics()" title="class or interface in java.util" class="external-link">characteristics</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#estimateSize()" title="class or interface in java.util" class="external-link">estimateSize</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#forEachRemaining(java.util.function.Consumer)" title="class or interface in java.util" class="external-link">forEachRemaining</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#getComparator()" title="class or interface in java.util" class="external-link">getComparator</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#getExactSizeIfKnown()" title="class or interface in java.util" class="external-link">getExactSizeIfKnown</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#hasCharacteristics(int)" title="class or interface in java.util" class="external-link">hasCharacteristics</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#tryAdvance(java.util.function.Consumer)" title="class or interface in java.util" class="external-link">tryAdvance</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#trySplit()" title="class or interface in java.util" class="external-link">trySplit</a></code></div>
+<code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#characteristics()" title="class or interface in java.util" class="external-link">characteristics</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#estimateSize()" title="class or interface in java.util" class="external-link">estimateSize</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#getComparator()" title="class or interface in java.util" class="external-link">getComparator</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#getExactSizeIfKnown()" title="class or interface in java.util" class="external-link">getExactSizeIfKnown</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#hasCharacteristics(int)" title="class or interface in java.util" class="external-link">hasCharacteristics</a></code></div>
 </section>
 </li>
 </ul>
@@ -217,6 +226,36 @@ throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if the given row object is null</dd>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="tryAdvance(java.util.function.Consumer)">
+<h3>tryAdvance</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">tryAdvance</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;? super <a href="Scanner.html" title="type parameter in Scanner">R</a>&gt;&nbsp;action)</span></div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#tryAdvance(java.util.function.Consumer)" title="class or interface in java.util" class="external-link">tryAdvance</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html" title="class or interface in java.util" class="external-link">Spliterator</a>&lt;<a href="Scanner.html" title="type parameter in Scanner">R</a>&gt;</code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="forEachRemaining(java.util.function.Consumer)">
+<h3>forEachRemaining</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">forEachRemaining</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;? super <a href="Scanner.html" title="type parameter in Scanner">R</a>&gt;&nbsp;action)</span></div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#forEachRemaining(java.util.function.Consumer)" title="class or interface in java.util" class="external-link">forEachRemaining</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html" title="class or interface in java.util" class="external-link">Spliterator</a>&lt;<a href="Scanner.html" title="type parameter in Scanner">R</a>&gt;</code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="trySplit()">
+<h3>trySplit</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html" title="class or interface in java.util" class="external-link">Spliterator</a>&lt;<a href="Scanner.html" title="type parameter in Scanner">R</a>&gt;</span>&nbsp;<span class="element-name">trySplit</span>()</div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#trySplit()" title="class or interface in java.util" class="external-link">trySplit</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html" title="class or interface in java.util" class="external-link">Spliterator</a>&lt;<a href="Scanner.html" title="type parameter in Scanner">R</a>&gt;</code></dd>
 </dl>
 </section>
 </li>

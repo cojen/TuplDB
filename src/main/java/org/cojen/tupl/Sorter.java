@@ -60,7 +60,7 @@ public interface Sorter {
      * @throws IllegalStateException if sort is finishing in another thread
      * @throws InterruptedIOException if reset by another thread
      */
-    public void addAll(EntryScanner s) throws IOException;
+    public void addAll(Scanner<Entry> s) throws IOException;
 
     /**
      * Finish sorting the entries, and return a temporary index with the results.
@@ -72,27 +72,27 @@ public interface Sorter {
     public Index finish() throws IOException;
 
     /**
-     * Returns a single-use EntryScanner over the sorted results, which deletes temporary resources
+     * Returns a single-use Scanner over the sorted results, which deletes temporary resources
      * as it goes. Invoking this method causes the sort to be asynchronously finished, and the
-     * EntryScanner might block waiting for entries to become available. Closing the EntryScanner before
+     * Scanner might block waiting for entries to become available. Closing the Scanner before
      * the sort is finished interrupts it.
      *
      * @throws IllegalStateException if sort is finishing in another thread
      * @throws InterruptedIOException if reset by another thread
      */
-    public EntryScanner finishScan() throws IOException;
+    public Scanner<Entry> finishScan() throws IOException;
 
     /**
-     * Returns a single-use EntryScanner over the sorted results, which deletes temporary resources
+     * Returns a single-use Scanner over the sorted results, which deletes temporary resources
      * as it goes. Invoking this method causes the sort to be asynchronously finished, and the
-     * EntryScanner might block waiting for entries to become available. Closing the EntryScanner before
+     * Scanner might block waiting for entries to become available. Closing the Scanner before
      * the sort is finished interrupts it.
      *
      * @param s source of additional entries to add to the sorter before finishing
      * @throws IllegalStateException if sort is finishing in another thread
      * @throws InterruptedIOException if reset by another thread
      */
-    public EntryScanner finishScan(EntryScanner s) throws IOException;
+    public Scanner<Entry> finishScan(Scanner<Entry> s) throws IOException;
 
     /**
      * Same as {@link #finishScan() finishScan}, but in reverse order.
@@ -100,16 +100,16 @@ public interface Sorter {
      * @throws IllegalStateException if sort is finishing in another thread
      * @throws InterruptedIOException if reset by another thread
      */
-    public EntryScanner finishScanReverse() throws IOException;
+    public Scanner<Entry> finishScanReverse() throws IOException;
 
     /**
-     * Same as {@link #finishScan(EntryScanner) finishScan}, but in reverse order.
+     * Same as {@link #finishScan(Scanner<Entry>) finishScan}, but in reverse order.
      *
      * @param s source of additional entries to add to the sorter before finishing
      * @throws IllegalStateException if sort is finishing in another thread
      * @throws InterruptedIOException if reset by another thread
      */
-    public EntryScanner finishScanReverse(EntryScanner s) throws IOException;
+    public Scanner<Entry> finishScanReverse(Scanner<Entry> s) throws IOException;
 
     /**
      * Returns an approximate count of entries which have finished, which is only updated while

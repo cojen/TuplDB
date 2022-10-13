@@ -22,6 +22,10 @@ import java.io.IOException;
 
 import java.util.Spliterator;
 
+import java.util.function.Consumer;
+
+import org.cojen.tupl.io.Utils;
+
 /**
  * Support for scanning through all rows in a table. Any exception thrown when acting upon a
  * scanner automatically closes it.
@@ -58,6 +62,50 @@ public interface Scanner<R> extends Spliterator<R>, Closeable {
      * @throws NullPointerException if the given row object is null
      */
     R step(R row) throws IOException;
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    default boolean tryAdvance(Consumer<? super R> action) {
+        try {
+            R row = row();
+            if (row == null) {
+                return false;
+            }
+            // Step to the next row before calling the action, in case an exception is
+            // thrown. It would be odd if an exception is thrown after a successful accept.
+            step();
+            action.accept(row);
+            return true;
+        } catch (Throwable e) {
+            Utils.closeQuietly(this);
+            throw Utils.rethrow(e);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    default void forEachRemaining(Consumer<? super R> action) {
+        try {
+            for (R row = row(); row != null; row = step()) {
+                action.accept(row);
+            }
+        } catch (Throwable e) {
+            Utils.closeQuietly(this);
+            Utils.rethrow(e);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    default Spliterator<R> trySplit() {
+        return null;
+    }
 
     @Override
     void close() throws IOException;

@@ -25,11 +25,6 @@ import java.util.Comparator;
 import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.views.BoundedView;
-import org.cojen.tupl.views.CursorAutoCommitUpdater;
-import org.cojen.tupl.views.CursorNonRepeatableUpdater;
-import org.cojen.tupl.views.CursorSimpleUpdater;
-import org.cojen.tupl.views.CursorScanner;
-import org.cojen.tupl.views.CursorUpgradableUpdater;
 import org.cojen.tupl.views.DifferenceView;
 import org.cojen.tupl.views.IntersectionView;
 import org.cojen.tupl.views.KeyOnlyView;
@@ -70,8 +65,8 @@ public interface View {
      * Returns a new cursor over this view.
      *
      * <p>Note that passing null for the transaction doesn't provide cursor stability with
-     * respect to updates. Either use an {@link #newUpdater EntryUpdater}, or pass an explicit
-     * transaction and call {@link Cursor#commit commit} to apply each update.
+     * respect to updates. Pass an explicit transaction and call {@link Cursor#commit commit}
+     * to apply each update.
      *
      * @param txn optional transaction for Cursor to {@link Cursor#link link} to; pass null for
      * auto-commit mode
@@ -79,56 +74,6 @@ public interface View {
      * @throws IllegalStateException if transaction belongs to another database instance
      */
     public Cursor newCursor(Transaction txn);
-
-    /**
-     * Returns a new scanner over this view.
-     *
-     * @param txn optional transaction for EntryScanner to use; pass null for auto-commit mode
-     * @return a new scanner positioned at the first entry in the view
-     * @throws IllegalStateException if transaction belongs to another database instance
-     */
-    public default EntryScanner newScanner(Transaction txn) throws IOException {
-        Cursor c = newCursor(txn);
-        c.first();
-        return new CursorScanner(c);
-    }
-
-    /**
-     * Returns a new updater over this view.
-     *
-     * <p>When providing a transaction which acquires locks (or the transaction is null),
-     * upgradable locks are acquired for each entry visited by the updater. If the transaction
-     * lock mode is non-repeatable, any lock acquisitions for entries which are stepped over
-     * are released when moving to the next entry. Updates with a null transaction are
-     * auto-committed and become visible to other transactions as the updater moves along.
-     *
-     * @param txn optional transaction for EntryUpdater to use; pass null for auto-commit mode
-     * @return a new updater positioned at the first entry in the view
-     * @throws IllegalStateException if transaction belongs to another database instance
-     */
-    public default EntryUpdater newUpdater(Transaction txn) throws IOException {
-        if (txn == null) {
-            txn = newTransaction(null);
-            Cursor c = newCursor(txn);
-            try {
-                return new CursorAutoCommitUpdater(c);
-            } catch (Throwable e) {
-                try {
-                    txn.exit();
-                } catch (Throwable e2) {
-                    Utils.suppress(e, e2);
-                }
-                throw e;
-            }
-        } else {
-            Cursor c = newCursor(txn);
-            return switch (txn.lockMode()) {
-                default -> new CursorSimpleUpdater(c);
-                case REPEATABLE_READ -> new CursorUpgradableUpdater(c);
-                case READ_COMMITTED, READ_UNCOMMITTED -> new CursorNonRepeatableUpdater(c);
-            };
-        }
-    }
 
     /**
      * Returns a cursor intended for {@linkplain ValueAccessor accessing} values in chunks,

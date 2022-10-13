@@ -19,16 +19,17 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
-import org.cojen.tupl.EntryScanner;
+import org.cojen.tupl.Entry;
+import org.cojen.tupl.Scanner;
 
 /**
- * A Scanner backed by a plain EntryScanner, and rows are decoded along the way.
+ * A Scanner backed by a Scanner<Entry>, and rows are decoded along the way.
  *
  * @author Brian S O'Neill
  * @see RowSorter
  */
-abstract class ScannerScanner<R> implements BaseScanner<R> {
-    private final EntryScanner mScanner;
+abstract class ScannerScanner<R> implements Scanner<R> {
+    private final Scanner<Entry> mScanner;
     private final RowDecoder<R> mDecoder;
 
     private R mRow;
@@ -36,10 +37,10 @@ abstract class ScannerScanner<R> implements BaseScanner<R> {
     /**
      * @param scanner must produce at least one row
      */
-    ScannerScanner(EntryScanner scanner, RowDecoder<R> decoder) throws IOException {
+    ScannerScanner(Scanner<Entry> scanner, RowDecoder<R> decoder) throws IOException {
         mScanner = scanner;
         mDecoder = decoder;
-        mRow = decoder.decodeRow(null, scanner.key(), scanner.value());
+        mRow = decoder.decodeRow(null, scanner.row());
     }
 
     @Override
@@ -54,10 +55,11 @@ abstract class ScannerScanner<R> implements BaseScanner<R> {
 
     @Override
     public final R step(R dst) throws IOException {
-        EntryScanner s = mScanner;
+        Scanner<Entry> s = mScanner;
         R row;
-        if (s.step()) {
-            row = mDecoder.decodeRow(dst, s.key(), s.value());
+        Entry e = s.row();
+        if (e != null && (e = s.step(e)) != null) {
+            row = mDecoder.decodeRow(dst, e);
         } else {
             row = null;
         }

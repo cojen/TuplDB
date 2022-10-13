@@ -91,13 +91,6 @@ abstract class MergeView implements View {
     }
 
     @Override
-    public MergeCursor newScanner(Transaction txn) throws IOException {
-        var c = newCursor(txn);
-        c.first();
-        return c;
-    }
-
-    @Override
     public Transaction newTransaction(DurabilityMode durabilityMode) {
         return mFirst.newTransaction(durabilityMode);
     }

@@ -36,7 +36,7 @@ import static org.cojen.tupl.views.BoundedView.*;
  *
  * @author Brian S O'Neill
  */
-final class BoundedCursor implements ScannerCursor {
+final class BoundedCursor implements Cursor {
     final BoundedView mView;
     final Cursor mSource;
 

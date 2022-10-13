@@ -28,7 +28,8 @@ import java.util.concurrent.Executor;
 
 import java.util.concurrent.atomic.LongAdder;
 
-import org.cojen.tupl.EntryScanner;
+import org.cojen.tupl.Entry;
+import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Sorter;
 import org.cojen.tupl.Transaction;
 
@@ -222,20 +223,13 @@ final class ParallelSorter implements Sorter, Node.Supplier {
     }
 
     @Override
-    public void addAll(EntryScanner s) throws IOException {
+    public void addAll(Scanner<Entry> s) throws IOException {
         byte[][] kvPairs = new byte[200][];
         int size = 0;
 
-        do {
-            byte[] key = s.key();
-            byte[] value = s.value();
-
-            if (key == null || value == null) {
-                break;
-            }
-
-            kvPairs[size++] = key;
-            kvPairs[size++] = value;
+        for (Entry e = s.row(); e != null; e = s.step(e)) {
+            kvPairs[size++] = e.key();
+            kvPairs[size++] = e.value();
 
             if (size >= kvPairs.length) {
                 addBatch(kvPairs, 0, kvPairs.length >> 1);
@@ -246,7 +240,7 @@ final class ParallelSorter implements Sorter, Node.Supplier {
 
                 size = 0;
             }
-        } while (s.step());
+        }
 
         if (size > 0) {
             addBatch(kvPairs, 0, size >> 1);
@@ -266,26 +260,26 @@ final class ParallelSorter implements Sorter, Node.Supplier {
     }
 
     @Override
-    public EntryScanner finishScan() throws IOException {
+    public Scanner<Entry> finishScan() throws IOException {
         return finishScan(new SortScanner(mDatabase));
     }
 
     @Override
-    public EntryScanner finishScan(EntryScanner src) throws IOException {
+    public Scanner<Entry> finishScan(Scanner<Entry> src) throws IOException {
         return finishScan(new SortScanner(mDatabase), src);
     }
 
     @Override
-    public EntryScanner finishScanReverse() throws IOException {
+    public Scanner<Entry> finishScanReverse() throws IOException {
         return finishScan(new SortReverseScanner(mDatabase));
     }
 
     @Override
-    public EntryScanner finishScanReverse(EntryScanner src) throws IOException {
+    public Scanner<Entry> finishScanReverse(Scanner<Entry> src) throws IOException {
         return finishScan(new SortReverseScanner(mDatabase), src);
     }
 
-    private EntryScanner finishScan(SortScanner dst) throws IOException {
+    private Scanner<Entry> finishScan(SortScanner dst) throws IOException {
         try {
             BTree tree = doFinish(dst);
             if (tree != null) {
@@ -299,7 +293,7 @@ final class ParallelSorter implements Sorter, Node.Supplier {
         }
     }
 
-    private EntryScanner finishScan(SortScanner dst, EntryScanner src) throws IOException {
+    private Scanner<Entry> finishScan(SortScanner dst, Scanner<Entry> src) throws IOException {
         if (src == null) {
             return finishScan(dst);
         }

@@ -300,10 +300,19 @@ public class MergeViewTest {
     }
 
     private void clearAll() throws Exception {
-        mFirstView.viewKeys().newUpdater(null).updateAll((k, v) -> null);
-        mSecondView.viewKeys().newUpdater(null).updateAll((k, v) -> null);
+        clearAll(mFirstView);
+        clearAll(mSecondView);
         mFirstMap.clear();
         mSecondMap.clear();
+    }
+
+    private void clearAll(View view) throws Exception {
+        try (Cursor c = view.newCursor(null)) {
+            c.autoload(false);
+            for (c.first(); c.key() != null; c.next()) {
+                c.delete();
+            }
+        }
     }
 
     private void storeFirst(String key, String value) throws Exception {

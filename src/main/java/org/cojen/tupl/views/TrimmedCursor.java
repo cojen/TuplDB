@@ -34,7 +34,7 @@ import org.cojen.tupl.Transaction;
  *
  * @author Brian S O'Neill
  */
-final class TrimmedCursor implements ScannerCursor {
+final class TrimmedCursor implements Cursor {
     private final TrimmedView mView;
     private final Cursor mSource;
     private final int mTrim;

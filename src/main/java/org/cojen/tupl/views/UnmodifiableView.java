@@ -24,7 +24,6 @@ import java.util.Comparator;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Entry;
-import org.cojen.tupl.EntryScanner;
 import org.cojen.tupl.Filter;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockFailureException;
@@ -111,13 +110,6 @@ public final class UnmodifiableView implements Index {
     @Override
     public Cursor newCursor(Transaction txn) {
         return new UnmodifiableCursor(mSource.newCursor(txn));
-    }
-
-    @Override
-    public EntryScanner newScanner(Transaction txn) throws IOException {
-        var c = new UnmodifiableCursor(mSource.newCursor(txn));
-        c.first();
-        return c;
     }
 
     @Override

@@ -26,6 +26,7 @@ import org.cojen.tupl.Entry;
  *
  * @author Brian S O'Neill
  */
+// FIXME: remove?
 public final class EntryComparator implements Comparator<Entry> {
     public static final EntryComparator THE = new EntryComparator();
 

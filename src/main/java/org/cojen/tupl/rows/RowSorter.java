@@ -23,8 +23,8 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Set;
 
+import org.cojen.tupl.Entry;
 import org.cojen.tupl.Scanner;
-import org.cojen.tupl.EntryScanner;
 import org.cojen.tupl.Sorter;
 import org.cojen.tupl.Transaction;
 
@@ -135,7 +135,7 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
         private final int mCharacteristics;
         private final Comparator<R> mComparator;
 
-        SRS(EntryScanner scanner, RowDecoder<R> decoder,
+        SRS(Scanner<Entry> scanner, RowDecoder<R> decoder,
             int characteristics, Comparator<R> comparator)
             throws IOException
         {

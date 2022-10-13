@@ -26,7 +26,7 @@ import org.cojen.tupl.Scanner;
  *
  * @author Brian S O'Neill
  */
-abstract class ConcatScanner<R> implements BaseScanner<R> {
+abstract class ConcatScanner<R> implements Scanner<R> {
     private final int mCharacteristics;
 
     private Scanner<R> mCurrent;

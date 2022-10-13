@@ -20,31 +20,46 @@ package org.cojen.tupl.core;
 import java.io.IOException;
 
 import java.util.Comparator;
+import java.util.Objects;
+import java.util.Spliterator;
+
+import java.util.function.Consumer;
 
 import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.Entry;
-import org.cojen.tupl.EntryScanner;
+import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnpositionedCursorException;
 
 /**
- * EntryScanner implementation intended for scanning and deleting sort results. No other threads
+ * Scanner implementation intended for scanning and deleting sort results. No other threads
  * should be accessing the source temporary tree, which is deleted when the scan is complete,
  * or when the scanner is closed.
  *
  * @author Brian S O'Neill
  */
 /*P*/
-class SortScanner implements EntryScanner {
+class SortScanner implements Scanner<Entry> {
     private final LocalDatabase mDatabase;
     private BTreeCursor mCursor;
     private Supplier mSupplier;
+    private Entry mEntry;
 
     /**
      * Must call ready or notReady to complete initialization.
      */
     SortScanner(LocalDatabase db) {
         mDatabase = db;
+    }
+
+    @Override
+    public long estimateSize() {
+        return Long.MAX_VALUE;
+    }
+
+    @Override
+    public int characteristics() {
+        return ORDERED | DISTINCT | SORTED | NONNULL;
     }
 
     @Override
@@ -57,39 +72,51 @@ class SortScanner implements EntryScanner {
     }
 
     @Override
-    public byte[] key() {
-        BTreeCursor c = mCursor;
-        if (c == null && (c = tryOpenCursor()) == null) {
-            return null;
+    public Entry row() {
+        Entry e = mEntry;
+        if (e == null) {
+            if (mCursor == null && tryOpenCursor() == null) {
+                return null;
+            }
+            e = mEntry;
         }
-        return c.key();
+        return e;
     }
 
     @Override
-    public byte[] value() {
-        BTreeCursor c = mCursor;
-        if (c == null && (c = tryOpenCursor()) == null) {
-            return null;
-        }
-        return c.value();
+    public Entry step() throws IOException {
+        return doStep((Entry) null);
     }
 
     @Override
-    public boolean step() throws IOException {
+    public Entry step(Entry row) throws IOException {
+        Objects.requireNonNull(row);
+        return doStep(row);
+    }
+
+    private Entry doStep(Entry row) throws IOException {
         BTreeCursor c = mCursor;
         if (c == null && (c = tryOpenCursor()) == null) {
-            return false;
+            return null;
         }
         try {
             doStep(c);
             if (c.key() != null) {
-                return true;
+                if (row == null) {
+                    row = new BasicEntry();
+                }
+                row.key(c.key());
+                row.value(c.value());
+                mEntry = row;
+                return row;
             }
             mCursor = null;
+            mEntry = null;
             mDatabase.quickDeleteTemporaryTree(c.mTree);
-            return false;
+            return null;
         } catch (UnpositionedCursorException e) {
-            return false;
+            mEntry = null;
+            return null;
         } catch (Throwable e) {
             throw Utils.fail(this, e);
         }
@@ -105,6 +132,7 @@ class SortScanner implements EntryScanner {
             BTreeCursor c = mCursor;
             if (c != null) {
                 mCursor = null;
+                mEntry = null;
                 mDatabase.deleteIndex(c.mTree).run();
             } else if (mSupplier != null) {
                 mSupplier.close();
@@ -123,6 +151,10 @@ class SortScanner implements EntryScanner {
         var c = new BTreeCursor(tree, Transaction.BOGUS);
         initPosition(c);
         mCursor = c;
+        byte[] key = c.key();
+        if (key != null) {
+            mEntry = new BasicEntry(key, c.value());
+        }
     }
 
     protected void initPosition(BTreeCursor c) throws IOException {
