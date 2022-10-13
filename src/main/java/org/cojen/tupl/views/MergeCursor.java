@@ -24,7 +24,6 @@ import java.util.Comparator;
 
 import org.cojen.tupl.Combiner;
 import org.cojen.tupl.Cursor;
-import org.cojen.tupl.Entry;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Ordering;
@@ -69,11 +68,6 @@ abstract class MergeCursor extends CoreValueAccessor implements Cursor {
     @Override
     public Comparator<byte[]> comparator() {
         return mView.comparator();
-    }
-
-    @Override
-    public Comparator<Entry> entryComparator() {
-        return mView.entryComparator();
     }
 
     @Override

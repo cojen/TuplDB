@@ -68,13 +68,6 @@ public interface Cursor extends ValueAccessor, Closeable {
     }
 
     /**
-     * Returns an entry comparator for the ordering of this view, or null if unordered.
-     */
-    public default Comparator<Entry> entryComparator() {
-        return null;
-    }
-
-    /**
      * Link to a transaction, which can be null for auto-commit mode. All
      * entries visited by the cursor become part of the given transaction.  To
      * continue using a cursor after the transaction is complete, link it to

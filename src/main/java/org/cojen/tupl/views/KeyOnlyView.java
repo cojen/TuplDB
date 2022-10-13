@@ -25,7 +25,6 @@ import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Ordering;
-import org.cojen.tupl.Entry;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
 import org.cojen.tupl.ViewConstraintException;
@@ -61,11 +60,6 @@ public final class KeyOnlyView implements View {
     @Override
     public Comparator<byte[]> comparator() {
         return mSource.comparator();
-    }
-
-    @Override
-    public Comparator<Entry> entryComparator() {
-        return mSource.entryComparator();
     }
 
     @Override

@@ -29,7 +29,6 @@ import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DeadlockException;
 import org.cojen.tupl.DurabilityMode;
-import org.cojen.tupl.Entry;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.LockResult;
@@ -93,11 +92,6 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
     @Override
     public final Comparator<byte[]> comparator() {
         return KEY_COMPARATOR;
-    }
-
-    @Override
-    public final Comparator<Entry> entryComparator() {
-        return EntryComparator.THE;
     }
 
     @Override

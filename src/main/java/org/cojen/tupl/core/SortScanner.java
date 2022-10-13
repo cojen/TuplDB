@@ -44,6 +44,7 @@ class SortScanner implements Scanner<Entry> {
     private BTreeCursor mCursor;
     private Supplier mSupplier;
     private Entry mEntry;
+    private Comparator<Entry> mComparator;
 
     /**
      * Must call ready or notReady to complete initialization.
@@ -64,11 +65,20 @@ class SortScanner implements Scanner<Entry> {
 
     @Override
     public Comparator<Entry> getComparator() {
-        BTreeCursor c = mCursor;
-        if (c == null && (c = tryOpenCursor()) == null) {
-            return EntryComparator.THE;
+        Comparator<Entry> comparator = mComparator;
+
+        if (comparator == null) {
+            Comparator<byte[]> kc;
+            BTreeCursor c = mCursor;
+            if (c == null && (c = tryOpenCursor()) == null) {
+                kc = Utils.KEY_COMPARATOR;
+            } else {
+                kc = c.comparator();
+            }
+            mComparator = comparator = (a, b) -> kc.compare(a.key(), b.key());
         }
-        return c.entryComparator();
+
+        return comparator;
     }
 
     @Override

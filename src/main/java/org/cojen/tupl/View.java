@@ -55,13 +55,6 @@ public interface View {
     }
 
     /**
-     * Returns an entry comparator for the ordering of this view, or null if unordered.
-     */
-    public default Comparator<Entry> entryComparator() {
-        return null;
-    }
-
-    /**
      * Returns a new cursor over this view.
      *
      * <p>Note that passing null for the transaction doesn't provide cursor stability with

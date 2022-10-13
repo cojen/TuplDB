@@ -24,7 +24,6 @@ import java.io.OutputStream;
 import java.util.Comparator;
 
 import org.cojen.tupl.Cursor;
-import org.cojen.tupl.Entry;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Ordering;
 import org.cojen.tupl.Transaction;
@@ -130,14 +129,6 @@ abstract class WrappedCursor implements Cursor {
     @Override
     public Comparator<byte[]> comparator() {
         return source.comparator();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Comparator<Entry> entryComparator() {
-        return source.entryComparator();
     }
 
     /**

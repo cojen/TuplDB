@@ -24,7 +24,6 @@ import java.io.OutputStream;
 import java.util.Comparator;
 
 import org.cojen.tupl.Cursor;
-import org.cojen.tupl.Entry;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Ordering;
 import org.cojen.tupl.Transaction;
@@ -94,11 +93,6 @@ final class ReverseCursor implements Cursor {
     @Override
     public Comparator<byte[]> comparator() {
         return mSource.comparator().reversed();
-    }
-
-    @Override
-    public Comparator<Entry> entryComparator() {
-        return mSource.entryComparator();
     }
 
     @Override

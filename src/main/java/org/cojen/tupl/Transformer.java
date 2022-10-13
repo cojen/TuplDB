@@ -167,15 +167,4 @@ public interface Transformer {
     public default Comparator<byte[]> transformedComparator(Comparator<byte[]> original) {
         return original;
     }
-
-    /**
-     * Returns the view comparator, after transformation. Default implementation returns the
-     * same comparator.
-     *
-     * @param original comparator of view before transformation
-     * @throws IllegalStateException if transformed view is unordered
-     */
-    public default Comparator<Entry> transformedEntryComparator(Comparator<Entry> original) {
-        return original;
-    }
 }

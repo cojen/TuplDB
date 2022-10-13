@@ -27,7 +27,6 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DurabilityMode;
-import org.cojen.tupl.Entry;
 import org.cojen.tupl.Filter;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockFailureException;
@@ -121,11 +120,6 @@ class BTree extends Tree implements View, Index {
     @Override
     public Comparator<byte[]> comparator() {
         return KEY_COMPARATOR;
-    }
-
-    @Override
-    public Comparator<Entry> entryComparator() {
-        return EntryComparator.THE;
     }
 
     @Override

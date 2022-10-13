@@ -155,32 +155,27 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns the view comparator, after transformation.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;<a href="Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#transformedEntryComparator(java.util.Comparator)" class="member-name-link">transformedEntryComparator</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;<a href="Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;&nbsp;original)</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="Ordering.html" title="enum class in org.cojen.tupl">Ordering</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#transformedOrdering(org.cojen.tupl.Ordering)" class="member-name-link">transformedOrdering</a><wbr>(<a href="Ordering.html" title="enum class in org.cojen.tupl">Ordering</a>&nbsp;original)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
-<div class="block">Returns the view comparator, after transformation.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="Ordering.html" title="enum class in org.cojen.tupl">Ordering</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#transformedOrdering(org.cojen.tupl.Ordering)" class="member-name-link">transformedOrdering</a><wbr>(<a href="Ordering.html" title="enum class in org.cojen.tupl">Ordering</a>&nbsp;original)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns the natural ordering of keys, after they have been transformed.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default byte[]</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#transformKey(org.cojen.tupl.Cursor)" class="member-name-link">transformKey</a><wbr>(<a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a>&nbsp;cursor)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default byte[]</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#transformKey(org.cojen.tupl.Cursor)" class="member-name-link">transformKey</a><wbr>(<a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a>&nbsp;cursor)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Transform or filter out the given key.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>byte[]</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#transformValue(byte%5B%5D,byte%5B%5D,byte%5B%5D)" class="member-name-link">transformValue</a><wbr>(byte[]&nbsp;value,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>byte[]</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#transformValue(byte%5B%5D,byte%5B%5D,byte%5B%5D)" class="member-name-link">transformValue</a><wbr>(byte[]&nbsp;value,
  byte[]&nbsp;key,
  byte[]&nbsp;tkey)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Transform or filter out the given value.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default byte[]</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#transformValue(org.cojen.tupl.Cursor,byte%5B%5D)" class="member-name-link">transformValue</a><wbr>(<a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a>&nbsp;cursor,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default byte[]</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#transformValue(org.cojen.tupl.Cursor,byte%5B%5D)" class="member-name-link">transformValue</a><wbr>(<a href="Cursor.html" title="interface in org.cojen.tupl">Cursor</a>&nbsp;cursor,
  byte[]&nbsp;tkey)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Transform or filter out the given value.</div>
 </div>
 </div>
@@ -360,20 +355,6 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="transformedComparator(java.util.Comparator)">
 <h3>transformedComparator</h3>
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;byte[]&gt;</span>&nbsp;<span class="element-name">transformedComparator</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;byte[]&gt;&nbsp;original)</span></div>
-<div class="block">Returns the view comparator, after transformation. Default implementation returns the
- same comparator.</div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>original</code> - comparator of view before transformation</dd>
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if transformed view is unordered</dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="transformedEntryComparator(java.util.Comparator)">
-<h3>transformedEntryComparator</h3>
-<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;<a href="Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;</span>&nbsp;<span class="element-name">transformedEntryComparator</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;<a href="Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;&nbsp;original)</span></div>
 <div class="block">Returns the view comparator, after transformation. Default implementation returns the
  same comparator.</div>
 <dl class="notes">
