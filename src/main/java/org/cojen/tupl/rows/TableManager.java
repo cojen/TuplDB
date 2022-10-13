@@ -44,6 +44,7 @@ import static org.cojen.tupl.rows.RowUtils.*;
  * @author Brian S O'Neill
  */
 public final class TableManager<R> {
+    final WeakReference<RowStore> mRowStoreRef;
     final Index mPrimaryIndex;
 
     private final WeakClassCache<BaseTable<R>> mTables;
@@ -57,7 +58,8 @@ public final class TableManager<R> {
 
     private volatile WeakCache<Object, BaseTableIndex<R>, Object> mIndexTables;
 
-    TableManager(Index primaryIndex) {
+    TableManager(RowStore rs, Index primaryIndex) {
+        mRowStoreRef = rs.ref();
         mPrimaryIndex = primaryIndex;
         mTables = new WeakClassCache<>();
         mIndexInfos = new ConcurrentSkipListMap<>(KEY_COMPARATOR);

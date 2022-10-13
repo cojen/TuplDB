@@ -70,7 +70,6 @@ public class TableMaker {
     private final Class<?> mRowClass;
     private final long mTableId;
     private final byte[] mSecondaryDescriptor;
-    private final long mIndexId;
     private final boolean mSupportsIndexLock;
     private final ColumnInfo mAutoColumn;
 
@@ -86,7 +85,7 @@ public class TableMaker {
     TableMaker(RowStore store, Class<?> type, RowGen rowGen,
                long tableId, boolean supportsIndexLock)
     {
-        this(store, type, rowGen, rowGen, tableId, null, tableId, supportsIndexLock);
+        this(store, type, rowGen, rowGen, tableId, null, supportsIndexLock);
     }
 
     /**
@@ -97,10 +96,9 @@ public class TableMaker {
      * @param codecGen describes key and value codecs (different than rowGen)
      * @param tableId primary table index id
      * @param secondaryDesc secondary index descriptor
-     * @param indexId secondary index id
      */
     TableMaker(RowStore store, Class<?> type, RowGen rowGen, RowGen codecGen,
-               long tableId, byte[] secondaryDesc, long indexId, boolean supportsIndexLock)
+               long tableId, byte[] secondaryDesc, boolean supportsIndexLock)
     {
         mStore = store;
         mRowType = type;
@@ -110,7 +108,6 @@ public class TableMaker {
         mRowClass = RowMaker.find(type);
         mTableId = tableId;
         mSecondaryDescriptor = secondaryDesc;
-        mIndexId = indexId;
         mSupportsIndexLock = supportsIndexLock;
 
         ColumnInfo auto = null;
@@ -275,7 +272,6 @@ public class TableMaker {
 
         addMarkAllCleanMethod();
         addToRowMethod();
-        addRowStoreRefMethod();
 
         addUnfilteredMethods();
 
@@ -811,16 +807,16 @@ public class TableMaker {
     private void addDynamicEncodeValueColumns() {
         MethodMaker mm = mClassMaker.addMethod(byte[].class, "encodeValue", mRowClass).static_();
         var indy = mm.var(TableMaker.class).indy
-            ("indyEncodeValueColumns", mStore.ref(), mRowType, mIndexId);
+            ("indyEncodeValueColumns", mStore.ref(), mRowType, mTableId);
         mm.return_(indy.invoke(byte[].class, "encodeValue", null, mm.param(0)));
     }
 
     public static CallSite indyEncodeValueColumns
         (MethodHandles.Lookup lookup, String name, MethodType mt,
-         WeakReference<RowStore> storeRef, Class<?> rowType, long indexId)
+         WeakReference<RowStore> storeRef, Class<?> rowType, long tableId)
     {
         return doIndyEncode
-            (lookup, name, mt, storeRef, rowType, indexId, (mm, info, schemaVersion) -> {
+            (lookup, name, mt, storeRef, rowType, tableId, (mm, info, schemaVersion) -> {
                 ColumnCodec[] codecs = info.rowGen().valueCodecs();
                 addEncodeColumns(mm, ColumnCodec.bind(schemaVersion, codecs, mm));
             });
@@ -851,16 +847,16 @@ public class TableMaker {
         partiallyDirty.here();
 
         var indy = mm.var(TableMaker.class).indy
-            ("indyUpdateValueColumns", mStore.ref(), mRowType, mIndexId);
+            ("indyUpdateValueColumns", mStore.ref(), mRowType, mTableId);
         mm.return_(indy.invoke(byte[].class, "updateValue", null, rowVar, mm.param(1)));
     }
 
     public static CallSite indyUpdateValueColumns
         (MethodHandles.Lookup lookup, String name, MethodType mt,
-         WeakReference<RowStore> storeRef, Class<?> rowType, long indexId)
+         WeakReference<RowStore> storeRef, Class<?> rowType, long tableId)
     {
         return doIndyEncode
-            (lookup, name, mt, storeRef, rowType, indexId, (mm, info, schemaVersion) -> {
+            (lookup, name, mt, storeRef, rowType, tableId, (mm, info, schemaVersion) -> {
                 if (schemaVersion == 0 || info.valueColumns.isEmpty()) {
                     // Not expected, but handle it nonetheless.
                     mm.return_(mm.var(RowUtils.class).field("EMPTY_BYTES"));
@@ -891,7 +887,7 @@ public class TableMaker {
      */
     private static CallSite doIndyEncode(MethodHandles.Lookup lookup, String name, MethodType mt,
                                          WeakReference<RowStore> storeRef,
-                                         Class<?> rowType, long indexId,
+                                         Class<?> rowType, long tableId,
                                          EncodeFinisher finisher)
     {
         return ExceptionCallSite.make(() -> {
@@ -903,7 +899,7 @@ public class TableMaker {
                 RowInfo info = RowInfo.find(rowType);
                 int schemaVersion;
                 try {
-                    schemaVersion = store.schemaVersion(info, false, indexId, true);
+                    schemaVersion = store.schemaVersion(info, false, tableId, true);
                 } catch (Exception e) {
                     return new ExceptionCallSite.Failed(mt, mm, e);
                 }
@@ -956,7 +952,7 @@ public class TableMaker {
             MethodMaker mm = mClassMaker.addMethod
                 (SwitchCallSite.class, "decodeValueSwitchCallSite").static_();
             var condy = mm.var(TableMaker.class).condy
-                ("condyDecodeValueColumns",  mStore.ref(), mRowType, mRowClass, mIndexId);
+                ("condyDecodeValueColumns",  mStore.ref(), mRowType, mRowClass, mTableId);
             mm.return_(condy.invoke(SwitchCallSite.class, "_"));
         }
 
@@ -991,7 +987,7 @@ public class TableMaker {
      */
     public static SwitchCallSite condyDecodeValueColumns
         (MethodHandles.Lookup lookup, String name, Class<?> type,
-         WeakReference<RowStore> storeRef, Class<?> rowType, Class<?> rowClass, long indexId)
+         WeakReference<RowStore> storeRef, Class<?> rowType, Class<?> rowClass, long tableId)
     {
         MethodType mt = MethodType.methodType(void.class, int.class, rowClass, byte[].class);
 
@@ -1012,7 +1008,7 @@ public class TableMaker {
                 } else {
                     RowInfo srcRowInfo;
                     try {
-                        srcRowInfo = store.rowInfo(rowType, indexId, schemaVersion);
+                        srcRowInfo = store.rowInfo(rowType, tableId, schemaVersion);
                     } catch (Exception e) {
                         return new ExceptionCallSite.Failed
                             (MethodType.methodType(void.class, rowClass, byte[].class), mm, e);
@@ -1065,7 +1061,7 @@ public class TableMaker {
             var storeRef = mm.invoke("rowStoreRef");
             decoder = mm.var(DecodePartialMaker.class).invoke
                 ("makeDecoder", lookup, storeRef, mRowType, mRowClass, mm.class_(),
-                 mIndexId, spec, schemaVersion);
+                 mTableId, spec, schemaVersion);
         } else {
             var secondaryDescVar = mm.var(byte[].class).setExact(mSecondaryDescriptor);
             decoder = mm.var(DecodePartialMaker.class).invoke
@@ -1496,7 +1492,7 @@ public class TableMaker {
         // of the current schema version.
 
         var indy = mm.var(TableMaker.class).indy
-            ("indyDoUpdate", mStore.ref(), mRowType, mIndexId, supportsTriggers() ? 1 : 0);
+            ("indyDoUpdate", mStore.ref(), mRowType, mTableId, supportsTriggers() ? 1 : 0);
         indy.invoke(null, "doUpdate", null, mm.this_(), rowVar, mergeVar, cursorVar);
         mm.return_(true);
 
@@ -1508,10 +1504,10 @@ public class TableMaker {
      */
     public static CallSite indyDoUpdate(MethodHandles.Lookup lookup, String name, MethodType mt,
                                         WeakReference<RowStore> storeRef,
-                                        Class<?> rowType, long indexId, int triggers)
+                                        Class<?> rowType, long tableId, int triggers)
     {
         return doIndyEncode
-            (lookup, name, mt, storeRef, rowType, indexId, (mm, info, schemaVersion) -> {
+            (lookup, name, mt, storeRef, rowType, tableId, (mm, info, schemaVersion) -> {
                 finishIndyDoUpdate(mm, info, schemaVersion, triggers);
             });
     }
@@ -1958,11 +1954,6 @@ public class TableMaker {
 
         mm = mClassMaker.addMethod(Object.class, "toRow", byte[].class).protected_().bridge();
         mm.return_(mm.this_().invoke(mRowType, "toRow", null, mm.param(0)));
-    }
-
-    private void addRowStoreRefMethod() {
-        MethodMaker mm = mClassMaker.addMethod(WeakReference.class, "rowStoreRef").protected_();
-        mm.return_(mm.var(WeakReference.class).setExact(mStore.ref()));
     }
 
     private void addSecondaryDescriptorMethod() {

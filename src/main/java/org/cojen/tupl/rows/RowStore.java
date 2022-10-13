@@ -222,7 +222,7 @@ public class RowStore {
             synchronized (mTableManagers) {
                 manager = mTableManagers.get(ix);
                 if (manager == null) {
-                    manager = new TableManager<>(ix);
+                    manager = new TableManager<>(this, ix);
                     mTableManagers.put(ix, manager);
                 }
             }
@@ -567,7 +567,7 @@ public class RowStore {
         try {
             var maker = new TableMaker
                 (this, rowType, rowInfo.rowGen(), indexRowInfo.rowGen(),
-                 primaryTable.mSource.id(), descriptor, ix.id(), indexLock != null);
+                 primaryTable.mSource.id(), descriptor, indexLock != null);
             var mh = maker.finish();
             var unjoined = (BaseTable<R>) mh.invoke(primaryTable.mTableManager, ix, indexLock);
             mh = maker.finishJoined(primaryTable.getClass(), unjoined.getClass());
