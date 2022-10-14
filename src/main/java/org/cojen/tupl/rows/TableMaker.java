@@ -1058,10 +1058,11 @@ public class TableMaker {
         Variable decoder;
         if (isPrimaryTable()) {
             var schemaVersion = mm.param(1);
-            var storeRef = mm.invoke("rowStoreRef");
+            var storeRefVar = mm.invoke("rowStoreRef");
+            var tableIdVar = mm.field("mSource").invoke("id");
             decoder = mm.var(DecodePartialMaker.class).invoke
-                ("makeDecoder", lookup, storeRef, mRowType, mRowClass, mm.class_(),
-                 mTableId, spec, schemaVersion);
+                ("makeDecoder", lookup, storeRefVar, mRowType, mRowClass, mm.class_(),
+                 tableIdVar, spec, schemaVersion);
         } else {
             var secondaryDescVar = mm.var(byte[].class).setExact(mSecondaryDescriptor);
             decoder = mm.var(DecodePartialMaker.class).invoke
