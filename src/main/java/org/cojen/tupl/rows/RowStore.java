@@ -326,8 +326,8 @@ public class RowStore {
             RowPredicateLock<R> indexLock = indexLock(ix);
 
             try {
-                var mh = new TableMaker(this, type, info.rowGen(),
-                                        ix.id(), indexLock != null).finish();
+                var mh = new TheTableMaker
+                    (type, info.rowGen(), indexLock != null, this, ix.id()).finish();
                 table = (BaseTable) mh.invoke(manager, ix, indexLock);
             } catch (Throwable e) {
                 throw rethrow(e);
@@ -565,12 +565,16 @@ public class RowStore {
         RowPredicateLock<R> indexLock = indexLock(ix);
 
         try {
-            var maker = new TableMaker
-                (this, rowType, rowInfo.rowGen(), indexRowInfo.rowGen(),
-                 primaryTable.mSource.id(), descriptor, indexLock != null);
+            var maker = new TheTableMaker
+                (rowType, rowInfo.rowGen(), indexRowInfo.rowGen(), descriptor,
+                 indexLock != null, this, primaryTable.mSource.id());
             var mh = maker.finish();
             var unjoined = (BaseTable<R>) mh.invoke(primaryTable.mTableManager, ix, indexLock);
-            mh = maker.finishJoined(primaryTable.getClass(), unjoined.getClass());
+
+            var maker2 = new JoinedTableMaker
+                (rowType, rowInfo.rowGen(), indexRowInfo.rowGen(), descriptor,
+                 primaryTable.getClass(), unjoined.getClass());
+            mh = maker2.finish();
             table = (BaseTableIndex<R>) mh.invoke(ix, indexLock, primaryTable, unjoined);
         } catch (Throwable e) {
             throw rethrow(e);
