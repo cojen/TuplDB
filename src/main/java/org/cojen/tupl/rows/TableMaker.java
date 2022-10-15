@@ -25,13 +25,14 @@ import java.util.Map;
 
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Field;
+import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 import org.cojen.tupl.diag.QueryPlan;
 
 /**
- * Base class for TheTableMaker and JoinedTableMaker.
+ * Base class for StaticTableMaker, DynamicTableMaker, and JoinedTableMaker.
  *
  * @author Brian S O'Neill
  */
@@ -70,6 +71,10 @@ public class TableMaker {
 
     protected boolean isPrimaryTable() {
         return mRowGen == mCodecGen;
+    }
+
+    protected boolean supportsTriggers() {
+        return isPrimaryTable();
     }
 
     /**
@@ -227,6 +232,283 @@ public class TableMaker {
 
     protected Field stateField(Variable rowVar, int columnNum) {
         return rowVar.field(mRowGen.stateField(columnNum));
+    }
+
+    /**
+     * Makes code which obtains the current trigger and acquires the lock which must be held
+     * for the duration of the operation. The lock must be held even if no trigger must be run.
+     *
+     * @param triggerVar type is Trigger and is assigned by the generated code
+     * @param skipLabel label to branch when trigger shouldn't run
+     */
+    protected static void prepareForTrigger(MethodMaker mm, Variable tableVar,
+                                            Variable triggerVar, Label skipLabel)
+    {
+        Label acquireTriggerLabel = mm.label().here();
+        triggerVar.set(tableVar.invoke("trigger"));
+        triggerVar.invoke("acquireShared");
+        var modeVar = triggerVar.invoke("mode");
+        modeVar.ifEq(Trigger.SKIP, skipLabel);
+        Label activeLabel = mm.label();
+        modeVar.ifNe(Trigger.DISABLED, activeLabel);
+        triggerVar.invoke("releaseShared");
+        mm.goto_(acquireTriggerLabel);
+        activeLabel.here();
+    }
+
+    /**
+     * Defines a static method which returns a new composite byte[] key or value. Caller must
+     * check that the columns are set.
+     *
+     * @param name method name
+     */
+    protected void addEncodeColumnsMethod(String name, ColumnCodec[] codecs) {
+        MethodMaker mm = mClassMaker.addMethod(byte[].class, name, mRowClass).static_();
+        addEncodeColumns(mm, ColumnCodec.bind(codecs, mm));
+    }
+
+    /**
+     * @param mm param(0): Row object, return: byte[]
+     * @param codecs must be bound to the MethodMaker
+     */
+    protected static void addEncodeColumns(MethodMaker mm, ColumnCodec[] codecs) {
+        if (codecs.length == 0) {
+            mm.return_(mm.var(RowUtils.class).field("EMPTY_BYTES"));
+            return;
+        }
+
+        // Determine the minimum byte array size and prepare the encoders.
+        int minSize = 0;
+        for (ColumnCodec codec : codecs) {
+            minSize += codec.minSize();
+            codec.encodePrepare();
+        }
+
+        // Generate code which determines the additional runtime length.
+        Variable totalVar = null;
+        for (ColumnCodec codec : codecs) {
+            Field srcVar = findField(mm.param(0), codec);
+            totalVar = codec.encodeSize(srcVar, totalVar);
+        }
+
+        // Generate code which allocates the destination byte array.
+        Variable dstVar;
+        if (totalVar == null) {
+            dstVar = mm.new_(byte[].class, minSize);
+        } else {
+            if (minSize != 0) {
+                totalVar = totalVar.add(minSize);
+            }
+            dstVar = mm.new_(byte[].class, totalVar);
+        }
+
+        // Generate code which fills in the byte array.
+        var offsetVar = mm.var(int.class).set(0);
+        for (ColumnCodec codec : codecs) {
+            codec.encode(findField(mm.param(0), codec), dstVar, offsetVar);
+        }
+
+        mm.return_(dstVar);
+    }
+
+    /**
+     * Defines a static method which decodes columns from a composite byte[] parameter.
+     *
+     * @param name method name
+     */
+    protected void addDecodeColumnsMethod(String name, ColumnCodec[] codecs) {
+        MethodMaker mm = mClassMaker.addMethod(null, name, mRowClass, byte[].class)
+            .static_().public_();
+        addDecodeColumns(mm, mRowInfo, codecs, 0);
+    }
+
+    /**
+     * @param mm param(0): Row object, param(1): byte[], return: void
+     * @param fixedOffset must be after the schema version (when applicable)
+     */
+    protected static void addDecodeColumns(MethodMaker mm, RowInfo dstRowInfo,
+                                           ColumnCodec[] srcCodecs, int fixedOffset)
+    {
+        srcCodecs = ColumnCodec.bind(srcCodecs, mm);
+
+        Variable srcVar = mm.param(1);
+        Variable offsetVar = mm.var(int.class).set(fixedOffset);
+
+        for (ColumnCodec srcCodec : srcCodecs) {
+            String name = srcCodec.mInfo.name;
+            ColumnInfo dstInfo = dstRowInfo.allColumns.get(name);
+
+            if (dstInfo == null) {
+                srcCodec.decodeSkip(srcVar, offsetVar, null);
+            } else {
+                var rowVar = mm.param(0);
+                Field dstVar = rowVar.field(name);
+                Converter.decode(mm, srcVar, offsetVar, null, srcCodec, dstInfo, dstVar);
+            }
+        }
+    }
+
+    protected static class UpdateEntry {
+        Variable newEntryVar;
+        Variable[] offsetVars;
+    }
+
+    /**
+     * Makes code which encodes a new entry (a key or value) by comparing dirty row columns to
+     * the original entry. Returns the new entry and the column offsets in the original entry.
+     *
+     * @param schemaVersion pass 0 if entry is a key instead of a value; implies that caller
+     * must handle the case where the value must be empty
+     * @param rowVar non-null
+     * @param tableVar doesn't need to be initialized (is used to invoke a static method)
+     * @param originalVar original non-null encoded key or value
+     */
+    protected static UpdateEntry encodeUpdateEntry
+        (MethodMaker mm, RowInfo rowInfo, int schemaVersion,
+         Variable tableVar, Variable rowVar, Variable originalVar)
+    {
+        RowGen rowGen = rowInfo.rowGen();
+        ColumnCodec[] codecs;
+        int fixedOffset;
+
+        if (schemaVersion == 0) {
+            codecs = rowGen.keyCodecs();
+            fixedOffset = 0;
+        } else {
+            codecs = rowGen.valueCodecs();
+
+            Variable decodeVersion = mm.var(RowUtils.class)
+                .invoke("decodeSchemaVersion", originalVar);
+            Label sameVersion = mm.label();
+            decodeVersion.ifEq(schemaVersion, sameVersion);
+
+            // If different schema versions, decode and re-encode a new entry, and then go to
+            // the next step. The simplest way to perform this conversion is to create a new
+            // temp row object, decode the entry into it, and then create a new entry from it.
+            var tempRowVar = mm.new_(rowVar);
+            tableVar.invoke("decodeValue", tempRowVar, originalVar);
+            originalVar.set(tableVar.invoke("encodeValue", tempRowVar));
+
+            sameVersion.here();
+
+            fixedOffset = schemaVersion < 128 ? 1 : 4;
+        }
+
+        // Identify the offsets to all the columns in the original entry, and calculate the
+        // size of the new entry.
+
+        Map<String, Integer> columnNumbers = rowGen.columnNumbers();
+        codecs = ColumnCodec.bind(codecs, mm);
+
+        Variable[] offsetVars = new Variable[codecs.length];
+
+        var offsetVar = mm.var(int.class).set(fixedOffset);
+        var newSizeVar = mm.var(int.class).set(fixedOffset); // need room for schemaVersion
+
+        String stateFieldName = null;
+        Variable stateField = null;
+
+        for (int i=0; i<codecs.length; i++) {
+            ColumnCodec codec = codecs[i];
+            codec.encodePrepare();
+
+            offsetVars[i] = offsetVar.get();
+            codec.decodeSkip(originalVar, offsetVar, null);
+
+            ColumnInfo info = codec.mInfo;
+            int num = columnNumbers.get(info.name);
+
+            String sfName = rowGen.stateField(num);
+            if (!sfName.equals(stateFieldName)) {
+                stateFieldName = sfName;
+                stateField = rowVar.field(stateFieldName).get();
+            }
+
+            int sfMask = RowGen.stateFieldMask(num);
+            Label isDirty = mm.label();
+            stateField.and(sfMask).ifEq(sfMask, isDirty);
+
+            // Add in the size of original column, which won't be updated.
+            codec.encodeSkip();
+            newSizeVar.inc(offsetVar.sub(offsetVars[i]));
+            Label cont = mm.label().goto_();
+
+            // Add in the size of the dirty column, which needs to be encoded.
+            isDirty.here();
+            newSizeVar.inc(codec.minSize());
+            codec.encodeSize(rowVar.field(info.name), newSizeVar);
+
+            cont.here();
+        }
+
+        // Encode the new byte[] entry...
+
+        var newEntryVar = mm.new_(byte[].class, newSizeVar);
+
+        var srcOffsetVar = mm.var(int.class).set(0);
+        var dstOffsetVar = mm.var(int.class).set(0);
+        var spanLengthVar = mm.var(int.class).set(fixedOffset);
+        var sysVar = mm.var(System.class);
+
+        for (int i=0; i<codecs.length; i++) {
+            ColumnCodec codec = codecs[i];
+            ColumnInfo info = codec.mInfo;
+            int num = columnNumbers.get(info.name);
+
+            Variable columnLenVar;
+            {
+                Variable endVar;
+                if (i + 1 < codecs.length) {
+                    endVar = offsetVars[i + 1];
+                } else {
+                    endVar = originalVar.alength();
+                }
+                columnLenVar = endVar.sub(offsetVars[i]);
+            }
+
+            int sfMask = RowGen.stateFieldMask(num);
+            Label isDirty = mm.label();
+            stateField.and(sfMask).ifEq(sfMask, isDirty);
+
+            // Increase the copy span length.
+            Label cont = mm.label();
+            spanLengthVar.inc(columnLenVar);
+            mm.goto_(cont);
+
+            isDirty.here();
+
+            // Copy the current span and prepare for the next span.
+            {
+                Label noSpan = mm.label();
+                spanLengthVar.ifEq(0, noSpan);
+                sysVar.invoke("arraycopy", originalVar, srcOffsetVar,
+                              newEntryVar, dstOffsetVar, spanLengthVar);
+                srcOffsetVar.inc(spanLengthVar);
+                dstOffsetVar.inc(spanLengthVar);
+                spanLengthVar.set(0);
+                noSpan.here();
+            }
+
+            // Encode the dirty column, and skip over the original column value.
+            codec.encode(rowVar.field(info.name), newEntryVar, dstOffsetVar);
+            srcOffsetVar.inc(columnLenVar);
+
+            cont.here();
+        }
+
+        // Copy any remaining span.
+        {
+            Label noSpan = mm.label();
+            spanLengthVar.ifEq(0, noSpan);
+            sysVar.invoke("arraycopy", originalVar, srcOffsetVar,
+                          newEntryVar, dstOffsetVar, spanLengthVar);
+            noSpan.here();
+        }
+
+        var ue = new UpdateEntry();
+        ue.newEntryVar = newEntryVar;
+        ue.offsetVars = offsetVars;
+        return ue;
     }
 
     /**

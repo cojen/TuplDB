@@ -81,8 +81,8 @@ public class JoinedTableMaker extends TableMaker {
     MethodHandle finish() {
         Objects.requireNonNull(mPrimaryTableClass);
 
-        mClassMaker = mCodecGen.beginClassMaker(getClass(), mRowType, "joined").public_()
-            .extend(mUnjoinedClass);
+        mClassMaker = mCodecGen.beginClassMaker(getClass(), mRowType, "joined")
+            .public_().final_().extend(mUnjoinedClass);
 
         {
             MethodMaker mm = mClassMaker.addMethod

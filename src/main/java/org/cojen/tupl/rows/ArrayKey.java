@@ -18,6 +18,7 @@
 package org.cojen.tupl.rows;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * If only arrays behaved like this already...
@@ -31,6 +32,10 @@ abstract class ArrayKey {
 
     static PrefixBytes make(int prefix, byte[] array) {
         return new PrefixBytes(prefix, array);
+    }
+
+    static ObjPrefixBytes make(Object prefix, byte[] array) {
+        return new ObjPrefixBytes(prefix, array);
     }
 
     static Obj make(Object first, Object[] rest) {
@@ -82,6 +87,32 @@ abstract class ArrayKey {
         public boolean equals(Object obj) {
             return this == obj || obj instanceof PrefixBytes other
                 && prefix == other.prefix && Arrays.equals(array, other.array);
+        }
+
+        @Override
+        public String toString() {
+            return prefix + ", " + Arrays.toString(array);
+        }
+    }
+
+    static final class ObjPrefixBytes {
+        final Object prefix;
+        final byte[] array;
+
+        ObjPrefixBytes(Object prefix, byte[] array) {
+            this.prefix = prefix;
+            this.array = array;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hashCode(prefix) * 31 + Arrays.hashCode(array);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return this == obj || obj instanceof ObjPrefixBytes other
+                && Objects.equals(prefix, other.prefix) && Arrays.equals(array, other.array);
         }
 
         @Override

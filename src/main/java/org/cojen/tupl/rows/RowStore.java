@@ -231,16 +231,10 @@ public class RowStore {
         return manager;
     }
 
-    /**
-     * @return null if predicate lock is unsupported
-     */
     <R> RowPredicateLock<R> indexLock(Index index) {
         return indexLock(index.id());
     }
 
-    /**
-     * @return null if predicate lock is unsupported
-     */
     @SuppressWarnings("unchecked")
     <R> RowPredicateLock<R> indexLock(long indexId) {
         var lock = mIndexLocks.getValue(indexId);
@@ -326,8 +320,7 @@ public class RowStore {
             RowPredicateLock<R> indexLock = indexLock(ix);
 
             try {
-                var mh = new TheTableMaker
-                    (type, info.rowGen(), indexLock != null, this, ix.id()).finish();
+                var mh = new DynamicTableMaker(type, info.rowGen(), this, ix.id()).finish();
                 table = (BaseTable) mh.invoke(manager, ix, indexLock);
             } catch (Throwable e) {
                 throw rethrow(e);
@@ -565,9 +558,9 @@ public class RowStore {
         RowPredicateLock<R> indexLock = indexLock(ix);
 
         try {
-            var maker = new TheTableMaker
+            var maker = new DynamicTableMaker
                 (rowType, rowInfo.rowGen(), indexRowInfo.rowGen(), descriptor,
-                 indexLock != null, this, primaryTable.mSource.id());
+                 this, primaryTable.mSource.id());
             var mh = maker.finish();
             var unjoined = (BaseTable<R>) mh.invoke(primaryTable.mTableManager, ix, indexLock);
 
