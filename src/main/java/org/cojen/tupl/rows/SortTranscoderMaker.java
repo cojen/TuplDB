@@ -44,7 +44,7 @@ import org.cojen.maker.Variable;
 public class SortTranscoderMaker {
     /**
      * @param rowInfo source info; can be a primary RowInfo or a SecondaryInfo
-     * @param tableId source index; ignored when source is a secondary index
+     * @param tableId source index; ignored when 0 or source is a secondary index
      * @param sortedInfo see SortDecoderMaker.findSortedInfo
      */
     static Transcoder makeTranscoder(RowStore rs, Class<?> rowType, RowInfo rowInfo,
@@ -67,8 +67,8 @@ public class SortTranscoderMaker {
             (null, "transcode", byte[].class, byte[].class, byte[][].class, int.class);
         mm.public_();
 
-        if (rowInfo instanceof SecondaryInfo) {
-            // Secondary values don't support multiple schemas, so no need to use indy.
+        if (tableId == 0 || rowInfo instanceof SecondaryInfo) {
+            // Unevolvable values don't support multiple schemas, so no need to use indy.
             transcode(mm, rowInfo, sortedInfo, 0);
         } else {
             var keyVar = mm.param(0);

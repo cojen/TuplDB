@@ -38,10 +38,10 @@ import org.cojen.tupl.core.RowPredicateLock;
 import org.cojen.tupl.views.ViewUtils;
 
 /**
- * Makes abstract Table classes that extend BaseTable for primary tables and for unjoined
- * secondary index tables. The classes are "static" in that they have no dynamic code
- * generation which depends on RowStore and tableId constants. Without dynamic code generation,
- * schema evolution isn't supported.
+ * Makes Table classes that extend BaseTable for primary tables and for unjoined secondary
+ * index tables. The classes are "static" in that they have no dynamic code generation which
+ * depends on RowStore and tableId constants. Without dynamic code generation, schema evolution
+ * isn't supported.
  *
  * @author Brian S O'Neill
  */
@@ -154,12 +154,21 @@ class StaticTableMaker extends TableMaker {
             }
 
             mClassMaker = mCodecGen.beginClassMaker(getClass(), mRowType, suffix)
-                .public_().abstract_().extend(baseClass).implement(TableBasicsMaker.find(mRowType));
+                .public_().extend(baseClass).implement(TableBasicsMaker.find(mRowType));
+
+            if (isEvolvable()) {
+                mClassMaker.abstract_();
+            }
         }
 
         MethodMaker ctor = mClassMaker.addConstructor
             (TableManager.class, Index.class, RowPredicateLock.class);
         ctor.invokeSuperConstructor(ctor.param(0), ctor.param(1), ctor.param(2));
+
+        if (!isEvolvable()) {
+            // Needs to be public to be constructed directly by RowStore.makeTable.
+            ctor.public_();
+        }
 
         // Add private methods which check that required columns are set.
         {
@@ -187,11 +196,13 @@ class StaticTableMaker extends TableMaker {
         }
 
         // Add encode/decode methods.
-        {
+        encodeDecode: {
             ColumnCodec[] keyCodecs = mCodecGen.keyCodecs();
             addEncodeColumnsMethod("encodePrimaryKey", keyCodecs);
             addDecodeColumnsMethod("decodePrimaryKey", keyCodecs);
             addUpdatePrimaryKeyMethod(keyCodecs);
+
+            addDecodePartialHandle();
 
             // Define encode/decode delegation methods.
             MethodMaker doEncode = mClassMaker.addMethod
@@ -199,11 +210,22 @@ class StaticTableMaker extends TableMaker {
             MethodMaker doDecode = mClassMaker.addMethod
                 (null, "doDecodeValue", mRowClass, byte[].class).protected_();
 
-            if (isPrimaryTable()) {
+            if (isEvolvable()) {
                 // Subclasses will need to implement these, since they might depend on dynamic
                 // code generation.
                 doEncode.abstract_();
                 doDecode.abstract_();
+                break encodeDecode;
+            }
+
+            // Unevolvable, so implement concrete methods.
+
+            if (isPrimaryTable()) {
+                addEncodeColumnsMethod("encodeValue", mCodecGen.valueCodecs());
+
+                // FIXME: updateValue
+                mClassMaker.addMethod(byte[].class, "updateValue", mRowClass, byte[].class)
+                    .static_().new_(UnmodifiableViewException.class, "FIXME 1").throw_();
             } else {
                 // The encodeValue and updateValue methods are only used for storing rows into
                 // the table. By making them always fail, there's no backdoor to permit
@@ -212,14 +234,12 @@ class StaticTableMaker extends TableMaker {
                     .static_().new_(UnmodifiableViewException.class).throw_();
                 mClassMaker.addMethod(byte[].class, "updateValue", mRowClass, byte[].class)
                     .static_().new_(UnmodifiableViewException.class).throw_();
-
-                addDecodeColumnsMethod("decodeValue", mCodecGen.valueCodecs());
-
-                doEncode.return_(doEncode.invoke("encodeValue", doEncode.param(0)));
-                doDecode.invoke("decodeValue", doDecode.param(0), doDecode.param(1));
             }
 
-            addDecodePartialHandle();
+            addDecodeColumnsMethod("decodeValue", mCodecGen.valueCodecs());
+
+            doEncode.return_(doEncode.invoke("encodeValue", doEncode.param(0)));
+            doDecode.invoke("decodeValue", doDecode.param(0), doDecode.param(1));
         }
 
         // Add code to support an automatic column (if defined).
@@ -286,11 +306,18 @@ class StaticTableMaker extends TableMaker {
             addStoreMethod("insert", boolean.class);
             addStoreMethod("replace", boolean.class);
 
-            // Add an abstract method called by the update methods. The implementation might
-            // depend on dynamic code generation.
-            mClassMaker.addMethod
+            // Add a method called by the update methods. The implementation might depend on
+            // dynamic code generation.
+            MethodMaker mm = mClassMaker.addMethod
                 (boolean.class, "doUpdate", Transaction.class, mRowClass, boolean.class)
-                .protected_().abstract_();
+                .protected_();
+
+            if (isEvolvable()) {
+                mm.abstract_();
+            } else {
+                // FIXME: doUpdate
+                mm.new_(UnsupportedOperationException.class, "FIXME 2").throw_();
+            }
 
             addUpdateMethod("update", false);
             addUpdateMethod("merge", true);
@@ -304,6 +331,8 @@ class StaticTableMaker extends TableMaker {
 
         if (!isPrimaryTable()) {
             addSecondaryDescriptorMethod();
+        } else if (!isEvolvable()) {
+            addUnfilteredMethods(0);
         }
 
         return mClassMaker.finish();

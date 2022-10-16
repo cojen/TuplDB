@@ -31,10 +31,8 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.Index;
-import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.core.RowPredicateLock;
@@ -122,7 +120,7 @@ public class DynamicTableMaker extends TableMaker {
             mm.invoke("decodeValue", mm.param(0), mm.param(1));
         }
 
-        addUnfilteredMethods();
+        addUnfilteredMethods(mTableId);
 
         return doFinish(mt);
     }
@@ -561,148 +559,5 @@ public class DynamicTableMaker extends TableMaker {
         }
 
         markAllClean(rowVar, rowGen, rowGen);
-    }
-
-    /**
-     * Defines methods which return a SingleScanController instance.
-     */
-    private void addUnfilteredMethods() {
-        MethodMaker mm = mClassMaker.addMethod
-            (SingleScanController.class, "unfiltered").protected_();
-        var condyClass = mm.var(DynamicTableMaker.class).condy
-            ("condyDefineUnfiltered", mRowType, mRowClass, mTableId, mSecondaryDescriptor);
-        var scanControllerCtor = condyClass.invoke(MethodHandle.class, "unfiltered");
-        Class<?>[] paramTypes = {
-            byte[].class, boolean.class, byte[].class, boolean.class, boolean.class
-        };
-        mm.return_(scanControllerCtor.invoke
-                   (SingleScanController.class, "invokeExact", paramTypes,
-                    null, false, null, false, false));
-
-        mm = mClassMaker.addMethod(SingleScanController.class, "unfilteredReverse").protected_();
-        // Use the same scanControllerCtor constant, but must set against the correct maker.
-        scanControllerCtor = mm.var(MethodHandle.class).set(scanControllerCtor);
-        mm.return_(scanControllerCtor.invoke
-                   (SingleScanController.class, "invokeExact", paramTypes,
-                    null, false, null, false, true));
-    }
-
-    /**
-     * Makes a subclass of SingleScanController with matching constructors.
-     *
-     * @param secondaryDesc pass null for primary table
-     * @return the basic constructor handle
-     */
-    public static MethodHandle condyDefineUnfiltered
-        (MethodHandles.Lookup lookup, String name, Class type,
-         Class rowType, Class rowClass, long tableId, byte[] secondaryDesc)
-        throws Throwable
-    {
-        RowInfo rowInfo = RowInfo.find(rowType);
-        RowGen rowGen = rowInfo.rowGen();
-        RowGen codecGen = rowGen;
-
-        if (secondaryDesc != null) {
-            codecGen = RowStore.secondaryRowInfo(rowInfo, secondaryDesc).rowGen();
-        }
-
-        ClassMaker cm = RowGen.beginClassMaker
-            (DynamicTableMaker.class, rowType, rowInfo, null, name)
-            .extend(SingleScanController.class).public_();
-
-        // Constructors are protected, for use by filter implementation subclasses.
-        final MethodType ctorType;
-        {
-            ctorType = MethodType.methodType(void.class, byte[].class, boolean.class,
-                                             byte[].class, boolean.class, boolean.class);
-            MethodMaker mm = cm.addConstructor(ctorType).protected_();
-            mm.invokeSuperConstructor
-                (mm.param(0), mm.param(1), mm.param(2), mm.param(3), mm.param(4));
-
-            // Define a reverse scan copy constructor.
-            mm = cm.addConstructor(SingleScanController.class).protected_();
-            mm.invokeSuperConstructor(mm.param(0));
-        }
-
-        // Specified by RowEvaluator.
-        cm.addMethod(long.class, "tableId").public_().final_().return_(tableId);
-
-        if (secondaryDesc != null) {
-            // Specified by RowEvaluator.
-            MethodMaker mm = cm.addMethod(byte[].class, "secondaryDescriptor").public_();
-            mm.return_(mm.var(byte[].class).setExact(secondaryDesc));
-        }
-
-        {
-            // Specified by RowEvaluator.
-            MethodMaker mm = cm.addMethod
-                (Object.class, "evalRow", Cursor.class, LockResult.class, Object.class).public_();
-
-            final var cursorVar = mm.param(0);
-            final var keyVar = cursorVar.invoke("key");
-            final var valueVar = cursorVar.invoke("value");
-            final var rowVar = mm.param(2);
-
-            final Label notRow = mm.label();
-            final var typedRowVar = CodeUtils.castOrNew(rowVar, rowClass, notRow);
-
-            var tableVar = mm.var(lookup.lookupClass());
-            tableVar.invoke("decodePrimaryKey", typedRowVar, keyVar);
-            tableVar.invoke("decodeValue", typedRowVar, valueVar);
-            markAllClean(typedRowVar, rowGen, codecGen);
-            mm.return_(typedRowVar);
-
-            // Assume the passed in row is actually a RowConsumer.
-            notRow.here();
-            CodeUtils.acceptAsRowConsumerAndReturn(rowVar, rowClass, keyVar, valueVar);
-        }
-
-        {
-            // Specified by RowEvaluator.
-            MethodMaker mm = cm.addMethod
-                (Object.class, "decodeRow", Object.class, byte[].class, byte[].class).public_();
-            var rowVar = CodeUtils.castOrNew(mm.param(0), rowClass);
-            var tableVar = mm.var(lookup.lookupClass());
-            tableVar.invoke("decodePrimaryKey", rowVar, mm.param(1));
-            tableVar.invoke("decodeValue", rowVar, mm.param(2));
-            markAllClean(rowVar, rowGen, codecGen);
-            mm.return_(rowVar);
-        }
-
-        {
-            // Specified by RowEvaluator.
-            MethodMaker mm = cm.addMethod
-                (byte[].class, "updateKey", Object.class, byte[].class).public_();
-            var rowVar = mm.param(0).cast(rowClass);
-            var tableVar = mm.var(lookup.lookupClass());
-            Label unchanged = mm.label();
-            tableVar.invoke("checkPrimaryKeyAnyDirty", rowVar).ifFalse(unchanged);
-            mm.return_(tableVar.invoke("updatePrimaryKey", rowVar, mm.param(1)));
-            unchanged.here();
-            mm.return_(null);
-        }
-
-        {
-            // Specified by RowEvaluator.
-            MethodMaker mm = cm.addMethod
-                (byte[].class, "updateValue", Object.class, byte[].class).public_();
-            var rowVar = mm.param(0).cast(rowClass);
-            var tableVar = mm.var(lookup.lookupClass());
-            mm.return_(tableVar.invoke("updateValue", rowVar, mm.param(1)));
-        }
-
-        if (rowGen == codecGen) { // isPrimaryTable, so a schema must be decoded
-            // Used by filter subclasses. The int param is the schema version.
-            MethodMaker mm = cm.addMethod
-                (MethodHandle.class, "decodeValueHandle", int.class).protected_().static_();
-            var tableVar = mm.var(lookup.lookupClass());
-            mm.return_(tableVar.invoke("decodeValueHandle", mm.param(0)));
-        }
-
-        lookup = cm.finishLookup();
-
-        MethodHandle mh = lookup.findConstructor(lookup.lookupClass(), ctorType);
-
-        return mh.asType(mh.type().changeReturnType(SingleScanController.class));
     }
 }

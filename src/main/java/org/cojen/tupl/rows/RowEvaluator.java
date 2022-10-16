@@ -30,9 +30,10 @@ import org.cojen.tupl.UnmodifiableViewException;
  */
 public interface RowEvaluator<R> extends RowDecoder<R> {
     /**
-     * Returns the index id for the primary table that this evaluator is bound to.
+     * Returns the index id for the primary table that this evaluator is bound to, but only if
+     * the table is evolvable. Zero is returned otherwise.
      */
-    long tableId();
+    long evolvableTableId();
 
     /**
      * Returns the encoding descriptor, which is required for for secondary indexes. Returns

@@ -141,7 +141,7 @@ public class ScanControllerTest {
         }
 
         @Override
-        public long tableId() {
+        public long evolvableTableId() {
             return 0;
         }
 

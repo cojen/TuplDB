@@ -46,6 +46,7 @@ import org.cojen.tupl.CorruptDatabaseException;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DeletedIndexException;
 import org.cojen.tupl.DurabilityMode;
+import org.cojen.tupl.Entry;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockMode;
@@ -297,6 +298,8 @@ public class RowStore {
         // Throws an exception if type is malformed.
         RowInfo info = RowInfo.find(type);
 
+        boolean evolvable = type != Entry.class;
+
         BaseTable<R> table;
 
         // Can use NO_FLUSH because transaction will be only used for reading data.
@@ -320,8 +323,15 @@ public class RowStore {
             RowPredicateLock<R> indexLock = indexLock(ix);
 
             try {
-                var mh = new DynamicTableMaker(type, info.rowGen(), this, ix.id()).finish();
-                table = (BaseTable) mh.invoke(manager, ix, indexLock);
+                if (evolvable) {
+                    var mh = new DynamicTableMaker(type, info.rowGen(), this, ix.id()).finish();
+                    table = (BaseTable) mh.invoke(manager, ix, indexLock);
+                } else {
+                    Class tableClass = StaticTableMaker.obtain(type, RowInfo.find(type).rowGen());
+                    table = (BaseTable) tableClass.getConstructor
+                        (TableManager.class, Index.class, RowPredicateLock.class)
+                        .newInstance(manager, ix, indexLock);
+                }
             } catch (Throwable e) {
                 throw rethrow(e);
             }
@@ -331,6 +341,11 @@ public class RowStore {
             }
         } finally {
             txn.reset();
+        }
+
+        if (!evolvable) {
+            // Not evolvable, so don't persist any metadata.
+            return table;
         }
 
         // Attempt to eagerly update schema metadata and secondary indexes.
@@ -1856,7 +1871,7 @@ public class RowStore {
 
         TranscoderKey(Class<?> rowType, RowEvaluator<?> evaluator, String sortedInfoSpec) {
             mRowType = rowType;
-            mTableId = evaluator.tableId();
+            mTableId = evaluator.evolvableTableId();
             mSecondaryDesc = evaluator.secondaryDescriptor();
             mSortedInfoSpec = sortedInfoSpec;
         }
