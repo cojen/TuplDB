@@ -17,42 +17,17 @@
 
 package org.cojen.tupl.core;
 
+import java.lang.invoke.MethodHandle;
+
 import org.cojen.tupl.Entry;
 
+import org.cojen.tupl.rows.RowMaker;
+
 /**
- * 
+ * Singleton Entry populator shared by the SortScanner class and the generated _SortScanner class.
  *
  * @author Brian S O'Neill
  */
-final class BasicEntry implements Entry {
-    private byte[] key, value;
-
-    BasicEntry() {
-    }
-
-    BasicEntry(byte[] key, byte[] value) {
-        key(key);
-        value(value);
-    }
-
-    @Override
-    public byte[] key() {
-        return key;
-    }
-
-    @Override
-    public void key(byte[] key) {
-        this.key = key;
-    }
-
-    @Override
-    public byte[] value() {
-        return value;
-    }
-
-    @Override
-    public void value(byte[] value) {
-        this.value = value;
-    }
+final class EntryPopulator {
+    static final MethodHandle THE = RowMaker.makePopulator(Entry.class);
 }
-

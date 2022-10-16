@@ -68,6 +68,66 @@ public class RowMaker {
         return clazz;
     }
 
+    /**
+     * Returns an uncached MethodHandle instance which populates all the row columns and marks
+     * them clean. The signature looks like this:
+     *
+     * static R populate(R row, column...)
+     *
+     * If the given row is null (or an unknown type), then a new instance is made. Otherwise
+     * the existing one is returned. The given columns are ordered lexicographically by name.
+     */
+    public static <R> MethodHandle makePopulator(Class<R> rowType) {
+        Class<? extends R> rowClass = find(rowType);
+
+        RowInfo rowInfo = RowInfo.find(rowType);
+        RowGen rowGen = rowInfo.rowGen();
+
+        ClassMaker cm = rowGen.beginClassMaker(null, rowType, "").final_();
+
+        MethodType mt;
+        {
+            var paramTypes = new Class[1 + rowInfo.allColumns.size()];
+            paramTypes[0] = rowType;
+            int i = 1;
+            for (ColumnInfo info : rowInfo.allColumns.values()) {
+                paramTypes[i++] = info.type;
+            }
+            mt = MethodType.methodType(rowType, paramTypes);
+        }
+
+        MethodMaker mm = cm.addMethod("_", mt).static_();
+
+        var rowVar = mm.var(rowClass);
+
+        var rowParam = mm.param(0);
+        Label correctType = mm.label();
+        rowParam.instanceOf(rowClass).ifTrue(correctType);
+        rowVar.set(mm.new_(rowClass));
+        Label ready = mm.label().goto_();
+        correctType.here();
+        rowVar.set(rowParam.cast(rowClass));
+
+        ready.here();
+
+        int i = 1;
+        for (ColumnInfo info : rowInfo.allColumns.values()) {
+            rowVar.field(info.name).set(mm.param(i++));
+        }
+
+        TableMaker.markAllClean(rowVar, rowGen, rowGen);
+
+        mm.return_(rowVar);
+
+        MethodHandles.Lookup lookup = cm.finishHidden();
+
+        try {
+            return lookup.findStatic(lookup.lookupClass(), "_", mt);
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
     // States used by the column state fields.
     //static final byte UNSET = 0b00, CLEAN = 0b01, DIRTY = 0b11;
 
@@ -76,12 +136,12 @@ public class RowMaker {
     private final RowInfo mRowInfo;
     private final ClassMaker mClassMaker;
 
-    private RowMaker(Class<?> type, RowGen gen) {
-        mRowType = type;
-        mRowGen = gen;
-        mRowInfo = gen.info;
-        mClassMaker = gen.beginClassMaker(getClass(), type, "")
-            .implement(type).implement(Cloneable.class).final_().public_();
+    private RowMaker(Class<?> rowType, RowGen rowGen) {
+        mRowType = rowType;
+        mRowGen = rowGen;
+        mRowInfo = rowGen.info;
+        mClassMaker = rowGen.beginClassMaker(getClass(), rowType, "")
+            .implement(rowType).implement(Cloneable.class).final_().public_();
     }
 
     private Class<?> finish() {

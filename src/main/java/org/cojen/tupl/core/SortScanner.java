@@ -19,6 +19,8 @@ package org.cojen.tupl.core;
 
 import java.io.IOException;
 
+import java.lang.invoke.MethodHandle;
+
 import java.util.Comparator;
 import java.util.Objects;
 import java.util.Spliterator;
@@ -40,6 +42,8 @@ import org.cojen.tupl.UnpositionedCursorException;
  */
 /*P*/
 class SortScanner implements Scanner<Entry> {
+    private static final MethodHandle POPULATOR = EntryPopulator.THE;
+
     private final LocalDatabase mDatabase;
     private BTreeCursor mCursor;
     private Supplier mSupplier;
@@ -102,13 +106,9 @@ class SortScanner implements Scanner<Entry> {
         }
         try {
             doStep(c);
-            if (c.key() != null) {
-                if (row == null) {
-                    row = new BasicEntry();
-                }
-                row.key(c.key());
-                row.value(c.value());
-                mEntry = row;
+            byte[] key = c.key();
+            if (key != null) {
+                mEntry = row = (Entry) POPULATOR.invokeExact(row, key, c.value());
                 return row;
             }
             mCursor = null;
@@ -154,7 +154,11 @@ class SortScanner implements Scanner<Entry> {
         mCursor = c;
         byte[] key = c.key();
         if (key != null) {
-            mEntry = new BasicEntry(key, c.value());
+            try {
+                mEntry = (Entry) POPULATOR.invokeExact((Entry) null, key, c.value());
+            } catch (Throwable e) {
+                throw Utils.fail(this, e);
+            }
         }
     }
 

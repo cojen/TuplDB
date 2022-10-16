@@ -23,7 +23,7 @@ package org.cojen.tupl;
  * @author Brian S O'Neill
  */
 @PrimaryKey("key")
-public interface Entry {
+public interface Entry extends Comparable<Entry> {
     @Unsigned
     byte[] key();
 
