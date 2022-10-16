@@ -37,6 +37,7 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DatabaseException;
+import org.cojen.tupl.Entry;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockResult;
 
@@ -522,7 +523,7 @@ public class FilteredScanMaker<R> {
     }
 
     private void addEvalRowMethod() {
-        if (mProjectionSpec == null &&
+        if (mProjectionSpec == null && // requesting all columns
             (mFilter == null || (mSecondaryDescriptor == null && mFilter == TrueFilter.THE)))
         {
             // No remainder filter, so rely on inherited method.
@@ -539,7 +540,7 @@ public class FilteredScanMaker<R> {
         var rowVar = mm.param(2);
         var predicateVar = mm.field("predicate");
 
-        if (mSecondaryDescriptor == null) {
+        if (mSecondaryDescriptor == null && mTable.rowType() != Entry.class) {
             // The eval method is implemented using indy, to support multiple schema versions.
 
             WeakReference<RowFilter> filterRef;
@@ -571,7 +572,7 @@ public class FilteredScanMaker<R> {
             return;
         }
 
-        // Decoding a secondary index row is simpler because it has no schema version.
+        // Decoding an unevolvable row is simpler because it has no schema version.
 
         var visitor = new DecodeVisitor(mm, 0, mRowGen, predicateVar, mStopColumn, mStopArgument);
 

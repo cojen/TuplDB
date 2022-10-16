@@ -225,7 +225,7 @@ class StaticTableMaker extends TableMaker {
 
                 // FIXME: updateValue
                 mClassMaker.addMethod(byte[].class, "updateValue", mRowClass, byte[].class)
-                    .static_().new_(UnmodifiableViewException.class, "FIXME 1").throw_();
+                    .static_().new_(UnmodifiableViewException.class).throw_();
             } else {
                 // The encodeValue and updateValue methods are only used for storing rows into
                 // the table. By making them always fail, there's no backdoor to permit
@@ -316,7 +316,7 @@ class StaticTableMaker extends TableMaker {
                 mm.abstract_();
             } else {
                 // FIXME: doUpdate
-                mm.new_(UnsupportedOperationException.class, "FIXME 2").throw_();
+                mm.new_(UnsupportedOperationException.class, "FIXME").throw_();
             }
 
             addUpdateMethod("update", false);
