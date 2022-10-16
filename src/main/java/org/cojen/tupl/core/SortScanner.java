@@ -66,18 +66,9 @@ class SortScanner implements Scanner<Entry> {
     @Override
     public Comparator<Entry> getComparator() {
         Comparator<Entry> comparator = mComparator;
-
         if (comparator == null) {
-            Comparator<byte[]> kc;
-            BTreeCursor c = mCursor;
-            if (c == null && (c = tryOpenCursor()) == null) {
-                kc = Utils.KEY_COMPARATOR;
-            } else {
-                kc = c.comparator();
-            }
-            mComparator = comparator = (a, b) -> kc.compare(a.key(), b.key());
+            mComparator = comparator = (a, b) -> Utils.KEY_COMPARATOR.compare(a.key(), b.key());
         }
-
         return comparator;
     }
 
