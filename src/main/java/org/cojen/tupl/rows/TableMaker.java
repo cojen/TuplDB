@@ -274,6 +274,13 @@ public class TableMaker {
      */
     protected void addEncodeColumnsMethod(String name, ColumnCodec[] codecs) {
         MethodMaker mm = mClassMaker.addMethod(byte[].class, name, mRowClass).static_();
+
+        if (mRowType == Entry.class && codecs.length == 1) {
+            // No need to encode anything -- just return the byte[] reference directly.
+            mm.return_(mm.param(0).field(codecs[0].mInfo.name));
+            return;
+        }
+
         addEncodeColumns(mm, ColumnCodec.bind(codecs, mm));
     }
 
@@ -329,6 +336,13 @@ public class TableMaker {
     protected void addDecodeColumnsMethod(String name, ColumnCodec[] codecs) {
         MethodMaker mm = mClassMaker.addMethod(null, name, mRowClass, byte[].class)
             .static_().public_();
+
+        if (mRowType == Entry.class && codecs.length == 1) {
+            // No need to decode anything -- just copy the byte[] reference directly.
+            mm.param(0).field(codecs[0].mInfo.name).set(mm.param(1));
+            return;
+        }
+
         addDecodeColumns(mm, mRowInfo, codecs, 0);
     }
 
