@@ -19,6 +19,8 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
+import org.cojen.tupl.Entry;
+
 /**
  * 
  *
@@ -32,4 +34,8 @@ public interface RowDecoder<R> {
      * @return non-null row
      */
     R decodeRow(R row, byte[] key, byte[] value) throws IOException;
+
+    default R decodeRow(R row, Entry e) throws IOException {
+        return decodeRow(row, e.key(), e.value());
+    }
 }

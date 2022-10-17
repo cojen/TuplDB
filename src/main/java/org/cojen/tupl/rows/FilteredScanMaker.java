@@ -37,6 +37,7 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DatabaseException;
+import org.cojen.tupl.Entry;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockResult;
 
@@ -129,7 +130,7 @@ public class FilteredScanMaker<R> {
             primaryRowGen = RowInfo.find(rowType).rowGen();
             mJoinProjectionSpec = DecodePartialMaker.makeFullSpec(primaryRowGen, null, projection);
             if (isCovering(rowGen, primaryRowGen, projection)) {
-                // No need to join to the primary table when use a RowScanner. A RowUpdater
+                // No need to join to the primary table when use a Scanner. A Updater
                 // performs a join step to position the cursor over the primary table.
                 mAlwaysJoin = false;
                 mProjectionSpec = DecodePartialMaker.makeFullSpec
@@ -522,7 +523,7 @@ public class FilteredScanMaker<R> {
     }
 
     private void addEvalRowMethod() {
-        if (mProjectionSpec == null &&
+        if (mProjectionSpec == null && // requesting all columns
             (mFilter == null || (mSecondaryDescriptor == null && mFilter == TrueFilter.THE)))
         {
             // No remainder filter, so rely on inherited method.
@@ -539,7 +540,7 @@ public class FilteredScanMaker<R> {
         var rowVar = mm.param(2);
         var predicateVar = mm.field("predicate");
 
-        if (mSecondaryDescriptor == null) {
+        if (mSecondaryDescriptor == null && mTable.rowType() != Entry.class) {
             // The eval method is implemented using indy, to support multiple schema versions.
 
             WeakReference<RowFilter> filterRef;
@@ -571,7 +572,7 @@ public class FilteredScanMaker<R> {
             return;
         }
 
-        // Decoding a secondary index row is simpler because it has no schema version.
+        // Decoding an unevolvable row is simpler because it has no schema version.
 
         var visitor = new DecodeVisitor(mm, 0, mRowGen, predicateVar, mStopColumn, mStopArgument);
 
@@ -581,14 +582,14 @@ public class FilteredScanMaker<R> {
 
         if (mPrimaryTableClass != null) {
             // Need to define additional methods for supporting joins to the primary
-            // table. These are strictly required by RowUpdater, which always must position a
+            // table. These are strictly required by Updater, which always must position a
             // cursor over the primary table.
             addJoinedEval();
             addEvalRowWithPrimaryCursorMethod();
         }
 
         if (!mAlwaysJoin) {
-            // Either not joined to a primary, or this is a covering index, and so RowScanner
+            // Either not joined to a primary, or this is a covering index, and so Scanner
             // doesn't need to join.
             MethodHandle decoder = null;
             if (mProjectionSpec != null) {
@@ -732,7 +733,7 @@ public class FilteredScanMaker<R> {
     }
 
     /**
-     * Defines the other evalRow method which takes a primary cursor, used by RowUpdater.
+     * Defines the other evalRow method which takes a primary cursor, used by Updater.
      */
     private void addEvalRowWithPrimaryCursorMethod() {
         // Implement/override method as specified by RowEvaluator.

@@ -19,9 +19,16 @@ package org.cojen.tupl.core;
 
 import java.io.IOException;
 
+import java.lang.invoke.MethodHandle;
+
 import java.util.Comparator;
+import java.util.Objects;
+import java.util.Spliterator;
+
+import java.util.function.Consumer;
 
 import org.cojen.tupl.ClosedIndexException;
+import org.cojen.tupl.Entry;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnpositionedCursorException;
@@ -34,10 +41,14 @@ import org.cojen.tupl.UnpositionedCursorException;
  * @author Brian S O'Neill
  */
 /*P*/
-class SortScanner implements Scanner {
+class SortScanner implements Scanner<Entry> {
+    private static final MethodHandle POPULATOR = EntryPopulator.THE;
+
     private final LocalDatabase mDatabase;
     private BTreeCursor mCursor;
     private Supplier mSupplier;
+    private Entry mEntry;
+    private Comparator<Entry> mComparator;
 
     /**
      * Must call ready or notReady to complete initialization.
@@ -47,48 +58,66 @@ class SortScanner implements Scanner {
     }
 
     @Override
-    public Comparator<byte[]> comparator() {
-        BTreeCursor c = mCursor;
-        if (c == null && (c = tryOpenCursor()) == null) {
-            return Utils.KEY_COMPARATOR;
-        }
-        return c.comparator();
+    public long estimateSize() {
+        return Long.MAX_VALUE;
     }
 
     @Override
-    public byte[] key() {
+    public int characteristics() {
+        return ORDERED | DISTINCT | SORTED | NONNULL;
+    }
+
+    @Override
+    public Comparator<Entry> getComparator() {
+        Comparator<Entry> comparator = mComparator;
+        if (comparator == null) {
+            mComparator = comparator = (a, b) -> Utils.KEY_COMPARATOR.compare(a.key(), b.key());
+        }
+        return comparator;
+    }
+
+    @Override
+    public Entry row() {
+        Entry e = mEntry;
+        if (e == null) {
+            if (mCursor == null && tryOpenCursor() == null) {
+                return null;
+            }
+            e = mEntry;
+        }
+        return e;
+    }
+
+    @Override
+    public Entry step() throws IOException {
+        return doStep((Entry) null);
+    }
+
+    @Override
+    public Entry step(Entry row) throws IOException {
+        Objects.requireNonNull(row);
+        return doStep(row);
+    }
+
+    private Entry doStep(Entry row) throws IOException {
         BTreeCursor c = mCursor;
         if (c == null && (c = tryOpenCursor()) == null) {
             return null;
-        }
-        return c.key();
-    }
-
-    @Override
-    public byte[] value() {
-        BTreeCursor c = mCursor;
-        if (c == null && (c = tryOpenCursor()) == null) {
-            return null;
-        }
-        return c.value();
-    }
-
-    @Override
-    public boolean step() throws IOException {
-        BTreeCursor c = mCursor;
-        if (c == null && (c = tryOpenCursor()) == null) {
-            return false;
         }
         try {
             doStep(c);
-            if (c.key() != null) {
-                return true;
+            byte[] key = c.key();
+            if (key != null) {
+                mEntry = row = (Entry) POPULATOR.invokeExact(row, key, c.value());
+                return row;
             }
             mCursor = null;
+            mEntry = null;
             mDatabase.quickDeleteTemporaryTree(c.mTree);
-            return false;
+            return null;
         } catch (UnpositionedCursorException e) {
-            return false;
+            mEntry = null;
+            return null;
         } catch (Throwable e) {
             throw Utils.fail(this, e);
         }
@@ -104,6 +133,7 @@ class SortScanner implements Scanner {
             BTreeCursor c = mCursor;
             if (c != null) {
                 mCursor = null;
+                mEntry = null;
                 mDatabase.deleteIndex(c.mTree).run();
             } else if (mSupplier != null) {
                 mSupplier.close();
@@ -122,6 +152,14 @@ class SortScanner implements Scanner {
         var c = new BTreeCursor(tree, Transaction.BOGUS);
         initPosition(c);
         mCursor = c;
+        byte[] key = c.key();
+        if (key != null) {
+            try {
+                mEntry = (Entry) POPULATOR.invokeExact((Entry) null, key, c.value());
+            } catch (Throwable e) {
+                throw Utils.fail(this, e);
+            }
+        }
     }
 
     protected void initPosition(BTreeCursor c) throws IOException {

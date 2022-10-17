@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2011-2017 Cojen.org
+ *  Copyright 2021 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -20,14 +20,15 @@ package org.cojen.tupl;
 import java.io.Closeable;
 import java.io.IOException;
 
-import java.util.Comparator;
+import java.util.Spliterator;
 
-import org.cojen.tupl.core.Utils;
+import java.util.function.Consumer;
+
+import org.cojen.tupl.io.Utils;
 
 /**
- * Scans through all entries in a view and passes them to a consumer. Scanner implementations
- * which perform pre-fetching can be more efficient than a {@linkplain Cursor cursor}. Any
- * exception thrown by a scan action automatically closes the Scanner.
+ * Support for scanning through all rows in a table. Any exception thrown when acting upon a
+ * scanner automatically closes it.
  *
  * <p>Scanner instances can only be safely used by one thread at a time, and they must be
  * closed when no longer needed. Instances can be exchanged by threads, as long as a
@@ -35,47 +36,77 @@ import org.cojen.tupl.core.Utils;
  * interacting with a Scanner instance may cause database corruption.
  *
  * @author Brian S O'Neill
- * @see View#newScanner View.newScanner
+ * @see Table#newScanner Table.newScanner
  * @see Updater
+ *
+ * @author Brian S O'Neill
  */
-public interface Scanner extends Closeable {
+public interface Scanner<R> extends Spliterator<R>, Closeable {
     /**
-     * Returns a comparator for the ordering of this scanner, or null if unordered.
+     * Returns a reference to the current row, which is null if the scanner is closed.
      */
-    Comparator<byte[]> comparator();
+    R row();
 
     /**
-     * Returns an uncopied reference to the current key, or null if closed. Array contents
-     * must not be modified.
-     */
-    byte[] key();
-
-    /**
-     * Returns an uncopied reference to the current value, which might be null or {@link
-     * Cursor#NOT_LOADED}. Array contents can be safely modified.
-     */
-    byte[] value();
-
-    /**
-     * Step to the next entry.
+     * Step to the next row.
      *
-     * @return false if no more entries remain and scanner has been closed
+     * @return the next row or null if no more rows remain and scanner has been closed
      */
-    boolean step() throws IOException;
+    R step() throws IOException;
 
     /**
-     * Calls the given action for each remaining entry, and then closes the scanner.
+     * Step to the next row.
+     *
+     * @param row use this for the next row instead of creating a new one
+     * @return the next row or null if no more rows remain and scanner has been closed
+     * @throws NullPointerException if the given row object is null
      */
-    default void scanAll(EntryConsumer action) throws IOException {
-        for (byte[] key; (key = key()) != null; step()) {
-            try {
-                action.accept(key, value());
-            } catch (Throwable e) {
-                throw Utils.fail(this, e);
+    R step(R row) throws IOException;
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    default boolean tryAdvance(Consumer<? super R> action) {
+        try {
+            R row = row();
+            if (row == null) {
+                return false;
             }
+            // Step to the next row before calling the action, in case an exception is
+            // thrown. It would be odd if an exception is thrown after a successful accept.
+            step();
+            action.accept(row);
+            return true;
+        } catch (Throwable e) {
+            Utils.closeQuietly(this);
+            throw Utils.rethrow(e);
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void close() throws IOException;
+    default void forEachRemaining(Consumer<? super R> action) {
+        try {
+            for (R row = row(); row != null; row = step()) {
+                action.accept(row);
+            }
+        } catch (Throwable e) {
+            Utils.closeQuietly(this);
+            Utils.rethrow(e);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    default Spliterator<R> trySplit() {
+        return null;
+    }
+
+    @Override
+    void close() throws IOException;
 }

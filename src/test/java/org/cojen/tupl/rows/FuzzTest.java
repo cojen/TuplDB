@@ -29,6 +29,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import org.cojen.maker.*;
 
 import org.cojen.tupl.*;
+import org.cojen.tupl.Scanner;
 
 import org.junit.*;
 import static org.junit.Assert.*;
@@ -108,7 +109,7 @@ public class FuzzTest {
 
             int count = 0;
             Iterator<Object> it = set.iterator();
-            RowScanner scanner = table.newRowScanner(null);
+            Scanner scanner = table.newScanner(null);
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
                 count++;
                 assertEquals(it.next(), row);
@@ -119,19 +120,19 @@ public class FuzzTest {
             // Verify filtering which matches the exact row.
 
             String filter = filterAll(rnd, columns);
-            scanner = table.newRowScanner(null);
+            scanner = table.newScanner(null);
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
                 filterAllMatch(table, filter, filterAllArgs(columns, row), row);
             }
 
             filter = filterAll2(rnd, columns);
-            scanner = table.newRowScanner(null);
+            scanner = table.newScanner(null);
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
                 filterAllMatch(table, filter, filterAllArgs(columns, row), row);
             }
 
             filter = filterAll3(rnd, columns);
-            scanner = table.newRowScanner(null);
+            scanner = table.newScanner(null);
             for (Object row = scanner.row(); row != null; row = scanner.step(row)) {
                 filterAllMatch(table, filter, filterAllArgsIn(columns, row), row);
             }
@@ -222,7 +223,7 @@ public class FuzzTest {
             assertTrue(e.getMessage().contains("isn't fully specified"));
         }
 
-        RowScanner scanner = table.newRowScanner(null);
+        Scanner scanner = table.newScanner(null);
         assertNull(scanner.row());
         assertNull(scanner.step());
         assertNull(scanner.step(row));
@@ -233,7 +234,7 @@ public class FuzzTest {
         }
         scanner.close();
 
-        RowUpdater updater = table.newRowUpdater(null);
+        Updater updater = table.newUpdater(null);
         assertNull(updater.row());
         assertNull(updater.step());
         assertNull(updater.step(row));
@@ -263,7 +264,7 @@ public class FuzzTest {
     }
 
     static void truncateAndClose(Index ix, Table table) throws Exception {
-        var updater = table.newRowUpdater(null);
+        var updater = table.newUpdater(null);
         while (updater.row() != null) {
             updater.delete();
         }
@@ -398,7 +399,7 @@ public class FuzzTest {
     private static void filterAllMatch(Table table, String filter, Object[] args, Object row)
         throws Exception
     {
-        RowScanner scanner = table.newRowScanner(null, filter, args);
+        Scanner scanner = table.newScanner(null, filter, args);
 
         Object matchRow = scanner.row();
         assertNotNull(matchRow);

@@ -148,13 +148,6 @@ class BTree extends Tree implements View, Index {
     }
 
     @Override
-    public BTreeCursor newScanner(Transaction txn) throws IOException {
-        var c = new BTreeCursor(this, txn);
-        c.first();
-        return c;
-    }
-
-    @Override
     public Transaction newTransaction(DurabilityMode durabilityMode) {
         return mDatabase.newTransaction(durabilityMode);
     }

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2017 Cojen.org
+ *  Copyright (C) 2017-2022 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -12,7 +12,7 @@
  *  GNU Affero General Public License for more details.
  *
  *  You should have received a copy of the GNU Affero General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package org.cojen.tupl.core;
@@ -37,12 +37,12 @@ public class UpdaterTest extends ScannerTest {
     }
 
     @Override
-    protected Scanner newScanner(View view, Transaction txn) throws Exception {
-        return newUpdater(view, txn);
+    protected Scanner<Entry> newScanner(Index ix, Transaction txn) throws Exception {
+        return newUpdater(ix, txn);
     }
 
-    protected Updater newUpdater(View view, Transaction txn) throws Exception {
-        return view.newUpdater(txn);
+    protected Updater<Entry> newUpdater(Index ix, Transaction txn) throws Exception {
+        return ix.asTable(Entry.class).newUpdater(txn);
     }
 
     @Test
@@ -74,30 +74,27 @@ public class UpdaterTest extends ScannerTest {
     private void empty(Transaction txn) throws Exception {
         Index ix = mDb.openIndex("test");
 
-        Updater u = newUpdater(ix, txn);
-        assertNull(u.key());
-        assertNull(u.value());
-        assertFalse(u.step());
+        Updater<Entry> u = newUpdater(ix, txn);
+        assertNull(u.row());
+        assertNull(u.step());
         u.close();
-        assertNull(u.key());
-        assertNull(u.value());
-        assertFalse(u.step());
+        assertNull(u.row());
+        assertNull(u.step());
 
         u = newUpdater(ix, txn);
         var count = new AtomicInteger();
-        u.scanAll((k, v) -> count.getAndIncrement());
+        u.forEachRemaining(e -> count.getAndIncrement());
         assertEquals(0, count.get());
-        assertNull(u.key());
-        assertNull(u.value());
+        assertNull(u.row());
 
         u = newUpdater(ix, txn);
-        u.updateAll((k, v) -> {
-            count.getAndIncrement();
-            return null;
-        });
-        assertEquals(0, count.get());
-        assertNull(u.key());
-        assertNull(u.value());
+        try {
+            u.update();
+            fail();
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().contains("No current row"));
+        }
+        assertNull(u.row());
     }
 
     @Test
@@ -132,10 +129,9 @@ public class UpdaterTest extends ScannerTest {
         byte[] value = "world".getBytes();
         ix.store(null, key, value);
 
-        Updater u = newUpdater(ix, txn);
-        u.updateAll((k, v) -> null);
-        assertNull(u.key());
-        assertNull(u.value());
+        Updater<Entry> u = newUpdater(ix, txn);
+        assertNull(u.delete());
+        assertNull(u.row());
         assertEquals(0, ix.count(null, null));
 
         if (txn != null && txn != Transaction.BOGUS) {
@@ -177,20 +173,28 @@ public class UpdaterTest extends ScannerTest {
         byte[] value = "world".getBytes();
         ix.store(null, key, value);
 
-        Updater u = newUpdater(ix, txn);
+        Updater<Entry> u = newUpdater(ix, txn);
+        Entry e = u.row();
         byte[] value2 = "world!".getBytes();
-        u.updateAll((k, v) -> value2);
-        assertNull(u.key());
-        assertNull(u.value());
+        e.value(value2);
+        assertNull(u.update());
+        assertNull(u.row());
         fastAssertArrayEquals(value2, ix.load(txn, key));
         assertEquals(1, ix.count(null, null));
 
         u = newUpdater(ix, txn);
+        e = u.row();
         byte[] value3 = "world!!!".getBytes();
-        assertFalse(u.update(value3));
-        assertFalse(u.update(value2));
-        assertNull(u.key());
-        assertNull(u.value());
+        e.value(value3);
+        assertNull(u.update());
+        e.value(value2);
+        try {
+            assertNull(u.update());
+            fail();
+        } catch (IllegalStateException ex) {
+            assertTrue(ex.getMessage().contains("No current row"));
+        }
+        assertNull(u.row());
         fastAssertArrayEquals(value3, ix.load(txn, key));
         assertEquals(1, ix.count(null, null));
 
@@ -234,13 +238,12 @@ public class UpdaterTest extends ScannerTest {
             ix.store(null, ("key-" + i).getBytes(), ("value-" + i).getBytes());
         }
 
-        Updater u = newUpdater(ix, txn);
-        u.updateAll((k, v) -> {
-            return (new String(v) + "-v2").getBytes();
-        });
-        assertNull(u.key());
-        assertNull(u.value());
-
+        try (Updater<Entry> u = newUpdater(ix, txn)) {
+            for (Entry e = u.row(); e != null; e = u.update(e)) {
+                e.value((new String(e.value()) + "-v2").getBytes());
+            }
+        }
+        
         for (int i=0; i<10; i++) {
             byte[] key = ("key-" + i).getBytes();
             byte[] value = ("value-" + i + "-v2").getBytes();
@@ -252,7 +255,7 @@ public class UpdaterTest extends ScannerTest {
             for (int i=0; i<10; i++) {
                 byte[] key = ("key-" + i).getBytes();
                 byte[] value = ("value-" + i + "-v2").getBytes();
-                // Still locked by original transaction.
+                // Still locked by the original transaction.
                 assertEquals(LockResult.TIMED_OUT_LOCK, txn2.tryLockShared(ix.id(), key, 0));
             }
             txn2.exit();
@@ -273,13 +276,17 @@ public class UpdaterTest extends ScannerTest {
             ix.store(null, ("" + i).getBytes(), ("value-" + i).getBytes());
         }
 
-        newUpdater(ix, null).updateAll((k, v) -> {
-            int i = k[0] - '0';
-            if ((i & 1) == 1) {
-                return Updater.NO_UPDATE;
+        try (Updater<Entry> u = newUpdater(ix, null)) {
+            for (Entry e = u.row(); e != null; ) {
+                int i = e.key()[0] - '0';
+                if ((i & 1) == 1) {
+                    e = u.step(e);
+                } else {
+                    e.value(("updated-" + i).getBytes());
+                    e = u.update(e);
+                }
             }
-            return ("updated-" + i).getBytes();
-        });
+        }
 
         for (int i=0; i<10; i++) {
             byte[] value = ix.load(null, ("" + i).getBytes());

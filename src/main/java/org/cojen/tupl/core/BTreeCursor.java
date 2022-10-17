@@ -40,7 +40,6 @@ import org.cojen.tupl.diag.CompactionObserver;
 import org.cojen.tupl.diag.IndexStats;
 import org.cojen.tupl.diag.VerificationObserver;
 
-import org.cojen.tupl.views.ScannerCursor;
 import org.cojen.tupl.views.ViewUtils;
 
 import static org.cojen.tupl.core.PageOps.*;
@@ -53,7 +52,7 @@ import static java.util.Arrays.compareUnsigned;
  *
  * @author Brian S O'Neill
  */
-class BTreeCursor extends CoreValueAccessor implements ScannerCursor {
+class BTreeCursor extends CoreValueAccessor implements Cursor {
     // Sign is important because values are passed to Node.retrieveKeyCmp
     // method. Bit 0 is set for inclusive variants and clear for exclusive.
     private static final int LIMIT_LE = 1, LIMIT_LT = 2, LIMIT_GE = -1, LIMIT_GT = -2;

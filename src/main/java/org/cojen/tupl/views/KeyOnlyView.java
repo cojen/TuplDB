@@ -25,7 +25,6 @@ import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Ordering;
-import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
 import org.cojen.tupl.ViewConstraintException;
@@ -66,13 +65,6 @@ public final class KeyOnlyView implements View {
     @Override
     public Cursor newCursor(Transaction txn) {
         return new KeyOnlyCursor(mSource.newCursor(txn));
-    }
-
-    @Override
-    public Scanner newScanner(Transaction txn) throws IOException {
-        var c = new KeyOnlyCursor(mSource.newCursor(txn));
-        c.first();
-        return c;
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2017 Cojen.org
+ *  Copyright (C) 2017-2022 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -12,12 +12,11 @@
  *  GNU Affero General Public License for more details.
  *
  *  You should have received a copy of the GNU Affero General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package org.cojen.tupl.core;
 
-import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -43,7 +42,7 @@ public class ScannerTest {
     public void createTempDb() throws Exception {
         var config = new DatabaseConfig();
         config.directPageAccess(false);
-        config.maxCacheSize(100000000);
+        config.maxCacheSize(100_000_000);
         mDb = Database.open(config);
     }
 
@@ -53,8 +52,8 @@ public class ScannerTest {
         mDb = null;
     }
 
-    protected Scanner newScanner(View view, Transaction txn) throws Exception {
-        return view.newScanner(txn);
+    protected Scanner<Entry> newScanner(Index ix, Transaction txn) throws Exception {
+        return ix.asTable(Entry.class).newScanner(txn);
     }
 
     protected Database mDb;
@@ -63,30 +62,18 @@ public class ScannerTest {
     public void empty() throws Exception {
         Index ix = mDb.openIndex("test");
 
-        Scanner s = newScanner(ix, null);
-        assertNull(s.key());
-        assertNull(s.value());
-        assertFalse(s.step());
+        Scanner<Entry> s = newScanner(ix, null);
+        assertNull(s.row());
+        assertNull(s.step());
         s.close();
-        assertNull(s.key());
-        assertNull(s.value());
-        assertFalse(s.step());
-
-        s = newScanner(ix.viewReverse(), null);
-        assertNull(s.key());
-        assertNull(s.value());
-        assertFalse(s.step());
-        s.close();
-        assertNull(s.key());
-        assertNull(s.value());
-        assertFalse(s.step());
+        assertNull(s.row());
+        assertNull(s.step());
 
         s = newScanner(ix, null);
         var count = new AtomicInteger();
-        s.scanAll((k, v) -> count.getAndIncrement());
+        s.forEachRemaining(r -> count.getAndIncrement());
         assertEquals(0, count.get());
-        assertNull(s.key());
-        assertNull(s.value());
+        assertNull(s.row());
     }
 
     @Test
@@ -96,30 +83,19 @@ public class ScannerTest {
         byte[] value = "world".getBytes();
         ix.store(null, key, value);
 
-        Scanner s = newScanner(ix, null);
-        fastAssertArrayEquals(key, s.key());
-        fastAssertArrayEquals(value, s.value());
-        assertFalse(s.step());
+        Scanner<Entry> s = newScanner(ix, null);
+        fastAssertArrayEquals(key, s.row().key());
+        fastAssertArrayEquals(value, s.row().value());
+        assertNull(s.step());
         s.close();
-        assertNull(s.key());
-        assertNull(s.value());
-        assertFalse(s.step());
+        assertNull(s.row());
+        assertNull(s.step());
 
         s = newScanner(ix, null);
-        fastAssertArrayEquals(key, s.key());
-        fastAssertArrayEquals(value, s.value());
-        assertFalse(s.step());
-        assertNull(s.key());
-        assertNull(s.value());
-
-        s = newScanner(ix.viewReverse(), null);
-        fastAssertArrayEquals(key, s.key());
-        fastAssertArrayEquals(value, s.value());
-        assertFalse(s.step());
-        s.close();
-        assertNull(s.key());
-        assertNull(s.value());
-        assertFalse(s.step());
+        fastAssertArrayEquals(key, s.row().key());
+        fastAssertArrayEquals(value, s.row().value());
+        assertNull(s.step());
+        assertNull(s.row());
 
         s = newScanner(ix, null);
         var obs = new Object() {
@@ -128,16 +104,15 @@ public class ScannerTest {
             volatile byte[] value;
         };
         var count = new AtomicInteger();
-        s.scanAll((k, v) -> {
+        s.forEachRemaining(r -> {
             obs.count++;
-            obs.key = k;
-            obs.value = v;
+            obs.key = r.key();
+            obs.value = r.value();
         });
         assertEquals(1, obs.count);
         fastAssertArrayEquals(key, obs.key);
         fastAssertArrayEquals(value, obs.value);
-        assertNull(s.key());
-        assertNull(s.value());
+        assertNull(s.row());
     }
 
     @Test
@@ -147,32 +122,32 @@ public class ScannerTest {
             ix.store(null, ("key-" + i).getBytes(), ("value-" + i).getBytes());
         }
 
-        var list = new ArrayList<SimpleEntry<byte[], byte[]>>();
-        Scanner s = newScanner(ix, null);
-        s.scanAll((k, v) -> {
-            list.add(new SimpleEntry<>(k, v));
-        });
+        var list = new ArrayList<Entry>();
+        Scanner<Entry> s = newScanner(ix, null);
+        s.forEachRemaining(list::add);
 
         assertEquals(10, list.size());
         for (int i=0; i<10; i++) {
             byte[] key = ("key-" + i).getBytes();
             byte[] value = ("value-" + i).getBytes();
-            fastAssertArrayEquals(key, list.get(i).getKey());
-            fastAssertArrayEquals(value, list.get(i).getValue());
+            fastAssertArrayEquals(key, list.get(i).key());
+            fastAssertArrayEquals(value, list.get(i).value());
         }
 
         // Again, with only the keys.
         list.clear();
-        s = newScanner(ix.viewKeys(), null);
-        s.scanAll((k, v) -> {
-            list.add(new SimpleEntry<>(k, v));
-        });
+        s = ix.asTable(Entry.class).newScanner(null, "{key}");
+        s.forEachRemaining(list::add);
 
         assertEquals(10, list.size());
         for (int i=0; i<10; i++) {
             byte[] key = ("key-" + i).getBytes();
-            fastAssertArrayEquals(key, list.get(i).getKey());
-            assertEquals(Cursor.NOT_LOADED, list.get(i).getValue());
+            fastAssertArrayEquals(key, list.get(i).key());
+            try {
+                list.get(i).value();
+                fail();
+            } catch (UnsetColumnException e) {
+            }
         }
     }
 
@@ -183,13 +158,11 @@ public class ScannerTest {
             ix.store(null, ("key-" + i).getBytes(), ("value-" + i).getBytes());
         }
 
-        var list = new ArrayList<SimpleEntry<byte[], byte[]>>();
+        var list = new ArrayList<Entry>();
         Transaction txn = mDb.newTransaction();
         assertEquals(LockMode.UPGRADABLE_READ, txn.lockMode());
-        Scanner s = newScanner(ix, txn);
-        s.scanAll((k, v) -> {
-            list.add(new SimpleEntry<>(k, v));
-        });
+        Scanner<Entry> s = newScanner(ix, txn);
+        s.forEachRemaining(list::add);
 
         for (int i=0; i<10; i++) {
             byte[] key = ("key-" + i).getBytes();

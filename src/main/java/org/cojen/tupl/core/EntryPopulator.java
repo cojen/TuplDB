@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2011-2017 Cojen.org
+ *  Copyright (C) 2022 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -12,28 +12,22 @@
  *  GNU Affero General Public License for more details.
  *
  *  You should have received a copy of the GNU Affero General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl;
+package org.cojen.tupl.core;
 
-import java.io.IOException;
-import java.util.Objects;
+import java.lang.invoke.MethodHandle;
+
+import org.cojen.tupl.Entry;
+
+import org.cojen.tupl.rows.RowMaker;
 
 /**
- * Represents an operation that applies a key and value, just like a {@link
- * java.util.function.BiFunction BiFunction}.
+ * Singleton Entry populator shared by the SortScanner class and the generated _SortScanner class.
  *
  * @author Brian S O'Neill
- * @see Updater
  */
-@FunctionalInterface
-public interface EntryFunction {
-    byte[] apply(byte[] key, byte[] value) throws IOException;
-
-    default EntryFunction andThen(EntryFunction after) {
-        Objects.requireNonNull(after);
-
-        return (key, value) -> after.apply(key, apply(key, value));
-    }
+final class EntryPopulator {
+    static final MethodHandle THE = RowMaker.makePopulator(Entry.class);
 }

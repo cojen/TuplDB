@@ -140,7 +140,10 @@ public interface Transaction extends Flushable {
     void commitAll() throws IOException;
 
     /**
-     * Enters a nested transaction scope.
+     * Enters a nested transaction scope, which begins with the {@link LockMode#UPGRADABLE_READ
+     * UPGRADABLE_READ} lock mode.
+     *
+     * @see #lockMode(LockMode) lockMode
      */
     void enter() throws IOException;
 

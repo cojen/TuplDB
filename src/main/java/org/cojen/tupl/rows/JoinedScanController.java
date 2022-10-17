@@ -50,8 +50,8 @@ public abstract class JoinedScanController<R> extends SingleScanController<R> {
     }
 
     @Override
-    public final long tableId() {
-        return mPrimaryIndex.id();
+    public final long evolvableTableId() {
+        return 0;
     }
 
     @Override

@@ -26,7 +26,6 @@ import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Ordering;
-import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.Transformer;
 import org.cojen.tupl.View;
@@ -57,13 +56,6 @@ public final class ReverseView implements View {
     @Override
     public Cursor newCursor(Transaction txn) {
         return new ReverseCursor(mSource.newCursor(txn));
-    }
-
-    @Override
-    public Scanner newScanner(Transaction txn) throws IOException {
-        var c = new ReverseCursor(mSource.newCursor(txn));
-        c.first();
-        return c;
     }
 
     @Override

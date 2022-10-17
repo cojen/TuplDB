@@ -181,9 +181,11 @@ public class CursorRegisterTest {
             Map<String, String> map = new TreeMap<>();
             expect[i] = map;
 
-            indexes[i].newScanner(null).scanAll((k, v) -> {
-                map.put(new String(k), new String(v));
-            });
+            try (Cursor c = indexes[i].newCursor(null)) {
+                for (c.first(); c.key() != null; c.next()) {
+                    map.put(new String(c.key()), new String(c.value()));
+                }
+            }
         }
 
         db = reopenTempDatabase(getClass(), db, config);

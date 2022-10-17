@@ -30,9 +30,9 @@ import org.cojen.tupl.*;
  *
  * @author Brian S O'Neill
  */
-public class RowScannerTest {
+public class ScannerTest {
     public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(RowScannerTest.class.getName());
+        org.junit.runner.JUnitCore.main(ScannerTest.class.getName());
     }
 
     @Test
@@ -41,68 +41,68 @@ public class RowScannerTest {
         var table = (BaseTable<TestRow>)  db.openTable(TestRow.class);
         fill(table, 1, 5);
 
-        verify(table.newRowScanner(null, "{}"), 1, 5);
-        verify(table.newRowScanner(null, "{id}"), 1, 5, "id");
-        verify(table.newRowScanner(null, "{id, id}"), 1, 5, "id");
-        verify(table.newRowScanner(null, "{name, state}"), 1, 5, "name", "state");
+        verify(table.newScanner(null, "{}"), 1, 5);
+        verify(table.newScanner(null, "{id}"), 1, 5, "id");
+        verify(table.newScanner(null, "{id, id}"), 1, 5, "id");
+        verify(table.newScanner(null, "{name, state}"), 1, 5, "name", "state");
 
-        verify(table.newRowScanner(null, "{*}"), 1, 5, "id", "name", "path", "state");
-        verify(table.newRowScanner(null, "{~id, *}"), 1, 5, "name", "path", "state");
-        verify(table.newRowScanner(null, "{~id, ~id, *}"), 1, 5, "name", "path", "state");
-        verify(table.newRowScanner(null, "{~name, *, ~state}"), 1, 5, "id", "path");
+        verify(table.newScanner(null, "{*}"), 1, 5, "id", "name", "path", "state");
+        verify(table.newScanner(null, "{~id, *}"), 1, 5, "name", "path", "state");
+        verify(table.newScanner(null, "{~id, ~id, *}"), 1, 5, "name", "path", "state");
+        verify(table.newScanner(null, "{~name, *, ~state}"), 1, 5, "id", "path");
 
-        verify(table.newRowScanner(null, "{} name == ?", "name-3"), 3, 3);
-        verify(table.newRowScanner(null, "{path} name == ?", "name-3"), 3, 3, "path");
-        verify(table.newRowScanner(null, "{name} id == ?", 3), 3, 3, "name");
-        verify(table.newRowScanner(null, "{name} id > ?", 3), 4, 5, "name");
-        verify(table.newRowScanner
+        verify(table.newScanner(null, "{} name == ?", "name-3"), 3, 3);
+        verify(table.newScanner(null, "{path} name == ?", "name-3"), 3, 3, "path");
+        verify(table.newScanner(null, "{name} id == ?", 3), 3, 3, "name");
+        verify(table.newScanner(null, "{name} id > ?", 3), 4, 5, "name");
+        verify(table.newScanner
                (null, "{*, ~path, ~state} name == ?", "name-3"), 3, 3, "id", "name");
 
         var ix = table.viewSecondaryIndex("state");
 
-        verify(ix.newRowScanner(null, "{}"), 1, 5);
-        verify(ix.newRowScanner(null, "{id}"), 1, 5, "id");
-        verify(ix.newRowScanner(null, "{id, id}"), 1, 5, "id");
-        verify(ix.newRowScanner(null, "{name, state}"), 1, 5, "name", "state");
+        verify(ix.newScanner(null, "{}"), 1, 5);
+        verify(ix.newScanner(null, "{id}"), 1, 5, "id");
+        verify(ix.newScanner(null, "{id, id}"), 1, 5, "id");
+        verify(ix.newScanner(null, "{name, state}"), 1, 5, "name", "state");
 
-        verify(ix.newRowScanner(null, "{*}"), 1, 5, "id", "name", "path", "state");
-        verify(ix.newRowScanner(null, "{~id, *}"), 1, 5, "name", "path", "state");
-        verify(ix.newRowScanner(null, "{*, ~id, ~id}"), 1, 5, "name", "path", "state");
-        verify(ix.newRowScanner(null, "{~name, ~state, *, *}"), 1, 5, "id", "path");
+        verify(ix.newScanner(null, "{*}"), 1, 5, "id", "name", "path", "state");
+        verify(ix.newScanner(null, "{~id, *}"), 1, 5, "name", "path", "state");
+        verify(ix.newScanner(null, "{*, ~id, ~id}"), 1, 5, "name", "path", "state");
+        verify(ix.newScanner(null, "{~name, ~state, *, *}"), 1, 5, "id", "path");
 
-        verify(ix.newRowScanner(null, "{} name == ?", "name-3"), 3, 3);
-        verify(ix.newRowScanner(null, "{path} name == ?", "name-3"), 3, 3, "path");
-        verify(ix.newRowScanner(null, "{name} id == ?", 3), 3, 3, "name");
-        verify(ix.newRowScanner(null, "{name} id > ?", 3), 4, 5, "name");
-        verify(ix.newRowScanner
+        verify(ix.newScanner(null, "{} name == ?", "name-3"), 3, 3);
+        verify(ix.newScanner(null, "{path} name == ?", "name-3"), 3, 3, "path");
+        verify(ix.newScanner(null, "{name} id == ?", 3), 3, 3, "name");
+        verify(ix.newScanner(null, "{name} id > ?", 3), 4, 5, "name");
+        verify(ix.newScanner
                (null, "{~path, ~state, *} name == ?", "name-3"), 3, 3, "id", "name");
 
         var ix2 = ix.viewUnjoined();
 
-        verify(ix2.newRowScanner(null, "{}"), 1, 5);
-        verify(ix2.newRowScanner(null, "{id}"), 1, 5, "id");
-        verify(ix2.newRowScanner(null, "{id, id}"), 1, 5, "id");
-        verify(ix2.newRowScanner(null, "{name, state}"), 1, 5, "name", "state");
+        verify(ix2.newScanner(null, "{}"), 1, 5);
+        verify(ix2.newScanner(null, "{id}"), 1, 5, "id");
+        verify(ix2.newScanner(null, "{id, id}"), 1, 5, "id");
+        verify(ix2.newScanner(null, "{name, state}"), 1, 5, "name", "state");
 
-        verify(ix2.newRowScanner(null, "{*}"), 1, 5, "id", "name", "state");
-        verify(ix2.newRowScanner(null, "{~id, *}"), 1, 5, "name", "state");
-        verify(ix2.newRowScanner(null, "{~id, ~id, *}"), 1, 5, "name", "state");
-        verify(ix2.newRowScanner(null, "{~name, ~state, *, id}"), 1, 5, "id");
+        verify(ix2.newScanner(null, "{*}"), 1, 5, "id", "name", "state");
+        verify(ix2.newScanner(null, "{~id, *}"), 1, 5, "name", "state");
+        verify(ix2.newScanner(null, "{~id, ~id, *}"), 1, 5, "name", "state");
+        verify(ix2.newScanner(null, "{~name, ~state, *, id}"), 1, 5, "id");
 
-        verify(ix2.newRowScanner(null, "{} name == ?", "name-3"), 3, 3);
+        verify(ix2.newScanner(null, "{} name == ?", "name-3"), 3, 3);
         try {
-            ix2.newRowScanner(null, "{path} name == ?", "name-3");
+            ix2.newScanner(null, "{path} name == ?", "name-3");
             fail();
         } catch (IllegalArgumentException e) {
             assertTrue(e.getMessage().contains("unavailable for selection: path"));
         }
-        verify(ix2.newRowScanner(null, "{name} id == ?", 3), 3, 3, "name");
-        verify(ix2.newRowScanner(null, "{name} id > ?", 3), 4, 5, "name");
-        verify(ix2.newRowScanner
+        verify(ix2.newScanner(null, "{name} id == ?", 3), 3, 3, "name");
+        verify(ix2.newScanner(null, "{name} id > ?", 3), 4, 5, "name");
+        verify(ix2.newScanner
                (null, "{~path, ~state, *} name == ?", "name-3"), 3, 3, "id", "name");
     }
 
-    private static void verify(RowScanner<TestRow> s, int start, int end, String... expect)
+    private static void verify(Scanner<TestRow> s, int start, int end, String... expect)
         throws Exception
     {
         var notExpect = new HashSet<>(Set.of("id", "name", "path", "state"));
@@ -156,7 +156,7 @@ public class RowScannerTest {
     }
 
     private static <R> void dump(Table<R> table) throws Exception {
-        RowScanner<R> s = table.newRowScanner(null);
+        Scanner<R> s = table.newScanner(null);
         for (R row = s.row(); s.row() != null; row = s.step(row)) {
             System.out.println(row);
         }

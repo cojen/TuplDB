@@ -84,7 +84,7 @@ final class EmptyScanController extends SingleScanController implements ScanCont
     }
 
     @Override
-    public long tableId() {
+    public long evolvableTableId() {
         return 0;
     }
 

@@ -171,9 +171,9 @@ final class MergedScanController<R> extends SingleScanController<R> {
     }
 
     @Override
-    public long tableId() {
+    public long evolvableTableId() {
         // Can call either evaluator. They should be bound to the same table.
-        return mLowEvaluator.tableId();
+        return mLowEvaluator.evolvableTableId();
     }
 
     @Override

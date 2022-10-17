@@ -226,10 +226,11 @@ public class DecodePartialMaker {
     }
 
     /**
-     * Make a decoder for a secondary index.
+     * Make a decoder for a secondary index or an unevolvable type.
      *
      * MethodType is: void (RowClass row, byte[] key, byte[] value)
      *
+     * @param secondaryDesc pass null if not a secondary index
      * @param spec obtained from makeFullSpec, et al
      */
     public static MethodHandle makeDecoder(MethodHandles.Lookup lookup,
@@ -244,7 +245,14 @@ public class DecodePartialMaker {
         var valueVar = mm.param(2);
 
         RowInfo primaryRowInfo = RowInfo.find(rowType);
-        RowInfo rowInfo = RowStore.secondaryRowInfo(primaryRowInfo, secondaryDesc);
+
+        RowInfo rowInfo;
+        if (secondaryDesc == null) {
+            rowInfo = primaryRowInfo;
+        } else {
+            rowInfo = RowStore.secondaryRowInfo(primaryRowInfo, secondaryDesc);
+        }
+
         RowGen rowGen = rowInfo.rowGen();
 
         BitSet[] sets = decodeSpec(spec);

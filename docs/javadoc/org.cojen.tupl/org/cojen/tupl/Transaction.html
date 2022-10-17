@@ -209,7 +209,7 @@ for (LockResult result = c.first(); c.key() != null; result = c.next()) {
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#enter()" class="member-name-link">enter</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Enters a nested transaction scope.</div>
+<div class="block">Enters a nested transaction scope, which begins with the <a href="LockMode.html#UPGRADABLE_READ"><code>UPGRADABLE_READ</code></a> lock mode.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#exit()" class="member-name-link">exit</a>()</code></div>
@@ -532,10 +532,16 @@ for (LockResult result = c.first(); c.key() != null; result = c.next()) {
 <h3>enter</h3>
 <div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">enter</span>()
     throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Enters a nested transaction scope.</div>
+<div class="block">Enters a nested transaction scope, which begins with the <a href="LockMode.html#UPGRADABLE_READ"><code>UPGRADABLE_READ</code></a> lock mode.</div>
 <dl class="notes">
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dt>See Also:</dt>
+<dd>
+<ul class="see-list">
+<li><a href="#lockMode(org.cojen.tupl.LockMode)"><code>lockMode</code></a></li>
+</ul>
+</dd>
 </dl>
 </section>
 </li>

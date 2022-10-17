@@ -39,7 +39,7 @@ loadScripts(document, 'script');</script>
 <li>
 <p>Summary:</p>
 <ul>
-<li>Nested</li>
+<li><a href="#nested-class-summary">Nested</a></li>
 <li><a href="#field-summary">Field</a></li>
 <li>Constr</li>
 <li><a href="#method-summary">Method</a></li>
@@ -48,7 +48,7 @@ loadScripts(document, 'script');</script>
 <li>
 <p>Detail:</p>
 <ul>
-<li><a href="#field-detail">Field</a></li>
+<li>Field</li>
 <li>Constr</li>
 <li><a href="#method-detail">Method</a></li>
 </ul>
@@ -59,14 +59,14 @@ loadScripts(document, 'script');</script>
 <div id="navbar-sub-list">
 <ul class="sub-nav-list">
 <li>Summary:&nbsp;</li>
-<li>Nested&nbsp;|&nbsp;</li>
+<li><a href="#nested-class-summary">Nested</a>&nbsp;|&nbsp;</li>
 <li><a href="#field-summary">Field</a>&nbsp;|&nbsp;</li>
 <li>Constr&nbsp;|&nbsp;</li>
 <li><a href="#method-summary">Method</a></li>
 </ul>
 <ul class="sub-nav-list">
 <li>Detail:&nbsp;</li>
-<li><a href="#field-detail">Field</a>&nbsp;|&nbsp;</li>
+<li>Field&nbsp;|&nbsp;</li>
 <li>Constr&nbsp;|&nbsp;</li>
 <li><a href="#method-detail">Method</a></li>
 </ul>
@@ -85,29 +85,36 @@ loadScripts(document, 'script');</script>
 <div class="header">
 <div class="sub-title"><span class="module-label-in-type">Module</span>&nbsp;<a href="../../../module-summary.html">org.cojen.tupl</a></div>
 <div class="sub-title"><span class="package-label-in-type">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl</a></div>
-<h1 title="Interface Updater" class="title">Interface Updater</h1>
+<h1 title="Interface Updater" class="title">Interface Updater&lt;R&gt;</h1>
 </div>
 <section class="class-description" id="class-description">
 <dl class="notes">
 <dt>All Superinterfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></code>, <code><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></code>, <code><a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&lt;R&gt;</code>, <code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html" title="class or interface in java.util" class="external-link">Spliterator</a>&lt;R&gt;</code></dd>
 </dl>
 <hr>
-<div class="type-signature"><span class="modifiers">public interface </span><span class="element-name type-name-label">Updater</span><span class="extends-implements">
-extends <a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a></span></div>
-<div class="block">Scans through all entries in a view, updating them along the way. Updater implementations
- which perform pre-fetching can be more efficient than a <a href="Cursor.html" title="interface in org.cojen.tupl">cursor</a>. Any
- exception thrown by an updating action automatically closes the Updater.
+<div class="type-signature"><span class="modifiers">public interface </span><span class="element-name type-name-label">Updater&lt;R&gt;</span><span class="extends-implements">
+extends <a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&lt;R&gt;</span></div>
+<div class="block">Support for scanning through all rows in a table, updating them along the way. Any exception
+ thrown when acting upon an updater automatically closes it.
+
+ <p>Update operations only affect columns which have a modified state, and the rest of the
+ columns remain the same as what was served by the updater. Columns which have an unmodified
+ state, regardless of the column value, aren't updated. Consider the case in which a row key
+ is changed, the row is loaded, and then one column is modified. Although all columns are
+ effectively different than what was served by the updater, only one column is updated
+ against the original row. For debugging, call the row's <code>toString</code> method to identify
+ which columns are modified. The name of a modified column is prefixed with an asterisk.
 
  <p>Updater instances can only be safely used by one thread at a time, and they must be
  closed when no longer needed. Instances can be exchanged by threads, as long as a
  happens-before relationship is established. Without proper exclusion, multiple threads
- interacting with an Updater instance may cause database corruption.</div>
+ interacting with a Updater instance may cause database corruption.</div>
 <dl class="notes">
 <dt>See Also:</dt>
 <dd>
 <ul class="see-list">
-<li><a href="View.html#newUpdater(org.cojen.tupl.Transaction)"><code>View.newUpdater</code></a></li>
+<li><a href="Table.html#newUpdater(org.cojen.tupl.Transaction)"><code>Table.newUpdater</code></a></li>
 <li><a href="Scanner.html" title="interface in org.cojen.tupl"><code>Scanner</code></a></li>
 </ul>
 </dd>
@@ -115,22 +122,22 @@ extends <a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a></
 </section>
 <section class="summary">
 <ul class="summary-list">
+<!-- ======== NESTED CLASS SUMMARY ======== -->
+<li>
+<section class="nested-class-summary" id="nested-class-summary">
+<h2>Nested Class Summary</h2>
+<div class="inherited-list">
+<h2 id="nested-classes-inherited-from-class-java.util.Spliterator">Nested classes/interfaces inherited from interface&nbsp;java.util.<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html" title="class or interface in java.util" class="external-link">Spliterator</a></h2>
+<code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.OfDouble.html" title="class or interface in java.util" class="external-link">Spliterator.OfDouble</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.OfInt.html" title="class or interface in java.util" class="external-link">Spliterator.OfInt</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.OfLong.html" title="class or interface in java.util" class="external-link">Spliterator.OfLong</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.OfPrimitive.html" title="class or interface in java.util" class="external-link">Spliterator.OfPrimitive</a>&lt;<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.OfPrimitive.html" title="class or interface in java.util" class="external-link">T</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.OfPrimitive.html" title="class or interface in java.util" class="external-link">T_CONS</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.OfPrimitive.html" title="class or interface in java.util" class="external-link">T_SPLITR</a> extends <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.OfPrimitive.html" title="class or interface in java.util" class="external-link">Spliterator.OfPrimitive</a>&lt;<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.OfPrimitive.html" title="class or interface in java.util" class="external-link">T</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.OfPrimitive.html" title="class or interface in java.util" class="external-link">T_CONS</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.OfPrimitive.html" title="class or interface in java.util" class="external-link">T_SPLITR</a>&gt;&gt;</code></div>
+</section>
+</li>
 <!-- =========== FIELD SUMMARY =========== -->
 <li>
 <section class="field-summary" id="field-summary">
 <h2>Field Summary</h2>
-<div class="caption"><span>Fields</span></div>
-<div class="summary-table three-column-summary">
-<div class="table-header col-first">Modifier and Type</div>
-<div class="table-header col-second">Field</div>
-<div class="table-header col-last">Description</div>
-<div class="col-first even-row-color"><code>static final byte[]</code></div>
-<div class="col-second even-row-color"><code><a href="#NO_UPDATE" class="member-name-link">NO_UPDATE</a></code></div>
-<div class="col-last even-row-color">
-<div class="block">Empty marker returned by <a href="EntryFunction.html" title="interface in org.cojen.tupl"><code>EntryFunction</code></a> to indicate that no update should be
- performed.</div>
-</div>
-</div>
+<div class="inherited-list">
+<h3 id="fields-inherited-from-class-java.util.Spliterator">Fields inherited from interface&nbsp;java.util.<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html" title="class or interface in java.util" class="external-link">Spliterator</a></h3>
+<code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#CONCURRENT" title="class or interface in java.util" class="external-link">CONCURRENT</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#DISTINCT" title="class or interface in java.util" class="external-link">DISTINCT</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#IMMUTABLE" title="class or interface in java.util" class="external-link">IMMUTABLE</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#NONNULL" title="class or interface in java.util" class="external-link">NONNULL</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#ORDERED" title="class or interface in java.util" class="external-link">ORDERED</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#SIZED" title="class or interface in java.util" class="external-link">SIZED</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#SORTED" title="class or interface in java.util" class="external-link">SORTED</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#SUBSIZED" title="class or interface in java.util" class="external-link">SUBSIZED</a></code></div>
 </section>
 </li>
 <!-- ========== METHOD SUMMARY =========== -->
@@ -138,79 +145,116 @@ extends <a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a></
 <section class="method-summary" id="method-summary">
 <h2>Method Summary</h2>
 <div id="method-summary-table">
-<div class="table-tabs" role="tablist" aria-orientation="horizontal"><button id="method-summary-table-tab0" role="tab" aria-selected="true" aria-controls="method-summary-table.tabpanel" tabindex="0" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table', 3)" class="active-table-tab">All Methods</button><button id="method-summary-table-tab2" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab2', 3)" class="table-tab">Instance Methods</button><button id="method-summary-table-tab3" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab3', 3)" class="table-tab">Abstract Methods</button><button id="method-summary-table-tab5" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab5', 3)" class="table-tab">Default Methods</button></div>
+<div class="table-tabs" role="tablist" aria-orientation="horizontal"><button id="method-summary-table-tab0" role="tab" aria-selected="true" aria-controls="method-summary-table.tabpanel" tabindex="0" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table', 3)" class="active-table-tab">All Methods</button><button id="method-summary-table-tab2" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab2', 3)" class="table-tab">Instance Methods</button><button id="method-summary-table-tab3" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab3', 3)" class="table-tab">Abstract Methods</button></div>
 <div id="method-summary-table.tabpanel" role="tabpanel">
 <div class="summary-table three-column-summary" aria-labelledby="method-summary-table-tab0">
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#update(byte%5B%5D)" class="member-name-link">update</a><wbr>(byte[]&nbsp;value)</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Updater.html" title="type parameter in Updater">R</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#delete()" class="member-name-link">delete</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Update the current value and then step to the next entry.</div>
+<div class="block">Delete the current row and then step to the next row.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#updateAll(org.cojen.tupl.EntryFunction)" class="member-name-link">updateAll</a><wbr>(<a href="EntryFunction.html" title="interface in org.cojen.tupl">EntryFunction</a>&nbsp;action)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
-<div class="block">Applies the given updating action for each remaining entry, and then closes the updater.</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Updater.html" title="type parameter in Updater">R</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#delete(R)" class="member-name-link">delete</a><wbr>(<a href="Updater.html" title="type parameter in Updater">R</a>&nbsp;row)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Delete the current row and then step to the next row.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Updater.html" title="type parameter in Updater">R</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#update()" class="member-name-link">update</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Update the current row and then step to the next row.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Updater.html" title="type parameter in Updater">R</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#update(R)" class="member-name-link">update</a><wbr>(<a href="Updater.html" title="type parameter in Updater">R</a>&nbsp;row)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Update the current row and then step to the next row.</div>
 </div>
 </div>
 </div>
 </div>
 <div class="inherited-list">
 <h3 id="methods-inherited-from-class-org.cojen.tupl.Scanner">Methods inherited from interface&nbsp;org.cojen.tupl.<a href="Scanner.html" title="interface in org.cojen.tupl">Scanner</a></h3>
-<code><a href="Scanner.html#close()">close</a>, <a href="Scanner.html#comparator()">comparator</a>, <a href="Scanner.html#key()">key</a>, <a href="Scanner.html#scanAll(org.cojen.tupl.EntryConsumer)">scanAll</a>, <a href="Scanner.html#step()">step</a>, <a href="Scanner.html#value()">value</a></code></div>
+<code><a href="Scanner.html#close()">close</a>, <a href="Scanner.html#forEachRemaining(java.util.function.Consumer)">forEachRemaining</a>, <a href="Scanner.html#row()">row</a>, <a href="Scanner.html#step()">step</a>, <a href="Scanner.html#step(R)">step</a>, <a href="Scanner.html#tryAdvance(java.util.function.Consumer)">tryAdvance</a>, <a href="Scanner.html#trySplit()">trySplit</a></code></div>
+<div class="inherited-list">
+<h3 id="methods-inherited-from-class-java.util.Spliterator">Methods inherited from interface&nbsp;java.util.<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html" title="class or interface in java.util" class="external-link">Spliterator</a></h3>
+<code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#characteristics()" title="class or interface in java.util" class="external-link">characteristics</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#estimateSize()" title="class or interface in java.util" class="external-link">estimateSize</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#getComparator()" title="class or interface in java.util" class="external-link">getComparator</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#getExactSizeIfKnown()" title="class or interface in java.util" class="external-link">getExactSizeIfKnown</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#hasCharacteristics(int)" title="class or interface in java.util" class="external-link">hasCharacteristics</a></code></div>
 </section>
 </li>
 </ul>
 </section>
 <section class="details">
 <ul class="details-list">
-<!-- ============ FIELD DETAIL =========== -->
-<li>
-<section class="field-details" id="field-detail">
-<h2>Field Details</h2>
-<ul class="member-list">
-<li>
-<section class="detail" id="NO_UPDATE">
-<h3>NO_UPDATE</h3>
-<div class="member-signature"><span class="modifiers">static final</span>&nbsp;<span class="return-type">byte[]</span>&nbsp;<span class="element-name">NO_UPDATE</span></div>
-<div class="block">Empty marker returned by <a href="EntryFunction.html" title="interface in org.cojen.tupl"><code>EntryFunction</code></a> to indicate that no update should be
- performed.</div>
-</section>
-</li>
-</ul>
-</section>
-</li>
 <!-- ============ METHOD DETAIL ========== -->
 <li>
 <section class="method-details" id="method-detail">
 <h2>Method Details</h2>
 <ul class="member-list">
 <li>
-<section class="detail" id="update(byte[])">
+<section class="detail" id="update()">
 <h3>update</h3>
-<div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">update</span><wbr><span class="parameters">(byte[]&nbsp;value)</span>
-        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Update the current value and then step to the next entry. Pass null to delete the entry.</div>
+<div class="member-signature"><span class="return-type"><a href="Updater.html" title="type parameter in Updater">R</a></span>&nbsp;<span class="element-name">update</span>()
+  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Update the current row and then step to the next row.</div>
 <dl class="notes">
 <dt>Returns:</dt>
-<dd>false if no more entries remain and updater has been closed</dd>
+<dd>the next row or null if no more rows remain and scanner has been closed</dd>
 <dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if no current row</dd>
+<dd><code><a href="UniqueConstraintException.html" title="class in org.cojen.tupl">UniqueConstraintException</a></code> - if update creates a conflicting primary or alternate key</dd>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
 <li>
-<section class="detail" id="updateAll(org.cojen.tupl.EntryFunction)">
-<h3>updateAll</h3>
-<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">updateAll</span><wbr><span class="parameters">(<a href="EntryFunction.html" title="interface in org.cojen.tupl">EntryFunction</a>&nbsp;action)</span>
-                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Applies the given updating action for each remaining entry, and then closes the updater.
- An entry is updated to the value returned by the action, or it's deleted when the action
- returns null. If the action returns <a href="#NO_UPDATE"><code>NO_UPDATE</code></a>, then no update is performed.</div>
+<section class="detail" id="update(R)">
+<h3 id="update(java.lang.Object)">update</h3>
+<div class="member-signature"><span class="return-type"><a href="Updater.html" title="type parameter in Updater">R</a></span>&nbsp;<span class="element-name">update</span><wbr><span class="parameters">(<a href="Updater.html" title="type parameter in Updater">R</a>&nbsp;row)</span>
+  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Update the current row and then step to the next row.</div>
 <dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>row</code> - use this for the next row instead of creating a new one</dd>
+<dt>Returns:</dt>
+<dd>the next row or null if no more rows remain and scanner has been closed</dd>
 <dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if the given row object is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if no current row</dd>
+<dd><code><a href="UniqueConstraintException.html" title="class in org.cojen.tupl">UniqueConstraintException</a></code> - if update creates a conflicting primary or alternate key</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="delete()">
+<h3>delete</h3>
+<div class="member-signature"><span class="return-type"><a href="Updater.html" title="type parameter in Updater">R</a></span>&nbsp;<span class="element-name">delete</span>()
+  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Delete the current row and then step to the next row.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>the next row or null if no more rows remain and scanner has been closed</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if no current row</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="delete(R)">
+<h3 id="delete(java.lang.Object)">delete</h3>
+<div class="member-signature"><span class="return-type"><a href="Updater.html" title="type parameter in Updater">R</a></span>&nbsp;<span class="element-name">delete</span><wbr><span class="parameters">(<a href="Updater.html" title="type parameter in Updater">R</a>&nbsp;row)</span>
+  throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Delete the current row and then step to the next row.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>row</code> - use this for the next row instead of creating a new one</dd>
+<dt>Returns:</dt>
+<dd>the next row or null if no more rows remain and scanner has been closed</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if the given row object is null</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/IllegalStateException.html" title="class or interface in java.lang" class="external-link">IllegalStateException</a></code> - if no current row</dd>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>

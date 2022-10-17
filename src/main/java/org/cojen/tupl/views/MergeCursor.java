@@ -37,7 +37,7 @@ import org.cojen.tupl.core.CoreValueAccessor;
  *
  * @author Brian S O'Neill
  */
-abstract class MergeCursor extends CoreValueAccessor implements ScannerCursor {
+abstract class MergeCursor extends CoreValueAccessor implements Cursor {
     // Actual values are important for xor, as used by the select method, to work properly.
     static final int DIRECTION_FORWARD = 0, DIRECTION_REVERSE = -1;
 

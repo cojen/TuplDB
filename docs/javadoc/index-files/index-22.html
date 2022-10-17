@@ -63,19 +63,23 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Returns an uncopied reference to the current value, which might be null or <a href="../org.cojen.tupl/org/cojen/tupl/Cursor.html#NOT_LOADED"><code>Cursor.NOT_LOADED</code></a>.</div>
 </dd>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/Entry.html#value()" class="member-name-link">value()</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Entry.html" title="interface in org.cojen.tupl">Entry</a></dt>
+<dd>
+<div class="block">Returns the entry's current value reference.</div>
+</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/PrimaryKey.html#value()" class="member-name-link">value()</a> - Element in annotation interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/PrimaryKey.html" title="annotation interface in org.cojen.tupl">PrimaryKey</a></dt>
 <dd>
 <div class="block">The set of column names within primary key, whose ordering affects the natural ordering
  of the rows within the table.</div>
 </dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/Scanner.html#value()" class="member-name-link">value()</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Scanner.html" title="interface in org.cojen.tupl">Scanner</a></dt>
-<dd>
-<div class="block">Returns an uncopied reference to the current value, which might be null or <a href="../org.cojen.tupl/org/cojen/tupl/Cursor.html#NOT_LOADED"><code>Cursor.NOT_LOADED</code></a>.</div>
-</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/SecondaryIndex.html#value()" class="member-name-link">value()</a> - Element in annotation interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/SecondaryIndex.html" title="annotation interface in org.cojen.tupl">SecondaryIndex</a></dt>
 <dd>
 <div class="block">The set of column names within secondary index, whose ordering affects the natural
  ordering of the rows within the secondary index.</div>
+</dd>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/Entry.html#value(byte%5B%5D)" class="member-name-link">value(byte[])</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Entry.html" title="interface in org.cojen.tupl">Entry</a></dt>
+<dd>
+<div class="block">Assign the entry value, allowing the change to be noticed by a call to an <a href="../org.cojen.tupl/org/cojen/tupl/Table.html#update(org.cojen.tupl.Transaction,R)"><code>update</code></a> or <a href="../org.cojen.tupl/org/cojen/tupl/Table.html#merge(org.cojen.tupl.Transaction,R)"><code>merge</code></a> method.</div>
 </dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/ValueAccessor.html" class="type-name-link" title="interface in org.cojen.tupl">ValueAccessor</a> - Interface in <a href="../org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
 <dd>

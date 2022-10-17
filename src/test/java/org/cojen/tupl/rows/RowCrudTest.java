@@ -278,7 +278,7 @@ public class RowCrudTest {
             mTable.store(null, row);
         }
 
-        RowUpdater<TestRow> updater = mTable.newRowUpdater
+        Updater<TestRow> updater = mTable.newUpdater
             (txn, "num1 > ? && num1 < ? || str2 == ?", 1002, 1006, "s2-9");
 
         for (TestRow row = updater.row(); row != null; ) {
@@ -337,7 +337,7 @@ public class RowCrudTest {
             txn.commit();
         }
 
-        RowScanner<TestRow> scanner = mTable.newRowScanner
+        Scanner<TestRow> scanner = mTable.newScanner
             (null, "num1 > ? && num1 < ? || str2 == ?", 1002, 1006, "str2 9");
 
         int count = 0;
@@ -391,7 +391,7 @@ public class RowCrudTest {
             mTable.store(null, row);
         }
 
-        RowUpdater<TestRow> updater = mTable.newRowUpdater
+        Updater<TestRow> updater = mTable.newUpdater
             (txn, "num1 > ? && num1 < ? || str2 == ?", 1002, 1006, "s2-9");
 
         for (TestRow row = updater.row(); row != null; ) {
@@ -466,7 +466,7 @@ public class RowCrudTest {
             txn.commit();
         }
 
-        RowScanner<TestRow> scanner = mTable.newRowScanner
+        Scanner<TestRow> scanner = mTable.newScanner
             (null, "num1 > ? && num1 < ? || str2 == ?", 1002, 1006, "s2-9x");
 
         int count = 0;
@@ -500,7 +500,7 @@ public class RowCrudTest {
             mTable.store(null, row);
         }
 
-        RowUpdater<TestRow> updater = mTable.newRowUpdater(null, "id == ? || id == ?", 2, 4);
+        Updater<TestRow> updater = mTable.newUpdater(null, "id == ? || id == ?", 2, 4);
 
         for (TestRow row = updater.row(); row != null; ) {
             if (row.id() == 2) {
@@ -517,5 +517,38 @@ public class RowCrudTest {
             long id = row.id();
             assertTrue(id == 1 || id == 3 || id == 5 || id == 30 || id == -40);
         });
+    }
+
+    @Test
+    public void updateEntry() throws Exception {
+        Index ix = mDb.openIndex("test");
+        Table<Entry> table = ix.asTable(Entry.class);
+
+        Entry e = table.newRow();
+        try {
+            table.update(null, e);
+            fail();
+        } catch (IllegalStateException ex) {
+            assertTrue(ex.getMessage().contains("Primary key isn't fully specified"));
+        }
+
+        e.key("hello".getBytes());
+        assertFalse(table.update(null, e));
+
+        e.value("world".getBytes());
+        assertFalse(table.update(null, e));
+
+        assertTrue(table.insert(null, e));
+
+        e.value("world!".getBytes());
+        assertTrue(table.update(null, e));
+
+        assertArrayEquals("world!".getBytes(), ix.load(null, e.key()));
+
+        table.unsetRow(e);
+        e.key("hello".getBytes());
+
+        assertTrue(table.merge(null, e));
+        assertArrayEquals("world!".getBytes(), e.value());
     }
 }

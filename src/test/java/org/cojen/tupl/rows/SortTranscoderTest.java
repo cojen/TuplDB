@@ -76,7 +76,7 @@ public class SortTranscoderTest {
         fill(table);
 
         var expect = new TreeSet<Integer>();
-        try (var s = table.newRowScanner(null, "{status}")) {
+        try (var s = table.newScanner(null, "{status}")) {
             for (var row = s.row(); row != null; row = s.step(row)) {
                 expect.add(row.status());
             }
@@ -178,7 +178,7 @@ public class SortTranscoderTest {
 
         Index sorted = sort(statusIx, td);
 
-        try (RowScanner<TestRow> s = table.viewPrimaryKey().newRowScanner(null, "{id, status}")) {
+        try (Scanner<TestRow> s = table.viewPrimaryKey().newScanner(null, "{id, status}")) {
             try (Cursor c = sorted.newCursor(null)) {
                 TestRow row = table.newRow();
                 for (c.first(); c.key() != null; c.next()) {
@@ -217,7 +217,7 @@ public class SortTranscoderTest {
     }
 
     private <R> void dump(Table<R> table) throws Exception {
-        try (var s = table.newRowScanner(null)) {
+        try (var s = table.newScanner(null)) {
             for (var row = s.row(); row != null; row = s.step(row)) {
                 System.out.println(row);
             }

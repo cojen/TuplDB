@@ -27,8 +27,8 @@ import org.cojen.tupl.LockResult;
  *
  * @author Brian S O'Neill
  */
-final class AutoCommitRowScanner<R> extends BasicRowScanner<R> {
-    AutoCommitRowScanner(BaseTable<R> table, ScanController<R> controller) {
+final class AutoCommitScanner<R> extends BasicScanner<R> {
+    AutoCommitScanner(BaseTable<R> table, ScanController<R> controller) {
         super(table, controller);
     }
 
@@ -36,7 +36,7 @@ final class AutoCommitRowScanner<R> extends BasicRowScanner<R> {
     protected R evalRow(Cursor c, LockResult result, R row) throws IOException {
         R decoded = mEvaluator.evalRow(c, result, row);
         // Always release the lock, which when joined, combines the secondary and primary locks.
-        // When decoded is null, the caller (BasicRowScanner) releases the lock(s).
+        // When decoded is null, the caller (BasicScanner) releases the lock(s).
         if (decoded != null) {
             c.link().unlock();
         }

@@ -141,7 +141,7 @@ public class ScanControllerTest {
         }
 
         @Override
-        public long tableId() {
+        public long evolvableTableId() {
             return 0;
         }
 
@@ -224,13 +224,13 @@ public class ScanControllerTest {
         var expect = new HashMap<Integer, MyRow2>();
 
         {
-            var scanner = table2.newRowScanner(null, filter, args);
+            var scanner = table2.newScanner(null, filter, args);
             for (var row = scanner.row(); row != null; row = scanner.step()) {
                 assertNull(expect.put(row.id(), row));
             }
         }
 
-        var scanner = (BasicRowScanner<MyRow>) table.newRowScanner(null, filter, args);
+        var scanner = (BasicScanner<MyRow>) table.newScanner(null, filter, args);
 
         var actual = new HashSet<MyRow>();
 

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2011-2017 Cojen.org
+ *  Copyright 2021 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -19,57 +19,65 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import org.cojen.tupl.core.Utils;
-
 /**
- * Scans through all entries in a view, updating them along the way. Updater implementations
- * which perform pre-fetching can be more efficient than a {@linkplain Cursor cursor}. Any
- * exception thrown by an updating action automatically closes the Updater.
+ * Support for scanning through all rows in a table, updating them along the way. Any exception
+ * thrown when acting upon an updater automatically closes it.
+ *
+ * <p>Update operations only affect columns which have a modified state, and the rest of the
+ * columns remain the same as what was served by the updater. Columns which have an unmodified
+ * state, regardless of the column value, aren't updated. Consider the case in which a row key
+ * is changed, the row is loaded, and then one column is modified. Although all columns are
+ * effectively different than what was served by the updater, only one column is updated
+ * against the original row. For debugging, call the row's {@code toString} method to identify
+ * which columns are modified. The name of a modified column is prefixed with an asterisk.
  *
  * <p>Updater instances can only be safely used by one thread at a time, and they must be
  * closed when no longer needed. Instances can be exchanged by threads, as long as a
  * happens-before relationship is established. Without proper exclusion, multiple threads
- * interacting with an Updater instance may cause database corruption.
+ * interacting with a Updater instance may cause database corruption.
  *
  * @author Brian S O'Neill
- * @see View#newUpdater View.newUpdater
+ * @see Table#newUpdater Table.newUpdater
  * @see Scanner
+ *
+ * @author Brian S O'Neill
  */
-public interface Updater extends Scanner {
+public interface Updater<R> extends Scanner<R> {
     /**
-     * Empty marker returned by {@link EntryFunction} to indicate that no update should be
-     * performed.
-     */
-    // Note: Constant is intentionally the same as NOT_LOADED, to protect against a broken
-    // Updater which is acting upon a Cursor with autoload mode off. A dumb action which
-    // returns the value instance (thus forcing an update) won't accidentally destroy anything.
-    public static final byte[] NO_UPDATE = Cursor.NOT_LOADED;
-
-    /**
-     * Update the current value and then step to the next entry. Pass null to delete the entry.
+     * Update the current row and then step to the next row.
      *
-     * @return false if no more entries remain and updater has been closed
+     * @return the next row or null if no more rows remain and scanner has been closed
+     * @throws IllegalStateException if no current row
+     * @throws UniqueConstraintException if update creates a conflicting primary or alternate key
      */
-    boolean update(byte[] value) throws IOException;
+    R update() throws IOException;
 
     /**
-     * Applies the given updating action for each remaining entry, and then closes the updater.
-     * An entry is updated to the value returned by the action, or it's deleted when the action
-     * returns null. If the action returns {@link #NO_UPDATE}, then no update is performed.
+     * Update the current row and then step to the next row.
+     *
+     * @param row use this for the next row instead of creating a new one
+     * @return the next row or null if no more rows remain and scanner has been closed
+     * @throws NullPointerException if the given row object is null
+     * @throws IllegalStateException if no current row
+     * @throws UniqueConstraintException if update creates a conflicting primary or alternate key
      */
-    default void updateAll(EntryFunction action) throws IOException {
-        for (byte[] key; (key = key()) != null; ) {
-            byte[] value;
-            try {
-                value = action.apply(key, value());
-            } catch (Throwable e) {
-                throw Utils.fail(this, e);
-            }
-            if (value != NO_UPDATE) {
-                update(value);
-            } else {
-                step();
-            }
-        }
-    }
+    R update(R row) throws IOException;
+
+    /**
+     * Delete the current row and then step to the next row.
+     *
+     * @return the next row or null if no more rows remain and scanner has been closed
+     * @throws IllegalStateException if no current row
+     */
+    R delete() throws IOException;
+
+    /**
+     * Delete the current row and then step to the next row.
+     *
+     * @param row use this for the next row instead of creating a new one
+     * @return the next row or null if no more rows remain and scanner has been closed
+     * @throws NullPointerException if the given row object is null
+     * @throws IllegalStateException if no current row
+     */
+    R delete(R row) throws IOException;
 }

@@ -25,12 +25,14 @@ import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Transaction;
 
 /**
- * Updater which uses the {@link LockMode#UPGRADABLE_READ} mode.
+ * Updater which releases acquired locks for rows which are stepped over.
  *
  * @author Brian S O'Neill
  */
-final class UpgradableRowUpdater<R> extends BasicRowUpdater<R> {
-    UpgradableRowUpdater(BaseTable<R> table, ScanController<R> controller) {
+class NonRepeatableUpdater<R> extends BasicUpdater<R> {
+    LockResult mLockResult;
+
+    NonRepeatableUpdater(BaseTable<R> table, ScanController<R> controller) {
         super(table, controller);
     }
 
@@ -40,7 +42,7 @@ final class UpgradableRowUpdater<R> extends BasicRowUpdater<R> {
         LockMode original = txn.lockMode();
         txn.lockMode(LockMode.UPGRADABLE_READ);
         try {
-            return super.toFirst(c);
+            return mLockResult = super.toFirst(c);
         } finally {
             txn.lockMode(original);
         }
@@ -49,12 +51,29 @@ final class UpgradableRowUpdater<R> extends BasicRowUpdater<R> {
     @Override
     protected LockResult toNext(Cursor c) throws IOException {
         Transaction txn = c.link();
+        LockResult result = mLockResult;
+        if (result != null && result.isAcquired()) {
+            // If the transaction is being acted upon independently of this updater,
+            // then this technique might throw an IllegalStateException.
+            txn.unlock();
+        }
         LockMode original = txn.lockMode();
         txn.lockMode(LockMode.UPGRADABLE_READ);
         try {
-            return super.toNext(c);
+            return mLockResult = c.next();
         } finally {
             txn.lockMode(original);
         }
+    }
+
+    @Override
+    protected void unlocked() {
+        mLockResult = null;
+    }
+
+    @Override
+    protected void finished() throws IOException {
+        mRow = null;
+        mLockResult = null;
     }
 }

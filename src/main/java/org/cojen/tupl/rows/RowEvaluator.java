@@ -24,15 +24,16 @@ import org.cojen.tupl.LockResult;
 import org.cojen.tupl.UnmodifiableViewException;
 
 /**
- * See BasicRowScanner.
+ * See BasicScanner.
  *
  * @author Brian S O'Neill
  */
 public interface RowEvaluator<R> extends RowDecoder<R> {
     /**
-     * Returns the index id for the primary table that this evaluator is bound to.
+     * Returns the index id for the primary table that this evaluator is bound to, but only if
+     * the table is evolvable. Zero is returned otherwise.
      */
-    long tableId();
+    long evolvableTableId();
 
     /**
      * Returns the encoding descriptor, which is required for for secondary indexes. Returns
@@ -81,7 +82,7 @@ public interface RowEvaluator<R> extends RowDecoder<R> {
     R decodeRow(R row, byte[] key, byte[] value) throws IOException;
 
     /**
-     * Called by BasicRowUpdater.
+     * Called by BasicUpdater.
      *
      * @return null if the key columns didn't change
      */
@@ -90,7 +91,7 @@ public interface RowEvaluator<R> extends RowDecoder<R> {
     }
 
     /**
-     * Called by BasicRowUpdater.
+     * Called by BasicUpdater.
      *
      * @return non-null value
      */

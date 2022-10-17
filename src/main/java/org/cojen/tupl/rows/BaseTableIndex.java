@@ -20,9 +20,8 @@ package org.cojen.tupl.rows;
 import java.io.IOException;
 
 import org.cojen.tupl.Index;
-import org.cojen.tupl.RowScanner;
-import org.cojen.tupl.RowUpdater;
-import org.cojen.tupl.Table;
+import org.cojen.tupl.Scanner;
+import org.cojen.tupl.Updater;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnmodifiableViewException;
 
@@ -93,33 +92,33 @@ public abstract class BaseTableIndex<R> extends BaseTable<R> {
     }
 
     @Override
-    protected RowScanner<R> newRowScanner(Transaction txn, R row, String filter, Object... args)
+    protected Scanner<R> newScanner(Transaction txn, R row, String filter, Object... args)
         throws IOException
     {
-        return newRowScannerThisTable(txn, row, filter, args);
+        return newScannerThisTable(txn, row, filter, args);
     }
 
     @Override
-    protected RowUpdater<R> newRowUpdater(Transaction txn, R row, String filter, Object... args)
+    protected Updater<R> newUpdater(Transaction txn, R row, String filter, Object... args)
         throws IOException
     {
         // By default, this will throw an UnmodifiableViewException. See below.
-        return newRowUpdaterThisTable(txn, row, filter, args);
+        return newUpdaterThisTable(txn, row, filter, args);
     }
 
     @Override
-    protected RowUpdater<R> newRowUpdater(Transaction txn, R row, ScanController<R> controller)
+    protected Updater<R> newUpdater(Transaction txn, R row, ScanController<R> controller)
         throws IOException
     {
         throw new UnmodifiableViewException();
     }
 
-    protected RowUpdater<R> newJoinedRowUpdater(Transaction txn, R row,
-                                                ScanController<R> controller,
-                                                BaseTable<R> primaryTable)
+    protected Updater<R> newJoinedUpdater(Transaction txn, R row,
+                                          ScanController<R> controller,
+                                          BaseTable<R> primaryTable)
         throws IOException
     {
-        return primaryTable.newRowUpdater(txn, row, controller, this);
+        return primaryTable.newUpdater(txn, row, controller, this);
     }
 
     @Override

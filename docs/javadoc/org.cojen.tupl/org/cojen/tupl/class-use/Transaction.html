@@ -272,54 +272,44 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color">
 <div class="block">Returns a new cursor over this view.</div>
 </div>
-<div class="col-first even-row-color"><code><a href="../RowScanner.html" title="interface in org.cojen.tupl">RowScanner</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#newRowScanner(org.cojen.tupl.Transaction)" class="member-name-link">newRowScanner</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
+<div class="col-first even-row-color"><code><a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#newScanner(org.cojen.tupl.Transaction)" class="member-name-link">newScanner</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Returns a new scanner for all rows of this table.</div>
 </div>
-<div class="col-first odd-row-color"><code><a href="../RowScanner.html" title="interface in org.cojen.tupl">RowScanner</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#newRowScanner(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">newRowScanner</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first odd-row-color"><code><a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#newScanner(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">newScanner</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
  <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
 <div class="col-last odd-row-color">
 <div class="block">Returns a new scanner for a subset of rows of this table, as specified by the query
  expression.</div>
 </div>
-<div class="col-first even-row-color"><code><a href="../RowUpdater.html" title="interface in org.cojen.tupl">RowUpdater</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#newRowUpdater(org.cojen.tupl.Transaction)" class="member-name-link">newRowUpdater</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
+<div class="col-first even-row-color"><code>default <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/stream/Stream.html" title="class or interface in java.util.stream" class="external-link">Stream</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#newStream(org.cojen.tupl.Transaction)" class="member-name-link">newStream</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
+<div class="col-last even-row-color">
+<div class="block">Returns a new stream for all rows of this table.</div>
+</div>
+<div class="col-first odd-row-color"><code>default <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/stream/Stream.html" title="class or interface in java.util.stream" class="external-link">Stream</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#newStream(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">newStream</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+ <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
+ <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Returns a new stream for a subset of rows of this table, as specified by the query
+ expression.</div>
+</div>
+<div class="col-first even-row-color"><code><a href="../Updater.html" title="interface in org.cojen.tupl">Updater</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#newUpdater(org.cojen.tupl.Transaction)" class="member-name-link">newUpdater</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Returns a new updater for all rows of this table.</div>
 </div>
-<div class="col-first odd-row-color"><code><a href="../RowUpdater.html" title="interface in org.cojen.tupl">RowUpdater</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#newRowUpdater(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">newRowUpdater</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first odd-row-color"><code><a href="../Updater.html" title="interface in org.cojen.tupl">Updater</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#newUpdater(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">newUpdater</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
  <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
 <div class="col-last odd-row-color">
 <div class="block">Returns a new updater for a subset of rows of this table, as specified by the query
  expression.</div>
-</div>
-<div class="col-first even-row-color"><code>default <a href="../Scanner.html" title="interface in org.cojen.tupl">Scanner</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#newScanner(org.cojen.tupl.Transaction)" class="member-name-link">newScanner</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
-<div class="col-last even-row-color">
-<div class="block">Returns a new scanner over this view.</div>
-</div>
-<div class="col-first odd-row-color"><code>default <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/stream/Stream.html" title="class or interface in java.util.stream" class="external-link">Stream</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#newStream(org.cojen.tupl.Transaction)" class="member-name-link">newStream</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
-<div class="col-last odd-row-color">
-<div class="block">Returns a new stream for all rows of this table.</div>
-</div>
-<div class="col-first even-row-color"><code>default <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/stream/Stream.html" title="class or interface in java.util.stream" class="external-link">Stream</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#newStream(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">newStream</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
- <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
- <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
-<div class="col-last even-row-color">
-<div class="block">Returns a new stream for a subset of rows of this table, as specified by the query
- expression.</div>
-</div>
-<div class="col-first odd-row-color"><code>default <a href="../Updater.html" title="interface in org.cojen.tupl">Updater</a></code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#newUpdater(org.cojen.tupl.Transaction)" class="member-name-link">newUpdater</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
-<div class="col-last odd-row-color">
-<div class="block">Returns a new updater over this view.</div>
 </div>
 <div class="col-first even-row-color"><code>default boolean</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">View.</span><code><a href="../View.html#remove(org.cojen.tupl.Transaction,byte%5B%5D,byte%5B%5D)" class="member-name-link">remove</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
@@ -347,7 +337,7 @@ loadScripts(document, 'script');</script>
  <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
  <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
 <div class="col-last odd-row-color">
-<div class="block">Returns a query plan used by <a href="../Table.html#newRowScanner(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>newRowScanner</code></a>.</div>
+<div class="block">Returns a query plan used by <a href="../Table.html#newScanner(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>newScanner</code></a>.</div>
 </div>
 <div class="col-first even-row-color"><code>void</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#store(org.cojen.tupl.Transaction,R)" class="member-name-link">store</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
@@ -429,7 +419,7 @@ loadScripts(document, 'script');</script>
  <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
  <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
 <div class="col-last even-row-color">
-<div class="block">Returns a query plan used by <a href="../Table.html#newRowUpdater(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>newRowUpdater</code></a>.</div>
+<div class="block">Returns a query plan used by <a href="../Table.html#newUpdater(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>newUpdater</code></a>.</div>
 </div>
 </div>
 </section>

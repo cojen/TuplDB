@@ -21,22 +21,22 @@ import java.io.IOException;
 
 import java.util.Objects;
 
-import org.cojen.tupl.RowScanner;
-import org.cojen.tupl.RowUpdater;
+import org.cojen.tupl.Scanner;
+import org.cojen.tupl.Updater;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 
 /**
- * Wraps a RowScanner and applies updates directly against a table.
+ * Wraps a Scanner and applies updates directly against a table.
  *
  * @author Brian S O'Neill
  */
-class WrappedRowUpdater<R> implements BaseRowScanner<R>, RowUpdater<R> {
+class WrappedUpdater<R> implements Updater<R> {
     protected final Table<R> mTable;
     protected final Transaction mTxn;
-    protected final RowScanner<R> mScanner;
+    protected final Scanner<R> mScanner;
 
-    WrappedRowUpdater(Table<R> table, Transaction txn, RowScanner<R> scanner) {
+    WrappedUpdater(Table<R> table, Transaction txn, Scanner<R> scanner) {
         mTable = table;
         mTxn = txn;
         mScanner = scanner;

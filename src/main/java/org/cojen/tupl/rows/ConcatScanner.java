@@ -19,25 +19,25 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
-import org.cojen.tupl.RowScanner;
+import org.cojen.tupl.Scanner;
 
 /**
- * Concatenates multiple RowScanners into a single RowScanner.
+ * Concatenates multiple Scanners into a single Scanner.
  *
  * @author Brian S O'Neill
  */
-abstract class ConcatRowScanner<R> implements BaseRowScanner<R> {
+abstract class ConcatScanner<R> implements Scanner<R> {
     private final int mCharacteristics;
 
-    private RowScanner<R> mCurrent;
+    private Scanner<R> mCurrent;
 
     /**
      * @param dst can be null
      */
-    ConcatRowScanner(int characteristics, final R dst) throws IOException {
+    ConcatScanner(int characteristics, final R dst) throws IOException {
         mCharacteristics = characteristics;
 
-        RowScanner<R> next = next(dst);
+        Scanner<R> next = next(dst);
         while (true) {
             mCurrent = next;
             if (row() != null || (next = next(dst)) == null) {
@@ -55,7 +55,7 @@ abstract class ConcatRowScanner<R> implements BaseRowScanner<R> {
     public R step() throws IOException {
         R row = mCurrent.step();
         while (true) {
-            RowScanner<R> next;
+            Scanner<R> next;
             if (row != null || (next = next(null)) == null) {
                 return row;
             }
@@ -68,7 +68,7 @@ abstract class ConcatRowScanner<R> implements BaseRowScanner<R> {
     public R step(final R dst) throws IOException {
         R row = mCurrent.step(dst);
         while (true) {
-            RowScanner<R> next;
+            Scanner<R> next;
             if (row != null || (next = next(dst)) == null) {
                 return row;
             }
@@ -97,5 +97,5 @@ abstract class ConcatRowScanner<R> implements BaseRowScanner<R> {
      *
      * @param dst can be null
      */
-    protected abstract RowScanner<R> next(R dst) throws IOException;
+    protected abstract Scanner<R> next(R dst) throws IOException;
 }

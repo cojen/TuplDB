@@ -30,10 +30,10 @@ import org.cojen.tupl.Transaction;
  *
  * @author Brian S O'Neill
  */
-class AutoCommitRowUpdater<R> extends BasicRowUpdater<R> {
+class AutoCommitUpdater<R> extends BasicUpdater<R> {
     LockResult mLockResult;
 
-    AutoCommitRowUpdater(BaseTable<R> table, ScanController<R> controller) {
+    AutoCommitUpdater(BaseTable<R> table, ScanController<R> controller) {
         super(table, controller);
     }
 

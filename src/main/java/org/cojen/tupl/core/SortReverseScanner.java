@@ -21,6 +21,8 @@ import java.io.IOException;
 
 import java.util.Comparator;
 
+import org.cojen.tupl.Entry;
+
 /**
  * Overrides inherited methods to scan in reverse order.
  *
@@ -33,8 +35,8 @@ class SortReverseScanner extends SortScanner {
     }
 
     @Override
-    public Comparator<byte[]> comparator() {
-        return super.comparator().reversed();
+    public Comparator<Entry> getComparator() {
+        return super.getComparator().reversed();
     }
 
     @Override

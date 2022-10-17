@@ -26,7 +26,7 @@ import java.util.TreeSet;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockResult;
-import org.cojen.tupl.RowUpdater;
+import org.cojen.tupl.Updater;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UniqueConstraintException;
 import org.cojen.tupl.UnpositionedCursorException;
@@ -40,10 +40,10 @@ import org.cojen.tupl.views.ViewUtils;
  *
  * @author Brian S O'Neill
  */
-class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
+class BasicUpdater<R> extends BasicScanner<R> implements Updater<R> {
     TreeSet<byte[]> mKeysToSkip;
 
-    BasicRowUpdater(BaseTable<R> table, ScanController<R> controller) {
+    BasicUpdater(BaseTable<R> table, ScanController<R> controller) {
         super(table, controller);
     }
 
@@ -121,7 +121,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
             // TODO: Consider designing a more memory efficient set or hashtable.
             mKeysToSkip = new TreeSet<>(RowUtils.KEY_COMPARATOR);
         }
-        // FIXME: For AutoCommitRowUpdater, consider limiting the size of the set and
+        // FIXME: For AutoCommitUpdater, consider limiting the size of the set and
         // use a temporary index. All other updaters maintain locks, and so the key
         // objects cannot be immediately freed anyhow.
         return mKeysToSkip.add(key);
@@ -218,7 +218,7 @@ class BasicRowUpdater<R> extends BasicRowScanner<R> implements RowUpdater<R> {
         postStoreKeyValue(txn);
     }
 
-    // Called by JoinedRowUpdater.
+    // Called by JoinedUpdater.
     final void joinedUpdateCurrent() throws IOException {
         try {
             R current = mRow;

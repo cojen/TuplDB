@@ -24,8 +24,8 @@ import java.util.Comparator;
 import java.util.function.Predicate;
 
 import org.cojen.tupl.DurabilityMode;
-import org.cojen.tupl.RowScanner;
-import org.cojen.tupl.RowUpdater;
+import org.cojen.tupl.Scanner;
+import org.cojen.tupl.Updater;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 
@@ -69,27 +69,27 @@ final class PrimaryTable<R> implements Table<R> {
     }
 
     @Override
-    public RowScanner<R> newRowScanner(Transaction txn) throws IOException {
-        return mSource.newRowScanner(txn);
+    public Scanner<R> newScanner(Transaction txn) throws IOException {
+        return mSource.newScanner(txn);
     }
 
     @Override
-    public RowScanner<R> newRowScanner(Transaction txn, String filter, Object... args)
+    public Scanner<R> newScanner(Transaction txn, String filter, Object... args)
         throws IOException
     {
-        return mSource.newRowScannerThisTable(txn, null, filter, args);
+        return mSource.newScannerThisTable(txn, null, filter, args);
     }
 
     @Override
-    public RowUpdater<R> newRowUpdater(Transaction txn) throws IOException {
-        return mSource.newRowUpdater(txn);
+    public Updater<R> newUpdater(Transaction txn) throws IOException {
+        return mSource.newUpdater(txn);
     }
 
     @Override
-    public RowUpdater<R> newRowUpdater(Transaction txn, String filter, Object... args)
+    public Updater<R> newUpdater(Transaction txn, String filter, Object... args)
         throws IOException 
     {
-        return mSource.newRowUpdaterThisTable(txn, null, filter, args);
+        return mSource.newUpdaterThisTable(txn, null, filter, args);
     }
 
     @Override

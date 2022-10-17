@@ -23,7 +23,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Set;
 
-import org.cojen.tupl.RowScanner;
+import org.cojen.tupl.Entry;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Sorter;
 import org.cojen.tupl.Transaction;
@@ -42,19 +42,19 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
     private ScanBatch<R> mFirstBatch, mLastBatch;
 
     @SuppressWarnings("unchecked")
-    static <R> RowScanner<R> sort(BaseTable<R> table, String orderBySpec, Comparator<R> comparator,
-                                  QueryLauncher<R> launcher, Transaction txn, Object... args)
+    static <R> Scanner<R> sort(BaseTable<R> table, String orderBySpec, Comparator<R> comparator,
+                               QueryLauncher<R> launcher, Transaction txn, Object... args)
         throws IOException
     {
         var sorter = new RowSorter<R>();
         // Pass sorter as if it's a row, but it's actually a RowConsumer.
-        RowScanner<R> source = launcher.newRowScanner(txn, (R) sorter, args);
+        Scanner<R> source = launcher.newScanner(txn, (R) sorter, args);
         return sorter.sort(table, orderBySpec, comparator, launcher, source);
     }
 
     @SuppressWarnings("unchecked")
-    private RowScanner<R> sort(BaseTable<R> table, String orderBySpec, Comparator<R> comparator,
-                               QueryLauncher<R> launcher, RowScanner source)
+    private Scanner<R> sort(BaseTable<R> table, String orderBySpec, Comparator<R> comparator,
+                            QueryLauncher<R> launcher, Scanner source)
         throws IOException
     {
         int numRows = 0;
@@ -105,7 +105,7 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
         return characteristics;
     }
 
-    private static class ARS<R> extends ArrayRowScanner<R> {
+    private static class ARS<R> extends ArrayScanner<R> {
         private final int mCharacteristics;
         private final Comparator<R> mComparator;
 
@@ -131,11 +131,11 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
         }
     }
 
-    private static class SRS<R> extends ScannerRowScanner<R> {
+    private static class SRS<R> extends ScannerScanner<R> {
         private final int mCharacteristics;
         private final Comparator<R> mComparator;
 
-        SRS(Scanner scanner, RowDecoder<R> decoder,
+        SRS(Scanner<Entry> scanner, RowDecoder<R> decoder,
             int characteristics, Comparator<R> comparator)
             throws IOException
         {
@@ -180,7 +180,7 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
             mCharacteristics = sortedCharacteristics(launcher);
         }
 
-        RowScanner<R> sort(Comparator<R> comparator, RowScanner source) throws IOException {
+        Scanner<R> sort(Comparator<R> comparator, Scanner source) throws IOException {
             try {
                 return doSort(comparator, source);
             } catch (Throwable e) {
@@ -194,7 +194,7 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
         }
 
         @SuppressWarnings("unchecked")
-        RowScanner<R> doSort(Comparator<R> comparator, RowScanner source) throws IOException {
+        Scanner<R> doSort(Comparator<R> comparator, Scanner source) throws IOException {
             // Transfer all the undecoded rows into the sorter.
 
             ScanBatch<R> batch = mFirstBatch;

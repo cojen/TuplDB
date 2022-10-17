@@ -39,8 +39,8 @@ loadScripts(document, 'script');</script>
 <li>
 <p>Summary:</p>
 <ul>
-<li>Nested</li>
-<li>Field</li>
+<li><a href="#nested-class-summary">Nested</a></li>
+<li><a href="#field-summary">Field</a></li>
 <li>Constr</li>
 <li><a href="#method-summary">Method</a></li>
 </ul>
@@ -59,8 +59,8 @@ loadScripts(document, 'script');</script>
 <div id="navbar-sub-list">
 <ul class="sub-nav-list">
 <li>Summary:&nbsp;</li>
-<li>Nested&nbsp;|&nbsp;</li>
-<li>Field&nbsp;|&nbsp;</li>
+<li><a href="#nested-class-summary">Nested</a>&nbsp;|&nbsp;</li>
+<li><a href="#field-summary">Field</a>&nbsp;|&nbsp;</li>
 <li>Constr&nbsp;|&nbsp;</li>
 <li><a href="#method-summary">Method</a></li>
 </ul>
@@ -85,23 +85,22 @@ loadScripts(document, 'script');</script>
 <div class="header">
 <div class="sub-title"><span class="module-label-in-type">Module</span>&nbsp;<a href="../../../module-summary.html">org.cojen.tupl</a></div>
 <div class="sub-title"><span class="package-label-in-type">Package</span>&nbsp;<a href="package-summary.html">org.cojen.tupl</a></div>
-<h1 title="Interface Scanner" class="title">Interface Scanner</h1>
+<h1 title="Interface Scanner" class="title">Interface Scanner&lt;R&gt;</h1>
 </div>
 <section class="class-description" id="class-description">
 <dl class="notes">
 <dt>All Superinterfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></code>, <code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html" title="class or interface in java.util" class="external-link">Spliterator</a>&lt;R&gt;</code></dd>
 </dl>
 <dl class="notes">
 <dt>All Known Subinterfaces:</dt>
-<dd><code><a href="Updater.html" title="interface in org.cojen.tupl">Updater</a></code></dd>
+<dd><code><a href="Updater.html" title="interface in org.cojen.tupl">Updater</a>&lt;R&gt;</code></dd>
 </dl>
 <hr>
-<div class="type-signature"><span class="modifiers">public interface </span><span class="element-name type-name-label">Scanner</span><span class="extends-implements">
-extends <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></span></div>
-<div class="block">Scans through all entries in a view and passes them to a consumer. Scanner implementations
- which perform pre-fetching can be more efficient than a <a href="Cursor.html" title="interface in org.cojen.tupl">cursor</a>. Any
- exception thrown by a scan action automatically closes the Scanner.
+<div class="type-signature"><span class="modifiers">public interface </span><span class="element-name type-name-label">Scanner&lt;R&gt;</span><span class="extends-implements">
+extends <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html" title="class or interface in java.util" class="external-link">Spliterator</a>&lt;R&gt;, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></span></div>
+<div class="block">Support for scanning through all rows in a table. Any exception thrown when acting upon a
+ scanner automatically closes it.
 
  <p>Scanner instances can only be safely used by one thread at a time, and they must be
  closed when no longer needed. Instances can be exchanged by threads, as long as a
@@ -111,7 +110,7 @@ extends <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/ja
 <dt>See Also:</dt>
 <dd>
 <ul class="see-list">
-<li><a href="View.html#newScanner(org.cojen.tupl.Transaction)"><code>View.newScanner</code></a></li>
+<li><a href="Table.html#newScanner(org.cojen.tupl.Transaction)"><code>Table.newScanner</code></a></li>
 <li><a href="Updater.html" title="interface in org.cojen.tupl"><code>Updater</code></a></li>
 </ul>
 </dd>
@@ -119,6 +118,24 @@ extends <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/ja
 </section>
 <section class="summary">
 <ul class="summary-list">
+<!-- ======== NESTED CLASS SUMMARY ======== -->
+<li>
+<section class="nested-class-summary" id="nested-class-summary">
+<h2>Nested Class Summary</h2>
+<div class="inherited-list">
+<h2 id="nested-classes-inherited-from-class-java.util.Spliterator">Nested classes/interfaces inherited from interface&nbsp;java.util.<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html" title="class or interface in java.util" class="external-link">Spliterator</a></h2>
+<code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.OfDouble.html" title="class or interface in java.util" class="external-link">Spliterator.OfDouble</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.OfInt.html" title="class or interface in java.util" class="external-link">Spliterator.OfInt</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.OfLong.html" title="class or interface in java.util" class="external-link">Spliterator.OfLong</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.OfPrimitive.html" title="class or interface in java.util" class="external-link">Spliterator.OfPrimitive</a>&lt;<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.OfPrimitive.html" title="class or interface in java.util" class="external-link">T</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.OfPrimitive.html" title="class or interface in java.util" class="external-link">T_CONS</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.OfPrimitive.html" title="class or interface in java.util" class="external-link">T_SPLITR</a> extends <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.OfPrimitive.html" title="class or interface in java.util" class="external-link">Spliterator.OfPrimitive</a>&lt;<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.OfPrimitive.html" title="class or interface in java.util" class="external-link">T</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.OfPrimitive.html" title="class or interface in java.util" class="external-link">T_CONS</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.OfPrimitive.html" title="class or interface in java.util" class="external-link">T_SPLITR</a>&gt;&gt;</code></div>
+</section>
+</li>
+<!-- =========== FIELD SUMMARY =========== -->
+<li>
+<section class="field-summary" id="field-summary">
+<h2>Field Summary</h2>
+<div class="inherited-list">
+<h3 id="fields-inherited-from-class-java.util.Spliterator">Fields inherited from interface&nbsp;java.util.<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html" title="class or interface in java.util" class="external-link">Spliterator</a></h3>
+<code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#CONCURRENT" title="class or interface in java.util" class="external-link">CONCURRENT</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#DISTINCT" title="class or interface in java.util" class="external-link">DISTINCT</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#IMMUTABLE" title="class or interface in java.util" class="external-link">IMMUTABLE</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#NONNULL" title="class or interface in java.util" class="external-link">NONNULL</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#ORDERED" title="class or interface in java.util" class="external-link">ORDERED</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#SIZED" title="class or interface in java.util" class="external-link">SIZED</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#SORTED" title="class or interface in java.util" class="external-link">SORTED</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#SUBSIZED" title="class or interface in java.util" class="external-link">SUBSIZED</a></code></div>
+</section>
+</li>
 <!-- ========== METHOD SUMMARY =========== -->
 <li>
 <section class="method-summary" id="method-summary">
@@ -133,34 +150,36 @@ extends <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/ja
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#close()" class="member-name-link">close</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">&nbsp;</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;byte[]&gt;</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#comparator()" class="member-name-link">comparator</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Returns a comparator for the ordering of this scanner, or null if unordered.</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>byte[]</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#key()" class="member-name-link">key</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Returns an uncopied reference to the current key, or null if closed.</div>
-</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#scanAll(org.cojen.tupl.EntryConsumer)" class="member-name-link">scanAll</a><wbr>(<a href="EntryConsumer.html" title="interface in org.cojen.tupl">EntryConsumer</a>&nbsp;action)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
-<div class="block">Calls the given action for each remaining entry, and then closes the scanner.</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#step()" class="member-name-link">step</a>()</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#forEachRemaining(java.util.function.Consumer)" class="member-name-link">forEachRemaining</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;? super <a href="Scanner.html" title="type parameter in Scanner">R</a>&gt;&nbsp;action)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Scanner.html" title="type parameter in Scanner">R</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#row()" class="member-name-link">row</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Step to the next entry.</div>
+<div class="block">Returns a reference to the current row, which is null if the scanner is closed.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>byte[]</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#value()" class="member-name-link">value</a>()</code></div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Scanner.html" title="type parameter in Scanner">R</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#step()" class="member-name-link">step</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Returns an uncopied reference to the current value, which might be null or <a href="Cursor.html#NOT_LOADED"><code>Cursor.NOT_LOADED</code></a>.</div>
+<div class="block">Step to the next row.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Scanner.html" title="type parameter in Scanner">R</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#step(R)" class="member-name-link">step</a><wbr>(<a href="Scanner.html" title="type parameter in Scanner">R</a>&nbsp;row)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Step to the next row.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#tryAdvance(java.util.function.Consumer)" class="member-name-link">tryAdvance</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;? super <a href="Scanner.html" title="type parameter in Scanner">R</a>&gt;&nbsp;action)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html" title="class or interface in java.util" class="external-link">Spliterator</a>&lt;<a href="Scanner.html" title="type parameter in Scanner">R</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#trySplit()" class="member-name-link">trySplit</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"></div>
 </div>
 </div>
 </div>
-</div>
+<div class="inherited-list">
+<h3 id="methods-inherited-from-class-java.util.Spliterator">Methods inherited from interface&nbsp;java.util.<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html" title="class or interface in java.util" class="external-link">Spliterator</a></h3>
+<code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#characteristics()" title="class or interface in java.util" class="external-link">characteristics</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#estimateSize()" title="class or interface in java.util" class="external-link">estimateSize</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#getComparator()" title="class or interface in java.util" class="external-link">getComparator</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#getExactSizeIfKnown()" title="class or interface in java.util" class="external-link">getExactSizeIfKnown</a>, <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#hasCharacteristics(int)" title="class or interface in java.util" class="external-link">hasCharacteristics</a></code></div>
 </section>
 </li>
 </ul>
@@ -173,50 +192,70 @@ extends <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/ja
 <h2>Method Details</h2>
 <ul class="member-list">
 <li>
-<section class="detail" id="comparator()">
-<h3>comparator</h3>
-<div class="member-signature"><span class="return-type"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Comparator.html" title="class or interface in java.util" class="external-link">Comparator</a>&lt;byte[]&gt;</span>&nbsp;<span class="element-name">comparator</span>()</div>
-<div class="block">Returns a comparator for the ordering of this scanner, or null if unordered.</div>
-</section>
-</li>
-<li>
-<section class="detail" id="key()">
-<h3>key</h3>
-<div class="member-signature"><span class="return-type">byte[]</span>&nbsp;<span class="element-name">key</span>()</div>
-<div class="block">Returns an uncopied reference to the current key, or null if closed. Array contents
- must not be modified.</div>
-</section>
-</li>
-<li>
-<section class="detail" id="value()">
-<h3>value</h3>
-<div class="member-signature"><span class="return-type">byte[]</span>&nbsp;<span class="element-name">value</span>()</div>
-<div class="block">Returns an uncopied reference to the current value, which might be null or <a href="Cursor.html#NOT_LOADED"><code>Cursor.NOT_LOADED</code></a>. Array contents can be safely modified.</div>
+<section class="detail" id="row()">
+<h3>row</h3>
+<div class="member-signature"><span class="return-type"><a href="Scanner.html" title="type parameter in Scanner">R</a></span>&nbsp;<span class="element-name">row</span>()</div>
+<div class="block">Returns a reference to the current row, which is null if the scanner is closed.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="step()">
 <h3>step</h3>
-<div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">step</span>()
-      throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Step to the next entry.</div>
+<div class="member-signature"><span class="return-type"><a href="Scanner.html" title="type parameter in Scanner">R</a></span>&nbsp;<span class="element-name">step</span>()
+throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Step to the next row.</div>
 <dl class="notes">
 <dt>Returns:</dt>
-<dd>false if no more entries remain and scanner has been closed</dd>
+<dd>the next row or null if no more rows remain and scanner has been closed</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
 <li>
-<section class="detail" id="scanAll(org.cojen.tupl.EntryConsumer)">
-<h3>scanAll</h3>
-<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">scanAll</span><wbr><span class="parameters">(<a href="EntryConsumer.html" title="interface in org.cojen.tupl">EntryConsumer</a>&nbsp;action)</span>
-              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Calls the given action for each remaining entry, and then closes the scanner.</div>
+<section class="detail" id="step(R)">
+<h3 id="step(java.lang.Object)">step</h3>
+<div class="member-signature"><span class="return-type"><a href="Scanner.html" title="type parameter in Scanner">R</a></span>&nbsp;<span class="element-name">step</span><wbr><span class="parameters">(<a href="Scanner.html" title="type parameter in Scanner">R</a>&nbsp;row)</span>
+throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="block">Step to the next row.</div>
 <dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>row</code> - use this for the next row instead of creating a new one</dd>
+<dt>Returns:</dt>
+<dd>the next row or null if no more rows remain and scanner has been closed</dd>
 <dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if the given row object is null</dd>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="tryAdvance(java.util.function.Consumer)">
+<h3>tryAdvance</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">tryAdvance</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;? super <a href="Scanner.html" title="type parameter in Scanner">R</a>&gt;&nbsp;action)</span></div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#tryAdvance(java.util.function.Consumer)" title="class or interface in java.util" class="external-link">tryAdvance</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html" title="class or interface in java.util" class="external-link">Spliterator</a>&lt;<a href="Scanner.html" title="type parameter in Scanner">R</a>&gt;</code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="forEachRemaining(java.util.function.Consumer)">
+<h3>forEachRemaining</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">forEachRemaining</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;? super <a href="Scanner.html" title="type parameter in Scanner">R</a>&gt;&nbsp;action)</span></div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#forEachRemaining(java.util.function.Consumer)" title="class or interface in java.util" class="external-link">forEachRemaining</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html" title="class or interface in java.util" class="external-link">Spliterator</a>&lt;<a href="Scanner.html" title="type parameter in Scanner">R</a>&gt;</code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="trySplit()">
+<h3>trySplit</h3>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html" title="class or interface in java.util" class="external-link">Spliterator</a>&lt;<a href="Scanner.html" title="type parameter in Scanner">R</a>&gt;</span>&nbsp;<span class="element-name">trySplit</span>()</div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html#trySplit()" title="class or interface in java.util" class="external-link">trySplit</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/util/Spliterator.html" title="class or interface in java.util" class="external-link">Spliterator</a>&lt;<a href="Scanner.html" title="type parameter in Scanner">R</a>&gt;</code></dd>
 </dl>
 </section>
 </li>

@@ -202,7 +202,7 @@ public class IndexingTest {
         }
 
         try {
-            ix1.newRowUpdater(null);
+            ix1.newUpdater(null);
             fail();
         } catch (UnmodifiableViewException e) {
         }
@@ -398,9 +398,9 @@ public class IndexingTest {
         {
             // Lock all the index entries that shouldn't be updated.
             Transaction txn = db.newTransaction();
-            RowScanner<TestRow> s = ix1.newRowScanner(txn);
+            Scanner<TestRow> s = ix1.newScanner(txn);
             for (TestRow row = s.row(); s.row() != null; row = s.step(row)) {}
-            s = ix2.newRowScanner(txn);
+            s = ix2.newScanner(txn);
             for (TestRow row = s.row(); s.row() != null; row = s.step(row)) {}
 
             TestRow row = table.newRow();
@@ -977,12 +977,12 @@ public class IndexingTest {
         // Define the table again, but without the secondary index.
 
         Transaction txn = null;
-        RowScanner scanner = null;
+        Scanner scanner = null;
         if (stall) {
             // Prevent deleting the index until the scan has finished.
             txn = db.newTransaction();
             txn.lockMode(LockMode.READ_COMMITTED);
-            scanner = nameTable.newRowScanner(txn);
+            scanner = nameTable.newScanner(txn);
         }
 
         Class t2 = newRowType(typeName, spec);
@@ -1173,7 +1173,7 @@ public class IndexingTest {
         throws Exception
     {
         int found = 0;
-        RowScanner<R> s = a.newRowScanner(null);
+        Scanner<R> s = a.newScanner(null);
 
         for (R ra = s.row(); s.row() != null; ra = s.step(ra)) {
             found++;
@@ -1196,7 +1196,7 @@ public class IndexingTest {
 
     private static <R> long count(Table<R> table) throws Exception {
         long count = 0;
-        RowScanner<R> s = table.newRowScanner(null);
+        Scanner<R> s = table.newScanner(null);
         for (R row = s.row(); s.row() != null; row = s.step(row)) {
             count++;
         }
@@ -1204,7 +1204,7 @@ public class IndexingTest {
     }
 
     private static <R> void dump(Table<R> table) throws Exception {
-        RowScanner<R> s = table.newRowScanner(null);
+        Scanner<R> s = table.newScanner(null);
         for (R row = s.row(); s.row() != null; row = s.step(row)) {
             System.out.println(row);
         }
@@ -1212,7 +1212,7 @@ public class IndexingTest {
 
     private static <R> void scanExpect(Table<R> table, String... expectRows) throws Exception {
         int pos = 0;
-        RowScanner<R> s = table.newRowScanner(null);
+        Scanner<R> s = table.newScanner(null);
         for (R row = s.row(); s.row() != null; row = s.step(row)) {
             String expectRow = expectRows[pos++];
             assertTrue(row.toString().contains(expectRow));
