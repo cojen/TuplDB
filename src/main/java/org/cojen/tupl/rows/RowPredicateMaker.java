@@ -36,6 +36,7 @@ import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 import org.cojen.tupl.DatabaseException;
+import org.cojen.tupl.Entry;
 
 import org.cojen.tupl.core.RowPredicate;
 
@@ -398,7 +399,7 @@ public class RowPredicateMaker {
         var keyVar = mm.param(0);
         var valueVar = mm.param(1);
 
-        if (mPrimaryIndexId == mIndexId) {
+        if (mPrimaryIndexId == mIndexId && mRowType != Entry.class) {
             var indy = mm.var(RowPredicateMaker.class).indy
                 ("indySchemaDecodeTest", mStoreRef, mRowType, mIndexId, mFilterRef, mFilterStr);
 
@@ -525,8 +526,8 @@ public class RowPredicateMaker {
     }
 
     /**
-     * Makes a decode test method for secondary indexes, or for just the key of a primary
-     * indexes. In both cases, there's no schema version to decode.
+     * Makes a decode test method for secondary indexes, or for unevolvable types, or for just
+     * the key of primary indexes. In both cases, there's no schema version to decode.
      *
      * Accepts these MethodTypes:
      *
