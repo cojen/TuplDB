@@ -29,6 +29,7 @@ public interface Entry extends Comparable<Entry> {
 
     void key(byte[] key);
 
+    @Unsigned
     byte[] value();
 
     void value(byte[] value);
