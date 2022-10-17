@@ -31,7 +31,6 @@ import org.cojen.tupl.DatabaseConfig;
 import org.cojen.tupl.DeadlockException;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockTimeoutException;
-import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.core.CoreDeadlockInfo;
@@ -110,14 +109,6 @@ public class RemoteTest {
                 String valueStr = value == null ? "null" : new String(value);
                 System.out.println(new String(key) + " -> " + valueStr);
             }
-        }
-
-        try (Scanner s = ix.newScanner(null)) {
-            System.out.println(s);
-            s.scanAll((key, value) -> {
-                String valueStr = value == null ? "null" : new String(value);
-                System.out.println(new String(key) + " -> " + valueStr);
-            });
         }
     }
 }

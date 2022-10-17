@@ -25,9 +25,7 @@ import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Ordering;
-import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Transaction;
-import org.cojen.tupl.Updater;
 import org.cojen.tupl.View;
 import org.cojen.tupl.ViewConstraintException;
 
@@ -55,17 +53,6 @@ class ClientView<R extends RemoteView> implements View {
     @Override
     public Cursor newCursor(Transaction txn) {
         return new ClientCursor(this, mRemote.newCursor(mDb.remoteTransaction(txn)));
-    }
-
-    @Override
-    public Scanner newScanner(Transaction txn) throws IOException {
-        return new ClientScanner(mRemote.newScanner(mDb.remoteTransaction(txn), null));
-    }
-
-    @Override
-    public Updater newUpdater(Transaction txn) throws IOException {
-        // FIXME: newUpdater
-        throw null;
     }
 
     @Override

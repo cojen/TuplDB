@@ -42,10 +42,6 @@ public interface RemoteView extends Remote {
     @RemoteFailure(declared=false)
     public RemoteCursor newCursor(RemoteTransaction txn);
 
-    public Pipe newScanner(RemoteTransaction txn, Pipe pipe) throws IOException;
-
-    public Pipe newUpdater(RemoteTransaction txn, Pipe pipe) throws IOException;
-
     public RemoteCursor newAccessor(RemoteTransaction txn, byte[] key) throws IOException;
 
     @Batched

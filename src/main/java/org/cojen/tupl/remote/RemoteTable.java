@@ -46,14 +46,14 @@ public interface RemoteTable extends Remote {
     @RemoteFailure(declared=false)
     public void copyRow(Object from, Object to);
 
-    public Pipe newRowScanner(RemoteTransaction txn, Pipe pipe) throws IOException;
+    public Pipe newScanner(RemoteTransaction txn, Pipe pipe) throws IOException;
 
-    public Pipe newRowScanner(RemoteTransaction txn, Pipe pipe, String query, Object... args)
+    public Pipe newScanner(RemoteTransaction txn, Pipe pipe, String query, Object... args)
         throws IOException;
 
-    public Pipe newRowUpdater(RemoteTransaction txn, Pipe pipe) throws IOException;
+    public Pipe newUpdater(RemoteTransaction txn, Pipe pipe) throws IOException;
 
-    public Pipe newRowUpdater(RemoteTransaction txn, Pipe pipe, String query, Object... args)
+    public Pipe newUpdater(RemoteTransaction txn, Pipe pipe, String query, Object... args)
         throws IOException;
 
     @Batched

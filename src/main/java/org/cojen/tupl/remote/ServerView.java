@@ -23,7 +23,6 @@ import org.cojen.dirmi.Pipe;
 
 import org.cojen.tupl.DeadlockException;
 import org.cojen.tupl.LockFailureException;
-import org.cojen.tupl.Scanner;
 import org.cojen.tupl.View;
 import org.cojen.tupl.ViewConstraintException;
 
@@ -55,55 +54,6 @@ class ServerView<V extends View> implements RemoteView {
     @Override
     public RemoteCursor newCursor(RemoteTransaction txn) {
         return ServerCursor.from(mView.newCursor(ServerTransaction.txn(txn)));
-    }
-
-    @Override
-    public Pipe newScanner(RemoteTransaction txn, Pipe pipe) throws IOException {
-        try {
-            doScan: {
-                Scanner s;
-                try {
-                    s = mView.newScanner(ServerTransaction.txn(txn));
-                } catch (Throwable e) {
-                    pipe.writeObject(e);
-                    break doScan;
-                }
-
-                try {
-                    pipe.write(0); // TODO: comparator type
-
-                    while (true) {
-                        byte[] key = s.key();
-                        pipe.writeObject(key);
-                        if (key == null) {
-                            break;
-                        }
-                        pipe.writeObject(s.value());
-                        try {
-                            s.step();
-                        } catch (Throwable e) {
-                            pipe.writeObject(e);
-                            break doScan;
-                        }
-                    }
-                } finally {
-                    Utils.closeQuietly(s);
-                }
-            }
-
-            pipe.flush();
-            pipe.recycle();
-
-            return null;
-        } catch (Throwable e) {
-            throw Utils.fail(pipe, e);
-        }
-    }
-
-    @Override
-    public Pipe newUpdater(RemoteTransaction txn, Pipe pipe) throws IOException {
-        // FIXME: newUpdater
-        throw null;
     }
 
     @Override
