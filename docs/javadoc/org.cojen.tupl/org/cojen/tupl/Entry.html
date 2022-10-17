@@ -88,9 +88,16 @@ loadScripts(document, 'script');</script>
 <h1 title="Interface Entry" class="title">Interface Entry</h1>
 </div>
 <section class="class-description" id="class-description">
+<dl class="notes">
+<dt>All Superinterfaces:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/Comparable.html" title="class or interface in java.lang" class="external-link">Comparable</a>&lt;<a href="Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;</code></dd>
+</dl>
 <hr>
 <div class="type-signature"><span class="annotations"><a href="PrimaryKey.html" title="annotation interface in org.cojen.tupl">@PrimaryKey</a>("key")
-</span><span class="modifiers">public interface </span><span class="element-name type-name-label">Entry</span></div>
+</span><span class="modifiers">public interface </span><span class="element-name type-name-label">Entry</span><span class="extends-implements">
+extends <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/Comparable.html" title="class or interface in java.lang" class="external-link">Comparable</a>&lt;<a href="Entry.html" title="interface in org.cojen.tupl">Entry</a>&gt;</span></div>
+<div class="block">Defines a row type consisting of a simple binary key-value pair. Calling <a href="Index.html#asTable(java.lang.Class)"><code>asTable(Entry.class)</code></a> allows an ordinary index to be represented as a table,
+ while still retaining its natural form.</div>
 </section>
 <section class="summary">
 <ul class="summary-list">
@@ -107,19 +114,30 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>byte[]</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#key()" class="member-name-link">key</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Returns the entry's current key reference.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#key(byte%5B%5D)" class="member-name-link">key</a><wbr>(byte[]&nbsp;key)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Assign the entry key reference, transferring ownership.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>byte[]</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#value()" class="member-name-link">value</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Returns the entry's current value reference.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#value(byte%5B%5D)" class="member-name-link">value</a><wbr>(byte[]&nbsp;value)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Assign the entry value, allowing the change to be noticed by a call to an <a href="Table.html#update(org.cojen.tupl.Transaction,R)"><code>update</code></a> or <a href="Table.html#merge(org.cojen.tupl.Transaction,R)"><code>merge</code></a> method.</div>
 </div>
 </div>
 </div>
+</div>
+<div class="inherited-list">
+<h3 id="methods-inherited-from-class-java.lang.Comparable">Methods inherited from interface&nbsp;java.lang.<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/Comparable.html" title="class or interface in java.lang" class="external-link">Comparable</a></h3>
+<code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/Comparable.html#compareTo(T)" title="class or interface in java.lang" class="external-link">compareTo</a></code></div>
 </section>
 </li>
 </ul>
@@ -136,24 +154,34 @@ loadScripts(document, 'script');</script>
 <h3>key</h3>
 <div class="member-signature"><span class="annotations"><a href="Unsigned.html" title="annotation interface in org.cojen.tupl">@Unsigned</a>
 </span><span class="return-type">byte[]</span>&nbsp;<span class="element-name">key</span>()</div>
+<div class="block">Returns the entry's current key reference. The contents of the array should not be
+ modified, since locks might be held against the key instance itself.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="key(byte[])">
 <h3>key</h3>
 <div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">key</span><wbr><span class="parameters">(byte[]&nbsp;key)</span></div>
+<div class="block">Assign the entry key reference, transferring ownership. After calling this method the
+ contents of the array should not be modified, since locks might later be acquired
+ against the key instance itself.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="value()">
 <h3>value</h3>
-<div class="member-signature"><span class="return-type">byte[]</span>&nbsp;<span class="element-name">value</span>()</div>
+<div class="member-signature"><span class="annotations"><a href="Unsigned.html" title="annotation interface in org.cojen.tupl">@Unsigned</a>
+</span><span class="return-type">byte[]</span>&nbsp;<span class="element-name">value</span>()</div>
+<div class="block">Returns the entry's current value reference. Although the contents of the array can be
+ safely modified, the change won't be noticed when calling an <a href="Table.html#update(org.cojen.tupl.Transaction,R)"><code>update</code></a>
+ or <a href="Table.html#merge(org.cojen.tupl.Transaction,R)"><code>merge</code></a> method.</div>
 </section>
 </li>
 <li>
 <section class="detail" id="value(byte[])">
 <h3>value</h3>
 <div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">value</span><wbr><span class="parameters">(byte[]&nbsp;value)</span></div>
+<div class="block">Assign the entry value, allowing the change to be noticed by a call to an <a href="Table.html#update(org.cojen.tupl.Transaction,R)"><code>update</code></a> or <a href="Table.html#merge(org.cojen.tupl.Transaction,R)"><code>merge</code></a> method.</div>
 </section>
 </li>
 </ul>
