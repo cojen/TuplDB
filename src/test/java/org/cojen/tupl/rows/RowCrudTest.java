@@ -518,4 +518,37 @@ public class RowCrudTest {
             assertTrue(id == 1 || id == 3 || id == 5 || id == 30 || id == -40);
         });
     }
+
+    @Test
+    public void updateEntry() throws Exception {
+        Index ix = mDb.openIndex("test");
+        Table<Entry> table = ix.asTable(Entry.class);
+
+        Entry e = table.newRow();
+        try {
+            table.update(null, e);
+            fail();
+        } catch (IllegalStateException ex) {
+            assertTrue(ex.getMessage().contains("Primary key isn't fully specified"));
+        }
+
+        e.key("hello".getBytes());
+        assertFalse(table.update(null, e));
+
+        e.value("world".getBytes());
+        assertFalse(table.update(null, e));
+
+        assertTrue(table.insert(null, e));
+
+        e.value("world!".getBytes());
+        assertTrue(table.update(null, e));
+
+        assertArrayEquals("world!".getBytes(), ix.load(null, e.key()));
+
+        table.unsetRow(e);
+        e.key("hello".getBytes());
+
+        assertTrue(table.merge(null, e));
+        assertArrayEquals("world!".getBytes(), e.value());
+    }
 }

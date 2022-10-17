@@ -313,8 +313,7 @@ class StaticTableMaker extends TableMaker {
             if (isEvolvable()) {
                 mm.abstract_();
             } else {
-                // FIXME: doUpdate
-                mm.new_(UnsupportedOperationException.class, "FIXME").throw_();
+                addDoUpdateMethod(mm);
             }
 
             addUpdateMethod("update", false);
@@ -552,6 +551,17 @@ class StaticTableMaker extends TableMaker {
         var ue = encodeUpdateValue(mm, mRowInfo, schemaVersion, tableVar, rowVar, mm.param(1));
 
         mm.return_(ue.newEntryVar);
+    }
+
+    /**
+     * Override in order for addDoUpdateMethod to work.
+     */
+    @Override
+    protected void finishDoUpdate(MethodMaker mm,
+                                  Variable rowVar, Variable mergeVar, Variable cursorVar)
+    {
+        finishDoUpdate(mm, mRowInfo, 0, // no schema version
+                       supportsTriggers() ? 1 : 0, true, mm.this_(), rowVar, mergeVar, cursorVar);
     }
 
     private void addDecodePartialHandle() {

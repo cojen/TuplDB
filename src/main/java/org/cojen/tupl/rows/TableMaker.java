@@ -32,6 +32,7 @@ import org.cojen.maker.Variable;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Entry;
 import org.cojen.tupl.LockResult;
+import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.diag.QueryPlan;
 
@@ -546,6 +547,225 @@ public class TableMaker {
         ue.newEntryVar = newEntryVar;
         ue.offsetVars = offsetVars;
         return ue;
+    }
+
+    /**
+     * Adds a method which does most of the work for the update and merge methods. The
+     * transaction parameter must not be null, which is committed when changes are made.
+     *
+     *     boolean doUpdate(Transaction txn, ActualRow row, boolean merge);
+     */
+    protected void addDoUpdateMethod() {
+        // Override the inherited abstract method.
+        MethodMaker mm = mClassMaker.addMethod
+            (boolean.class, "doUpdate", Transaction.class, mRowClass, boolean.class).protected_();
+        addDoUpdateMethod(mm);
+    }
+
+    protected void addDoUpdateMethod(MethodMaker mm) {
+        Variable txnVar = mm.param(0);
+        Variable rowVar = mm.param(1);
+        Variable mergeVar = mm.param(2);
+
+        Label ready = mm.label();
+        mm.invoke("checkPrimaryKeySet", rowVar).ifTrue(ready);
+        mm.new_(IllegalStateException.class, "Primary key isn't fully specified").throw_();
+
+        ready.here();
+
+        final var keyVar = mm.invoke("encodePrimaryKey", rowVar);
+        final var source = mm.field("mSource");
+        final var cursorVar = source.invoke("newCursor", txnVar);
+
+        Label cursorStart = mm.label().here();
+
+        // If all value columns are dirty, replace the whole row and commit.
+        {
+            Label cont;
+            if (mCodecGen.info.valueColumns.isEmpty()) {
+                // If the checkValueAllDirty method was defined, it would always return true.
+                cont = null;
+            } else {
+                cont = mm.label();
+                mm.invoke("checkValueAllDirty", rowVar).ifFalse(cont);
+            }
+
+            final Variable triggerVar;
+            final Label triggerStart;
+
+            if (!supportsTriggers()) {
+                triggerVar = null;
+                triggerStart = null;
+            } else {
+                triggerVar = mm.var(Trigger.class);
+                Label skipLabel = mm.label();
+                prepareForTrigger(mm, mm.this_(), triggerVar, skipLabel);
+                triggerStart = mm.label().here();
+
+                cursorVar.invoke("find", keyVar);
+                var oldValueVar = cursorVar.invoke("value");
+                Label replace = mm.label();
+                oldValueVar.ifNe(null, replace);
+                mm.return_(false);
+                replace.here();
+                var valueVar = mm.invoke("encodeValue", rowVar);
+                triggerVar.invoke("store", txnVar, rowVar, keyVar, oldValueVar, valueVar);
+                cursorVar.invoke("commit", valueVar);
+                markAllClean(rowVar);
+                mm.return_(true);
+
+                skipLabel.here();
+            }
+
+            cursorVar.invoke("autoload", false);
+            cursorVar.invoke("find", keyVar);
+            Label replace = mm.label();
+            cursorVar.invoke("value").ifNe(null, replace);
+            mm.return_(false);
+            replace.here();
+            cursorVar.invoke("commit", mm.invoke("encodeValue", rowVar));
+
+            if (triggerStart != null) {
+                mm.finally_(triggerStart, () -> triggerVar.invoke("releaseShared"));
+            }
+
+            markAllClean(rowVar);
+            mm.return_(true);
+
+            if (cont == null) {
+                return;
+            }
+
+            cont.here();
+        }
+
+        cursorVar.invoke("find", keyVar);
+
+        Label hasValue = mm.label();
+        cursorVar.invoke("value").ifNe(null, hasValue);
+        mm.return_(false);
+        hasValue.here();
+
+        // The bulk of the method might not be implemented until needed, delaying
+        // acquisition/creation of the current schema version.
+        finishDoUpdate(mm, rowVar, mergeVar, cursorVar);
+
+        mm.return_(true);
+
+        mm.finally_(cursorStart, () -> cursorVar.invoke("reset"));
+    }
+
+    /**
+     * Subclass must override this method in order for the addDoUpdateMethod to work.
+     */
+    protected void finishDoUpdate(MethodMaker mm,
+                                  Variable rowVar, Variable mergeVar, Variable cursorVar)
+    {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * @param triggers 0 for false, 1 for true
+     */
+    protected static void finishDoUpdate(MethodMaker mm, RowInfo rowInfo, int schemaVersion,
+                                         int triggers, boolean returnTrue, Variable tableVar,
+                                         Variable rowVar, Variable mergeVar, Variable cursorVar)
+    {
+        Variable valueVar = cursorVar.invoke("value");
+
+        var ue = encodeUpdateValue(mm, rowInfo, schemaVersion, tableVar, rowVar, valueVar);
+        Variable newValueVar = ue.newEntryVar;
+        Variable[] offsetVars = ue.offsetVars;
+
+        if (triggers == 0) {
+            cursorVar.invoke("commit", newValueVar);
+        }
+
+        Label doMerge = mm.label();
+        mergeVar.ifTrue(doMerge);
+
+        if (triggers != 0) {
+            var triggerVar = mm.var(Trigger.class);
+            Label skipLabel = mm.label();
+            prepareForTrigger(mm, tableVar, triggerVar, skipLabel);
+            Label triggerStart = mm.label().here();
+
+            var txnVar = cursorVar.invoke("link");
+            var keyVar = cursorVar.invoke("key");
+            triggerVar.invoke("storeP", txnVar, rowVar, keyVar, valueVar, newValueVar);
+            cursorVar.invoke("commit", newValueVar);
+            Label cont = mm.label().goto_();
+
+            skipLabel.here();
+
+            cursorVar.invoke("commit", newValueVar);
+
+            mm.finally_(triggerStart, () -> triggerVar.invoke("releaseShared"));
+
+            cont.here();
+        }
+
+        markAllUndirty(rowVar, rowInfo);
+
+        if (returnTrue) {
+            mm.return_(true);
+        } else {
+            mm.return_();
+        }
+
+        doMerge.here();
+
+        // Decode all the original column values that weren't updated into the row.
+
+        RowGen rowGen = rowInfo.rowGen();
+        Map<String, Integer> columnNumbers = rowGen.columnNumbers();
+        ColumnCodec[] codecs = ColumnCodec.bind(rowGen.valueCodecs(), mm);
+
+        String stateFieldName = null;
+        Variable stateField = null;
+
+        for (int i=0; i<codecs.length; i++) {
+            ColumnCodec codec = codecs[i];
+            ColumnInfo info = codec.mInfo;
+            int num = columnNumbers.get(info.name);
+
+            String sfName = rowGen.stateField(num);
+            if (!sfName.equals(stateFieldName)) {
+                stateFieldName = sfName;
+                stateField = rowVar.field(stateFieldName).get();
+            }
+
+            int sfMask = RowGen.stateFieldMask(num);
+            Label cont = mm.label();
+            stateField.and(sfMask).ifEq(sfMask, cont);
+
+            codec.decode(rowVar.field(info.name), valueVar, offsetVars[i], null);
+
+            cont.here();
+        }
+
+        if (triggers != 0) {
+            var triggerVar = mm.var(Trigger.class);
+            Label skipLabel = mm.label();
+            prepareForTrigger(mm, tableVar, triggerVar, skipLabel);
+            Label triggerStart = mm.label().here();
+
+            var txnVar = cursorVar.invoke("link");
+            var keyVar = cursorVar.invoke("key");
+            triggerVar.invoke("store", txnVar, rowVar, keyVar, valueVar, newValueVar);
+            cursorVar.invoke("commit", newValueVar);
+            Label cont = mm.label().goto_();
+
+            skipLabel.here();
+
+            cursorVar.invoke("commit", newValueVar);
+
+            mm.finally_(triggerStart, () -> triggerVar.invoke("releaseShared"));
+
+            cont.here();
+        }
+
+        markAllClean(rowVar, rowGen, rowGen);
     }
 
     /**
