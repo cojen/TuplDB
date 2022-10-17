@@ -572,7 +572,7 @@ class StaticTableMaker extends TableMaker {
         var lookup = mm.var(MethodHandles.class).invoke("lookup");
 
         Variable decoder;
-        if (isPrimaryTable()) {
+        if (isEvolvable()) {
             var schemaVersion = mm.param(1);
             var storeRefVar = mm.invoke("rowStoreRef");
             var thisClassVar = mm.invoke("getClass");

@@ -311,55 +311,39 @@ public class SorterTest {
         scanner.close();
     }
 
-    /* FIXME: restore this test
     @Test
     public void sortScanner() throws Exception {
-        // Fill an index with random entries and then transform it such that the keys and
-        // values are swapped, and therefore the view is unordered. Then sort it using a
+        // Fill an index with random entries, scan it in value order, and then sort it using a
         // background-sorting scanner.
 
         var rnd = new Random(928451);
         Index ix = mDatabase.openIndex("test");
-        Index expect = mDatabase.openIndex("expect");
 
         for (int i=0; i<100_000; i++) {
             byte[] key = randomStr(rnd, 10);
             byte[] value = randomStr(rnd, 10);
             ix.store(null, key, value);
-            expect.store(null, value, key);
         }
 
-        View view = ix.viewTransformed(new Transformer() {
-            @Override
-            public byte[] transformValue(byte[] value, byte[] key, byte[] tkey) {
-                return key;
-            }
+        Scanner<Entry> byValue = ix.asTable(Entry.class).newScanner(null, "{+value, key}");
 
-            @Override
-            public byte[] transformKey(Cursor c) {
-                return c.value();
-            }
-        });
+        Scanner<Entry> result = mDatabase.newSorter().finishScan(byValue);
 
-        Scanner<Entry> result = mDatabase.newSorter().finishScan(view.newScanner(null));
-        checkResults(expect.newScanner(null), result);
-
-        // Again, in reverse.
-        result = mDatabase.newSorter().finishScanReverse(view.newScanner(null));
-        checkResults(expect.viewReverse().newScanner(null), result);
+        checkResults(ix.asTable(Entry.class).newScanner(null), result);
     }
 
     private void checkResults(Scanner<Entry> expect, Scanner<Entry> result) throws Exception {
         while (true) {
-            fastAssertArrayEquals(expect.key(), result.key());
-            fastAssertArrayEquals(expect.value(), result.value());
-            if (!expect.step()) {
-                assertFalse(result.step());
+            Entry e1 = expect.row();
+            Entry e2 = result.row();
+            fastAssertArrayEquals(e1.key(), e2.key());
+            fastAssertArrayEquals(e1.value(), e2.value());
+            if (expect.step() == null) {
+                assertNull(result.step());
                 break;
             } else {
-                assertTrue(result.step());
+                assertNotNull(result.step());
             }
         }
     }
-    */
 }
