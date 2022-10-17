@@ -185,18 +185,12 @@ public class DynamicTableMaker extends TableMaker {
     {
         return doIndyEncode
             (lookup, name, mt, storeRef, rowType, tableId, (mm, info, schemaVersion) -> {
-                if (schemaVersion == 0 || info.valueColumns.isEmpty()) {
-                    // Not expected, but handle it nonetheless.
-                    mm.return_(mm.var(RowUtils.class).field("EMPTY_BYTES"));
-                    return;
-                }
-
                 // These variables were provided by the indy call in addDynamicUpdateValueColumns.
                 Variable rowVar = mm.param(0);
                 Variable originalVar = mm.param(1); // byte[]
 
                 var tableVar = mm.var(lookup.lookupClass());
-                var ue = encodeUpdateEntry(mm, info, schemaVersion, tableVar, rowVar, originalVar);
+                var ue = encodeUpdateValue(mm, info, schemaVersion, tableVar, rowVar, originalVar);
 
                 mm.return_(ue.newEntryVar);
             });
@@ -471,7 +465,7 @@ public class DynamicTableMaker extends TableMaker {
 
         Variable valueVar = cursorVar.invoke("value");
 
-        var ue = encodeUpdateEntry(mm, rowInfo, schemaVersion, tableVar, rowVar, valueVar);
+        var ue = encodeUpdateValue(mm, rowInfo, schemaVersion, tableVar, rowVar, valueVar);
         Variable newValueVar = ue.newEntryVar;
         Variable[] offsetVars = ue.offsetVars;
 

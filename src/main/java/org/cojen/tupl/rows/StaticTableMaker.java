@@ -200,7 +200,8 @@ class StaticTableMaker extends TableMaker {
             ColumnCodec[] keyCodecs = mCodecGen.keyCodecs();
             addEncodeColumnsMethod("encodePrimaryKey", keyCodecs);
             addDecodeColumnsMethod("decodePrimaryKey", keyCodecs);
-            addUpdatePrimaryKeyMethod(keyCodecs);
+
+            addUpdatePrimaryKeyMethod();
 
             addDecodePartialHandle();
 
@@ -222,10 +223,7 @@ class StaticTableMaker extends TableMaker {
 
             if (isPrimaryTable()) {
                 addEncodeColumnsMethod("encodeValue", mCodecGen.valueCodecs());
-
-                // FIXME: updateValue
-                mClassMaker.addMethod(byte[].class, "updateValue", mRowClass, byte[].class)
-                    .static_().new_(UnmodifiableViewException.class).throw_();
+                addUpdateValueMethod(0); // no schema version
             } else {
                 // The encodeValue and updateValue methods are only used for storing rows into
                 // the table. By making them always fail, there's no backdoor to permit
@@ -517,10 +515,8 @@ class StaticTableMaker extends TableMaker {
     /**
      * Defines a static method which encodes a new key by comparing dirty row columns to the
      * original key.
-     *
-     * @param name method name
      */
-    private void addUpdatePrimaryKeyMethod(ColumnCodec[] codecs) {
+    private void addUpdatePrimaryKeyMethod() {
         MethodMaker mm = mClassMaker
             .addMethod(byte[].class, "updatePrimaryKey", mRowClass, byte[].class).static_();
 
@@ -532,7 +528,28 @@ class StaticTableMaker extends TableMaker {
         partiallyDirty.here();
 
         var tableVar = mm.class_();
-        var ue = encodeUpdateEntry(mm, mRowInfo, 0, tableVar, rowVar, mm.param(1));
+        var ue = encodeUpdateKey(mm, mRowInfo, tableVar, rowVar, mm.param(1));
+
+        mm.return_(ue.newEntryVar);
+    }
+
+    /**
+     * Defines a static method which encodes a new value by comparing dirty row columns to the
+     * original value.
+     */
+    private void addUpdateValueMethod(int schemaVersion) {
+        MethodMaker mm = mClassMaker
+            .addMethod(byte[].class, "updateValue", mRowClass, byte[].class).static_();
+
+        Variable rowVar = mm.param(0);
+
+        Label partiallyDirty = mm.label();
+        mm.invoke("checkValueAllDirty", rowVar).ifFalse(partiallyDirty);
+        mm.return_(mm.invoke("encodeValue", rowVar));
+        partiallyDirty.here();
+
+        var tableVar = mm.class_();
+        var ue = encodeUpdateValue(mm, mRowInfo, schemaVersion, tableVar, rowVar, mm.param(1));
 
         mm.return_(ue.newEntryVar);
     }

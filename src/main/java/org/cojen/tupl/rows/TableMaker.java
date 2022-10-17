@@ -358,34 +358,62 @@ public class TableMaker {
     }
 
     protected static class UpdateEntry {
-        Variable newEntryVar;
-        Variable[] offsetVars;
+        Variable newEntryVar;  // byte[]
+        Variable[] offsetVars; // int offsets
     }
 
     /**
-     * Makes code which encodes a new entry (a key or value) by comparing dirty row columns to
-     * the original entry. Returns the new entry and the column offsets in the original entry.
+     * Makes code which encodes a new key by comparing dirty row columns to the original
+     * encoded key. Returns the new entry and the column offsets from the original entry.
      *
-     * @param schemaVersion pass 0 if entry is a key instead of a value; implies that caller
-     * must handle the case where the value must be empty
      * @param rowVar non-null
-     * @param tableVar doesn't need to be initialized (is used to invoke a static method)
-     * @param originalVar original non-null encoded key or value
+     * @param tableVar doesn't need to be initialized (is used to invoke static methods)
+     * @param originalVar original non-null encoded key
      */
-    protected static UpdateEntry encodeUpdateEntry
+    protected static UpdateEntry encodeUpdateKey
+        (MethodMaker mm, RowInfo rowInfo, Variable tableVar, Variable rowVar, Variable originalVar)
+    {
+        RowGen rowGen = rowInfo.rowGen();
+        ColumnCodec[] codecs = rowGen.keyCodecs();
+        return encodeUpdateEntry(mm, rowGen, codecs, 0, tableVar, rowVar, originalVar);
+    }
+
+    /**
+     * Makes code which encodes a new value by comparing dirty row columns to the original
+     * encoded value. Returns the new entry and the column offsets from the original entry.
+     *
+     * @param schemaVersion pass 0 if value has no schema version to decode
+     * @param rowVar non-null
+     * @param tableVar doesn't need to be initialized (is used to invoke static methods)
+     * @param originalVar original non-null encoded value
+     */
+    protected static UpdateEntry encodeUpdateValue
         (MethodMaker mm, RowInfo rowInfo, int schemaVersion,
          Variable tableVar, Variable rowVar, Variable originalVar)
     {
         RowGen rowGen = rowInfo.rowGen();
-        ColumnCodec[] codecs;
+        ColumnCodec[] codecs = rowGen.valueCodecs();
+        return encodeUpdateEntry(mm, rowGen, codecs, schemaVersion, tableVar, rowVar, originalVar);
+    }
+
+    /**
+     * Makes code which encodes a new entry (a key or value) by comparing dirty row columns to
+     * the original entry. Returns the new entry and the column offsets from the original entry.
+     *
+     * @param schemaVersion pass 0 if key or value has no schema version
+     * @param rowVar non-null
+     * @param tableVar doesn't need to be initialized (is used to invoke static methods)
+     * @param originalVar original non-null encoded key or value
+     */
+    private static UpdateEntry encodeUpdateEntry
+        (MethodMaker mm, RowGen rowGen, ColumnCodec[] codecs, int schemaVersion,
+         Variable tableVar, Variable rowVar, Variable originalVar)
+    {
         int fixedOffset;
 
         if (schemaVersion == 0) {
-            codecs = rowGen.keyCodecs();
             fixedOffset = 0;
         } else {
-            codecs = rowGen.valueCodecs();
-
             Variable decodeVersion = mm.var(RowUtils.class)
                 .invoke("decodeSchemaVersion", originalVar);
             Label sameVersion = mm.label();
