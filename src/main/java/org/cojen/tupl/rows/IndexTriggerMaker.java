@@ -191,7 +191,7 @@ public class IndexTriggerMaker<R> {
      * @param primaryIndexId primary index id
      */
     @SuppressWarnings("unchecked")
-    Trigger<R> makeTrigger(RowStore rs, long primaryIndexId) {
+    Trigger<R> makeTrigger(RowStore rs, long primaryIndexId, BaseTable<R> table) {
         mClassMaker = mPrimaryGen.beginClassMaker(IndexTriggerMaker.class, mRowType, "trigger");
         mClassMaker.extend(Trigger.class).final_();
 
@@ -255,8 +255,8 @@ public class IndexTriggerMaker<R> {
         }
 
         {
-            boolean requiresRow = addStoreMethod("store", true);
-            addStoreMethod("storeP", requiresRow);
+            boolean requiresRow = addStoreMethod("store", true, table);
+            addStoreMethod("storeP", requiresRow, table);
         }
 
         if (hasBackfills) {
@@ -637,7 +637,7 @@ public class IndexTriggerMaker<R> {
      * @param define delegate to the non-partial variant when false
      * @return true if always requires a row instance
      */
-    private boolean addStoreMethod(String variant, boolean define) {
+    private boolean addStoreMethod(String variant, boolean define, BaseTable<R> table) {
         MethodMaker mm = mClassMaker.addMethod
             (null, variant, Transaction.class, Object.class,
              byte[].class, byte[].class, byte[].class).public_();
@@ -678,6 +678,10 @@ public class IndexTriggerMaker<R> {
         }
 
         rowVar = rowVar.cast(mRowClass);
+
+        var newVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", newValueVar);
+        var tableVar = mm.var(table.getClass());
+        TableMaker.convertValueIfNecessary(tableVar, rowVar, newVersion, oldValueVar);
 
         TransformMaker otm = tm.beginValueDiff(mm, rowVar, keyVar, newValueVar, -1, oldValueVar);
 

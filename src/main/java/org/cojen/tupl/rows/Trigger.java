@@ -45,7 +45,7 @@ public class Trigger<R> extends WideLatch {
      * @param txn never null, although can be BOGUS
      * @param row never null, all columns are set
      * @param key never null
-     * @param oldValue never null, same schema as new value (might have been converted)
+     * @param oldValue never null
      * @param newValue never null
      */
     public void store(Transaction txn, R row, byte[] key, byte[] oldValue, byte[] newValue)
@@ -65,7 +65,7 @@ public class Trigger<R> extends WideLatch {
      * @param txn never null, although can be BOGUS
      * @param row never null
      * @param key never null
-     * @param oldValue never null, same schema as new value (might have been converted)
+     * @param oldValue never null
      * @param newValue never null
      */
     public void storeP(Transaction txn, R row, byte[] key, byte[] oldValue, byte[] newValue)
