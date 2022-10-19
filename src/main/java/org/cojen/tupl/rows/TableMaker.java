@@ -79,8 +79,9 @@ public class TableMaker {
     }
 
     protected boolean supportsTriggers() {
-        return isEvolvable()
-            || !mRowInfo.alternateKeys.isEmpty() || !mRowInfo.secondaryIndexes.isEmpty();
+        // Triggers expect that values have a schema version encoded. Only evolvable types have
+        // a schema version encoded. Therefore, to have triggers, the type must be evolvable.
+        return isEvolvable();
     }
 
     protected boolean isEvolvable() {
@@ -429,20 +430,7 @@ public class TableMaker {
         if (schemaVersion == 0) {
             fixedOffset = 0;
         } else {
-            Variable decodeVersion = mm.var(RowUtils.class)
-                .invoke("decodeSchemaVersion", originalVar);
-            Label sameVersion = mm.label();
-            decodeVersion.ifEq(schemaVersion, sameVersion);
-
-            // If different schema versions, decode and re-encode a new entry, and then go to
-            // the next step. The simplest way to perform this conversion is to create a new
-            // temp row object, decode the entry into it, and then create a new entry from it.
-            var tempRowVar = mm.new_(rowVar);
-            tableVar.invoke("decodeValue", tempRowVar, originalVar);
-            originalVar.set(tableVar.invoke("encodeValue", tempRowVar));
-
-            sameVersion.here();
-
+            convertValueIfNecessary(tableVar, rowVar, schemaVersion, originalVar);
             fixedOffset = schemaVersion < 128 ? 1 : 4;
         }
 
@@ -561,6 +549,32 @@ public class TableMaker {
         ue.newEntryVar = newEntryVar;
         ue.offsetVars = offsetVars;
         return ue;
+    }
+
+    /**
+     * Convert the given encoded value if its schema version doesn't match the desired version.
+     *
+     * @param tableVar doesn't need to be initialized (is used to invoke static methods)
+     * @param rowClass row implementation class (can be supplied by a Variable)
+     * @param schemaVersion desired schema version (int or Variable)
+     * @param valueVar byte[] encoded value, which might be replaced with a re-encoded value
+     */
+    static void convertValueIfNecessary(Variable tableVar, Object rowClass,
+                                        Object schemaVersion, Variable valueVar)
+    {
+        MethodMaker mm = valueVar.methodMaker();
+
+        var decodeVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", valueVar);
+        Label sameVersion = mm.label();
+        decodeVersion.ifEq(schemaVersion, sameVersion);
+
+        // Schema versions differ, so need to convert. The simplest technique is to create a
+        // new temp row object, decode the value into it, and then create a new value from it.
+        var tempRowVar = mm.new_(rowClass);
+        tableVar.invoke("decodeValue", tempRowVar, valueVar);
+        valueVar.set(tableVar.invoke("encodeValue", tempRowVar));
+
+        sameVersion.here();
     }
 
     /**
