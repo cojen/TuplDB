@@ -1480,4 +1480,95 @@ public class IndexingTest {
 
         task.join();
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void inconsistentIndexes() throws Exception {
+        var config = new DatabaseConfig().directPageAccess(false);
+        Database db = Database.open(config);
+
+        final String typeName = newRowTypeName();
+
+        final Object[] spec1 = {
+            long.class, "+id",
+            int.class, "num"
+        };
+        ClassMaker cm1 = newRowTypeMaker(typeName, spec1);
+        Class t1 = cm1.finish();
+        var accessors1 = access(spec1, t1);
+        var getters1 = accessors1[0];
+        var setters1 = accessors1[1];
+        var table1 = db.openIndex("test").asTable(t1);
+
+        // Add a "name" column and a secondary index on it.
+        final Object[] spec2 = {
+            long.class, "+id",
+            String.class, "name",
+            int.class, "num"
+        };
+        ClassMaker cm2 = newRowTypeMaker(typeName, spec2);
+        addSecondaryIndex(cm2, "+name");
+        Class t2 = cm2.finish();
+        var accessors2 = access(spec2, t2);
+        var getters2 = accessors2[0];
+        var setters2 = accessors2[1];
+        var table2 = db.openIndex("test").asTable(t2);
+
+        // Cannot store using original table definition because it doesn't have the "name"
+        // column as needed by the secondary index.
+        try {
+            var row = table1.newRow();
+            setters1[0].invoke(row, 1); // id
+            setters1[1].invoke(row, 1); // num
+            table1.store(null, row);
+            fail();
+        } catch (SchemaChangeException e) {
+            assertTrue(e.getMessage().contains("secondary"));
+        }
+
+        // Can store using new table definition.
+        {
+            var row = table2.newRow();
+            setters2[0].invoke(row, 1); // id
+            setters2[1].invoke(row, "name-1"); // name
+            setters2[2].invoke(row, 1); // num
+            table2.store(null, row);
+        }
+
+        // Loading from the original table should work.
+        var row = table1.newRow();
+        setters1[0].invoke(row, 1); // id
+        table1.load(null, row);
+        assertEquals(1L, getters1[0].invoke(row));
+        assertEquals(1, getters1[1].invoke(row));
+
+        // Verify the secondary index entry exists.
+        try (Scanner s = table2.newScanner(null, "name == ?", "name-1")) {
+            assertNotNull(s.row());
+            s.step();
+            assertNull(s.row());
+        }
+
+        // Check again directly.
+        Table secondary = ((BaseTable) table2).viewSecondaryIndex("name").viewUnjoined();
+        try (Scanner s = secondary.newScanner(null)) {
+            assertNotNull(s.row());
+            s.step();
+            assertNull(s.row());
+        }
+
+        // Deleting the row against the original table should still delete the secondary index
+        // entry. This is because the trigger will see schema version 2 and adapt accordingly.
+        table1.delete(null, row);
+
+        // Verify the secondary index entry doesn't exists.
+        try (Scanner s = table2.newScanner(null, "name == ?", "name-1")) {
+            assertNull(s.row());
+        }
+
+        // Check again directly.
+        try (Scanner s = secondary.newScanner(null)) {
+            assertNull(s.row());
+        }
+    }
 }

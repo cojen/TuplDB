@@ -360,7 +360,7 @@ public class RowStore {
     }
 
     /**
-     * Checks if the the schema has changed incompatibly.
+     * Checks if the schema has changed incompatibly.
      *
      * @return true if schema is exactly the same; false if changed compatibly
      * @throws IllegalStateException if incompatible change is detected

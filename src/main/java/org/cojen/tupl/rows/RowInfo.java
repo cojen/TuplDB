@@ -41,6 +41,7 @@ import org.cojen.tupl.Hidden;
 import org.cojen.tupl.Nullable;
 import org.cojen.tupl.PrimaryKey;
 import org.cojen.tupl.SecondaryIndex;
+import org.cojen.tupl.SchemaChangeException;
 import org.cojen.tupl.Unsigned;
 
 import static org.cojen.tupl.rows.ColumnInfo.*;
@@ -203,6 +204,9 @@ class RowInfo extends ColumnSet {
     /**
      * Returns a copy of this RowInfo but with the alternateKeys and secondaryIndexes from the
      * given RowInfo. If they're the same, then this RowInfo is returned as-is.
+     *
+     * @throws SchemaChangeException if the added indexes don't exactly refer to columns in
+     * this RowInfo
      */
     RowInfo withIndexes(RowInfo current) {
         if (Objects.equals(alternateKeys, current.alternateKeys) &&
@@ -210,6 +214,9 @@ class RowInfo extends ColumnSet {
         {
             return this;
         }
+
+        checkIndexes("alternate keys", current.alternateKeys);
+        checkIndexes("secondary indexes", current.secondaryIndexes);
 
         var copy = new RowInfo(name);
         copy.allColumns = allColumns;
@@ -219,6 +226,16 @@ class RowInfo extends ColumnSet {
         copy.secondaryIndexes = current.secondaryIndexes;
 
         return copy;
+    }
+
+    private void checkIndexes(String which, NavigableSet<ColumnSet> set) {
+        for (ColumnSet cs : set) {
+            for (ColumnInfo column : cs.allColumns.values()) {
+                if (!column.equals(allColumns.get(column.name))) {
+                    throw new SchemaChangeException("Cannot alter " + which + ": " + name);
+                }
+            }
+        }
     }
 
     /**
