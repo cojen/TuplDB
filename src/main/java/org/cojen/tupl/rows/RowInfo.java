@@ -202,11 +202,16 @@ class RowInfo extends ColumnSet {
 
     /**
      * Returns a copy of this RowInfo but with the alternateKeys and secondaryIndexes from the
-     * given RowInfo. If they're the same, then this RowInfo is returned as-is.
+     * given RowInfo. If any alternateKeys or secondaryIndexes refer to columns in this RowInfo
+     * which don't exactly match, they're excluded. If the RowInfo would be unchanged, then
+     * this original RowInfo is returned as-is.
      */
     RowInfo withIndexes(RowInfo current) {
-        if (Objects.equals(alternateKeys, current.alternateKeys) &&
-            Objects.equals(secondaryIndexes, current.secondaryIndexes))
+        NavigableSet<ColumnSet> withAlternateKeys = pruneIndexes(current.alternateKeys);
+        NavigableSet<ColumnSet> withSecondaryIndexes = pruneIndexes(current.secondaryIndexes);
+
+        if (Objects.equals(alternateKeys, withAlternateKeys) &&
+            Objects.equals(secondaryIndexes, withSecondaryIndexes))
         {
             return this;
         }
@@ -215,10 +220,28 @@ class RowInfo extends ColumnSet {
         copy.allColumns = allColumns;
         copy.valueColumns = valueColumns;
         copy.keyColumns = keyColumns;
-        copy.alternateKeys = current.alternateKeys;
-        copy.secondaryIndexes = current.secondaryIndexes;
+        copy.alternateKeys = withAlternateKeys;
+        copy.secondaryIndexes = withSecondaryIndexes;
 
         return copy;
+    }
+
+    private NavigableSet<ColumnSet> pruneIndexes(NavigableSet<ColumnSet> set) {
+        NavigableSet<ColumnSet> copy = null;
+
+        for (ColumnSet cs : set) {
+            for (ColumnInfo column : cs.allColumns.values()) {
+                if (!column.equals(allColumns.get(column.name))) {
+                    if (copy == null) {
+                        copy = new TreeSet<>(set);
+                    }
+                    copy.remove(cs);
+                    break;
+                }
+            }
+        }
+
+        return copy == null ? set : copy;
     }
 
     /**

@@ -360,7 +360,7 @@ public class RowStore {
     }
 
     /**
-     * Checks if the the schema has changed incompatibly.
+     * Checks if the schema has changed incompatibly.
      *
      * @return true if schema is exactly the same; false if changed compatibly
      * @throws IllegalStateException if incompatible change is detected
@@ -1187,7 +1187,7 @@ public class RowStore {
         Map<Index, byte[]> secondariesToDelete = null;
 
         Transaction txn = mSchemata.newTransaction(DurabilityMode.SYNC);
-        try (Cursor current = mSchemata.newCursor(txn)) {
+        doSchemaVersion: try (Cursor current = mSchemata.newCursor(txn)) {
             txn.lockTimeout(-1, null);
 
             current.find(key(indexId));
@@ -1289,6 +1289,14 @@ public class RowStore {
                     c.store(nameBytes);
                 }
             }
+
+            if (!mostRecent) {
+                // Cannot delete or create indexes.
+                txn.commit();
+                break doSchemaVersion;
+            }
+
+            // The rest of the code in this block does index deletion and creation stuff.
 
             // Start with the full set of secondary descriptors and later prune it down to
             // those that need to be created.
