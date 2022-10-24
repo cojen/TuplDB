@@ -527,7 +527,7 @@ public class RowPredicateMaker {
 
     /**
      * Makes a decode test method for secondary indexes, or for unevolvable types, or for just
-     * the key of primary indexes. In both cases, there's no schema version to decode.
+     * the key of primary indexes. In all cases, there's no schema version to decode.
      *
      * Accepts these MethodTypes:
      *
