@@ -19,6 +19,8 @@ package org.cojen.tupl.remote;
 
 import java.io.IOException;
 
+import org.cojen.dirmi.Session;
+
 import org.cojen.tupl.Filter;
 import org.cojen.tupl.Index;
 
@@ -57,8 +59,7 @@ final class ServerIndex extends ServerView<Index> implements RemoteIndex {
     public RemoteTable asTable(String typeName) throws IOException {
         Class<?> clazz;
         try {
-            // FIXME: should use a ClassLoader
-            clazz = Class.forName(typeName);
+            clazz = Session.current().resolveClass(typeName);
         } catch (ClassNotFoundException e) {
             throw new IllegalStateException(e);
         }
