@@ -17,6 +17,7 @@ module org.cojen.tupl {
     requires com.sun.jna.platform;
 
     requires org.cojen.maker;
+    requires org.cojen.dirmi;
 
     // Could be transitive because it's part of the public API, but only in EventListener.
     // I doubt that the java.logging module is used much.
