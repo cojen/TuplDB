@@ -25,6 +25,7 @@ import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.Remote;
 import org.cojen.dirmi.RemoteException;
 import org.cojen.dirmi.RemoteFailure;
+import org.cojen.dirmi.Serialized;
 
 import org.cojen.tupl.diag.QueryPlan;
 
@@ -68,12 +69,15 @@ public interface RemoteTable extends Remote {
 
     public Pipe delete(RemoteTransaction txn, Pipe pipe) throws IOException;
 
+    @Serialized(filter="java.base/*;org.cojen.tupl.**")
     public QueryPlan scannerPlan(RemoteTransaction txn, String query, Object... args)
         throws IOException;
 
+    @Serialized(filter="java.base/*;org.cojen.tupl.**")
     public QueryPlan updaterPlan(RemoteTransaction txn, String query, Object... args)
         throws IOException;
 
+    @Serialized(filter="java.base/*;org.cojen.tupl.**")
     public QueryPlan streamPlan(RemoteTransaction txn, String query, Object... args)
         throws IOException;
 
