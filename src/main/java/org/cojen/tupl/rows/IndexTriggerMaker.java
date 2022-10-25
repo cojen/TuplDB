@@ -338,12 +338,8 @@ public class IndexTriggerMaker<R> {
             var secondaryKeyVar = tm.encode(i << 1);
             var secondaryValueVar = tm.encode((i << 1) + 1);
 
-            Variable closerVar;
-            if (mSecondaryLocks[i] == null) {
-                closerVar = null;
-            } else {
-                closerVar = mm.field("lock" + i).invoke("openAcquire", txnVar, rowVar);
-            }
+            Variable closerVar = acquirePredicateLock
+                (mm, i, isPartial, txnVar, rowVar, secondaryKeyVar, secondaryValueVar);
 
             Label opStart = mm.label().here();
             var ixField = mm.field("ix" + i);
@@ -698,20 +694,8 @@ public class IndexTriggerMaker<R> {
             var secondaryKeyVar = tm.encode(i << 1);
             var secondaryValueVar = tm.encode((i << 1) + 1);
 
-            Variable closerVar;
-            if (mSecondaryLocks[i] == null) {
-                closerVar = null;
-            } else {
-                var lockVar = mm.field("lock" + i);
-                if (!isPartial) {
-                    closerVar = lockVar.invoke("openAcquire", txnVar, rowVar);
-                } else {
-                    // Row might be partially specified, so use the variant that can examine
-                    // the fully encoded binary form.
-                    closerVar = lockVar.invoke("openAcquireP", txnVar, rowVar,
-                                               secondaryKeyVar, secondaryValueVar);
-                }
-            }
+            Variable closerVar = acquirePredicateLock
+                (mm, i, isPartial, txnVar, rowVar, secondaryKeyVar, secondaryValueVar);
 
             Label opStart = mm.label().here();
             Field ixField = mm.field("ix" + i);
@@ -771,5 +755,27 @@ public class IndexTriggerMaker<R> {
         }
 
         return tm.requiresRow();
+    }
+
+    /**
+     * @param i secondaryInfo index
+     * @return the closerVar or null if no lock was acquired
+     */
+    private Variable acquirePredicateLock(MethodMaker mm, int i, boolean isPartial,
+                                          Variable txnVar, Variable rowVar,
+                                          Variable secondaryKeyVar, Variable secondaryValueVar)
+    {
+        if (mSecondaryLocks[i] == null) {
+            return null;
+        }
+
+        var lockVar = mm.field("lock" + i);
+        if (!isPartial) {
+            return lockVar.invoke("openAcquire", txnVar, rowVar);
+        }
+
+        // Row might be partially specified, so use the variant that can examine the fully
+        // encoded binary form.
+        return lockVar.invoke("openAcquireP", txnVar, rowVar, secondaryKeyVar, secondaryValueVar);
     }
 }
