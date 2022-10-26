@@ -24,6 +24,7 @@ import static org.junit.Assert.*;
 
 import org.cojen.dirmi.Connector;
 import org.cojen.dirmi.Environment;
+import org.cojen.dirmi.Serializer;
 
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Database;
@@ -56,7 +57,7 @@ public class RemoteTest {
         Environment env = Environment.create();
 
         env.customSerializers
-            (Map.of(DatabaseStats.class, StatsSerializer.THE,
+            (Map.of(DatabaseStats.class, Serializer.simple(DatabaseStats.class),
                     LockTimeoutException.class, LockTimeoutExceptionSerializer.THE,
                     CoreDeadlockInfo.class, DeadlockInfoSerializer.THE,
                     DetachedDeadlockInfo.class, DeadlockInfoSerializer.THE,
