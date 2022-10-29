@@ -22,12 +22,11 @@ import java.io.IOException;
 import org.cojen.dirmi.Pipe;
 
 import org.cojen.tupl.Database;
+import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.diag.DatabaseStats;
-
-import static org.cojen.tupl.remote.RemoteUtils.*;
 
 /**
  * 
@@ -106,8 +105,8 @@ public final class ServerDatabase implements RemoteDatabase {
     }
 
     @Override
-    public RemoteTransaction newTransaction(byte durabilityMode) {
-        return ServerTransaction.from(mDb.newTransaction(toDurabilityMode(durabilityMode)));
+    public RemoteTransaction newTransaction(DurabilityMode durabilityMode) {
+        return ServerTransaction.from(mDb.newTransaction(durabilityMode));
     }
 
     @Override

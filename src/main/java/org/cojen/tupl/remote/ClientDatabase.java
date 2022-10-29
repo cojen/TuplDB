@@ -43,8 +43,6 @@ import org.cojen.tupl.diag.VerificationObserver;
 import org.cojen.tupl.ext.CustomHandler;
 import org.cojen.tupl.ext.PrepareHandler;
 
-import static org.cojen.tupl.remote.RemoteUtils.*;
-
 /**
  * 
  *
@@ -146,7 +144,7 @@ public final class ClientDatabase implements Database {
     }
 
     RemoteTransaction newRemoteTransaction(DurabilityMode dm) {
-        return mRemote.newTransaction(toByte(dm));
+        return mRemote.newTransaction(dm);
     }
 
     @Override

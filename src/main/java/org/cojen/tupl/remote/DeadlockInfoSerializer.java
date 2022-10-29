@@ -19,6 +19,8 @@ package org.cojen.tupl.remote;
 
 import java.io.IOException;
 
+import java.util.Set;
+
 import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.Serializer;
 
@@ -31,13 +33,21 @@ import org.cojen.tupl.diag.DeadlockInfo;
  *
  * @author Brian S O'Neill
  */
-public final class DeadlockInfoSerializer implements Serializer<DeadlockInfo> {
+public final class DeadlockInfoSerializer implements Serializer {
     static final DeadlockInfoSerializer THE = new DeadlockInfoSerializer();
 
     private DeadlockInfoSerializer() {
     }
 
-    public void write(Pipe pipe, DeadlockInfo info) throws IOException {
+    @Override
+    public Set<Class<?>> supportedTypes() {
+        return Set.of(DeadlockInfo.class);
+    }
+
+    @Override
+    public void write(Pipe pipe, Object obj) throws IOException {
+        var info = (DeadlockInfo) obj;
+
         Object row = info.row();
         if (row != null) {
             pipe.writeObject(row.toString());
@@ -57,7 +67,8 @@ public final class DeadlockInfoSerializer implements Serializer<DeadlockInfo> {
         }
     }
 
-    public DeadlockInfo read(Pipe pipe) throws IOException {
+    @Override
+    public Object read(Pipe pipe) throws IOException {
         Object row = pipe.readObject();
         long indexId = pipe.readLong();
         byte[] indexName = (byte[]) pipe.readObject();

@@ -27,8 +27,12 @@ import org.cojen.dirmi.RemoteException;
 import org.cojen.dirmi.RemoteFailure;
 
 import org.cojen.tupl.DeadlockException;
+import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.LockFailureException;
+import org.cojen.tupl.LockResult;
+import org.cojen.tupl.Ordering;
 import org.cojen.tupl.ViewConstraintException;
+
 /**
  * 
  *
@@ -36,7 +40,7 @@ import org.cojen.tupl.ViewConstraintException;
  */
 public interface RemoteView extends Remote {
     @RemoteFailure(declared=false)
-    public byte ordering();
+    public Ordering ordering();
 
     @Batched
     @RemoteFailure(declared=false)
@@ -46,7 +50,7 @@ public interface RemoteView extends Remote {
 
     @Batched
     @RemoteFailure(declared=false)
-    public RemoteTransaction newTransaction(byte durabilityMode);
+    public RemoteTransaction newTransaction(DurabilityMode durabilityMode);
 
     public boolean isEmpty() throws IOException;
 
@@ -79,34 +83,34 @@ public interface RemoteView extends Remote {
         throws IOException;
 
     @RemoteFailure(declared=false)
-    public byte touch(RemoteTransaction txn, byte[] key) throws LockFailureException;
+    public LockResult touch(RemoteTransaction txn, byte[] key) throws LockFailureException;
 
     @RemoteFailure(declared=false)
-    public byte tryLockShared(RemoteTransaction txn, byte[] key, long nanosTimeout)
+    public LockResult tryLockShared(RemoteTransaction txn, byte[] key, long nanosTimeout)
         throws DeadlockException, LockFailureException, ViewConstraintException;
 
     @RemoteFailure(declared=false)
-    public byte lockShared(RemoteTransaction txn, byte[] key)
+    public LockResult lockShared(RemoteTransaction txn, byte[] key)
         throws LockFailureException, ViewConstraintException;
 
     @RemoteFailure(declared=false)
-    public byte tryLockUpgradable(RemoteTransaction txn, byte[] key, long nanosTimeout)
+    public LockResult tryLockUpgradable(RemoteTransaction txn, byte[] key, long nanosTimeout)
         throws DeadlockException, LockFailureException, ViewConstraintException;
 
     @RemoteFailure(declared=false)
-    public byte lockUpgradable(RemoteTransaction txn, byte[] key)
+    public LockResult lockUpgradable(RemoteTransaction txn, byte[] key)
         throws LockFailureException, ViewConstraintException;
 
     @RemoteFailure(declared=false)
-    public byte tryLockExclusive(RemoteTransaction txn, byte[] key, long nanosTimeout)
+    public LockResult tryLockExclusive(RemoteTransaction txn, byte[] key, long nanosTimeout)
         throws DeadlockException, LockFailureException, ViewConstraintException;
 
     @RemoteFailure(declared=false)
-    public byte lockExclusive(RemoteTransaction txn, byte[] key)
+    public LockResult lockExclusive(RemoteTransaction txn, byte[] key)
         throws LockFailureException, ViewConstraintException;
 
     @RemoteFailure(declared=false)
-    public byte lockCheck(RemoteTransaction txn, byte[] key) throws ViewConstraintException;
+    public LockResult lockCheck(RemoteTransaction txn, byte[] key) throws ViewConstraintException;
 
     @RemoteFailure(declared=false)
     public boolean isUnmodifiable();

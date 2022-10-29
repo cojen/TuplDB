@@ -27,11 +27,11 @@ import org.cojen.dirmi.SessionAware;
 
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DeadlockException;
+import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockMode;
+import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Transaction;
-
-import static org.cojen.tupl.remote.RemoteUtils.*;
 
 /**
  * 
@@ -67,18 +67,18 @@ final class ServerTransaction implements RemoteTransaction, SessionAware {
     }
 
     @Override
-    public void lockMode(byte mode) {
-        mTxn.lockMode(toLockMode(mode));
+    public void lockMode(LockMode mode) {
+        mTxn.lockMode(mode);
     }
 
     @Override
-    public byte lockMode() {
-        return toByte(mTxn.lockMode());
+    public LockMode lockMode() {
+        return mTxn.lockMode();
     }
 
     @Override
-    public void lockTimeout(long timeout, byte unit) {
-        mTxn.lockTimeout(timeout, toTimeUnit(unit));
+    public void lockTimeout(long timeout, TimeUnit unit) {
+        mTxn.lockTimeout(timeout, unit);
     }
 
     @Override
@@ -87,8 +87,8 @@ final class ServerTransaction implements RemoteTransaction, SessionAware {
     }
 
     @Override
-    public long lockTimeout(byte unit) {
-        return mTxn.lockTimeout(toTimeUnit(unit));
+    public long lockTimeout(TimeUnit unit) {
+        return mTxn.lockTimeout(unit);
     }
 
     @Override
@@ -97,13 +97,13 @@ final class ServerTransaction implements RemoteTransaction, SessionAware {
     }
 
     @Override
-    public void durabilityMode(byte mode) {
-        mTxn.durabilityMode(toDurabilityMode(mode));
+    public void durabilityMode(DurabilityMode mode) {
+        mTxn.durabilityMode(mode);
     }
 
     @Override
-    public byte durabilityMode() {
-        return toByte(mTxn.durabilityMode());
+    public DurabilityMode durabilityMode() {
+        return mTxn.durabilityMode();
     }
 
     @Override
@@ -147,18 +147,18 @@ final class ServerTransaction implements RemoteTransaction, SessionAware {
     }
 
     @Override
-    public byte lockShared(long indexId, byte[] key) throws LockFailureException {
-        return toByte(mTxn.lockShared(indexId, key));
+    public LockResult lockShared(long indexId, byte[] key) throws LockFailureException {
+        return mTxn.lockShared(indexId, key);
     }
 
     @Override
-    public byte lockUpgradable(long indexId, byte[] key) throws LockFailureException {
-        return toByte(mTxn.lockUpgradable(indexId, key));
+    public LockResult lockUpgradable(long indexId, byte[] key) throws LockFailureException {
+        return mTxn.lockUpgradable(indexId, key);
     }
 
     @Override
-    public byte lockExclusive(long indexId, byte[] key) throws LockFailureException {
-        return toByte(mTxn.lockExclusive(indexId, key));
+    public LockResult lockExclusive(long indexId, byte[] key) throws LockFailureException {
+        return mTxn.lockExclusive(indexId, key);
     }
 
     @Override
@@ -172,50 +172,50 @@ final class ServerTransaction implements RemoteTransaction, SessionAware {
     }
 
     @Override
-    public byte tryLockShared(long indexId, byte[] key, long nanosTimeout)
+    public LockResult tryLockShared(long indexId, byte[] key, long nanosTimeout)
         throws DeadlockException, LockFailureException
     {
-        return toByte(mTxn.tryLockShared(indexId, key, nanosTimeout));
+        return mTxn.tryLockShared(indexId, key, nanosTimeout);
     }
 
     @Override
-    public byte lockShared(long indexId, byte[] key, long nanosTimeout)
+    public LockResult lockShared(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
     {
-        return toByte(mTxn.lockShared(indexId, key, nanosTimeout));
+        return mTxn.lockShared(indexId, key, nanosTimeout);
     }
 
     @Override
-    public byte tryLockUpgradable(long indexId, byte[] key, long nanosTimeout)
+    public LockResult tryLockUpgradable(long indexId, byte[] key, long nanosTimeout)
         throws DeadlockException, LockFailureException
     {
-        return toByte(mTxn.tryLockUpgradable(indexId, key, nanosTimeout));
+        return mTxn.tryLockUpgradable(indexId, key, nanosTimeout);
     }
 
     @Override
-    public byte lockUpgradable(long indexId, byte[] key, long nanosTimeout)
+    public LockResult lockUpgradable(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
     {
-        return toByte(mTxn.lockUpgradable(indexId, key, nanosTimeout));
+        return mTxn.lockUpgradable(indexId, key, nanosTimeout);
     }
 
     @Override
-    public byte tryLockExclusive(long indexId, byte[] key, long nanosTimeout)
+    public LockResult tryLockExclusive(long indexId, byte[] key, long nanosTimeout)
         throws DeadlockException, LockFailureException
     {
-        return toByte(mTxn.tryLockExclusive(indexId, key, nanosTimeout));
+        return mTxn.tryLockExclusive(indexId, key, nanosTimeout);
     }
 
     @Override
-    public byte lockExclusive(long indexId, byte[] key, long nanosTimeout)
+    public LockResult lockExclusive(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
     {
-        return toByte(mTxn.lockExclusive(indexId, key, nanosTimeout));
+        return mTxn.lockExclusive(indexId, key, nanosTimeout);
     }
 
     @Override
-    public byte lockCheck(long indexId, byte[] key) {
-        return toByte(mTxn.lockCheck(indexId, key));
+    public LockResult lockCheck(long indexId, byte[] key) {
+        return mTxn.lockCheck(indexId, key);
     }
 
     @Override

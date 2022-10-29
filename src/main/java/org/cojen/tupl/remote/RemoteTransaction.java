@@ -19,6 +19,8 @@ package org.cojen.tupl.remote;
 
 import java.io.IOException;
 
+import java.util.concurrent.TimeUnit;
+
 import org.cojen.dirmi.Batched;
 import org.cojen.dirmi.Disposer;
 import org.cojen.dirmi.NoReply;
@@ -28,7 +30,10 @@ import org.cojen.dirmi.RemoteFailure;
 
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DeadlockException;
+import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.LockFailureException;
+import org.cojen.tupl.LockMode;
+import org.cojen.tupl.LockResult;
 
 /**
  * 
@@ -38,31 +43,31 @@ import org.cojen.tupl.LockFailureException;
 public interface RemoteTransaction extends Remote {
     @Batched
     @RemoteFailure(declared=false)
-    void lockMode(byte mode);
+    void lockMode(LockMode mode);
 
     @RemoteFailure(declared=false)
-    byte lockMode();
+    LockMode lockMode();
 
     @Batched
     @RemoteFailure(declared=false)
-    void lockTimeout(long timeout, byte unit);
+    void lockTimeout(long timeout, TimeUnit unit);
 
     @Batched
     @RemoteFailure(declared=false)
     void lockTimeoutNanos(long timeout);
 
     @RemoteFailure(declared=false)
-    long lockTimeout(byte unit);
+    long lockTimeout(TimeUnit unit);
 
     @RemoteFailure(declared=false)
     long lockTimeoutNanos();
 
     @Batched
     @RemoteFailure(declared=false)
-    void durabilityMode(byte mode);
+    void durabilityMode(DurabilityMode mode);
 
     @RemoteFailure(declared=false)
-    byte durabilityMode();
+    DurabilityMode durabilityMode();
 
     @RemoteFailure(exception=DatabaseException.class)
     void check() throws DatabaseException;
@@ -100,13 +105,13 @@ public interface RemoteTransaction extends Remote {
     }
 
     @RemoteFailure(declared=false)
-    byte lockShared(long indexId, byte[] key) throws LockFailureException;
+    LockResult lockShared(long indexId, byte[] key) throws LockFailureException;
 
     @RemoteFailure(declared=false)
-    byte lockUpgradable(long indexId, byte[] key) throws LockFailureException;
+    LockResult lockUpgradable(long indexId, byte[] key) throws LockFailureException;
 
     @RemoteFailure(declared=false)
-    byte lockExclusive(long indexId, byte[] key) throws LockFailureException;
+    LockResult lockExclusive(long indexId, byte[] key) throws LockFailureException;
 
     @RemoteFailure(declared=false)
     boolean isNested();
@@ -115,30 +120,31 @@ public interface RemoteTransaction extends Remote {
     int nestingLevel();
 
     @RemoteFailure(declared=false)
-    byte tryLockShared(long indexId, byte[] key, long nanosTimeout)
+    LockResult tryLockShared(long indexId, byte[] key, long nanosTimeout)
         throws DeadlockException, LockFailureException;
 
     @RemoteFailure(declared=false)
-    byte lockShared(long indexId, byte[] key, long nanosTimeout)
+    LockResult lockShared(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException;
 
     @RemoteFailure(declared=false)
-    byte tryLockUpgradable(long indexId, byte[] key, long nanosTimeout)
+    LockResult tryLockUpgradable(long indexId, byte[] key, long nanosTimeout)
         throws DeadlockException, LockFailureException;
 
     @RemoteFailure(declared=false)
-    byte lockUpgradable(long indexId, byte[] key, long nanosTimeout)
+    LockResult lockUpgradable(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException;
 
     @RemoteFailure(declared=false)
-    byte tryLockExclusive(long indexId, byte[] key, long nanosTimeout)
+    LockResult tryLockExclusive(long indexId, byte[] key, long nanosTimeout)
         throws DeadlockException, LockFailureException;
 
     @RemoteFailure(declared=false)
-    byte lockExclusive(long indexId, byte[] key, long nanosTimeout) throws LockFailureException;
+    LockResult lockExclusive(long indexId, byte[] key, long nanosTimeout)
+        throws LockFailureException;
 
     @RemoteFailure(declared=false)
-    byte lockCheck(long indexId, byte[] key);
+    LockResult lockCheck(long indexId, byte[] key);
 
     @RemoteFailure(declared=false)
     long lastLockedIndex();

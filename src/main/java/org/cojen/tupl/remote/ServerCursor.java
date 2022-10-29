@@ -26,11 +26,11 @@ import org.cojen.dirmi.Session;
 import org.cojen.dirmi.SessionAware;
 
 import org.cojen.tupl.Cursor;
+import org.cojen.tupl.LockResult;
+import org.cojen.tupl.Ordering;
 import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.core.Utils;
-
-import static org.cojen.tupl.remote.RemoteUtils.*;
 
 /**
  * 
@@ -58,8 +58,8 @@ final class ServerCursor implements RemoteCursor, SessionAware {
     }
 
     @Override
-    public byte ordering() {
-        return RemoteUtils.toByte(mCursor.ordering());
+    public Ordering ordering() {
+        return mCursor.ordering();
     }
 
     @Override
@@ -98,115 +98,115 @@ final class ServerCursor implements RemoteCursor, SessionAware {
     }
 
     @Override
-    public byte first() throws IOException {
-        return toByte(mCursor.first());
+    public LockResult first() throws IOException {
+        return mCursor.first();
     }
 
     @Override
-    public byte last() throws IOException {
-        return toByte(mCursor.last());
+    public LockResult last() throws IOException {
+        return mCursor.last();
     }
 
     @Override
-    public byte skip(long amount) throws IOException {
-        return toByte(mCursor.skip(amount));
+    public LockResult skip(long amount) throws IOException {
+        return mCursor.skip(amount);
     }
 
     @Override
-    public byte skip(long amount, byte[] limitKey, boolean inclusive) throws IOException {
-        return toByte(mCursor.skip(amount, limitKey, inclusive));
+    public LockResult skip(long amount, byte[] limitKey, boolean inclusive) throws IOException {
+        return mCursor.skip(amount, limitKey, inclusive);
     }
 
     @Override
-    public byte next() throws IOException {
-        return toByte(mCursor.next());
+    public LockResult next() throws IOException {
+        return mCursor.next();
     }
 
     @Override
-    public byte nextLe(byte[] limitKey) throws IOException {
-        return toByte(mCursor.nextLe(limitKey));
+    public LockResult nextLe(byte[] limitKey) throws IOException {
+        return mCursor.nextLe(limitKey);
     }
 
     @Override
-    public byte nextLt(byte[] limitKey) throws IOException {
-        return toByte(mCursor.nextLt(limitKey));
+    public LockResult nextLt(byte[] limitKey) throws IOException {
+        return mCursor.nextLt(limitKey);
     }
 
     @Override
-    public byte previous() throws IOException {
-        return toByte(mCursor.previous());
+    public LockResult previous() throws IOException {
+        return mCursor.previous();
     }
 
     @Override
-    public byte previousGe(byte[] limitKey) throws IOException {
-        return toByte(mCursor.previousGe(limitKey));
+    public LockResult previousGe(byte[] limitKey) throws IOException {
+        return mCursor.previousGe(limitKey);
     }
 
     @Override
-    public byte previousGt(byte[] limitKey) throws IOException {
-        return toByte(mCursor.previousGe(limitKey));
+    public LockResult previousGt(byte[] limitKey) throws IOException {
+        return mCursor.previousGe(limitKey);
     }
 
     @Override
-    public byte find(byte[] key) throws IOException {
-        return toByte(mCursor.find(key));
+    public LockResult find(byte[] key) throws IOException {
+        return mCursor.find(key);
     }
 
     @Override
-    public byte findGe(byte[] key) throws IOException {
-        return toByte(mCursor.findGe(key));
+    public LockResult findGe(byte[] key) throws IOException {
+        return mCursor.findGe(key);
     }
 
     @Override
-    public byte findGt(byte[] key) throws IOException {
-        return toByte(mCursor.findGt(key));
+    public LockResult findGt(byte[] key) throws IOException {
+        return mCursor.findGt(key);
     }
 
     @Override
-    public byte findLe(byte[] key) throws IOException {
-        return toByte(mCursor.findLe(key));
+    public LockResult findLe(byte[] key) throws IOException {
+        return mCursor.findLe(key);
     }
 
     @Override
-    public byte findLt(byte[] key) throws IOException {
-        return toByte(mCursor.findLt(key));
+    public LockResult findLt(byte[] key) throws IOException {
+        return mCursor.findLt(key);
     }
 
     @Override
-    public byte findNearby(byte[] key) throws IOException {
-        return toByte(mCursor.findNearby(key));
+    public LockResult findNearby(byte[] key) throws IOException {
+        return mCursor.findNearby(key);
     }
 
     @Override
-    public byte findNearbyGe(byte[] key) throws IOException {
-        return toByte(mCursor.findNearbyGe(key));
+    public LockResult findNearbyGe(byte[] key) throws IOException {
+        return mCursor.findNearbyGe(key);
     }
 
     @Override
-    public byte findNearbyGt(byte[] key) throws IOException {
-        return toByte(mCursor.findNearbyGe(key));
+    public LockResult findNearbyGt(byte[] key) throws IOException {
+        return mCursor.findNearbyGe(key);
     }
 
     @Override
-    public byte findNearbyLe(byte[] key) throws IOException {
-        return toByte(mCursor.findNearbyLe(key));
+    public LockResult findNearbyLe(byte[] key) throws IOException {
+        return mCursor.findNearbyLe(key);
     }
 
     @Override
-    public byte findNearbyLt(byte[] key) throws IOException {
-        return toByte(mCursor.findNearbyLt(key));
+    public LockResult findNearbyLt(byte[] key) throws IOException {
+        return mCursor.findNearbyLt(key);
     }
 
     @Override
-    public byte random(byte[] lowKey, byte[] highKey) throws IOException {
-        return toByte(mCursor.random(lowKey, highKey));
+    public LockResult random(byte[] lowKey, byte[] highKey) throws IOException {
+        return mCursor.random(lowKey, highKey);
     }
 
     @Override
-    public byte random(byte[] lowKey, boolean lowInclusive,
-                       byte[] highKey, boolean highInclusive) throws IOException
+    public LockResult random(byte[] lowKey, boolean lowInclusive,
+                             byte[] highKey, boolean highInclusive) throws IOException
     {
-        return toByte(mCursor.random(lowKey, lowInclusive, highKey, highInclusive));
+        return mCursor.random(lowKey, lowInclusive, highKey, highInclusive);
     }
 
     @Override
@@ -215,13 +215,13 @@ final class ServerCursor implements RemoteCursor, SessionAware {
     }
 
     @Override
-    public byte lock() throws IOException {
-        return toByte(mCursor.lock());
+    public LockResult lock() throws IOException {
+        return mCursor.lock();
     }
 
     @Override
-    public byte load() throws IOException {
-        return toByte(mCursor.load());
+    public LockResult load() throws IOException {
+        return mCursor.load();
     }
 
     @Override

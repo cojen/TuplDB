@@ -29,8 +29,6 @@ import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
 import org.cojen.tupl.ViewConstraintException;
 
-import static org.cojen.tupl.remote.RemoteUtils.*;
-
 /**
  * 
  *
@@ -47,7 +45,7 @@ class ClientView<R extends RemoteView> implements View {
 
     @Override
     public Ordering ordering() {
-        return RemoteUtils.toOrdering(mRemote.ordering());
+        return mRemote.ordering();
     }
 
     @Override
@@ -62,7 +60,7 @@ class ClientView<R extends RemoteView> implements View {
 
     @Override
     public Transaction newTransaction(DurabilityMode dm) {
-        return ClientTransaction.from(mDb, mRemote.newTransaction(toByte(dm)), dm);
+        return ClientTransaction.from(mDb, mRemote.newTransaction(dm), dm);
     }
 
     @Override
@@ -137,56 +135,54 @@ class ClientView<R extends RemoteView> implements View {
 
     @Override
     public LockResult touch(Transaction txn, byte[] key) throws LockFailureException {
-        return toLockResult(mRemote.touch(mDb.remoteTransaction(txn), key));
+        return mRemote.touch(mDb.remoteTransaction(txn), key);
     }
 
     @Override
     public LockResult tryLockShared(Transaction txn, byte[] key, long nanosTimeout)
         throws DeadlockException, LockFailureException, ViewConstraintException
     {
-        return toLockResult(mRemote.tryLockShared(mDb.remoteTransaction(txn), key, nanosTimeout));
+        return mRemote.tryLockShared(mDb.remoteTransaction(txn), key, nanosTimeout);
     }
 
     @Override
     public LockResult lockShared(Transaction txn, byte[] key)
         throws LockFailureException, ViewConstraintException 
     {
-        return toLockResult(mRemote.lockShared(mDb.remoteTransaction(txn), key));
+        return mRemote.lockShared(mDb.remoteTransaction(txn), key);
     }
 
     @Override
     public LockResult tryLockUpgradable(Transaction txn, byte[] key, long nanosTimeout)
         throws DeadlockException, LockFailureException, ViewConstraintException
     {
-        return toLockResult(mRemote.tryLockUpgradable
-                            (mDb.remoteTransaction(txn), key, nanosTimeout));
+        return mRemote.tryLockUpgradable(mDb.remoteTransaction(txn), key, nanosTimeout);
     }
 
     @Override
     public LockResult lockUpgradable(Transaction txn, byte[] key)
         throws LockFailureException, ViewConstraintException
     {
-        return toLockResult(mRemote.lockUpgradable(mDb.remoteTransaction(txn), key));
+        return mRemote.lockUpgradable(mDb.remoteTransaction(txn), key);
     }
 
     @Override
     public LockResult tryLockExclusive(Transaction txn, byte[] key, long nanosTimeout)
         throws DeadlockException, LockFailureException, ViewConstraintException
     {
-        return toLockResult(mRemote.tryLockExclusive
-                            (mDb.remoteTransaction(txn), key, nanosTimeout));
+        return mRemote.tryLockExclusive(mDb.remoteTransaction(txn), key, nanosTimeout);
     }
 
     @Override
     public LockResult lockExclusive(Transaction txn, byte[] key)
         throws LockFailureException, ViewConstraintException 
     {
-        return toLockResult(mRemote.lockExclusive(mDb.remoteTransaction(txn), key));
+        return mRemote.lockExclusive(mDb.remoteTransaction(txn), key);
     }
 
     @Override
     public LockResult lockCheck(Transaction txn, byte[] key) throws ViewConstraintException {
-        return toLockResult(mRemote.lockCheck(mDb.remoteTransaction(txn), key));
+        return mRemote.lockCheck(mDb.remoteTransaction(txn), key);
     }
 
     @Override

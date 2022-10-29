@@ -35,8 +35,6 @@ import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.core.Utils;
 
-import static org.cojen.tupl.remote.RemoteUtils.*;
-
 /**
  * 
  *
@@ -66,7 +64,7 @@ final class ClientTransaction implements Transaction {
 
     @Override
     public void lockMode(LockMode mode) {
-        remote().lockMode(toByte(mode));
+        remote().lockMode(mode);
         mLockMode = mode;
     }
 
@@ -74,7 +72,7 @@ final class ClientTransaction implements Transaction {
     public LockMode lockMode() {
         LockMode mode = mLockMode;
         if (mode == null) {
-            mLockMode = mode = toLockMode(remote().lockMode());
+            mLockMode = mode = remote().lockMode();
         }
         return mode;
     }
@@ -97,7 +95,7 @@ final class ClientTransaction implements Transaction {
 
     @Override
     public void durabilityMode(DurabilityMode mode) {
-        remote().durabilityMode(toByte(mode));
+        remote().durabilityMode(mode);
         mDurabilityMode = mode;
     }
 
@@ -105,7 +103,7 @@ final class ClientTransaction implements Transaction {
     public DurabilityMode durabilityMode() {
         DurabilityMode mode = mDurabilityMode;
         if (mode == null) {
-            mDurabilityMode = mode = toDurabilityMode(remote().durabilityMode());
+            mDurabilityMode = mode = remote().durabilityMode();
         }
         return mode;
     }
@@ -216,17 +214,17 @@ final class ClientTransaction implements Transaction {
 
     @Override
     public LockResult lockShared(long indexId, byte[] key) throws LockFailureException {
-        return toLockResult(remote().lockShared(indexId, key));
+        return remote().lockShared(indexId, key);
     }
 
     @Override
     public LockResult lockUpgradable(long indexId, byte[] key) throws LockFailureException {
-        return toLockResult(remote().lockUpgradable(indexId, key));
+        return remote().lockUpgradable(indexId, key);
     }
 
     @Override
     public LockResult lockExclusive(long indexId, byte[] key) throws LockFailureException {
-        return toLockResult(remote().lockExclusive(indexId, key));
+        return remote().lockExclusive(indexId, key);
     }
 
     @Override
@@ -243,47 +241,47 @@ final class ClientTransaction implements Transaction {
     public LockResult tryLockShared(long indexId, byte[] key, long nanosTimeout)
         throws DeadlockException, LockFailureException
     {
-        return toLockResult(remote().tryLockShared(indexId, key, nanosTimeout));
+        return remote().tryLockShared(indexId, key, nanosTimeout);
     }
 
     @Override
     public LockResult lockShared(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
     {
-        return toLockResult(remote().lockShared(indexId, key, nanosTimeout));
+        return remote().lockShared(indexId, key, nanosTimeout);
     }
 
     @Override
     public LockResult tryLockUpgradable(long indexId, byte[] key, long nanosTimeout)
         throws DeadlockException, LockFailureException
     {
-        return toLockResult(remote().tryLockUpgradable(indexId, key, nanosTimeout));
+        return remote().tryLockUpgradable(indexId, key, nanosTimeout);
     }
 
     @Override
     public LockResult lockUpgradable(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
     {
-        return toLockResult(remote().lockUpgradable(indexId, key, nanosTimeout));
+        return remote().lockUpgradable(indexId, key, nanosTimeout);
     }
 
     @Override
     public LockResult tryLockExclusive(long indexId, byte[] key, long nanosTimeout)
         throws DeadlockException, LockFailureException
     {
-        return toLockResult(remote().tryLockExclusive(indexId, key, nanosTimeout));
+        return remote().tryLockExclusive(indexId, key, nanosTimeout);
     }
 
     @Override
     public LockResult lockExclusive(long indexId, byte[] key, long nanosTimeout)
         throws LockFailureException
     {
-        return toLockResult(remote().lockExclusive(indexId, key, nanosTimeout));
+        return remote().lockExclusive(indexId, key, nanosTimeout);
     }
 
     @Override
     public LockResult lockCheck(long indexId, byte[] key) {
-        return toLockResult(remote().lockCheck(indexId, key));
+        return remote().lockCheck(indexId, key);
     }
 
     @Override
@@ -344,7 +342,7 @@ final class ClientTransaction implements Transaction {
 
             try {
                 if (mLockMode != null) {
-                    remote().lockMode(toByte(mLockMode));
+                    remote().lockMode(mLockMode);
                 }
                 if (mLockTimeoutNanos != Long.MIN_VALUE) {
                     remote().lockTimeoutNanos(mLockTimeoutNanos);

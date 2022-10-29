@@ -25,6 +25,9 @@ import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.Remote;
 import org.cojen.dirmi.RemoteFailure;
 
+import org.cojen.tupl.LockResult;
+import org.cojen.tupl.Ordering;
+
 /**
  * 
  *
@@ -32,7 +35,7 @@ import org.cojen.dirmi.RemoteFailure;
  */
 public interface RemoteCursor extends Remote {
     @RemoteFailure(declared=false)
-    public byte ordering();
+    public Ordering ordering();
 
     @Batched
     @RemoteFailure(declared=false)
@@ -57,56 +60,56 @@ public interface RemoteCursor extends Remote {
     @RemoteFailure(declared=false)
     public void unregister();
 
-    public byte first() throws IOException;
+    public LockResult first() throws IOException;
 
-    public byte last() throws IOException;
+    public LockResult last() throws IOException;
 
-    public byte skip(long amount) throws IOException;
+    public LockResult skip(long amount) throws IOException;
 
-    public byte skip(long amount, byte[] limitKey, boolean inclusive) throws IOException;
+    public LockResult skip(long amount, byte[] limitKey, boolean inclusive) throws IOException;
 
-    public byte next() throws IOException;
+    public LockResult next() throws IOException;
 
-    public byte nextLe(byte[] limitKey) throws IOException;
+    public LockResult nextLe(byte[] limitKey) throws IOException;
 
-    public byte nextLt(byte[] limitKey) throws IOException;
+    public LockResult nextLt(byte[] limitKey) throws IOException;
 
-    public byte previous() throws IOException;
+    public LockResult previous() throws IOException;
 
-    public byte previousGe(byte[] limitKey) throws IOException;
+    public LockResult previousGe(byte[] limitKey) throws IOException;
 
-    public byte previousGt(byte[] limitKey) throws IOException;
+    public LockResult previousGt(byte[] limitKey) throws IOException;
 
-    public byte find(byte[] key) throws IOException;
+    public LockResult find(byte[] key) throws IOException;
 
-    public byte findGe(byte[] key) throws IOException;
+    public LockResult findGe(byte[] key) throws IOException;
 
-    public byte findGt(byte[] key) throws IOException;
+    public LockResult findGt(byte[] key) throws IOException;
 
-    public byte findLe(byte[] key) throws IOException;
+    public LockResult findLe(byte[] key) throws IOException;
 
-    public byte findLt(byte[] key) throws IOException;
+    public LockResult findLt(byte[] key) throws IOException;
 
-    public byte findNearby(byte[] key) throws IOException;
+    public LockResult findNearby(byte[] key) throws IOException;
 
-    public byte findNearbyGe(byte[] key) throws IOException;
+    public LockResult findNearbyGe(byte[] key) throws IOException;
 
-    public byte findNearbyGt(byte[] key) throws IOException;
+    public LockResult findNearbyGt(byte[] key) throws IOException;
 
-    public byte findNearbyLe(byte[] key) throws IOException;
+    public LockResult findNearbyLe(byte[] key) throws IOException;
 
-    public byte findNearbyLt(byte[] key) throws IOException;
+    public LockResult findNearbyLt(byte[] key) throws IOException;
 
-    public byte random(byte[] lowKey, byte[] highKey) throws IOException;
+    public LockResult random(byte[] lowKey, byte[] highKey) throws IOException;
 
-    public byte random(byte[] lowKey, boolean lowInclusive,
-                       byte[] highKey, boolean highInclusive) throws IOException;
+    public LockResult random(byte[] lowKey, boolean lowInclusive,
+                             byte[] highKey, boolean highInclusive) throws IOException;
 
     public boolean exists() throws IOException;
 
-    public byte lock() throws IOException;
+    public LockResult lock() throws IOException;
 
-    public byte load() throws IOException;
+    public LockResult load() throws IOException;
 
     public void store(byte[] value) throws IOException;
 

@@ -19,6 +19,8 @@ package org.cojen.tupl.remote;
 
 import java.io.IOException;
 
+import java.util.Set;
+
 import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.Serializer;
 
@@ -29,13 +31,20 @@ import org.cojen.tupl.LockTimeoutException;
  *
  * @author Brian S O'Neill
  */
-public final class LockTimeoutExceptionSerializer implements Serializer<LockTimeoutException> {
+public final class LockTimeoutExceptionSerializer implements Serializer {
     static final LockTimeoutExceptionSerializer THE = new LockTimeoutExceptionSerializer();
 
     private LockTimeoutExceptionSerializer() {
     }
 
-    public void write(Pipe pipe, LockTimeoutException e) throws IOException {
+    @Override
+    public Set<Class<?>> supportedTypes() {
+        return Set.of(LockTimeoutException.class);
+    }
+
+    @Override
+    public void write(Pipe pipe, Object obj) throws IOException {
+        var e = (LockTimeoutException) obj;
         pipe.writeObject(e.getStackTrace());
         pipe.writeLong(e.timeoutNanos());
         Object att = e.ownerAttachment();
@@ -46,7 +55,8 @@ public final class LockTimeoutExceptionSerializer implements Serializer<LockTime
         }
     }
 
-    public LockTimeoutException read(Pipe pipe) throws IOException {
+    @Override
+    public Object read(Pipe pipe) throws IOException {
         var trace = (StackTraceElement[]) pipe.readObject();
         long timeoutNanos = pipe.readLong();
         Object att = pipe.readObject();

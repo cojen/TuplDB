@@ -33,13 +33,20 @@ import org.cojen.tupl.diag.DeadlockInfo;
  *
  * @author Brian S O'Neill
  */
-public final class DeadlockExceptionSerializer implements Serializer<DeadlockException> {
+public final class DeadlockExceptionSerializer implements Serializer {
     static final DeadlockExceptionSerializer THE = new DeadlockExceptionSerializer();
 
     private DeadlockExceptionSerializer() {
     }
 
-    public void write(Pipe pipe, DeadlockException e) throws IOException {
+    @Override
+    public Set<Class<?>> supportedTypes() {
+        return Set.of(DeadlockException.class);
+    }
+
+    @Override
+    public void write(Pipe pipe, Object obj) throws IOException {
+        var e = (DeadlockException) obj;
         pipe.writeObject(e.getStackTrace());
         pipe.writeLong(e.timeoutNanos());
         Object att = e.ownerAttachment();
@@ -52,8 +59,9 @@ public final class DeadlockExceptionSerializer implements Serializer<DeadlockExc
         pipe.writeObject(e.deadlockSet());
     }
 
+    @Override
     @SuppressWarnings("unchecked")
-    public DeadlockException read(Pipe pipe) throws IOException {
+    public Object read(Pipe pipe) throws IOException {
         var trace = (StackTraceElement[]) pipe.readObject();
         long timeoutNanos = pipe.readLong();
         Object att = pipe.readObject();

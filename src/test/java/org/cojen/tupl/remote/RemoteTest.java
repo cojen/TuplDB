@@ -17,7 +17,7 @@
 
 package org.cojen.tupl.remote;
 
-import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.*;
 import static org.junit.Assert.*;
@@ -30,8 +30,12 @@ import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseConfig;
 import org.cojen.tupl.DeadlockException;
+import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Index;
+import org.cojen.tupl.LockMode;
+import org.cojen.tupl.LockResult;
 import org.cojen.tupl.LockTimeoutException;
+import org.cojen.tupl.Ordering;
 import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.core.CoreDeadlockInfo;
@@ -57,11 +61,16 @@ public class RemoteTest {
         Environment env = Environment.create();
 
         env.customSerializers
-            (Map.of(DatabaseStats.class, Serializer.simple(DatabaseStats.class),
-                    LockTimeoutException.class, LockTimeoutExceptionSerializer.THE,
-                    CoreDeadlockInfo.class, DeadlockInfoSerializer.THE,
-                    DetachedDeadlockInfo.class, DeadlockInfoSerializer.THE,
-                    DeadlockException.class, DeadlockExceptionSerializer.THE));
+            (Serializer.simple(DatabaseStats.class),
+             Serializer.simple(TimeUnit.class),
+             Serializer.simple(DurabilityMode.class),
+             Serializer.simple(LockMode.class),
+             Serializer.simple(LockResult.class),
+             Serializer.simple(Ordering.class),
+             LockTimeoutExceptionSerializer.THE,
+             DeadlockInfoSerializer.THE,
+             DeadlockInfoSerializer.THE,
+             DeadlockExceptionSerializer.THE);
 
         env.export("main", server);
         env.connector(Connector.local(env));
@@ -105,7 +114,8 @@ public class RemoteTest {
         try (Cursor c = ix.newCursor(null)) {
             System.out.println(c);
             byte[] key;
-            for (c.first(); (key = c.key()) != null; c.next()) {
+            System.out.println(c.first());
+            for (; (key = c.key()) != null; c.next()) {
                 byte[] value = c.value();
                 String valueStr = value == null ? "null" : new String(value);
                 System.out.println(new String(key) + " -> " + valueStr);

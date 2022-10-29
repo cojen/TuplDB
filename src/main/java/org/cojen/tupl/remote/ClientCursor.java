@@ -32,8 +32,6 @@ import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.core.Utils;
 
-import static org.cojen.tupl.remote.RemoteUtils.*;
-
 /**
  * 
  *
@@ -53,7 +51,7 @@ final class ClientCursor implements Cursor {
 
     @Override
     public Ordering ordering() {
-        return toOrdering(remote().ordering());
+        return remote().ordering();
     }
 
     @Override
@@ -118,114 +116,114 @@ final class ClientCursor implements Cursor {
 
     @Override
     public LockResult first() throws IOException {
-        return toLockResult(remote().first());
+        return remote().first();
     }
 
     @Override
     public LockResult last() throws IOException {
-        return toLockResult(remote().last());
+        return remote().last();
     }
 
     @Override
     public LockResult skip(long amount) throws IOException {
-        return toLockResult(remote().skip(amount));
+        return remote().skip(amount);
     }
 
     @Override
     public LockResult skip(long amount, byte[] limitKey, boolean inclusive) throws IOException {
-        return toLockResult(remote().skip(amount, limitKey, inclusive));
+        return remote().skip(amount, limitKey, inclusive);
     }
 
     @Override
     public LockResult next() throws IOException {
-        return toLockResult(remote().next());
+        return remote().next();
     }
 
     @Override
     public LockResult nextLe(byte[] limitKey) throws IOException {
-        return toLockResult(remote().nextLe(limitKey));
+        return remote().nextLe(limitKey);
     }
 
     @Override
     public LockResult nextLt(byte[] limitKey) throws IOException {
-        return toLockResult(remote().nextLt(limitKey));
+        return remote().nextLt(limitKey);
     }
 
     @Override
     public LockResult previous() throws IOException {
-        return toLockResult(remote().previous());
+        return remote().previous();
     }
 
     @Override
     public LockResult previousGe(byte[] limitKey) throws IOException {
-        return toLockResult(remote().previousGe(limitKey));
+        return remote().previousGe(limitKey);
     }
 
     @Override
     public LockResult previousGt(byte[] limitKey) throws IOException {
-        return toLockResult(remote().previousGt(limitKey));
+        return remote().previousGt(limitKey);
     }
 
     @Override
     public LockResult find(byte[] key) throws IOException {
-        return toLockResult(remote().find(key));
+        return remote().find(key);
     }
 
     @Override
     public LockResult findGe(byte[] key) throws IOException {
-        return toLockResult(remote().findGe(key));
+        return remote().findGe(key);
     }
 
     @Override
     public LockResult findGt(byte[] key) throws IOException {
-        return toLockResult(remote().findGt(key));
+        return remote().findGt(key);
     }
 
     @Override
     public LockResult findLe(byte[] key) throws IOException {
-        return toLockResult(remote().findLe(key));
+        return remote().findLe(key);
     }
 
     @Override
     public LockResult findLt(byte[] key) throws IOException {
-        return toLockResult(remote().findLt(key));
+        return remote().findLt(key);
     }
 
     @Override
     public LockResult findNearby(byte[] key) throws IOException {
-        return toLockResult(remote().findNearby(key));
+        return remote().findNearby(key);
     }
 
     @Override
     public LockResult findNearbyGe(byte[] key) throws IOException {
-        return toLockResult(remote().findNearbyGe(key));
+        return remote().findNearbyGe(key);
     }
 
     @Override
     public LockResult findNearbyGt(byte[] key) throws IOException {
-        return toLockResult(remote().findNearbyGt(key));
+        return remote().findNearbyGt(key);
     }
 
     @Override
     public LockResult findNearbyLe(byte[] key) throws IOException {
-        return toLockResult(remote().findNearbyLe(key));
+        return remote().findNearbyLe(key);
     }
 
     @Override
     public LockResult findNearbyLt(byte[] key) throws IOException {
-        return toLockResult(remote().findNearbyLt(key));
+        return remote().findNearbyLt(key);
     }
 
     @Override
     public LockResult random(byte[] lowKey, byte[] highKey) throws IOException {
-        return toLockResult(remote().random(lowKey, highKey));
+        return remote().random(lowKey, highKey);
     }
 
     @Override
     public LockResult random(byte[] lowKey, boolean lowInclusive,
                              byte[] highKey, boolean highInclusive) throws IOException
     {
-        return toLockResult(remote().random(lowKey, lowInclusive, highKey, highInclusive));
+        return remote().random(lowKey, lowInclusive, highKey, highInclusive);
     }
 
     @Override
@@ -235,12 +233,12 @@ final class ClientCursor implements Cursor {
 
     @Override
     public LockResult lock() throws IOException {
-        return toLockResult(remote().lock());
+        return remote().lock();
     }
 
     @Override
     public LockResult load() throws IOException {
-        return toLockResult(remote().load());
+        return remote().load();
     }
 
     @Override

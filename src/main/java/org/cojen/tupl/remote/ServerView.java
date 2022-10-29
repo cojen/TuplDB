@@ -22,13 +22,14 @@ import java.io.IOException;
 import org.cojen.dirmi.Pipe;
 
 import org.cojen.tupl.DeadlockException;
+import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.LockFailureException;
+import org.cojen.tupl.LockResult;
+import org.cojen.tupl.Ordering;
 import org.cojen.tupl.View;
 import org.cojen.tupl.ViewConstraintException;
 
 import org.cojen.tupl.core.Utils;
-
-import static org.cojen.tupl.remote.RemoteUtils.*;
 
 /**
  * 
@@ -47,8 +48,8 @@ class ServerView<V extends View> implements RemoteView {
     }
 
     @Override
-    public byte ordering() {
-        return RemoteUtils.toByte(mView.ordering());
+    public Ordering ordering() {
+        return mView.ordering();
     }
 
     @Override
@@ -62,8 +63,8 @@ class ServerView<V extends View> implements RemoteView {
     }
 
     @Override
-    public RemoteTransaction newTransaction(byte durabilityMode) {
-        return ServerTransaction.from(mView.newTransaction(toDurabilityMode(durabilityMode)));
+    public RemoteTransaction newTransaction(DurabilityMode durabilityMode) {
+        return ServerTransaction.from(mView.newTransaction(durabilityMode));
     }
 
     @Override
@@ -139,55 +140,55 @@ class ServerView<V extends View> implements RemoteView {
     }
 
     @Override
-    public byte touch(RemoteTransaction txn, byte[] key) throws LockFailureException {
-        return toByte(mView.touch(ServerTransaction.txn(txn), key));
+    public LockResult touch(RemoteTransaction txn, byte[] key) throws LockFailureException {
+        return mView.touch(ServerTransaction.txn(txn), key);
     }
 
     @Override
-    public byte tryLockShared(RemoteTransaction txn, byte[] key, long nanosTimeout)
+    public LockResult tryLockShared(RemoteTransaction txn, byte[] key, long nanosTimeout)
         throws DeadlockException, LockFailureException, ViewConstraintException
     {
-        return toByte(mView.tryLockShared(ServerTransaction.txn(txn), key, nanosTimeout));
+        return mView.tryLockShared(ServerTransaction.txn(txn), key, nanosTimeout);
     }
 
     @Override
-    public byte lockShared(RemoteTransaction txn, byte[] key)
+    public LockResult lockShared(RemoteTransaction txn, byte[] key)
         throws LockFailureException, ViewConstraintException
     {
-        return toByte(mView.lockShared(ServerTransaction.txn(txn), key));
+        return mView.lockShared(ServerTransaction.txn(txn), key);
     }
 
     @Override
-    public byte tryLockUpgradable(RemoteTransaction txn, byte[] key, long nanosTimeout)
+    public LockResult tryLockUpgradable(RemoteTransaction txn, byte[] key, long nanosTimeout)
         throws DeadlockException, LockFailureException, ViewConstraintException
     {
-        return toByte(mView.tryLockUpgradable(ServerTransaction.txn(txn), key, nanosTimeout));
+        return mView.tryLockUpgradable(ServerTransaction.txn(txn), key, nanosTimeout);
     }
 
     @Override
-    public byte lockUpgradable(RemoteTransaction txn, byte[] key)
+    public LockResult lockUpgradable(RemoteTransaction txn, byte[] key)
         throws LockFailureException, ViewConstraintException
     {
-        return toByte(mView.lockUpgradable(ServerTransaction.txn(txn), key));
+        return mView.lockUpgradable(ServerTransaction.txn(txn), key);
     }
 
     @Override
-    public byte tryLockExclusive(RemoteTransaction txn, byte[] key, long nanosTimeout)
+    public LockResult tryLockExclusive(RemoteTransaction txn, byte[] key, long nanosTimeout)
         throws DeadlockException, LockFailureException, ViewConstraintException
     {
-        return toByte(mView.tryLockExclusive(ServerTransaction.txn(txn), key, nanosTimeout));
+        return mView.tryLockExclusive(ServerTransaction.txn(txn), key, nanosTimeout);
     }
 
     @Override
-    public byte lockExclusive(RemoteTransaction txn, byte[] key)
+    public LockResult lockExclusive(RemoteTransaction txn, byte[] key)
         throws LockFailureException, ViewConstraintException
     {
-        return toByte(mView.lockExclusive(ServerTransaction.txn(txn), key));
+        return mView.lockExclusive(ServerTransaction.txn(txn), key);
     }
 
     @Override
-    public byte lockCheck(RemoteTransaction txn, byte[] key) throws ViewConstraintException {
-        return toByte(mView.lockCheck(ServerTransaction.txn(txn), key));
+    public LockResult lockCheck(RemoteTransaction txn, byte[] key) throws ViewConstraintException {
+        return mView.lockCheck(ServerTransaction.txn(txn), key);
     }
 
     @Override

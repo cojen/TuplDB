@@ -27,6 +27,8 @@ import org.cojen.dirmi.RemoteException;
 import org.cojen.dirmi.RemoteFailure;
 import org.cojen.dirmi.Restorable;
 
+import org.cojen.tupl.DurabilityMode;
+
 import org.cojen.tupl.diag.DatabaseStats;
 
 /**
@@ -70,7 +72,7 @@ public interface RemoteDatabase extends Remote {
 
     @Batched
     @RemoteFailure(declared=false)
-    public RemoteTransaction newTransaction(byte durabilityMode);
+    public RemoteTransaction newTransaction(DurabilityMode durabilityMode);
 
     @Restorable
     public RemoteTransaction bogus() throws RemoteException;
