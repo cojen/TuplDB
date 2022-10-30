@@ -137,6 +137,13 @@ public class IndexSelectorTest {
                "+b+id", "c > ?1 && b > ?2 && b < ?3 && d != ?4");
 
         verify("{+c, *} c > ? && b > ? && b < ?", "+b+id", "c > ?1 && b > ?2 && b < ?3");
+
+        // No filter, not all columns are projected, but the requested ordering matches the
+        // natural order of the primary index. Should do a full scan of the primary index and
+        // not a secondary index. If a secondary index was chosen, then sorting is required.
+        verify("{+id, a}", "+id", "{id, a}");
+        verify("{-id, a}", "R+id", "{id, a}");
+        verify("{+id, +a}", "+id", "{id, a}");
     }
 
     @Test

@@ -34,6 +34,7 @@ import org.cojen.tupl.filter.ColumnToColumnFilter;
 import org.cojen.tupl.filter.OrFilter;
 import org.cojen.tupl.filter.Query;
 import org.cojen.tupl.filter.RowFilter;
+import org.cojen.tupl.filter.TrueFilter;
 import org.cojen.tupl.filter.Visitor;
 
 /**
@@ -151,7 +152,11 @@ final class IndexSelector {
             RowFilter dnf = mQuery.filter().dnf();
 
             if (!(dnf instanceof OrFilter orf)) {
-                theOne = selectIndex(dnf);
+                if (dnf == TrueFilter.THE) {
+                    theOne = findBestFullScanIndex();
+                } else {
+                    theOne = selectIndex(dnf);
+                }
                 break one;
             }
 
@@ -449,7 +454,7 @@ final class IndexSelector {
                     score += 2;
                 }
                 case HALF_RANGE -> {
-                    if (score > 0 || isCovering(terms, cs)|| isFirstOrderByColumn(column)) {
+                    if (score > 0 || isCovering(terms, cs) || isFirstOrderByColumn(column)) {
                         // Only consider a half range match after the first index column, or if
                         // no join is required, or if the column is the first for ordering,
                         score += 1;
@@ -688,10 +693,24 @@ final class IndexSelector {
     }
 
     private ColumnSet findBestFullScanIndex() {
+        ColumnSet best = mPrimaryInfo;
+
+        // The primary index is best if there's no filter and the requested ordering matches at
+        // least the first column.
+
+        if (mQuery.filter() == TrueFilter.THE) {
+            OrderBy orderBy = mQuery.orderBy();
+            if (orderBy != null && !orderBy.isEmpty()) {
+                ColumnInfo firstColumn = best.keyColumns.values().iterator().next();
+                OrderBy.Rule firstOrderBy = orderBy.values().iterator().next();
+                if (compareOrdering(firstColumn, firstOrderBy) != 0) {
+                    return best;
+                }
+            }
+        }
+
         // The best contains all projected columns and all filter terms, but with the fewest
         // extraneous columns. When all are required, the best is the primary index.
-
-        ColumnSet best = mPrimaryInfo;
 
         Map<String, ColumnInfo> pmap = mQuery.projection(); // is null if all are required
 
