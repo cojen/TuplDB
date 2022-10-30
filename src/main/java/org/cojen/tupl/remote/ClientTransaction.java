@@ -94,18 +94,18 @@ final class ClientTransaction implements Transaction {
     }
 
     @Override
-    public void durabilityMode(DurabilityMode mode) {
-        remote().durabilityMode(mode);
-        mDurabilityMode = mode;
+    public void durabilityMode(DurabilityMode dm) {
+        remote().durabilityMode(dm);
+        mDurabilityMode = dm;
     }
 
     @Override
     public DurabilityMode durabilityMode() {
-        DurabilityMode mode = mDurabilityMode;
-        if (mode == null) {
-            mDurabilityMode = mode = remote().durabilityMode();
+        DurabilityMode dm = mDurabilityMode;
+        if (dm == null) {
+            mDurabilityMode = dm = remote().durabilityMode();
         }
-        return mode;
+        return dm;
     }
 
     @Override

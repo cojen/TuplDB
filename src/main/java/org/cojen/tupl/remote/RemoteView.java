@@ -21,6 +21,7 @@ import java.io.IOException;
 
 import org.cojen.dirmi.Batched;
 import org.cojen.dirmi.Disposer;
+import org.cojen.dirmi.NoReply;
 import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.Remote;
 import org.cojen.dirmi.RemoteException;
@@ -50,7 +51,7 @@ public interface RemoteView extends Remote {
 
     @Batched
     @RemoteFailure(declared=false)
-    public RemoteTransaction newTransaction(DurabilityMode durabilityMode);
+    public RemoteTransaction newTransaction(DurabilityMode dm);
 
     public boolean isEmpty() throws IOException;
 
@@ -118,6 +119,7 @@ public interface RemoteView extends Remote {
     @RemoteFailure(declared=false)
     public boolean isModifyAtomic();
 
+    @NoReply
     @Disposer
     public void dispose() throws RemoteException;
 }

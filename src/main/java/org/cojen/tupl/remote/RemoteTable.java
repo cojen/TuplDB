@@ -21,11 +21,14 @@ import java.io.IOException;
 
 import org.cojen.dirmi.Batched;
 import org.cojen.dirmi.Disposer;
+import org.cojen.dirmi.NoReply;
 import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.Remote;
 import org.cojen.dirmi.RemoteException;
 import org.cojen.dirmi.RemoteFailure;
 import org.cojen.dirmi.Serialized;
+
+import org.cojen.tupl.DurabilityMode;
 
 import org.cojen.tupl.diag.QueryPlan;
 
@@ -47,7 +50,7 @@ public interface RemoteTable extends Remote {
 
     @Batched
     @RemoteFailure(declared=false)
-    public RemoteTransaction newTransaction(int durabilityMode);
+    public RemoteTransaction newTransaction(DurabilityMode dm);
 
     public boolean isEmpty() throws IOException;
 
@@ -81,6 +84,13 @@ public interface RemoteTable extends Remote {
     public QueryPlan streamPlan(RemoteTransaction txn, String query, Object... args)
         throws IOException;
 
+    @Disposer
+    public void close() throws IOException;
+
+    @RemoteFailure(declared=false)
+    public boolean isClosed();
+
+    @NoReply
     @Disposer
     public void dispose() throws RemoteException;
 }

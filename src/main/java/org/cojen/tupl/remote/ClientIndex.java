@@ -56,8 +56,8 @@ class ClientIndex extends ClientView<RemoteIndex> implements Index {
 
     @Override
     public <R> Table<R> asTable(Class<R> type) throws IOException {
-        // FIXME: asTable
-        throw null;
+        // FIXME: cache table instances
+        return new ClientTable<R>(mDb, mRemote.asTable(type.getName()), type);
     }
 
     @Override

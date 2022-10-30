@@ -21,6 +21,7 @@ import java.io.IOException;
 
 import org.cojen.dirmi.Batched;
 import org.cojen.dirmi.Disposer;
+import org.cojen.dirmi.NoReply;
 import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.Remote;
 import org.cojen.dirmi.RemoteException;
@@ -72,7 +73,7 @@ public interface RemoteDatabase extends Remote {
 
     @Batched
     @RemoteFailure(declared=false)
-    public RemoteTransaction newTransaction(DurabilityMode durabilityMode);
+    public RemoteTransaction newTransaction(DurabilityMode dm);
 
     @Restorable
     public RemoteTransaction bogus() throws RemoteException;
@@ -139,6 +140,7 @@ public interface RemoteDatabase extends Remote {
     @Disposer
     public void shutdown() throws IOException;
 
+    @NoReply
     @Disposer
     public void dispose() throws RemoteException;
 }

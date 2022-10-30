@@ -64,7 +64,7 @@ public interface RemoteTransaction extends Remote {
 
     @Batched
     @RemoteFailure(declared=false)
-    void durabilityMode(DurabilityMode mode);
+    void durabilityMode(DurabilityMode dm);
 
     @RemoteFailure(declared=false)
     DurabilityMode durabilityMode();

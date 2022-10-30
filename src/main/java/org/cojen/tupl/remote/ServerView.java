@@ -63,8 +63,8 @@ class ServerView<V extends View> implements RemoteView {
     }
 
     @Override
-    public RemoteTransaction newTransaction(DurabilityMode durabilityMode) {
-        return ServerTransaction.from(mView.newTransaction(durabilityMode));
+    public RemoteTransaction newTransaction(DurabilityMode dm) {
+        return ServerTransaction.from(mView.newTransaction(dm));
     }
 
     @Override

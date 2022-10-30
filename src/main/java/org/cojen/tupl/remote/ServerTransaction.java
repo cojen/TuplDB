@@ -97,8 +97,8 @@ final class ServerTransaction implements RemoteTransaction, SessionAware {
     }
 
     @Override
-    public void durabilityMode(DurabilityMode mode) {
-        mTxn.durabilityMode(mode);
+    public void durabilityMode(DurabilityMode dm) {
+        mTxn.durabilityMode(dm);
     }
 
     @Override

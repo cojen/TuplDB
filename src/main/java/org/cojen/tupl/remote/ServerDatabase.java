@@ -19,6 +19,8 @@ package org.cojen.tupl.remote;
 
 import java.io.IOException;
 
+import java.nio.charset.StandardCharsets;
+
 import org.cojen.dirmi.Pipe;
 
 import org.cojen.tupl.Database;
@@ -63,14 +65,13 @@ public final class ServerDatabase implements RemoteDatabase {
 
     @Override
     public RemoteTable openTable(String typeName) throws IOException {
-        // FIXME: openTable
-        throw null;
+        return openIndex(typeName.getBytes(StandardCharsets.UTF_8)).asTable(typeName);
     }
 
     @Override
     public RemoteTable findTable(String typeName) throws IOException {
-        // FIXME: findTable
-        throw null;
+        RemoteIndex ix = findIndex(typeName.getBytes(StandardCharsets.UTF_8));
+        return ix == null ? null : ix.asTable(typeName);
     }
 
     @Override
@@ -81,6 +82,7 @@ public final class ServerDatabase implements RemoteDatabase {
     @Override
     public RemoteRunnable deleteIndex(RemoteIndex index) throws IOException {
         // FIXME: deleteIndex
+        //Runnable task = mDb.deleteIndex(((ServerIndex) index).mView);
         throw null;
     }
 
@@ -105,8 +107,8 @@ public final class ServerDatabase implements RemoteDatabase {
     }
 
     @Override
-    public RemoteTransaction newTransaction(DurabilityMode durabilityMode) {
-        return ServerTransaction.from(mDb.newTransaction(durabilityMode));
+    public RemoteTransaction newTransaction(DurabilityMode dm) {
+        return ServerTransaction.from(mDb.newTransaction(dm));
     }
 
     @Override
