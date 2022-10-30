@@ -512,6 +512,16 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         }
     }
 
+    @Override
+    public void close() throws IOException {
+        mSource.close();
+    }
+
+    @Override
+    public boolean isClosed() {
+        return mSource.isClosed();
+    }
+
     @Override // ScanControllerFactory
     public final ScanControllerFactory<R> reverse() {
         return new ScanControllerFactory<R>() {
