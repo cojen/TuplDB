@@ -17,6 +17,7 @@
 
 package org.cojen.tupl;
 
+import java.io.Closeable;
 import java.io.IOException;
 
 import java.util.Comparator;
@@ -91,7 +92,7 @@ import org.cojen.tupl.io.Utils;
  * @see Database#openTable Database.openTable
  * @see PrimaryKey
  */
-public interface Table<R> {
+public interface Table<R> extends Closeable {
     /**
      * Returns the interface which defines the rows of this table.
      */
@@ -366,4 +367,12 @@ public interface Table<R> {
     {
         return scannerPlan(txn, query, args);
     }
+
+    /**
+     * @see Index#close
+     */
+    @Override
+    public void close() throws IOException;
+
+    public boolean isClosed();
 }

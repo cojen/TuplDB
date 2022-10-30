@@ -171,4 +171,14 @@ final class PrimaryTable<R> implements Table<R> {
     public QueryPlan updaterPlan(Transaction txn, String filter, Object... args) {
         return scannerPlan(txn, filter, args);
     }
+
+    @Override
+    public void close() throws IOException {
+        mSource.close();
+    }
+
+    @Override
+    public boolean isClosed() {
+        return mSource.isClosed();
+    }
 }
