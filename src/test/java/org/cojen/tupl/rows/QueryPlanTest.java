@@ -849,25 +849,6 @@ public class QueryPlanTest {
         assertEquals("world", results.get(3).b());
     }
 
-    @PrimaryKey("id")
-    @AlternateKey("a")
-    @SecondaryIndex("b")
-    @SecondaryIndex({"-c", "b"})
-    public interface TestRow {
-        long id();
-        void id(long id);
-
-        int a();
-        void a(int a);
-
-        String b();
-        void b(String b);
-
-        @Nullable
-        Long c();
-        void c(Long c);
-    }
-
     @Test
     public void covering() throws Exception {
         var table = mDatabase.openTable(TestRow.class);
@@ -899,20 +880,6 @@ public class QueryPlanTest {
                       (TestRow2.class.getName(), "secondary index",
                        new String[] {"+b", "+a"}, false, "b >= ?1", "b <= ?1")),
                      plan);
-    }
-
-    @PrimaryKey({"a", "b"})
-    @SecondaryIndex({"b", "a", "c"})
-    public interface TestRow2 {
-        int a();
-        void a(int a);
-
-        String b();
-        void b(String b);
-
-        @Nullable
-        Long c();
-        void c(Long c);
     }
 
     @Test
@@ -960,6 +927,16 @@ public class QueryPlanTest {
         assertEquals(5L, (long) results.get(2).c());
     }
 
+    @Test
+    public void orderByPrimaryKey() throws Exception {
+        // If the ordering fully specifies the primary key up front, no sort is required.
+        QueryPlan plan = mTable.scannerPlan(null, "{+id, +b}");
+        comparePlans(new QueryPlan.FullScan
+                     (TestRow.class.getName(), "primary key",
+                      new String[] {"+id"}, false),
+                     plan);
+    }
+
     /**
      * @throws AssertionError
      */
@@ -968,5 +945,38 @@ public class QueryPlanTest {
         assertEquals(expect, actual);
         assertEquals(expect.hashCode(), actual.hashCode());
         assertEquals(expect.toString(), actual.toString());
+    }
+
+    @PrimaryKey("id")
+    @AlternateKey("a")
+    @SecondaryIndex("b")
+    @SecondaryIndex({"-c", "b"})
+    public interface TestRow {
+        long id();
+        void id(long id);
+
+        int a();
+        void a(int a);
+
+        String b();
+        void b(String b);
+
+        @Nullable
+        Long c();
+        void c(Long c);
+    }
+
+    @PrimaryKey({"a", "b"})
+    @SecondaryIndex({"b", "a", "c"})
+    public interface TestRow2 {
+        int a();
+        void a(int a);
+
+        String b();
+        void b(String b);
+
+        @Nullable
+        Long c();
+        void c(Long c);
     }
 }
