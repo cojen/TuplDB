@@ -108,11 +108,18 @@ final class IndexSelector {
                     if (num == 1) {
                         // If the matched index is the only one, then there's no need sort.
                         mOrderBy = null;
+                        break forAllSelected;
                     }
                     continue forAllSelected;
                 }
 
                 if (!columns.hasNext()) {
+                    // All of the key columns match, and so no more rules need to be examined.
+                    if (num == 1) {
+                        // If the matched index is the only one, then there's no need sort.
+                        mOrderBy = null;
+                        break forAllSelected;
+                    }
                     break;
                 }
 

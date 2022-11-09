@@ -231,15 +231,20 @@ class SortDecoderMaker {
         MethodMaker mm = cm.addMethod
             (Object.class, "decodeRow", Object.class, byte[].class, byte[].class).public_();
 
-        var rowVar = mm.param(0).cast(rowClass);
+        var rowVar = mm.param(0);
+        var keyVar = mm.param(1);
+        var valueVar = mm.param(2);
+
+        Label notRow = mm.label();
+        var typedRowVar = CodeUtils.castOrNew(rowVar, rowClass, notRow);
         Label hasTypedRow = mm.label();
-        rowVar.ifNe(null, hasTypedRow);
-        rowVar.set(mm.new_(rowClass));
+        typedRowVar.ifNe(null, hasTypedRow);
+        typedRowVar.set(mm.new_(rowClass));
         hasTypedRow.here();
 
         RowGen sortedRowGen = sortedInfo.rowGen();
-        decodeColumns(projection, mm, rowVar, mm.param(1), sortedRowGen.keyCodecs());
-        decodeColumns(projection, mm, rowVar, mm.param(2), sortedRowGen.valueCodecs());
+        decodeColumns(projection, mm, typedRowVar, keyVar, sortedRowGen.keyCodecs());
+        decodeColumns(projection, mm, typedRowVar, valueVar, sortedRowGen.valueCodecs());
 
         // Mark projected columns as clean; all others are unset.
 
@@ -262,12 +267,16 @@ class SortDecoderMaker {
             }
 
             if ((++num & 0b1111) == 0 || num >= maxNum) {
-                rowVar.field(sortedRowGen.stateField(num - 1)).set(mask);
+                typedRowVar.field(sortedRowGen.stateField(num - 1)).set(mask);
                 mask = 0;
             }
         }
 
-        mm.return_(rowVar);
+        mm.return_(typedRowVar);
+
+        // Assume the passed in row is actually a RowConsumer.
+        notRow.here();
+        CodeUtils.acceptAsRowConsumerAndReturn(rowVar, rowClass, keyVar, valueVar);
 
         try {
             MethodHandles.Lookup lookup = cm.finishHidden();
