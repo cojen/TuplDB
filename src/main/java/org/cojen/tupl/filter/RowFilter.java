@@ -341,7 +341,7 @@ public abstract class RowFilter implements Comparable<RowFilter> {
      * exactly matches one row.
      */
     public static boolean matchesOne(RowFilter[] range, ColumnInfo... keyColumns) {
-        if (range[0] != null) {
+        if (range[2] != null) { // remainder
             return false;
         }
         RowFilter low = range[0];
