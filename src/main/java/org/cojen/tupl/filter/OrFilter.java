@@ -257,6 +257,16 @@ public class OrFilter extends GroupFilter {
     }
 
     @Override
+    public boolean matchesOne(String columnName) {
+        for (RowFilter sub : mSubFilters) {
+            if (!sub.matchesOne(columnName)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
     public final char opChar() {
         return '|';
     }

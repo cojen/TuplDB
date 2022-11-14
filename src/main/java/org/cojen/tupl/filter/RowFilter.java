@@ -351,11 +351,18 @@ public abstract class RowFilter implements Comparable<RowFilter> {
 
     /**
      * Returns true if this low filter and the given high filter fully matches all the given
-     * key columns. False is returned if a column is a "fuzzy" match.
+     * key columns. False is returned if a column is a "fuzzy" BigDecimal match.
      */
     boolean matchesOne(RowFilter high, ColumnInfo... keyColumns) {
         return false;
     }
+
+    /**
+     * Returns true if the given column is exactly specified with the '==' operator such that
+     * at most one row will match this filter. False is returned if a column is a "fuzzy"
+     * BigDecimal match.
+     */
+    public abstract boolean matchesOne(String columnName);
 
     @Override
     public final int hashCode() {

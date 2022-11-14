@@ -99,6 +99,11 @@ public final class ColumnToColumnFilter extends ColumnFilter {
         return this;
     }
 
+    @Override
+    public boolean matchesOne(String columnName) {
+        return false;
+    }
+
     public ColumnInfo otherColumn() {
         return mOtherColumn;
     }

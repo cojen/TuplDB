@@ -343,6 +343,16 @@ public class AndFilter extends GroupFilter {
     }
 
     @Override
+    public boolean matchesOne(String columnName) {
+        for (RowFilter sub : mSubFilters) {
+            if (sub.matchesOne(columnName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
     public final char opChar() {
         return '&';
     }

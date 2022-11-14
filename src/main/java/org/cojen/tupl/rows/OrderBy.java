@@ -53,6 +53,13 @@ public final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
         super();
     }
 
+    /**
+     * Copy constructor.
+     */
+    public OrderBy(OrderBy orderBy) {
+        super(orderBy);
+    }
+
     private OrderBy(int capacity) {
         super(capacity, 1);
     }

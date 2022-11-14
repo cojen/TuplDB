@@ -75,9 +75,24 @@ final class IndexSelector {
         selectIndexes();
         int num = numSelected();
 
-        // Decide scan order, and also decide if sorting is required.
+        // Decide scan order, and also decide if sorting is required. Note that reduceOrdering
+        // is called after index selection. This allows the orderBy to serve as an index
+        // selection hint.
 
         OrderBy orderBy = mQuery.orderBy();
+
+        if (orderBy != null) {
+            orderBy = reduceOrdering(orderBy, mPrimaryInfo);
+            if (orderBy != null) {
+                for (ColumnSet key : mPrimaryInfo.alternateKeys) {
+                    orderBy = reduceOrdering(orderBy, key);
+                    if (orderBy == null) {
+                        break;
+                    }
+                }
+            }
+        }
+
         mOrderBy = orderBy;
 
         if (orderBy == null || orderBy.isEmpty()) {
@@ -145,6 +160,49 @@ final class IndexSelector {
                 mGrouping = orderBy.truncate(numMatches);
             }
         }
+    }
+
+    /**
+     * Removes unnecessary ordering columns. Once the orderBy specification has incorporated
+     * all columns of a primary or alternate key, no more ordering is necessary. In addition,
+     * if the filter exactly specifies a column (with the '==' operator), it's removed from the
+     * orderBy specification.
+     *
+     * @param orderBy cannot be null
+     */
+    private OrderBy reduceOrdering(OrderBy orderBy, ColumnSet key) {
+        Map<String, ColumnInfo> keyColumns = key.keyColumns;
+
+        int remaining = keyColumns.size();
+        int num = 0;
+
+        for (String name : orderBy.keySet()) {
+            num++;
+            if (keyColumns.containsKey(name) && --remaining <= 0) {
+                break;
+            }
+        }
+
+        orderBy = orderBy.truncate(num);
+
+        if (orderBy == null) {
+            return null;
+        }
+
+        RowFilter filter = mQuery.filter();
+        boolean copied = false;
+
+        for (String name : orderBy.keySet()) {
+            if (filter.matchesOne(name)) {
+                if (!copied) {
+                    orderBy = new OrderBy(orderBy);
+                    copied = true;
+                }
+                orderBy.remove(name);
+            }
+        }
+
+        return orderBy.isEmpty() ? null : orderBy;
     }
 
     private void selectIndexes() {
