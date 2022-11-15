@@ -120,13 +120,13 @@ public class IndexSelectorTest {
         verify("{+d, +b, *} b > ? && c > ? && d > ?", "+d+c+b+id", "b > ?1 && c > ?2 && d > ?3");
 
         verify("{+b, *} e == ? && b == ?", "+b+e+id", "e == ?1 && b == ?2");
-        verify("{-b, *} e == ? && b == ?", "R+b+e+id", "e == ?1 && b == ?2");
+        verify("{-b, *} e == ? && b == ?", "+b+e+id", "e == ?1 && b == ?2");
         verify("{+e, *} e == ? && b == ?", "+e+b+id", "e == ?1 && b == ?2");
 
         verify("{+d, +c, *} d == ?", "+d+c+b+id", "d == ?1");
-        verify("{-d, -c, *} d == ?", "R+d+c+b+id", "d == ?1");
+        verify("{-d, -c, *} d == ?", "+d+c+b+id", "d == ?1");
         verify("{+d, -c, *} d == ?", "+d+b+id", "d == ?1");
-        verify("{-d, +c, *} d == ?", "R+d+b+id", "d == ?1");
+        verify("{-d, +c, *} d == ?", "+d+b+id", "d == ?1");
 
         verify("{+c, *} c > ? && c < ? && b > ? && b < ? || d == ?",
                "+d+b+id", "d == ?5",

@@ -152,6 +152,13 @@ public class ColumnToArgFilter extends ColumnFilter {
             keyColumns.length == 1 && keyColumns[0].name.equals(mColumn.name);
     }
 
+    @Override
+    public boolean matchesOne(String columnName) {
+        return mOperator == OP_EQ
+            && mColumn.type != BigDecimal.class
+            && mColumn.name.equals(columnName);
+    }
+
     public int argument() {
         return mArgNum;
     }

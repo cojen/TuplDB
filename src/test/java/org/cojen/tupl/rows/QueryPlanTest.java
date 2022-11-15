@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.rows;
 
+import java.math.BigDecimal;
+
 import java.util.List;
 
 import org.junit.*;
@@ -402,6 +404,7 @@ public class QueryPlanTest {
             row.a(1);
             row.b("b");
             row.c(null);
+            row.d(null);
             mTable.insert(null, row);
 
             row.id(2);
@@ -548,7 +551,6 @@ public class QueryPlanTest {
         // cursors which do the exact same thing.
         plan = mIndexB.scannerPlan(null, "(b == ? && id != ? && c != ?) || (b == ?1 && c > ?)");
 
-
         comparePlans(new QueryPlan.Filter
                      ("c > ?4 || (id != ?2 && c != ?3)", new QueryPlan.NaturalJoin
                       (TestRow.class.getName(), "primary key", new String[] {"+id"},
@@ -589,6 +591,7 @@ public class QueryPlanTest {
                 row.a(i);
                 row.b("b" + i);
                 row.c((long) i);
+                row.d(null);
                 assertTrue(mTable.insert(null, row));
             }
 
@@ -661,6 +664,7 @@ public class QueryPlanTest {
                 row.a(i);
                 row.b("b" + i);
                 row.c((long) i);
+                row.d(null);
                 assertTrue(mTable.insert(null, row));
             }
 
@@ -723,6 +727,7 @@ public class QueryPlanTest {
             row.a(1);
             row.b("hello1");
             row.c(101L);
+            row.d(null);
             mTable.insert(null, row);
 
             row = mTable.newRow();
@@ -730,6 +735,7 @@ public class QueryPlanTest {
             row.a(2);
             row.b("hello2");
             row.c(102L);
+            row.d(null);
             mTable.insert(null, row);
 
             row = mTable.newRow();
@@ -737,6 +743,7 @@ public class QueryPlanTest {
             row.a(3);
             row.b("hello3");
             row.c(103L);
+            row.d(null);
             mTable.insert(null, row);
 
             row = mTable.newRow();
@@ -744,6 +751,7 @@ public class QueryPlanTest {
             row.a(4);
             row.b("world");
             row.c(104L);
+            row.d(null);
             mTable.insert(null, row);
 
             row = mTable.newRow();
@@ -751,6 +759,7 @@ public class QueryPlanTest {
             row.a(-555);
             row.b("-world");
             row.c(-555L);
+            row.d(null);
             mTable.insert(null, row);
         }
 
@@ -911,6 +920,7 @@ public class QueryPlanTest {
             row.a(i);
             row.b("" + i);
             row.c((long) i);
+            row.d(null);
             mTable.insert(null, row);
         }
 
@@ -935,6 +945,55 @@ public class QueryPlanTest {
                      (TestRow.class.getName(), "primary key",
                       new String[] {"+id"}, false),
                      plan);
+
+        // No need to sort by columns after all primary or alternate keys are specified.
+        plan = mTable.scannerPlan(null, "{+id, +b} b == ?");
+        comparePlans(new QueryPlan.Sort
+                     (new String[] {"+id"}, new QueryPlan.RangeScan
+                      (TestRow.class.getName(), "secondary index", new String[] {"+b", "+id"},
+                       false, "b >= ?1", "b <= ?1")),
+                     plan);
+    }
+
+    @Test
+    public void orderByFullMatched() throws Exception {
+        // No need to sort by columns which are fully matched. Column b is dropped from the
+        // ordering specification.
+        QueryPlan plan = mTable.scannerPlan(null, "{+c, +b} b == ? || b == ? && c != ?");
+        comparePlans(new QueryPlan.Sort
+                     (new String[] {"+c"}, new QueryPlan.RangeUnion
+                      (new QueryPlan.NaturalJoin
+                       (TestRow.class.getName(), "primary key", new String[] {"+id"},
+                        new QueryPlan.RangeScan
+                        (TestRow.class.getName(), "secondary index", new String[] { "+b", "+id"},
+                         false, "b >= ?1", "b <= ?1")),
+                       new QueryPlan.Filter
+                       ("c != ?3", new QueryPlan.NaturalJoin
+                        (TestRow.class.getName(), "primary key", new String[] {"+id"},
+                         new QueryPlan.RangeScan
+                         (TestRow.class.getName(), "secondary index", new String[] { "+b", "+id"},
+                          false, "b >= ?2", "b <= ?2"))))),
+                     plan);
+
+        // BigDecimal equal matching is fuzzy, and so multiple matches are possible. Column d
+        // isn't dropped from the order specification.
+        plan = mTable.scannerPlan(null, "{+c, +d} d == ? || d == ? && c != ?");
+        comparePlans(new QueryPlan.Sort
+                     (new String[] {"+c", "+d"}, new QueryPlan.RangeUnion
+                      (new QueryPlan.NaturalJoin
+                       (TestRow.class.getName(), "primary key", new String[] {"+id"},
+                        new QueryPlan.Filter
+                        ("d == ?1", new QueryPlan.RangeScan
+                         (TestRow.class.getName(), "secondary index", new String[] { "+d", "+id"},
+                          false, "d == ?1", "d == ?1"))),
+                       new QueryPlan.Filter
+                       ("c != ?3", new QueryPlan.NaturalJoin
+                        (TestRow.class.getName(), "primary key", new String[] {"+id"},
+                         new QueryPlan.Filter
+                         ("d == ?2", new QueryPlan.RangeScan
+                          (TestRow.class.getName(), "secondary index", new String[] { "+d", "+id"},
+                           false, "d == ?2", "d == ?2")))))),
+                     plan);
     }
 
     /**
@@ -951,6 +1010,7 @@ public class QueryPlanTest {
     @AlternateKey("a")
     @SecondaryIndex("b")
     @SecondaryIndex({"-c", "b"})
+    @SecondaryIndex("d")
     public interface TestRow {
         long id();
         void id(long id);
@@ -964,6 +1024,10 @@ public class QueryPlanTest {
         @Nullable
         Long c();
         void c(Long c);
+
+        @Nullable
+        BigDecimal d();
+        void d(BigDecimal d);
     }
 
     @PrimaryKey({"a", "b"})
