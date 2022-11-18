@@ -59,13 +59,13 @@ final class SchemaVersionColumnCodec extends ColumnCodec {
     }
 
     @Override
-    int minSize() {
-        return mVersion < 0 ? 4 : 1;
+    int codecFlags() {
+        return 0;
     }
 
     @Override
-    boolean isLast() {
-        return false;
+    int minSize() {
+        return mVersion < 0 ? 4 : 1;
     }
 
     @Override

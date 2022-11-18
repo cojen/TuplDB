@@ -70,14 +70,18 @@ final class PrimitiveColumnCodec extends ColumnCodec {
     }
 
     @Override
-    int minSize() {
-        // Return just the header size if nullable.
-        return mInfo.isNullable() ? 1 : mSize;
+    int codecFlags() {
+        int flags = mLex ? F_LEX : 0;
+        if (mInfo.isNullable()) {
+            flags |= F_NULLS;
+        }
+        return flags;
     }
 
     @Override
-    boolean isLast() {
-        return false;
+    int minSize() {
+        // Return just the header size if nullable.
+        return mInfo.isNullable() ? 1 : mSize;
     }
 
     @Override

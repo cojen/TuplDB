@@ -44,6 +44,11 @@ final class NullableStringColumnCodec extends NonNullStringColumnCodec {
     }
 
     @Override
+    int codecFlags() {
+        return F_NULLS;
+    }
+
+    @Override
     Variable encodeSize(Variable srcVar, Variable totalVar) {
         // The length prefix encodes the byte length with one added. This allows zero to be
         // used to indicate null. As a result, this limits the maximum byte length to be one

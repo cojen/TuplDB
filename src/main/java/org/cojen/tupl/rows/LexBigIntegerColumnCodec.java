@@ -45,13 +45,13 @@ final class LexBigIntegerColumnCodec extends BigIntegerColumnCodec {
     }
 
     @Override
-    int minSize() {
-        return 1;
+    int codecFlags() {
+        return lexCodecFlags();
     }
 
     @Override
-    boolean isLast() {
-        return false;
+    int minSize() {
+        return 1;
     }
 
     @Override

@@ -42,8 +42,8 @@ class NonNullPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
     }
 
     @Override
-    boolean isLast() {
-        return false;
+    int codecFlags() {
+        return 0;
     }
 
     @Override

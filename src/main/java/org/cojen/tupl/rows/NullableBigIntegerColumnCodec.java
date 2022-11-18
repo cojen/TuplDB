@@ -41,6 +41,11 @@ final class NullableBigIntegerColumnCodec extends NonNullBigIntegerColumnCodec {
     }
 
     @Override
+    int codecFlags() {
+        return F_NULLS;
+    }
+
+    @Override
     Variable encodeSize(Variable srcVar, Variable totalVar) {
         // See notes in NullableStringColumnCodec regarding length prefix encoding.
 

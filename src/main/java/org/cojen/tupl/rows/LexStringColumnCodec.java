@@ -38,8 +38,8 @@ final class LexStringColumnCodec extends StringColumnCodec {
     }
 
     @Override
-    boolean isLast() {
-        return false;
+    int codecFlags() {
+        return lexCodecFlags();
     }
 
     @Override

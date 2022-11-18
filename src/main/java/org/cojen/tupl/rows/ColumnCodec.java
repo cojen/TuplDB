@@ -39,6 +39,10 @@ import static org.cojen.tupl.rows.ColumnInfo.*;
  * @author Brian S O'Neill
  */
 abstract class ColumnCodec {
+    static int F_LAST = 1, // last column encoding
+        F_NULLS = 2, // supports nulls
+        F_LEX = 4; // lexicographical order
+
     /**
      * Returns an array of new stateless ColumnCodec instances.
      *
@@ -289,6 +293,22 @@ abstract class ColumnCodec {
     protected abstract int doHashCode();
 
     /**
+     * F_LAST, F_NULLS, F_LEX, etc.
+     */
+    abstract int codecFlags();
+
+    /**
+     * Can be called by Lex*ColumnCodec classes for implementing the codecFlags method.
+     */
+    protected final int lexCodecFlags() {
+        int flags = F_LEX;
+        if (mInfo.isNullable()) {
+            flags |= F_NULLS;
+        }
+        return flags;
+    }
+
+    /**
      * Returns the minimum number of bytes to encode the column.
      */
     abstract int minSize();
@@ -296,7 +316,9 @@ abstract class ColumnCodec {
     /**
      * Returns true if decoding always reaches the end.
      */
-    abstract boolean isLast();
+    final boolean isLast() {
+        return (codecFlags() & F_LAST) != 0;
+    }
 
     /**
      * Makes code which declares all necessary variables used for encoding. Must be called

@@ -42,6 +42,11 @@ final class NullableLastBigIntegerColumnCodec extends NonNullLastBigIntegerColum
     }
 
     @Override
+    int codecFlags() {
+        return F_NULLS | F_LAST;
+    }
+
+    @Override
     int minSize() {
         // Header byte.
         return 1;

@@ -37,8 +37,8 @@ final class LexPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
     }
 
     @Override
-    boolean isLast() {
-        return false;
+    int codecFlags() {
+        return lexCodecFlags();
     }
 
     @Override

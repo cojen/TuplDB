@@ -58,13 +58,13 @@ final class BigDecimalColumnCodec extends ColumnCodec {
     }
 
     @Override
-    int minSize() {
-        return 0;
+    int codecFlags() {
+        return mUnscaledCodec.codecFlags();
     }
 
     @Override
-    boolean isLast() {
-        return mUnscaledCodec.isLast();
+    int minSize() {
+        return 0;
     }
 
     @Override

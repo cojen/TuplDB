@@ -53,13 +53,13 @@ final class VoidColumnCodec extends ColumnCodec {
     }
 
     @Override
-    int minSize() {
+    int codecFlags() {
         return 0;
     }
 
     @Override
-    boolean isLast() {
-        return false;
+    int minSize() {
+        return 0;
     }
 
     @Override

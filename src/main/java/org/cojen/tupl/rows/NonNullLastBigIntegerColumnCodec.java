@@ -43,8 +43,8 @@ class NonNullLastBigIntegerColumnCodec extends BigIntegerColumnCodec {
     }
 
     @Override
-    boolean isLast() {
-        return true;
+    int codecFlags() {
+        return F_LAST;
     }
 
     @Override

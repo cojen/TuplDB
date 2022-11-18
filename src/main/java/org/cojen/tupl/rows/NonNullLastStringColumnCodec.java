@@ -42,8 +42,8 @@ class NonNullLastStringColumnCodec extends StringColumnCodec {
     }
 
     @Override
-    boolean isLast() {
-        return true;
+    int codecFlags() {
+        return F_LAST;
     }
 
     @Override
