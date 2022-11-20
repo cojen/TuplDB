@@ -45,7 +45,7 @@ final class NullableStringColumnCodec extends NonNullStringColumnCodec {
 
     @Override
     int codecFlags() {
-        return F_NULLS;
+        return 0;
     }
 
     @Override

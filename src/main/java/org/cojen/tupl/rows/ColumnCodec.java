@@ -39,25 +39,24 @@ import static org.cojen.tupl.rows.ColumnInfo.*;
  * @author Brian S O'Neill
  */
 abstract class ColumnCodec {
-    static int F_LAST = 1, // last column encoding
-        F_NULLS = 2, // supports nulls
-        F_LEX = 4; // lexicographical order
+    static final int F_LAST = 1; // last column encoding
+    static final int F_LEX = 2; // lexicographical order
 
     /**
      * Returns an array of new stateless ColumnCodec instances.
      *
-     * @param lex true to use lexicographical encoding
+     * @param flags 0 or else F_LEX to use lexicographical encoding
      */
-    static ColumnCodec[] make(Map<String, ColumnInfo> infoMap, boolean lex) {
-        return make(infoMap.values(), lex);
+    static ColumnCodec[] make(Map<String, ColumnInfo> infoMap, int flags) {
+        return make(infoMap.values(), flags);
     }
 
     /**
      * Returns an array of new stateless ColumnCodec instances.
      *
-     * @param lex true to use lexicographical encoding
+     * @param flags 0 or else F_LEX to use lexicographical encoding
      */
-    static ColumnCodec[] make(Collection<ColumnInfo> infos, boolean lex) {
+    static ColumnCodec[] make(Collection<ColumnInfo> infos, int flags) {
         var codecs = new ColumnCodec[infos.size()];
 
         if (codecs.length != 0) {
@@ -66,7 +65,7 @@ abstract class ColumnCodec {
             ColumnInfo info = it.next();
             while (true) {
                 boolean hasNext = it.hasNext();
-                codecs[slot++] = make(info, lex, !hasNext);
+                codecs[slot++] = make(info, hasNext ? flags : (flags | F_LAST));
                 if (!hasNext) {
                     break;
                 }
@@ -90,7 +89,7 @@ abstract class ColumnCodec {
             ColumnInfo info = it.next();
             while (true) {
                 boolean hasNext = it.hasNext();
-                ColumnCodec codec = make(info, false, !hasNext);
+                ColumnCodec codec = make(info, hasNext ? 0 : F_LAST);
                 ColumnCodec pkCodec = pkCodecs.get(info.name);
                 if (pkCodec != null &&
                     (pkCodec.equals(codec) || !pkCodec.isLast() || codec.isLast()))
@@ -110,11 +109,8 @@ abstract class ColumnCodec {
 
     /**
      * Returns a new stateless ColumnCodec instance.
-     *
-     * @param lex true to use lexicographical encoding
-     * @param isLast true if this is the last column in a group
      */
-    static ColumnCodec make(ColumnInfo info, boolean lex, boolean isLast) {
+    private static ColumnCodec make(ColumnInfo info, int flags) {
         int typeCode = info.typeCode;
 
         if (isArray(typeCode)) {
@@ -123,16 +119,16 @@ abstract class ColumnCodec {
                 throw new AssertionError();
             }
         
-            if (isLast && !info.isDescending()) {
+            if ((flags & F_LAST) != 0 && !info.isDescending()) {
                 // Note that with descending order, lexicographical encoding is still required.
                 // Otherwise, two arrays which share a common prefix would be ordered wrong,
                 // even when all the bits are flipped.
                 if (info.isNullable()) {
-                    return new NullableLastPrimitiveArrayColumnCodec(info, null, lex);
+                    return new NullableLastPrimitiveArrayColumnCodec(info, null, flags);
                 } else {
-                    return new NonNullLastPrimitiveArrayColumnCodec(info, null, lex);
+                    return new NonNullLastPrimitiveArrayColumnCodec(info, null, flags);
                 }
-            } else if (lex) {
+            } else if ((flags & F_LEX) != 0) {
                 return new LexPrimitiveArrayColumnCodec(info, null);
             } else if (info.isNullable()) {
                 return new NullablePrimitiveArrayColumnCodec(info, null);
@@ -145,20 +141,20 @@ abstract class ColumnCodec {
 
         if (typeCode <= 0b1111) {
             int bitSize = 1 << (typeCode & 0b111);
-            return new PrimitiveColumnCodec(info, null, lex, (bitSize + 7) >>> 3);
+            return new PrimitiveColumnCodec(info, null, flags, (bitSize + 7) >>> 3);
         }
 
         switch (typeCode) {
         case TYPE_FLOAT:
-            return new PrimitiveColumnCodec(info, null, lex, 4);
+            return new PrimitiveColumnCodec(info, null, flags, 4);
         case TYPE_DOUBLE:
-            return new PrimitiveColumnCodec(info, null, lex, 8);
+            return new PrimitiveColumnCodec(info, null, flags, 8);
 
         case TYPE_CHAR:
-            return new PrimitiveColumnCodec(info, null, lex, 2);
+            return new PrimitiveColumnCodec(info, null, flags, 2);
 
         case TYPE_UTF8:
-            if (isLast && !info.isDescending()) {
+            if ((flags & F_LAST) != 0 && !info.isDescending()) {
                 // Note that with descending order, lexicographical encoding is still required.
                 // Otherwise, two strings which share a common prefix would be ordered wrong,
                 // even when all the bits are flipped.
@@ -167,7 +163,7 @@ abstract class ColumnCodec {
                 } else {
                     return new NonNullLastStringColumnCodec(info, null);
                 }
-            } else if (lex) {
+            } else if ((flags & F_LEX) != 0) {
                 return new LexStringColumnCodec(info, null);
             } else if (info.isNullable()) {
                 return new NullableStringColumnCodec(info, null);
@@ -176,12 +172,12 @@ abstract class ColumnCodec {
             }
 
         case TYPE_BIG_INTEGER:
-            if (lex) {
+            if ((flags & F_LEX) != 0) {
                 // Must always use lexicographical encoding, even when the last because of
                 // variable length encoding, and numerical ordering rules are different than
                 // for strings.
                 return new LexBigIntegerColumnCodec(info, null);
-            } else if (isLast) {
+            } else if ((flags & F_LAST) != 0) {
                 if (info.isNullable()) {
                     return new NullableLastBigIntegerColumnCodec(info, null);
                 } else {
@@ -194,13 +190,13 @@ abstract class ColumnCodec {
             }
 
         case TYPE_BIG_DECIMAL:
-            if (lex) {
+            if ((flags & F_LEX) != 0) {
                 return new LexBigDecimalColumnCodec(info, null);
             } else {
                 ColumnInfo unscaledInfo = info.copy();
                 unscaledInfo.type = BigInteger.class;
                 unscaledInfo.typeCode = TYPE_BIG_INTEGER;
-                ColumnCodec unscaledCodec = make(unscaledInfo, false, isLast);
+                ColumnCodec unscaledCodec = make(unscaledInfo, flags);
                 return new BigDecimalColumnCodec(info, unscaledCodec, null);
             }
 
@@ -298,27 +294,23 @@ abstract class ColumnCodec {
     abstract int codecFlags();
 
     /**
-     * Can be called by Lex*ColumnCodec classes for implementing the codecFlags method.
+     * Returns true if decoding always reaches the end.
      */
-    protected final int lexCodecFlags() {
-        int flags = F_LEX;
-        if (mInfo.isNullable()) {
-            flags |= F_NULLS;
-        }
-        return flags;
+    final boolean isLast() {
+        return (codecFlags() & F_LAST) != 0;
+    }
+
+    /**
+     * Returns true if column is lexicographically encoded.
+     */
+    final boolean isLex() {
+        return (codecFlags() & F_LEX) != 0;
     }
 
     /**
      * Returns the minimum number of bytes to encode the column.
      */
     abstract int minSize();
-
-    /**
-     * Returns true if decoding always reaches the end.
-     */
-    final boolean isLast() {
-        return (codecFlags() & F_LAST) != 0;
-    }
 
     /**
      * Makes code which declares all necessary variables used for encoding. Must be called

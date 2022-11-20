@@ -33,17 +33,12 @@ class NonNullPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
      * @param mm is null for stateless instance
      */
     NonNullPrimitiveArrayColumnCodec(ColumnInfo info, MethodMaker mm) {
-        super(info, mm, false);
+        super(info, mm, 0);
     }
 
     @Override
     ColumnCodec bind(MethodMaker mm) {
         return new NonNullPrimitiveArrayColumnCodec(mInfo, mm);
-    }
-
-    @Override
-    int codecFlags() {
-        return 0;
     }
 
     @Override

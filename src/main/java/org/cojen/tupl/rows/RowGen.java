@@ -250,7 +250,7 @@ class RowGen {
     public ColumnCodec[] keyCodecs() {
         ColumnCodec[] codecs = mKeyCodecs;
         if (codecs == null) {
-            mKeyCodecs = codecs = ColumnCodec.make(info.keyColumns, true);
+            mKeyCodecs = codecs = ColumnCodec.make(info.keyColumns, ColumnCodec.F_LEX);
         }
         return codecs;
     }
@@ -294,7 +294,7 @@ class RowGen {
                 return 0;
             });
 
-            codecs = ColumnCodec.make(infos, false);
+            codecs = ColumnCodec.make(infos, 0);
         } else {
             // For alternate keys, encode fixed sized columns first (primitives), then the same
             // order as the primary key columns, and then the remaining in natural order

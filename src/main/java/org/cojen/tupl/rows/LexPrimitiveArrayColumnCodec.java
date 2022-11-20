@@ -28,17 +28,12 @@ import org.cojen.maker.Variable;
  */
 final class LexPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
     LexPrimitiveArrayColumnCodec(ColumnInfo info, MethodMaker mm) {
-        super(info, mm, true);
+        super(info, mm, F_LEX);
     }
 
     @Override
     ColumnCodec bind(MethodMaker mm) {
         return new LexPrimitiveArrayColumnCodec(mInfo, mm);
-    }
-
-    @Override
-    int codecFlags() {
-        return lexCodecFlags();
     }
 
     @Override

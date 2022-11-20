@@ -46,7 +46,7 @@ final class LexBigIntegerColumnCodec extends BigIntegerColumnCodec {
 
     @Override
     int codecFlags() {
-        return lexCodecFlags();
+        return F_LEX;
     }
 
     @Override

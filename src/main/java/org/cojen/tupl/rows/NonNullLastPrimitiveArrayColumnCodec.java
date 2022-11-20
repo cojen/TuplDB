@@ -31,8 +31,8 @@ class NonNullLastPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
      * @param info non-null
      * @param mm is null for stateless instance
      */
-    NonNullLastPrimitiveArrayColumnCodec(ColumnInfo info, MethodMaker mm, boolean lex) {
-        super(info, mm, lex);
+    NonNullLastPrimitiveArrayColumnCodec(ColumnInfo info, MethodMaker mm, int flags) {
+        super(info, mm, flags);
         if (info.isDescending()) {
             throw new AssertionError();
         }
@@ -40,12 +40,7 @@ class NonNullLastPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
 
     @Override
     ColumnCodec bind(MethodMaker mm) {
-        return new NonNullLastPrimitiveArrayColumnCodec(mInfo, mm, mLex);
-    }
-
-    @Override
-    int codecFlags() {
-        return F_LAST;
+        return new NonNullLastPrimitiveArrayColumnCodec(mInfo, mm, mFlags);
     }
 
     @Override

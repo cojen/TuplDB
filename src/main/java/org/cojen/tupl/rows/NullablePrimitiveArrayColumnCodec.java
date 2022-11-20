@@ -43,11 +43,6 @@ final class NullablePrimitiveArrayColumnCodec extends NonNullPrimitiveArrayColum
     }
 
     @Override
-    int codecFlags() {
-        return F_NULLS;
-    }
-
-    @Override
     void encodePrepare() {
         super.encodePrepare();
         mBytesLengthVar = mMaker.var(int.class);

@@ -39,7 +39,7 @@ final class LexStringColumnCodec extends StringColumnCodec {
 
     @Override
     int codecFlags() {
-        return lexCodecFlags();
+        return F_LEX;
     }
 
     @Override

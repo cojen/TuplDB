@@ -42,7 +42,7 @@ final class NullableBigIntegerColumnCodec extends NonNullBigIntegerColumnCodec {
 
     @Override
     int codecFlags() {
-        return F_NULLS;
+        return 0;
     }
 
     @Override
