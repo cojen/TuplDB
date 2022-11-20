@@ -144,27 +144,27 @@ public class RowUtils extends Utils {
      * @param value non-null String to encode
      */
     public static int lengthStringUTF(String value) {
-        long encodedLen = 0;
+        int strLength = value.length();
+        long encodedLen = strLength;
 
-        for (int i = 0; i < value.length(); i++) {
+        for (int i = 0; i < strLength; i++) {
             int c = value.charAt(i);
-            if (c <= 0x7f) {
-                encodedLen++;
-            } else if (c <= 0x7ff) {
-                encodedLen += 2;
-            } else {
-                if (c >= 0xd800 && c <= 0xdbff) {
-                    // Found a high surrogate. Verify that surrogate pair is well-formed. Low
-                    // surrogate must follow high surrogate.
-                    if (i + 1 < value.length()) {
-                        int c2 = value.charAt(i + 1);
-                        if (c2 >= 0xdc00 && c2 <= 0xdfff) {
-                            i++;
-                            encodedLen++;
+            if (c >= 0x80) {
+                if (c <= 0x7ff) {
+                    encodedLen++;
+                } else {
+                    if (c >= 0xd800 && c <= 0xdbff) {
+                        // Found a high surrogate. Verify that surrogate pair is
+                        // well-formed. Low surrogate must follow high surrogate.
+                        if (i + 1 < strLength) {
+                            int c2 = value.charAt(i + 1);
+                            if (c2 >= 0xdc00 && c2 <= 0xdfff) {
+                                i++;
+                            }
                         }
                     }
+                    encodedLen += 2;
                 }
-                encodedLen += 3;
             }
         }
 
@@ -181,7 +181,8 @@ public class RowUtils extends Utils {
      * @return new offset
      */
     public static int encodeStringUTF(byte[] dst, int dstOffset, String value) {
-        for (int i = 0; i < value.length(); i++) {
+        int strLength = value.length();
+        for (int i = 0; i < strLength; i++) {
             int c = value.charAt(i);
             if (c <= 0x7f) {
                 dst[dstOffset++] = (byte) c;
@@ -193,7 +194,7 @@ public class RowUtils extends Utils {
                     if (c >= 0xd800 && c <= 0xdbff) {
                         // Found a high surrogate. Verify that surrogate pair is well-formed. Low
                         // surrogate must follow high surrogate.
-                        if (i + 1 < value.length()) {
+                        if (i + 1 < strLength) {
                             int c2 = value.charAt(i + 1);
                             if (c2 >= 0xdc00 && c2 <= 0xdfff) {
                                 c = 0x10000 + (((c & 0x3ff) << 10) | (c2 & 0x3ff));
@@ -243,27 +244,29 @@ public class RowUtils extends Utils {
     }
 
     private static int doLengthStringLex(String str) {
-        long encodedLen = 1;
-
         int strLength = str.length();
+        long encodedLen = 1 + strLength;
+
         for (int i = 0; i < strLength; i++) {
             int c = str.charAt(i);
-            if (c <= (0x7f - 2)) {
-                encodedLen++;
-            } else if (c <= (12415 - 2)) {
-                encodedLen += 2;
-            } else {
-                if (c >= 0xd800 && c <= 0xdbff) {
-                    // Found a high surrogate. Verify that surrogate pair is
-                    // well-formed. Low surrogate must follow high surrogate.
-                    if (i + 1 < strLength) {
-                        int c2 = str.charAt(i + 1);
-                        if (c2 >= 0xdc00 && c2 <= 0xdfff) {
-                            i++;
+            if (c >= (0x80 - 2)) {
+                if (c <= (12415 - 2)) {
+                    encodedLen++;
+                } else {
+                    if (c >= 0xd800 && c <= 0xdbff) {
+                        // Found a high surrogate. Verify that surrogate pair is
+                        // well-formed. Low surrogate must follow high surrogate.
+                        if (i + 1 < strLength) {
+                            int c2 = str.charAt(i + 1);
+                            if (c2 >= 0xdc00 && c2 <= 0xdfff) {
+                                i++;
+                                encodedLen++;
+                                continue;
+                            }
                         }
                     }
+                    encodedLen += 2;
                 }
-                encodedLen += 3;
             }
         }
 
