@@ -39,7 +39,7 @@ final class PrimitiveColumnCodec extends ColumnCodec {
      */
     PrimitiveColumnCodec(ColumnInfo info, MethodMaker mm, int flags, int size) {
         super(info, mm);
-        mFlags = flags;
+        mFlags = flags & ~F_LAST;
         mSize = size;
     }
 

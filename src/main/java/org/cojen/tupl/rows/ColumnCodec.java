@@ -294,7 +294,8 @@ abstract class ColumnCodec {
     abstract int codecFlags();
 
     /**
-     * Returns true if decoding always reaches the end.
+     * Returns true if column is variable length but doesn't have a length prefix encoded
+     * because it's the last column in the key or value.
      */
     final boolean isLast() {
         return (codecFlags() & F_LAST) != 0;
