@@ -45,7 +45,7 @@ public class Converter {
         if (dstInfo.type.isAssignableFrom(srcCodec.mInfo.type)
             && (!srcCodec.mInfo.isNullable() || dstInfo.isNullable()))
         {
-            srcCodec.decode(dstVar, srcVar, offsetVar, null);
+            srcCodec.decode(dstVar, srcVar, offsetVar, endVar);
         } else {
             // Decode into a temp variable and then perform a best-effort conversion.
             var tempVar = mm.var(srcCodec.mInfo.type);

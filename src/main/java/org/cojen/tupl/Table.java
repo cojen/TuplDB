@@ -129,7 +129,7 @@ public interface Table<R> extends Closeable {
     public Scanner<R> newScanner(Transaction txn) throws IOException;
 
     /**
-     * Returns a new scanner for a subset of rows of this table, as specified by the query
+     * Returns a new scanner for a subset of rows from this table, as specified by the query
      * expression.
      *
      * @param txn optional transaction for the scanner to use; pass null for auto-commit mode
@@ -157,7 +157,7 @@ public interface Table<R> extends Closeable {
     public Updater<R> newUpdater(Transaction txn) throws IOException;
 
     /**
-     * Returns a new updater for a subset of rows of this table, as specified by the query
+     * Returns a new updater for a subset of rows from this table, as specified by the query
      * expression.
      *
      * <p>When providing a transaction which acquires locks (or the transaction is null),
@@ -193,7 +193,7 @@ public interface Table<R> extends Closeable {
     }
 
     /**
-     * Returns a new stream for a subset of rows of this table, as specified by the query
+     * Returns a new stream for a subset of rows from this table, as specified by the query
      * expression. The stream must be explicitly closed when no longer used, or else it must be
      * used with a try-with-resources statement. If an underlying {@code IOException} is
      * generated, it's thrown as if it was unchecked.

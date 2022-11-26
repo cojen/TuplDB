@@ -73,7 +73,7 @@ class DecodeVisitor extends Visitor {
      *     boolean test(R row, byte[] key, byte[] value, ...)
      *
      * The predicate form which accepts a row only examines dirty columns from it.
-     *    NOTE: Row paramater isn't currently suported.
+     *    NOTE: Row paramater isn't currently supported.
      *
      * @param mm signature: see above
      * @param valueOffset offset to skip past the schema version

@@ -565,6 +565,7 @@ class StaticTableMaker extends TableMaker {
     }
 
     private void addDecodePartialHandle() {
+        // Specified by BaseTable.
         MethodMaker mm = mClassMaker.addMethod
             (MethodHandle.class, "makeDecodePartialHandle", byte[].class, int.class).protected_();
 
