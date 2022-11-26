@@ -398,11 +398,18 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      * Scan and write a subset of rows from this table to a remote endpoint. This method
      * doesn't flush the output stream.
      */
+    @SuppressWarnings("unchecked")
     public final void scanWrite(Transaction txn, DataOutput out, String queryStr, Object... args)
         throws IOException
     {
-        // FIXME: scanWrite
-        throw null;
+        var writer = new RowWriter<R>(out);
+
+        // Pass the writer as if it's a row, but it's actually a RowConsumer.
+        Scanner<R> scanner = scannerQueryLauncher(txn, queryStr).newScanner(txn, (R) writer, args);
+        while (scanner.step((R) writer) != null);
+
+        // Write the scan terminator. See RowWriter.writeHeader.
+        out.writeByte(0);
     }
 
     @Override

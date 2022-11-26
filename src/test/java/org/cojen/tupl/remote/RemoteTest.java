@@ -136,9 +136,24 @@ public class RemoteTest {
             row.id(2);
             row.value("world");
             serverTable.insert(null, row);
+            row.id(3);
+            row.value("end");
+            serverTable.insert(null, row);
         }
 
         try (var scanner = clientTable.newScanner(null)) {
+            scanner.forEachRemaining(row -> System.out.println(row));
+        }
+
+        System.out.println("---");
+
+        try (var scanner = clientTable.newScanner(null, "value == ?", "world")) {
+            scanner.forEachRemaining(row -> System.out.println(row));
+        }
+
+        System.out.println("---");
+
+        try (var scanner = clientTable.newScanner(null, "{value} value != ?", "world")) {
             scanner.forEachRemaining(row -> System.out.println(row));
         }
     }
