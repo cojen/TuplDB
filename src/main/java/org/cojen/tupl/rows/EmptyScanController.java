@@ -104,6 +104,11 @@ final class EmptyScanController extends SingleScanController implements ScanCont
     }
 
     @Override
+    public void writeRow(RowWriter writer, byte[] key, byte[] value) {
+        throw new AssertionError();
+    }
+
+    @Override
     public byte[] updateKey(Object row, byte[] original) {
         throw new AssertionError();
     }

@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.rows;
 
+import java.io.DataOutput;
 import java.io.IOException;
 
 import java.lang.invoke.MethodHandle;
@@ -375,6 +376,33 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         b.append("rowType").append(": ").append(rowType().getName());
         b.append(", ").append("primaryIndex").append(": ").append(mSource);
         return b.append('}').toString();
+    }
+
+    /**
+     * Scan and write all rows of this table to a remote endpoint. This method doesn't flush
+     * the output stream.
+     */
+    @SuppressWarnings("unchecked")
+    public final void scanWrite(Transaction txn, DataOutput out) throws IOException {
+        var writer = new RowWriter<R>(out);
+
+        // Pass the writer as if it's a row, but it's actually a RowConsumer.
+        Scanner<R> scanner = newScanner(txn, (R) writer);
+        while (scanner.step((R) writer) != null);
+
+        // Write the scan terminator. See RowWriter.writeHeader.
+        out.writeByte(0);
+    }
+
+    /**
+     * Scan and write a subset of rows from this table to a remote endpoint. This method
+     * doesn't flush the output stream.
+     */
+    public final void scanWrite(Transaction txn, DataOutput out, String queryStr, Object... args)
+        throws IOException
+    {
+        // FIXME: scanWrite
+        throw null;
     }
 
     @Override

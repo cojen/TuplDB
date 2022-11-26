@@ -82,20 +82,6 @@ public final class ClientDatabase implements Database {
         return ix == null ? null : new ClientIndex(this, ix);
     }
 
-    /*
-    @Override
-    public <R> Table<R> openTable(Class<R> type) throws IOException {
-        // FIXME: openTable
-        throw null;
-    }
-
-    @Override
-    public <R> Table<R> findTable(Class<R> type) throws IOException {
-        // FIXME: findTable
-        throw null;
-    }
-    */
-    
     @Override
     public void renameIndex(Index index, byte[] newName) throws IOException {
         mRemote.renameIndex(remoteIndex(index), newName);

@@ -952,6 +952,14 @@ public class TableMaker {
         {
             // Specified by RowEvaluator.
             MethodMaker mm = cm.addMethod
+                (null, "writeRow", RowWriter.class, byte[].class, byte[].class).public_();
+            var tableVar = mm.var(lookup.lookupClass());
+            tableVar.invoke("writeRow", mm.param(0), mm.param(1), mm.param(2));
+        }
+
+        {
+            // Specified by RowEvaluator.
+            MethodMaker mm = cm.addMethod
                 (byte[].class, "updateKey", Object.class, byte[].class).public_();
             var rowVar = mm.param(0).cast(rowClass);
             var tableVar = mm.var(lookup.lookupClass());

@@ -156,6 +156,11 @@ public class ScanControllerTest {
         }
 
         @Override
+        public void writeRow(RowWriter writer, byte[] key, byte[] value) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public byte[] updateKey(Object row, byte[] original) {
             throw new UnsupportedOperationException();
         }

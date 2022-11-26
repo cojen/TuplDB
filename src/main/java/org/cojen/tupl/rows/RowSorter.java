@@ -81,7 +81,7 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
     }
 
     @Override
-    public void beginBatch(RowEvaluator<R> evaluator) {
+    public void beginBatch(Scanner scanner, RowEvaluator<R> evaluator) {
         ScanBatch<R> batch;
         if (mLastBatch == null) {
             mFirstBatch = batch = this;
@@ -225,7 +225,7 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
         }
 
         @Override
-        public void beginBatch(RowEvaluator<R> evaluator) throws IOException {
+        public void beginBatch(Scanner scanner, RowEvaluator<R> evaluator) throws IOException {
             flush();
             mTranscoder = transcoder(evaluator);
         }

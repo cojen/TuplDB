@@ -332,6 +332,15 @@ class StaticTableMaker extends TableMaker {
             addUnfilteredMethods(0);
         }
 
+        if (!isEvolvable()) {
+            // Add a method for remotely serializing rows. Dynamic table needs to implement
+            // this differently because it has to examine a schema version.
+            MethodMaker mm = mClassMaker.addMethod
+                (null, "writeRow", RowWriter.class, byte[].class, byte[].class).static_();
+            // FIXME: Implement writeRow
+            mm.new_(Exception.class, "FIXME").throw_();
+        }
+
         return mClassMaker.finish();
     }
 

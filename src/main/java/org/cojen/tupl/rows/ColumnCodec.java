@@ -108,6 +108,25 @@ abstract class ColumnCodec {
     }
 
     /**
+     * Returns an array of new stateless ColumnCodec instances suitable for decoding rows which
+     * were remotely serialized.
+     */
+    static ColumnCodec[] make(RowHeader header) {
+        int numColumns = header.columnNames.length;
+        var codecs = new ColumnCodec[numColumns];
+
+        for (int i=0; i<numColumns; i++) {
+            var info = new ColumnInfo();
+            info.name = header.columnNames[i];
+            info.typeCode = header.columnTypes[i];
+            info.assignType();
+            codecs[i] = make(info, header.columnFlags[i]);
+        }
+
+        return codecs;
+    }
+
+    /**
      * Returns a new stateless ColumnCodec instance.
      */
     private static ColumnCodec make(ColumnInfo info, int flags) {

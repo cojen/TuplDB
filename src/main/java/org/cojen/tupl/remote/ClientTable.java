@@ -26,6 +26,7 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import org.cojen.dirmi.ClosedException;
+import org.cojen.dirmi.Pipe;
 
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Scanner;
@@ -34,6 +35,10 @@ import org.cojen.tupl.Transaction;
 import org.cojen.tupl.Updater;
 
 import org.cojen.tupl.diag.QueryPlan;
+
+import org.cojen.tupl.io.Utils;
+
+import org.cojen.tupl.rows.RowReader;
 
 /**
  * 
@@ -82,14 +87,32 @@ final class ClientTable<R> implements Table<R> {
 
     @Override
     public Scanner<R> newScanner(Transaction txn) throws IOException {
-        // FIXME
-        throw null;
+        return newScanner(mRemote.newScanner(mDb.remoteTransaction(txn), null));
     }
 
     @Override
     public Scanner<R> newScanner(Transaction txn, String query, Object... args) throws IOException {
-        // FIXME
-        throw null;
+        return newScanner(mRemote.newScanner(mDb.remoteTransaction(txn), null, query, args));
+    }
+
+    private Scanner<R> newScanner(Pipe pipe) throws IOException {
+        try {
+            pipe.flush();
+
+            return new RowReader<R, Pipe>(mType, pipe) {
+                @Override
+                protected void close(Pipe pipe, boolean finished) throws IOException {
+                    if (finished) {
+                        pipe.recycle();
+                    } else {
+                        pipe.close();
+                    }
+                }
+            };
+        } catch (IOException e) {
+            Utils.closeQuietly(pipe);
+            throw e;
+        }
     }
 
     @Override
@@ -103,20 +126,6 @@ final class ClientTable<R> implements Table<R> {
         // FIXME
         throw null;
     }
-
-    /*
-    @Override
-    public Stream<R> newStream(Transaction txn) {
-        // FIXME: newStream
-        throw null;
-    }
-
-    @Override
-    public Stream<R> newStream(Transaction txn, String query, Object... args) {
-        // FIXME: newStream
-        throw null;
-    }
-    */
 
     @Override
     public Transaction newTransaction(DurabilityMode dm) {

@@ -26,6 +26,8 @@ import org.cojen.tupl.Index;
 
 import org.cojen.tupl.diag.IndexStats;
 
+import org.cojen.tupl.rows.BaseTable;
+
 /**
  * 
  *
@@ -64,8 +66,7 @@ final class ServerIndex extends ServerView<Index> implements RemoteIndex {
             throw new IllegalStateException(e);
         }
 
-        // FIXME: asTable
-        throw null;
+        return new ServerTable<>((BaseTable<?>) mView.asTable(clazz));
     }
 
     @Override

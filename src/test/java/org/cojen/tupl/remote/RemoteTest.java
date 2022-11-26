@@ -36,6 +36,8 @@ import org.cojen.tupl.LockMode;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.LockTimeoutException;
 import org.cojen.tupl.Ordering;
+import org.cojen.tupl.PrimaryKey;
+import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.core.CoreDeadlockInfo;
@@ -68,7 +70,6 @@ public class RemoteTest {
              Serializer.simple(LockResult.class),
              Serializer.simple(Ordering.class),
              LockTimeoutExceptionSerializer.THE,
-             DeadlockInfoSerializer.THE,
              DeadlockInfoSerializer.THE,
              DeadlockExceptionSerializer.THE);
 
@@ -121,5 +122,33 @@ public class RemoteTest {
                 System.out.println(new String(key) + " -> " + valueStr);
             }
         }
+
+        System.out.println("---");
+
+        Table<Tab> clientTable = client.openTable(Tab.class);
+
+        {
+            Table<Tab> serverTable = db.openTable(Tab.class);
+            Tab row = serverTable.newRow();
+            row.id(1);
+            row.value("hello");
+            serverTable.insert(null, row);
+            row.id(2);
+            row.value("world");
+            serverTable.insert(null, row);
+        }
+
+        try (var scanner = clientTable.newScanner(null)) {
+            scanner.forEachRemaining(row -> System.out.println(row));
+        }
+    }
+
+    @PrimaryKey("id")
+    public static interface Tab {
+        long id();
+        void id(long id);
+
+        String value();
+        void value(String v);
     }
 }

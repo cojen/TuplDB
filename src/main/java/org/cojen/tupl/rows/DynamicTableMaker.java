@@ -121,6 +121,8 @@ public class DynamicTableMaker extends TableMaker {
 
         addUnfilteredMethods(mTableId);
 
+        addDynamicWriteRowMethod();
+
         return doFinish(mt);
     }
 
@@ -330,6 +332,26 @@ public class DynamicTableMaker extends TableMaker {
         MethodHandle mh = lookup.findStatic(lookup.lookupClass(), "decodeValueSwitchCallSite",
                                             MethodType.methodType(SwitchCallSite.class));
         return (SwitchCallSite) mh.invokeExact();
+    }
+
+    /**
+     * Add a method for remotely serializing rows.
+     *
+     * @see RowEvaluator.writeRow
+     */
+    private void addDynamicWriteRowMethod() {
+        MethodMaker mm = mClassMaker.addMethod
+            (null, "writeRow", RowWriter.class, byte[].class, byte[].class).static_();
+
+        var writerVar = mm.param(0);
+        var keyVar = mm.param(1);
+        var valueVar = mm.param(2);
+            
+        var schemaVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", valueVar);
+
+        var indy = mm.var(WriteRowMaker.class).indy
+            ("indyWriteRow", mStore.ref(), mRowType, mTableId);
+        indy.invoke(null, "writeRow", null, schemaVersion, writerVar, keyVar, valueVar);
     }
 
     /**

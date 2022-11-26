@@ -82,6 +82,12 @@ public interface RowEvaluator<R> extends RowDecoder<R> {
     R decodeRow(R row, byte[] key, byte[] value) throws IOException;
 
     /**
+     * Writes a header and row data via the RowWriter. This is used for remotely serializing
+     * rows, and it's not intended to be used for persisting rows.
+     */
+    void writeRow(RowWriter writer, byte[] key, byte[] value) throws IOException;
+
+    /**
      * Called by BasicUpdater.
      *
      * @return null if the key columns didn't change

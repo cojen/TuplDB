@@ -189,6 +189,12 @@ final class MergedScanController<R> extends SingleScanController<R> {
     }
 
     @Override
+    public void writeRow(RowWriter writer, byte[] key, byte[] value) throws IOException {
+        // Can call either evaluator. They should be bound to the same table.
+        mLowEvaluator.writeRow(writer, key, value);
+    }
+
+    @Override
     public byte[] updateKey(R row, byte[] original) throws IOException {
         // Can call either evaluator. They should be bound to the same table.
         return mLowEvaluator.updateKey(row, original);

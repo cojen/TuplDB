@@ -186,7 +186,7 @@ class BasicScanner<R> implements Scanner<R> {
     protected void beginBatch(R row, RowEvaluator<R> evaluator) throws IOException {
         mEvaluator = evaluator;
         if (row instanceof RowConsumer consumer) {
-            consumer.beginBatch(evaluator);
+            consumer.beginBatch(this, evaluator);
         }
     }
 

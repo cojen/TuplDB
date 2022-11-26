@@ -26,30 +26,48 @@ import org.cojen.tupl.Table;
 
 import org.cojen.tupl.diag.QueryPlan;
 
+import org.cojen.tupl.io.Utils;
+
+import org.cojen.tupl.rows.BaseTable;
+
 /**
  * 
  *
  * @author Brian S O'Neill
  */
 final class ServerTable<R> implements RemoteTable {
-    final Table<R> mTable;
+    final BaseTable<R> mTable;
 
-    ServerTable(Table<R> table) {
+    ServerTable(BaseTable<R> table) {
         mTable = table;
     }
 
     @Override
     public Pipe newScanner(RemoteTransaction txn, Pipe pipe) throws IOException {
-        // FIXME
-        throw null;
+        try {
+            mTable.scanWrite(ServerTransaction.txn(txn), pipe);
+            pipe.flush();
+            pipe.recycle();
+            return null;
+        } catch (IOException e) {
+            Utils.closeQuietly(pipe);
+            throw e;
+        }
     }
 
     @Override
     public Pipe newScanner(RemoteTransaction txn, Pipe pipe, String query, Object... args)
         throws IOException
     {
-        // FIXME
-        throw null;
+        try {
+            mTable.scanWrite(ServerTransaction.txn(txn), pipe, query, args);
+            pipe.flush();
+            pipe.recycle();
+            return null;
+        } catch (IOException e) {
+            Utils.closeQuietly(pipe);
+            throw e;
+        }
     }
 
     @Override
