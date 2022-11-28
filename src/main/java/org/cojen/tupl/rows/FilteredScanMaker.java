@@ -200,7 +200,7 @@ public class FilteredScanMaker<R> {
     private static boolean isCovering(RowGen rowGen, RowGen primaryRowGen,
                                       RowFilter joinFilter, Map<String, ColumnInfo> projection)
     {
-        if (joinFilter != null && !joinFilter.isSufficient(rowGen.info.allColumns)) {
+        if (joinFilter != null && joinFilter != TrueFilter.THE) {
             return false;
         }
         if (projection == null) {
