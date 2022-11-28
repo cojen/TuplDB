@@ -129,7 +129,7 @@ public class FilteredScanMaker<R> {
         } else {
             primaryRowGen = RowInfo.find(rowType).rowGen();
             mJoinProjectionSpec = DecodePartialMaker.makeFullSpec(primaryRowGen, null, projection);
-            if (isCovering(rowGen, primaryRowGen, projection)) {
+            if (isCovering(rowGen, primaryRowGen, joinFilter, projection)) {
                 // No need to join to the primary table when use a Scanner. A Updater
                 // performs a join step to position the cursor over the primary table.
                 mAlwaysJoin = false;
@@ -198,8 +198,11 @@ public class FilteredScanMaker<R> {
      * the primary table is required.
      */
     private static boolean isCovering(RowGen rowGen, RowGen primaryRowGen,
-                                      Map<String, ColumnInfo> projection)
+                                      RowFilter joinFilter, Map<String, ColumnInfo> projection)
     {
+        if (joinFilter != null && !joinFilter.isSufficient(rowGen.info.allColumns)) {
+            return false;
+        }
         if (projection == null) {
             projection = primaryRowGen.info.allColumns;
         }
