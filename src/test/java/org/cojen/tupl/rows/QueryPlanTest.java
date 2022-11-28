@@ -892,6 +892,21 @@ public class QueryPlanTest {
     }
 
     @Test
+    public void covering3() throws Exception {
+        // An index is covering when it satisfies the projection and all remainder filters.
+
+        QueryPlan plan = mTable.scannerPlan(null, "{id} b == ? && d == ?");
+        
+        comparePlans(new QueryPlan.Filter
+                     ("d == ?2", new QueryPlan.NaturalJoin
+                      (TestRow.class.getName(), "primary key", new String[] {"+id"},
+                       new QueryPlan.RangeScan
+                       (TestRow.class.getName(), "secondary index", new String[] { "+b", "+id"},
+                        false, "b >= ?1", "b <= ?1"))),
+                     plan);
+    }
+
+    @Test
     public void reverseScanOverSecondaryIndex() throws Exception {
         // Even though no ordering is specified, a reverse scan over a secondary index is
         // preferred when no join needs to be performed, and the query specifies an open range.
