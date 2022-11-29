@@ -871,6 +871,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      *
      * @param spec must have an even length; first half refers to columns to decode and second
      * half refers to columns to mark clean
+     * @see DecodePartialMaker
      */
     protected final MethodHandle decodePartialHandle(byte[] spec, int schemaVersion) {
         WeakCache<Object, MethodHandle, byte[]> cache = mPartialDecodeCache;

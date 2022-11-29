@@ -501,7 +501,7 @@ public class RowStore {
 
     /**
      * @param indexTables check and store in this cache, which is synchronized by the caller
-     * @throws IllegalStateException if not found
+     * @return null if not found
      */
     @SuppressWarnings("unchecked")
     private <R> BaseTableIndex<R> makeIndexTable
@@ -515,9 +515,7 @@ public class RowStore {
         ColumnSet cs = rowInfo.examineIndex(null, columns, alt);
 
         if (cs == null) {
-            throw new IllegalStateException
-                ((alt ? "Alternate key" : "Secondary index") + " not found: " +
-                 Arrays.toString(columns));
+            return null;
         }
 
         var encoder = new Encoder(columns.length * 16);
