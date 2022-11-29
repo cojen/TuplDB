@@ -2017,7 +2017,13 @@ class BTreeCursor extends CoreValueAccessor implements Cursor {
                 startPos = ~startPos;
             }
 
-            int pos = node.binarySearch(key, startPos);
+            int pos;
+            try {
+                pos = node.binarySearch(key, startPos);
+            } catch (Throwable e) {
+                node.releaseShared();
+                throw e;
+            }
 
             if (pos >= 0) {
                 frame.mNotFoundKey = null;
