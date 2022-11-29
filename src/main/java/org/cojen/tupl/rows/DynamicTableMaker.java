@@ -117,11 +117,11 @@ public class DynamicTableMaker extends TableMaker {
             addDoUpdateMethod();
 
             mm.invoke("decodeValue", mm.param(0), mm.param(1));
+
+            addDynamicWriteRowMethod();
         }
 
         addUnfilteredMethods(mTableId);
-
-        addDynamicWriteRowMethod();
 
         return doFinish(mt);
     }
@@ -346,7 +346,7 @@ public class DynamicTableMaker extends TableMaker {
         var writerVar = mm.param(0);
         var keyVar = mm.param(1);
         var valueVar = mm.param(2);
-            
+
         var schemaVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", valueVar);
 
         var indy = mm.var(WriteRowMaker.class).indy
