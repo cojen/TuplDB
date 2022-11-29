@@ -35,6 +35,10 @@ public interface RowPredicateLock<R> {
      * the locks for the entire transaction scope. If lock acquisition times out, all locks
      * acquired up to that point are still retained.
      *
+     * <p>This method is intended to be called whenever changes are being made to an index.
+     * For all predicates that match the row, this method blocks until the associated query
+     * finishes.
+     *
      * @param row is passed to the {@code RowPredicate.test} method
      * @return object which must be closed at most once after the associated row lock has
      * been been acquired
@@ -46,8 +50,8 @@ public interface RowPredicateLock<R> {
      * Variant which can act upon a partially filled in row.
      *
      * @param row partially specified row
-     * @param key is passed to the {@code RowPredicate.test} method
-     * @param value is passed to the {@code RowPredicate.test} method
+     * @param key is passed to the {@code RowPredicate.testP} method
+     * @param value is passed to the {@code RowPredicate.testP} method
      */
     Closer openAcquireP(Transaction txn, R row, byte[] key, byte[] value) throws IOException;
 
@@ -94,6 +98,9 @@ public interface RowPredicateLock<R> {
      * given transaction, held exclusively. If the add operation times out, the lock is removed
      * from the set, and it isn't added to the transaction.
      *
+     * <p>This method is intended to be called by queries for supporting serializable
+     * isolation. The predicate matches on all rows requested by the query.
+     *
      * @param txn exclusive owner of the lock
      * @param predicate defines the lock matching rules
      * @return an object which can release the predicate lock before the transaction exits; is
@@ -105,6 +112,9 @@ public interface RowPredicateLock<R> {
      * Acquires an exclusive lock, which blocks all calls to openAcquire and addPredicate, and
      * waits for existing locks to be released. The exclusive lock is released when the
      * callback returns or throws an exception.
+     *
+     * <p>This method is intended to be called when dropping an index. It ensures that the index
+     * isn't dropped while being used by an active query.
      *
      * @param mustWait if not null, is called when the lock might not be immediately available
      * @param callback runs with exclusive lock held
