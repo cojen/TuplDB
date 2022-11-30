@@ -97,8 +97,6 @@ class StaticTableMaker extends TableMaker {
         return cCache.obtain(ArrayKey.make(type, secondaryDesc), rowGen);
     }
 
-    private final boolean mSupportsIndexLock;
-
     private final ColumnInfo mAutoColumn;
 
     /**
@@ -119,8 +117,6 @@ class StaticTableMaker extends TableMaker {
      */
     private StaticTableMaker(Class<?> type, RowGen rowGen, RowGen codecGen, byte[] secondaryDesc) {
         super(type, rowGen, codecGen, secondaryDesc);
-
-        mSupportsIndexLock = true;
 
         ColumnInfo auto = null;
         if (isPrimaryTable()) {
@@ -278,11 +274,7 @@ class StaticTableMaker extends TableMaker {
             var rowVar = mm.param(1).cast(mRowClass);
             rowVar.field(mAutoColumn.name).set(mm.param(2));
 
-            if (!mSupportsIndexLock) {
-                mm.return_(mm.var(RowPredicateLock.NonCloser.class).field("THE"));
-            } else {
-                mm.return_(mm.field("mIndexLock").invoke("tryOpenAcquire", mm.param(0), rowVar));
-            }
+            mm.return_(mm.field("mIndexLock").invoke("tryOpenAcquire", mm.param(0), rowVar));
 
             var allButAuto = new TreeMap<>(mCodecGen.info.allColumns);
             allButAuto.remove(mAutoColumn.name);
@@ -744,22 +736,13 @@ class StaticTableMaker extends TableMaker {
                 markAllClean(rowVar);
                 mm.return_(true);
             } else {
-                Variable closerVar;
-                Label opStart;
-                if (!mSupportsIndexLock) {
-                    closerVar = null;
-                    opStart = null;
-                } else {
-                    closerVar = mm.field("mIndexLock").invoke("openAcquire", txnVar, rowVar);
-                    opStart = mm.label().here();
-                }
+                Variable closerVar = mm.field("mIndexLock").invoke("openAcquire", txnVar, rowVar);
+                Label opStart = mm.label().here();
 
                 if (variant == "insert") {
                     cursorVar.invoke("autoload", false);
                     cursorVar.invoke("find", keyVar);
-                    if (closerVar != null) {
-                        mm.finally_(opStart, () -> closerVar.invoke("close"));
-                    }
+                    mm.finally_(opStart, () -> closerVar.invoke("close"));
                     Label passed = mm.label();
                     cursorVar.invoke("value").ifEq(null, passed);
                     mm.return_(false);
@@ -770,9 +753,7 @@ class StaticTableMaker extends TableMaker {
                     mm.return_(true);
                 } else {
                     cursorVar.invoke("find", keyVar);
-                    if (closerVar != null) {
-                        mm.finally_(opStart, () -> closerVar.invoke("close"));
-                    }
+                    mm.finally_(opStart, () -> closerVar.invoke("close"));
                     var oldValueVar = cursorVar.invoke("value");
                     Label wasNull = mm.label();
                     oldValueVar.ifEq(null, wasNull);
@@ -853,7 +834,7 @@ class StaticTableMaker extends TableMaker {
                                     Variable txnVar, Variable rowVar,
                                     Variable keyVar, Variable valueVar)
     {
-        if (variant == "replace" || !mSupportsIndexLock) {
+        if (variant == "replace") {
             return mm.field("mSource").invoke(variant, txnVar, keyVar, valueVar);
         } else {
             // Call protected method inherited from BaseTable.
