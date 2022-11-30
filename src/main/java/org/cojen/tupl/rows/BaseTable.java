@@ -81,7 +81,6 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     private WeakCache<String, Comparator<R>, Object> mComparatorCache;
     private static final VarHandle cComparatorCacheHandle;
 
-    // Is null if unsupported.
     protected final RowPredicateLock<R> mIndexLock;
 
     private WeakCache<Object, MethodHandle, byte[]> mPartialDecodeCache;
@@ -101,13 +100,10 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         }
     }
 
-    /**
-     * @param indexLock is null if unsupported
-     */
     protected BaseTable(TableManager<R> manager, Index source, RowPredicateLock<R> indexLock) {
-        mTableManager = manager;
-
+        mTableManager = Objects.requireNonNull(manager);
         mSource = Objects.requireNonNull(source);
+        mIndexLock = Objects.requireNonNull(indexLock);
 
         {
             int[] typeMap = {PLAIN, DOUBLE_CHECK};
@@ -139,8 +135,6 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         } else {
             mQueryLauncherCache = null;
         }
-
-        mIndexLock = indexLock;
     }
 
     public final TableManager<R> tableManager() {
@@ -183,15 +177,12 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             scanner = new BasicScanner<>(this, controller);
 
             if (txn != null && !txn.lockMode().noReadLock) {
-                RowPredicateLock<R> lock = mIndexLock;
-                if (lock != null) {
-                    // This case is reached when a transaction was provided which is read
-                    // committed or higher. Adding a predicate lock prevents new rows from
-                    // being inserted into the scan range for the duration of the transaction
-                    // scope. If the lock mode is repeatable read, then rows which have been
-                    // read cannot be deleted, effectively making the transaction serializable.
-                    closer = lock.addPredicate(txn, controller.predicate());
-                }
+                // This case is reached when a transaction was provided which is read committed
+                // or higher. Adding a predicate lock prevents new rows from being inserted
+                // into the scan range for the duration of the transaction scope. If the lock
+                // mode is repeatable read, then rows which have been read cannot be deleted,
+                // effectively making the transaction serializable.
+                closer = mIndexLock.addPredicate(txn, controller.predicate());
             }
         }
 
@@ -311,9 +302,6 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             }
 
             RowPredicateLock<R> lock = secondary == null ? mIndexLock : secondary.mIndexLock;
-            if (lock == null) {
-                break addPredicate;
-            }
 
             // This case is reached when a transaction was provided which is read committed
             // or higher. Adding a predicate lock prevents new rows from being inserted
@@ -632,7 +620,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             // No predicate lock is required when the filter matches at most one row.
             baseClass = null;
         } else {
-            baseClass = mIndexLock == null ? null : mIndexLock.evaluatorClass();
+            baseClass = mIndexLock.evaluatorClass();
         }
 
         RowGen rowGen = rowInfo.rowGen();
@@ -836,7 +824,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      */
     protected abstract R toRow(byte[] key);
 
-    protected RowStore rowStore() throws DatabaseException {
+    protected final RowStore rowStore() throws DatabaseException {
         var rs = rowStoreRef().get();
         if (rs == null) {
             throw new DatabaseException("Closed");
@@ -905,10 +893,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     protected abstract MethodHandle makeDecodePartialHandle(byte[] spec, int schemaVersion);
 
     protected final void redoPredicateMode(Transaction txn) throws IOException {
-        RowPredicateLock<R> lock = mIndexLock;
-        if (lock != null) {
-            lock.redoPredicateMode(txn);
-        }
+        mIndexLock.redoPredicateMode(txn);
     }
 
     /**

@@ -197,13 +197,9 @@ class BasicUpdater<R> extends BasicScanner<R> implements Updater<R> {
 
             boolean result;
             RowPredicateLock<R> lock = mTable.mIndexLock;
-            if (lock == null) {
+            lock.redoPredicateMode(txn);
+            try (RowPredicateLock.Closer closer = lock.openAcquireP(txn, row, key, value)) {
                 result = source.insert(txn, key, value);
-            } else {
-                lock.redoPredicateMode(txn);
-                try (RowPredicateLock.Closer closer = lock.openAcquireP(txn, row, key, value)) {
-                    result = source.insert(txn, key, value);
-                }
             }
 
             if (!result) {
