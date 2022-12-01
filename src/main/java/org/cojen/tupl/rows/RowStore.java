@@ -81,6 +81,7 @@ public class RowStore {
 
        (indexId) ->
          int current schemaVersion,
+         long tableVersion, (non-zero, incremented each time the table definition changes)
          ColumnSet[] alternateKeys, (a type of secondary index)
          ColumnSet[] secondaryIndexes
 
@@ -695,7 +696,7 @@ public class RowStore {
      * secondary indexes associated with the table and perform actions to build or drop them.
      */
     public void notifySchema(long indexId) throws IOException {
-        // Must launch from a separate thread because locks are held by this thread until the
+        // Must launch from a separate thread because locks are held until the active
         // transaction finishes.
         Runner.start(() -> {
             try {
@@ -724,9 +725,7 @@ public class RowStore {
      * @param taskKey is non-null if this is a recovered workflow task
      * @return true if workflow task (if any) can be immediately deleted
      */
-    private boolean doNotifySchema(byte[] taskKey, long indexId)
-        throws IOException
-    {
+    private boolean doNotifySchema(byte[] taskKey, long indexId) throws IOException {
         Index ix = mDatabase.indexById(indexId);
 
         // Index won't be found if it was concurrently dropped.
@@ -774,7 +773,7 @@ public class RowStore {
     /**
      * Also called from TableManager.asTable.
      */
-    <R> void examineSecondaries(TableManager<R> manager) throws IOException {
+    void examineSecondaries(TableManager<?> manager) throws IOException {
         long indexId = manager.mPrimaryIndex.id();
 
         // Can use NO_FLUSH because transaction will be only used for reading data.
@@ -782,12 +781,20 @@ public class RowStore {
         try {
             txn.lockTimeout(-1, null);
 
-            // Lock to prevent changes and to allow one thread to call examineSecondaries.
-            mSchemata.lockUpgradable(txn, key(indexId));
+            // Obtaining the current table version acquires an upgradable lock, which
+            // prevents changes and allows only one thread to call TableManager.update.
+            long tableVersion;
+            {
+                byte[] value = mSchemata.load(txn, key(indexId));
+                if (value == null) {
+                    return;
+                }
+                tableVersion = decodeLongLE(value, 4);
+            }
 
             txn.lockMode(LockMode.READ_COMMITTED);
 
-            manager.update(this, txn, viewExtended(indexId, K_SECONDARY));
+            manager.update(tableVersion, this, txn, viewExtended(indexId, K_SECONDARY));
         } finally {
             txn.reset();
         }
@@ -807,8 +814,19 @@ public class RowStore {
         try {
             txn.lockTimeout(-1, null);
 
-            // Lock to prevent changes and to allow one thread to call examineSecondaries.
-            mSchemata.lockUpgradable(txn, key(indexId));
+            // Changing the current table version acquires an exclusive lock, which prevents
+            // other changes and allows only one thread to call TableManager.update.
+            long tableVersion;
+            try (Cursor c = mSchemata.newCursor(txn)) {
+                c.find(key(indexId));
+                byte[] value = c.value();
+                if (value == null) {
+                    return;
+                }
+                tableVersion = decodeLongLE(value, 4);
+                encodeLongLE(value, 4, ++tableVersion);
+                c.store(value);
+            }
 
             View secondariesView = viewExtended(indexId, K_SECONDARY);
 
@@ -825,7 +843,7 @@ public class RowStore {
                 }
             }
 
-            backfill.mManager.update(this, txn, secondariesView);
+            backfill.mManager.update(tableVersion, this, txn, secondariesView);
 
             txn.commit();
         } finally {
@@ -1181,6 +1199,7 @@ public class RowStore {
         }
 
         int schemaVersion;
+        long tableVersion;
 
         Map<Index, byte[]> secondariesToDelete = null;
 
@@ -1190,7 +1209,9 @@ public class RowStore {
 
             current.find(key(indexId));
 
-            if (current.value() != null) {
+            if (current.value() == null) {
+                tableVersion = 0;
+            } else {
                 // Check if the schema has changed.
                 schemaVersion = decodeIntLE(current.value(), 0);
 
@@ -1213,6 +1234,8 @@ public class RowStore {
                         }
                     }
                 }
+
+                tableVersion = decodeLongLE(current.value(), 4);
             }
 
             // Find an existing schemaVersion or create a new one.
@@ -1242,7 +1265,7 @@ public class RowStore {
                     }
                 }
 
-                // Create a new version.
+                // Create a new schema version.
 
                 View versionView = mSchemata.viewGt(key(indexId)).viewLt(key(indexId, 1 << 31));
                 try (Cursor highest = versionView.newCursor(txn)) {
@@ -1273,6 +1296,8 @@ public class RowStore {
             }
 
             encodeIntLE(encoded.currentData, 0, schemaVersion);
+            encodeLongLE(encoded.currentData, 4, ++tableVersion);
+
             current.store(encoded.currentData);
 
             // Store the type name, which is usually the same as the class name. In case the
@@ -1755,7 +1780,7 @@ public class RowStore {
 
         if (currentData != null) {
             info.alternateKeys = new TreeSet<>(ColumnSetComparator.THE);
-            pos = decodeColumnSets(currentData, 4, names, info.alternateKeys);
+            pos = decodeColumnSets(currentData, 4 + 8, names, info.alternateKeys);
             if (info.alternateKeys.isEmpty()) {
                 info.alternateKeys = Collections.emptyNavigableSet();
             }
@@ -1944,6 +1969,7 @@ public class RowStore {
 
             encoder.reset(0);
             encoder.writeIntLE(0); // slot for current schemaVersion
+            encoder.writeLongLE(0); // slot for table version
             encodeColumnSets(encoder, info.alternateKeys, columnNameMap);
             encodeColumnSets(encoder, info.secondaryIndexes, columnNameMap);
 

@@ -58,6 +58,8 @@ public final class TableManager<R> {
 
     private volatile WeakCache<Object, BaseTableIndex<R>, Object> mIndexTables;
 
+    private long mTableVersion;
+
     TableManager(RowStore rs, Index primaryIndex) {
         mRowStoreRef = rs.ref();
         mPrimaryIndex = primaryIndex;
@@ -177,11 +179,18 @@ public final class TableManager<R> {
      * changed, a new trigger is installed on all tables. Caller is expected to hold a lock
      * which prevents concurrent calls to this method, which isn't thread-safe.
      *
+     * @param tableVersion non-zero current table definition version
      * @param rs used to open secondary indexes
      * @param txn holds the lock
      * @param secondaries maps index descriptor to index id and state
      */
-    void update(RowStore rs, Transaction txn, View secondaries) throws IOException {
+    boolean update(long tableVersion, RowStore rs, Transaction txn, View secondaries)
+        throws IOException
+    {
+        if (tableVersion == mTableVersion) {
+            return false;
+        }
+
         List<BaseTable<R>> tables = mTables.copyValues();
         if (tables != null) {
             for (var table : tables) {
@@ -195,6 +204,10 @@ public final class TableManager<R> {
                 update(null, null, primaryInfo, rs, txn, secondaries);
             }
         }
+
+        mTableVersion = tableVersion;
+
+        return true;
     }
 
     /**
