@@ -127,6 +127,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
 
     private volatile Throwable mDecodeException;
 
+    private volatile boolean mDecodeLatched;
     private volatile CopyOnWriteArrayList<RedoListener> mRedoListeners;
 
     /**
@@ -236,7 +237,12 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     }
 
     public boolean addRedoListener(RedoListener listener) {
-        mDecodeLatch.acquireExclusive();
+        final boolean alreadyLatched = mDecodeLatched;
+
+        if (!alreadyLatched) {
+            mDecodeLatch.acquireExclusive();
+        }
+
         try {
             if (mRedoListeners == null) {
                 activateRedoStoreListener();
@@ -253,7 +259,9 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
             }
             return true;
         } finally {
-            mDecodeLatch.releaseExclusive();
+            if (!alreadyLatched) {
+                mDecodeLatch.releaseExclusive();
+            }
         }
     }
 
@@ -454,12 +462,6 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
 
     @Override
     public boolean endFile(long timestamp) throws IOException {
-        return true;
-    }
-
-    @Override
-    public boolean notifySchema(long indexId) throws IOException {
-        mDatabase.rowStore().notifySchema(indexId);
         return true;
     }
 
@@ -1286,6 +1288,29 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
                 }
             }
         });
+
+        return true;
+    }
+
+    @Override
+    public boolean txnCommitFinalNotifySchema(long txnId, long indexId) throws IOException {
+        txnCommitFinal(txnId);
+
+        // Wait for work to complete.
+        if (mWorkerGroup != null) {
+            // Assume that mDecodeLatch is held exclusively.
+            mWorkerGroup.join(false);
+        }
+
+        mDecodeLatched = true;
+        try {
+            // Call with decode latch held, preventing any concurrent changes. The RowStore
+            // might call the addRedoListener method from this thread, which needs to acquire
+            // the decode latch. To prevent deadlock, the mDecodeLatched field has been set.
+            mDatabase.rowStore().notifySchema(indexId);
+        } finally {
+            mDecodeLatched = false;
+        }
 
         return true;
     }

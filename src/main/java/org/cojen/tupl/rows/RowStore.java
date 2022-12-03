@@ -694,31 +694,32 @@ public class RowStore {
     /**
      * Called in response to a redo log message. Implementation should examine the set of
      * secondary indexes associated with the table and perform actions to build or drop them.
+     * When called by ReplEngine, all incoming redo message processing is suspended until this
+     * method returns.
      */
     public void notifySchema(long indexId) throws IOException {
-        // Must launch from a separate thread because locks are held until the active
-        // transaction finishes.
-        Runner.start(() -> {
-            try {
-                byte[] taskKey = newTaskKey(TASK_NOTIFY_SCHEMA, indexId);
-                Transaction txn = beginWorkflowTask(taskKey);
+        try {
+            byte[] taskKey = newTaskKey(TASK_NOTIFY_SCHEMA, indexId);
+            Transaction txn = beginWorkflowTask(taskKey);
 
-                // Test mode only.
-                if (mStallTasks) {
-                    txn.reset();
-                    return;
-                }
-
-                try {
-                    doNotifySchema(null, indexId);
-                    mSchemata.delete(txn, taskKey);
-                } finally {
-                    txn.reset();
-                }
-            } catch (Throwable e) {
-                uncaught(e);
+            // Test mode only.
+            if (mStallTasks) {
+                txn.reset();
+                return;
             }
-        });
+
+            // FIXME: Should the call to TableManager.update wait for scans to complete if an
+            // index is to be deleted? It's safe, but it's not an ideal solution.
+
+            try {
+                doNotifySchema(null, indexId);
+                mSchemata.delete(txn, taskKey);
+            } finally {
+                txn.reset();
+            }
+        } catch (Throwable e) {
+            uncaught(e);
+        }
     }
 
     /**
@@ -734,6 +735,36 @@ public class RowStore {
         }
 
         return true;
+    }
+
+    /**
+     * Also called from TableManager.asTable.
+     */
+    void examineSecondaries(TableManager<?> manager) throws IOException {
+        long indexId = manager.mPrimaryIndex.id();
+
+        // Can use NO_FLUSH because transaction will be only used for reading data.
+        Transaction txn = mDatabase.newTransaction(DurabilityMode.NO_FLUSH);
+        try {
+            txn.lockTimeout(-1, null);
+
+            // Obtaining the current table version acquires an upgradable lock, which
+            // prevents changes and allows only one thread to call TableManager.update.
+            long tableVersion;
+            {
+                byte[] value = mSchemata.load(txn, key(indexId));
+                if (value == null) {
+                    return;
+                }
+                tableVersion = decodeLongLE(value, 4);
+            }
+
+            txn.lockMode(LockMode.READ_COMMITTED);
+
+            manager.update(tableVersion, this, txn, viewExtended(indexId, K_SECONDARY));
+        } finally {
+            txn.reset();
+        }
     }
 
     /**
@@ -768,36 +799,6 @@ public class RowStore {
         byte[] descriptor = Arrays.copyOfRange(value, 8, value.length);
 
         return deleteIndex(primaryIndexId, indexId, descriptor, null, taskFactory);
-    }
-
-    /**
-     * Also called from TableManager.asTable.
-     */
-    void examineSecondaries(TableManager<?> manager) throws IOException {
-        long indexId = manager.mPrimaryIndex.id();
-
-        // Can use NO_FLUSH because transaction will be only used for reading data.
-        Transaction txn = mDatabase.newTransaction(DurabilityMode.NO_FLUSH);
-        try {
-            txn.lockTimeout(-1, null);
-
-            // Obtaining the current table version acquires an upgradable lock, which
-            // prevents changes and allows only one thread to call TableManager.update.
-            long tableVersion;
-            {
-                byte[] value = mSchemata.load(txn, key(indexId));
-                if (value == null) {
-                    return;
-                }
-                tableVersion = decodeLongLE(value, 4);
-            }
-
-            txn.lockMode(LockMode.READ_COMMITTED);
-
-            manager.update(tableVersion, this, txn, viewExtended(indexId, K_SECONDARY));
-        } finally {
-            txn.reset();
-        }
     }
 
     /**

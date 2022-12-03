@@ -45,9 +45,6 @@ class RedoOps {
         /** random: long */
         OP_NOP_RANDOM = 6,
 
-        /** indexId: long */
-        OP_NOTIFY_SCHEMA = 7,
-
         /** messageLength: varInt, message: bytes */
         OP_CONTROL = 8,
 
@@ -165,6 +162,9 @@ class RedoOps {
 
         /** txnId: delta, prepareTxnId: long */
         OP_TXN_PREPARE_ROLLBACK = 52,
+
+        /** txnId: delta, indexId: long */
+        OP_TXN_COMMIT_FINAL_NOTIFY_SCHEMA = 54,
 
         /** txnId: delta */
         OP_TXN_PREDICATE_MODE = 55,

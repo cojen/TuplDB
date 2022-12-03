@@ -4091,10 +4091,13 @@ final class LocalDatabase extends CoreDatabase {
                 callback.run();
 
                 if (primaryIndexId != 0 && localTxn.mRedo != null) {
-                    localTxn.mContext.redoNotifySchema(localTxn.mRedo, primaryIndexId);
+                    // Note: No harm is caused by the second commit below, which will generate
+                    // another redo message. It must be called to ensure the log is flushed.
+                    localTxn.mContext.redoCommitFinalNotifySchema
+                        (localTxn.mRedo, localTxn.id(), primaryIndexId);
                 }
 
-                localTxn.commit();
+                localTxn.commitAll();
             } catch (Throwable e) {
                 try {
                     localTxn.reset();

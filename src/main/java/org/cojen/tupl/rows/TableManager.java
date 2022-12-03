@@ -197,6 +197,7 @@ public final class TableManager<R> {
                 Class<R> rowType = table.rowType();
                 RowInfo primaryInfo = RowInfo.find(rowType);
                 update(table, rowType, primaryInfo, rs, txn, secondaries);
+                // FIXME: Clear table.mQueryLauncherCache
             }
         } else {
             RowInfo primaryInfo = rs.decodeExisting(txn, null, mPrimaryIndex.id());
