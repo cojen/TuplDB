@@ -470,7 +470,7 @@ public class RowStore {
     }
 
     /**
-     * @throws IllegalStateException if not found
+     * @throws NoSuchIndexException if not found or isn't available
      */
     public <R> BaseTableIndex<R> indexTable
         (BaseTable<R> primaryTable, boolean alt, String... columns)
@@ -488,7 +488,7 @@ public class RowStore {
                 if (table == null) {
                     table = makeIndexTable(indexTables, primaryTable, alt, columns);
                     if (table == null) {
-                        throw new IllegalStateException
+                        throw new NoSuchIndexException
                             ((alt ? "Alternate key" : "Secondary index") + " not found: " +
                              Arrays.toString(columns));
                     }
