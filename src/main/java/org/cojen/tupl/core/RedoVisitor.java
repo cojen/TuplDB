@@ -53,11 +53,6 @@ interface RedoVisitor {
     public boolean endFile(long timestamp) throws IOException;
 
     /**
-     * @return false to stop visiting
-     */
-    public boolean notifySchema(long indexId) throws IOException;
-
-    /**
      * @param message non-null message
      * @return false to stop visiting
      */
@@ -249,6 +244,7 @@ interface RedoVisitor {
     /**
      * @param txnId non-zero transaction id
      * @param message optional message
+     * @return false to stop visiting
      */
     public boolean txnPrepare(long txnId, long prepareTxnId,
                               int handlerId, byte[] message, boolean commit)
@@ -256,23 +252,33 @@ interface RedoVisitor {
 
     /**
      * @param txnId non-zero transaction id
+     * @return false to stop visiting
      */
     public boolean txnPrepareRollback(long txnId, long prepareTxnId) throws IOException;
 
     /**
      * @param txnId non-zero transaction id
+     * @return false to stop visiting
+     */
+    public boolean txnCommitFinalNotifySchema(long txnId, long indexId) throws IOException;
+
+    /**
+     * @param txnId non-zero transaction id
+     * @return false to stop visiting
      */
     public boolean txnPredicateMode(long txnId) throws IOException;
 
     /**
      * @param txnId non-zero transaction id
      * @param message custom message
+     * @return false to stop visiting
      */
     public boolean txnCustom(long txnId, int handlerId, byte[] message) throws IOException;
 
     /**
      * @param txnId non-zero transaction id
      * @param message custom message
+     * @return false to stop visiting
      */
     public boolean txnCustomLock(long txnId, int handlerId, byte[] message,
                                  long indexId, byte[] key)

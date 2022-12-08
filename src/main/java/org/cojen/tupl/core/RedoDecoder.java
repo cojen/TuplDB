@@ -190,18 +190,6 @@ abstract class RedoDecoder {
                 }
                 break;
 
-            case OP_NOTIFY_SCHEMA:
-                long indexId;
-                try {
-                    indexId = in.readLongLE();
-                } catch (EOFException e) {
-                    return true;
-                }
-                if (!verifyTerminator(in) || !visitor.notifySchema(indexId)) {
-                    return false;
-                }
-                break;
-
             case OP_CONTROL:
                 byte[] message;
                 try {
@@ -271,6 +259,7 @@ abstract class RedoDecoder {
                 break;
 
             case OP_STORE:
+                long indexId;
                 byte[] key, value;
                 try {
                     indexId = in.readLongLE();
@@ -655,6 +644,18 @@ abstract class RedoDecoder {
                     return true;
                 }
                 if (!verifyTerminator(in) || !visitor.txnPrepareRollback(txnId, prepareTxnId)) {
+                    return false;
+                }
+                break;
+
+            case OP_TXN_COMMIT_FINAL_NOTIFY_SCHEMA:
+                try {
+                    txnId = readTxnId(in);
+                    indexId = in.readLongLE();
+                } catch (EOFException e) {
+                    return true;
+                }
+                if (!verifyTerminator(in) || !visitor.txnCommitFinalNotifySchema(txnId, indexId)) {
                     return false;
                 }
                 break;

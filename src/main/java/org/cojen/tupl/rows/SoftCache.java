@@ -33,10 +33,15 @@ class SoftCache<K, V, H> extends RefCache<K, V, H> {
     private Entry<K, V>[] mEntries;
     private int mSize;
 
-    @SuppressWarnings({"unchecked"})
     public SoftCache() {
-        // Initial capacity must be a power of 2.
+        clear();
+    }
+
+    @Override
+    @SuppressWarnings({"unchecked"})
+    public synchronized void clear() {
         mEntries = new Entry[2];
+        mSize = 0;
     }
 
     /**

@@ -265,7 +265,7 @@ public class IndexSelectorTest {
      * @param expect index/filter string pairs; if the index spec starts with 'R', then a
      * reverse scan is expected
      */
-    private void verify(String filter, String... expect) {
+    private void verify(String filter, String... expect) throws Exception {
         var selector = selector(filter);
         int numSelected = selector.numSelected();
 
@@ -291,7 +291,7 @@ public class IndexSelectorTest {
         return new Parser(mInfo.allColumns, filter).parseQuery(null);
     }
 
-    private <R> IndexSelector selector(String filter) {
-        return new IndexSelector(mInfo, parse(filter), false);
+    private <R> IndexSelector<R> selector(String filter) throws Exception {
+        return new IndexSelector<R>(null, mInfo, parse(filter), false);
     }
 }

@@ -717,6 +717,21 @@ final class TransactionContext extends Latch implements Flushable {
         }
     }
 
+    /**
+     * Note: This method doesn't flush the log, and so the caller must still explicitly commit
+     * the transaction to ensure the log is flushed.
+     */
+    void redoCommitFinalNotifySchema(RedoWriter redo, long txnId, long indexId) throws IOException {
+        acquireRedoLatch();
+        try {
+            redoWriteTxnOp(redo, OP_TXN_COMMIT_FINAL_NOTIFY_SCHEMA, txnId);
+            redoWriteLongLE(indexId);
+            redoWriteTerminator(redo);
+        } finally {
+            releaseRedoLatch();
+        }
+    }
+
     void redoPredicateMode(RedoWriter redo, long txnId) throws IOException {
         redo.opWriteCheck(null);
 
@@ -828,15 +843,6 @@ final class TransactionContext extends Latch implements Flushable {
             redoWriteBytes(message, true);
             // Must use SYNC to obtain the log position.
             return redoNonTxnTerminateCommit(redo, DurabilityMode.SYNC);
-        } finally {
-            releaseRedoLatch();
-        }
-    }
-
-    void redoNotifySchema(RedoWriter redo, long indexId) throws IOException {
-        acquireRedoLatch();
-        try {
-            doRedoOp(redo, OP_NOTIFY_SCHEMA, indexId, DurabilityMode.NO_FLUSH);
         } finally {
             releaseRedoLatch();
         }

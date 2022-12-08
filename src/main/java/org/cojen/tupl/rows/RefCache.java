@@ -68,6 +68,8 @@ abstract class RefCache<K, V, H> extends ReferenceQueue<Object> {
         }
     }
 
+    public abstract void clear();
+
     /**
      * Can be called without explicit synchronization, but entries can appear to go missing.
      * Double check with synchronization.

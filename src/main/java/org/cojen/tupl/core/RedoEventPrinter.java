@@ -101,12 +101,6 @@ class RedoEventPrinter implements RedoVisitor {
     }
 
     @Override
-    public boolean notifySchema(long indexId) {
-        mListener.notify(mType, "Redo %1$s: indexId=%2$d", "notifySchema", indexId);
-        return true;
-    }
-
-    @Override
     public boolean control(byte[] message) {
         mListener.notify(mType, "Redo %1$s: %2$s", "control", valueStr(message));
         return true;
@@ -292,6 +286,13 @@ class RedoEventPrinter implements RedoVisitor {
     public boolean txnPrepareRollback(long txnId, long prepareTxnId) {
         mListener.notify(mType, "Redo %1$s: txnId=%2$d, prepareTxnId=%3$d",
                          "txnPrepareRollback", txnId, prepareTxnId);
+        return true;
+    }
+
+    @Override
+    public boolean txnCommitFinalNotifySchema(long txnId, long indexId) {
+        mListener.notify(mType, "Redo %1$s: txnId=%2$d, indexId=%3$d",
+                         "txnCommitFinalNotifySchema", txnId, indexId);
         return true;
     }
 

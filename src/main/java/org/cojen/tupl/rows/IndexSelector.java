@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.rows;
 
+import java.io.IOException;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -25,7 +27,9 @@ import java.util.LinkedHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableSet;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.cojen.tupl.filter.AndFilter;
 import org.cojen.tupl.filter.ColumnFilter;
@@ -42,10 +46,13 @@ import org.cojen.tupl.filter.Visitor;
  *
  * @author Brian S O'Neill
  */
-final class IndexSelector {
+final class IndexSelector<R> {
     private final RowInfo mPrimaryInfo;
     private final Query mQuery;
     private final boolean mForUpdate;
+
+    private NavigableSet<ColumnSet> mAlternateKeys;
+    private NavigableSet<ColumnSet> mSecondaryIndexes;
 
     private int mAnyTermMatches;
 
@@ -54,6 +61,7 @@ final class IndexSelector {
     private boolean mMultipleSelections;
 
     private ColumnSet[] mSelectedIndexes;
+    private BaseTable[] mSelectedIndexTables;
     private Query[] mSelectedQueries;
     private boolean[] mSelectedReverse;
     private OrderBy mOrderBy;
@@ -63,12 +71,72 @@ final class IndexSelector {
 
     private boolean mForUpdateRule;
 
-    IndexSelector(RowInfo primaryInfo, Query query, boolean forUpdate) {
+    /**
+     * @param table used to verify that the selected indexes are available; pass null to skip
+     * verification
+     * @throws IOException only can be thrown if a table was provided
+     */
+    IndexSelector(BaseTable<R> table, RowInfo primaryInfo, Query query, boolean forUpdate)
+        throws IOException
+    {
         mPrimaryInfo = primaryInfo;
         mQuery = query;
         mForUpdate = forUpdate;
 
-        analyze();
+        mAlternateKeys = primaryInfo.alternateKeys;
+        mSecondaryIndexes = primaryInfo.secondaryIndexes;
+
+        analyze: while (true) {
+            analyze();
+
+            if (table == null) {
+                break;
+            }
+
+            BaseTable[] selectedIndexTables = new BaseTable[numSelected()];
+
+            for (int i=0; i<selectedIndexTables.length; i++) {
+                ColumnSet subIndex = selectedIndex(i);
+
+                if (subIndex.matches(primaryInfo)) {
+                    selectedIndexTables[i] = table;
+                    continue;
+                }
+
+                BaseTable<R> subTable;
+
+                if (mAlternateKeys.contains(subIndex)) {
+                    // Alternate key.
+                    try {
+                        subTable = table.viewIndexTable(true, subIndex.keySpec());
+                    } catch (NoSuchIndexException e) {
+                        // Alternate key isn't available, so analyze again without it.
+                        if (mAlternateKeys == primaryInfo.alternateKeys) {
+                            mAlternateKeys = new TreeSet<>(mAlternateKeys);
+                        }
+                        mAlternateKeys.remove(subIndex);
+                        continue analyze;
+                    }
+                } else {
+                    // Secondary index.
+                    try {
+                        subTable = table.viewIndexTable(false, subIndex.fullSpec());
+                    } catch (NoSuchIndexException e) {
+                        // Secondary index isn't available, so analyze again without it.
+                        if (mSecondaryIndexes == primaryInfo.secondaryIndexes) {
+                            mSecondaryIndexes = new TreeSet<>(mSecondaryIndexes);
+                        }
+                        mSecondaryIndexes.remove(subIndex);
+                        continue analyze;
+                    }
+                }
+
+                selectedIndexTables[i] = subTable;
+            }
+
+            mSelectedIndexTables = selectedIndexTables;
+            break;
+        }
     }
 
     private void analyze() {
@@ -84,7 +152,7 @@ final class IndexSelector {
         if (orderBy != null) {
             orderBy = reduceOrdering(orderBy, mPrimaryInfo);
             if (orderBy != null) {
-                for (ColumnSet key : mPrimaryInfo.alternateKeys) {
+                for (ColumnSet key : mAlternateKeys) {
                     orderBy = reduceOrdering(orderBy, key);
                     if (orderBy == null) {
                         break;
@@ -209,7 +277,7 @@ final class IndexSelector {
         final ColumnSet theOne;
 
         one: {
-            if (mPrimaryInfo.alternateKeys.isEmpty() && mPrimaryInfo.secondaryIndexes.isEmpty()) {
+            if (mAlternateKeys.isEmpty() && mSecondaryIndexes.isEmpty()) {
                 theOne = mPrimaryInfo;
                 break one;
             }
@@ -343,6 +411,14 @@ final class IndexSelector {
     }
 
     /**
+     * @throws NullPointerException if no base table was provided to the constructor
+     */
+    @SuppressWarnings("unchecked")
+    BaseTable<R> selectedIndexTable(int i) {
+        return mSelectedIndexTables[i];
+    }
+
+    /**
      * Returns a query for the selected index with the effective projection and filter that
      * must still be applied.
      */
@@ -430,13 +506,13 @@ final class IndexSelector {
         var terms = makeTerms(group);
         ColumnSet best = mPrimaryInfo;
 
-        for (ColumnSet cs : mPrimaryInfo.alternateKeys) {
+        for (ColumnSet cs : mAlternateKeys) {
             if (compareIndexes(group, terms, cs, best) < 0) {
                 best = cs;
             }
         }
 
-        for (ColumnSet cs : mPrimaryInfo.secondaryIndexes) {
+        for (ColumnSet cs : mSecondaryIndexes) {
             if (compareIndexes(group, terms, cs, best) < 0) {
                 best = cs;
             }
@@ -795,13 +871,13 @@ final class IndexSelector {
                 }
             });
 
-            for (ColumnSet cs : mPrimaryInfo.alternateKeys) {
+            for (ColumnSet cs : mAlternateKeys) {
                 if (compareCovering(required, cs, best) < 0) {
                     best = cs;
                 }
             }
 
-            for (ColumnSet cs : mPrimaryInfo.secondaryIndexes) {
+            for (ColumnSet cs : mSecondaryIndexes) {
                 if (compareCovering(required, cs, best) < 0) {
                     best = cs;
                 }

@@ -82,6 +82,12 @@ final class MultiCache<K, V, H> {
         mCaches = caches;
     }
 
+    public void clear() {
+        for (var cache : mCaches) {
+            cache.clear();
+        }
+    }
+
     /**
      * Generates missing entries on demand, using an entry latch to ensure that only one thread
      * does the work.

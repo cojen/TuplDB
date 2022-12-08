@@ -777,7 +777,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             rowInfo = RowInfo.find(rowType());
             Map<String, ColumnInfo> allColumns = rowInfo.allColumns;
             Query query = new Parser(allColumns, queryStr).parseQuery(allColumns).reduce();
-            selector = new IndexSelector(rowInfo, query, (type & FOR_UPDATE) != 0);
+            selector = new IndexSelector<R>(this, rowInfo, query, (type & FOR_UPDATE) != 0);
         }
 
         if ((type & FOR_UPDATE) != 0) {
@@ -805,11 +805,11 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         QueryLauncher<R> launcher;
 
         if (num <= 1) {
-            launcher = newSubLauncher(type, rowInfo, selector, 0);
+            launcher = newSubLauncher(type, selector, 0);
         } else {
             var launchers = new QueryLauncher[num];
             for (int i=0; i<num; i++) {
-                launchers[i] = newSubLauncher(type, rowInfo, selector, i);
+                launchers[i] = newSubLauncher(type, selector, i);
             }
             launcher = new DisjointUnionQueryLauncher<R>(launchers);
         }
@@ -825,24 +825,10 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     /**
      * @param type PLAIN, DOUBLE_CHECK, etc.
      */
-    private QueryLauncher<R> newSubLauncher(int type, RowInfo rowInfo,
-                                            IndexSelector selector, int i)
-        throws IOException
-    {
-        ColumnSet subIndex = selector.selectedIndex(i);
+    private QueryLauncher<R> newSubLauncher(int type, IndexSelector<R> selector, int i) {
+        BaseTable<R> subTable = selector.selectedIndexTable(i);
         Query subQuery = selector.selectedQuery(i);
         String subQueryStr = subQuery.toString();
-
-        BaseTable<R> subTable;
-        if (subIndex.matches(rowInfo)) {
-            subTable = this;
-        } else if (rowInfo.alternateKeys.contains(subIndex)) {
-            // Alternate key.
-            subTable = viewIndexTable(true, subIndex.keySpec());
-        } else {
-            // Secondary index.
-            subTable = viewIndexTable(false, subIndex.fullSpec());
-        }
 
         ScanControllerFactory<R> subFactory =
            subTable.mFilterFactoryCache.obtain(type & ~FOR_UPDATE, subQueryStr, subQuery);
@@ -852,6 +838,15 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         }
 
         return new ScanQueryLauncher<>(subTable, subFactory, selector.projection());
+    }
+
+    /**
+     * To be called when the set of available secondary indexes and alternate keys has changed.
+     */
+    void clearQueryCache() {
+        if (mQueryLauncherCache != null) {
+            mQueryLauncherCache.clear();
+        }
     }
 
     /**
