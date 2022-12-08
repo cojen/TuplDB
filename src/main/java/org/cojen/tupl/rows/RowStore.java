@@ -708,7 +708,7 @@ public class RowStore {
                 return;
             }
 
-            // FIXME: Should the call to TableManager.update wait for scans to complete if an
+            // TODO: Should the call to TableManager.update wait for scans to complete if an
             // index is to be deleted? It's safe, but it's not an ideal solution.
 
             try {

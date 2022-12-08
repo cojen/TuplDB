@@ -806,6 +806,15 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     /**
+     * To be called when the set of available secondary indexes and alternate keys has changed.
+     */
+    void clearQueryCache() {
+        if (mQueryLauncherCache != null) {
+            mQueryLauncherCache.clear();
+        }
+    }
+
+    /**
      * Partially decodes a row from a key.
      */
     protected abstract R toRow(byte[] key);

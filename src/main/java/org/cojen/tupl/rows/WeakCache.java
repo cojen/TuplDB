@@ -41,10 +41,16 @@ class WeakCache<K, V, H> extends RefCache<K, V, H> {
     private Entry<K, V>[] mEntries;
     private int mSize;
 
-    @SuppressWarnings({"unchecked"})
     public WeakCache() {
+        clear();
+    }
+
+    @Override
+    @SuppressWarnings({"unchecked"})
+    public synchronized void clear() {
         // Initial capacity must be a power of 2.
         mEntries = new Entry[2];
+        mSize = 0;
     }
 
     /**
