@@ -278,7 +278,7 @@ public class DynamicTableMaker extends TableMaker {
         MethodType mt = MethodType.methodType(void.class, int.class, rowClass, byte[].class);
 
         return new SwitchCallSite(lookup, mt, schemaVersion -> {
-            MethodMaker mm = MethodMaker.begin(lookup, null, "case", rowClass, byte[].class);
+            MethodMaker mm = MethodMaker.begin(lookup, null, "decode", rowClass, byte[].class);
 
             RowStore store = storeRef.get();
             if (store == null) {

@@ -243,6 +243,8 @@ public class FilteredScanMaker<R> {
 
         addEvalRowMethod();
 
+        addWriteRowMethod();
+
         {
             // Override and return the predicate object.
             MethodMaker mm = mFilterMaker.addMethod(RowPredicate.class, "predicate").public_();
@@ -820,7 +822,7 @@ public class FilteredScanMaker<R> {
          */
         @Override
         public Object apply(int schemaVersion) {
-            MethodMaker mm = MethodMaker.begin(mLookup, "case", mMethodType);
+            MethodMaker mm = MethodMaker.begin(mLookup, "evalRow", mMethodType);
 
             RowFilter filter;
             if (mFilterRef == null) {
@@ -928,5 +930,37 @@ public class FilteredScanMaker<R> {
         }
 
         return plan;
+    }
+
+    /**
+     * Override the inherited writeRow method, but only if given a projection.
+     *
+     * @see RowEvaluator.writeRow
+     */
+    private void addWriteRowMethod() {
+        if (mProjectionSpec == null) {
+            return;
+        }
+
+        if (mJoinProjectionSpec != null) {
+            throw new Error("FIXME: writeRow join");
+        }
+
+        MethodMaker mm = mFilterMaker.addMethod
+            (null, "writeRow", RowWriter.class, byte[].class, byte[].class)
+            .public_().override();
+
+        var writerVar = mm.param(0);
+        var keyVar = mm.param(1);
+        var valueVar = mm.param(2);
+
+        if (mSecondaryDescriptor != null || mTable.rowType() == Entry.class) {
+            throw new Error("FIXME: writeRow no schema version");
+        }
+
+        var schemaVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", valueVar);
+
+        var mh = mTable.writePartialHandle(mProjectionSpec);
+        mm.invoke(mh, schemaVersion, writerVar, keyVar, valueVar);
     }
 }

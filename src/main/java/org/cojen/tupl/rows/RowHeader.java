@@ -21,6 +21,7 @@ import java.io.DataInput;
 import java.io.IOException;
 
 import java.util.Arrays;
+import java.util.BitSet;
 
 /**
  * Object which is written when remotely serializing rows.
@@ -57,12 +58,54 @@ public final class RowHeader {
             num++;
         }
 
-        int hash = keyCodecs.length;
-        hash = hash * 31 + Arrays.hashCode(columnNames);
-        hash = hash * 31 + Arrays.hashCode(columnTypes);
-        hash = hash * 31 + Arrays.hashCode(columnFlags);
+        return new RowHeader(keyCodecs.length, columnNames, columnTypes, columnFlags);
+    }
 
-        return new RowHeader(hash, keyCodecs.length, columnNames, columnTypes, columnFlags);
+    /**
+     * @param bits defines which columns belong in the header
+     * @see DecodePartialMaker
+     */
+    static RowHeader make(RowGen rowGen, BitSet projection) {
+        return make(rowGen.keyCodecs(), rowGen.valueCodecs(), projection);
+    }
+
+    /**
+     * @param bits defines which columns belong in the header
+     * @see DecodePartialMaker
+     */
+    static RowHeader make(ColumnCodec[] keyCodecs, ColumnCodec[] valueCodecs, BitSet projection) {
+        int numColumns = projection.cardinality();
+        var columnNames = new String[numColumns];
+        var columnTypes = new int[numColumns];
+        var columnFlags = new int[numColumns];
+
+        int num = 0;
+
+        for (int i=0; i<keyCodecs.length; i++) {
+            if (projection.get(i)) {
+                ColumnCodec codec = keyCodecs[i];
+                ColumnInfo info = codec.mInfo;
+                columnNames[num] = info.name;
+                columnTypes[num] = info.typeCode;
+                columnFlags[num] = codec.codecFlags();
+                num++;
+            }
+        }
+
+        int numKeys = num;
+
+        for (int i=0; i<valueCodecs.length; i++) {
+            if (projection.get(keyCodecs.length + i)) {
+                ColumnCodec codec = valueCodecs[i];
+                ColumnInfo info = codec.mInfo;
+                columnNames[num] = info.name;
+                columnTypes[num] = info.typeCode;
+                columnFlags[num] = codec.codecFlags();
+                num++;
+            }
+        }
+
+        return new RowHeader(numKeys, columnNames, columnTypes, columnFlags);
     }
 
     final int numKeys;
@@ -72,14 +115,29 @@ public final class RowHeader {
 
     private final int mHashCode;
 
-    private RowHeader(int hashCode,
-                      int numKeys, String[] columnNames, int[] columnTypes, int[] columnFlags)
-    {
-        mHashCode = hashCode;
+    private RowHeader(int numKeys, String[] columnNames, int[] columnTypes, int[] columnFlags) {
         this.numKeys = numKeys;
         this.columnNames = columnNames;
         this.columnTypes = columnTypes;
         this.columnFlags = columnFlags;
+
+        int hashCode = numKeys;
+        hashCode = hashCode * 31 + Arrays.hashCode(columnNames);
+        hashCode = hashCode * 31 + Arrays.hashCode(columnTypes);
+        hashCode = hashCode * 31 + Arrays.hashCode(columnFlags);
+
+        mHashCode = hashCode;
+    }
+
+    private RowHeader(int numKeys, String[] columnNames, int[] columnTypes, int[] columnFlags,
+                      int hashCode)
+    {
+        this.numKeys = numKeys;
+        this.columnNames = columnNames;
+        this.columnTypes = columnTypes;
+        this.columnFlags = columnFlags;
+
+        mHashCode = hashCode;
     }
 
     public byte[] encode() {
@@ -150,7 +208,7 @@ public final class RowHeader {
             throw new IllegalStateException();
         }
 
-        return new RowHeader(hash, numKeys, columnNames, columnTypes, columnFlags);
+        return new RowHeader(numKeys, columnNames, columnTypes, columnFlags, hash);
     }
 
     /**

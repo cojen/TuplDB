@@ -84,8 +84,11 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
     protected final RowPredicateLock<R> mIndexLock;
 
-    private WeakCache<Object, MethodHandle, byte[]> mPartialDecodeCache;
-    private static final VarHandle cPartialDecodeCacheHandle;
+    private WeakCache<Object, MethodHandle, byte[]> mDecodePartialCache;
+    private static final VarHandle cDecodePartialCacheHandle;
+
+    private WeakCache<Object, MethodHandle, byte[]> mWritePartialCache;
+    private static final VarHandle cWritePartialCacheHandle;
 
     static {
         try {
@@ -94,8 +97,10 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
                 (BaseTable.class, "mTrigger", Trigger.class);
             cComparatorCacheHandle = lookup.findVarHandle
                 (BaseTable.class, "mComparatorCache", WeakCache.class);
-            cPartialDecodeCacheHandle = lookup.findVarHandle
-                (BaseTable.class, "mPartialDecodeCache", WeakCache.class);
+            cDecodePartialCacheHandle = lookup.findVarHandle
+                (BaseTable.class, "mDecodePartialCache", WeakCache.class);
+            cWritePartialCacheHandle = lookup.findVarHandle
+                (BaseTable.class, "mWritePartialCache", WeakCache.class);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
@@ -892,7 +897,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      * @see DecodePartialMaker
      */
     protected final MethodHandle decodePartialHandle(byte[] spec, int schemaVersion) {
-        WeakCache<Object, MethodHandle, byte[]> cache = mPartialDecodeCache;
+        WeakCache<Object, MethodHandle, byte[]> cache = mDecodePartialCache;
 
         if (cache == null) {
             cache = new WeakCache<>() {
@@ -907,7 +912,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             };
 
             var existing = (WeakCache<Object, MethodHandle, byte[]>)
-                cPartialDecodeCacheHandle.compareAndExchange(this, null, cache);
+                cDecodePartialCacheHandle.compareAndExchange(this, null, cache);
 
             if (existing != null) {
                 cache = existing;
@@ -921,6 +926,39 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     protected abstract MethodHandle makeDecodePartialHandle(byte[] spec, int schemaVersion);
+
+    // FIXME: Support non-evolvable tables too.
+    /**
+     * Returns a MethodHandle suitable for partially writing rows from evolvable tables. A
+     * subset of row columns is written, based on the given projection specification.
+     *
+     * MethodType is void (int schemaVersion, RowWriter writer, byte[] key, byte[] value)
+     *
+     * @param spec must not be null
+     * @see #decodePartialHandle
+     */
+    protected final MethodHandle writePartialHandle(byte[] spec) {
+        WeakCache<Object, MethodHandle, byte[]> cache = mWritePartialCache;
+
+        if (cache == null) {
+            cache = new WeakCache<>() {
+                @Override
+                protected MethodHandle newValue(Object key, byte[] spec) {
+                    return WriteRowMaker.makeWritePartialHandle
+                        (rowStoreRef(), rowType(), mSource.id(), spec);
+                }
+            };
+
+            var existing = (WeakCache<Object, MethodHandle, byte[]>)
+                cWritePartialCacheHandle.compareAndExchange(this, null, cache);
+
+            if (existing != null) {
+                cache = existing;
+            }
+        }
+
+        return cache.obtain(ArrayKey.make(spec), spec);
+    }
 
     protected final void redoPredicateMode(Transaction txn) throws IOException {
         mIndexLock.redoPredicateMode(txn);

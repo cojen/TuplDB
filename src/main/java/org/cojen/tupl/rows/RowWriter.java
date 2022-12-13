@@ -141,4 +141,8 @@ public final class RowWriter<R> implements RowConsumer<R> {
     public void writeBytes(byte[] bytes, int offset) throws IOException {
         mOut.write(bytes, offset, bytes.length - offset);
     }
+
+    public void writeBytes(byte[] bytes, int offset, int length) throws IOException {
+        mOut.write(bytes, offset, length);
+    }
 }

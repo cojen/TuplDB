@@ -107,7 +107,7 @@ public class DecodePartialMaker {
     /**
      * @return toDecode and toMarkClean
      */
-    private static BitSet[] decodeSpec(byte[] spec) {
+    static BitSet[] decodeSpec(byte[] spec) {
         int len = RowUtils.decodePrefixPF(spec, 0);
         int offset = RowUtils.lengthPrefixPF(len);
         BitSet toDecode = BitSet.valueOf(Arrays.copyOfRange(spec, offset, offset += len));
@@ -302,7 +302,7 @@ public class DecodePartialMaker {
     /**
      * Returns true if all key columns or all value columns are to be decoded.
      */
-    private static boolean allRequested(BitSet toDecode, int from, int to) {
+    static boolean allRequested(BitSet toDecode, int from, int to) {
         return toDecode.get(from, to).cardinality() == (to - from);
     }
 
