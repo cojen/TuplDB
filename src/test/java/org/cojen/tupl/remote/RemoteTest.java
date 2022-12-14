@@ -37,6 +37,7 @@ import org.cojen.tupl.LockResult;
 import org.cojen.tupl.LockTimeoutException;
 import org.cojen.tupl.Ordering;
 import org.cojen.tupl.PrimaryKey;
+import org.cojen.tupl.SecondaryIndex;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 
@@ -132,12 +133,15 @@ public class RemoteTest {
             Tab row = serverTable.newRow();
             row.id(1);
             row.value("hello");
+            row.name("name-" + row.value());
             serverTable.insert(null, row);
             row.id(2);
             row.value("world");
+            row.name("name-" + row.value());
             serverTable.insert(null, row);
             row.id(3);
             row.value("end");
+            row.name("name-" + row.value());
             serverTable.insert(null, row);
         }
 
@@ -156,14 +160,24 @@ public class RemoteTest {
         try (var scanner = clientTable.newScanner(null, "{value} value != ?", "world")) {
             scanner.forEachRemaining(row -> System.out.println(row));
         }
+
+        System.out.println("---");
+
+        try (var scanner = clientTable.newScanner(null, "name == ?", "name-world")) {
+            scanner.forEachRemaining(row -> System.out.println(row));
+        }
     }
 
     @PrimaryKey("id")
+    @SecondaryIndex("name")
     public static interface Tab {
         long id();
         void id(long id);
 
         String value();
         void value(String v);
+
+        String name();
+        void name(String n);
     }
 }
