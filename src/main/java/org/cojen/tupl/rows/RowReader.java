@@ -142,7 +142,7 @@ public abstract class RowReader<R, DIN extends DataInput> implements Scanner<R> 
             return null;
         }
 
-        // See RowReader.writeHeader for prefix format.
+        // See RowWriter.writeHeader for prefix format.
         int prefix = in.readUnsignedByte();
 
         if (prefix != 2) {
@@ -272,7 +272,7 @@ public abstract class RowReader<R, DIN extends DataInput> implements Scanner<R> 
             keyEndVar = null;
         } else {
             // Decode the full key length.
-            // See WriteRowMaker.indyWriteRow and RowWriter.writeKeyLength.
+            // See WriteRowMaker.indyWriteRow and RowWriter.writeRowAndKeyLength.
             keyEndVar = dataVar.aget(0).cast(int.class).and(0xff);
             Label bigKey = mm.label();
             keyEndVar.ifGe(128, bigKey);
