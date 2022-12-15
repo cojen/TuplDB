@@ -960,7 +960,7 @@ public class FilteredScanMaker<R> {
 
         var schemaVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", valueVar);
 
-        var mh = mTable.writePartialHandle(mProjectionSpec);
+        var mh = mTable.writeRowHandle(mProjectionSpec);
         mm.invoke(mh, schemaVersion, writerVar, keyVar, valueVar);
     }
 }

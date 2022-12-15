@@ -350,7 +350,7 @@ public class DynamicTableMaker extends TableMaker {
         var schemaVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", valueVar);
 
         var indy = mm.var(WriteRowMaker.class).indy
-            ("indyWriteRow", mStore.ref(), mRowType, mTableId);
+            ("indyWriteRow", mStore.ref(), mRowType, mTableId, null);
         indy.invoke(null, "writeRow", null, schemaVersion, writerVar, keyVar, valueVar);
     }
 

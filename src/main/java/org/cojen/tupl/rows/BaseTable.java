@@ -87,8 +87,8 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     private WeakCache<Object, MethodHandle, byte[]> mDecodePartialCache;
     private static final VarHandle cDecodePartialCacheHandle;
 
-    private WeakCache<Object, MethodHandle, byte[]> mWritePartialCache;
-    private static final VarHandle cWritePartialCacheHandle;
+    private WeakCache<Object, MethodHandle, byte[]> mWriteRowCache;
+    private static final VarHandle cWriteRowCacheHandle;
 
     static {
         try {
@@ -99,8 +99,8 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
                 (BaseTable.class, "mComparatorCache", WeakCache.class);
             cDecodePartialCacheHandle = lookup.findVarHandle
                 (BaseTable.class, "mDecodePartialCache", WeakCache.class);
-            cWritePartialCacheHandle = lookup.findVarHandle
-                (BaseTable.class, "mWritePartialCache", WeakCache.class);
+            cWriteRowCacheHandle = lookup.findVarHandle
+                (BaseTable.class, "mWriteRowCache", WeakCache.class);
         } catch (Throwable e) {
             throw Utils.rethrow(e);
         }
@@ -929,28 +929,27 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
     // FIXME: Support non-evolvable tables too.
     /**
-     * Returns a MethodHandle suitable for partially writing rows from evolvable tables. A
-     * subset of row columns is written, based on the given projection specification.
+     * Returns a MethodHandle suitable for writing rows from evolvable tables. The set of row
+     * columns which are written is defined by the projection specification.
      *
      * MethodType is void (int schemaVersion, RowWriter writer, byte[] key, byte[] value)
      *
-     * @param spec must not be null
-     * @see #decodePartialHandle
+     * @param spec can be null if all columns are projected
      */
-    protected final MethodHandle writePartialHandle(byte[] spec) {
-        WeakCache<Object, MethodHandle, byte[]> cache = mWritePartialCache;
+    protected final MethodHandle writeRowHandle(byte[] spec) {
+        WeakCache<Object, MethodHandle, byte[]> cache = mWriteRowCache;
 
         if (cache == null) {
             cache = new WeakCache<>() {
                 @Override
                 protected MethodHandle newValue(Object key, byte[] spec) {
-                    return WriteRowMaker.makeWritePartialHandle
+                    return WriteRowMaker.makeWriteRowHandle
                         (rowStoreRef(), rowType(), mSource.id(), spec);
                 }
             };
 
             var existing = (WeakCache<Object, MethodHandle, byte[]>)
-                cWritePartialCacheHandle.compareAndExchange(this, null, cache);
+                cWriteRowCacheHandle.compareAndExchange(this, null, cache);
 
             if (existing != null) {
                 cache = existing;

@@ -29,7 +29,7 @@ import java.util.BitSet;
  * @author Brian S O'Neill
  * @see RowWriter
  */
-public final class RowHeader {
+final class RowHeader {
     static RowHeader make(RowGen rowGen) {
         return make(rowGen.keyCodecs(), rowGen.valueCodecs());
     }
@@ -140,7 +140,11 @@ public final class RowHeader {
         mHashCode = hashCode;
     }
 
-    public byte[] encode() {
+    int numValues() {
+        return columnNames.length - numKeys;
+    }
+
+    byte[] encode() {
         int numColumns = columnNames.length;
 
         int length = (4 + 4 + 4 + 4) + numColumns * (2 + 4 + 4);
@@ -180,7 +184,7 @@ public final class RowHeader {
     /**
      * @param bytes the original encoded bytes excluding the length field
      */
-    public static RowHeader decode(byte[] bytes) {
+    static RowHeader decode(byte[] bytes) {
         int hash = RowUtils.decodeIntBE(bytes, 0);
         int numKeys = RowUtils.decodeIntBE(bytes, 4);
         int numColumns = RowUtils.decodeIntBE(bytes, 8);
@@ -214,7 +218,7 @@ public final class RowHeader {
     /**
      * @return the encoded bytes excluding the length field.
      */
-    public static byte[] readFrom(DataInput in) throws IOException {
+    static byte[] readFrom(DataInput in) throws IOException {
         int length = in.readInt();
         byte[] header = new byte[length];
         in.readFully(header);

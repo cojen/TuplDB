@@ -40,15 +40,18 @@ import org.cojen.tupl.DatabaseException;
  */
 public class WriteRowMaker {
     /**
-     * Returns a SwitchCallSite instance suitable for writing rows from evolvable tables. All
-     * row columns are written.
+     * Returns a SwitchCallSite suitable for writing rows from evolvable tables. The set of row
+     * columns which are written is defined by the projection specification.
      *
      * MethodType is void (int schemaVersion, RowWriter writer, byte[] key, byte[] value)
+     *
+     * @param projectionSpec can be null if all columns are projected
      */
     public static SwitchCallSite indyWriteRow(MethodHandles.Lookup lookup,
                                               String name, MethodType mt,
                                               WeakReference<RowStore> storeRef,
-                                              Class<?> rowType, long tableId)
+                                              Class<?> rowType, long tableId,
+                                              byte[] projectionSpec)
     {
         return new SwitchCallSite(lookup, mt, schemaVersion -> {
             MethodMaker mm = MethodMaker.begin
@@ -67,39 +70,7 @@ public class WriteRowMaker {
                          (void.class, RowWriter.class, byte[].class, byte[].class), mm, e);
                 }
 
-                RowGen rowGen = rowInfo.rowGen();
-
-                var writerVar = mm.param(0);
-                var keyVar = mm.param(1);
-                var valueVar = mm.param(2);
-
-                var headerVar = mm.var(byte[].class).setExact(RowHeader.make(rowGen).encode());
-                writerVar.invoke("writeHeader", headerVar);
-
-                ColumnCodec[] keyCodecs = rowGen.keyCodecs();
-
-                var rowLengthVar = keyVar.alength().add(valueVar.alength());
-
-                if (schemaVersion > 0) {
-                    rowLengthVar.inc(schemaVersion < 128 ? -1 : -4);
-                }
-
-                if (!keyCodecs[keyCodecs.length - 1].isLast()) {
-                    writerVar.invoke("writeRowLength", rowLengthVar);
-                } else {
-                    // No length prefix is written for the last column of the key, but one
-                    // should be when key and value are written together into the stream.
-                    // Rather than retrofit the encoded column, provide the full key length up
-                    // front. Decoding of the last column finishes when the offset reaches the
-                    // end of the full key.
-                    writerVar.invoke("writeRowAndKeyLength", rowLengthVar, keyVar.alength());
-                }
-
-                writerVar.invoke("writeBytes", keyVar);
-
-                if (schemaVersion > 0) {
-                    writerVar.invoke("writeBytes", valueVar, schemaVersion < 128 ? 1 : 4);
-                }
+                makeWriteRow(mm, rowInfo.rowGen(), schemaVersion < 128 ? 1 : 4, projectionSpec);
             }
 
             return mm.finish();
@@ -107,16 +78,16 @@ public class WriteRowMaker {
     }
 
     /**
-     * Returns a MethodHandle suitable for partially writing rows from evolvable tables. A
-     * subset of row columns is written, based on the given projection specification.
+     * Returns a MethodHandle suitable for writing rows from evolvable tables. The set of row
+     * columns which are written is defined by the projection specification.
      *
      * MethodType is void (int schemaVersion, RowWriter writer, byte[] key, byte[] value)
      *
-     * @param projectionSpec must not be null
+     * @param projectionSpec can be null if all columns are projected
      */
-    public static MethodHandle makeWritePartialHandle(WeakReference<RowStore> storeRef,
-                                                      Class<?> rowType, long tableId,
-                                                      byte[] projectionSpec)
+    public static MethodHandle makeWriteRowHandle(WeakReference<RowStore> storeRef,
+                                                  Class<?> rowType, long tableId,
+                                                  byte[] projectionSpec)
     {
         // Because no special access is required, the local lookup is sufficient.
         var lookup = MethodHandles.lookup();
@@ -124,85 +95,97 @@ public class WriteRowMaker {
         MethodType mt = MethodType.methodType
             (void.class, int.class, RowWriter.class, byte[].class, byte[].class);
 
-        return new SwitchCallSite(lookup, mt, schemaVersion -> {
-            MethodMaker mm = MethodMaker.begin
-                (lookup, null, "writeRow", RowWriter.class, byte[].class, byte[].class);
+        return indyWriteRow(lookup, "writeRow", mt, storeRef, rowType, tableId, projectionSpec)
+            .dynamicInvoker();
+    }
 
-            RowStore store = storeRef.get();
-            if (store == null) {
-                mm.new_(DatabaseException.class, "Closed").throw_();
-                return mm.finish();
-            }
+    /**
+     * Makes the body of a writeRow method.
+     *
+     * Params: (RowWriter writer, byte[] key, byte[] value)
+     *
+     * @param rowGen describes the key and value encoding
+     * @param valueOffset start offset of the source binary value
+     * @param projectionSpec can be null if all columns are projected
+     */
+    public static void makeWriteRow(MethodMaker mm, RowGen rowGen, int valueOffset,
+                                    byte[] projectionSpec)
+    {
+        var writerVar = mm.param(0);
+        var keyVar = mm.param(1);
+        var valueVar = mm.param(2);
 
-            RowInfo rowInfo;
-            try {
-                rowInfo = store.rowInfo(rowType, tableId, schemaVersion);
-            } catch (Exception e) {
-                return new ExceptionCallSite.Failed
-                    (MethodType.methodType
-                     (void.class, RowWriter.class, byte[].class, byte[].class), mm, e);
-            }
+        BitSet projSet;
+        RowHeader rh;
 
-            RowGen rowGen = rowInfo.rowGen();
+        if (projectionSpec == null) {
+            projSet = null;
+            rh = RowHeader.make(rowGen);
+        } else {
+            projSet = DecodePartialMaker.decodeSpec(projectionSpec)[0];
+            rh = RowHeader.make(rowGen, projSet);
+        }
 
-            var writerVar = mm.param(0);
-            var keyVar = mm.param(1);
-            var valueVar = mm.param(2);
+        var headerVar = mm.var(byte[].class).setExact(rh.encode());
+        writerVar.invoke("writeHeader", headerVar);
 
-            // The header describes only the projected columns.
-            BitSet projSet = DecodePartialMaker.decodeSpec(projectionSpec)[0];
-            var headerVar = mm.var(byte[].class).setExact(RowHeader.make(rowGen, projSet).encode());
-            writerVar.invoke("writeHeader", headerVar);
+        ColumnCodec[] keyCodecs = rowGen.keyCodecs();
+        ColumnCodec[] valueCodecs = rowGen.valueCodecs();
 
-            ColumnCodec[] keyCodecs = rowGen.keyCodecs();
-            ColumnCodec[] valueCodecs = rowGen.valueCodecs();
+        Variable keyLengthVar;
+        List<Range> keyRanges;
 
-            Variable keyLengthVar;
-            List<Range> keyRanges;
+        if (rh.numKeys == 0) {
+            // No key columns to write.
+            keyLengthVar = mm.var(int.class).set(0);
+            keyRanges = List.of();
+        } else if (projSet == null ||DecodePartialMaker.allRequested
+                   (projSet, 0, keyCodecs.length))
+        {
+            // All key columns are projected.
+            keyLengthVar = keyVar.alength();
+            keyRanges = List.of(new Range(0, keyLengthVar));
+        } else {
+            // A subset of key columns is projected.
+            keyRanges = prepareRanges(projSet, 0, keyCodecs, keyVar, 0);
+            keyLengthVar = mm.var(int.class).set(0);
+            incLength(keyLengthVar, keyRanges);
+        }
 
-            if (DecodePartialMaker.allRequested(projSet, 0, keyCodecs.length)) {
-                // All key columns are projected.
-                keyLengthVar = keyVar.alength();
-                keyRanges = List.of(new Range(0, keyLengthVar));
-            } else {
-                keyRanges = prepareRanges(projSet, 0, keyCodecs, keyVar, 0);
-                keyLengthVar = mm.var(int.class).set(0);
-                incLength(keyLengthVar, keyRanges);
-            }
+        Variable rowLengthVar;
+        List<Range> valueRanges;
 
-            int valueStart = schemaVersion == 0 ? 0 : (schemaVersion < 128 ? 1 : 4);
+        if (rh.numValues() == 0) {
+            // No value columns to write.
+            rowLengthVar = keyLengthVar;
+            valueRanges = List.of();
+        } else if (projSet == null || DecodePartialMaker.allRequested
+                   (projSet, keyCodecs.length, keyCodecs.length + valueCodecs.length))
+        {
+            // All value columns are projected.
+            Variable valueLengthVar = valueVar.alength().sub(valueOffset);
+            rowLengthVar = keyLengthVar.add(valueLengthVar);
+            valueRanges = List.of(new Range(valueOffset, valueLengthVar));
+        } else {
+            // A subset of value columns is projected.
+            valueRanges = prepareRanges
+                (projSet, keyCodecs.length, valueCodecs, valueVar, valueOffset);
+            rowLengthVar = keyLengthVar.get();
+            incLength(rowLengthVar, valueRanges);
+        }
 
-            Variable rowLengthVar;
-            List<Range> valueRanges;
+        if (rh.numValues() == 0 || rh.numKeys == 0 || !keyCodecs[rh.numKeys - 1].isLast()) {
+            writerVar.invoke("writeRowLength", rowLengthVar);
+        } else {
+            // No length prefix is written for the last column of the key, but one should be
+            // when key and value are written together into the stream. Rather than retrofit
+            // the encoded column, provide the full key length up front. Decoding of the last
+            // column finishes when the offset reaches the end of the full key.
+            writerVar.invoke("writeRowAndKeyLength", rowLengthVar, keyLengthVar);
+        }
 
-            if (DecodePartialMaker.allRequested
-                (projSet, keyCodecs.length, keyCodecs.length + valueCodecs.length))
-            {
-                // All value columns are projected.
-                Variable valueLengthVar = valueVar.alength().sub(valueStart);
-                rowLengthVar = keyLengthVar.add(valueLengthVar);
-                valueRanges = List.of(new Range(valueStart, valueLengthVar));
-            } else {
-                valueRanges = prepareRanges
-                    (projSet, keyCodecs.length, valueCodecs, valueVar, valueStart);
-                rowLengthVar = keyLengthVar.get();
-                incLength(rowLengthVar, valueRanges);
-            }
-
-            if (!projSet.get(keyCodecs.length - 1) || !keyCodecs[keyCodecs.length - 1].isLast()) {
-                writerVar.invoke("writeRowLength", rowLengthVar);
-            } else {
-                // No length prefix is written for the last column of the key, but one should
-                // be when key and value are written together into the stream. See the comment
-                // in the indyWriteRow method.
-                writerVar.invoke("writeRowAndKeyLength", rowLengthVar, keyLengthVar);
-            }
-
-            writeRanges(writerVar, keyVar, keyRanges);
-            writeRanges(writerVar, valueVar, valueRanges);
-
-            return mm.finish();
-        }).dynamicInvoker();
+        writeRanges(writerVar, keyVar, keyRanges);
+        writeRanges(writerVar, valueVar, valueRanges);
     }
 
     private static List<Range> prepareRanges(BitSet projSet, int projOffset, ColumnCodec[] codecs,

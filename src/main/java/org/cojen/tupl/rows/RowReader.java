@@ -267,12 +267,12 @@ public abstract class RowReader<R, DIN extends DataInput> implements Scanner<R> 
         var offsetVar = mm.var(int.class);
         Variable keyEndVar;
 
-        if (rh.numKeys == 0 || !codecs[rh.numKeys - 1].isLast()) {
+        if (rh.numValues() == 0 || rh.numKeys == 0 || !codecs[rh.numKeys - 1].isLast()) {
             offsetVar.set(0);
             keyEndVar = null;
         } else {
             // Decode the full key length.
-            // See WriteRowMaker.indyWriteRow and RowWriter.writeRowAndKeyLength.
+            // See WriteRowMaker.makeWriteRow and RowWriter.writeRowAndKeyLength.
             keyEndVar = dataVar.aget(0).cast(int.class).and(0xff);
             Label bigKey = mm.label();
             keyEndVar.ifGe(128, bigKey);
