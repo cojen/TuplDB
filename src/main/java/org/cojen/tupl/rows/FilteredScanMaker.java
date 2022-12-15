@@ -130,8 +130,8 @@ public class FilteredScanMaker<R> {
             primaryRowGen = RowInfo.find(rowType).rowGen();
             mJoinProjectionSpec = DecodePartialMaker.makeFullSpec(primaryRowGen, null, projection);
             if (isCovering(rowGen, primaryRowGen, joinFilter, projection)) {
-                // No need to join to the primary table when use a Scanner. A Updater
-                // performs a join step to position the cursor over the primary table.
+                // No need to join to the primary table when use a Scanner. An Updater performs
+                // a join step to position the cursor over the primary table.
                 mAlwaysJoin = false;
                 mProjectionSpec = DecodePartialMaker.makeFullSpec
                     (rowGen, primaryRowGen, projection);
@@ -942,7 +942,9 @@ public class FilteredScanMaker<R> {
             return;
         }
 
-        if (mJoinProjectionSpec != null) {
+        // TODO: Try to use condy and define this code lazily.
+
+        if (mAlwaysJoin) {
             throw new Error("FIXME: writeRow join");
         }
 
@@ -954,13 +956,13 @@ public class FilteredScanMaker<R> {
         var keyVar = mm.param(1);
         var valueVar = mm.param(2);
 
-        if (mSecondaryDescriptor != null || mTable.rowType() == Entry.class) {
-            throw new Error("FIXME: writeRow no schema version");
-        }
-
-        var schemaVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", valueVar);
-
         var mh = mTable.writeRowHandle(mProjectionSpec);
-        mm.invoke(mh, schemaVersion, writerVar, keyVar, valueVar);
+
+        if (mh.type().parameterType(0) == int.class) {
+            var schemaVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", valueVar);
+            mm.invoke(mh, schemaVersion, writerVar, keyVar, valueVar);
+        } else {
+            mm.invoke(mh, writerVar, keyVar, valueVar);
+        }
     }
 }

@@ -70,7 +70,7 @@ public class WriteRowMaker {
                          (void.class, RowWriter.class, byte[].class, byte[].class), mm, e);
                 }
 
-                makeWriteRow(mm, rowInfo.rowGen(), schemaVersion < 128 ? 1 : 4, projectionSpec);
+                makeWriteRow(mm, rowInfo, schemaVersion < 128 ? 1 : 4, projectionSpec);
             }
 
             return mm.finish();
@@ -100,17 +100,39 @@ public class WriteRowMaker {
     }
 
     /**
+     * Returns a MethodHandle suitable for writing rows from unevolvable tables. The set of row
+     * columns which are written is defined by the projection specification.
+     *
+     * MethodType is void (RowWriter writer, byte[] key, byte[] value)
+     *
+     * @param projectionSpec can be null if all columns are projected
+     */
+    public static MethodHandle makeWriteRowHandle(RowInfo rowInfo, byte[] projectionSpec) {
+        // Because no special access is required, the local lookup is sufficient.
+        var lookup = MethodHandles.lookup();
+
+        MethodMaker mm = MethodMaker.begin
+            (lookup, null, "writeRow", RowWriter.class, byte[].class, byte[].class);
+
+        makeWriteRow(mm, rowInfo, 0, projectionSpec);
+
+        return mm.finish();
+    }
+
+    /**
      * Makes the body of a writeRow method.
      *
      * Params: (RowWriter writer, byte[] key, byte[] value)
      *
-     * @param rowGen describes the key and value encoding
+     * @param rowInfo describes the key and value encoding
      * @param valueOffset start offset of the source binary value
      * @param projectionSpec can be null if all columns are projected
      */
-    public static void makeWriteRow(MethodMaker mm, RowGen rowGen, int valueOffset,
+    public static void makeWriteRow(MethodMaker mm, RowInfo rowInfo, int valueOffset,
                                     byte[] projectionSpec)
     {
+        RowGen rowGen = rowInfo.rowGen();
+
         var writerVar = mm.param(0);
         var keyVar = mm.param(1);
         var valueVar = mm.param(2);

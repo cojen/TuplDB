@@ -42,6 +42,11 @@ public abstract class BaseTableIndex<R> extends BaseTable<R> {
     }
 
     @Override
+    boolean isEvolvable() {
+        return false;
+    }
+
+    @Override
     boolean supportsSecondaries() {
         return false;
     }

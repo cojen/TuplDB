@@ -32,6 +32,7 @@ import java.util.Objects;
 
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
+import org.cojen.tupl.Entry;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.Scanner;
@@ -927,12 +928,16 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
     protected abstract MethodHandle makeDecodePartialHandle(byte[] spec, int schemaVersion);
 
-    // FIXME: Support non-evolvable tables too.
     /**
-     * Returns a MethodHandle suitable for writing rows from evolvable tables. The set of row
-     * columns which are written is defined by the projection specification.
+     * Returns a MethodHandle suitable for writing rows from evolvable or unevolvable
+     * tables. The set of row columns which are written is defined by the projection
+     * specification.
      *
-     * MethodType is void (int schemaVersion, RowWriter writer, byte[] key, byte[] value)
+     * For evolvable tables, the MethodType is:
+     *     void (int schemaVersion, RowWriter writer, byte[] key, byte[] value)
+     *
+     * For unevolvable tables, the MethodType is:
+     *     void (RowWriter writer, byte[] key, byte[] value)
      *
      * @param spec can be null if all columns are projected
      */
@@ -943,8 +948,22 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             cache = new WeakCache<>() {
                 @Override
                 protected MethodHandle newValue(Object key, byte[] spec) {
-                    return WriteRowMaker.makeWriteRowHandle
-                        (rowStoreRef(), rowType(), mSource.id(), spec);
+                    if (isEvolvable()) {
+                        return WriteRowMaker.makeWriteRowHandle
+                            (rowStoreRef(), rowType(), mSource.id(), spec);
+                    }
+
+                    RowInfo primaryRowInfo = RowInfo.find(rowType());
+                    byte[] secondaryDesc = secondaryDescriptor();
+
+                    RowInfo rowInfo;
+                    if (secondaryDesc == null) {
+                        rowInfo = primaryRowInfo;
+                    } else {
+                        rowInfo = RowStore.secondaryRowInfo(primaryRowInfo, secondaryDesc);
+                    }
+
+                    return WriteRowMaker.makeWriteRowHandle(rowInfo, spec);
                 }
             };
 
@@ -1046,6 +1065,16 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         return null;
     }
 
+    /**
+     * Note: Is overridden by BaseTableIndex.
+     */
+    boolean isEvolvable() {
+        return rowType() != Entry.class;
+    }
+
+    /**
+     * Note: Is overridden by BaseTableIndex.
+     */
     boolean supportsSecondaries() {
         return true;
     }
