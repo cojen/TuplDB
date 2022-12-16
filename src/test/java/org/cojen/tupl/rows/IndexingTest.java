@@ -1515,16 +1515,19 @@ public class IndexingTest {
         var table2 = db.openIndex("test").asTable(t2);
 
         // Wait for the secondary index to be ready.
-        Table secondary;
-        while (true) {
+        Table secondary = null;
+        for (int i=0; i<1000; i++) {
             try {
                 secondary = ((BaseTable) table2).viewSecondaryIndex("name").viewUnjoined();
                 break;
             } catch (IllegalStateException e) {
                 assertTrue(e.getMessage().contains("not found"));
-                Thread.yield();
+                Thread.sleep(100);
             }
         }
+
+        // FIXME: Sometimes the secondary index is never ready.
+        assertNotNull(secondary);
 
         // Can store using original table definition despite not having the "name" column as
         // needed by the secondary index.
