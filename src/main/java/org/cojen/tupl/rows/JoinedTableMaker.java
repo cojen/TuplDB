@@ -84,12 +84,6 @@ public class JoinedTableMaker extends TableMaker {
         mClassMaker = mCodecGen.beginClassMaker(getClass(), mRowType, "joined")
             .public_().final_().extend(mUnjoinedClass);
 
-        {
-            MethodMaker mm = mClassMaker.addMethod
-                (Class.class, "joinedPrimaryTableClass").protected_();
-            mm.return_(mPrimaryTableClass);
-        }
-
         MethodType mt = MethodType.methodType
             (void.class, Index.class, RowPredicateLock.class, mPrimaryTableClass, mUnjoinedClass);
 
@@ -111,6 +105,18 @@ public class JoinedTableMaker extends TableMaker {
 
         mClassMaker.addField(mUnjoinedClass, "unjoined").private_().final_();
         ctor.field("unjoined").set(unjoinedVar);
+
+        {
+            MethodMaker mm = mClassMaker.addMethod
+                (BaseTable.class, "joinedPrimaryTable").protected_();
+            mm.return_(mm.field("primaryTable"));
+        }
+
+        {
+            MethodMaker mm = mClassMaker.addMethod
+                (Class.class, "joinedPrimaryTableClass").protected_();
+            mm.return_(mPrimaryTableClass);
+        }
 
         {
             MethodMaker mm = mClassMaker.addMethod(Table.class, "viewUnjoined").protected_();

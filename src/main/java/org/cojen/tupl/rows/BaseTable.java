@@ -1061,6 +1061,13 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     /**
      * Override if this table implements a secondary index and joins to the primary.
      */
+    protected BaseTable<R> joinedPrimaryTable() {
+        return null;
+    }
+
+    /**
+     * Override if this table implements a secondary index and joins to the primary.
+     */
     protected Class<?> joinedPrimaryTableClass() {
         return null;
     }

@@ -944,10 +944,6 @@ public class FilteredScanMaker<R> {
 
         // TODO: Try to use condy and define this code lazily.
 
-        if (mAlwaysJoin) {
-            throw new Error("FIXME: writeRow join");
-        }
-
         MethodMaker mm = mFilterMaker.addMethod
             (null, "writeRow", RowWriter.class, byte[].class, byte[].class)
             .public_().override();
@@ -956,7 +952,13 @@ public class FilteredScanMaker<R> {
         var keyVar = mm.param(1);
         var valueVar = mm.param(2);
 
-        var mh = mTable.writeRowHandle(mProjectionSpec);
+        BaseTable<R> table = mTable;
+
+        if (mAlwaysJoin) {
+            table = table.joinedPrimaryTable();
+        }
+
+        var mh = table.writeRowHandle(mProjectionSpec);
 
         if (mh.type().parameterType(0) == int.class) {
             var schemaVersion = mm.var(RowUtils.class).invoke("decodeSchemaVersion", valueVar);
