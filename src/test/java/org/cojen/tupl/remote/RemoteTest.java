@@ -31,6 +31,7 @@ import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseConfig;
 import org.cojen.tupl.DeadlockException;
 import org.cojen.tupl.DurabilityMode;
+import org.cojen.tupl.Entry;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.LockResult;
@@ -122,6 +123,18 @@ public class RemoteTest {
                 String valueStr = value == null ? "null" : new String(value);
                 System.out.println(new String(key) + " -> " + valueStr);
             }
+        }
+
+        System.out.println("---");
+
+        Table<Entry> etab = ix.asTable(Entry.class);
+
+        try (var scanner = etab.newScanner(null)) {
+            scanner.forEachRemaining(row -> System.out.println(row));
+        }
+
+        try (var scanner = etab.newScanner(null, "{value} key != ?", new byte[0])) {
+            scanner.forEachRemaining(row -> System.out.println(row));
         }
 
         System.out.println("---");

@@ -329,8 +329,7 @@ class StaticTableMaker extends TableMaker {
             // this differently because it has to examine a schema version.
             MethodMaker mm = mClassMaker.addMethod
                 (null, "writeRow", RowWriter.class, byte[].class, byte[].class).static_();
-            // FIXME: Implement writeRow
-            mm.new_(Exception.class, "FIXME").throw_();
+            WriteRowMaker.makeWriteRow(mm, mRowInfo, 0, null);
         }
 
         return mClassMaker.finish();
