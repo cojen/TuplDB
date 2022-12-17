@@ -382,7 +382,12 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
         // Pass the writer as if it's a row, but it's actually a RowConsumer.
         Scanner<R> scanner = newScanner(txn, (R) writer);
-        while (scanner.step((R) writer) != null);
+        try {
+            while (scanner.step((R) writer) != null);
+        } catch (Throwable e) {
+            Utils.closeQuietly(scanner);
+            Utils.rethrow(e);
+        }
 
         // Write the scan terminator. See RowWriter.writeHeader.
         out.writeByte(0);
@@ -400,7 +405,12 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
         // Pass the writer as if it's a row, but it's actually a RowConsumer.
         Scanner<R> scanner = scannerQueryLauncher(txn, queryStr).newScanner(txn, (R) writer, args);
-        while (scanner.step((R) writer) != null);
+        try {
+            while (scanner.step((R) writer) != null);
+        } catch (Throwable e) {
+            Utils.closeQuietly(scanner);
+            Utils.rethrow(e);
+        }
 
         // Write the scan terminator. See RowWriter.writeHeader.
         out.writeByte(0);
