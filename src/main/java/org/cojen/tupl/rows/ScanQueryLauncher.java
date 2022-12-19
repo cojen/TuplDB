@@ -56,6 +56,19 @@ final class ScanQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
+    public void scanWrite(Transaction txn, RowWriter writer, Object... args) throws IOException {
+        // Pass the writer as if it's a row, but it's actually a RowConsumer.
+        Scanner<R> scanner = newScanner(txn, (R) writer, args);
+        try {
+            while (scanner.step((R) writer) != null);
+        } catch (Throwable e) {
+            RowUtils.closeQuietly(scanner);
+            RowUtils.rethrow(e);
+        }
+    }
+
+    @Override
     public QueryPlan plan(Object... args) {
         return mFactory.plan(args);
     }
@@ -63,10 +76,5 @@ final class ScanQueryLauncher<R> implements QueryLauncher<R> {
     @Override
     public Set<String> projection() {
         return mProjection;
-    }
-
-    @Override
-    public int characteristics() {
-        return mFactory.characteristics();
     }
 }

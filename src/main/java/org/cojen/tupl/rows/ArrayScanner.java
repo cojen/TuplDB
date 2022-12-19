@@ -91,4 +91,9 @@ abstract class ArrayScanner<R> implements Scanner<R> {
     public final long estimateSize() {
         return mRows.length - mPosition;
     }
+
+    @Override
+    public final int characteristics() {
+        return NONNULL | ORDERED | IMMUTABLE | SIZED | SORTED;
+    }
 }

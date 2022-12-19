@@ -27,16 +27,12 @@ import org.cojen.tupl.Updater;
  * @author Brian S O'Neill
  */
 abstract class ConcatUpdater<R> implements Updater<R> {
-    private final int mCharacteristics;
-
     private Updater<R> mCurrent;
 
     /**
      * @param dst can be null
      */
-    ConcatUpdater(int characteristics, final R dst) throws IOException {
-        mCharacteristics = characteristics;
-
+    ConcatUpdater(final R dst) throws IOException {
         Updater<R> next = next(dst);
         while (true) {
             mCurrent = next;
@@ -125,7 +121,7 @@ abstract class ConcatUpdater<R> implements Updater<R> {
 
     @Override
     public int characteristics() {
-        return mCharacteristics;
+        return NONNULL | ORDERED | CONCURRENT;
     }
 
     /**

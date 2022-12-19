@@ -403,14 +403,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     {
         var writer = new RowWriter<R>(out);
 
-        // Pass the writer as if it's a row, but it's actually a RowConsumer.
-        Scanner<R> scanner = scannerQueryLauncher(txn, queryStr).newScanner(txn, (R) writer, args);
-        try {
-            while (scanner.step((R) writer) != null);
-        } catch (Throwable e) {
-            Utils.closeQuietly(scanner);
-            Utils.rethrow(e);
-        }
+        scannerQueryLauncher(txn, queryStr).scanWrite(txn, writer, args);
 
         // Write the scan terminator. See RowWriter.writeHeader.
         out.writeByte(0);

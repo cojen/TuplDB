@@ -27,16 +27,12 @@ import org.cojen.tupl.Scanner;
  * @author Brian S O'Neill
  */
 abstract class ConcatScanner<R> implements Scanner<R> {
-    private final int mCharacteristics;
-
     private Scanner<R> mCurrent;
 
     /**
      * @param dst can be null
      */
-    ConcatScanner(int characteristics, final R dst) throws IOException {
-        mCharacteristics = characteristics;
-
+    ConcatScanner(final R dst) throws IOException {
         Scanner<R> next = next(dst);
         while (true) {
             mCurrent = next;
@@ -89,7 +85,7 @@ abstract class ConcatScanner<R> implements Scanner<R> {
 
     @Override
     public int characteristics() {
-        return mCharacteristics;
+        return NONNULL | ORDERED | CONCURRENT;
     }
 
     /**

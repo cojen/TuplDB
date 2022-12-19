@@ -19,6 +19,8 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
+import java.lang.invoke.MethodHandle;
+
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Set;
@@ -42,42 +44,73 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
     private ScanBatch<R> mFirstBatch, mLastBatch;
 
     @SuppressWarnings("unchecked")
-    static <R> Scanner<R> sort(BaseTable<R> table, String orderBySpec, Comparator<R> comparator,
-                               QueryLauncher<R> launcher, Transaction txn, Object... args)
+    static <R> Scanner<R> sort(SortedQueryLauncher<R> launcher, Transaction txn, Object... args)
         throws IOException
     {
         var sorter = new RowSorter<R>();
-        // Pass sorter as if it's a row, but it's actually a RowConsumer.
-        Scanner<R> source = launcher.newScanner(txn, (R) sorter, args);
-        return sorter.sort(table, orderBySpec, comparator, launcher, source);
-    }
 
-    @SuppressWarnings("unchecked")
-    private Scanner<R> sort(BaseTable<R> table, String orderBySpec, Comparator<R> comparator,
-                            QueryLauncher<R> launcher, Scanner source)
-        throws IOException
-    {
+        // Pass sorter as if it's a row, but it's actually a RowConsumer.
+        Scanner source = launcher.mSource.newScanner(txn, (R) sorter, args);
+
         int numRows = 0;
         for (Object c = source.row(); c != null; c = source.step(c)) {
             if (++numRows >= EXTERNAL_THRESHOLD) {
-                return new External(table, orderBySpec, launcher).sort(comparator, source);
+                return sorter.finishExternal(launcher, source);
             }
         }
 
+        Comparator<R> comparator = launcher.mComparator;
+
         if (numRows == 0) {
-            int characteristics = NONNULL | ORDERED | IMMUTABLE | SIZED | SORTED | DISTINCT;
-            return new ARS<>(characteristics, comparator);
+            return new ARS<>(comparator);
         }
 
         var rows = (R[]) new Object[numRows];
-        ScanBatch first = mFirstBatch;
-        mFirstBatch = null;
-        mLastBatch = null;
+        ScanBatch first = sorter.mFirstBatch;
+        sorter.mFirstBatch = null;
+        sorter.mLastBatch = null;
         first.decodeAllRows(rows, 0);
 
         Arrays.parallelSort(rows, comparator);
 
-        return new ARS<>(table, rows, sortedCharacteristics(launcher), comparator);
+        return new ARS<>(launcher.mTable, rows, comparator);
+    }
+
+    @SuppressWarnings("unchecked")
+    static <R> void sortWrite(SortedQueryLauncher<R> launcher, RowWriter writer,
+                              Transaction txn, Object... args)
+        throws IOException
+    {
+        var ext = new External<R>(launcher);
+
+        Scanner<Entry> sorted;
+
+        try {
+            // Pass ext as if it's a row, but it's actually a RowConsumer.
+            ext.transferAll(launcher.mSource.newScanner(txn, (R) ext, args));
+            sorted = ext.finishScan();
+        } catch (Throwable e) {
+            throw ext.failed(e);
+        }
+
+        MethodHandle mh = launcher.mWriteRow;
+
+        if (mh == null) {
+            SecondaryInfo info = ext.mSortedInfo;
+            RowGen rowGen = info.rowGen();
+            // This is a bit ugly -- creating a projection specification only to immediately
+            // crack it open.
+            byte[] spec = DecodePartialMaker.makeFullSpec(rowGen, null, launcher.projection());
+            launcher.mWriteRow = mh = WriteRowMaker.makeWriteRowHandle(info, spec);
+        }
+
+        try (sorted) {
+            for (Entry e = sorted.row(); e != null; e = sorted.step(e)) {
+                mh.invokeExact(writer, e.key(), e.value());
+            }
+        } catch (Throwable e) {
+            throw RowUtils.rethrow(e);
+        }
     }
 
     @Override
@@ -98,103 +131,19 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
         mLastBatch.addEntry(key, value);
     }
 
-    private static int sortedCharacteristics(QueryLauncher launcher) {
-        int characteristics = launcher.characteristics();
-        characteristics |= (NONNULL | ORDERED | IMMUTABLE | SIZED | SORTED);
-        characteristics &= ~CONCURRENT;
-        return characteristics;
-    }
+    private Scanner<R> finishExternal(SortedQueryLauncher<R> launcher, Scanner source)
+        throws IOException
+    {
+        var ext = new External<R>(launcher);
 
-    private static class ARS<R> extends ArrayScanner<R> {
-        private final int mCharacteristics;
-        private final Comparator<R> mComparator;
+        try {
+            RowDecoder<R> decoder = launcher.mDecoder;
 
-        ARS(int characteristics, Comparator<R> comparator) {
-            mCharacteristics = characteristics;
-            mComparator = comparator;
-        }
-
-        ARS(BaseTable<R> table, R[] rows, int characteristics, Comparator<R> comparator) {
-            super(table, rows);
-            mCharacteristics = characteristics;
-            mComparator = comparator;
-        }
-
-        @Override
-        public int characteristics() {
-            return mCharacteristics;
-        }
-
-        @Override
-        public Comparator<R> getComparator() {
-            return mComparator;
-        }
-    }
-
-    private static class SRS<R> extends ScannerScanner<R> {
-        private final int mCharacteristics;
-        private final Comparator<R> mComparator;
-
-        SRS(Scanner<Entry> scanner, RowDecoder<R> decoder,
-            int characteristics, Comparator<R> comparator)
-            throws IOException
-        {
-            super(scanner, decoder);
-            mCharacteristics = characteristics;
-            mComparator = comparator;
-        }
-
-        @Override
-        public int characteristics() {
-            return mCharacteristics;
-        }
-
-        @Override
-        public Comparator<R> getComparator() {
-            return mComparator;
-        }
-    }
-
-    private class External implements RowConsumer<R> {
-        private final RowStore mRowStore;
-        private final Sorter mSorter;
-        private final Class<?> mRowType;
-        private final SecondaryInfo mSortedInfo;
-        private final RowDecoder mDecoder;
-        private final int mCharacteristics;
-
-        private Transcoder mTranscoder;
-
-        private byte[][] mBatch;
-        private int mBatchSize;
-
-        External(BaseTable<R> table, String orderBySpec, QueryLauncher<R> launcher)
-            throws IOException
-        {
-            mRowStore = table.rowStore();
-            mSorter = mRowStore.mDatabase.newSorter();
-            mRowType = table.rowType();
-            Set<String> projection = launcher.projection();
-            mSortedInfo = SortDecoderMaker.findSortedInfo(mRowType, orderBySpec, projection, true);
-            mDecoder = SortDecoderMaker.findDecoder(mRowType, mSortedInfo, projection);
-            mCharacteristics = sortedCharacteristics(launcher);
-        }
-
-        Scanner<R> sort(Comparator<R> comparator, Scanner source) throws IOException {
-            try {
-                return doSort(comparator, source);
-            } catch (Throwable e) {
-                try {
-                    mSorter.reset();
-                } catch (Throwable e2) {
-                    RowUtils.suppress(e, e2);
-                }
-                throw e;
+            if (decoder == null) {
+                launcher.mDecoder = decoder = SortDecoderMaker
+                    .findDecoder(ext.mRowType, ext.mSortedInfo, launcher.projection());
             }
-        }
 
-        @SuppressWarnings("unchecked")
-        Scanner<R> doSort(Comparator<R> comparator, Scanner source) throws IOException {
             // Transfer all the undecoded rows into the sorter.
 
             ScanBatch<R> batch = mFirstBatch;
@@ -205,29 +154,121 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
             byte[][] kvPairs = null;
 
             do {
-                mTranscoder = transcoder(batch.mEvaluator);
-                kvPairs = batch.transcode(mTranscoder, mSorter, kvPairs);
+                ext.assignTranscoder(batch.mEvaluator);
+                kvPairs = batch.transcode(ext.mTranscoder, ext.mSorter, kvPairs);
             } while ((batch = batch.detachNext()) != null);
 
-            // Transfer all the remaining undecoded rows into the sorter, passing `this` as the
-            // RowConsumer.
+            // Transfer all the rest.
+            ext.transferAll(source);
 
-            mBatch = new byte[100][];
-            while (source.step(this) != null);
-            flush();
-            mBatch = null;
+            return new SRS<>(ext.finishScan(), decoder, launcher.mComparator);
+        } catch (Throwable e) {
+            throw ext.failed(e);
+        }
+    }
 
-            return new SRS<>(mSorter.finishScan(), mDecoder, mCharacteristics, comparator);
+    private static class ARS<R> extends ArrayScanner<R> {
+        private final Comparator<R> mComparator;
+
+        ARS(Comparator<R> comparator) {
+            mComparator = comparator;
         }
 
-        private Transcoder transcoder(RowEvaluator<R> evaluator) {
-            return mRowStore.findSortTranscoder(mRowType, evaluator, mSortedInfo);
+        ARS(BaseTable<R> table, R[] rows, Comparator<R> comparator) {
+            super(table, rows);
+            mComparator = comparator;
+        }
+
+        @Override
+        public Comparator<R> getComparator() {
+            return mComparator;
+        }
+    }
+
+    private static class SRS<R> extends ScannerScanner<R> {
+        private final Comparator<R> mComparator;
+
+        SRS(Scanner<Entry> scanner, RowDecoder<R> decoder, Comparator<R> comparator)
+            throws IOException
+        {
+            super(scanner, decoder);
+            mComparator = comparator;
+        }
+
+        @Override
+        public int characteristics() {
+            return NONNULL | ORDERED | IMMUTABLE | SORTED;
+        }
+
+        @Override
+        public Comparator<R> getComparator() {
+            return mComparator;
+        }
+    }
+
+    /**
+     * Performs an external merge sort.
+     */
+    private static final class External<R> implements RowConsumer<R> {
+        final RowStore mRowStore;
+        final Sorter mSorter;
+        final Class<?> mRowType;
+        final SecondaryInfo mSortedInfo;
+
+        Transcoder mTranscoder;
+
+        private byte[][] mBatch;
+        private int mBatchSize;
+
+        External(SortedQueryLauncher<R> launcher) throws IOException {
+            mRowStore = launcher.mTable.rowStore();
+            mSorter = mRowStore.mDatabase.newSorter();
+            mRowType = launcher.mTable.rowType();
+
+            SecondaryInfo sortedInfo = launcher.mSortedInfo;
+
+            if (sortedInfo == null) {
+                launcher.mSortedInfo = sortedInfo = SortDecoderMaker.findSortedInfo
+                    (mRowType, launcher.mSpec, launcher.projection(), true);
+            }
+
+            mSortedInfo = sortedInfo;
+
+            mBatch = new byte[100][];
+        }
+
+        void assignTranscoder(RowEvaluator<R> evaluator) {
+            mTranscoder = mRowStore.findSortTranscoder(mRowType, evaluator, mSortedInfo);
+        }
+
+        /**
+         * Transfers all remaining undecoded rows from the source into the sorter.
+         */
+        @SuppressWarnings("unchecked")
+        void transferAll(Scanner source) throws IOException {
+            // Pass `this` as if it's a row, but it's actually a RowConsumer.
+            while (source.step(this) != null);
+        }
+
+        Scanner<Entry> finishScan() throws IOException {
+            flush();
+            mBatch = null;
+            return mSorter.finishScan();
+        }
+
+        RuntimeException failed(Throwable e) {
+            try {
+                mSorter.reset();
+            } catch (Throwable e2) {
+                RowUtils.suppress(e, e2);
+            }
+            throw RowUtils.rethrow(e);
         }
 
         @Override
         public void beginBatch(Scanner scanner, RowEvaluator<R> evaluator) throws IOException {
             flush();
-            mTranscoder = transcoder(evaluator);
+            assignTranscoder(evaluator);
         }
 
         @Override

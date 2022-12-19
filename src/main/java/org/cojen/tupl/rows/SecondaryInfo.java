@@ -28,10 +28,21 @@ class SecondaryInfo extends RowInfo {
 
     private final boolean mIsAltKey;
 
+    private String mIndexSpec;
+
     SecondaryInfo(RowInfo primaryInfo, boolean isAltKey) {
         super(primaryInfo.name);
         this.primaryInfo = primaryInfo;
         mIsAltKey = isAltKey;
+    }
+
+    @Override
+    String indexSpec() {
+        String spec = mIndexSpec;
+        if (spec == null) {
+            mIndexSpec = spec = super.indexSpec();
+        }
+        return spec;
     }
 
     @Override

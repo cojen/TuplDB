@@ -161,7 +161,7 @@ public class WriteRowMaker {
             // No key columns to write.
             keyLengthVar = mm.var(int.class).set(0);
             keyRanges = List.of();
-        } else if (projSet == null ||DecodePartialMaker.allRequested
+        } else if (projSet == null || DecodePartialMaker.allRequested
                    (projSet, 0, keyCodecs.length))
         {
             // All key columns are projected.

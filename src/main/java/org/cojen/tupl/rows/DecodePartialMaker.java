@@ -26,6 +26,7 @@ import java.lang.ref.WeakReference;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Map;
+import java.util.Set;
 
 import org.cojen.maker.Field;
 import org.cojen.maker.MethodMaker;
@@ -53,6 +54,18 @@ public class DecodePartialMaker {
     public static byte[] makeFullSpec(RowGen rowGen, RowGen primaryRowGen,
                                       Map<String, ColumnInfo> projection)
     {
+        return projection == null ? null : makeFullSpec(rowGen, primaryRowGen, projection.keySet());
+    }
+
+    /**
+     * Makes a specification in which the columns to decode and the columns to mark clean are
+     * the same.
+     *
+     * @param primaryRowGen non-null if rowGen refers to a secondary
+     * @param projection column names to project; if null, then null is returned (implies all
+     * columns)
+     */
+    public static byte[] makeFullSpec(RowGen rowGen, RowGen primaryRowGen, Set<String> projection) {
         if (projection == null) {
             return null;
         }
@@ -60,7 +73,7 @@ public class DecodePartialMaker {
         BitSet toDecodeBits = new BitSet();
         {
             Map<String, Integer> columnNumbers = rowGen.columnNumbers();
-            for (String name : projection.keySet()) {
+            for (String name : projection) {
                 toDecodeBits.set(columnNumbers.get(name));
             }
         }
@@ -71,7 +84,7 @@ public class DecodePartialMaker {
         } else {
             toMarkCleanBits = new BitSet();
             Map<String, Integer> columnNumbers = primaryRowGen.columnNumbers();
-            for (String name : projection.keySet()) {
+            for (String name : projection) {
                 toMarkCleanBits.set(columnNumbers.get(name));
             }
         }

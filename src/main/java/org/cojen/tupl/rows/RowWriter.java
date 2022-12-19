@@ -22,6 +22,8 @@ import java.io.IOException;
 
 import java.util.HashMap;
 
+import java.util.Spliterator;
+
 import org.cojen.tupl.Scanner;
 
 /**
@@ -30,8 +32,6 @@ import org.cojen.tupl.Scanner;
  * @author Brian S O'Neill
  */
 public final class RowWriter<R> implements RowConsumer<R> {
-    // FIXME:  RowSorter needs to call beginBatch.
-
     private final DataOutput mOut;
 
     // The active header is initially null, which implies a row header with no columns.
@@ -44,17 +44,42 @@ public final class RowWriter<R> implements RowConsumer<R> {
 
     private RowEvaluator mEvaluator;
 
+    private boolean mWrittenCharacteristics;
+
     RowWriter(DataOutput out) {
         mOut = out;
     }
 
+    /**
+     * Must be called by QueryLaunchers which don't issue batches.
+     *
+     * @param characteristics Spliterator characteristics
+     * @param size only applicable when SIZED characteristic is set
+     * @throws IllegalStateException if characteristics have already been written
+     */
+    public void writeCharacteristics(int characteristics, long size) throws IOException {
+        if (mWrittenCharacteristics) {
+            throw new IllegalStateException();
+        }
+        mOut.writeInt(characteristics);
+        if ((characteristics & Spliterator.SIZED) != 0) {
+            mOut.writeLong(size);
+        }
+        mWrittenCharacteristics = true;
+    }
+
     @Override
     public void beginBatch(Scanner scanner, RowEvaluator<R> evaluator) throws IOException {
-        if (mEvaluator == null) {
-            mOut.writeLong(scanner.estimateSize());
-            mOut.writeInt(scanner.characteristics());
-        }
         mEvaluator = evaluator;
+
+        if (!mWrittenCharacteristics) {
+            int characteristics = scanner.characteristics();
+            mOut.writeInt(characteristics);
+            if ((characteristics & Spliterator.SIZED) != 0) {
+                mOut.writeLong(scanner.estimateSize());
+            }
+            mWrittenCharacteristics = true;
+        }
     }
 
     @Override

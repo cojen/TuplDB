@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Objects;
+import java.util.Spliterator;
 
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Label;
@@ -71,8 +72,10 @@ public abstract class RowReader<R, DIN extends DataInput> implements Scanner<R> 
         mRowType = rowType;
         mIn = in;
         try {
-            mSize = in.readLong();
-            mCharacteristics = in.readInt();
+            int characteristics = in.readInt();
+            mSize = (characteristics & Spliterator.SIZED) == 0 ? Long.MAX_VALUE : in.readLong();
+            mCharacteristics = characteristics;
+
             doStep(null);
         } catch (Throwable e) {
             throw RowUtils.fail(this, e);

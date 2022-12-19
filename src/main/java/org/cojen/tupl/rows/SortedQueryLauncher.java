@@ -19,6 +19,8 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
+import java.lang.invoke.MethodHandle;
+
 import java.util.Comparator;
 import java.util.Set;
 
@@ -29,16 +31,23 @@ import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.diag.QueryPlan;
 
+import static java.util.Spliterator.*;
+
 /**
  * 
  *
  * @author Brian S O'Neill
  */
 final class SortedQueryLauncher<R> implements QueryLauncher<R> {
-    private final BaseTable<R> mTable;
-    private final QueryLauncher<R> mSource;
-    private final String mSpec;
-    private final Comparator<R> mComparator;
+    final BaseTable<R> mTable;
+    final QueryLauncher<R> mSource;
+    final String mSpec;
+    final Comparator<R> mComparator;
+
+    // These fields are assigned by RowSorter.
+    SecondaryInfo mSortedInfo;
+    RowDecoder<R> mDecoder;
+    MethodHandle mWriteRow;
 
     SortedQueryLauncher(BaseTable<R> table, QueryLauncher<R> source, OrderBy orderBy) {
         mTable = table;
@@ -49,7 +58,7 @@ final class SortedQueryLauncher<R> implements QueryLauncher<R> {
 
     @Override
     public Scanner<R> newScanner(Transaction txn, R row, Object... args) throws IOException {
-        return RowSorter.sort(mTable, mSpec, mComparator, mSource, txn, args);
+        return RowSorter.sort(this, txn, args);
     }
 
     @Override
@@ -70,7 +79,7 @@ final class SortedQueryLauncher<R> implements QueryLauncher<R> {
             return new WrappedUpdater<>(mTable, txn, scanner);
         }
 
-        // Need to create a transaction to acquire locks, but true auto-commit behevior isn't
+        // Need to create a transaction to acquire locks, but true auto-commit behavior isn't
         // really feasible because update order won't match lock acquisition order. Instead,
         // keep the transaction open until the updater finishes and always commit.
         // Unfortunately, if the commit fails then all updates fail instead of just one.
@@ -136,6 +145,13 @@ final class SortedQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
+    public void scanWrite(Transaction txn, RowWriter writer, Object... args) throws IOException {
+        writer.writeCharacteristics(NONNULL | ORDERED | IMMUTABLE | SORTED, 0);
+
+        RowSorter.sortWrite(this, writer, txn, args);
+    }
+
+    @Override
     public QueryPlan plan(Object... args) {
         return new QueryPlan.Sort(OrderBy.splitSpec(mSpec), mSource.plan(args));
     }
@@ -143,10 +159,5 @@ final class SortedQueryLauncher<R> implements QueryLauncher<R> {
     @Override
     public Set<String> projection() {
         return mSource.projection();
-    }
-
-    @Override
-    public int characteristics() {
-        return mSource.characteristics();
     }
 }

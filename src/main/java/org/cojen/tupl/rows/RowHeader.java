@@ -62,7 +62,7 @@ final class RowHeader {
     }
 
     /**
-     * @param bits defines which columns belong in the header
+     * @param projection defines which columns belong in the header; can be null if all of them
      * @see DecodePartialMaker
      */
     static RowHeader make(RowGen rowGen, BitSet projection) {
@@ -70,7 +70,7 @@ final class RowHeader {
     }
 
     /**
-     * @param bits defines which columns belong in the header
+     * @param projection defines which columns belong in the header; can be null if all of them
      * @see DecodePartialMaker
      */
     static RowHeader make(ColumnCodec[] keyCodecs, ColumnCodec[] valueCodecs, BitSet projection) {

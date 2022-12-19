@@ -27,6 +27,8 @@ import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.diag.QueryPlan;
 
+import static java.util.Spliterator.*;
+
 /**
  * Supports queries that scan over multiple tables.
  *
@@ -45,7 +47,7 @@ final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
 
     @Override
     public Scanner<R> newScanner(Transaction txn, R row, Object... args) throws IOException {
-        return new ConcatScanner<R>(characteristics(), row) {
+        return new ConcatScanner<R>(row) {
             private int mWhich;
 
             @Override
@@ -64,7 +66,7 @@ final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
 
     @Override
     public Updater<R> newUpdater(Transaction txn, R row, Object... args) throws IOException {
-        return new ConcatUpdater<R>(characteristics(), row) {
+        return new ConcatUpdater<R>(row) {
             private int mWhich;
 
             @Override
@@ -82,6 +84,15 @@ final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
+    public void scanWrite(Transaction txn, RowWriter writer, Object... args) throws IOException {
+        writer.writeCharacteristics(NONNULL | ORDERED | CONCURRENT, 0);
+
+        for (QueryLauncher launcher : mLaunchers) {
+            launcher.scanWrite(txn, writer, args);
+        }
+    }
+
+    @Override
     public QueryPlan plan(Object... args) {
         var subPlans = new QueryPlan[mLaunchers.length];
         for (int i=0; i<subPlans.length; i++) {
@@ -93,10 +104,5 @@ final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
     @Override
     public Set<String> projection() {
         return mLaunchers[0].projection();
-    }
-
-    @Override
-    public int characteristics() {
-        return mLaunchers[0].characteristics();
     }
 }

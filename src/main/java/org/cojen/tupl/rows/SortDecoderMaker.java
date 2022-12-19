@@ -51,7 +51,7 @@ class SortDecoderMaker {
                                         Set<String> projection, boolean allowDuplicates)
     {
         var key = new InfoKey(rowType, orderBySpec, projection, allowDuplicates);
-        return mSortedInfos.obtain(key, null);
+        return cSortedInfos.obtain(key, null);
     }
 
     /**
@@ -65,7 +65,7 @@ class SortDecoderMaker {
                                          SecondaryInfo sortedInfo, Set<String> projection)
     {
         var key = new DecoderKey(rowType, sortedInfo.indexSpec(), projection);
-        return mDecoders.obtain(key, sortedInfo);
+        return cDecoders.obtain(key, sortedInfo);
     }
 
     private record DecoderKey(Class<?> rowType, String sortedInfoSpec, Set<String> projection) {
@@ -74,10 +74,10 @@ class SortDecoderMaker {
         }
     }
 
-    private static final WeakCache<DecoderKey, RowDecoder, SecondaryInfo> mDecoders;
+    private static final WeakCache<DecoderKey, RowDecoder, SecondaryInfo> cDecoders;
 
     static {
-        mDecoders = new WeakCache<>() {
+        cDecoders = new WeakCache<>() {
             @Override
             protected RowDecoder newValue(DecoderKey key, SecondaryInfo sortedInfo) {
                 Set<String> projection = key.projection();
@@ -99,10 +99,10 @@ class SortDecoderMaker {
         }
     }
 
-    private static final WeakCache<InfoKey, SecondaryInfo, RowInfo> mSortedInfos;
+    private static final WeakCache<InfoKey, SecondaryInfo, RowInfo> cSortedInfos;
 
     static {
-        mSortedInfos = new WeakCache<>() {
+        cSortedInfos = new WeakCache<>() {
             @Override
             protected SecondaryInfo newValue(InfoKey key, RowInfo rowInfo) {
                 Set<String> projection = key.projection();

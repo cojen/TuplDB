@@ -191,6 +191,12 @@ public class RemoteTest {
         try (var scanner = clientTable.newScanner(null, "{value} name == ?", "name-world")) {
             scanner.forEachRemaining(row -> System.out.println(row));
         }
+
+        System.out.println("---");
+
+        try (var scanner = clientTable.newScanner(null, "{+value}")) {
+            scanner.forEachRemaining(row -> System.out.println(row));
+        }
     }
 
     @PrimaryKey("id")

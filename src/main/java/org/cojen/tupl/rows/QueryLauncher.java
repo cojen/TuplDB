@@ -43,15 +43,15 @@ interface QueryLauncher<R> {
      */
     Updater<R> newUpdater(Transaction txn, R row, Object... args) throws IOException;
 
+    /**
+     * Scan and write rows to a remote endpoint.
+     */
+    void scanWrite(Transaction txn, RowWriter writer, Object... args) throws IOException;
+
     QueryPlan plan(Object... args);
 
     /**
      * Returns the projected columns, which can be null if all are projected.
      */
     Set<String> projection();
-
-    /**
-     * Returns Spliterator characteristics.
-     */
-    int characteristics();
 }
