@@ -45,7 +45,7 @@ import org.cojen.tupl.io.Utils;
 public class ReplicatorConfig implements Cloneable {
     File mBaseFile;
     boolean mMkdirs;
-    long mGroupToken;
+    long mGroupToken1, mGroupToken2;
     SocketAddress mLocalAddress;
     SocketAddress mListenAddress;
     ServerSocket mLocalSocket;
@@ -101,16 +101,29 @@ public class ReplicatorConfig implements Cloneable {
     }
 
     /**
-     * Set a unique group identifier, which acts as a simple security measure to prevent
-     * different replication groups from communicating with each other.
+     * Set a unique group token, which acts as a simple security measure to prevent different
+     * replication groups from communicating with each other. Connections are accepted when the
+     * tokens match.
      *
-     * @throws IllegalArgumentException if groupToken is zero
+     * @throws IllegalArgumentException if the token is zero
      */
-    public ReplicatorConfig groupToken(long groupToken) {
-        if (groupToken == 0) {
+    public ReplicatorConfig groupToken(long token) {
+        return groupTokens(token, token);
+    }
+
+    /**
+     * Set a unique group token (and an alternate), which acts as a simple security measure to
+     * prevent different replication groups from communicating with each other. Connections are
+     * accepted when a token matches to any other.
+     *
+     * @throws IllegalArgumentException if either token is zero
+     */
+    public ReplicatorConfig groupTokens(long token, long altToken) {
+        if (token == 0 || altToken == 0) {
             throw new IllegalArgumentException();
         }
-        mGroupToken = groupToken;
+        mGroupToken1 = token;
+        mGroupToken2 = altToken;
         return this;
     }
 

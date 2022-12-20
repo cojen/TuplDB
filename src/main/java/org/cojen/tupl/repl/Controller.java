@@ -160,7 +160,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      * @param localSocket optional; used for testing
      */
     static Controller open(EventListener eventListener,
-                           StateLog log, long groupToken, File groupFile,
+                           StateLog log, long groupToken1, long groupToken2, File groupFile,
                            SocketFactory factory,
                            SocketAddress localAddress, SocketAddress listenAddress,
                            Role localRole, Set<SocketAddress> seeds, ServerSocket localSocket,
@@ -177,7 +177,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
 
         var con = new Controller
-            (eventListener, log, groupToken, gf, factory, proxyWrites, writeCRCs);
+            (eventListener, log, groupToken1, groupToken2, gf, factory, proxyWrites, writeCRCs);
 
         try {
             con.init(groupFile, localAddress, listenAddress, localRole, seeds, localSocket);
@@ -193,13 +193,14 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     private Controller(EventListener eventListener,
-                       StateLog log, long groupToken, GroupFile gf, SocketFactory factory,
+                       StateLog log, long groupToken1, long groupToken2,
+                       GroupFile gf, SocketFactory factory,
                        boolean proxyWrites, boolean writeCRCs)
     {
         mEventListener = eventListener;
         mStateLog = log;
         mScheduler = new Scheduler();
-        mChanMan = new ChannelManager(factory, mScheduler, groupToken,
+        mChanMan = new ChannelManager(factory, mScheduler, groupToken1, groupToken2,
                                       gf == null ? 0 : gf.groupId(), writeCRCs, this::uncaught);
         mGroupFile = gf;
         mSyncCommitCondition = new LatchCondition();
@@ -221,7 +222,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 for (int trials = 2; --trials >= 0; ) {
                     try {
                         var joiner = new GroupJoiner
-                            (mEventListener, groupFile, mChanMan.getGroupToken(),
+                            (mEventListener, groupFile,
+                             mChanMan.groupToken1(), mChanMan.groupToken2(),
                              localAddress, listenAddress);
 
                         joiner.join(seeds, JOIN_TIMEOUT_MILLIS);

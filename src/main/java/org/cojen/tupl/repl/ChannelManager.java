@@ -72,11 +72,12 @@ final class ChannelManager {
       New connection header structure: (little endian fields)
 
       0:  Magic number (long)
-      8:  Group token (long)
-      16: Group id (long)
-      24: Member id (long)
-      32: Connection type (int)  -- 0: control, 1: plain, etc. Bit 31 enables CRC checks.
-      36: CRC32C (int)
+      8:  Group token 1 (long)
+      16: Group token 2 (long)
+      24: Group id (long)
+      32: Member id (long)
+      40: Connection type (int)  -- 0: control, 1: plain, etc. Bit 31 enables CRC checks.
+      34: CRC32C (int)
 
       Command header structure: (little endian fields)
 
@@ -86,7 +87,7 @@ final class ChannelManager {
 
     */
 
-    static final long MAGIC_NUMBER = 480921776540805866L;
+    static final long MAGIC_NUMBER = 4535555754533904615L;
 
     static final int TYPE_CONTROL = 0, TYPE_PLAIN = 1, TYPE_JOIN = 2, TYPE_SNAPSHOT = 3;
 
@@ -95,7 +96,7 @@ final class ChannelManager {
     private static final int MAX_RECONNECT_DELAY_MILLIS = 1000;
     private static final int INITIAL_READ_TIMEOUT_MILLIS = 5000;
     private static final int WRITE_CHECK_DELAY_MILLIS = 125;
-    private static final int INIT_HEADER_SIZE = 40;
+    private static final int INIT_HEADER_SIZE = 48;
 
     // By convention, requests are even and replies are odd.
     private static final int
@@ -130,7 +131,7 @@ final class ChannelManager {
 
     private final SocketFactory mSocketFactory;
     private final Scheduler mScheduler;
-    private final long mGroupToken;
+    private final long mGroupToken1, mGroupToken2;
     private final boolean mWriteCRCs;
     private final Consumer<Throwable> mUncaughtHandler;
     private final Map<SocketAddress, Peer> mPeerMap;
@@ -158,7 +159,8 @@ final class ChannelManager {
      * @param factory optional
      * @param writeCRCs true to write CRCs for all control commands written by client connections
      */
-    ChannelManager(SocketFactory factory, Scheduler scheduler, long groupToken, long groupId,
+    ChannelManager(SocketFactory factory, Scheduler scheduler,
+                   long groupToken1, long groupToken2, long groupId,
                    boolean writeCRCs, Consumer<Throwable> uncaughtHandler)
     {
         if (scheduler == null || uncaughtHandler == null) {
@@ -166,7 +168,8 @@ final class ChannelManager {
         }
         mSocketFactory = factory;
         mScheduler = scheduler;
-        mGroupToken = groupToken;
+        mGroupToken1 = groupToken1;
+        mGroupToken2 = groupToken2;
         mWriteCRCs = writeCRCs;
         mUncaughtHandler = uncaughtHandler;
         mPeerMap = new HashMap<>();
@@ -218,11 +221,15 @@ final class ChannelManager {
         mKeepServerSocket = true;
     }
 
-    long getGroupToken() {
-        return mGroupToken;
+    long groupToken1() {
+        return mGroupToken1;
     }
 
-    synchronized long getGroupId() {
+    long groupToken2() {
+        return mGroupToken2;
+    }
+
+    synchronized long groupId() {
         return mGroupId;
     }
 
@@ -465,7 +472,8 @@ final class ChannelManager {
                 localMemberId = mLocalMemberId;
             }
 
-            byte[] header = newConnectHeader(mGroupToken, groupId, localMemberId, conType[0]);
+            byte[] header = newConnectHeader(mGroupToken1, mGroupToken2, groupId,
+                                             localMemberId, conType[0]);
 
             s.getOutputStream().write(header);
 
@@ -475,11 +483,11 @@ final class ChannelManager {
             }
 
             // Verify expected member id.
-            if (decodeLongLE(header, 24) != peer.mMemberId) {
+            if (decodeLongLE(header, 32) != peer.mMemberId) {
                 break doConnect;
             }
 
-            int actualType = decodeIntLE(header, 32);
+            int actualType = decodeIntLE(header, 40);
 
             if ((actualType | (1 << 31)) != (conType[0] | (1 << 31))) {
                 break doConnect;
@@ -497,13 +505,16 @@ final class ChannelManager {
         return null;
     }
 
-    static byte[] newConnectHeader(long groupToken, long groupId, long memberId, int conType) {
+    static byte[] newConnectHeader(long groupToken1, long groupToken2, long groupId,
+                                   long memberId, int conType)
+    {
         var header = new byte[INIT_HEADER_SIZE];
         encodeLongLE(header, 0, MAGIC_NUMBER);
-        encodeLongLE(header, 8, groupToken);
-        encodeLongLE(header, 16, groupId);
-        encodeLongLE(header, 24, memberId);
-        encodeIntLE(header, 32, conType);
+        encodeLongLE(header, 8, groupToken1);
+        encodeLongLE(header, 16, groupToken2);
+        encodeLongLE(header, 24, groupId);
+        encodeLongLE(header, 32, memberId);
+        encodeIntLE(header, 40, conType);
 
         encodeHeaderCrc(header);
 
@@ -606,8 +617,8 @@ final class ChannelManager {
                 return;
             }
 
-            long remoteMemberId = decodeLongLE(header, 24);
-            int connectionType = decodeIntLE(header, 32);
+            long remoteMemberId = decodeLongLE(header, 32);
+            int connectionType = decodeIntLE(header, 40);
             boolean checkCRCs = connectionType < 0;
             connectionType &= ~(1 << 31);
 
@@ -673,10 +684,10 @@ final class ChannelManager {
                         connectionType |= 1 << 31;
                     }
 
-                    encodeIntLE(header, 32, connectionType);
+                    encodeIntLE(header, 40, connectionType);
                 }
 
-                encodeLongLE(header, 24, mLocalMemberId);
+                encodeLongLE(header, 32, mLocalMemberId);
 
                 // Don't lose the socket if stopped before the task can run. After it runs, the
                 // socket is tracked by the acceptor, which might be a ServerChannel.
@@ -742,7 +753,7 @@ final class ChannelManager {
         byte[] header;
         try {
             s.setSoTimeout(INITIAL_READ_TIMEOUT_MILLIS);
-            header = readHeader(s, accepted, mGroupToken, getGroupId());
+            header = readHeader(s, accepted, mGroupToken1, mGroupToken2, groupId());
             s.setSoTimeout(0);
             s.setTcpNoDelay(true);
         } catch (IOException e) {
@@ -763,7 +774,8 @@ final class ChannelManager {
     /**
      * @return null if invalid
      */
-    static byte[] readHeader(Socket s, boolean accepted, long groupToken, long groupId)
+    static byte[] readHeader(Socket s, boolean accepted,
+                             long groupToken1, long groupToken2, long groupId)
         throws IOException, JoinException
     {
         InputStream in = s.getInputStream();
@@ -775,17 +787,22 @@ final class ChannelManager {
             return null;
         }
 
-        if (decodeLongLE(header, 8) != groupToken ||
-            (decodeIntLE(header, 32) != TYPE_JOIN && decodeLongLE(header, 16) != groupId))
-        {
+        long gt1 = decodeLongLE(header, 8);
+        long gt2 = decodeLongLE(header, 16);
+
+        boolean match = gt1 == groupToken1 || gt1 == groupToken2
+            || gt2 == groupToken1 || gt2 == groupToken2;
+
+        if (!match || decodeIntLE(header, 40) != TYPE_JOIN && decodeLongLE(header, 24) != groupId) {
             if (!accepted) {
                 throw new JoinException("Group token or id doesn't match",
                                         s.getRemoteSocketAddress());
             }
 
-            // Use illegal identifier (0) to indicate that group token or id doesn't match.
-            encodeIntLE(header, 8, 0);
-            encodeIntLE(header, 16, 0);
+            // Use illegal identifiers (0) to indicate that group token or id doesn't match.
+            encodeLongLE(header, 8, 0);
+            encodeLongLE(header, 16, 0);
+            encodeLongLE(header, 24, 0);
             encodeHeaderCrc(header);
             s.getOutputStream().write(header);
 

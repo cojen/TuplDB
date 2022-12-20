@@ -54,7 +54,7 @@ class GroupJoiner {
 
     private final EventListener mEventListener;
     private final File mFile;
-    private final long mGroupToken;
+    private final long mGroupToken1, mGroupToken2;
     private final SocketAddress mLocalAddress;
     private final SocketAddress mBindAddress;
 
@@ -75,12 +75,13 @@ class GroupJoiner {
      * @param groupFile file to store GroupFile contents
      * @param listenAddress optional
      */
-    GroupJoiner(EventListener eventListener, File groupFile, long groupToken,
+    GroupJoiner(EventListener eventListener, File groupFile, long groupToken1, long groupToken2,
                 SocketAddress localAddress, SocketAddress listenAddress)
     {
         mEventListener = eventListener;
         mFile = groupFile;
-        mGroupToken = groupToken;
+        mGroupToken1 = groupToken1;
+        mGroupToken2 = groupToken2;
         mLocalAddress = localAddress;
 
         SocketAddress bindAddr = null;
@@ -95,8 +96,8 @@ class GroupJoiner {
     /**
      * Constructor which can be used to unjoin.
      */
-    GroupJoiner(long groupToken) {
-        this(null, null, groupToken, null, null);
+    GroupJoiner(long groupToken1, long groupToken2) {
+        this(null, null, groupToken1, groupToken2, null, null);
     }
 
     /**
@@ -160,7 +161,8 @@ class GroupJoiner {
         // available), and the leader responds with the term, position, and GroupFile.
 
         var out = new EncodingOutputStream();
-        out.write(ChannelManager.newConnectHeader(mGroupToken, 0, 0, ChannelManager.TYPE_JOIN));
+        out.write(ChannelManager.newConnectHeader(mGroupToken1, mGroupToken2, 0,
+                                                  0, ChannelManager.TYPE_JOIN));
 
         cout.accept(out);
 
@@ -293,7 +295,7 @@ class GroupJoiner {
 
         SocketAddress addr = null;
 
-        byte[] header = ChannelManager.readHeader(s, false, mGroupToken, 0);
+        byte[] header = ChannelManager.readHeader(s, false, mGroupToken1, mGroupToken2, 0);
 
         if (header != null) {
             var cin = new ChannelInputStream(s.getInputStream(), 1000, false);

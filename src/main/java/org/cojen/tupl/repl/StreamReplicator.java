@@ -75,8 +75,10 @@ public interface StreamReplicator extends Replicator {
             throw new IllegalArgumentException("Base file is a directory: " + base);
         }
 
-        long groupToken = config.mGroupToken;
-        if (groupToken == 0) {
+        long groupToken1 = config.mGroupToken1;
+        long groupToken2 = config.mGroupToken2;
+
+        if (groupToken1 == 0 && groupToken2 == 0) {
             throw new IllegalArgumentException("No group token configured");
         }
 
@@ -119,7 +121,7 @@ public interface StreamReplicator extends Replicator {
             log = FileStateLog.open(base);
 
             return Controller.open(config.mEventListener,
-                                   log, groupToken,
+                                   log, groupToken1, groupToken2,
                                    new File(base.getPath() + ".group"), 
                                    config.mSocketFactory,
                                    localAddress, listenAddress, config.mLocalRole,
