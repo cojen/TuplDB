@@ -46,8 +46,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
 
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -82,6 +84,7 @@ import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.LockTimeoutException;
+import org.cojen.tupl.Server;
 import org.cojen.tupl.Snapshot;
 import org.cojen.tupl.Sorter;
 import org.cojen.tupl.Transaction;
@@ -117,8 +120,8 @@ import static org.cojen.tupl.core.Utils.*;
 
 /**
  * Standard database implementation. The name "LocalDatabase" is used to imply that the
- * database is local to the current machine and not remotely accessed, although no remote
- * database layer exists. This class could just as well have been named "DatabaseImpl".
+ * database is local to the current machine. This class could just as well have been named
+ * "DatabaseImpl".
  *
  * @author Brian S O'Neill
  */
@@ -283,6 +286,8 @@ final class LocalDatabase extends CoreDatabase {
     private BTree mPreparedTxns;
 
     private RowStore mRowStore;
+
+    private Object mServers;
 
     private volatile int mClosed;
     private volatile Throwable mClosedCause;
@@ -2509,6 +2514,51 @@ final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
+    public Server newServer() throws IOException {
+        var server = new CoreServer(this);
+
+        mOpenTreesLatch.acquireExclusive(); // simpler to re-use an existing latch
+        try {
+            checkClosed();
+
+            if (mServers == null) {
+                mServers = server;
+            } else if (mServers instanceof Set set) {
+                set.add(server);
+            } else {
+                var set = new HashSet(4);
+                set.add(mServers);
+                set.add(server);
+                mServers = server;
+            }
+        } catch (Throwable e) {
+            server.close();
+            throw e;
+        } finally {
+            mOpenTreesLatch.releaseExclusive();
+        }
+
+        return server;
+    }
+
+    @Override
+    void unregister(CoreServer server) {
+        mOpenTreesLatch.acquireExclusive();
+        try {
+            if (mServers instanceof Set set) {
+                if (set.remove(server) && set.isEmpty()) {
+                    mServers = null;
+                }
+            } else if (mServers == server) {
+                mServers = null;
+            }
+        } finally {
+            mOpenTreesLatch.releaseExclusive();
+        }
+    }
+
+    @Override
     public DatabaseStats stats() {
         return stats(true);
     }
@@ -2972,6 +3022,26 @@ final class LocalDatabase extends CoreDatabase {
                 mEventListener.notify(EventType.PANIC_UNHANDLED_EXCEPTION,
                                       "Closing database due to unhandled exception: %1$s",
                                       rootCause);
+            }
+        }
+
+        // Close all registered servers.
+        closeServers: {
+            Object servers;
+
+            mOpenTreesLatch.acquireExclusive();
+            servers = mServers;
+            mServers = null;
+            mOpenTreesLatch.releaseExclusive();
+
+            if (servers != null) {
+                if (servers instanceof Set set) {
+                    for (Object server : set) {
+                        ((CoreServer) server).close();
+                    }
+                } else {
+                    ((CoreServer) servers).close();
+                }
             }
         }
 

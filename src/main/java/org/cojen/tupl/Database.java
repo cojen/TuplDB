@@ -383,6 +383,12 @@ public interface Database extends CauseCloseable, Flushable {
     public abstract void applyCachePrimer(InputStream in) throws IOException;
 
     /**
+     * Returns an object for enabling remote access into this database. As long as the server
+     * is still open, the JVM won't exit. Closing the database will also close the server.
+     */
+    public abstract Server newServer() throws IOException;
+
+    /**
      * Returns a collection of database statistics.
      */
     public abstract DatabaseStats stats();

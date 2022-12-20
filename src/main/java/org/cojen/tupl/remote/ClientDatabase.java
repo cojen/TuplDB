@@ -30,6 +30,7 @@ import org.cojen.dirmi.RemoteException;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Index;
+import org.cojen.tupl.Server;
 import org.cojen.tupl.Snapshot;
 import org.cojen.tupl.Sorter;
 import org.cojen.tupl.Table;
@@ -191,6 +192,11 @@ public final class ClientDatabase implements Database {
         } finally {
             pipe.close();
         }
+    }
+
+    @Override
+    public Server newServer() {
+        throw new UnsupportedOperationException();
     }
 
     @Override

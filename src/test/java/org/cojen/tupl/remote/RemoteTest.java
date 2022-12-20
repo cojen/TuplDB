@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.remote;
 
+import java.net.ServerSocket;
+
 import java.util.concurrent.TimeUnit;
 
 import org.junit.*;
@@ -60,24 +62,15 @@ public class RemoteTest {
     @Test
     public void basic() throws Exception {
         var db = Database.open(new DatabaseConfig());
-        var server = ServerDatabase.from(db);
 
-        Environment env = Environment.create();
+        var ss = new ServerSocket(0);
+        var server = db.newServer();
+        server.acceptAll(ss);
 
-        env.customSerializers
-            (Serializer.simple(DatabaseStats.class),
-             Serializer.simple(TimeUnit.class),
-             Serializer.simple(DurabilityMode.class),
-             Serializer.simple(LockMode.class),
-             Serializer.simple(LockResult.class),
-             Serializer.simple(Ordering.class),
-             LockTimeoutExceptionSerializer.THE,
-             DeadlockInfoSerializer.THE,
-             DeadlockExceptionSerializer.THE);
+        Environment env = RemoteUtils.createEnvironment();
 
-        env.export("main", server);
-        env.connector(Connector.local(env));
-        var remote = env.connect(RemoteDatabase.class, "main", null).root();
+        var remote = env.connect(RemoteDatabase.class, Database.class.getName(),
+                                 ss.getLocalSocketAddress()).root();
         var client = ClientDatabase.from(remote);
 
         System.out.println(client.isClosed());
@@ -194,9 +187,13 @@ public class RemoteTest {
 
         System.out.println("---");
 
+        System.out.println(clientTable.scannerPlan(null, "{+value}"));
+
         try (var scanner = clientTable.newScanner(null, "{+value}")) {
             scanner.forEachRemaining(row -> System.out.println(row));
         }
+
+        db.close();
     }
 
     @PrimaryKey("id")
