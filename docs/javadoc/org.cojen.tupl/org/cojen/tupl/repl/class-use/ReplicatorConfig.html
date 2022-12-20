@@ -139,52 +139,59 @@ loadScripts(document, 'script');</script>
 <div class="block">Set a listener which receives notifications of actions being performed by the replicator.</div>
 </div>
 <div class="col-first odd-row-color"><code><a href="../ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">ReplicatorConfig.</span><code><a href="../ReplicatorConfig.html#groupToken(long)" class="member-name-link">groupToken</a><wbr>(long&nbsp;groupToken)</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">ReplicatorConfig.</span><code><a href="../ReplicatorConfig.html#groupToken(long)" class="member-name-link">groupToken</a><wbr>(long&nbsp;token)</code></div>
 <div class="col-last odd-row-color">
-<div class="block">Set a unique group identifier, which acts as a simple security measure to prevent
- different replication groups from communicating with each other.</div>
+<div class="block">Set a unique group token, which acts as a simple security measure to prevent different
+ replication groups from communicating with each other.</div>
 </div>
 <div class="col-first even-row-color"><code><a href="../ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">ReplicatorConfig.</span><code><a href="../ReplicatorConfig.html#listenAddress(java.net.SocketAddress)" class="member-name-link">listenAddress</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/net/SocketAddress.html" title="class or interface in java.net" class="external-link">SocketAddress</a>&nbsp;addr)</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">ReplicatorConfig.</span><code><a href="../ReplicatorConfig.html#groupTokens(long,long)" class="member-name-link">groupTokens</a><wbr>(long&nbsp;token,
+ long&nbsp;altToken)</code></div>
 <div class="col-last even-row-color">
+<div class="block">Set a unique group token (and an alternate), which acts as a simple security measure to
+ prevent different replication groups from communicating with each other.</div>
+</div>
+<div class="col-first odd-row-color"><code><a href="../ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">ReplicatorConfig.</span><code><a href="../ReplicatorConfig.html#listenAddress(java.net.SocketAddress)" class="member-name-link">listenAddress</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/net/SocketAddress.html" title="class or interface in java.net" class="external-link">SocketAddress</a>&nbsp;addr)</code></div>
+<div class="col-last odd-row-color">
 <div class="block">Optionally restrict the socket address for accepting connections, which can be a
  wildcard address.</div>
 </div>
-<div class="col-first odd-row-color"><code><a href="../ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">ReplicatorConfig.</span><code><a href="../ReplicatorConfig.html#localAddress(java.net.SocketAddress)" class="member-name-link">localAddress</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/net/SocketAddress.html" title="class or interface in java.net" class="external-link">SocketAddress</a>&nbsp;addr)</code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code><a href="../ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">ReplicatorConfig.</span><code><a href="../ReplicatorConfig.html#localAddress(java.net.SocketAddress)" class="member-name-link">localAddress</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/net/SocketAddress.html" title="class or interface in java.net" class="external-link">SocketAddress</a>&nbsp;addr)</code></div>
+<div class="col-last even-row-color">
 <div class="block">Set the local member socket address and port.</div>
 </div>
-<div class="col-first even-row-color"><code><a href="../ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">ReplicatorConfig.</span><code><a href="../ReplicatorConfig.html#localPort(int)" class="member-name-link">localPort</a><wbr>(int&nbsp;port)</code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code><a href="../ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">ReplicatorConfig.</span><code><a href="../ReplicatorConfig.html#localPort(int)" class="member-name-link">localPort</a><wbr>(int&nbsp;port)</code></div>
+<div class="col-last odd-row-color">
 <div class="block">Set the local member socket port, for accepting connections on any address.</div>
 </div>
-<div class="col-first odd-row-color"><code><a href="../ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">ReplicatorConfig.</span><code><a href="../ReplicatorConfig.html#localRole(org.cojen.tupl.repl.Role)" class="member-name-link">localRole</a><wbr>(<a href="../Role.html" title="enum class in org.cojen.tupl.repl">Role</a>&nbsp;role)</code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code><a href="../ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">ReplicatorConfig.</span><code><a href="../ReplicatorConfig.html#localRole(org.cojen.tupl.repl.Role)" class="member-name-link">localRole</a><wbr>(<a href="../Role.html" title="enum class in org.cojen.tupl.repl">Role</a>&nbsp;role)</code></div>
+<div class="col-last even-row-color">
 <div class="block">Set the desired local member role, which is <a href="../Role.html#NORMAL">normal</a> by default,
  and for the primordial group member.</div>
 </div>
-<div class="col-first even-row-color"><code><a href="../ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">ReplicatorConfig.</span><code><a href="../ReplicatorConfig.html#localSocket(java.net.ServerSocket)" class="member-name-link">localSocket</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/net/ServerSocket.html" title="class or interface in java.net" class="external-link">ServerSocket</a>&nbsp;ss)</code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code><a href="../ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">ReplicatorConfig.</span><code><a href="../ReplicatorConfig.html#localSocket(java.net.ServerSocket)" class="member-name-link">localSocket</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/net/ServerSocket.html" title="class or interface in java.net" class="external-link">ServerSocket</a>&nbsp;ss)</code></div>
+<div class="col-last odd-row-color">
 <div class="block">Explicitly specify a connected local socket, intended only for testing.</div>
 </div>
-<div class="col-first odd-row-color"><code><a href="../ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">ReplicatorConfig.</span><code><a href="../ReplicatorConfig.html#proxyWrites(boolean)" class="member-name-link">proxyWrites</a><wbr>(boolean&nbsp;proxy)</code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code><a href="../ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">ReplicatorConfig.</span><code><a href="../ReplicatorConfig.html#proxyWrites(boolean)" class="member-name-link">proxyWrites</a><wbr>(boolean&nbsp;proxy)</code></div>
+<div class="col-last even-row-color">
 <div class="block">Pass true to proxy writes from the leader, reducing load on the leader, but increasing
  commit latency a bit.</div>
 </div>
-<div class="col-first even-row-color"><code><a href="../ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">ReplicatorConfig.</span><code><a href="../ReplicatorConfig.html#serverSocketFactory(javax.net.ServerSocketFactory)" class="member-name-link">serverSocketFactory</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/javax/net/ServerSocketFactory.html" title="class or interface in javax.net" class="external-link">ServerSocketFactory</a>&nbsp;factory)</code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code><a href="../ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">ReplicatorConfig.</span><code><a href="../ReplicatorConfig.html#serverSocketFactory(javax.net.ServerSocketFactory)" class="member-name-link">serverSocketFactory</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/javax/net/ServerSocketFactory.html" title="class or interface in javax.net" class="external-link">ServerSocketFactory</a>&nbsp;factory)</code></div>
+<div class="col-last odd-row-color">
 <div class="block">Set a factory for creating new server-side sockets.</div>
 </div>
-<div class="col-first odd-row-color"><code><a href="../ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">ReplicatorConfig.</span><code><a href="../ReplicatorConfig.html#socketFactory(javax.net.SocketFactory)" class="member-name-link">socketFactory</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/javax/net/SocketFactory.html" title="class or interface in javax.net" class="external-link">SocketFactory</a>&nbsp;factory)</code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code><a href="../ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">ReplicatorConfig.</span><code><a href="../ReplicatorConfig.html#socketFactory(javax.net.SocketFactory)" class="member-name-link">socketFactory</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/javax/net/SocketFactory.html" title="class or interface in javax.net" class="external-link">SocketFactory</a>&nbsp;factory)</code></div>
+<div class="col-last even-row-color">
 <div class="block">Set a factory for creating new client-side sockets.</div>
 </div>
 </div>
