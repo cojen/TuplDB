@@ -30,28 +30,20 @@ import java.net.ServerSocket;
  */
 public interface Server extends Closeable {
     /**
-     * Optionally specify authentication tokens. At least one token must match in order for a
-     * connection to be accepted. Each token is converted to a binary representation, possibly
-     * by calling {@code toString} first. Array tokens are supported by recursively converting
-     * all elements.
+     * Provide authentication tokens, if required. At least one token must match in order for a
+     * connection to be accepted.
      *
      * @return this server instance
      */
-    Server tokens(Object... tokens);
-
-    /**
-     * Call to enable remote access via the replication system. This eliminates the requirement
-     * to open another socket port, and it doesn't introduce any overhead.
-     *
-     * @throws IllegalStateException if replication isn't enabled
-     * @see DatabaseConfig#replicate
-     */
-    void acceptReplicator() throws IOException;
+    Server tokens(long... tokens);
 
     /**
      * Call to enable remote access via all sockets accepted by the given {@code ServerSocket}.
+     *
+     * @throws IllegalStateException if no tokens are provided
+     * @return this server instance
      */
-    void acceptAll(ServerSocket ss) throws IOException;
+    Server acceptAll(ServerSocket ss) throws IOException;
 
     /**
      * Disables remote access, closes all acceptors, and closes all existing connections.

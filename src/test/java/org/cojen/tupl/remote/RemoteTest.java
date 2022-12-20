@@ -64,8 +64,7 @@ public class RemoteTest {
         var db = Database.open(new DatabaseConfig());
 
         var ss = new ServerSocket(0);
-        var server = db.newServer();
-        server.acceptAll(ss);
+        db.newServer().tokens(123456).acceptAll(ss);
 
         Environment env = RemoteUtils.createEnvironment();
 

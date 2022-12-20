@@ -38,6 +38,7 @@ import org.cojen.tupl.remote.ServerDatabase;
 final class CoreServer implements Server {
     private final Environment mEnv;
     private volatile CoreDatabase mDatabase;
+    private volatile long[] mTokens;
 
     CoreServer(CoreDatabase db) throws IOException {
         ServerDatabase server = ServerDatabase.from(db);
@@ -48,25 +49,31 @@ final class CoreServer implements Server {
     }
 
     @Override
-    public Server tokens(Object... tokens) {
-        // FIXME: Convert to binary; use an accept listener to check the tokens.
-        throw null;
+    public Server tokens(long... tokens) {
+        if (tokens == null || tokens.length == 0) {
+            mTokens = null;
+        } else {
+            mTokens = tokens.clone();
+        }
+        return this;
     }
 
     @Override
-    public void acceptReplicator() throws IOException {
-        // FIXME
-        throw null;
-    }
+    public Server acceptAll(ServerSocket ss) throws IOException {
+        if (mTokens == null) {
+            throw new IllegalStateException("No tokens");
+        }
 
-    @Override
-    public void acceptAll(ServerSocket ss) throws IOException {
+        // FIXME: tokens
         mEnv.acceptAll(ss);
+
+        return this;
     }
 
     @Override
     public void close() {
         CoreDatabase db = mDatabase;
+
         if (db != null) {
             mDatabase = null;
             db.unregister(this);
