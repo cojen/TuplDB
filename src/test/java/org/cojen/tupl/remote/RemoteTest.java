@@ -19,35 +19,18 @@ package org.cojen.tupl.remote;
 
 import java.net.ServerSocket;
 
-import java.util.concurrent.TimeUnit;
-
 import org.junit.*;
 import static org.junit.Assert.*;
-
-import org.cojen.dirmi.Connector;
-import org.cojen.dirmi.Environment;
-import org.cojen.dirmi.Serializer;
 
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DatabaseConfig;
-import org.cojen.tupl.DeadlockException;
-import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Entry;
 import org.cojen.tupl.Index;
-import org.cojen.tupl.LockMode;
-import org.cojen.tupl.LockResult;
-import org.cojen.tupl.LockTimeoutException;
-import org.cojen.tupl.Ordering;
 import org.cojen.tupl.PrimaryKey;
 import org.cojen.tupl.SecondaryIndex;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
-
-import org.cojen.tupl.core.CoreDeadlockInfo;
-import org.cojen.tupl.core.DetachedDeadlockInfo;
-
-import org.cojen.tupl.diag.DatabaseStats;
 
 /**
  * 
@@ -66,11 +49,7 @@ public class RemoteTest {
         var ss = new ServerSocket(0);
         db.newServer().tokens(123456).acceptAll(ss);
 
-        Environment env = RemoteUtils.createEnvironment();
-
-        var remote = env.connect(RemoteDatabase.class, Database.class.getName(),
-                                 ss.getLocalSocketAddress()).root();
-        var client = ClientDatabase.from(remote);
+        var client = Database.connect(ss.getLocalSocketAddress(), 111, 123456);
 
         System.out.println(client.isClosed());
         System.out.println(client.stats());
@@ -192,6 +171,7 @@ public class RemoteTest {
             scanner.forEachRemaining(row -> System.out.println(row));
         }
 
+        client.close();
         db.close();
     }
 

@@ -21,9 +21,17 @@ import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.SocketAddress;
+
+import java.nio.channels.Channels;
+import java.nio.channels.SocketChannel;
+
 import java.util.concurrent.locks.Lock;
 
 import org.cojen.dirmi.ClosedException;
+import org.cojen.dirmi.Environment;
 import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.RemoteException;
 
@@ -51,15 +59,50 @@ import org.cojen.tupl.ext.PrepareHandler;
  */
 public final class ClientDatabase implements Database {
     public static ClientDatabase from(RemoteDatabase remote) throws RemoteException {
-        return new ClientDatabase(remote);
+        return new ClientDatabase(remote, null);
+    }
+
+    public static ClientDatabase connect(SocketAddress addr, long... tokens) throws IOException {
+        Environment env = RemoteUtils.createEnvironment();
+
+        env.connector(session -> {
+            SocketAddress address = session.remoteAddress();
+            if (address instanceof InetSocketAddress) {
+                var s = new Socket();
+                s.connect(address);
+                checkTokens(s.getInputStream(), s.getOutputStream(), tokens);
+                session.connected(s);
+            } else {
+                SocketChannel s = SocketChannel.open(address);
+                checkTokens(Channels.newInputStream(s), Channels.newOutputStream(s), tokens);
+                session.connected(s);
+            }
+        });
+
+        var remote = env.connect(RemoteDatabase.class, Database.class.getName(), addr).root();
+
+        return new ClientDatabase(remote, env);
+    }
+
+    private static void checkTokens(InputStream in, OutputStream out, long... tokens)
+        throws IOException
+    {
+        out.write(RemoteUtils.encodeTokens(tokens));
+        out.flush();
+
+        if (in.read() != 1) {
+            throw new IOException("Connection rejected");
+        }
     }
 
     private final RemoteDatabase mRemote;
+    private final Environment mEnv;
 
     final ClientTransaction mBogus;
 
-    private ClientDatabase(RemoteDatabase remote) throws RemoteException {
+    private ClientDatabase(RemoteDatabase remote, Environment env) throws RemoteException {
         mRemote = remote;
+        mEnv = env;
         mBogus = ClientTransaction.from(this, remote.bogus(), null);
     }
 
@@ -288,8 +331,12 @@ public final class ClientDatabase implements Database {
     }
 
     private void dispose() throws RemoteException {
-        mRemote.dispose();
-        mBogus.mRemote.dispose();
+        if (mEnv != null) {
+            mEnv.close();
+        } else {
+            mRemote.dispose();
+            mBogus.mRemote.dispose();
+        }
     }
 
     RemoteIndex remoteIndex(Index ix) {

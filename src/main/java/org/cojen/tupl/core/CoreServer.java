@@ -64,8 +64,13 @@ final class CoreServer implements Server {
             throw new IllegalStateException("No tokens");
         }
 
-        // FIXME: tokens
-        mEnv.acceptAll(ss);
+        mEnv.acceptAll(ss, s -> {
+            try {
+                return RemoteUtils.evalTokens(s.getInputStream(), s.getOutputStream(), mTokens);
+            } catch (IOException e) {
+                throw Utils.rethrow(e);
+            }
+        });
 
         return this;
     }

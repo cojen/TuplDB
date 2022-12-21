@@ -17,6 +17,14 @@
 
 package org.cojen.tupl.remote;
 
+import java.io.DataInputStream;
+import java.io.InputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import java.util.concurrent.TimeUnit;
 
 import org.cojen.dirmi.Environment;
@@ -29,12 +37,24 @@ import org.cojen.tupl.Ordering;
 
 import org.cojen.tupl.diag.DatabaseStats;
 
+import org.cojen.tupl.io.Utils;
+
 /**
  * 
  *
  * @author Brian S O'Neill
  */
 public class RemoteUtils {
+    private static final VarHandle cLongArrayElementHandle;
+
+    static {
+        try {
+            cLongArrayElementHandle = MethodHandles.arrayElementVarHandle(long[].class);
+        } catch (Throwable e) {
+            throw new ExceptionInInitializerError();
+        }
+    }
+
     public static Environment createEnvironment() {
         Environment env = Environment.create();
 
@@ -50,5 +70,37 @@ public class RemoteUtils {
              DeadlockExceptionSerializer.THE);
 
         return env;
+    }
+
+    public static byte[] encodeTokens(long... tokens) {
+        var bytes = new byte[4 + tokens.length * 8];
+        Utils.encodeIntBE(bytes, 0, tokens.length);
+        for (int i=0; i<tokens.length; i++) {
+            var token = (long) cLongArrayElementHandle.getAcquire(tokens, i);
+            Utils.encodeLongBE(bytes, 4 + i * 8, token);
+        }
+        return bytes;
+    }
+
+    public static boolean evalTokens(InputStream in, OutputStream out, long... expected)
+        throws IOException
+    {
+        var din = new DataInputStream(in);
+        int num = din.readInt();
+        var bytes = new byte[num * 8];
+        din.readFully(bytes);
+
+        for (int i=0; i<num; i++) {
+            long token = Utils.decodeLongBE(bytes, i * 8);
+
+            for (long t : expected) {
+                if (token == t) {
+                    out.write(1);
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }

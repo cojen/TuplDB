@@ -24,6 +24,8 @@ import java.io.OutputStream;
 
 import java.util.concurrent.locks.Lock;
 
+import java.net.SocketAddress;
+
 import java.nio.charset.StandardCharsets;
 
 import org.cojen.tupl.diag.CompactionObserver;
@@ -36,6 +38,8 @@ import org.cojen.tupl.ext.CustomHandler;
 import org.cojen.tupl.ext.PrepareHandler;
 
 import org.cojen.tupl.io.CauseCloseable;
+
+import org.cojen.tupl.remote.ClientDatabase;
 
 import static org.cojen.tupl.core.Utils.*;
 
@@ -95,6 +99,13 @@ public interface Database extends CauseCloseable, Flushable {
      */
     public static Database destroy(DatabaseConfig config) throws IOException {
         return config.mLauncher.open(true, null);
+    }
+
+    /**
+     * Establish a remote connection to a database which is running a {@link #newServer server}.
+     */
+    public static Database connect(SocketAddress addr, long... tokens) throws IOException {
+        return ClientDatabase.connect(addr, tokens);
     }
 
     /**
