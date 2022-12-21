@@ -34,6 +34,7 @@ public interface Server extends Closeable {
      * connection to be accepted.
      *
      * @return this server instance
+     * @throws IllegalArgumentException if not given one or two tokens
      */
     Server tokens(long... tokens);
 

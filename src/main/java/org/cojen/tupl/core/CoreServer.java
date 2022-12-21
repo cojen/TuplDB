@@ -50,11 +50,10 @@ final class CoreServer implements Server {
 
     @Override
     public Server tokens(long... tokens) {
-        if (tokens == null || tokens.length == 0) {
-            mTokens = null;
-        } else {
-            mTokens = tokens.clone();
+        if (tokens.length < 1 || tokens.length > 2) {
+            throw new IllegalArgumentException("Must provide one or two tokens");
         }
+        mTokens = tokens.clone();
         return this;
     }
 
@@ -66,7 +65,7 @@ final class CoreServer implements Server {
 
         mEnv.acceptAll(ss, s -> {
             try {
-                return RemoteUtils.evalTokens(s.getInputStream(), s.getOutputStream(), mTokens);
+                return RemoteUtils.testConnection(s.getInputStream(), s.getOutputStream(), mTokens);
             } catch (IOException e) {
                 throw Utils.rethrow(e);
             }
@@ -77,6 +76,8 @@ final class CoreServer implements Server {
 
     @Override
     public void close() {
+        mTokens = null;
+
         CoreDatabase db = mDatabase;
 
         if (db != null) {

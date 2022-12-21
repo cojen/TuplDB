@@ -103,6 +103,8 @@ public interface Database extends CauseCloseable, Flushable {
 
     /**
      * Establish a remote connection to a database which is running a {@link #newServer server}.
+     *
+     * @throws IllegalArgumentException if not given one or two tokens
      */
     public static Database connect(SocketAddress addr, long... tokens) throws IOException {
         return ClientDatabase.connect(addr, tokens);
