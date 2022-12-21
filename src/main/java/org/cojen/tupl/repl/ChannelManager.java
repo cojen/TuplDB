@@ -72,31 +72,35 @@ final class ChannelManager {
       New connection header structure: (little endian fields)
 
       0:  Magic number (long)
-      8:  Group token 1 (long)
-      16: Group token 2 (long)
-      24: Group id (long)
-      32: Member id (long)
-      40: Connection type (int)  -- 0: control, 1: plain, etc. Bit 31 enables CRC checks.
-      34: CRC32C (int)
+      8:  Group id (long)
+      16: Member id (long)
+      24: Connection type (int)
+      28: Group token 1 (long)
+      36: Group token 2 (long)
+
+      Connection type is TYPE_*. Bit 0 enables CRC checks for TYPE_CONTROL.
 
       Command header structure: (little endian fields)
 
       0:  Command length (3 bytes)  -- excludes the 8-byte command header itself
       3:  Opcode (byte)
-      4:  CRC (uint)  -- unused
+      4:  CRC (int)
 
     */
 
-    static final long MAGIC_NUMBER = 4535555754533904615L;
+    static final long MAGIC_NUMBER = 2825672906279293275L;
 
-    static final int TYPE_CONTROL = 0, TYPE_PLAIN = 1, TYPE_JOIN = 2, TYPE_SNAPSHOT = 3;
+    private static final int GROUP_ID = 8, MEMBER_ID = 16, CONNECTION_TYPE = 24,
+        GROUP_TOKEN_1 = 28, GROUP_TOKEN_2 = 36;
+    private static final int INIT_HEADER_SIZE = GROUP_TOKEN_2 + 8;
+
+    static final int TYPE_PLAIN = 0, TYPE_JOIN = 2, TYPE_CONTROL = 4, TYPE_SNAPSHOT = 6;
 
     private static final int CONNECT_TIMEOUT_MILLIS = 5000;
     private static final int MIN_RECONNECT_DELAY_MILLIS = 10;
     private static final int MAX_RECONNECT_DELAY_MILLIS = 1000;
     private static final int INITIAL_READ_TIMEOUT_MILLIS = 5000;
     private static final int WRITE_CHECK_DELAY_MILLIS = 125;
-    private static final int INIT_HEADER_SIZE = 48;
 
     // By convention, requests are even and replies are odd.
     private static final int
@@ -472,8 +476,8 @@ final class ChannelManager {
                 localMemberId = mLocalMemberId;
             }
 
-            byte[] header = newConnectHeader(mGroupToken1, mGroupToken2, groupId,
-                                             localMemberId, conType[0]);
+            byte[] header = newConnectHeader(groupId, localMemberId, conType[0],
+                                             mGroupToken1, mGroupToken2);
 
             s.getOutputStream().write(header);
 
@@ -483,13 +487,13 @@ final class ChannelManager {
             }
 
             // Verify expected member id.
-            if (decodeLongLE(header, 32) != peer.mMemberId) {
+            if (decodeLongLE(header, MEMBER_ID) != peer.mMemberId) {
                 break doConnect;
             }
 
-            int actualType = decodeIntLE(header, 40);
+            int actualType = decodeIntLE(header, CONNECTION_TYPE);
 
-            if ((actualType | (1 << 31)) != (conType[0] | (1 << 31))) {
+            if ((actualType | 1) != (conType[0] | 1)) {
                 break doConnect;
             }
 
@@ -505,18 +509,16 @@ final class ChannelManager {
         return null;
     }
 
-    static byte[] newConnectHeader(long groupToken1, long groupToken2, long groupId,
-                                   long memberId, int conType)
+    static byte[] newConnectHeader(long groupId, long memberId, int conType,
+                                   long groupToken1, long groupToken2)
     {
         var header = new byte[INIT_HEADER_SIZE];
         encodeLongLE(header, 0, MAGIC_NUMBER);
-        encodeLongLE(header, 8, groupToken1);
-        encodeLongLE(header, 16, groupToken2);
-        encodeLongLE(header, 24, groupId);
-        encodeLongLE(header, 32, memberId);
-        encodeIntLE(header, 40, conType);
-
-        encodeHeaderCrc(header);
+        encodeLongLE(header, GROUP_ID, groupId);
+        encodeLongLE(header, MEMBER_ID, memberId);
+        encodeIntLE(header, CONNECTION_TYPE, conType);
+        encodeLongLE(header, GROUP_TOKEN_1, groupToken1);
+        encodeLongLE(header, GROUP_TOKEN_2, groupToken2);
 
         return header;
     }
@@ -617,10 +619,10 @@ final class ChannelManager {
                 return;
             }
 
-            long remoteMemberId = decodeLongLE(header, 32);
-            int connectionType = decodeIntLE(header, 40);
-            boolean checkCRCs = connectionType < 0;
-            connectionType &= ~(1 << 31);
+            long remoteMemberId = decodeLongLE(header, MEMBER_ID);
+            int connectionType = decodeIntLE(header, CONNECTION_TYPE);
+            boolean checkCRCs = (connectionType & 1) != 0;
+            connectionType &= ~1;
 
             Consumer<Socket> acceptor = null;
 
@@ -681,20 +683,18 @@ final class ChannelManager {
 
                     if (mWriteCRCs) {
                         // Indicate that CRCs will be written and should be checked.
-                        connectionType |= 1 << 31;
+                        connectionType |= 1;
                     }
 
-                    encodeIntLE(header, 40, connectionType);
+                    encodeIntLE(header, CONNECTION_TYPE, connectionType);
                 }
 
-                encodeLongLE(header, 32, mLocalMemberId);
+                encodeLongLE(header, MEMBER_ID, mLocalMemberId);
 
                 // Don't lose the socket if stopped before the task can run. After it runs, the
                 // socket is tracked by the acceptor, which might be a ServerChannel.
                 mFreshSockets.add(s);
             }
-
-            encodeHeaderCrc(header);
 
             final var fserver = server;
 
@@ -740,12 +740,6 @@ final class ChannelManager {
         }
     }
 
-    static void encodeHeaderCrc(byte[] header) {
-        var crc = new CRC32C();
-        crc.update(header, 0, header.length - 4);
-        encodeIntLE(header, header.length - 4, (int) crc.getValue());
-    }
-
     /**
      * @return null if invalid
      */
@@ -753,7 +747,7 @@ final class ChannelManager {
         byte[] header;
         try {
             s.setSoTimeout(INITIAL_READ_TIMEOUT_MILLIS);
-            header = readHeader(s, accepted, mGroupToken1, mGroupToken2, groupId());
+            header = readHeader(s, accepted, groupId(), mGroupToken1, mGroupToken2);
             s.setSoTimeout(0);
             s.setTcpNoDelay(true);
         } catch (IOException e) {
@@ -774,8 +768,8 @@ final class ChannelManager {
     /**
      * @return null if invalid
      */
-    static byte[] readHeader(Socket s, boolean accepted,
-                             long groupToken1, long groupToken2, long groupId)
+    static byte[] readHeader(Socket s, boolean accepted, long groupId,
+                             long groupToken1, long groupToken2)
         throws IOException, JoinException
     {
         InputStream in = s.getInputStream();
@@ -787,31 +781,26 @@ final class ChannelManager {
             return null;
         }
 
-        long gt1 = decodeLongLE(header, 8);
-        long gt2 = decodeLongLE(header, 16);
+        long gt1 = decodeLongLE(header, GROUP_TOKEN_1);
+        long gt2 = decodeLongLE(header, GROUP_TOKEN_2);
 
-        boolean match = gt1 == groupToken1 || gt1 == groupToken2
+        boolean tokenMatch = gt1 == groupToken1 || gt1 == groupToken2
             || gt2 == groupToken1 || gt2 == groupToken2;
 
-        if (!match || decodeIntLE(header, 40) != TYPE_JOIN && decodeLongLE(header, 24) != groupId) {
+        boolean idMatch = decodeLongLE(header, GROUP_ID) == groupId
+            || decodeIntLE(header, CONNECTION_TYPE) < TYPE_CONTROL;
+
+        if (!tokenMatch || !idMatch) {
             if (!accepted) {
                 throw new JoinException("Group token or id doesn't match",
                                         s.getRemoteSocketAddress());
             }
 
             // Use illegal identifiers (0) to indicate that group token or id doesn't match.
-            encodeLongLE(header, 8, 0);
-            encodeLongLE(header, 16, 0);
-            encodeLongLE(header, 24, 0);
-            encodeHeaderCrc(header);
+            encodeLongLE(header, GROUP_ID, 0);
+            encodeLongLE(header, MEMBER_ID, 0);
             s.getOutputStream().write(header);
 
-            return null;
-        }
-
-        var crc = new CRC32C();
-        crc.update(header, 0, header.length - 4);
-        if (decodeIntLE(header, header.length - 4) != (int) crc.getValue()) {
             return null;
         }
 
@@ -888,7 +877,7 @@ final class ChannelManager {
 
             if (mOutCRC != null) {
                 // Indicate that CRCs will be written and should be checked.
-                conType[0] |= 1 << 31;
+                conType[0] |= 1;
             }
 
             try {

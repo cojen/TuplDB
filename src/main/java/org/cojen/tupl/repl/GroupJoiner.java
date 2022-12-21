@@ -161,8 +161,8 @@ class GroupJoiner {
         // available), and the leader responds with the term, position, and GroupFile.
 
         var out = new EncodingOutputStream();
-        out.write(ChannelManager.newConnectHeader(mGroupToken1, mGroupToken2, 0,
-                                                  0, ChannelManager.TYPE_JOIN));
+        out.write(ChannelManager.newConnectHeader(0, 0, ChannelManager.TYPE_JOIN,
+                                                  mGroupToken1, mGroupToken2));
 
         cout.accept(out);
 
@@ -295,7 +295,7 @@ class GroupJoiner {
 
         SocketAddress addr = null;
 
-        byte[] header = ChannelManager.readHeader(s, false, mGroupToken1, mGroupToken2, 0);
+        byte[] header = ChannelManager.readHeader(s, false, 0, mGroupToken1, mGroupToken2);
 
         if (header != null) {
             var cin = new ChannelInputStream(s.getInputStream(), 1000, false);
