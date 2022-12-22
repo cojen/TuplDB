@@ -70,11 +70,11 @@ public final class ClientDatabase implements Database {
             if (address instanceof InetSocketAddress) {
                 var s = new Socket();
                 s.connect(address);
-                checkTokens(s.getInputStream(), s.getOutputStream(), tokens);
+                initConnection(s.getInputStream(), s.getOutputStream(), tokens);
                 session.connected(s);
             } else {
                 SocketChannel s = SocketChannel.open(address);
-                checkTokens(Channels.newInputStream(s), Channels.newOutputStream(s), tokens);
+                initConnection(Channels.newInputStream(s), Channels.newOutputStream(s), tokens);
                 session.connected(s);
             }
         });
@@ -84,13 +84,13 @@ public final class ClientDatabase implements Database {
         return new ClientDatabase(remote, env);
     }
 
-    private static void checkTokens(InputStream in, OutputStream out, long... tokens)
+    private static void initConnection(InputStream in, OutputStream out, long... tokens)
         throws IOException
     {
-        out.write(RemoteUtils.encodeTokens(tokens));
+        out.write(RemoteUtils.encodeConnectHeader(tokens));
         out.flush();
 
-        if (in.read() != 1) {
+        if (!RemoteUtils.testConnection(in, null, tokens)) {
             throw new IOException("Connection rejected");
         }
     }

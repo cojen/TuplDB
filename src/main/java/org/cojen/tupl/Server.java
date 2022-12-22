@@ -30,21 +30,12 @@ import java.net.ServerSocket;
  */
 public interface Server extends Closeable {
     /**
-     * Provide authentication tokens, if required. At least one token must match in order for a
-     * connection to be accepted.
+     * Call to enable remote access via all sockets accepted by the given {@code ServerSocket}.
+     * At least one token must match in order for a connection to be accepted.
      *
-     * @return this server instance
      * @throws IllegalArgumentException if not given one or two tokens
      */
-    Server tokens(long... tokens);
-
-    /**
-     * Call to enable remote access via all sockets accepted by the given {@code ServerSocket}.
-     *
-     * @throws IllegalStateException if no tokens are provided
-     * @return this server instance
-     */
-    Server acceptAll(ServerSocket ss) throws IOException;
+    void acceptAll(ServerSocket ss, long... tokens) throws IOException;
 
     /**
      * Disables remote access, closes all acceptors, and closes all existing connections.

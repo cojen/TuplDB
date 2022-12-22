@@ -40,16 +40,16 @@ import java.lang.ref.SoftReference;
 
 import java.math.BigInteger;
 
+import java.net.Socket;
+
 import java.nio.charset.StandardCharsets;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.TreeMap;
 
 import java.util.concurrent.ConcurrentSkipListMap;
@@ -287,7 +287,7 @@ final class LocalDatabase extends CoreDatabase {
 
     private RowStore mRowStore;
 
-    private Object mServers;
+    private volatile Servers mServers;
 
     private volatile int mClosed;
     private volatile Throwable mClosedCause;
@@ -1003,6 +1003,9 @@ final class LocalDatabase extends CoreDatabase {
         controller.catchup(decoder);
 
         recoveryComplete(launcher.mReplRecoveryStartNanos);
+
+        // Accept client connections via sockets accepted by the replication layer.
+        launcher.mRepl.socketAcceptor(this::replServerAccepted);
     }
 
     /**
@@ -2514,48 +2517,36 @@ final class LocalDatabase extends CoreDatabase {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public Server newServer() throws IOException {
-        var server = new CoreServer(this);
-
-        mOpenTreesLatch.acquireExclusive(); // simpler to re-use an existing latch
-        try {
-            checkClosed();
-
-            if (mServers == null) {
-                mServers = server;
-            } else if (mServers instanceof Set set) {
-                set.add(server);
-            } else {
-                var set = new HashSet(4);
-                set.add(mServers);
-                set.add(server);
-                mServers = server;
-            }
-        } catch (Throwable e) {
-            server.close();
-            throw e;
-        } finally {
-            mOpenTreesLatch.releaseExclusive();
-        }
-
-        return server;
+        return openServers().newServer(this);
     }
 
-    @Override
-    void unregister(CoreServer server) {
-        mOpenTreesLatch.acquireExclusive();
+    void replServerAccepted(Socket s) {
         try {
-            if (mServers instanceof Set set) {
-                if (set.remove(server) && set.isEmpty()) {
-                    mServers = null;
-                }
-            } else if (mServers == server) {
-                mServers = null;
-            }
-        } finally {
-            mOpenTreesLatch.releaseExclusive();
+            openServers().replServer(this).acceptedAndValidated(s);
+        } catch (IOException e) {
+            Utils.closeQuietly(s);
         }
+    }
+
+    private Servers openServers() throws DatabaseException {
+        Servers servers = mServers;
+
+        if (servers == null) {
+            checkClosed();
+            mOpenTreesLatch.acquireExclusive(); // simpler to re-use an existing latch
+            try {
+                servers = mServers;
+                if (servers == null) {
+                    checkClosed();
+                    mServers = servers = new Servers();
+                }
+            } finally {
+                mOpenTreesLatch.releaseExclusive();
+            }
+        }
+            
+        return servers;
     }
 
     @Override
@@ -3026,23 +3017,9 @@ final class LocalDatabase extends CoreDatabase {
         }
 
         // Close all registered servers.
-        closeServers: {
-            Object servers;
-
-            mOpenTreesLatch.acquireExclusive();
-            servers = mServers;
-            mServers = null;
-            mOpenTreesLatch.releaseExclusive();
-
-            if (servers != null) {
-                if (servers instanceof Set set) {
-                    for (Object server : set) {
-                        ((CoreServer) server).close();
-                    }
-                } else {
-                    ((CoreServer) servers).close();
-                }
-            }
+        Servers servers = mServers;
+        if (servers != null) {
+            servers.close();
         }
 
         boolean lockedCheckpointer = false;

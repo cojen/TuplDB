@@ -17,7 +17,6 @@
 
 package org.cojen.tupl.remote;
 
-import java.io.DataInputStream;
 import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -72,35 +71,70 @@ public class RemoteUtils {
         return env;
     }
 
-    public static byte[] encodeTokens(long... tokens) {
-        var bytes = new byte[4 + tokens.length * 8];
-        Utils.encodeIntBE(bytes, 0, tokens.length);
+    private static final long MAGIC_NUMBER = 2825672906279293275L, GROUP_ID = 5156919750013540996L;
+
+    private static final int HEADER_SIZE = 44;
+
+    /**
+     * Encodes a header which follows the repl.ChannelManager format.
+     */
+    public static byte[] encodeConnectHeader(long... tokens) {
+        if (tokens.length < 1 || tokens.length > 2) {
+            throw new IllegalArgumentException("Must provide one or two tokens");
+        }
+
+        var header = new byte[HEADER_SIZE];
+
+        Utils.encodeLongLE(header, 0, MAGIC_NUMBER);
+        Utils.encodeLongLE(header, 8, GROUP_ID); // synthetic group identifier
+
         for (int i=0; i<tokens.length; i++) {
             var token = (long) cLongArrayElementHandle.getAcquire(tokens, i);
-            Utils.encodeLongBE(bytes, 4 + i * 8, token);
+            Utils.encodeLongLE(header, 28 + i * 8, token);
         }
-        return bytes;
+
+        return header;
     }
 
-    public static boolean evalTokens(InputStream in, OutputStream out, long... expected)
+    /**
+     * @param out must be null for client side
+     * @return false if rejected
+     */
+    public static boolean testConnection(InputStream in, OutputStream out, long... tokens)
         throws IOException
     {
-        var din = new DataInputStream(in);
-        int num = din.readInt();
-        var bytes = new byte[num * 8];
-        din.readFully(bytes);
+        var header = new byte[HEADER_SIZE];
+        if (in.readNBytes(header, 0, header.length) < header.length) {
+            return false;
+        }
 
-        for (int i=0; i<num; i++) {
-            long token = Utils.decodeLongBE(bytes, i * 8);
+        if (Utils.decodeLongLE(header, 0) != MAGIC_NUMBER ||
+            Utils.decodeLongLE(header, 8) != GROUP_ID)
+        {
+            return false;
+        }
 
-            for (long t : expected) {
-                if (token == t) {
-                    out.write(1);
-                    return true;
+        boolean passed = false;
+
+        testTokens: for (int i=0; i<2; i++) {
+            long provided = Utils.decodeLongLE(header, 28 + i * 8);
+            for (int j=0; j<tokens.length; j++) {
+                var token = (long) cLongArrayElementHandle.getAcquire(tokens, j);
+                if (provided == token) {
+                    passed = true;
+                    break testTokens;
                 }
             }
         }
 
-        return false;
+        if (out != null) {
+            if (!passed) {
+                // Use illegal identifier (0) to indicate that token doesn't match.
+                Utils.encodeLongLE(header, 8, 0);
+            }
+            out.write(header);
+        }
+
+        return passed;
     }
 }

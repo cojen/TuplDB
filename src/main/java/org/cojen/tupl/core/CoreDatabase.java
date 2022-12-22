@@ -124,9 +124,4 @@ public abstract class CoreDatabase implements Database {
      * Called by ReplController.
      */
     abstract long writeControlMessage(byte[] message) throws IOException;
-
-    /**
-     * Called by CoreServer.
-     */
-    abstract void unregister(CoreServer server);
 }

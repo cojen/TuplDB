@@ -21,6 +21,7 @@ import java.io.Closeable;
 import java.io.IOException;
 
 import java.net.ServerSocket;
+import java.net.Socket;
 
 import org.cojen.dirmi.Environment;
 
@@ -37,54 +38,46 @@ import org.cojen.tupl.remote.ServerDatabase;
  */
 final class CoreServer implements Server {
     private final Environment mEnv;
-    private volatile CoreDatabase mDatabase;
-    private volatile long[] mTokens;
+    private final Servers mServers;
 
-    CoreServer(CoreDatabase db) throws IOException {
+    CoreServer(CoreDatabase db, Servers servers) throws IOException {
+        mEnv = export(db);
+        mServers = servers;
+        servers.add(this);
+    }
+
+    private static Environment export(CoreDatabase db) throws IOException {
         ServerDatabase server = ServerDatabase.from(db);
         Environment env = RemoteUtils.createEnvironment();
         env.export(Database.class.getName(), server);
-        mEnv = env;
-        mDatabase = db;
+        return env;
     }
 
     @Override
-    public Server tokens(long... tokens) {
+    public void acceptAll(ServerSocket ss, long... tokens) throws IOException {
         if (tokens.length < 1 || tokens.length > 2) {
             throw new IllegalArgumentException("Must provide one or two tokens");
-        }
-        mTokens = tokens.clone();
-        return this;
-    }
-
-    @Override
-    public Server acceptAll(ServerSocket ss) throws IOException {
-        if (mTokens == null) {
-            throw new IllegalStateException("No tokens");
         }
 
         mEnv.acceptAll(ss, s -> {
             try {
-                return RemoteUtils.testConnection(s.getInputStream(), s.getOutputStream(), mTokens);
+                return RemoteUtils.testConnection(s.getInputStream(), s.getOutputStream(), tokens);
             } catch (IOException e) {
                 throw Utils.rethrow(e);
             }
         });
+    }
 
-        return this;
+    /**
+     * Called for sockets which were accepted by the replication layer.
+     */
+    void acceptedAndValidated(Socket s) throws IOException {
+        mEnv.accepted(s);
     }
 
     @Override
     public void close() {
-        mTokens = null;
-
-        CoreDatabase db = mDatabase;
-
-        if (db != null) {
-            mDatabase = null;
-            db.unregister(this);
-        }
-
+        mServers.remove(this);
         mEnv.close();
     }
 }

@@ -47,7 +47,7 @@ public class RemoteTest {
         var db = Database.open(new DatabaseConfig());
 
         var ss = new ServerSocket(0);
-        db.newServer().tokens(123456).acceptAll(ss);
+        db.newServer().acceptAll(ss, 123456);
 
         var client = Database.connect(ss.getLocalSocketAddress(), 111, 123456);
 
