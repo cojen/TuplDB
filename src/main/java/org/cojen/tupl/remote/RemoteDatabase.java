@@ -19,6 +19,8 @@ package org.cojen.tupl.remote;
 
 import java.io.IOException;
 
+import java.util.Map;
+
 import org.cojen.dirmi.Batched;
 import org.cojen.dirmi.Disposer;
 import org.cojen.dirmi.NoReply;
@@ -92,7 +94,7 @@ public interface RemoteDatabase extends Remote {
     @RemoteFailure(declared=false)
     public long capacityLimit();
 
-    public RemoteSnapshot beginSnapshot() throws IOException;
+    public Map beginSnapshot() throws IOException;
 
     public Pipe createCachePrimer(Pipe pipe) throws IOException;
 

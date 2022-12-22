@@ -210,8 +210,7 @@ public final class ClientDatabase implements Database {
 
     @Override
     public Snapshot beginSnapshot() throws IOException {
-        // FIXME: beginSnapshot
-        throw null;
+        return new ClientSnapshot(mRemote.beginSnapshot());
     }
 
     @Override

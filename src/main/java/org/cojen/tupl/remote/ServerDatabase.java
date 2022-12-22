@@ -19,6 +19,8 @@ package org.cojen.tupl.remote;
 
 import java.io.IOException;
 
+import java.util.Map;
+
 import java.nio.charset.StandardCharsets;
 
 import org.cojen.dirmi.Pipe;
@@ -26,6 +28,7 @@ import org.cojen.dirmi.Pipe;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Index;
+import org.cojen.tupl.Snapshot;
 import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.diag.DatabaseStats;
@@ -145,9 +148,12 @@ public final class ServerDatabase implements RemoteDatabase {
     }
 
     @Override
-    public RemoteSnapshot beginSnapshot() throws IOException {
-        // FIXME: beginSnapshot
-        throw null;
+    public Map beginSnapshot() throws IOException {
+        Snapshot snapshot = mDb.beginSnapshot();
+        return Map.of("snapshot", new ServerSnapshot(snapshot),
+                      "length", snapshot.length(),
+                      "position", snapshot.position(),
+                      "isCompressible", snapshot.isCompressible());
     }
 
     @Override

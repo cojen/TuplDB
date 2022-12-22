@@ -17,22 +17,37 @@
 
 package org.cojen.tupl.remote;
 
-import java.io.Closeable;
 import java.io.IOException;
+import java.io.OutputStream;
 
-import org.cojen.dirmi.Disposer;
 import org.cojen.dirmi.Pipe;
-import org.cojen.dirmi.Remote;
+
+import org.cojen.tupl.Snapshot;
+
+import org.cojen.tupl.io.Utils;
 
 /**
  * 
  *
  * @author Brian S O'Neill
  */
-public interface RemoteSnapshot extends Remote, Closeable {
-    Pipe writeTo(Pipe pipe) throws IOException;
+final class ServerSnapshot implements RemoteSnapshot {
+    private final Snapshot mSnapshot;
+
+    ServerSnapshot(Snapshot snapshot) {
+        mSnapshot = snapshot;
+    }
 
     @Override
-    @Disposer
-    void close() throws IOException;
+    public Pipe writeTo(Pipe pipe) throws IOException {
+        try (OutputStream out = pipe.outputStream()) {
+            mSnapshot.writeTo(out);
+            return null;
+        }
+    }
+
+    @Override
+    public void close() throws IOException {
+        mSnapshot.close();
+    }
 }
