@@ -22,6 +22,7 @@ import java.io.IOException;
 import org.cojen.dirmi.Disposer;
 import org.cojen.dirmi.RemoteFailure;
 import org.cojen.dirmi.Restorable;
+import org.cojen.dirmi.Serialized;
 
 import org.cojen.tupl.Filter;
 
@@ -49,6 +50,7 @@ public interface RemoteIndex extends RemoteView {
                       Filter evictionFilter, boolean autoload)
         throws IOException;
 
+    @Serialized(filter="java.base/*;org.cojen.tupl.**")
     public IndexStats analyze(byte[] lowKey, byte[] highKey) throws IOException;
 
     public boolean verify(RemoteVerificationObserver observer) throws IOException;

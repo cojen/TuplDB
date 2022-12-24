@@ -70,8 +70,7 @@ class ClientIndex extends ClientView<RemoteIndex> implements Index {
 
     @Override
     public IndexStats analyze(byte[] lowKey, byte[] highKey) throws IOException {
-        // FIXME: analyze
-        throw null;
+        return mRemote.analyze(lowKey, highKey);
     }
 
     @Override

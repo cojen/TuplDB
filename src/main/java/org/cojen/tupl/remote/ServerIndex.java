@@ -79,8 +79,7 @@ final class ServerIndex extends ServerView<Index> implements RemoteIndex {
 
     @Override
     public IndexStats analyze(byte[] lowKey, byte[] highKey) throws IOException {
-        // FIXME: analyze
-        throw null;
+        return mView.analyze(lowKey, highKey);
     }
 
     @Override
