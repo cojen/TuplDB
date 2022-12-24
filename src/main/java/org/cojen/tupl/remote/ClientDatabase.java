@@ -199,8 +199,7 @@ public final class ClientDatabase implements Database {
 
     @Override
     public long preallocate(long bytes) throws IOException {
-        // FIXME: preallocate
-        throw null;
+        return mRemote.preallocate(bytes);
     }
 
     @Override
