@@ -91,9 +91,11 @@ public final class RowWriter<R> implements RowConsumer<R> {
      * Header prefix byte:
      *
      *      0: scan terminator
-     *      1: new header (is followed by a RowHeader; first id is 0 and goes up by one each time)
-     *      2: same header as before
-     * 3..254: refer to an existing header (id is 0..251)
+     *      1: same header as before
+     *      2: new header (is followed by a RowHeader; first id is 0 and goes up by one each time)
+     *      3: reserved
+     *      4: reserved
+     * 5..254: refer to an existing header (id is 0..249)
      *    255: refer to an existing header (is followed by an int id)
      *
      * @see RowHeader
@@ -101,7 +103,7 @@ public final class RowWriter<R> implements RowConsumer<R> {
     public void writeHeader(byte[] header) throws IOException {
         if (header == mActiveHeader) {
             // same header as before
-            mOut.writeByte(2);
+            mOut.writeByte(1);
         } else {
             doWriteHeader(header);
         }
@@ -119,8 +121,8 @@ public final class RowWriter<R> implements RowConsumer<R> {
                     if (existingId != null) {
                         // refer to an existing header
                         int id = existingId;
-                        if (id <= 251) {
-                            mOut.writeByte(id + 3);
+                        if (id <= 249) {
+                            mOut.writeByte(id + 5);
                         } else {
                             mOut.writeByte(255);
                             mOut.writeInt(id);
@@ -131,7 +133,7 @@ public final class RowWriter<R> implements RowConsumer<R> {
             }
 
             // new header
-            mOut.writeByte(1);
+            mOut.writeByte(2);
             mOut.write(header);
         }
 

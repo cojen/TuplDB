@@ -148,11 +148,11 @@ public abstract class RowReader<R, DIN extends DataInput> implements Scanner<R> 
         // See RowWriter.writeHeader for prefix format.
         int prefix = in.readUnsignedByte();
 
-        if (prefix != 2) {
+        if (prefix != 1) {
             if (prefix == 0) {
                 close(true);
                 return null;
-            } else if (prefix == 1) {
+            } else if (prefix == 2) {
                 var key = new CacheKey(mRowType, RowHeader.readFrom(in));
                 var decoder = (Decoder<R>) cDecoders.obtain(key, null);
                 int decoderId;
@@ -176,7 +176,7 @@ public abstract class RowReader<R, DIN extends DataInput> implements Scanner<R> 
                 mDecoder = decoder;
                 mDecoderId = decoderId;
             } else {
-                int decoderId = prefix < 255 ? (prefix - 3) : in.readInt();
+                int decoderId = prefix < 255 ? (prefix - 5) : in.readInt();
                 if (mDecoders != null) {
                     mDecoder = mDecoders[decoderId];
                 } else if (decoderId != 0) {
