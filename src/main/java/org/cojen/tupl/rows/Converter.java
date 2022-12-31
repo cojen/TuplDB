@@ -28,6 +28,7 @@ import static org.cojen.tupl.rows.ColumnInfo.*;
 
 /**
  * @author Brian S O'Neill
+ * @see ConvertCallSite
  */
 public class Converter {
     /**
@@ -38,9 +39,10 @@ public class Converter {
      * @param offsetVar int type; is incremented as a side-effect
      * @param endVar end offset, which when null implies the end of the array
      */
-    static void decode(final MethodMaker mm,
-                       final Variable srcVar, final Variable offsetVar, final Variable endVar,
-                       final ColumnCodec srcCodec, final ColumnInfo dstInfo, final Variable dstVar)
+    static void decodeLossy(final MethodMaker mm,
+                            final Variable srcVar, final Variable offsetVar, final Variable endVar,
+                            final ColumnCodec srcCodec,
+                            final ColumnInfo dstInfo, final Variable dstVar)
     {
         if (dstInfo.type.isAssignableFrom(srcCodec.mInfo.type)
             && (!srcCodec.mInfo.isNullable() || dstInfo.isNullable()))
@@ -56,7 +58,7 @@ public class Converter {
 
     /**
      * Generates code which converts a source variable into something that the destination
-     * variable can accept. No conversion is applied if unnecessary.
+     * variable can accept, applying a lossy conversion if necessary.
      *
      * The conversion never results in an exception, but data loss is possible. Numerical
      * conversions are clamped to fit within a target range, for example. If a conversion is

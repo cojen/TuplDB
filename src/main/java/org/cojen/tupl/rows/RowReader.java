@@ -308,8 +308,8 @@ public abstract class RowReader<R, DIN extends DataInput> implements Scanner<R> 
             if (colInfo == null) {
                 codec.decodeSkip(dataVar, offsetVar, endVar);
             } else {
-                Converter.decode(mm, dataVar, offsetVar, endVar,
-                                 codec, colInfo, rowVar.field(name));
+                Converter.decodeLossy(mm, dataVar, offsetVar, endVar,
+                                      codec, colInfo, rowVar.field(name));
                 decodedColumns.put(name, colInfo);
             }
         }

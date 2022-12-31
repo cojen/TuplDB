@@ -368,7 +368,7 @@ public class TableMaker {
             } else {
                 var rowVar = mm.param(0);
                 Field dstVar = rowVar.field(name);
-                Converter.decode(mm, srcVar, offsetVar, null, srcCodec, dstInfo, dstVar);
+                Converter.decodeLossy(mm, srcVar, offsetVar, null, srcCodec, dstInfo, dstVar);
             }
         }
     }

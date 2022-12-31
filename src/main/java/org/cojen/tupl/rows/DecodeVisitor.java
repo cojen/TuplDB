@@ -521,7 +521,7 @@ class DecodeVisitor extends Visitor {
                 located[highestNum].decodedQuick(decoded);
             } else {
                 Variable dstVar = mMaker.var(colInfo.type);
-                Converter.decode(mMaker, srcVar, offsetVar, endVar, codec, colInfo, dstVar);
+                Converter.decodeLossy(mMaker, srcVar, offsetVar, endVar, codec, colInfo, dstVar);
                 located[highestNum].decodedVar(dstVar);
             }
 

@@ -351,7 +351,7 @@ public class DecodePartialMaker {
                 ColumnInfo dstInfo = dstRowInfo.allColumns.get(name);
                 if (dstInfo != null) {
                     Field dstVar = rowVar.field(name);
-                    Converter.decode(mm, srcVar, offsetVar, null, srcCodec, dstInfo, dstVar);
+                    Converter.decodeLossy(mm, srcVar, offsetVar, null, srcCodec, dstInfo, dstVar);
                     if (--remaining <= 0) {
                         break;
                     }
