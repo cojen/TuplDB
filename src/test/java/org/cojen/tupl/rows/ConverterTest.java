@@ -44,7 +44,7 @@ public class ConverterTest {
     }
 
     @Test
-    public void allNumericalConversions() throws Throwable {
+    public void lossyNumericalConversions() throws Throwable {
         List<Type> testTypes = testTypes();
         String[] testNumbers = testNumbers();
 
@@ -54,27 +54,31 @@ public class ConverterTest {
                     continue;
                 }
 
-                MethodHandle mh = make(srcType.info, dstType.info);
+                MethodHandle mh = make(srcType.info, dstType.info, true);
 
                 for (String testNum : testNumbers) {
                     BigDecimal srcNum = srcType.number(testNum);
                     if (srcNum != null) {
                         Object srcValue = srcType.toValue(srcNum);
                         Object dstValue = mh.invoke(srcValue);
-                        dstType.verify(srcType, srcValue, srcNum, dstValue);
+                        dstType.verify(srcType, srcValue, srcNum, dstValue, true);
                     }
                 }
             }
         }
     }
 
-    private static MethodHandle make(ColumnInfo srcInfo, ColumnInfo dstInfo) {
+    private static MethodHandle make(ColumnInfo srcInfo, ColumnInfo dstInfo, boolean lossy) {
         MethodMaker mm = MethodMaker.begin(MethodHandles.lookup(), dstInfo.type, "_", srcInfo.type);
         if (dstInfo.isAssignableFrom(srcInfo)) {
             mm.return_(mm.param(0));
         } else {
             var dstVar = mm.var(dstInfo.type);
-            Converter.convertLossy(mm, srcInfo, mm.param(0), dstInfo, dstVar);
+            if (lossy) {
+                Converter.convertLossy(mm, srcInfo, mm.param(0), dstInfo, dstVar);
+            } else {
+                Converter.convertExact(mm, srcInfo, mm.param(0), dstInfo, dstVar);
+            }
             mm.return_(dstVar);
         }
         return mm.finish();
@@ -245,7 +249,7 @@ public class ConverterTest {
          *
          * @param srcNum cannot be null
          */
-        void verify(Type srcType, Object srcValue, BigDecimal srcNum, Object dst) {
+        void verify(Type srcType, Object srcValue, BigDecimal srcNum, Object dst, boolean clamp) {
             BigDecimal dstNum;
             if (dst == null) {
                 dstNum = null;
@@ -295,7 +299,7 @@ public class ConverterTest {
                 dstNum = dstNum.stripTrailingZeros();
             }
 
-            BigDecimal expectNum = clamp(srcNum).stripTrailingZeros();
+            BigDecimal expectNum = (clamp ? clamp(srcNum) : srcNum).stripTrailingZeros();
 
             if (expectNum.equals(dstNum)) {
                 // pass
@@ -450,6 +454,12 @@ public class ConverterTest {
                         return;
                     }
                     break;
+                case TYPE_DOUBLE:
+                    if (((double) srcValue) == dstNum.doubleValue()) {
+                        // pass
+                        return;
+                    }
+                    break;
                 }
                 break;
             }
@@ -490,13 +500,112 @@ public class ConverterTest {
     }
 
     @Test
+    public void exactNumericalConversions() throws Throwable {
+        List<Type> testTypes = testTypes();
+        String[] testNumbers = testNumbers();
+
+        for (var srcType : testTypes) {
+            for (var dstType : testTypes) {
+                if (dstType == srcType) {
+                    continue;
+                }
+
+                MethodHandle mh = make(srcType.info, dstType.info, false);
+
+                MethodHandle lossy = null, reverse = null;
+
+                for (String testNum : testNumbers) {
+                    BigDecimal srcNum = srcType.number(testNum);
+                    if (srcNum == null) {
+                        continue;
+                    }
+
+                    Object srcValue = srcType.toValue(srcNum);
+                    Object dstValue = null;
+                    RuntimeException ex = null;
+
+                    try {
+                        dstValue = mh.invoke(srcValue);
+                    } catch (RuntimeException e) {
+                        ex = e;
+                    }
+
+                    if (ex == null) {
+                        dstType.verify(srcType, srcValue, srcNum, dstValue, false);
+                        continue;
+                    }
+
+                    int dstTypeCode = dstType.info.plainTypeCode();
+
+                    if (dstTypeCode == TYPE_UTF8) {
+                        throw ex;
+                    }
+
+                    int srcTypeCode = srcType.info.plainTypeCode();
+
+                    if (srcTypeCode == TYPE_BOOLEAN || dstTypeCode == TYPE_BOOLEAN) {
+                        continue;
+                    }
+
+                    if (dstTypeCode == TYPE_CHAR) {
+                        if (srcTypeCode == TYPE_UTF8) {
+                            if (testNum.length() == 1) {
+                                throw ex;
+                            }
+                        }
+                        continue;
+                    }
+
+                    if (srcTypeCode == TYPE_CHAR) {
+                        if (ex != null) {
+                            continue;
+                        }
+                        fail("exact conversion from char to number passed: " + dstValue);
+                    }
+
+                    // Perform a lossy conversion and verify that it would in fact lose
+                    // information. This verifies that the exception is justified.
+
+                    if (lossy == null) {
+                        lossy = make(srcType.info, dstType.info, true);
+                        reverse = make(dstType.info, srcType.info, false);
+                    }
+
+                    Object dstLossy = lossy.invoke(srcValue);
+
+                    // Try converting back to the source again to see if information was lost.
+
+                    Object dstReverse;
+                    try {
+                        dstReverse = reverse.invoke(dstLossy);
+                    } catch (RuntimeException e) {
+                        // Okay.
+                        continue;
+                    }
+
+                    assertSame(srcValue.getClass(), dstReverse.getClass());
+
+                    if (!srcValue.equals(dstReverse)) {
+                        // Conversion lost information, and so exception is justified.
+                        continue;
+                    }
+
+                    // The exact conversion should have succeeded.
+
+                    throw ex;
+                }
+            }
+        }
+    }
+
+    @Test
     public void arrays() throws Throwable {
         // Array to array.
         {
             ColumnInfo srcInfo = arrayType(TYPE_LONG, true); // nullable
             ColumnInfo dstInfo = arrayType(TYPE_INT, false); // not nullable
 
-            MethodHandle mh = make(srcInfo, dstInfo);
+            MethodHandle mh = make(srcInfo, dstInfo, true);
 
             var result = (int[]) mh.invokeExact(new long[] {100, -1, 10_000_000_000L});
             assertArrayEquals(new int[] {100, -1, Integer.MAX_VALUE}, result);
@@ -510,7 +619,7 @@ public class ConverterTest {
             ColumnInfo srcInfo = basicType(TYPE_INT, false);
             ColumnInfo dstInfo = arrayType(TYPE_UTF8, false);
 
-            MethodHandle mh = make(srcInfo, dstInfo);
+            MethodHandle mh = make(srcInfo, dstInfo, true);
 
             var result = (String[]) mh.invokeExact(100);
             assertArrayEquals(new String[] {"100"}, result);
@@ -521,7 +630,7 @@ public class ConverterTest {
             ColumnInfo srcInfo = basicType(TYPE_UTF8, false);
             ColumnInfo dstInfo = arrayType(TYPE_CHAR, false);
 
-            MethodHandle mh = make(srcInfo, dstInfo);
+            MethodHandle mh = make(srcInfo, dstInfo, true);
 
             var result = (char[]) mh.invokeExact("hello");
             assertArrayEquals(new char[] {'h', 'e', 'l', 'l', 'o'}, result);
@@ -532,7 +641,7 @@ public class ConverterTest {
             ColumnInfo srcInfo = arrayType(TYPE_DOUBLE, false);
             ColumnInfo dstInfo = basicType(TYPE_INT, false);
 
-            MethodHandle mh = make(srcInfo, dstInfo);
+            MethodHandle mh = make(srcInfo, dstInfo, true);
 
             var result = (int) mh.invokeExact(new double[] {10.1, 2.2});
             assertEquals(10, result);
@@ -546,7 +655,7 @@ public class ConverterTest {
             ColumnInfo srcInfo = arrayType(TYPE_CHAR, false);
             ColumnInfo dstInfo = basicType(TYPE_UTF8, false);
 
-            MethodHandle mh = make(srcInfo, dstInfo);
+            MethodHandle mh = make(srcInfo, dstInfo, true);
 
             var result = (String) mh.invokeExact(new char[] {'h', 'e', 'l', 'l', 'o'});
             assertEquals("hello", result);

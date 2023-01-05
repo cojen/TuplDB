@@ -63,6 +63,8 @@ public class Converter {
      * The conversion never results in an exception, but data loss is possible. Numerical
      * conversions are clamped to fit within a target range, for example. If a conversion is
      * completely impossible, then a suitable default value is chosen. See setDefault.
+     *
+     * @see #convertExact
      */
     static void convertLossy(final MethodMaker mm,
                              final ColumnInfo srcInfo, final Variable srcVar,
@@ -230,7 +232,7 @@ public class Converter {
                 case TYPE_INT, TYPE_LONG -> clampSS(mm, srcVar, -32768, 32767, dstVar);
                 case TYPE_UBYTE -> dstVar.set(srcVar.cast(int.class).and(0xff).cast(short.class));
                 case TYPE_USHORT -> clampUS(mm, srcVar, Short.MAX_VALUE, dstVar);
-            case TYPE_UINT, TYPE_ULONG -> clampUS_narrow(mm, srcVar, Short.MAX_VALUE, dstVar);
+                case TYPE_UINT, TYPE_ULONG -> clampUS_narrow(mm, srcVar, Short.MAX_VALUE, dstVar);
                 case TYPE_CHAR ->
                     clampUS_narrow(mm, srcVar.cast(int.class), Short.MAX_VALUE, dstVar);
                 case TYPE_FLOAT, TYPE_DOUBLE ->
@@ -274,27 +276,27 @@ public class Converter {
             }
             break;
 
-       case TYPE_LONG:
-           switch (srcPlainTypeCode) {
-               case TYPE_BOOLEAN -> boolToNum(mm, srcVar, dstVar);
-               case TYPE_UBYTE -> dstVar.set(srcVar.cast(long.class).and(0xffL));
-               case TYPE_USHORT, TYPE_CHAR -> dstVar.set(srcVar.cast(long.class).and(0xffffL));
-               case TYPE_UINT -> dstVar.set(srcVar.cast(long.class).and(0xffff_ffffL));
-               case TYPE_ULONG -> clampUS(mm, srcVar, Long.MAX_VALUE, dstVar);
-               case TYPE_FLOAT, TYPE_DOUBLE -> dstVar.set(srcVar.cast(long.class));
-               case TYPE_BIG_INTEGER ->
-                   clampBigInteger_narrow(mm, srcVar, Long.MIN_VALUE, Long.MAX_VALUE,
-                                          dstInfo, dstVar, "longValue");
-               case TYPE_BIG_DECIMAL ->
-                   clampBigDecimal_narrow(mm, srcVar, Long.MIN_VALUE, Long.MAX_VALUE,
-                                          dstInfo, dstVar, "longValue");
-               case TYPE_UTF8 -> {
-                   var bd = parseBigDecimal(mm, srcVar, dstInfo, dstVar, end);
-                   clampBigDecimal_narrow(mm, bd, Long.MIN_VALUE, Long.MAX_VALUE,
-                                          dstInfo, dstVar, "longValue");
-               }
-               default -> handled = false;
-           }
+        case TYPE_LONG:
+            switch (srcPlainTypeCode) {
+                case TYPE_BOOLEAN -> boolToNum(mm, srcVar, dstVar);
+                case TYPE_UBYTE -> dstVar.set(srcVar.cast(long.class).and(0xffL));
+                case TYPE_USHORT, TYPE_CHAR -> dstVar.set(srcVar.cast(long.class).and(0xffffL));
+                case TYPE_UINT -> dstVar.set(srcVar.cast(long.class).and(0xffff_ffffL));
+                case TYPE_ULONG -> clampUS(mm, srcVar, Long.MAX_VALUE, dstVar);
+                case TYPE_FLOAT, TYPE_DOUBLE -> dstVar.set(srcVar.cast(long.class));
+                case TYPE_BIG_INTEGER ->
+                    clampBigInteger_narrow(mm, srcVar, Long.MIN_VALUE, Long.MAX_VALUE,
+                                           dstInfo, dstVar, "longValue");
+                case TYPE_BIG_DECIMAL ->
+                    clampBigDecimal_narrow(mm, srcVar, Long.MIN_VALUE, Long.MAX_VALUE,
+                                           dstInfo, dstVar, "longValue");
+                case TYPE_UTF8 -> {
+                    var bd = parseBigDecimal(mm, srcVar, dstInfo, dstVar, end);
+                    clampBigDecimal_narrow(mm, bd, Long.MIN_VALUE, Long.MAX_VALUE,
+                                           dstInfo, dstVar, "longValue");
+                }
+                default -> handled = false;
+            }
             break;
 
         case TYPE_UBYTE:
@@ -396,7 +398,7 @@ public class Converter {
                     dstVar.set(srcVar.cast(long.class).and(0xffff_ffffL).cast(dstVar));
                 case TYPE_ULONG -> {
                     var bd = mm.var(BigDecimal.class);
-                    toBigDecimalU(mm, srcVar, bd);
+                    convert("unsignedLongToBigDecimalExact", srcVar, bd);
                     dstVar.set(bd.invoke("floatValue"));
                 }
                 case TYPE_BIG_INTEGER, TYPE_BIG_DECIMAL -> dstVar.set(srcVar.invoke("floatValue"));
@@ -416,7 +418,7 @@ public class Converter {
                     dstVar.set(srcVar.cast(long.class).and(0xffff_ffffL).cast(dstVar));
                 case TYPE_ULONG -> {
                     var bd = mm.var(BigDecimal.class);
-                    toBigDecimalU(mm, srcVar, bd);
+                    convert("unsignedLongToBigDecimalExact", srcVar, bd);
                     dstVar.set(bd.invoke("doubleValue"));
                 }
                 case TYPE_BIG_INTEGER, TYPE_BIG_DECIMAL -> dstVar.set(srcVar.invoke("doubleValue"));
@@ -496,7 +498,7 @@ public class Converter {
                     dstVar.set(bi.invoke("valueOf", srcVar.cast(long.class).and(0xffffL)));
                 case TYPE_UINT ->
                     dstVar.set(bi.invoke("valueOf", srcVar.cast(long.class).and(0xffff_ffffL)));
-                case TYPE_ULONG -> toBigIntegerU(mm, srcVar, dstVar);
+                case TYPE_ULONG -> convert("unsignedLongToBigIntegerExact", srcVar, dstVar);
                 case TYPE_BIG_DECIMAL -> dstVar.set(srcVar.invoke("toBigInteger"));
                 case TYPE_FLOAT, TYPE_DOUBLE -> {
                     Label tryStart = mm.label().here();
@@ -544,7 +546,7 @@ public class Converter {
                     dstVar.set(bd.invoke("valueOf", srcVar.cast(long.class).and(0xffffL)));
                 case TYPE_UINT ->
                     dstVar.set(bd.invoke("valueOf", srcVar.cast(long.class).and(0xffff_ffffL)));
-                case TYPE_ULONG -> toBigDecimalU(mm, srcVar, dstVar);
+                case TYPE_ULONG -> convert("unsignedLongToBigDecimalExact", srcVar, dstVar);
                 case TYPE_BIG_INTEGER -> dstVar.set(mm.new_(bd, srcVar));
                 case TYPE_UTF8 -> parseBigDecimal(mm, srcVar, dstInfo, dstVar, end);
                 default -> handled = false;
@@ -557,6 +559,344 @@ public class Converter {
 
         if (!handled) {
             setDefault(mm, dstInfo, dstVar);
+        }
+
+        end.here();
+    }
+
+    /**
+     * Generates code which converts a source variable into something that the destination
+     * variable can accept, throwing an exception if the conversion would be lossy.
+     *
+     * @see #convertLossy
+     */
+    static void convertExact(final MethodMaker mm,
+                             final ColumnInfo srcInfo, final Variable srcVar,
+                             final ColumnInfo dstInfo, final Variable dstVar)
+    {
+        if (srcInfo.isCompatibleWith(dstInfo)) {
+            dstVar.set(srcVar);
+            return;
+        }
+
+        Label end = mm.label();
+
+        if (srcInfo.isNullable()) {
+            Label notNull = mm.label();
+            srcVar.ifNe(null, notNull);
+            if (dstInfo.isNullable()) {
+                dstVar.set(null);
+            } else {
+                mm.new_(IllegalArgumentException.class,
+                        "Cannot assign null to non-nullable type").throw_();
+            }
+            mm.goto_(end);
+            notNull.here();
+        }
+
+        // Note: At this point, srcVar isn't null.
+
+        if (dstInfo.isArray()) {
+            ColumnInfo dstElementInfo = dstInfo.nonArray();
+
+            if (srcInfo.isArray()) {
+                // Array to array conversion.
+
+                ColumnInfo srcElementInfo = srcInfo.nonArray();
+
+                dstVar.set(ConvertUtils.convertArray
+                           (mm, dstVar.classType(), srcVar.alength(), ixVar -> {
+                               Variable dstElementVar = mm.var(dstElementInfo.type);
+                               convertExact(mm, srcElementInfo, srcVar.aget(ixVar),
+                                            dstElementInfo, dstElementVar);
+                               return dstElementVar;
+                           }));
+
+            } else {
+                // Non-array to array conversion.
+                throwConvertFailException(mm, srcInfo, dstInfo);
+            }
+
+            end.here();
+            return;
+        }
+
+        if (srcInfo.isArray()) {
+            // Array to non-array conversion.
+            throwConvertFailException(mm, srcInfo, dstInfo);
+            end.here();
+            return;
+        }
+
+        int srcPlainTypeCode = srcInfo.plainTypeCode();
+
+        if (dstInfo.isAssignableFrom(srcPlainTypeCode)) {
+            dstVar.set(srcVar);
+            end.here();
+            return;
+        }
+
+        int dstPlainTypeCode = dstInfo.plainTypeCode();
+
+        boolean handled = true;
+
+        switch (dstPlainTypeCode) {
+        case TYPE_BOOLEAN:
+            switch (srcPlainTypeCode) {
+                case TYPE_UTF8 -> convert("stringToBooleanExact", srcVar, dstVar);
+                default -> handled = false;
+            }
+            break;
+
+        case TYPE_BYTE:
+            switch (srcPlainTypeCode) {
+                case TYPE_SHORT -> convert("shortToByteExact", srcVar, dstVar);
+                case TYPE_INT -> convert("intToByteExact", srcVar, dstVar);
+                case TYPE_LONG -> convert("longToByteExact", srcVar, dstVar);
+                case TYPE_UBYTE ->
+                    convert("unsignedIntToByteExact", srcVar.cast(int.class).and(0xff), dstVar);
+                case TYPE_USHORT ->
+                    convert("unsignedIntToByteExact", srcVar.cast(int.class).and(0xffff), dstVar);
+                case TYPE_UINT -> convert("unsignedIntToByteExact", srcVar, dstVar);
+                case TYPE_ULONG -> convert("unsignedLongToByteExact", srcVar, dstVar);
+                case TYPE_FLOAT -> convert("floatToByteExact", srcVar, dstVar);
+                case TYPE_DOUBLE -> convert("doubleToByteExact", srcVar, dstVar);
+                case TYPE_BIG_INTEGER, TYPE_BIG_DECIMAL ->
+                    dstVar.set(srcVar.invoke("byteValueExact"));
+                case TYPE_UTF8 -> dstVar.set(mm.var(Byte.class).invoke("parseByte", srcVar));
+                default -> handled = false;
+            }
+            break;
+
+        case TYPE_SHORT:
+            switch (srcPlainTypeCode) {
+                case TYPE_INT -> convert("intToShortExact", srcVar, dstVar);
+                case TYPE_LONG -> convert("longToShortExact", srcVar, dstVar);
+                case TYPE_UBYTE -> dstVar.set(srcVar.cast(int.class).and(0xff).cast(short.class));
+                case TYPE_USHORT ->
+                    convert("unsignedIntToShortExact", srcVar.cast(int.class).and(0xffff), dstVar);
+                case TYPE_UINT -> convert("unsignedIntToShortExact", srcVar, dstVar);
+                case TYPE_ULONG -> convert("unsignedLongToShortExact", srcVar, dstVar);
+                case TYPE_FLOAT -> convert("floatToShortExact", srcVar, dstVar);
+                case TYPE_DOUBLE -> convert("doubleToShortExact", srcVar, dstVar);
+                case TYPE_BIG_INTEGER, TYPE_BIG_DECIMAL ->
+                    dstVar.set(srcVar.invoke("shortValueExact"));
+                case TYPE_UTF8 -> dstVar.set(mm.var(Short.class).invoke("parseShort", srcVar));
+                default -> handled = false;
+            }
+            break;
+
+        case TYPE_INT:
+            switch (srcPlainTypeCode) {
+                case TYPE_LONG -> dstVar.set(mm.var(Math.class).invoke("toIntExact", srcVar));
+                case TYPE_UBYTE -> dstVar.set(srcVar.cast(int.class).and(0xff));
+                case TYPE_USHORT -> dstVar.set(srcVar.cast(int.class).and(0xffff));
+                case TYPE_UINT -> convert("unsignedIntToIntExact", srcVar, dstVar);
+                case TYPE_ULONG -> convert("unsignedLongToIntExact", srcVar, dstVar);
+                case TYPE_FLOAT -> convert("floatToIntExact", srcVar, dstVar);
+                case TYPE_DOUBLE -> convert("doubleToIntExact", srcVar, dstVar);
+                case TYPE_BIG_INTEGER, TYPE_BIG_DECIMAL ->
+                    dstVar.set(srcVar.invoke("intValueExact"));
+                case TYPE_UTF8 -> dstVar.set(mm.var(Integer.class).invoke("parseInt", srcVar));
+                default -> handled = false;
+            }
+            break;
+
+        case TYPE_LONG:
+            switch (srcPlainTypeCode) {
+                case TYPE_UBYTE -> dstVar.set(srcVar.cast(long.class).and(0xffL));
+                case TYPE_USHORT-> dstVar.set(srcVar.cast(long.class).and(0xffffL));
+                case TYPE_UINT -> dstVar.set(srcVar.cast(long.class).and(0xffff_ffffL));
+                case TYPE_ULONG -> convert("unsignedLongToLongExact", srcVar, dstVar);
+                case TYPE_FLOAT -> convert("floatToLongExact", srcVar, dstVar);
+                case TYPE_DOUBLE -> convert("doubleToLongExact", srcVar, dstVar);
+                case TYPE_BIG_INTEGER, TYPE_BIG_DECIMAL ->
+                    dstVar.set(srcVar.invoke("longValueExact"));
+                case TYPE_UTF8 -> dstVar.set(mm.var(Long.class).invoke("parseLong", srcVar));
+                default -> handled = false;
+            }
+            break;
+
+        case TYPE_UBYTE:
+            switch (srcPlainTypeCode) {
+                case TYPE_BYTE, TYPE_SHORT, TYPE_INT ->
+                    convert("intToUnsignedByteExact", srcVar, dstVar);
+                case TYPE_LONG -> convert("longToUnsignedByteExact", srcVar, dstVar);
+                case TYPE_USHORT ->
+                    convert("unsignedIntToUnsignedByteExact",
+                            srcVar.cast(int.class).and(0xffff), dstVar);
+                case TYPE_UINT -> convert("unsignedIntToUnsignedByteExact", srcVar, dstVar);
+                case TYPE_ULONG -> convert("unsignedLongToUnsignedByteExact", srcVar, dstVar);
+                case TYPE_FLOAT -> convert("floatToUnsignedByteExact", srcVar, dstVar);
+                case TYPE_DOUBLE -> convert("doubleToUnsignedByteExact", srcVar, dstVar);
+                case TYPE_BIG_INTEGER -> convert("biToUnsignedByteExact", srcVar, dstVar);
+                case TYPE_BIG_DECIMAL -> convert("bdToUnsignedByteExact", srcVar, dstVar);
+                case TYPE_UTF8 -> {
+                    var intVar = mm.var(Integer.class).invoke("parseUnsignedInt", srcVar, 10);
+                    convert("intToUnsignedByteExact", intVar, dstVar);
+                }
+                default -> handled = false;
+            }
+            break;
+
+        case TYPE_USHORT:
+            switch (srcPlainTypeCode) {
+                case TYPE_BYTE, TYPE_SHORT, TYPE_INT ->
+                    convert("intToUnsignedShortExact", srcVar, dstVar);
+                case TYPE_LONG -> convert("longToUnsignedShortExact", srcVar, dstVar);
+                case TYPE_UBYTE -> dstVar.set(srcVar.cast(int.class).and(0xff).cast(short.class));
+                case TYPE_UINT -> convert("unsignedIntToUnsignedShortExact", srcVar, dstVar);
+                case TYPE_ULONG -> convert("unsignedLongToUnsignedShortExact", srcVar, dstVar);
+                case TYPE_FLOAT -> convert("floatToUnsignedShortExact", srcVar, dstVar);
+                case TYPE_DOUBLE -> convert("doubleToUnsignedShortExact", srcVar, dstVar);
+                case TYPE_BIG_INTEGER -> convert("biToUnsignedShortExact", srcVar, dstVar);
+                case TYPE_BIG_DECIMAL -> convert("bdToUnsignedShortExact", srcVar, dstVar);
+                case TYPE_UTF8 -> {
+                    var intVar = mm.var(Integer.class).invoke("parseUnsignedInt", srcVar, 10);
+                    convert("intToUnsignedShortExact", intVar, dstVar);
+                }
+                default -> handled = false;
+            }
+            break;
+
+        case TYPE_UINT:
+            switch (srcPlainTypeCode) {
+                case TYPE_BYTE, TYPE_SHORT, TYPE_INT ->
+                    convert("intToUnsignedIntExact", srcVar, dstVar);
+                case TYPE_LONG -> convert("longToUnsignedIntExact", srcVar, dstVar);
+                case TYPE_UBYTE -> dstVar.set(srcVar.cast(int.class).and(0xff));
+                case TYPE_USHORT -> dstVar.set(srcVar.cast(int.class).and(0xffff));
+                case TYPE_ULONG -> convert("unsignedLongToUnsignedIntExact", srcVar, dstVar);
+                case TYPE_FLOAT -> convert("floatToUnsignedIntExact", srcVar, dstVar);
+                case TYPE_DOUBLE -> convert("doubleToUnsignedIntExact", srcVar, dstVar);
+                case TYPE_BIG_INTEGER -> convert("biToUnsignedIntExact", srcVar, dstVar);
+                case TYPE_BIG_DECIMAL -> convert("bdToUnsignedIntExact", srcVar, dstVar);
+                case TYPE_UTF8 -> dstVar.set
+                    (mm.var(Integer.class).invoke("parseUnsignedInt", srcVar, 10));
+                default -> handled = false;
+            }
+            break; 
+
+        case TYPE_ULONG:
+            switch (srcPlainTypeCode) {
+                case TYPE_BYTE, TYPE_SHORT, TYPE_INT ->
+                    convert("intToUnsignedLongExact", srcVar, dstVar);
+                case TYPE_LONG -> convert("longToUnsignedLongExact", srcVar, dstVar);
+                case TYPE_UBYTE -> dstVar.set(srcVar.cast(long.class).and(0xff));
+                case TYPE_USHORT-> dstVar.set(srcVar.cast(long.class).and(0xffff));
+                case TYPE_UINT -> dstVar.set(srcVar.cast(long.class).and(0xffff_ffffL));
+                case TYPE_FLOAT -> convert("floatToUnsignedLongExact", srcVar, dstVar);
+                case TYPE_DOUBLE -> convert("doubleToUnsignedLongExact", srcVar, dstVar);
+                case TYPE_BIG_INTEGER -> convert("biToUnsignedLongExact", srcVar, dstVar);
+                case TYPE_BIG_DECIMAL -> convert("bdToUnsignedLongExact", srcVar, dstVar);
+                case TYPE_UTF8 -> dstVar.set
+                    (mm.var(Long.class).invoke("parseUnsignedLong", srcVar, 10));
+                default -> handled = false;
+            }
+            break; 
+
+        case TYPE_FLOAT:
+            switch (srcPlainTypeCode) {
+                case TYPE_INT -> convert("intToFloatExact", srcVar, dstVar);
+                case TYPE_LONG -> convert("longToFloatExact", srcVar, dstVar);
+                case TYPE_DOUBLE -> convert("doubleToFloatExact", srcVar, dstVar);
+                case TYPE_UBYTE -> dstVar.set(srcVar.cast(int.class).and(0xff).cast(dstVar));
+                case TYPE_USHORT ->
+                    dstVar.set(srcVar.cast(int.class).and(0xffff).cast(dstVar));
+                case TYPE_UINT ->
+                    convert("longToFloatExact", srcVar.cast(long.class).and(0xffff_ffffL), dstVar);
+                case TYPE_ULONG -> convert("unsignedLongToFloatExact", srcVar, dstVar);
+                case TYPE_BIG_INTEGER -> convert("biToFloatExact", srcVar, dstVar);
+                case TYPE_BIG_DECIMAL -> convert("bdToFloatExact", srcVar, dstVar);
+                case TYPE_UTF8 -> dstVar.set(mm.var(Float.class).invoke("parseFloat", srcVar));
+                default -> handled = false;
+            }
+            break;
+
+        case TYPE_DOUBLE:
+            switch (srcPlainTypeCode) {
+                case TYPE_LONG -> convert("longToDoubleExact", srcVar, dstVar);
+                case TYPE_UBYTE -> dstVar.set(srcVar.cast(int.class).and(0xff).cast(dstVar));
+                case TYPE_USHORT -> dstVar.set(srcVar.cast(int.class).and(0xffff).cast(dstVar));
+                case TYPE_UINT ->
+                    dstVar.set(srcVar.cast(long.class).and(0xffff_ffffL).cast(dstVar));
+                case TYPE_ULONG -> convert("unsignedLongToDoubleExact", srcVar, dstVar);
+                case TYPE_BIG_INTEGER -> convert("biToDoubleExact", srcVar, dstVar);
+                case TYPE_BIG_DECIMAL -> convert("bdToDoubleExact", srcVar, dstVar);
+                case TYPE_UTF8 -> dstVar.set(mm.var(Double.class).invoke("parseDouble", srcVar));
+                default -> handled = false;
+            }
+            break;
+
+        case TYPE_CHAR:
+            switch (srcPlainTypeCode) {
+                case TYPE_UTF8 -> convert("stringToCharExact", srcVar, dstVar);
+                default -> handled = false;
+            }
+            break;
+
+        case TYPE_UTF8:
+            switch (srcPlainTypeCode) {
+                case TYPE_UBYTE ->
+                    dstVar.set(mm.var(Integer.class).invoke
+                               ("toUnsignedString", srcVar.cast(int.class).and(0xff)));
+                case TYPE_USHORT ->
+                    dstVar.set(mm.var(Integer.class).invoke
+                               ("toUnsignedString", srcVar.cast(int.class).and(0xffff)));
+                case TYPE_UINT, TYPE_ULONG -> dstVar.set(srcVar.invoke("toUnsignedString", srcVar));
+                default -> dstVar.set(mm.var(String.class).invoke("valueOf", srcVar));
+            }
+            break;
+
+        case TYPE_BIG_INTEGER:
+            var bi = mm.var(BigInteger.class);
+            switch (srcPlainTypeCode) {
+                case TYPE_BYTE, TYPE_SHORT, TYPE_INT, TYPE_LONG ->
+                    dstVar.set(bi.invoke("valueOf", srcVar));
+                case TYPE_UBYTE ->
+                    dstVar.set(bi.invoke("valueOf", srcVar.cast(long.class).and(0xffL)));
+                case TYPE_USHORT ->
+                    dstVar.set(bi.invoke("valueOf", srcVar.cast(long.class).and(0xffffL)));
+                case TYPE_UINT ->
+                    dstVar.set(bi.invoke("valueOf", srcVar.cast(long.class).and(0xffff_ffffL)));
+                case TYPE_ULONG -> convert("unsignedLongToBigIntegerExact", srcVar, dstVar);
+                case TYPE_BIG_DECIMAL -> dstVar.set(srcVar.invoke("toBigIntegerExact"));
+                case TYPE_FLOAT ->
+                    dstVar.set(mm.var(BigDecimalUtils.class).invoke("valueOf", srcVar)
+                               .invoke("toBigIntegerExact"));
+                case TYPE_DOUBLE ->
+                    dstVar.set(mm.var(BigDecimal.class).invoke("valueOf", srcVar)
+                               .invoke("toBigIntegerExact"));
+                case TYPE_UTF8 -> dstVar.set(mm.new_(bi, srcVar));
+                default -> handled = false;
+            }
+            break;
+
+        case TYPE_BIG_DECIMAL:
+            var bd = mm.var(BigDecimal.class);
+            switch (srcPlainTypeCode) {
+                case TYPE_BYTE, TYPE_SHORT, TYPE_INT, TYPE_LONG ->
+                    dstVar.set(bd.invoke("valueOf", srcVar));
+                case TYPE_FLOAT, TYPE_DOUBLE ->
+                    dstVar.set(mm.var(BigDecimalUtils.class).invoke("toBigDecimal", srcVar));
+                case TYPE_UBYTE ->
+                    dstVar.set(bd.invoke("valueOf", srcVar.cast(long.class).and(0xffL)));
+                case TYPE_USHORT ->
+                    dstVar.set(bd.invoke("valueOf", srcVar.cast(long.class).and(0xffffL)));
+                case TYPE_UINT ->
+                    dstVar.set(bd.invoke("valueOf", srcVar.cast(long.class).and(0xffff_ffffL)));
+                case TYPE_ULONG -> convert("unsignedLongToBigDecimalExact", srcVar, dstVar);
+                case TYPE_BIG_INTEGER, TYPE_UTF8 -> dstVar.set(mm.new_(bd, srcVar));
+                default -> handled = false;
+            }
+            break;
+
+        default:
+            handled = false;
+        }
+
+        if (!handled) {
+            throwConvertFailException(mm, srcInfo, dstInfo);
         }
 
         end.here();
@@ -578,6 +918,27 @@ public class Converter {
                 default -> dstVar.set(0);
             }
         }
+    }
+
+    private static void throwConvertFailException(MethodMaker mm,
+                                                  ColumnInfo srcInfo, ColumnInfo dstInfo)
+    {
+        mm.new_(IllegalArgumentException.class, "Cannot convert " +
+                typeName(srcInfo) + " to " + typeName(dstInfo)).throw_();
+    }
+
+    private static String typeName(ColumnInfo info) {
+        String name = info.boxedType().getSimpleName();
+        if (info.isUnsigned()) {
+            return "unsigned " + name;
+        } else {
+            return name;
+        }
+    }
+
+    private static void convert(String methodName, Variable srcVar, Variable dstVar) {
+        MethodMaker mm = srcVar.methodMaker();
+        dstVar.set(mm.var(ConvertUtils.class).invoke(methodName, srcVar));
     }
 
     /**
@@ -873,43 +1234,6 @@ public class Converter {
         }
         dstVar.set(v);
 
-        cont.here();
-    }
-
-    /**
-     * @param srcVar long (unsigned)
-     * @param dstVar BigInteger
-     */
-    private static void toBigIntegerU(MethodMaker mm, Variable srcVar, Variable dstVar) {
-        srcVar = unbox(srcVar);
-        var bi = mm.var(BigInteger.class);
-        Label L1 = mm.label();
-        srcVar.ifLt(0L, L1);
-        Label cont = mm.label();
-        dstVar.set(bi.invoke("valueOf", srcVar));
-        mm.goto_(cont);
-        L1.here();
-        var magnitude = mm.new_(byte[].class, 8);
-        mm.var(RowUtils.class).invoke("encodeLongBE", magnitude, 0, srcVar);
-        dstVar.set(mm.new_(bi, 1, magnitude));
-        cont.here();
-    }
-
-    /**
-     * @param srcVar long (unsigned)
-     * @param dstVar BigDecimal
-     */
-    private static void toBigDecimalU(MethodMaker mm, Variable srcVar, Variable dstVar) {
-        srcVar = unbox(srcVar);
-        Label L1 = mm.label();
-        srcVar.ifLt(0L, L1);
-        Label cont = mm.label();
-        dstVar.set(mm.var(BigDecimal.class).invoke("valueOf", srcVar));
-        mm.goto_(cont);
-        L1.here();
-        var magnitude = mm.new_(byte[].class, 8);
-        mm.var(RowUtils.class).invoke("encodeLongBE", magnitude, 0, srcVar);
-        dstVar.set(mm.new_(BigDecimal.class, mm.new_(BigInteger.class, 1, magnitude)));
         cont.here();
     }
 
