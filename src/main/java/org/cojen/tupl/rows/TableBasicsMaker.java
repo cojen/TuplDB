@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.rows;
 
+import java.lang.invoke.MethodHandles;
+
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Field;
 import org.cojen.maker.MethodMaker;
@@ -30,22 +32,22 @@ import org.cojen.tupl.Table;
  *
  * @author Brian S O'Neill
  */
-class TableBasicsMaker {
+public class TableBasicsMaker {
     // Maps rowType interface classes to generated interface classes.
-    private static final WeakClassCache<Class<?>> cache = new WeakClassCache<>();
+    private static final WeakClassCache<Class<?>> cCache = new WeakClassCache<>();
 
     /**
      * Returns an interface with a few default methods.
      */
     public static Class<?> find(Class<?> rowType) {
-        Class clazz = cache.get(rowType);
+        Class clazz = cCache.get(rowType);
 
         if (clazz == null) {
-            synchronized (cache) {
-                clazz = cache.get(rowType);
+            synchronized (cCache) {
+                clazz = cCache.get(rowType);
                 if (clazz == null) {
-                    clazz = make(rowType, RowInfo.find(rowType).rowGen());
-                    cache.put(rowType, clazz);
+                    clazz = make(rowType);
+                    cCache.put(rowType, clazz);
                 }
             }
         }
@@ -53,7 +55,34 @@ class TableBasicsMaker {
         return clazz;
     }
 
-    private static Class<?> make(Class<?> rowType, RowGen rowGen) {
+    /**
+     * Returns a cached singleton Table instance which only implements the basic methods.
+     */
+    public static <R> Table<R> singleton(Class<R> rowType) {
+        Class<?> tableInterface = find(rowType);
+        Class<?> singletonClass = cCache.get(tableInterface);
+
+        if (singletonClass == null) {
+            synchronized (cCache) {
+                singletonClass = cCache.get(tableInterface);
+                if (singletonClass == null) {
+                    singletonClass = makeSingleton(rowType, tableInterface);
+                    cCache.put(tableInterface, singletonClass);
+                }
+            }
+        }
+
+        try {
+            var vh = MethodHandles.lookup()
+                .findStaticVarHandle(singletonClass, "THE", Table.class);
+            return (Table<R>) vh.get();
+        } catch (Throwable e) {
+            throw RowUtils.rethrow(e);
+        }
+    }
+
+    private static Class<?> make(Class<?> rowType) {
+        RowGen rowGen = RowInfo.find(rowType).rowGen();
         Class<?> rowClass = RowMaker.find(rowType);
 
         ClassMaker cm = rowGen.beginClassMaker(TableBasicsMaker.class, rowType, "basics")
@@ -115,5 +144,20 @@ class TableBasicsMaker {
         }
 
         return cm.finish();
+    }
+
+    private static Class<?> makeSingleton(Class<?> rowType, Class<?> tableInterface) {
+        RowGen rowGen = RowInfo.find(rowType).rowGen();
+        ClassMaker cm = rowGen.beginClassMaker(TableBasicsMaker.class, rowType, null);
+        cm.public_().implement(tableInterface);
+
+        cm.addConstructor().private_();
+
+        cm.addField(Table.class, "THE").public_().static_().final_();
+
+        MethodMaker mm = cm.addClinit();
+        mm.field("THE").set(mm.new_(cm));
+
+        return cm.finishHidden().lookupClass();
     }
 }

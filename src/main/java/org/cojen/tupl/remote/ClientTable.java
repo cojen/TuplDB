@@ -39,6 +39,7 @@ import org.cojen.tupl.diag.QueryPlan;
 import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.rows.RowReader;
+import org.cojen.tupl.rows.TableBasicsMaker;
 
 /**
  * 
@@ -50,10 +51,14 @@ final class ClientTable<R> implements Table<R> {
     final RemoteTable mRemote;
     final Class<R> mType;
 
+    private final Table<R> mBasics;
+
     ClientTable(ClientDatabase db, RemoteTable remote, Class<R> type) {
         mDb = db;
         mRemote = remote;
         mType = type;
+
+        mBasics = TableBasicsMaker.singleton(type);
     }
 
     @Override
@@ -63,26 +68,22 @@ final class ClientTable<R> implements Table<R> {
 
     @Override
     public R newRow() {
-        // FIXME
-        throw null;
+        return mBasics.newRow();
     }
 
     @Override
     public R cloneRow(R row) {
-        // FIXME
-        throw null;
+        return mBasics.cloneRow(row);
     }
 
     @Override
     public void unsetRow(R row) {
-        // FIXME
-        throw null;
+        mBasics.unsetRow(row);
     }
 
     @Override
     public void copyRow(R from, R to) {
-        // FIXME
-        throw null;
+        mBasics.copyRow(from, to);
     }
 
     @Override

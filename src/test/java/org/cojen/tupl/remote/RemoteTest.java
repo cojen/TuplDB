@@ -112,6 +112,12 @@ public class RemoteTest {
 
         Table<Tab> clientTable = client.openTable(Tab.class);
 
+        System.out.println(clientTable.newRow());
+        System.out.println(clientTable.cloneRow(clientTable.newRow()));
+        clientTable.unsetRow(clientTable.newRow());
+        clientTable.copyRow(clientTable.newRow(), clientTable.newRow());
+        System.out.println("---");
+
         {
             Table<Tab> serverTable = db.openTable(Tab.class);
             Tab row = serverTable.newRow();
