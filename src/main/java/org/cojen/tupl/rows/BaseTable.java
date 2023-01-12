@@ -1221,21 +1221,61 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
                 if (mode != Trigger.DISABLED) {
                     Index source = mSource;
 
-                    // RowPredicateLock and Trigger require a non-null transaction.
+                    // Trigger requires a non-null transaction.
                     txn = ViewUtils.enterScope(source, txn);
-                    try {
-                        redoPredicateMode(txn);
+                    try (var c = source.newCursor(txn)) {
+                        c.find(key);
+                        byte[] oldValue = c.value();
+                        if (oldValue == null) {
+                            return false;
+                        } else {
+                            trigger.storeP(txn, row, key, oldValue, value);
+                            c.commit(value);
+                            return true;
+                        }
+                    } finally {
+                        txn.exit();
+                    }
+                }
+            } finally {
+                trigger.releaseShared();
+            }
+        }
+    }
 
-                        try (var c = source.newCursor(txn)) {
-                            c.find(key);
-                            byte[] oldValue = c.value();
-                            if (oldValue == null) {
-                                return false;
-                            } else {
-                                trigger.storeP(txn, row, key, oldValue, value);
-                                c.commit(value);
-                                return true;
-                            }
+    /**
+     * Delete a fully encoded key and invoke a trigger. The given row instance is expected to
+     * be empty, and it's never modified by this method.
+     *
+     * @see RemoteProxyMaker
+     */
+    final boolean deleteAndTrigger(Transaction txn, byte[] key) throws IOException {
+        // See comments in storeAndTrigger.
+
+        while (true) {
+            Trigger<R> trigger = trigger();
+            trigger.acquireShared();
+            try {
+                int mode = trigger.mode();
+
+                if (mode == Trigger.SKIP) {
+                    return mSource.delete(txn, key);
+                }
+
+                if (mode != Trigger.DISABLED) {
+                    Index source = mSource;
+
+                    // Trigger requires a non-null transaction.
+                    txn = ViewUtils.enterScope(source, txn);
+                    try (var c = source.newCursor(txn)) {
+                        c.find(key);
+                        byte[] oldValue = c.value();
+                        if (oldValue == null) {
+                            return false;
+                        } else {
+                            trigger.delete(txn, key, oldValue);
+                            c.commit(null);
+                            return true;
                         }
                     } finally {
                         txn.exit();

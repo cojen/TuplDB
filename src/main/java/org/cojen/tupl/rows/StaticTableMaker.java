@@ -583,7 +583,9 @@ class StaticTableMaker extends TableMaker {
             txnVar.set(mm.var(ViewUtils.class).invoke("enterScope", source, txnVar));
             Label txnStart = mm.label().here();
 
-            mm.invoke("redoPredicateMode", txnVar);
+            if (variant != "replace") { // replace doesn't use mIndexLock
+                mm.invoke("redoPredicateMode", txnVar);
+            }
 
             // Always use a cursor to acquire the upgradable row lock before updating
             // secondaries. This prevents deadlocks with a concurrent index scan which joins

@@ -407,7 +407,10 @@ public abstract class ClientTableHelper<R> implements Table<R> {
         }
 
         // Add in the value encoding length.
-        if (valueLengthVar != null) {
+        if (valueLengthVar == null) {
+            // Need room for the value length prefix, which is zero.
+            fullLengthVar.inc(2);
+        } else {
             fullLengthVar.inc(valueLengthVar);
 
             Label small = mm.label();
@@ -460,9 +463,11 @@ public abstract class ClientTableHelper<R> implements Table<R> {
             encodeColumns(rowGen, rowVar, bytesVar, offsetVar, valueCodecs, dirtyOnly);
         }
 
-
         Label cont = mm.label();
         mm.field("assert").ifFalse(cont);
+        if (valueLengthVar == null) {
+            offsetVar.inc(2);
+        }
         offsetVar.ifEq(bytesVar.alength(), cont);
         mm.new_(AssertionError.class,
                 mm.concat(offsetVar, " != ", bytesVar.alength()), null).throw_();

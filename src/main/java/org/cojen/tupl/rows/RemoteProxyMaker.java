@@ -188,23 +188,49 @@ public final class RemoteProxyMaker {
         mm.return_();
     }
 
+    /**
+     * Generates code which writes an exception if the primary key isn't fully specified. As a
+     * side-effect, the key and value from the pipe are skipped, and the pipe is recycled.
+     */
+    private void checkPrimaryKeySet(MethodMaker mm, Variable pipeVar, Variable[] stateVars) {
+        var readyVar = mm.var(boolean.class);
+        mRowGen.checkSet(mm, mRowGen.info.keyColumns, readyVar, num -> stateVars[num >> 4]);
+
+        Label isReady = mm.label();
+        readyVar.ifTrue(isReady);
+
+        mm.var(RemoteProxyMaker.class).invoke("skipKeyAndValue", pipeVar);
+        var iseVar = mm.new_(IllegalStateException.class, "Primary key isn't fully specified");
+        pipeVar.invoke("writeObject", iseVar);
+        pipeVar.invoke("flush");
+        pipeVar.invoke("recycle");
+        mm.return_(null);
+
+        isReady.here();
+    }
+
     private void addByKeyDirectMethod(String variant) {
         MethodMaker mm = mClassMaker.addMethod
             (Pipe.class, variant, RemoteTransaction.class, Pipe.class).public_();
 
-        // FIXME: exception handling; pipe recycle; pipe close
-
         var txnVar = txn(mm.param(0));
         var pipeVar = mm.param(1);
 
+        var tryStart = mm.label().here();
+
         var stateVars = readStateFields(pipeVar);
+        checkPrimaryKeySet(mm, pipeVar, stateVars);
 
-        // FIXME: If "load" variant and load fails, value columns must be unset. Just on the
-        // client side though?
+        var makerVar = mm.var(RemoteProxyMaker.class);
+        var keyVar = makerVar.invoke("decodeKey", pipeVar);
+        makerVar.invoke("skipValue", pipeVar);
 
-        // FIXME: addByKeyDirectMethod
-        pipeVar.invoke("close");
+        makerVar.invoke(variant, mm.field("table"), txnVar, keyVar, pipeVar);
 
+        mm.return_(null);
+
+        var exVar = mm.catch_(tryStart, mm.label().here(), Throwable.class);
+        makerVar.invoke("handleException", exVar, pipeVar);
         mm.return_(null);
     }
 
@@ -318,6 +344,13 @@ public final class RemoteProxyMaker {
     /**
      * Called by generated code.
      */
+    public static void skipValue(Pipe pipe) throws IOException {
+        pipe.skip(decodeValueLength(pipe));
+    }
+
+    /**
+     * Called by generated code.
+     */
     public static byte[] decodeKey(Pipe pipe) throws IOException {
         var bytes = new byte[decodeKeyLength(pipe)];
         pipe.readFully(bytes);
@@ -332,6 +365,58 @@ public final class RemoteProxyMaker {
         var bytes = new byte[prefixLength + valueLength];
         pipe.readFully(bytes, prefixLength, valueLength);
         return bytes;
+    }
+
+    /**
+     * Called by generated code.
+     */
+    public static void load(BaseTable table, Transaction txn, byte[] key, Pipe pipe)
+        throws IOException
+    {
+        // FIXME: If load fails, value columns must be unset. Just on the client side though?
+
+        attempt: {
+            byte[] value;
+            try {
+                value = table.mSource.load(txn, key);
+            } catch (Throwable e) {
+                pipe.writeObject(e);
+                break attempt;
+            }
+            pipe.writeObject(null); // no exception
+            if (value == null) {
+                pipe.writeByte(0);
+            } else {
+                pipe.writeByte(1);
+                // FIXME: write the value in column format (lead with a bitmap)
+                pipe.close();
+            }
+        }
+
+        pipe.flush();
+        pipe.recycle();
+    }
+
+    /**
+     * Called by generated code.
+     */
+    public static void exists(BaseTable table, Transaction txn, byte[] key, Pipe pipe)
+        throws IOException
+    {
+        attempt: {
+            boolean result;
+            try {
+                result = table.mSource.exists(txn, key);
+            } catch (Throwable e) {
+                pipe.writeObject(e);
+                break attempt;
+            }
+            pipe.writeObject(null); // no exception
+            pipe.writeByte(result ? 1 : 0); // success or failure
+        }
+
+        pipe.flush();
+        pipe.recycle();
     }
 
     /**
@@ -423,6 +508,29 @@ public final class RemoteProxyMaker {
             boolean result;
             try {
                 result = table.replaceAndTrigger(txn, row, key, value);
+            } catch (Throwable e) {
+                pipe.writeObject(e);
+                break attempt;
+            }
+            pipe.writeObject(null); // no exception
+            pipe.writeByte(result ? 1 : 0); // success or failure
+        }
+
+        pipe.flush();
+        pipe.recycle();
+    }
+
+    /**
+     * Called by generated code.
+     */
+    @SuppressWarnings("unchecked")
+    public static void delete(BaseTable table, Transaction txn, byte[] key, Pipe pipe)
+        throws IOException
+    {
+        attempt: {
+            boolean result;
+            try {
+                result = table.deleteAndTrigger(txn, key);
             } catch (Throwable e) {
                 pipe.writeObject(e);
                 break attempt;

@@ -195,6 +195,37 @@ public class RemoteTest {
             scanner.forEachRemaining(row -> System.out.println(row));
         }
 
+        System.out.println("---");
+
+        {
+            Tab row = clientTable.newRow();
+
+            try {
+                clientTable.exists(null, row);
+                fail();
+            } catch (IllegalStateException e) {
+            }
+
+            row.id(0);
+            System.out.println("0 exists: " + clientTable.exists(null, row));
+
+            row.id(1);
+            System.out.println("1 exists: " + clientTable.exists(null, row));
+            System.out.println(clientTable.delete(null, row));
+            System.out.println("1 exists: " + clientTable.exists(null, row));
+
+            row.id(100);
+            System.out.println("100 exists: " + clientTable.exists(null, row));
+        }
+
+        System.out.println("---");
+
+        System.out.println(clientTable.scannerPlan(null, "{+name}"));
+
+        try (var scanner = clientTable.newScanner(null, "{+name}")) {
+            scanner.forEachRemaining(row -> System.out.println(row));
+        }
+
         client.close();
         db.close();
     }
