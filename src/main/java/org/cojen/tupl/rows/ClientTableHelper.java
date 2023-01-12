@@ -172,9 +172,12 @@ public abstract class ClientTableHelper<R> implements Table<R> {
         // stick around until the class is unloaded.
         cm.addField(ClientTableHelper.class, "THE").private_().static_().final_();
 
+        cm.addField(boolean.class, "assert").private_().static_().final_();
+
         {
             MethodMaker mm = cm.addClinit();
             mm.field("THE").set(mm.new_(cm));
+            mm.field("assert").set(mm.class_().invoke("desiredAssertionStatus"));
         }
 
         // Add the rowDescriptor method.
@@ -424,7 +427,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
 
         // Encode all the column states first.
         for (String name : stateFieldNames) {
-            // FIXME: If MODE_KEY, write zeros for the value columns.
+            // FIXME: If keysOnly, write zeros for the value columns.
             utilsVar.invoke("encodeIntBE", bytesVar, offsetVar, rowVar.field(name));
             offsetVar.inc(4);
         }
@@ -456,6 +459,14 @@ public abstract class ClientTableHelper<R> implements Table<R> {
             encode.here();
             encodeColumns(rowGen, rowVar, bytesVar, offsetVar, valueCodecs, dirtyOnly);
         }
+
+
+        Label cont = mm.label();
+        mm.field("assert").ifFalse(cont);
+        offsetVar.ifEq(bytesVar.alength(), cont);
+        mm.new_(AssertionError.class,
+                mm.concat(offsetVar, " != ", bytesVar.alength()), null).throw_();
+        cont.here();
 
         return bytesVar;
     }
