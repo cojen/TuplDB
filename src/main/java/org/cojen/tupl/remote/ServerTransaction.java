@@ -38,12 +38,12 @@ import org.cojen.tupl.Transaction;
  *
  * @author Brian S O'Neill
  */
-final class ServerTransaction implements RemoteTransaction, SessionAware {
+public final class ServerTransaction implements RemoteTransaction, SessionAware {
     static ServerTransaction from(Transaction txn) {
         return new ServerTransaction(txn);
     }
 
-    static Transaction txn(RemoteTransaction remote) {
+    public static Transaction txn(RemoteTransaction remote) {
         return remote == null ? null : ((ServerTransaction) remote).mTxn;
     }
 

@@ -29,6 +29,7 @@ import org.cojen.tupl.diag.QueryPlan;
 import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.rows.BaseTable;
+import org.cojen.tupl.rows.WeakCache;
 
 /**
  * 
@@ -38,8 +39,21 @@ import org.cojen.tupl.rows.BaseTable;
 final class ServerTable<R> implements RemoteTable {
     final BaseTable<R> mTable;
 
-    ServerTable(BaseTable<R> table) {
+    private final WeakCache<byte[], RemoteTableProxy, Object> mProxyCache;
+
+    ServerTable(BaseTable<R> table) throws IOException {
         mTable = table;
+
+        mProxyCache = new WeakCache<>() {
+            @Override
+            protected RemoteTableProxy newValue(byte[] descriptor, Object unused) {
+                try {
+                    return mTable.newRemoteProxy(descriptor);
+                } catch (IOException e) {
+                    throw Utils.rethrow(e);
+                }
+            }
+        };
     }
 
     @Override
@@ -95,57 +109,8 @@ final class ServerTable<R> implements RemoteTable {
     }
 
     @Override
-    public Pipe load(RemoteTransaction txn, Pipe pipe) throws IOException {
-        // FIXME
-        throw null;
-    }
-
-    @Override
-    public Pipe exists(RemoteTransaction txn, Pipe pipe) throws IOException {
-        // FIXME
-        throw null;
-    }
-
-    @Override
-    public Pipe store(RemoteTransaction txn, Pipe pipe) throws IOException {
-        // FIXME
-        throw null;
-    }
-
-    @Override
-    public Pipe exchange(RemoteTransaction txn, Pipe pipe) throws IOException {
-        // FIXME
-        throw null;
-    }
-
-    @Override
-    public Pipe insert(RemoteTransaction txn, Pipe pipe) throws IOException {
-        // FIXME
-        throw null;
-    }
-
-    @Override
-    public Pipe replace(RemoteTransaction txn, Pipe pipe) throws IOException {
-        // FIXME
-        throw null;
-    }
-
-    @Override
-    public Pipe update(RemoteTransaction txn, Pipe pipe) throws IOException {
-        // FIXME
-        throw null;
-    }
-
-    @Override
-    public Pipe merge(RemoteTransaction txn, Pipe pipe) throws IOException {
-        // FIXME
-        throw null;
-    }
-
-    @Override
-    public Pipe delete(RemoteTransaction txn, Pipe pipe) throws IOException {
-        // FIXME
-        throw null;
+    public RemoteTableProxy proxy(byte[] descriptor) throws IOException {
+        return mProxyCache.obtain(descriptor, null);
     }
 
     @Override

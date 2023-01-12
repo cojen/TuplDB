@@ -22,7 +22,12 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import java.util.function.IntFunction;
+
 import org.cojen.maker.ClassMaker;
+import org.cojen.maker.Label;
+import org.cojen.maker.MethodMaker;
+import org.cojen.maker.Variable;
 
 /**
  * Cache of objects used by code generation.
@@ -371,5 +376,327 @@ class RowGen {
             map.put(codec.mInfo.name, codec);
         }
         return map;
+    }
+
+    /**
+     * Generates code which checks if all of the given columns are set for a given row object,
+     * returning true or false.
+     *
+     * @param rowVar variable which references a row with state fields
+     */
+    void checkSet(MethodMaker mm, Map<String, ColumnInfo> columns, Variable rowVar) {
+        checkSet(mm, columns, null, num -> rowVar.field(stateField(num)));
+    }
+
+    /**
+     * Generates code which checks if all of the given columns are set, returning true or
+     * false.
+     *
+     * @param resultVar pass null to return; pass boolean var to set instead
+     * @param stateFieldAccessor returns a state field for a given zero-based column number
+     * @see #stateField
+     */
+    void checkSet(MethodMaker mm, Map<String, ColumnInfo> columns,
+                  Variable resultVar, IntFunction<Variable> stateFieldAccessor)
+    {
+        if (columns.isEmpty()) {
+            if (resultVar == null) {
+                mm.return_(true);
+            } else {
+                resultVar.set(true);
+            }
+            return;
+        }
+
+        if (columns.size() == 1) {
+            int num = columnNumbers().get(columns.values().iterator().next().name);
+            var retVar = stateFieldAccessor.apply(num).and(stateFieldMask(num)).ne(0);
+            if (resultVar == null) {
+                mm.return_(retVar);
+            } else {
+                resultVar.set(retVar);
+            }
+            return;
+        }
+
+        Label end = resultVar == null ? null : mm.label();
+
+        int num = 0, mask = 0;
+
+        for (int step = 0; step < 2; step++) {
+            // Key columns are numbered before value columns. Add checks in two steps.
+            // Note that the codecs are accessed, to match encoding order.
+            var baseCodecs = step == 0 ? keyCodecs() : valueCodecs();
+
+            for (ColumnCodec codec : baseCodecs) {
+                ColumnInfo info = codec.mInfo;
+
+                if (columns.containsKey(info.name)) {
+                    mask |= RowGen.stateFieldMask(num);
+                }
+
+                if (isMaskReady(++num, mask)) {
+                    // Convert all states of value 0b01 (clean) into value 0b11 (dirty). All
+                    // other states stay the same.
+                    var state = stateFieldAccessor.apply(num - 1).get();
+                    state = state.or(state.and(0x5555_5555).shl(1));
+
+                    // Flip all column state bits. If final result is non-zero, then some
+                    // columns were unset.
+                    state = state.xor(mask);
+                    mask = maskRemainder(num, mask);
+                    if (mask != 0xffff_ffff) {
+                        state = state.and(mask);
+                    }
+
+                    Label cont = mm.label();
+                    state.ifEq(0, cont);
+
+                    if (resultVar == null) {
+                        mm.return_(false);
+                    } else {
+                        resultVar.set(false);
+                        end.goto_();
+                    }
+
+                    cont.here();
+                    mask = 0;
+                }
+            }
+        }
+
+        if (resultVar == null) {
+            mm.return_(true);
+        } else {
+            resultVar.set(true);
+            end.here();
+        }
+    }
+
+    /**
+     * Generates code which checks if all of the given columns are dirty for a given row object,
+     * returning true or false.
+     *
+     * @param rowVar variable which references a row with state fields
+     */
+    void checkDirty(MethodMaker mm, Map<String, ColumnInfo> columns, Variable rowVar) {
+        checkDirty(mm, columns, null, num -> rowVar.field(stateField(num)));
+    }
+
+    /**
+     * Generates code which checks if all of the given columns are dirty, returning true or
+     * false.
+     *
+     * @param resultVar pass null to return; pass boolean var to set instead
+     * @param stateFieldAccessor returns a state field for a given zero-based column number
+     * @see #stateField
+     */
+    void checkDirty(MethodMaker mm, Map<String, ColumnInfo> columns,
+                    Variable resultVar, IntFunction<Variable> stateFieldAccessor)
+    {
+        Label end = resultVar == null ? null : mm.label();
+
+        int num = 0, mask = 0;
+
+        for (int step = 0; step < 2; step++) {
+            // Key columns are numbered before value columns. Add checks in two steps.
+            // Note that the codecs are accessed, to match encoding order.
+            var baseCodecs = step == 0 ? keyCodecs() : valueCodecs();
+
+            for (ColumnCodec codec : baseCodecs) {
+                ColumnInfo info = codec.mInfo;
+
+                if (columns.containsKey(info.name)) {
+                    mask |= stateFieldMask(num);
+                }
+
+                if (isMaskReady(++num, mask)) {
+                    Label cont = mm.label();
+                    stateFieldAccessor.apply(num - 1).and(mask).ifEq(mask, cont);
+
+                    if (resultVar == null) {
+                        mm.return_(false);
+                    } else {
+                        resultVar.set(false);
+                        end.goto_();
+                    }
+
+                    cont.here();
+                    mask = 0;
+                }
+            }
+        }
+
+        if (resultVar == null) {
+            mm.return_(true);
+        } else {
+            resultVar.set(true);
+            end.here();
+        }
+    }
+
+    /**
+     * Generates code which checks if at least one of the given columns are dirty for a given
+     * row object, returning true or false.
+     *
+     * @param rowVar variable which references a row with state fields
+     */
+    void checkAnyDirty(MethodMaker mm, Map<String, ColumnInfo> columns, Variable rowVar) {
+        checkAnyDirty(mm, columns, null, num -> rowVar.field(stateField(num)));
+    }
+
+    /**
+     * Generates code which checks if at least one of the given columns are dirty, returning
+     * true or false.
+     *
+     * @param resultVar pass null to return; pass boolean var to set instead
+     * @param stateFieldAccessor returns a state field for a given zero-based column number
+     * @see #stateField
+     */
+    void checkAnyDirty(MethodMaker mm, Map<String, ColumnInfo> columns,
+                       Variable resultVar, IntFunction<Variable> stateFieldAccessor)
+    {
+        Label end = resultVar == null ? null : mm.label();
+
+        int num = 0, mask = 0;
+
+        for (int step = 0; step < 2; step++) {
+            // Key columns are numbered before value columns. Add checks in two steps.
+            // Note that the codecs are accessed, to match encoding order.
+            var baseCodecs = step == 0 ? keyCodecs() : valueCodecs();
+
+            for (ColumnCodec codec : baseCodecs) {
+                ColumnInfo info = codec.mInfo;
+
+                if (columns.containsKey(info.name)) {
+                    mask |= stateFieldMask(num, 0b10);
+                }
+
+                if (isMaskReady(++num, mask)) {
+                    Label cont = mm.label();
+                    stateFieldAccessor.apply(num - 1).and(mask).ifEq(0, cont);
+
+                    if (resultVar == null) {
+                        mm.return_(true);
+                    } else {
+                        resultVar.set(true);
+                        end.goto_();
+                    }
+
+                    cont.here();
+                    mask = 0;
+                }
+            }
+        }
+
+        if (resultVar == null) {
+            mm.return_(false);
+        } else {
+            resultVar.set(false);
+            end.here();
+        }
+    }
+
+    /**
+     * Generates code which accesses a row and always throws a detailed exception describing
+     * the required columns which aren't set. A check method should have been invoked first.
+     *
+     * @param rowVar variable which references a row with state fields
+     */
+    void requireSet(MethodMaker mm, Map<String, ColumnInfo> columns, Variable rowVar) {
+        requireSet(mm, columns, num -> rowVar.field(stateField(num)));
+    }
+
+    /**
+     * Generates code which accesses state fields and always throws a detailed exception
+     * describing the required columns which aren't set. A check method should have been
+     * invoked first.
+     *
+     * @param stateFieldAccessor returns a state field for a given zero-based column number
+     * @see #stateField
+     */
+    void requireSet(MethodMaker mm, Map<String, ColumnInfo> columns,
+                    IntFunction<Variable> stateFieldAccessor)
+    {
+        String initMessage = "Some required columns are unset";
+
+        if (columns.isEmpty()) {
+            mm.new_(IllegalStateException.class, initMessage).throw_();
+            return;
+        }
+
+        int initLength = initMessage.length() + 2;
+        var bob = mm.new_(StringBuilder.class, initLength << 1)
+            .invoke("append", initMessage).invoke("append", ": ");
+
+        boolean first = true;
+        for (ColumnInfo info : columns.values()) {
+            int num = columnNumbers().get(info.name);
+            Label isSet = mm.label();
+            stateFieldAccessor.apply(num).and(stateFieldMask(num)).ifNe(0, isSet);
+            if (!first) {
+                Label sep = mm.label();
+                bob.invoke("length").ifEq(initLength, sep);
+                bob.invoke("append", ", ");
+                sep.here();
+            }
+            bob.invoke("append", info.name);
+            isSet.here();
+            first = false;
+        }
+
+        mm.new_(IllegalStateException.class, bob.invoke("toString")).throw_();
+    }
+
+    /**
+     * Mark all the value columns as UNSET without modifying the primary key column states.
+     */
+    public void markNonPrimaryKeyColumnsUnset(Variable rowVar) {
+        // Clear the value column state fields. Skip the key columns, which are numbered
+        // first. Note that the codecs are accessed, to match encoding order.
+        int num = info.keyColumns.size();
+        int mask = 0;
+        for (ColumnCodec codec : valueCodecs()) {
+            mask |= stateFieldMask(num);
+            if (isMaskReady(++num, mask)) {
+                mask = maskRemainder(num, mask);
+                Variable field = rowVar.field(stateField(num - 1));
+                mask = ~mask;
+                if (mask == 0) {
+                    field.set(mask);
+                } else {
+                    field.set(field.and(mask));
+                    mask = 0;
+                }
+            }
+        }
+    }
+
+    /**
+     * Called when building state field masks for columns, when iterating them in order.
+     *
+     * @param num column number pre-incremented to the next one
+     * @param mask current group; must be non-zero to have any effect
+     */
+    private boolean isMaskReady(int num, int mask) {
+        return mask != 0 && ((num & 0b1111) == 0 || num >= info.allColumns.size());
+    }
+
+    /**
+     * When building a mask for the highest state field, sets the high unused bits on the
+     * mask. This can eliminate an unnecessary 'and' operation.
+     *
+     * @param num column number pre-incremented to the next one
+     * @param mask current group
+     * @return updated mask
+     */
+    private int maskRemainder(int num, int mask) {
+        if (num >= info.allColumns.size()) {
+            int shift = (num & 0b1111) << 1;
+            if (shift != 0) {
+                mask |= 0xffff_ffff << shift;
+            }
+        }
+        return mask;
     }
 }

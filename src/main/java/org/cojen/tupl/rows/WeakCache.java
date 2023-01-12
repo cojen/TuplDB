@@ -37,7 +37,7 @@ import java.util.function.Predicate;
  * @see WeakClassCache
  * @see SoftCache
  */
-class WeakCache<K, V, H> extends RefCache<K, V, H> {
+public class WeakCache<K, V, H> extends RefCache<K, V, H> {
     private Entry<K, V>[] mEntries;
     private int mSize;
 

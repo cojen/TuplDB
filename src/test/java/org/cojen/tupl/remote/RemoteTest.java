@@ -119,6 +119,16 @@ public class RemoteTest {
         System.out.println("---");
 
         {
+            Tab row = clientTable.newRow();
+            row.id(100);
+            row.value("remote-value");
+            row.name("remote-name");
+            clientTable.store(null, row);
+        }
+
+            System.out.println("---");
+
+        {
             Table<Tab> serverTable = db.openTable(Tab.class);
             Tab row = serverTable.newRow();
             row.id(1);
@@ -154,6 +164,12 @@ public class RemoteTest {
         System.out.println("---");
 
         try (var scanner = clientTable.newScanner(null, "name == ?", "name-world")) {
+            scanner.forEachRemaining(row -> System.out.println(row));
+        }
+
+        System.out.println("---");
+
+        try (var scanner = clientTable.newScanner(null, "name == ?", "remote-name")) {
             scanner.forEachRemaining(row -> System.out.println(row));
         }
 

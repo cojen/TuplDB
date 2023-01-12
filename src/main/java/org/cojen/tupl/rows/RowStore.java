@@ -73,7 +73,7 @@ import static org.cojen.tupl.rows.RowUtils.*;
  *
  * @author Brian S O'Neill
  */
-public class RowStore {
+public final class RowStore {
     private final WeakReference<RowStore> mSelfRef;
     final CoreDatabase mDatabase;
 

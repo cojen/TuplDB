@@ -19,6 +19,9 @@ package org.cojen.tupl.remote;
 
 import java.io.IOException;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import java.util.Comparator;
 
 import java.util.function.Predicate;
@@ -34,12 +37,12 @@ import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.Updater;
 
-import org.cojen.tupl.diag.QueryPlan;
-
 import org.cojen.tupl.io.Utils;
 
+import org.cojen.tupl.diag.QueryPlan;
+
+import org.cojen.tupl.rows.ClientTableHelper;
 import org.cojen.tupl.rows.RowReader;
-import org.cojen.tupl.rows.TableBasicsMaker;
 
 /**
  * 
@@ -51,14 +54,28 @@ final class ClientTable<R> implements Table<R> {
     final RemoteTable mRemote;
     final Class<R> mType;
 
-    private final Table<R> mBasics;
+    private final ClientTableHelper<R> mHelper;
+
+    private RemoteTableProxy mProxy;
+
+    static final VarHandle cProxyHandle;
+
+    static {
+        try {
+            var lookup = MethodHandles.lookup();
+            cProxyHandle = lookup.findVarHandle
+                (ClientTable.class, "mProxy", RemoteTableProxy.class);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
+    }
 
     ClientTable(ClientDatabase db, RemoteTable remote, Class<R> type) {
         mDb = db;
         mRemote = remote;
         mType = type;
 
-        mBasics = TableBasicsMaker.singleton(type);
+        mHelper = ClientTableHelper.find(type);
     }
 
     @Override
@@ -68,22 +85,22 @@ final class ClientTable<R> implements Table<R> {
 
     @Override
     public R newRow() {
-        return mBasics.newRow();
+        return mHelper.newRow();
     }
 
     @Override
     public R cloneRow(R row) {
-        return mBasics.cloneRow(row);
+        return mHelper.cloneRow(row);
     }
 
     @Override
     public void unsetRow(R row) {
-        mBasics.unsetRow(row);
+        mHelper.unsetRow(row);
     }
 
     @Override
     public void copyRow(R from, R to) {
-        mBasics.copyRow(from, to);
+        mHelper.copyRow(from, to);
     }
 
     @Override
@@ -140,68 +157,73 @@ final class ClientTable<R> implements Table<R> {
 
     @Override
     public boolean load(Transaction txn, R row) throws IOException {
-        // FIXME
-        throw null;
+        return mHelper.load(row, proxy().load(mDb.remoteTransaction(txn), null));
     }
 
     @Override
     public boolean exists(Transaction txn, R row) throws IOException {
-        // FIXME
-        throw null;
+        return mHelper.exists(row, proxy().exists(mDb.remoteTransaction(txn), null));
     }
 
     @Override
     public void store(Transaction txn, R row) throws IOException {
-        // FIXME
-        throw null;
+        mHelper.store(row, proxy().store(mDb.remoteTransaction(txn), null));
     }
 
     @Override
     public R exchange(Transaction txn, R row) throws IOException {
-        // FIXME
-        throw null;
+        return mHelper.exchange(row, proxy().exchange(mDb.remoteTransaction(txn), null));
     }
 
     @Override
     public boolean insert(Transaction txn, R row) throws IOException {
-        // FIXME
-        throw null;
+        return mHelper.insert(row, proxy().insert(mDb.remoteTransaction(txn), null));
     }
 
     @Override
     public boolean replace(Transaction txn, R row) throws IOException {
-        // FIXME
-        throw null;
+        return mHelper.replace(row, proxy().replace(mDb.remoteTransaction(txn), null));
     }
 
     @Override
     public boolean update(Transaction txn, R row) throws IOException {
-        // FIXME
-        throw null;
+        return mHelper.update(row, proxy().update(mDb.remoteTransaction(txn), null));
     }
 
     @Override
     public boolean merge(Transaction txn, R row) throws IOException {
-        // FIXME
-        throw null;
+        return mHelper.merge(row, proxy().merge(mDb.remoteTransaction(txn), null));
     }
 
     @Override
     public boolean delete(Transaction txn, R row) throws IOException {
-        // FIXME
-        throw null;
+        return mHelper.delete(row, proxy().delete(mDb.remoteTransaction(txn), null));
+    }
+
+    private RemoteTableProxy proxy() throws IOException {
+        var proxy = (RemoteTableProxy) cProxyHandle.getAcquire(this);
+
+        if (proxy == null) {
+            synchronized (mHelper) {
+                proxy = mProxy;
+                if (proxy == null) {
+                    proxy = mRemote.proxy(mHelper.rowDescriptor());
+                    cProxyHandle.setRelease(this, proxy);
+                }
+            }
+        }
+
+        return proxy;
     }
 
     @Override
     public Comparator<R> comparator(String spec) {
-        // FIXME
-        throw null;
+        return mHelper.comparator(spec);
     }
 
     @Override
     public Predicate<R> predicate(String query, Object... args) {
-        // FIXME
-        throw null;
+        return mHelper.predicate(query, args);
     }
 
     @Override

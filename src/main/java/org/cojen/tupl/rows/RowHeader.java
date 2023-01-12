@@ -144,23 +144,32 @@ final class RowHeader {
         return columnNames.length - numKeys;
     }
 
-    byte[] encode() {
+    /**
+     * @param lengthHeader when true, start with a four byte length field
+     */
+    byte[] encode(boolean lengthField) {
         int numColumns = columnNames.length;
 
-        int length = (4 + 4 + 4 + 4) + numColumns * (2 + 4 + 4);
+        int length = (4 + 4 + 4) + numColumns * (2 + 4 + 4);
+
+        if (lengthField) {
+            length += 4;
+        }
 
         for (int i=0; i<numColumns; i++) {
             length += RowUtils.lengthStringUTF(columnNames[i]);
         }
 
         byte[] bytes = new byte[length];
+        int offset = 0;
 
-        RowUtils.encodeIntBE(bytes, 0, length - 4);
-        RowUtils.encodeIntBE(bytes, 4, mHashCode);
-        RowUtils.encodeIntBE(bytes, 8, numKeys);
-        RowUtils.encodeIntBE(bytes, 12, columnNames.length);
+        if (lengthField) {
+            RowUtils.encodeIntBE(bytes, offset, length - 4); offset += 4;
+        }
 
-        int offset = 16;
+        RowUtils.encodeIntBE(bytes, offset, mHashCode); offset += 4;
+        RowUtils.encodeIntBE(bytes, offset, numKeys); offset += 4;
+        RowUtils.encodeIntBE(bytes, offset, columnNames.length); offset += 4;
 
         for (int i=0; i<numColumns; i++) {
             int start = offset + 2;

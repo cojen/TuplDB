@@ -148,7 +148,7 @@ public class WriteRowMaker {
             rh = RowHeader.make(rowGen, projSet);
         }
 
-        var headerVar = mm.var(byte[].class).setExact(rh.encode());
+        var headerVar = mm.var(byte[].class).setExact(rh.encode(true));
         writerVar.invoke("writeHeader", headerVar);
 
         ColumnCodec[] keyCodecs = rowGen.keyCodecs();

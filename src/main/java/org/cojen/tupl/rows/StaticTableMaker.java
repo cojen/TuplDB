@@ -343,60 +343,7 @@ class StaticTableMaker extends TableMaker {
      */
     private void addCheckSet(String name, Map<String, ColumnInfo> columns) {
         MethodMaker mm = mClassMaker.addMethod(boolean.class, name, mRowClass).static_();
-
-        if (columns.isEmpty()) {
-            mm.return_(true);
-            return;
-        }
-
-        if (columns.size() == 1) {
-            int num = mRowGen.columnNumbers().get(columns.values().iterator().next().name);
-            Label cont = mm.label();
-            stateField(mm.param(0), num).and(RowGen.stateFieldMask(num)).ifNe(0, cont);
-            mm.return_(false);
-            cont.here();
-            mm.return_(true);
-            return;
-        }
-
-        int num = 0, mask = 0;
-
-        for (int step = 0; step < 2; step++) {
-            // Key columns are numbered before value columns. Add checks in two steps.
-            // Note that the codecs are accessed, to match encoding order.
-            var baseCodecs = step == 0 ? mRowGen.keyCodecs() : mRowGen.valueCodecs();
-
-            for (ColumnCodec codec : baseCodecs) {
-                ColumnInfo info = codec.mInfo;
-
-                if (columns.containsKey(info.name)) {
-                    mask |= RowGen.stateFieldMask(num);
-                }
-
-                if (isMaskReady(++num, mask)) {
-                    // Convert all states of value 0b01 (clean) into value 0b11 (dirty). All
-                    // other states stay the same.
-                    var state = stateField(mm.param(0), num - 1).get();
-                    state = state.or(state.and(0x5555_5555).shl(1));
-
-                    // Flip all column state bits. If final result is non-zero, then some
-                    // columns were unset.
-                    state = state.xor(mask);
-                    mask = maskRemainder(num, mask);
-                    if (mask != 0xffff_ffff) {
-                        state = state.and(mask);
-                    }
-
-                    Label cont = mm.label();
-                    state.ifEq(0, cont);
-                    mm.return_(false);
-                    cont.here();
-                    mask = 0;
-                }
-            }
-        }
-
-        mm.return_(true);
+        mRowGen.checkSet(mm, columns, mm.param(0));
     }
 
     /**
@@ -407,32 +354,7 @@ class StaticTableMaker extends TableMaker {
      */
     private void addCheckAllDirty(String name, Map<String, ColumnInfo> columns) {
         MethodMaker mm = mClassMaker.addMethod(boolean.class, name, mRowClass).static_();
-
-        int num = 0, mask = 0;
-
-        for (int step = 0; step < 2; step++) {
-            // Key columns are numbered before value columns. Add checks in two steps.
-            // Note that the codecs are accessed, to match encoding order.
-            var baseCodecs = step == 0 ? mRowGen.keyCodecs() : mRowGen.valueCodecs();
-
-            for (ColumnCodec codec : baseCodecs) {
-                ColumnInfo info = codec.mInfo;
-
-                if (columns.containsKey(info.name)) {
-                    mask |= RowGen.stateFieldMask(num);
-                }
-
-                if (isMaskReady(++num, mask)) {
-                    Label cont = mm.label();
-                    stateField(mm.param(0), num - 1).and(mask).ifEq(mask, cont);
-                    mm.return_(false);
-                    cont.here();
-                    mask = 0;
-                }
-            }
-        }
-
-        mm.return_(true);
+        mRowGen.checkDirty(mm, columns, mm.param(0));
     }
 
     /**
@@ -443,32 +365,7 @@ class StaticTableMaker extends TableMaker {
      */
     private void addCheckAnyDirty(String name, Map<String, ColumnInfo> columns) {
         MethodMaker mm = mClassMaker.addMethod(boolean.class, name, mRowClass).static_();
-
-        int num = 0, mask = 0;
-
-        for (int step = 0; step < 2; step++) {
-            // Key columns are numbered before value columns. Add checks in two steps.
-            // Note that the codecs are accessed, to match encoding order.
-            var baseCodecs = step == 0 ? mRowGen.keyCodecs() : mRowGen.valueCodecs();
-
-            for (ColumnCodec codec : baseCodecs) {
-                ColumnInfo info = codec.mInfo;
-
-                if (columns.containsKey(info.name)) {
-                    mask |= RowGen.stateFieldMask(num, 0b10);
-                }
-
-                if (isMaskReady(++num, mask)) {
-                    Label cont = mm.label();
-                    stateField(mm.param(0), num - 1).and(mask).ifEq(0, cont);
-                    mm.return_(true);
-                    cont.here();
-                    mask = 0;
-                }
-            }
-        }
-
-        mm.return_(false);
+        mRowGen.checkAnyDirty(mm, columns, mm.param(0));
     }
 
     /**
@@ -480,35 +377,7 @@ class StaticTableMaker extends TableMaker {
      */
     private void addRequireSet(String name, Map<String, ColumnInfo> columns) {
         MethodMaker mm = mClassMaker.addMethod(null, name, mRowClass).static_();
-
-        String initMessage = "Some required columns are unset";
-
-        if (columns.isEmpty()) {
-            mm.new_(IllegalStateException.class, initMessage).throw_();
-            return;
-        }
-
-        int initLength = initMessage.length() + 2;
-        var bob = mm.new_(StringBuilder.class, initLength << 1)
-            .invoke("append", initMessage).invoke("append", ": ");
-
-        boolean first = true;
-        for (ColumnInfo info : columns.values()) {
-            int num = mRowGen.columnNumbers().get(info.name);
-            Label isSet = mm.label();
-            stateField(mm.param(0), num).and(RowGen.stateFieldMask(num)).ifNe(0, isSet);
-            if (!first) {
-                Label sep = mm.label();
-                bob.invoke("length").ifEq(initLength, sep);
-                bob.invoke("append", ", ");
-                sep.here();
-            }
-            bob.invoke("append", info.name);
-            isSet.here();
-            first = false;
-        }
-
-        mm.new_(IllegalStateException.class, bob.invoke("toString")).throw_();
+        mRowGen.requireSet(mm, columns, mm.param(0));
     }
 
     /**
@@ -833,12 +702,8 @@ class StaticTableMaker extends TableMaker {
                                     Variable txnVar, Variable rowVar,
                                     Variable keyVar, Variable valueVar)
     {
-        if (variant == "replace") {
-            return mm.field("mSource").invoke(variant, txnVar, keyVar, valueVar);
-        } else {
-            // Call protected method inherited from BaseTable.
-            return mm.invoke(variant, txnVar, rowVar, keyVar, valueVar);
-        }
+        // Call protected method inherited from BaseTable.
+        return mm.invoke(variant + "NoTrigger", txnVar, rowVar, keyVar, valueVar);
     }
 
     private void addStoreAutoMethod() {

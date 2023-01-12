@@ -164,26 +164,12 @@ public class TableMaker {
      */
     protected void markValuesUnset(Variable rowVar) {
         if (isPrimaryTable()) {
-            // Clear the value column state fields. Skip the key columns, which are numbered
-            // first. Note that the codecs are accessed, to match encoding order.
-            int num = mRowInfo.keyColumns.size();
-            int mask = 0;
-            for (ColumnCodec codec : mRowGen.valueCodecs()) {
-                mask |= RowGen.stateFieldMask(num);
-                if (isMaskReady(++num, mask)) {
-                    mask = maskRemainder(num, mask);
-                    Field field = stateField(rowVar, num - 1);
-                    mask = ~mask;
-                    if (mask == 0) {
-                        field.set(mask);
-                    } else {
-                        field.set(field.and(mask));
-                        mask = 0;
-                    }
-                }
-            }
+            mRowGen.markNonPrimaryKeyColumnsUnset(rowVar);
             return;
         }
+
+        // If acting on an alternate key or secondary index, then the key/value columns are
+        // different.
 
         final Map<String, ColumnInfo> keyColumns = mCodecGen.info.keyColumns;
         final int maxNum = mRowInfo.allColumns.size();
@@ -211,38 +197,6 @@ public class TableMaker {
                 }
             }
         }
-    }
-
-    /**
-     * Called when building state field masks for columns, when iterating them in order.
-     *
-     * @param num column number pre-incremented to the next one
-     * @param mask current group; must be non-zero to have any effect
-     */
-    protected boolean isMaskReady(int num, int mask) {
-        return mask != 0 && ((num & 0b1111) == 0 || num >= mRowInfo.allColumns.size());
-    }
-
-    /**
-     * When building a mask for the highest state field, sets the high unused bits on the
-     * mask. This can eliminate an unnecessary 'and' operation.
-     *
-     * @param num column number pre-incremented to the next one
-     * @param mask current group
-     * @return updated mask
-     */
-    protected int maskRemainder(int num, int mask) {
-        if (num >= mRowInfo.allColumns.size()) {
-            int shift = (num & 0b1111) << 1;
-            if (shift != 0) {
-                mask |= 0xffff_ffff << shift;
-            }
-        }
-        return mask;
-    }
-
-    protected Field stateField(Variable rowVar, int columnNum) {
-        return rowVar.field(mRowGen.stateField(columnNum));
     }
 
     /**

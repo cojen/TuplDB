@@ -26,6 +26,7 @@ import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.Remote;
 import org.cojen.dirmi.RemoteException;
 import org.cojen.dirmi.RemoteFailure;
+import org.cojen.dirmi.Restorable;
 import org.cojen.dirmi.Serialized;
 
 import org.cojen.tupl.DurabilityMode;
@@ -54,23 +55,8 @@ public interface RemoteTable extends Remote {
 
     public boolean isEmpty() throws IOException;
 
-    public Pipe load(RemoteTransaction txn, Pipe pipe) throws IOException;
-
-    public Pipe exists(RemoteTransaction txn, Pipe pipe) throws IOException;
-
-    public Pipe store(RemoteTransaction txn, Pipe pipe) throws IOException;
-
-    public Pipe exchange(RemoteTransaction txn, Pipe pipe) throws IOException;
-
-    public Pipe insert(RemoteTransaction txn, Pipe pipe) throws IOException;
-
-    public Pipe replace(RemoteTransaction txn, Pipe pipe) throws IOException;
-
-    public Pipe update(RemoteTransaction txn, Pipe pipe) throws IOException;
-
-    public Pipe merge(RemoteTransaction txn, Pipe pipe) throws IOException;
-
-    public Pipe delete(RemoteTransaction txn, Pipe pipe) throws IOException;
+    @Restorable
+    public RemoteTableProxy proxy(byte[] descriptor) throws IOException;
 
     @Serialized(filter="java.base/*;org.cojen.tupl.**")
     public QueryPlan scannerPlan(RemoteTransaction txn, String query, Object... args)
