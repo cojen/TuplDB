@@ -110,13 +110,13 @@ public abstract class ClientTableHelper<R> implements Table<R> {
 
     @Override
     public Comparator<R> comparator(String spec) {
-        // FIXME
+        // FIXME: comparator
         throw null;
     }
 
     @Override
     public Predicate<R> predicate(String query, Object... args) {
-        // FIXME
+        // FIXME: predicate
         throw null;
     }
 

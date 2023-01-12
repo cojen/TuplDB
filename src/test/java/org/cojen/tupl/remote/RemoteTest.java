@@ -123,7 +123,9 @@ public class RemoteTest {
             row.id(100);
             row.value("remote-value");
             row.name("remote-name");
-            clientTable.store(null, row);
+            System.out.println(clientTable.insert(null, row));
+            row.name("remote-name2");
+            System.out.println(clientTable.replace(null, row));
         }
 
             System.out.println("---");
@@ -169,7 +171,7 @@ public class RemoteTest {
 
         System.out.println("---");
 
-        try (var scanner = clientTable.newScanner(null, "name == ?", "remote-name")) {
+        try (var scanner = clientTable.newScanner(null, "name == ?", "remote-name2")) {
             scanner.forEachRemaining(row -> System.out.println(row));
         }
 

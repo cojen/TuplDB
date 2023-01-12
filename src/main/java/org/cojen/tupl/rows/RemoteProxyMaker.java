@@ -202,7 +202,7 @@ public final class RemoteProxyMaker {
         // FIXME: If "load" variant and load fails, value columns must be unset. Just on the
         // client side though?
 
-        // FIXME
+        // FIXME: addByKeyDirectMethod
         pipeVar.invoke("close");
 
         mm.return_(null);
@@ -261,7 +261,7 @@ public final class RemoteProxyMaker {
 
         var stateVars = readStateFields(pipeVar);
 
-        // FIXME
+        // FIXME: addUpdateDirectMethod
         pipeVar.invoke("close");
 
         mm.return_(null);
@@ -449,7 +449,7 @@ public final class RemoteProxyMaker {
      * Makes a RemoteTableProxy class which must perform column conversions.
      */
     private MethodHandles.Lookup makeConverter() {
-        // FIXME
+        // FIXME: makeConverter
         throw null;
     }
 }

@@ -1141,7 +1141,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     final byte[] exchangeAndTrigger(Transaction txn, R row, byte[] key, byte[] value)
         throws IOException
     {
-        // FIXME
+        // FIXME: exchangeAndTrigger
         throw null;
     }
 
@@ -1154,8 +1154,47 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     final boolean insertAndTrigger(Transaction txn, R row, byte[] key, byte[] value)
         throws IOException
     {
-        // FIXME
-        throw null;
+        // See comments in storeAndTrigger.
+
+        while (true) {
+            Trigger<R> trigger = trigger();
+            trigger.acquireShared();
+            try {
+                int mode = trigger.mode();
+
+                if (mode == Trigger.SKIP) {
+                    return mSource.insert(txn, key, value);
+                }
+
+                if (mode != Trigger.DISABLED) {
+                    Index source = mSource;
+
+                    // RowPredicateLock and Trigger require a non-null transaction.
+                    txn = ViewUtils.enterScope(source, txn);
+                    try {
+                        redoPredicateMode(txn);
+
+                        try (var c = source.newCursor(txn)) {
+                            c.autoload(false);
+                            try (var closer = mIndexLock.openAcquireP(txn, row, key, value)) {
+                                c.find(key);
+                            }
+                            if (c.value() != null) {
+                                return false;
+                            } else {
+                                trigger.insertP(txn, row, key, value);
+                                c.commit(value);
+                                return true;
+                            }
+                        }
+                    } finally {
+                        txn.exit();
+                    }
+                }
+            } finally {
+                trigger.releaseShared();
+            }
+        }
     }
 
     /**
@@ -1167,8 +1206,45 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     final boolean replaceAndTrigger(Transaction txn, R row, byte[] key, byte[] value)
         throws IOException
     {
-        // FIXME
-        throw null;
+        // See comments in storeAndTrigger.
+
+        while (true) {
+            Trigger<R> trigger = trigger();
+            trigger.acquireShared();
+            try {
+                int mode = trigger.mode();
+
+                if (mode == Trigger.SKIP) {
+                    return mSource.replace(txn, key, value);
+                }
+
+                if (mode != Trigger.DISABLED) {
+                    Index source = mSource;
+
+                    // RowPredicateLock and Trigger require a non-null transaction.
+                    txn = ViewUtils.enterScope(source, txn);
+                    try {
+                        redoPredicateMode(txn);
+
+                        try (var c = source.newCursor(txn)) {
+                            c.find(key);
+                            byte[] oldValue = c.value();
+                            if (oldValue == null) {
+                                return false;
+                            } else {
+                                trigger.storeP(txn, row, key, oldValue, value);
+                                c.commit(value);
+                                return true;
+                            }
+                        }
+                    } finally {
+                        txn.exit();
+                    }
+                }
+            } finally {
+                trigger.releaseShared();
+            }
+        }
     }
 
     /**
