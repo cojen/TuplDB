@@ -17,6 +17,10 @@
 
 package org.cojen.tupl.rows;
 
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
+
 import java.math.BigInteger;
 
 import java.nio.charset.StandardCharsets;
@@ -87,6 +91,14 @@ public class RowUtils extends Utils {
         return dstOffset;
     }
 
+    public static void encodePrefixPF(DataOutput out, int value) throws IOException {
+        if (value < 128) {
+            out.writeByte(value);
+        } else {
+            out.writeInt(value | (1 << 31));
+        }
+    }
+
     /**
      * Decodes a prefix value. The amount can be determined by calling lengthPrefixPF.
      *
@@ -99,6 +111,18 @@ public class RowUtils extends Utils {
             value = decodeIntBE(src, srcOffset) & ~(1 << 31);
         }
         return value;
+    }
+
+    public static int decodePrefixPF(DataInput in) throws IOException {
+        int length = in.readUnsignedByte();
+
+        if (length < 0) {
+            length = ((length & 0x7f) << 24)
+                | (in.readUnsignedShort() << 8)
+                | in.readUnsignedByte();
+        }
+
+        return length;
     }
 
     /**

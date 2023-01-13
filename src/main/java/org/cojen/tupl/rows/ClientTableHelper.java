@@ -144,7 +144,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
     protected void success(Pipe pipe) {
         try {
             pipe.recycle();
-        } catch (Throwable e) {
+        } catch (IOException e) {
             // Ignore.
         }
     }
@@ -257,10 +257,14 @@ public abstract class ClientTableHelper<R> implements Table<R> {
         var resultVar = pipeVar.invoke("readByte");
 
         if (variant == "load") {
-            Label noOperation = mm.label();
-            resultVar.ifEq(0, noOperation);
-            loadColumnsAndMarkClean(rowVar, pipeVar, rowGen);
-            noOperation.here();
+            Label notLoaded = mm.label();
+            resultVar.ifEq(0, notLoaded);
+            decodeValueColumns(rowGen, rowVar, pipeVar);
+            TableMaker.markAllClean(rowVar, rowGen, rowGen);
+            Label done = mm.label().goto_();
+            notLoaded.here();
+            rowGen.markNonPrimaryKeyColumnsUnset(rowVar);
+            done.here();
         }
 
         mm.invoke("success", pipeVar);
@@ -298,8 +302,10 @@ public abstract class ClientTableHelper<R> implements Table<R> {
             Label noOperation = mm.label();
             resultVar.ifEq(0, noOperation);
             newRowVar.set(mm.invoke("newRow").cast(rowClass));
-            // FIXME: Should key columns be serialized too?
-            loadColumnsAndMarkClean(newRowVar, pipeVar, rowGen);
+            // FIXME: Should key columns be serialized too? No. They might need to be
+            // converted, and that might fail. Must copy key columns to newRowVar here.
+            decodeValueColumns(rowGen, newRowVar, pipeVar);
+            TableMaker.markAllClean(newRowVar, rowGen, rowGen);
             noOperation.here();
             mm.invoke("success", pipeVar);
             mm.return_(newRowVar);
@@ -336,9 +342,9 @@ public abstract class ClientTableHelper<R> implements Table<R> {
         resultVar.ifEq(0, noOperation);
 
         if (variant == "update") {
-            mm.new_(Exception.class, "FIXME: read back the column states and apply");
+            mm.new_(Exception.class, "FIXME: update");
         } else {
-            loadColumnsAndMarkClean(rowVar, pipeVar, rowGen);
+            mm.new_(Exception.class, "FIXME: merge");
         }
 
         noOperation.here();
@@ -351,14 +357,24 @@ public abstract class ClientTableHelper<R> implements Table<R> {
         });
     }
 
-    private static void loadColumnsAndMarkClean(Variable rowVar, Variable pipeVar, RowGen rowGen) {
-        loadColumns(rowVar, pipeVar);
-        TableMaker.markAllClean(rowVar, rowGen, rowGen);
-    }
+    /**
+     * Reads the value columns from a pipe and decodes them into a row.
+     */
+    private static void decodeValueColumns(RowGen rowGen, Variable rowVar, Variable pipeVar) {
+        MethodMaker mm = rowVar.methodMaker();
 
-    private static void loadColumns(Variable rowVar, Variable pipeVar) {
-        // FIXME: Read back the columns as specified by the server (simple bit map). Initially,
-        // the set can simply be all of them.
+        var lengthVar = mm.var(RowUtils.class).invoke("decodePrefixPF", pipeVar);
+        var bytesVar = mm.new_(byte[].class, lengthVar);
+
+        pipeVar.invoke("readFully", bytesVar);
+
+        ColumnCodec[] valueCodecs = ColumnCodec.bind(rowGen.valueCodecs(), mm);
+
+        var offsetVar = mm.var(int.class).set(0);
+
+        for (ColumnCodec codec : valueCodecs) {
+            codec.decode(rowVar.field(codec.mInfo.name), bytesVar, offsetVar, null);
+        }
     }
 
     /**
@@ -392,41 +408,27 @@ public abstract class ClientTableHelper<R> implements Table<R> {
 
         String[] stateFieldNames = rowGen.stateFields();
         var fullLengthVar = mm.var(int.class).set(stateFieldNames.length << 2);
+        var utilsVar = mm.var(RowUtils.class);
 
         // Add in the key encoding length.
         {
             fullLengthVar.inc(keyLengthVar);
-
-            Label small = mm.label();
-            keyLengthVar.ifLt(0x80, small);
-            fullLengthVar.inc(4);
-            Label cont = mm.label().goto_();
-            small.here();
-            fullLengthVar.inc(1);
-            cont.here();
+            fullLengthVar.inc(utilsVar.invoke("lengthPrefixPF", keyLengthVar));
         }
 
         // Add in the value encoding length.
         if (valueLengthVar == null) {
             // Need room for the value length prefix, which is zero.
-            fullLengthVar.inc(2);
+            fullLengthVar.inc(1);
         } else {
             fullLengthVar.inc(valueLengthVar);
-
-            Label small = mm.label();
-            valueLengthVar.ifLt(0x8000, small);
-            fullLengthVar.inc(4);
-            Label cont = mm.label().goto_();
-            small.here();
-            fullLengthVar.inc(2);
-            cont.here();
+            fullLengthVar.inc(utilsVar.invoke("lengthPrefixPF", valueLengthVar));
         }
 
         // Allocate the array and encode into it.
 
         var bytesVar = mm.new_(byte[].class, fullLengthVar);
         var offsetVar = mm.var(int.class).set(0);
-        var utilsVar = mm.var(RowUtils.class);
 
         // Encode all the column states first.
 
@@ -467,36 +469,20 @@ public abstract class ClientTableHelper<R> implements Table<R> {
 
         // Encode the key columns.
         {
-            Label small = mm.label();
-            keyLengthVar.ifLt(0x80, small);
-            utilsVar.invoke("encodeIntBE", bytesVar, offsetVar, keyLengthVar.or(1 << 31));
-            offsetVar.inc(4);
-            Label encode = mm.label().goto_();
-            small.here();
-            bytesVar.aset(offsetVar, keyLengthVar.cast(byte.class));
-            offsetVar.inc(1);
-            encode.here();
+            offsetVar.set(utilsVar.invoke("encodePrefixPF", bytesVar, offsetVar, keyLengthVar));
             encodeColumns(rowGen, rowVar, bytesVar, offsetVar, keyCodecs, dirtyOnly);
         }
 
         // Encode the value columns.
         if (valueLengthVar != null) {
-            Label small = mm.label();
-            valueLengthVar.ifLt(0x8000, small);
-            utilsVar.invoke("encodeIntBE", bytesVar, offsetVar, valueLengthVar.or(1 << 31));
-            offsetVar.inc(4);
-            Label encode = mm.label().goto_();
-            small.here();
-            utilsVar.invoke("encodeShortBE", bytesVar, offsetVar, valueLengthVar);
-            offsetVar.inc(2);
-            encode.here();
+            offsetVar.set(utilsVar.invoke("encodePrefixPF", bytesVar, offsetVar, valueLengthVar));
             encodeColumns(rowGen, rowVar, bytesVar, offsetVar, valueCodecs, dirtyOnly);
         }
 
         Label cont = mm.label();
         mm.field("assert").ifFalse(cont);
         if (valueLengthVar == null) {
-            offsetVar.inc(2);
+            offsetVar.inc(1);
         }
         offsetVar.ifEq(bytesVar.alength(), cont);
         mm.new_(AssertionError.class,

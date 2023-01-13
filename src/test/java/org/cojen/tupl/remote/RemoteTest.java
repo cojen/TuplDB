@@ -222,6 +222,13 @@ public class RemoteTest {
 
             row.id(100);
             System.out.println("100 exists: " + clientTable.exists(null, row));
+
+            System.out.println(clientTable.load(null, row));
+            System.out.println("loaded: " + row);
+
+            row.id(999);
+            System.out.println(clientTable.load(null, row));
+            System.out.println("loaded: " + row);
         }
 
         System.out.println("---");

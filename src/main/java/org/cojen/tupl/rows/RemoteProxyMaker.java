@@ -228,7 +228,16 @@ public final class RemoteProxyMaker {
         var keyVar = makerVar.invoke("decodeKey", pipeVar);
         makerVar.invoke("skipValue", pipeVar);
 
-        makerVar.invoke(variant, mm.field("table"), txnVar, keyVar, pipeVar);
+        var valueVar = makerVar.invoke(variant, mm.field("table"), txnVar, keyVar, pipeVar);
+
+        if (variant == "load") {
+            Label done = mm.label();
+            valueVar.ifEq(null, done);
+            writeValue(pipeVar, valueVar);
+            pipeVar.invoke("flush");
+            pipeVar.invoke("recycle");
+            done.here();
+        }
 
         mm.return_(null);
 
@@ -320,48 +329,34 @@ public final class RemoteProxyMaker {
         return stateVars;
     }
 
-    private static int decodeKeyLength(Pipe pipe) throws IOException {
-        int length = pipe.read();
-
-        if (length < 0) {
-            length = ((length & 0x7f) << 24)
-                | (pipe.readUnsignedShort() << 8)
-                | pipe.readUnsignedByte();
-        }
-
-        return length;
-    }
-
-    private static int decodeValueLength(Pipe pipe) throws IOException {
-        int length = pipe.readUnsignedShort();
-
-        if (length < 0) {
-            length = ((length & 0x7fff) << 16) | pipe.readUnsignedShort();
-        }
-
-        return length;
+    private void writeValue(Variable pipeVar, Variable valueVar) {
+        MethodMaker mm = pipeVar.methodMaker();
+        var prefixLengthVar = mm.field("prefixLength").get();
+        var lengthVar = valueVar.alength().sub(prefixLengthVar);
+        mm.var(RowUtils.class).invoke("encodePrefixPF", pipeVar, lengthVar);
+        pipeVar.invoke("write", valueVar, prefixLengthVar, lengthVar);
     }
 
     /**
      * Called by generated code.
      */
     public static void skipKeyAndValue(Pipe pipe) throws IOException {
-        pipe.skip(decodeKeyLength(pipe));
-        pipe.skip(decodeValueLength(pipe));
+        pipe.skip(RowUtils.decodePrefixPF(pipe));
+        pipe.skip(RowUtils.decodePrefixPF(pipe));
     }
 
     /**
      * Called by generated code.
      */
     public static void skipValue(Pipe pipe) throws IOException {
-        pipe.skip(decodeValueLength(pipe));
+        pipe.skip(RowUtils.decodePrefixPF(pipe));
     }
 
     /**
      * Called by generated code.
      */
     public static byte[] decodeKey(Pipe pipe) throws IOException {
-        var bytes = new byte[decodeKeyLength(pipe)];
+        var bytes = new byte[RowUtils.decodePrefixPF(pipe)];
         pipe.readFully(bytes);
         return bytes;
     }
@@ -370,7 +365,7 @@ public final class RemoteProxyMaker {
      * Called by generated code.
      */
     public static byte[] decodeValue(Pipe pipe, int prefixLength) throws IOException {
-        int valueLength = decodeValueLength(pipe);
+        int valueLength = RowUtils.decodePrefixPF(pipe);
         var bytes = new byte[prefixLength + valueLength];
         pipe.readFully(bytes, prefixLength, valueLength);
         return bytes;
@@ -378,12 +373,12 @@ public final class RemoteProxyMaker {
 
     /**
      * Called by generated code.
+     *
+     * @return the loaded value; if non-null, the caller must write the response, etc.
      */
-    public static void load(BaseTable table, Transaction txn, byte[] key, Pipe pipe)
+    public static byte[] load(BaseTable table, Transaction txn, byte[] key, Pipe pipe)
         throws IOException
     {
-        // FIXME: If load fails, value columns must be unset. Just on the client side though?
-
         attempt: {
             byte[] value;
             try {
@@ -397,13 +392,14 @@ public final class RemoteProxyMaker {
                 pipe.writeByte(0);
             } else {
                 pipe.writeByte(1);
-                // FIXME: write the value in column format (lead with a bitmap)
-                pipe.close();
+                return value;
             }
         }
 
         pipe.flush();
         pipe.recycle();
+
+        return null;
     }
 
     /**
