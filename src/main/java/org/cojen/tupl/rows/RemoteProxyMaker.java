@@ -281,8 +281,17 @@ public final class RemoteProxyMaker {
 
         mm.var(RowUtils.class).invoke("encodePrefixPF", valueVar, 0, mm.field("schemaVersion"));
 
-        makerVar.invoke(variant, mm.field("table"), txnVar, mm.field("EMPTY_ROW"),
-                        keyVar, valueVar, pipeVar);
+        var oldValueVar = makerVar.invoke(variant, mm.field("table"), txnVar, mm.field("EMPTY_ROW"),
+                                          keyVar, valueVar, pipeVar);
+
+        if (variant == "exchange") {
+            Label done = mm.label();
+            oldValueVar.ifEq(null, done);
+            writeValue(pipeVar, oldValueVar);
+            pipeVar.invoke("flush");
+            pipeVar.invoke("recycle");
+            done.here();
+        }
 
         mm.return_(null);
 
@@ -449,10 +458,12 @@ public final class RemoteProxyMaker {
 
     /**
      * Called by generated code.
+     *
+     * @return the old value; if non-null, the caller must write the response, etc.
      */
     @SuppressWarnings("unchecked")
-    public static void exchange(BaseTable table, Transaction txn, Object row,
-                                byte[] key, byte[] value, Pipe pipe)
+    public static byte[] exchange(BaseTable table, Transaction txn, Object row,
+                                  byte[] key, byte[] value, Pipe pipe)
         throws IOException
     {
         attempt: {
@@ -468,13 +479,14 @@ public final class RemoteProxyMaker {
                 pipe.writeByte(0);
             } else {
                 pipe.writeByte(1);
-                // FIXME: Write oldValue columns.
-                pipe.close();
+                return oldValue;
             }
         }
 
         pipe.flush();
         pipe.recycle();
+
+        return null;
     }
 
     /**

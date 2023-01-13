@@ -298,17 +298,16 @@ public abstract class ClientTableHelper<R> implements Table<R> {
             mm.return_();
         } else if (variant == "exchange") {
             TableMaker.markAllClean(rowVar, rowGen, rowGen);
-            Variable newRowVar = mm.var(rowClass).set(null);
+            Variable oldRowVar = mm.var(rowClass).set(null);
             Label noOperation = mm.label();
             resultVar.ifEq(0, noOperation);
-            newRowVar.set(mm.invoke("newRow").cast(rowClass));
-            // FIXME: Should key columns be serialized too? No. They might need to be
-            // converted, and that might fail. Must copy key columns to newRowVar here.
-            decodeValueColumns(rowGen, newRowVar, pipeVar);
-            TableMaker.markAllClean(newRowVar, rowGen, rowGen);
+            oldRowVar.set(mm.invoke("newRow").cast(rowClass));
+            TableMaker.copyFields(rowVar, oldRowVar, rowGen.info.keyColumns.values());
+            decodeValueColumns(rowGen, oldRowVar, pipeVar);
+            TableMaker.markAllClean(oldRowVar, rowGen, rowGen);
             noOperation.here();
             mm.invoke("success", pipeVar);
-            mm.return_(newRowVar);
+            mm.return_(oldRowVar);
         } else {
             Label noOperation = mm.label();
             resultVar.ifEq(0, noOperation);

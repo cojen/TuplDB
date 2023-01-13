@@ -229,6 +229,18 @@ public class RemoteTest {
             row.id(999);
             System.out.println(clientTable.load(null, row));
             System.out.println("loaded: " + row);
+
+            row.id(888);
+            row.name("remote-name-888");
+            row.value("remote-value-888");
+            System.out.println(clientTable.exchange(null, row));
+            System.out.println("exchanged: " + row);
+
+            row.id(3);
+            row.name("remote-name-3");
+            row.value("remote-value-3");
+            System.out.println(clientTable.exchange(null, row));
+            System.out.println("exchanged: " + row);
         }
 
         System.out.println("---");

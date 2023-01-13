@@ -21,6 +21,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
+import java.util.Collection;
 import java.util.Map;
 
 import org.cojen.maker.ClassMaker;
@@ -94,6 +95,34 @@ public class TableMaker {
     protected static Field findField(Variable row, ColumnCodec codec) {
         ColumnInfo info = codec.mInfo;
         return info == null ? null : row.field(info.name);
+    }
+
+    /**
+     * Copies fields from a source row to a destination row.
+     *
+     * @param infos specifies the fields to copy
+     */
+    protected static void copyFields(Variable srcRow, Variable dstRow,
+                                     Collection<ColumnInfo> infos)
+    {
+        for (ColumnInfo info : infos) {
+            Variable srcField = srcRow.field(info.name);
+
+            if (info.isArray()) {
+                srcField = srcField.get();
+                Label isNull = null;
+                if (info.isNullable()) {
+                    isNull = srcRow.methodMaker().label();
+                    srcField.ifEq(null, isNull);
+                }
+                srcField.set(srcField.invoke("clone").cast(info.type));
+                if (isNull != null) {
+                    isNull.here();
+                }
+            }
+
+            dstRow.field(info.name).set(srcField);
+        }
     }
 
     protected void markAllClean(Variable rowVar) {

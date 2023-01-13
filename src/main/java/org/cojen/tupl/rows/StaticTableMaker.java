@@ -686,7 +686,7 @@ class StaticTableMaker extends TableMaker {
         found.here();
 
         var copyVar = mm.new_(mRowClass);
-        copyFields(mm, rowVar, copyVar, mCodecGen.info.keyColumns.values());
+        copyFields(rowVar, copyVar, mCodecGen.info.keyColumns.values());
         mm.invoke("doDecodeValue", copyVar, resultVar);
         markAllClean(copyVar);
         mm.return_(copyVar);
@@ -746,29 +746,6 @@ class StaticTableMaker extends TableMaker {
         }
 
         mm.finally_(txnStart, () -> txnVar.invoke("exit"));
-    }
-
-    private static void copyFields(MethodMaker mm, Variable src, Variable dst,
-                                   Collection<ColumnInfo> infos)
-    {
-        for (ColumnInfo info : infos) {
-            Variable srcField = src.field(info.name);
-
-            if (info.isArray()) {
-                srcField = srcField.get();
-                Label isNull = null;
-                if (info.isNullable()) {
-                    isNull = mm.label();
-                    srcField.ifEq(null, isNull);
-                }
-                srcField.set(srcField.invoke("clone").cast(info.type));
-                if (isNull != null) {
-                    isNull.here();
-                }
-            }
-
-            dst.field(info.name).set(srcField);
-        }
     }
 
     /**
