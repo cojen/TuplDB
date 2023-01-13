@@ -206,6 +206,12 @@ public class RemoteTest {
             } catch (IllegalStateException e) {
             }
 
+            try {
+                clientTable.load(null, row);
+                fail();
+            } catch (IllegalStateException e) {
+            }
+
             row.id(0);
             System.out.println("0 exists: " + clientTable.exists(null, row));
 

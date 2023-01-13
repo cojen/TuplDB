@@ -429,10 +429,40 @@ public abstract class ClientTableHelper<R> implements Table<R> {
         var utilsVar = mm.var(RowUtils.class);
 
         // Encode all the column states first.
-        for (String name : stateFieldNames) {
-            // FIXME: If keysOnly, write zeros for the value columns.
-            utilsVar.invoke("encodeIntBE", bytesVar, offsetVar, rowVar.field(name));
-            offsetVar.inc(4);
+
+        if (valueLengthVar != null || valueCodecs.length == 0) {
+            for (String name : stateFieldNames) {
+                utilsVar.invoke("encodeIntBE", bytesVar, offsetVar, rowVar.field(name));
+                offsetVar.inc(4);
+            }
+        } else {
+            // The value columns aren't encoded, and so their states are all zero. Although the
+            // value column states could be omitted entirely, writing zeros permits future
+            // enhancements without breaking compatibility.
+
+            int keysRemaining = keyCodecs.length;
+
+            for (int i=0; i<stateFieldNames.length; i++) {
+                if (keysRemaining <= 0) {
+                    // No need to explicitly encode a zero state because the array was zero
+                    // filled upon allocation. Just increment the offset to skip over the
+                    // remaining fields.
+                    offsetVar.inc(4 * (stateFieldNames.length - i));
+                    break;
+                }
+
+                Variable stateVar = rowVar.field(stateFieldNames[i]);
+
+                if (keysRemaining < 16) {
+                    int mask = (0b100 << ((keysRemaining - 1) << 1)) - 1;
+                    stateVar = stateVar.and(mask);
+                }
+
+                utilsVar.invoke("encodeIntBE", bytesVar, offsetVar, stateVar);
+
+                offsetVar.inc(4);
+                keysRemaining -= 16; // max columns per state field
+            }
         }
 
         // Encode the key columns.

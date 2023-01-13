@@ -209,6 +209,9 @@ public final class RemoteProxyMaker {
         isReady.here();
     }
 
+    /**
+     * @param variant "load", "exists", or "delete"
+     */
     private void addByKeyDirectMethod(String variant) {
         MethodMaker mm = mClassMaker.addMethod
             (Pipe.class, variant, RemoteTransaction.class, Pipe.class).public_();
@@ -234,6 +237,9 @@ public final class RemoteProxyMaker {
         mm.return_(null);
     }
 
+    /**
+     * @param variant "store", "exchange", "insert", or "replace"
+     */
     private void addStoreDirectMethod(String variant) {
         MethodMaker mm = mClassMaker.addMethod
             (Pipe.class, variant, RemoteTransaction.class, Pipe.class).public_();
@@ -276,6 +282,9 @@ public final class RemoteProxyMaker {
         mm.return_(null);
     }
 
+    /**
+     * @param variant "update" or "merge"
+     */
     private void addUpdateDirectMethod(String variant) {
         MethodMaker mm = mClassMaker.addMethod
             (Pipe.class, variant, RemoteTransaction.class, Pipe.class).public_();
