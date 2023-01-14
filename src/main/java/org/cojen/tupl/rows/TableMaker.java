@@ -536,6 +536,7 @@ public class TableMaker {
 
     /**
      * Convert the given encoded value if its schema version doesn't match the desired version.
+     * The desired version must be the version that the given table encodes to naturally.
      *
      * @param tableVar doesn't need to be initialized (is used to invoke static methods)
      * @param rowClass row implementation class (can be supplied by a Variable)

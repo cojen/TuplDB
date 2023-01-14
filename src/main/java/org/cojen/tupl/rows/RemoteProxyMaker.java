@@ -44,12 +44,12 @@ import org.cojen.tupl.remote.ServerTransaction;
  * @author Brian S O'Neill
  */
 public final class RemoteProxyMaker {
-    private record CacheKey(Class<?> rowType, byte[] descriptor) { }
+    private record CacheKey(Class<?> tableClass, byte[] descriptor) { }
 
-    private static final SoftCache<CacheKey, MethodHandle, Object> cCache = new SoftCache<>() {
+    private static final SoftCache<CacheKey, MethodHandle, BaseTable> cCache = new SoftCache<>() {
         @Override
-        protected MethodHandle newValue(CacheKey key, Object unused) {
-            return new RemoteProxyMaker(key.rowType, key.descriptor).finish();
+        protected MethodHandle newValue(CacheKey key, BaseTable table) {
+            return new RemoteProxyMaker(table, key.descriptor).finish();
         }
     };
 
@@ -57,7 +57,7 @@ public final class RemoteProxyMaker {
      * @param descriptor encoding format is defined by RowHeader class
      */
     static RemoteTableProxy make(BaseTable<?> table, int schemaVersion, byte[] descriptor) {
-        var mh = cCache.obtain(new CacheKey(table.rowType(), descriptor), null);
+        var mh = cCache.obtain(new CacheKey(table.getClass(), descriptor), table);
         try {
             return (RemoteTableProxy) mh.invoke(table, schemaVersion);
         } catch (Throwable e) {
@@ -65,16 +65,18 @@ public final class RemoteProxyMaker {
         }
     }
 
+    private final Class<?> mTableClass;
     private final Class<?> mRowType;
     private final RowGen mRowGen;
     private final RowHeader mRowHeader;
     private final ClassMaker mClassMaker;
 
-    private RemoteProxyMaker(Class<?> rowType, byte[] descriptor) {
-        mRowType = rowType;
-        mRowGen = RowInfo.find(rowType).rowGen();
+    private RemoteProxyMaker(BaseTable table, byte[] descriptor) {
+        mTableClass = table.getClass();
+        mRowType = table.rowType();
+        mRowGen = RowInfo.find(mRowType).rowGen();
         mRowHeader = RowHeader.decode(descriptor);
-        mClassMaker = mRowGen.beginClassMaker(RemoteProxyMaker.class, rowType, null);
+        mClassMaker = mRowGen.beginClassMaker(RemoteProxyMaker.class, mRowType, null);
         mClassMaker.implement(RemoteTableProxy.class);
     }
 
@@ -340,6 +342,16 @@ public final class RemoteProxyMaker {
 
     private void writeValue(Variable pipeVar, Variable valueVar) {
         MethodMaker mm = pipeVar.methodMaker();
+
+        var tableVar = mm.var(mTableClass);
+        Class rowClass = RowMaker.find(mRowType);
+        var schemaVersion = mm.field("schemaVersion");
+
+        TableMaker.convertValueIfNecessary(tableVar, rowClass, schemaVersion, valueVar);
+
+        // Write the value sans the schema version. The total length of the value (sans schema
+        // version) is written first using the prefix format.
+
         var prefixLengthVar = mm.field("prefixLength").get();
         var lengthVar = valueVar.alength().sub(prefixLengthVar);
         mm.var(RowUtils.class).invoke("encodePrefixPF", pipeVar, lengthVar);
