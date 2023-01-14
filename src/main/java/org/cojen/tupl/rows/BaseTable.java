@@ -990,6 +990,17 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         return RemoteProxyMaker.make(this, schemaVersion, descriptor);
     }
 
+    /**
+     * This method should be called to replicate predicate lock acquisition before a local
+     * mIndexLock.openAcquire is called. The given transaction should be nested, and it should
+     * be exited after performing the local insert operation. If no local call to openAcquire
+     * is made, calling redoPredicateMode is harmful because it causes the replica to acquire
+     * an extra lock, which can lead to deadlock.
+     *
+     * <p>Note that operations which won't directly insert a new record might still trigger
+     * changes to secondary indexes. This will cause secondary index records to be inserted, and
+     * so a predicate lock is still required to ensure serializable isolation.
+     */
     protected final void redoPredicateMode(Transaction txn) throws IOException {
         mIndexLock.redoPredicateMode(txn);
     }
@@ -1069,9 +1080,9 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     protected final boolean replaceNoTrigger(Transaction txn, R row, byte[] key, byte[] value)
         throws IOException
     {
+        // Nothing is ever inserted, and so no need to use a predicate lock.
         return mSource.replace(txn, key, value);
     }
-
 
     /**
      * Store a fully encoded row and invoke a trigger. The given row instance is expected to
@@ -1260,17 +1271,23 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
                 if (mode != Trigger.DISABLED) {
                     Index source = mSource;
 
-                    // Trigger requires a non-null transaction.
+                    // RowPredicateLock and Trigger require a non-null transaction.
                     txn = ViewUtils.enterScope(source, txn);
-                    try (var c = source.newCursor(txn)) {
-                        c.find(key);
-                        byte[] oldValue = c.value();
-                        if (oldValue == null) {
-                            return false;
-                        } else {
-                            trigger.storeP(txn, row, key, oldValue, value);
-                            c.commit(value);
-                            return true;
+                    try {
+                        redoPredicateMode(txn);
+
+                        try (var c = source.newCursor(txn)) {
+                            try (var closer = mIndexLock.openAcquireP(txn, row, key, value)) {
+                                c.find(key);
+                            }
+                            byte[] oldValue = c.value();
+                            if (oldValue == null) {
+                                return false;
+                            } else {
+                                trigger.storeP(txn, row, key, oldValue, value);
+                                c.commit(value);
+                                return true;
+                            }
                         }
                     } finally {
                         txn.exit();
