@@ -489,6 +489,12 @@ public class TableMaker {
                 columnLenVar = endVar.sub(offsetVars[i]);
             }
 
+            String sfName = rowGen.stateField(num);
+            if (!sfName.equals(stateFieldName)) {
+                stateFieldName = sfName;
+                stateField = rowVar.field(stateFieldName).get();
+            }
+
             int sfMask = RowGen.stateFieldMask(num);
             Label isDirty = mm.label();
             stateField.and(sfMask).ifEq(sfMask, isDirty);
