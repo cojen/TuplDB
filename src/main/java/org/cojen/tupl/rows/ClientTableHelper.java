@@ -227,7 +227,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
      *
      * private static byte[] encodeKeyColumns(R row);   // encode only set/dirty key columns
      * private static byte[] encodeAllColumns(R row);   // encode all set/dirty columns
-     * private static byte[] encodeDirtyColumns(R row); // encode only dirty columns
+     * private static byte[] encodeDirtyColumns(R row); // encode set/dirty keys and dirty values
      */
     private static void addEncodeMethods(ClassMaker cm, RowGen rowGen, Class<?> rowClass) {
         MethodMaker mm;
@@ -328,6 +328,12 @@ public abstract class ClientTableHelper<R> implements Table<R> {
     {
         MethodMaker mm = cm.addMethod(boolean.class, variant, Object.class, Pipe.class).public_();
 
+        // FIXME: If all value columns are dirty, call the store method. This is just an
+        // optimization and it simplifies the server (it won't bother with the optimization).
+        // Although the optimization could be performed on the server, it's still required to
+        // write back the full row when merge is called. This isn't necessary if the client
+        // does the optimization.
+
         var rowVar = mm.param(0).cast(rowClass);
         var pipeVar = mm.param(1);
 
@@ -340,10 +346,8 @@ public abstract class ClientTableHelper<R> implements Table<R> {
         Label noOperation = mm.label();
         resultVar.ifEq(0, noOperation);
 
-        if (variant == "update") {
-            mm.new_(Exception.class, "FIXME: update");
-        } else {
-            mm.new_(Exception.class, "FIXME: merge");
+        if (variant == "merge") {
+            decodeValueColumns(rowGen, rowVar, pipeVar);
         }
 
         noOperation.here();
@@ -380,7 +384,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
      * Encodes row state and columns into a byte array.
      *
      * @param keysOnly when true, only encode key columns
-     * @param dirtyOnly when true, only dirty columns are encoded; when false, set/dirty
+     * @param dirtyOnly when true, only dirty value columns are encoded; when false, set/dirty
      * columns are encoded
      * @return a new byte array
      */
@@ -394,7 +398,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
         ColumnCodec[] keyCodecs = ColumnCodec.bind(rowGen.keyCodecs(), mm);
         ColumnCodec[] valueCodecs = ColumnCodec.bind(rowGen.valueCodecs(), mm);
 
-        Variable keyLengthVar = calcLength(rowGen, rowVar, keyCodecs, dirtyOnly);
+        Variable keyLengthVar = calcLength(rowGen, rowVar, keyCodecs, false);
 
         Variable valueLengthVar;
         if (keysOnly) {
@@ -469,7 +473,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
         // Encode the key columns.
         {
             offsetVar.set(utilsVar.invoke("encodePrefixPF", bytesVar, offsetVar, keyLengthVar));
-            encodeColumns(rowGen, rowVar, bytesVar, offsetVar, keyCodecs, dirtyOnly);
+            encodeColumns(rowGen, rowVar, bytesVar, offsetVar, keyCodecs, false);
         }
 
         // Encode the value columns.

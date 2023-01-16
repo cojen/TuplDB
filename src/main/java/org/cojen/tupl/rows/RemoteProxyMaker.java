@@ -27,6 +27,7 @@ import java.util.Map;
 
 import org.cojen.dirmi.Pipe;
 
+import org.cojen.maker.Bootstrap;
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
@@ -71,6 +72,8 @@ public final class RemoteProxyMaker {
     private final RowHeader mRowHeader;
     private final ClassMaker mClassMaker;
 
+    private Variable mUpdaterFactoryVar;
+
     private RemoteProxyMaker(BaseTable table, byte[] descriptor) {
         mTableClass = table.getClass();
         mRowType = table.rowType();
@@ -81,7 +84,9 @@ public final class RemoteProxyMaker {
     }
 
     /**
-     * Returns a MethodHandle: RemoteTableProxy new(BaseTable table, int schemaVersion);
+     * Returns a factory MethodHandle which constructs a RemoteTableProxy:
+     *
+     *     RemoteTableProxy new(BaseTable table, int schemaVersion);
      */
     private MethodHandle finish() {
         // Define a singleton empty row which is needed by the trigger methods.
@@ -149,7 +154,7 @@ public final class RemoteProxyMaker {
         addUpdateDirectMethod("update");
         addUpdateDirectMethod("merge");
 
-        return mClassMaker.finishHidden();
+        return mClassMaker.finishLookup();
     }
 
     /**
@@ -235,7 +240,7 @@ public final class RemoteProxyMaker {
         if (variant == "load") {
             Label done = mm.label();
             valueVar.ifEq(null, done);
-            writeValue(pipeVar, valueVar);
+            convertAndWriteValue(pipeVar, valueVar);
             pipeVar.invoke("flush");
             pipeVar.invoke("recycle");
             done.here();
@@ -289,7 +294,7 @@ public final class RemoteProxyMaker {
         if (variant == "exchange") {
             Label done = mm.label();
             oldValueVar.ifEq(null, done);
-            writeValue(pipeVar, oldValueVar);
+            convertAndWriteValue(pipeVar, oldValueVar);
             pipeVar.invoke("flush");
             pipeVar.invoke("recycle");
             done.here();
@@ -309,17 +314,260 @@ public final class RemoteProxyMaker {
         MethodMaker mm = mClassMaker.addMethod
             (Pipe.class, variant, RemoteTransaction.class, Pipe.class).public_();
 
-        // FIXME: exception handling; pipe recycle; pipe close
-
         var txnVar = txn(mm.param(0));
         var pipeVar = mm.param(1);
 
-        var stateVars = readStateFields(pipeVar);
+        var tryStart = mm.label().here();
 
-        // FIXME: addUpdateDirectMethod
-        pipeVar.invoke("close");
+        var stateVars = readStateFields(pipeVar);
+        checkPrimaryKeySet(mm, pipeVar, stateVars);
+
+        var makerVar = mm.var(RemoteProxyMaker.class);
+        var keyVar = makerVar.invoke("decodeKey", pipeVar);
+        var dirtyValueVar = makerVar.invoke("decodeValue", pipeVar);
+
+        if (mUpdaterFactoryVar == null) {
+            // Define and share a reference to the ValueUpdater factory constant.
+            mUpdaterFactoryVar = makerVar.condy
+                ("condyValueUpdater", mm.class_(), mTableClass, mRowType)
+                .invoke(MethodHandle.class, "_");
+        }
+
+        Variable updaterVar;
+        {
+            var params = new Object[2 + stateVars.length];
+            params[0] = mm.this_();
+            params[1] = dirtyValueVar;
+            for (int i=0; i<stateVars.length; i++) {
+                params[2 + i] = stateVars[i];
+            }
+            // Make sure the updaterFactoryVar is bound to this method.
+            var updaterFactoryVar = mm.var(MethodHandle.class).set(mUpdaterFactoryVar);
+            updaterVar = updaterFactoryVar.invoke
+                (BaseTable.ValueUpdater.class, "invokeExact", (Object[]) null, params);
+        }
+
+        var newValueVar = makerVar.invoke(variant, mm.field("table"), txnVar, mm.field("EMPTY_ROW"),
+                                          keyVar, updaterVar, pipeVar);
+
+        if (variant == "merge") {
+            Label done = mm.label();
+            newValueVar.ifEq(null, done);
+            writeValue(pipeVar, newValueVar);
+            pipeVar.invoke("flush");
+            pipeVar.invoke("recycle");
+            done.here();
+        }
 
         mm.return_(null);
+
+        var exVar = mm.catch_(tryStart, mm.label().here(), Throwable.class);
+        makerVar.invoke("handleException", exVar, pipeVar);
+        mm.return_(null);
+    }
+
+    /**
+     * Returns a factory MethodHandle which constructs a ValueUpdater:
+     *
+     *     ValueUpdater new(RemoteTableProxy proxy, byte[] dirtyValue, int... states);
+     *
+     * The state parameters are defined as plain ints and not as varargs.
+     */
+    public static MethodHandle condyValueUpdater(MethodHandles.Lookup lookup, String name,
+                                                 Class<?> type, Class<?> proxyClass,
+                                                 Class<?> tableClass, Class<?> rowType)
+    {
+        RowInfo rowInfo = RowInfo.find(rowType);
+        RowGen rowGen = rowInfo.rowGen();
+
+        ClassMaker cm = ClassMaker.begin(proxyClass.getName(), lookup);
+        cm.implement(BaseTable.ValueUpdater.class);
+
+        int numStateFields = (rowInfo.allColumns.size() + 15) / 16;
+
+        cm.addField(proxyClass, "proxy").private_().final_();
+        cm.addField(byte[].class, "dirtyValue").private_().final_();
+
+        for (int i=0; i<numStateFields; i++) {
+            cm.addField(int.class, "state$" + i).private_().final_();
+        }
+
+        MethodType ctorType;
+
+        // Add the constructor.
+        {
+            var paramTypes = new Class[2 + numStateFields];
+
+            paramTypes[0] = proxyClass;
+            paramTypes[1] = byte[].class;
+
+            for (int i=2; i<paramTypes.length; i++) {
+                paramTypes[i] = int.class;
+            }
+
+            ctorType = MethodType.methodType(void.class, paramTypes);
+
+            MethodMaker mm = cm.addConstructor(ctorType);
+            mm.invokeSuperConstructor();
+
+            mm.field("proxy").set(mm.param(0));
+            mm.field("dirtyValue").set(mm.param(1));
+
+            for (int i=0; i<numStateFields; i++) {
+                mm.field("state$" + i).set(mm.param(2 + i));
+            }
+        }
+
+        MethodMaker mm = cm.addMethod(byte[].class, "updateValue", byte[].class).public_();
+
+        var originalValueVar = mm.param(0);
+
+        var tableVar = mm.var(tableClass);
+        Class rowClass = RowMaker.find(rowType);
+        var schemaVersion = mm.field("proxy").field("schemaVersion");
+        TableMaker.convertValueIfNecessary(tableVar, rowClass, schemaVersion, originalValueVar);
+
+        var dirtyValueVar = mm.field("dirtyValue");
+
+        // Note: The following code is similar to TableMaker.encodeUpdateEntry.
+
+        // Identify the offsets to all the columns in the original and dirty entries, and
+        // calculate the size of the new entry.
+
+        Map<String, Integer> columnNumbers = rowGen.columnNumbers();
+        ColumnCodec[] codecs = ColumnCodec.bind(rowGen.valueCodecs(), mm);
+
+        Variable[] offsetVars = new Variable[codecs.length];
+
+        var startOffsetVar = mm.var(RowUtils.class).invoke("lengthPrefixPF", schemaVersion);
+        var offsetVar = mm.var(int.class).set(startOffsetVar);
+        var newSizeVar = mm.var(int.class).set(startOffsetVar); // need room for schemaVersion
+        newSizeVar.inc(dirtyValueVar.alength());
+
+        int stateFieldNum = -1;
+        Variable stateField = null;
+
+        for (int i=0; i<codecs.length; i++) {
+            ColumnCodec codec = codecs[i];
+            codec.encodePrepare();
+
+            offsetVars[i] = offsetVar.get();
+            codec.decodeSkip(originalValueVar, offsetVar, null);
+
+            ColumnInfo info = codec.mInfo;
+            int num = columnNumbers.get(info.name);
+
+            int sfNum = rowGen.stateFieldNum(num);
+            if (sfNum != stateFieldNum) {
+                stateFieldNum = sfNum;
+                stateField = mm.field("state$" + sfNum).get();
+            }
+
+            int sfMask = RowGen.stateFieldMask(num);
+            Label cont = mm.label();
+            stateField.and(sfMask).ifEq(sfMask, cont);
+
+            // Add in the size of original column, which won't be updated.
+            codec.encodeSkip();
+            newSizeVar.inc(offsetVar.sub(offsetVars[i]));
+
+            cont.here();
+        }
+
+        // Encode the new byte[] entry...
+
+        var newValueVar = mm.new_(byte[].class, newSizeVar);
+
+        var srcOffsetVar = mm.var(int.class).set(0);
+        var dstOffsetVar = mm.var(int.class).set(0);
+        var dirtyOffsetVar = mm.var(int.class).set(0);
+        var spanLengthVar = mm.var(int.class).set(startOffsetVar);
+        var sysVar = mm.var(System.class);
+
+        for (int i=0; i<codecs.length; i++) {
+            ColumnCodec codec = codecs[i];
+            ColumnInfo info = codec.mInfo;
+            int num = columnNumbers.get(info.name);
+
+            Variable columnLenVar;
+            {
+                Variable endVar;
+                if (i + 1 < codecs.length) {
+                    endVar = offsetVars[i + 1];
+                } else {
+                    endVar = originalValueVar.alength();
+                }
+                columnLenVar = endVar.sub(offsetVars[i]);
+            }
+
+            int sfNum = rowGen.stateFieldNum(num);
+            if (sfNum != stateFieldNum) {
+                stateFieldNum = sfNum;
+                stateField = mm.field("state$" + sfNum).get();
+            }
+
+            int sfMask = RowGen.stateFieldMask(num);
+            Label isDirty = mm.label();
+            stateField.and(sfMask).ifEq(sfMask, isDirty);
+
+            // Increase the copy span length.
+            Label cont = mm.label();
+            spanLengthVar.inc(columnLenVar);
+            mm.goto_(cont);
+
+            isDirty.here();
+
+            // Copy the current span and prepare for the next span.
+            {
+                Label noSpan = mm.label();
+                spanLengthVar.ifEq(0, noSpan);
+                sysVar.invoke("arraycopy", originalValueVar, srcOffsetVar,
+                              newValueVar, dstOffsetVar, spanLengthVar);
+                srcOffsetVar.inc(spanLengthVar);
+                dstOffsetVar.inc(spanLengthVar);
+                spanLengthVar.set(0);
+                noSpan.here();
+            }
+
+            // Copy the encoded dirty column.
+            {
+                Object dirtyStart = (i == 0) ? 0 : dirtyOffsetVar.get();
+                codec.decodeSkip(dirtyValueVar, dirtyOffsetVar, null);
+                var dirtyLengthVar = dirtyOffsetVar.sub(dirtyStart);
+                sysVar.invoke("arraycopy", dirtyValueVar, dirtyStart,
+                              newValueVar, dstOffsetVar, dirtyLengthVar);
+                dstOffsetVar.inc(dirtyLengthVar);
+            }
+
+            // Skip over the original encoded column.
+            srcOffsetVar.inc(columnLenVar);
+
+            cont.here();
+        }
+
+        // Copy any remaining span.
+        {
+            Label noSpan = mm.label();
+            spanLengthVar.ifEq(0, noSpan);
+            sysVar.invoke("arraycopy", originalValueVar, srcOffsetVar,
+                          newValueVar, dstOffsetVar, spanLengthVar);
+            noSpan.here();
+        }
+
+        mm.return_(newValueVar);
+
+        // In order for the factory to access private fields of the proxy class, it must be in
+        // the same nest. The factory needs to be a hidden class to be in the same nest.
+        lookup = cm.finishHidden();
+
+        MethodHandle factory;
+        try {
+            factory = lookup.findConstructor(lookup.lookupClass(), ctorType);
+        } catch (Throwable e) {
+            throw RowUtils.rethrow(e);
+        }
+
+        return factory.asType(ctorType.changeReturnType(BaseTable.ValueUpdater.class));
     }
 
     /**
@@ -340,18 +588,24 @@ public final class RemoteProxyMaker {
         return stateVars;
     }
 
-    private void writeValue(Variable pipeVar, Variable valueVar) {
+    /**
+     * Convert the value to the current schema if necessary, and then call writeValue.
+     */
+    private void convertAndWriteValue(Variable pipeVar, Variable valueVar) {
         MethodMaker mm = pipeVar.methodMaker();
-
         var tableVar = mm.var(mTableClass);
         Class rowClass = RowMaker.find(mRowType);
         var schemaVersion = mm.field("schemaVersion");
-
         TableMaker.convertValueIfNecessary(tableVar, rowClass, schemaVersion, valueVar);
+        writeValue(pipeVar, valueVar);
+    }
 
-        // Write the value sans the schema version. The total length of the value (sans schema
-        // version) is written first using the prefix format.
-
+    /**
+     * Write the value sans the schema version. The total length of the value (sans schema
+     * version) is written first using the prefix format.
+     */
+    private void writeValue(Variable pipeVar, Variable valueVar) {
+        MethodMaker mm = pipeVar.methodMaker();
         var prefixLengthVar = mm.field("prefixLength").get();
         var lengthVar = valueVar.alength().sub(prefixLengthVar);
         mm.var(RowUtils.class).invoke("encodePrefixPF", pipeVar, lengthVar);
@@ -377,6 +631,13 @@ public final class RemoteProxyMaker {
      * Called by generated code.
      */
     public static byte[] decodeKey(Pipe pipe) throws IOException {
+        return decodeValue(pipe);
+    }
+
+    /**
+     * Called by generated code.
+     */
+    public static byte[] decodeValue(Pipe pipe) throws IOException {
         var bytes = new byte[RowUtils.decodePrefixPF(pipe)];
         pipe.readFully(bytes);
         return bytes;
@@ -384,6 +645,9 @@ public final class RemoteProxyMaker {
 
     /**
      * Called by generated code.
+     *
+     * @param prefixLength space to allocate at the beginning of the returned byte array,
+     * intended to be used for encoding the schemaVersion
      */
     public static byte[] decodeValue(Pipe pipe, int prefixLength) throws IOException {
         int valueLength = RowUtils.decodePrefixPF(pipe);
@@ -547,6 +811,63 @@ public final class RemoteProxyMaker {
 
         pipe.flush();
         pipe.recycle();
+    }
+
+    /**
+     * Called by generated code.
+     */
+    @SuppressWarnings("unchecked")
+    public static void update(BaseTable table, Transaction txn, Object row,
+                              byte[] key, BaseTable.ValueUpdater updater, Pipe pipe)
+        throws IOException
+    {
+        attempt: {
+            byte[] newValue;
+            try {
+                newValue = table.updateAndTrigger(txn, row, key, updater);
+            } catch (Throwable e) {
+                pipe.writeObject(e);
+                break attempt;
+            }
+            pipe.writeObject(null); // no exception
+            pipe.writeByte(newValue != null ? 1 : 0); // success or failure
+        }
+
+        pipe.flush();
+        pipe.recycle();
+    }
+
+    /**
+     * Called by generated code.
+     *
+     * @return the new value; if non-null, the caller must write the response, etc.
+     */
+    @SuppressWarnings("unchecked")
+    public static byte[] merge(BaseTable table, Transaction txn, Object row,
+                               byte[] key, BaseTable.ValueUpdater updater, Pipe pipe)
+        throws IOException
+    {
+        attempt: {
+            byte[] newValue;
+            try {
+                newValue = table.updateAndTrigger(txn, row, key, updater);
+            } catch (Throwable e) {
+                pipe.writeObject(e);
+                break attempt;
+            }
+            pipe.writeObject(null); // no exception
+            if (newValue == null) {
+                pipe.writeByte(0);
+            } else {
+                pipe.writeByte(1);
+                return newValue;
+            }
+        }
+
+        pipe.flush();
+        pipe.recycle();
+
+        return null;
     }
 
     /**

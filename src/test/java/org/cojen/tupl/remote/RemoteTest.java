@@ -241,6 +241,16 @@ public class RemoteTest {
             row.value("remote-value-3");
             System.out.println(clientTable.exchange(null, row));
             System.out.println("exchanged: " + row);
+
+            row.name("noname-3");
+            System.out.println(clientTable.update(null, row));
+            System.out.println(clientTable.load(null, row));
+            System.out.println(row);
+
+            row.name("noname-333");
+            System.out.println(clientTable.merge(null, row));
+            System.out.println(clientTable.load(null, row));
+            System.out.println(row);
         }
 
         System.out.println("---");
