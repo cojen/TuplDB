@@ -621,8 +621,12 @@ public class TableMaker {
                 mm.return_(false);
                 replace.here();
                 var valueVar = mm.invoke("encodeValue", rowVar);
+                cursorVar.invoke("store", valueVar);
+                // Only need to enable redoPredicateMode for the trigger, since it might insert
+                // new secondary index entries (and call openAcquire).
+                mm.invoke("redoPredicateMode", txnVar);
                 triggerVar.invoke("store", txnVar, rowVar, keyVar, oldValueVar, valueVar);
-                cursorVar.invoke("commit", valueVar);
+                txnVar.invoke("commit");
                 markAllClean(rowVar);
                 mm.return_(true);
 
@@ -702,10 +706,15 @@ public class TableMaker {
             prepareForTrigger(mm, tableVar, triggerVar, skipLabel);
             Label triggerStart = mm.label().here();
 
+            cursorVar.invoke("store", newValueVar);
+
+            // Only need to enable redoPredicateMode for the trigger, since it might insert
+            // new secondary index entries (and call openAcquire).
             var txnVar = cursorVar.invoke("link");
+            tableVar.invoke("redoPredicateMode", txnVar);
             var keyVar = cursorVar.invoke("key");
             triggerVar.invoke("storeP", txnVar, rowVar, keyVar, valueVar, newValueVar);
-            cursorVar.invoke("commit", newValueVar);
+            txnVar.invoke("commit");
             Label cont = mm.label().goto_();
 
             skipLabel.here();

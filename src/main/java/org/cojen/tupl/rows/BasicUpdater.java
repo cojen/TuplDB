@@ -319,14 +319,17 @@ class BasicUpdater<R> extends BasicScanner<R> implements Updater<R> {
     {
         Transaction txn = ViewUtils.enterScope(mTable.mSource, c.link());
         try {
-            mTable.redoPredicateMode(txn);
             byte[] oldValue = c.value();
+            c.store(value);
+            // Only need to enable redoPredicateMode for the trigger, since it might insert new
+            // secondary index entries (and call openAcquire).
+            mTable.redoPredicateMode(txn);
             if (oldValue == null) {
                 trigger.insertP(txn, row, c.key(), value);
             } else {
                 trigger.storeP(txn, row, c.key(), oldValue, value);
             }
-            c.commit(value);
+            txn.commit();
         } finally {
             txn.exit();
         }

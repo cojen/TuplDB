@@ -699,12 +699,8 @@ public class IndexLockTest {
             replicaTable.newScanner(scanTxn, "id == ?", 4);
             fail();
         } catch (LockTimeoutException e) {
-            if (type == TestRow.class) {
-                // No index means no trigger, which means no predicate mode with an update.
-                rowLockTimeout(e);
-            } else {
-                predicateLockTimeout(e);
-            }
+            // No predicate lock is used when the key doesn't change.
+            rowLockTimeout(e);
         }
 
         // Scan can start when txn1 finishes.

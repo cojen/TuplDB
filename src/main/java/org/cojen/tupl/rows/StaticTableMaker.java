@@ -583,8 +583,6 @@ class StaticTableMaker extends TableMaker {
             txnVar.set(mm.var(ViewUtils.class).invoke("enterScope", source, txnVar));
             Label txnStart = mm.label().here();
 
-            mm.invoke("redoPredicateMode", txnVar);
-
             // Always use a cursor to acquire the upgradable row lock before updating
             // secondaries. This prevents deadlocks with a concurrent index scan which joins
             // against the row. The row lock is acquired exclusively after all secondaries have
@@ -592,51 +590,60 @@ class StaticTableMaker extends TableMaker {
             var cursorVar = source.invoke("newCursor", txnVar);
             Label cursorStart = mm.label().here();
 
-            Variable closerVar = mm.field("mIndexLock").invoke("openAcquire", txnVar, rowVar);
-            Label opStart = mm.label().here();
-
             if (variant == "replace") {
                 cursorVar.invoke("find", keyVar);
-                mm.finally_(opStart, () -> closerVar.invoke("close"));
                 var oldValueVar = cursorVar.invoke("value");
                 Label passed = mm.label();
                 oldValueVar.ifNe(null, passed);
                 mm.return_(false);
                 passed.here();
+                cursorVar.invoke("store", valueVar);
+                // Only need to enable redoPredicateMode for the trigger, since it might insert
+                // new secondary index entries (and call openAcquire).
+                mm.invoke("redoPredicateMode", txnVar);
                 triggerVar.invoke("store", txnVar, rowVar, keyVar, oldValueVar, valueVar);
-                cursorVar.invoke("commit", valueVar);
-                markAllClean(rowVar);
-                mm.return_(true);
-            } else if (variant == "insert") {
-                cursorVar.invoke("autoload", false);
-                cursorVar.invoke("find", keyVar);
-                mm.finally_(opStart, () -> closerVar.invoke("close"));
-                Label passed = mm.label();
-                cursorVar.invoke("value").ifEq(null, passed);
-                mm.return_(false);
-                passed.here();
-                triggerVar.invoke("insert", txnVar, rowVar, keyVar, valueVar);
-                cursorVar.invoke("commit", valueVar);
+                txnVar.invoke("commit");
                 markAllClean(rowVar);
                 mm.return_(true);
             } else {
-                cursorVar.invoke("find", keyVar);
-                mm.finally_(opStart, () -> closerVar.invoke("close"));
-                var oldValueVar = cursorVar.invoke("value");
-                Label wasNull = mm.label();
-                oldValueVar.ifEq(null, wasNull);
-                triggerVar.invoke("store", txnVar, rowVar, keyVar, oldValueVar, valueVar);
-                Label commit = mm.label().goto_();
-                wasNull.here();
-                triggerVar.invoke("insert", txnVar, rowVar, keyVar, valueVar);
-                commit.here();
-                cursorVar.invoke("commit", valueVar);
-                if (variant == "store") {
+                // Enable redoPredicateMode because the primary operation will likely insert a
+                // row. It must be enabled prior to the call to openAcquire to have any effect.
+                mm.invoke("redoPredicateMode", txnVar);
+
+                Variable closerVar = mm.field("mIndexLock").invoke("openAcquire", txnVar, rowVar);
+                Label opStart = mm.label().here();
+
+                if (variant == "insert") {
+                    cursorVar.invoke("autoload", false);
+                    cursorVar.invoke("find", keyVar);
+                    mm.finally_(opStart, () -> closerVar.invoke("close"));
+                    Label passed = mm.label();
+                    cursorVar.invoke("value").ifEq(null, passed);
+                    mm.return_(false);
+                    passed.here();
+                    triggerVar.invoke("insert", txnVar, rowVar, keyVar, valueVar);
+                    cursorVar.invoke("commit", valueVar);
                     markAllClean(rowVar);
-                    mm.return_();
+                    mm.return_(true);
                 } else {
-                    resultVar = oldValueVar;
-                    mm.goto_(cont);
+                    cursorVar.invoke("find", keyVar);
+                    mm.finally_(opStart, () -> closerVar.invoke("close"));
+                    var oldValueVar = cursorVar.invoke("value");
+                    Label wasNull = mm.label();
+                    oldValueVar.ifEq(null, wasNull);
+                    triggerVar.invoke("store", txnVar, rowVar, keyVar, oldValueVar, valueVar);
+                    Label commit = mm.label().goto_();
+                    wasNull.here();
+                    triggerVar.invoke("insert", txnVar, rowVar, keyVar, valueVar);
+                    commit.here();
+                    cursorVar.invoke("commit", valueVar);
+                    if (variant == "store") {
+                        markAllClean(rowVar);
+                        mm.return_();
+                    } else {
+                        resultVar = oldValueVar;
+                        mm.goto_(cont);
+                    }
                 }
             }
 
@@ -756,7 +763,6 @@ class StaticTableMaker extends TableMaker {
         Variable source = mm.field("mSource");
         txnVar.set(mm.var(ViewUtils.class).invoke("enterScope", source, txnVar));
         Label tryStart = mm.label().here();
-        mm.invoke("redoPredicateMode", txnVar);
         mm.return_(mm.invoke("doUpdate", txnVar, rowVar, merge));
         mm.finally_(tryStart, () -> txnVar.invoke("exit"));
     }
