@@ -334,6 +334,7 @@ public final class RemoteProxyMaker {
                                             mm.field("EMPTY_ROW"), keyVar, newValueVar, pipeVar);
             mergeReply = mm.label();
             resultVar.ifTrue(mergeReply);
+            mm.return_(null);
         } else {
             makerVar.invoke("store", mm.field("table"), txnVar,
                             mm.field("EMPTY_ROW"), keyVar, newValueVar, pipeVar);
