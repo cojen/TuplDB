@@ -97,7 +97,6 @@ public final class RemoteProxyMaker {
             mm.field("EMPTY_ROW").set(mm.new_(rowClass));
         }
 
-
         mClassMaker.addField(BaseTable.class, "table").private_().final_();
 
         MethodMaker ctorMaker = mClassMaker.addConstructor(BaseTable.class, int.class).private_();
@@ -367,10 +366,11 @@ public final class RemoteProxyMaker {
                 (BaseTable.ValueUpdater.class, "invokeExact", (Object[]) null, params);
         }
 
-        newValueVar.set(makerVar.invoke(variant, mm.field("table"), txnVar, mm.field("EMPTY_ROW"),
-                                        keyVar, updaterVar, pipeVar));
+        var resultVar = makerVar.invoke(variant, mm.field("table"), txnVar, mm.field("EMPTY_ROW"),
+                                        keyVar, updaterVar, pipeVar);
 
         if (variant == "merge") {
+            newValueVar.set(resultVar);
             Label done = mm.label();
             newValueVar.ifEq(null, done);
             mergeReply.here();
