@@ -247,8 +247,16 @@ public class RemoteTest {
             System.out.println(clientTable.load(null, row));
             System.out.println(row);
 
-            row.name("noname-333");
+            row.name("noname-33");
             System.out.println(clientTable.merge(null, row));
+            System.out.println(row);
+            System.out.println(clientTable.load(null, row));
+            System.out.println(row);
+
+            row.name("noname-333");
+            row.value("value-333");
+            System.out.println(clientTable.merge(null, row));
+            System.out.println(row);
             System.out.println(clientTable.load(null, row));
             System.out.println(row);
         }

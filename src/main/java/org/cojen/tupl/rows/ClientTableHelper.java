@@ -242,6 +242,9 @@ public abstract class ClientTableHelper<R> implements Table<R> {
         mm.return_(encodeColumns(rowGen, mm.param(0), false, true));
     }
 
+    /**
+     * @param variant "load", "exists", or "delete"
+     */
     private static void addByKeyMethod(String variant,
                                        ClassMaker cm, RowGen rowGen, Class<?> rowClass)
     {
@@ -276,6 +279,9 @@ public abstract class ClientTableHelper<R> implements Table<R> {
         });
     }
 
+    /**
+     * @param variant "store", "exchange", "insert", or "replace"
+     */
     private static void addStoreMethod(String variant, Class returnType,
                                        ClassMaker cm, RowGen rowGen, Class<?> rowClass)
     {
@@ -323,16 +329,13 @@ public abstract class ClientTableHelper<R> implements Table<R> {
         });
     }
 
+    /**
+     * @param variant "update" or "merge"
+     */
     private static void addUpdateMethod(String variant,
                                         ClassMaker cm, RowGen rowGen, Class<?> rowClass)
     {
         MethodMaker mm = cm.addMethod(boolean.class, variant, Object.class, Pipe.class).public_();
-
-        // FIXME: If all value columns are dirty, call the store method. This is just an
-        // optimization and it simplifies the server (it won't bother with the optimization).
-        // Although the optimization could be performed on the server, it's still required to
-        // write back the full row when merge is called. This isn't necessary if the client
-        // does the optimization.
 
         var rowVar = mm.param(0).cast(rowClass);
         var pipeVar = mm.param(1);
@@ -348,6 +351,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
 
         if (variant == "merge") {
             decodeValueColumns(rowGen, rowVar, pipeVar);
+            TableMaker.markAllClean(rowVar, rowGen, rowGen);
         }
 
         noOperation.here();

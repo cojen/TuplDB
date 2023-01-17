@@ -200,11 +200,8 @@ public final class RemoteProxyMaker {
      * side-effect, the key and value from the pipe are skipped, and the pipe is recycled.
      */
     private void checkPrimaryKeySet(MethodMaker mm, Variable pipeVar, Variable[] stateVars) {
-        var readyVar = mm.var(boolean.class);
-        mRowGen.checkSet(mm, mRowGen.info.keyColumns, readyVar, num -> stateVars[num >> 4]);
-
         Label isReady = mm.label();
-        readyVar.ifTrue(isReady);
+        checkSet(mm, mRowGen.info.keyColumns, stateVars).ifTrue(isReady);
 
         mm.var(RemoteProxyMaker.class).invoke("skipKeyAndValue", pipeVar);
         var iseVar = mm.new_(IllegalStateException.class, "Primary key isn't fully specified");
@@ -269,11 +266,8 @@ public final class RemoteProxyMaker {
 
         var stateVars = readStateFields(pipeVar);
 
-        var readyVar = mm.var(boolean.class);
-        mRowGen.checkSet(mm, mRowGen.info.allColumns, readyVar, num -> stateVars[num >> 4]);
-
         Label isReady = mm.label();
-        readyVar.ifTrue(isReady);
+        checkSet(mm, mRowGen.info.allColumns, stateVars).ifTrue(isReady);
 
         var paramVars = new Object[1 + stateVars.length];
         paramVars[0] = pipeVar;
@@ -320,10 +314,35 @@ public final class RemoteProxyMaker {
         var tryStart = mm.label().here();
 
         var stateVars = readStateFields(pipeVar);
+
         checkPrimaryKeySet(mm, pipeVar, stateVars);
 
         var makerVar = mm.var(RemoteProxyMaker.class);
         var keyVar = makerVar.invoke("decodeKey", pipeVar);
+
+        Label partial = mm.label();
+        checkDirty(mm, mRowGen.info.valueColumns, stateVars).ifFalse(partial);
+
+        final Variable newValueVar = mm.var(byte[].class);
+
+        // All value columns are dirty, so just do a plain store operation as an optimization.
+        newValueVar.set(makerVar.invoke("decodeValue", pipeVar, mm.field("prefixLength")));
+        mm.var(RowUtils.class).invoke("encodePrefixPF", newValueVar, 0, mm.field("schemaVersion"));
+        Label mergeReply;
+        if (variant == "merge") {
+            var resultVar = makerVar.invoke("storeNoFlush", mm.field("table"), txnVar,
+                                            mm.field("EMPTY_ROW"), keyVar, newValueVar, pipeVar);
+            mergeReply = mm.label();
+            resultVar.ifTrue(mergeReply);
+        } else {
+            makerVar.invoke("store", mm.field("table"), txnVar,
+                            mm.field("EMPTY_ROW"), keyVar, newValueVar, pipeVar);
+            mergeReply = null;
+            mm.return_(null);
+        }
+
+        partial.here();
+
         var dirtyValueVar = makerVar.invoke("decodeValue", pipeVar);
 
         if (mUpdaterFactoryVar == null) {
@@ -347,12 +366,13 @@ public final class RemoteProxyMaker {
                 (BaseTable.ValueUpdater.class, "invokeExact", (Object[]) null, params);
         }
 
-        var newValueVar = makerVar.invoke(variant, mm.field("table"), txnVar, mm.field("EMPTY_ROW"),
-                                          keyVar, updaterVar, pipeVar);
+        newValueVar.set(makerVar.invoke(variant, mm.field("table"), txnVar, mm.field("EMPTY_ROW"),
+                                        keyVar, updaterVar, pipeVar));
 
         if (variant == "merge") {
             Label done = mm.label();
             newValueVar.ifEq(null, done);
+            mergeReply.here();
             writeValue(pipeVar, newValueVar);
             pipeVar.invoke("flush");
             pipeVar.invoke("recycle");
@@ -589,6 +609,30 @@ public final class RemoteProxyMaker {
     }
 
     /**
+     * Generates code which checks if all of the given columns are set, storing a boolean
+     * result in the returned variable.
+     */
+    private Variable checkSet(MethodMaker mm, Map<String, ColumnInfo> columns,
+                              Variable[] stateVars)
+    {
+        var allSetVar = mm.var(boolean.class);
+        mRowGen.checkSet(mm, columns, allSetVar, num -> stateVars[num >> 4]);
+        return allSetVar;
+    }
+
+    /**
+     * Generates code which checks if all of the given columns are dirty, storing a boolean
+     * result in the returned variable.
+     */
+    private Variable checkDirty(MethodMaker mm, Map<String, ColumnInfo> columns,
+                                Variable[] stateVars)
+    {
+        var allDirtyVar = mm.var(boolean.class);
+        mRowGen.checkDirty(mm, columns, allDirtyVar, num -> stateVars[num >> 4]);
+        return allDirtyVar;
+    }
+
+    /**
      * Convert the value to the current schema if necessary, and then call writeValue.
      */
     private void convertAndWriteValue(Variable pipeVar, Variable valueVar) {
@@ -730,6 +774,29 @@ public final class RemoteProxyMaker {
 
         pipe.flush();
         pipe.recycle();
+    }
+
+    /**
+     * Called by generated code.
+     *
+     * @return true if the caller must write the response, etc.
+     */
+    @SuppressWarnings("unchecked")
+    public static boolean storeNoFlush(BaseTable table, Transaction txn, Object row,
+                                       byte[] key, byte[] value, Pipe pipe)
+        throws IOException
+    {
+        try {
+            table.storeAndTrigger(txn, row, key, value);
+        } catch (Throwable e) {
+            pipe.writeObject(e);
+            pipe.flush();
+            pipe.recycle();
+            return false;
+        }
+        pipe.writeObject(null); // no exception
+        pipe.writeByte(1); // success
+        return true;
     }
 
     /**
