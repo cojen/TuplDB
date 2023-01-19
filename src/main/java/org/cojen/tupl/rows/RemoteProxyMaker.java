@@ -68,15 +68,21 @@ public final class RemoteProxyMaker {
 
     private final Class<?> mTableClass;
     private final Class<?> mRowType;
+    private final Class<?> mRowClass;
     private final RowGen mRowGen;
     private final RowHeader mRowHeader;
     private final ClassMaker mClassMaker;
 
+    // Only needed by addUpdateDirectMethod.
     private Variable mUpdaterFactoryVar;
+
+    // Only needed by makeConverter.
+    private ColumnCodec[] mClientCodecs;
 
     private RemoteProxyMaker(BaseTable table, byte[] descriptor) {
         mTableClass = table.getClass();
         mRowType = table.rowType();
+        mRowClass = RowMaker.find(mRowType);
         mRowGen = RowInfo.find(mRowType).rowGen();
         mRowHeader = RowHeader.decode(descriptor);
         mClassMaker = mRowGen.beginClassMaker(RemoteProxyMaker.class, mRowType, null);
@@ -89,14 +95,6 @@ public final class RemoteProxyMaker {
      *     RemoteTableProxy new(BaseTable table, int schemaVersion);
      */
     private MethodHandle finish() {
-        // Define a singleton empty row which is needed by the trigger methods.
-        {
-            Class rowClass = RowMaker.find(mRowType);
-            mClassMaker.addField(rowClass, "EMPTY_ROW").private_().static_().final_();
-            MethodMaker mm = mClassMaker.addClinit();
-            mm.field("EMPTY_ROW").set(mm.new_(rowClass));
-        }
-
         mClassMaker.addField(BaseTable.class, "table").private_().final_();
 
         MethodMaker ctorMaker = mClassMaker.addConstructor(BaseTable.class, int.class).private_();
@@ -106,6 +104,13 @@ public final class RemoteProxyMaker {
         MethodHandles.Lookup lookup;
 
         if (RowHeader.make(mRowGen).equals(mRowHeader)) {
+            // Define a singleton empty row which is needed by the trigger methods.
+            {
+                mClassMaker.addField(mRowClass, "EMPTY_ROW").private_().static_().final_();
+                MethodMaker mm = mClassMaker.addClinit();
+                mm.field("EMPTY_ROW").set(mm.new_(mRowClass));
+            }
+
             mClassMaker.addField(int.class, "prefixLength").private_().final_();
             mClassMaker.addField(int.class, "schemaVersion").private_().final_();
 
@@ -222,7 +227,7 @@ public final class RemoteProxyMaker {
         var txnVar = txn(mm.param(0));
         var pipeVar = mm.param(1);
 
-        var tryStart = mm.label().here();
+        Label tryStart = mm.label().here();
 
         var stateVars = readStateFields(pipeVar);
         checkPrimaryKeySet(mm, pipeVar, stateVars);
@@ -256,12 +261,12 @@ public final class RemoteProxyMaker {
         MethodMaker mm = mClassMaker.addMethod
             (Pipe.class, variant, RemoteTransaction.class, Pipe.class).public_();
 
-        // FIXME: handle automatic key column
+        // FIXME: handle automatic key column (for store/exchange/insert)
 
         var txnVar = txn(mm.param(0));
         var pipeVar = mm.param(1);
 
-        var tryStart = mm.label().here();
+        Label tryStart = mm.label().here();
 
         var stateVars = readStateFields(pipeVar);
 
@@ -310,7 +315,7 @@ public final class RemoteProxyMaker {
         var txnVar = txn(mm.param(0));
         var pipeVar = mm.param(1);
 
-        var tryStart = mm.label().here();
+        Label tryStart = mm.label().here();
 
         var stateVars = readStateFields(pipeVar);
 
@@ -639,9 +644,8 @@ public final class RemoteProxyMaker {
     private void convertAndWriteValue(Variable pipeVar, Variable valueVar) {
         MethodMaker mm = pipeVar.methodMaker();
         var tableVar = mm.var(mTableClass);
-        Class rowClass = RowMaker.find(mRowType);
         var schemaVersion = mm.field("schemaVersion");
-        TableMaker.convertValueIfNecessary(tableVar, rowClass, schemaVersion, valueVar);
+        TableMaker.convertValueIfNecessary(tableVar, mRowClass, schemaVersion, valueVar);
         writeValue(pipeVar, valueVar);
     }
 
@@ -683,7 +687,11 @@ public final class RemoteProxyMaker {
      * Called by generated code.
      */
     public static byte[] decodeValue(Pipe pipe) throws IOException {
-        var bytes = new byte[RowUtils.decodePrefixPF(pipe)];
+        int length = RowUtils.decodePrefixPF(pipe);
+        if (length == 0) {
+            return RowUtils.EMPTY_BYTES;
+        }
+        var bytes = new byte[length];
         pipe.readFully(bytes);
         return bytes;
     }
@@ -717,7 +725,7 @@ public final class RemoteProxyMaker {
                 pipe.writeObject(e);
                 break attempt;
             }
-            pipe.writeObject(null); // no exception
+            pipe.writeNull(); // no exception
             if (value == null) {
                 pipe.writeByte(0);
             } else {
@@ -746,8 +754,8 @@ public final class RemoteProxyMaker {
                 pipe.writeObject(e);
                 break attempt;
             }
-            pipe.writeObject(null); // no exception
-            pipe.writeByte(result ? 1 : 0); // success or failure
+            pipe.writeNull(); // no exception
+            writeResult(result, pipe);
         }
 
         pipe.flush();
@@ -769,7 +777,7 @@ public final class RemoteProxyMaker {
                 pipe.writeObject(e);
                 break attempt;
             }
-            pipe.writeObject(null); // no exception
+            pipe.writeNull(); // no exception
             pipe.writeByte(1); // success
         }
 
@@ -795,7 +803,7 @@ public final class RemoteProxyMaker {
             pipe.recycle();
             return false;
         }
-        pipe.writeObject(null); // no exception
+        pipe.writeNull(); // no exception
         pipe.writeByte(1); // success
         return true;
     }
@@ -818,7 +826,7 @@ public final class RemoteProxyMaker {
                 pipe.writeObject(e);
                 break attempt;
             }
-            pipe.writeObject(null); // no exception
+            pipe.writeNull(); // no exception
             if (oldValue == null) {
                 pipe.writeByte(0);
             } else {
@@ -849,8 +857,8 @@ public final class RemoteProxyMaker {
                 pipe.writeObject(e);
                 break attempt;
             }
-            pipe.writeObject(null); // no exception
-            pipe.writeByte(result ? 1 : 0); // success or failure
+            pipe.writeNull(); // no exception
+            writeResult(result, pipe);
         }
 
         pipe.flush();
@@ -873,8 +881,8 @@ public final class RemoteProxyMaker {
                 pipe.writeObject(e);
                 break attempt;
             }
-            pipe.writeObject(null); // no exception
-            pipe.writeByte(result ? 1 : 0); // success or failure
+            pipe.writeNull(); // no exception
+            writeResult(result, pipe);
         }
 
         pipe.flush();
@@ -897,7 +905,7 @@ public final class RemoteProxyMaker {
                 pipe.writeObject(e);
                 break attempt;
             }
-            pipe.writeObject(null); // no exception
+            pipe.writeNull(); // no exception
             pipe.writeByte(newValue != null ? 1 : 0); // success or failure
         }
 
@@ -923,7 +931,7 @@ public final class RemoteProxyMaker {
                 pipe.writeObject(e);
                 break attempt;
             }
-            pipe.writeObject(null); // no exception
+            pipe.writeNull(); // no exception
             if (newValue == null) {
                 pipe.writeByte(0);
             } else {
@@ -953,12 +961,19 @@ public final class RemoteProxyMaker {
                 pipe.writeObject(e);
                 break attempt;
             }
-            pipe.writeObject(null); // no exception
-            pipe.writeByte(result ? 1 : 0); // success or failure
+            pipe.writeNull(); // no exception
+            writeResult(result, pipe);
         }
 
         pipe.flush();
         pipe.recycle();
+    }
+
+    /**
+     * Called by generated code.
+     */
+    public static void writeResult(boolean result, Pipe pipe) throws IOException {
+        pipe.writeByte(result ? 1 : 0); // success or failure
     }
 
     /**
@@ -975,7 +990,430 @@ public final class RemoteProxyMaker {
      * Makes a RemoteTableProxy class which must perform column conversions.
      */
     private MethodHandles.Lookup makeConverter() {
-        // FIXME: makeConverter
-        throw null;
+        mClassMaker.addField(boolean.class, "assert").private_().static_().final_();
+
+        {
+            MethodMaker mm = mClassMaker.addClinit();
+            mm.field("assert").set(mm.class_().invoke("desiredAssertionStatus"));
+        }
+
+        mClientCodecs = ColumnCodec.make(mRowHeader);
+
+        addDecodeRow();
+        addEncodeValueColumns();
+
+        addByKeyConvertMethod("load");
+        addByKeyConvertMethod("exists");
+        addByKeyConvertMethod("delete");
+
+        addStoreConvertMethod("store");
+        addStoreConvertMethod("exchange");
+        addStoreConvertMethod("insert");
+        addStoreConvertMethod("replace");
+
+        addUpdateConvertMethod("update");
+        addUpdateConvertMethod("merge");
+
+        return mClassMaker.finishLookup();
+    }
+
+    /**
+     * @param variant "load", "exists", or "delete"
+     */
+    private void addByKeyConvertMethod(String variant) {
+        MethodMaker mm = mClassMaker.addMethod
+            (Pipe.class, variant, RemoteTransaction.class, Pipe.class).public_();
+
+        var txnVar = txn(mm.param(0));
+        var pipeVar = mm.param(1);
+
+        Label tryStart = mm.label().here();
+
+        var rowVar = mm.invoke("decodeRow", pipeVar);
+        Label finish = mm.label();
+        rowVar.ifEq(null, finish);
+
+        Label opTryStart = mm.label().here();
+
+        var resultVar = mm.field("table").invoke(variant, txnVar, rowVar);
+
+        var makerVar = mm.var(RemoteProxyMaker.class);
+
+        if (variant != "load") {
+            mm.catch_(opTryStart, Throwable.class, exVar -> {
+                pipeVar.invoke("writeObject", exVar);
+                finish.goto_();
+            });
+
+            pipeVar.invoke("writeNull"); // no exception
+
+            makerVar.invoke("writeResult", resultVar, pipeVar);
+        } else {
+            Label noOperation = mm.label();
+            resultVar.ifFalse(noOperation);
+
+            var bytesVar = mm.invoke("encodeValueColumns", rowVar);
+
+            mm.catch_(opTryStart, Throwable.class, exVar -> {
+                pipeVar.invoke("writeObject", exVar);
+                finish.goto_();
+            });
+
+            pipeVar.invoke("writeNull"); // no exception
+            bytesVar.aset(0, 1); // set the result code
+
+            pipeVar.invoke("write", bytesVar);
+            finish.goto_();
+
+            noOperation.here();
+            pipeVar.invoke("writeNull"); // no exception
+            pipeVar.invoke("writeByte", 0);
+        }
+
+        finish.here();
+
+        pipeVar.invoke("flush");
+        pipeVar.invoke("recycle");
+
+        mm.return_(null);
+
+        var exVar = mm.catch_(tryStart, mm.label().here(), Throwable.class);
+        makerVar.invoke("handleException", exVar, pipeVar);
+        mm.return_(null);
+    }
+
+    /**
+     * @param variant "store", "exchange", "insert", or "replace"
+     */
+    private void addStoreConvertMethod(String variant) {
+        MethodMaker mm = mClassMaker.addMethod
+            (Pipe.class, variant, RemoteTransaction.class, Pipe.class).public_();
+
+        // FIXME: handle automatic key column (for store/exchange/insert)
+
+        var txnVar = txn(mm.param(0));
+        var pipeVar = mm.param(1);
+
+        Label tryStart = mm.label().here();
+
+        var rowVar = mm.invoke("decodeRow", pipeVar);
+        Label finish = mm.label();
+        rowVar.ifEq(null, finish);
+
+        Label opTryStart = mm.label().here();
+
+        var makerVar = mm.var(RemoteProxyMaker.class);
+
+        if (variant != "exchange") {
+            var resultVar = mm.field("table").invoke(variant, txnVar, rowVar);
+
+            mm.catch_(opTryStart, Throwable.class, exVar -> {
+                pipeVar.invoke("writeObject", exVar);
+                finish.goto_();
+            });
+
+            pipeVar.invoke("writeNull"); // no exception
+
+            if (variant == "store") {
+                pipeVar.invoke("writeByte", 1); // success
+            } else {
+                makerVar.invoke("writeResult", resultVar, pipeVar);
+            }
+        } else {
+            // Enter a transaction scope to rollback the operation if the call to
+            // encodeValueColumns throws an exception.
+            txnVar.set(mm.field("table").invoke("enterScope", txnVar));
+            Label txnStart = mm.label().here();
+
+            var resultVar = mm.field("table").invoke(variant, txnVar, rowVar);
+
+            final Variable bytesVar = mm.var(byte[].class);
+
+            Label hasOldRow = mm.label();
+            resultVar.ifNe(null, hasOldRow);
+            bytesVar.set(null);
+            Label cont = mm.label().goto_();
+            hasOldRow.here();
+            bytesVar.set(mm.invoke("encodeValueColumns", resultVar.cast(mRowClass)));
+            cont.here();
+
+            txnVar.invoke("commit");
+
+            mm.finally_(txnStart, () -> {
+                txnVar.invoke("exit");
+            });
+
+            mm.catch_(opTryStart, Throwable.class, exVar -> {
+                pipeVar.invoke("writeObject", exVar);
+                finish.goto_();
+            });
+
+            pipeVar.invoke("writeNull"); // no exception
+
+            Label hasBytes = mm.label();
+            bytesVar.ifNe(null, hasBytes);
+            pipeVar.invoke("writeByte", 0);
+            finish.goto_();
+            hasBytes.here();
+            bytesVar.aset(0, 1); // set the result code
+            pipeVar.invoke("write", bytesVar);
+        }
+
+        finish.here();
+
+        pipeVar.invoke("flush");
+        pipeVar.invoke("recycle");
+
+        mm.return_(null);
+
+        var exVar = mm.catch_(tryStart, mm.label().here(), Throwable.class);
+        makerVar.invoke("handleException", exVar, pipeVar);
+        mm.return_(null);
+    }
+
+    /**
+     * @param variant "update" or "merge"
+     */
+    private void addUpdateConvertMethod(String variant) {
+        MethodMaker mm = mClassMaker.addMethod
+            (Pipe.class, variant, RemoteTransaction.class, Pipe.class).public_();
+
+        var txnVar = txn(mm.param(0));
+        var pipeVar = mm.param(1);
+
+        Label tryStart = mm.label().here();
+
+        var rowVar = mm.invoke("decodeRow", pipeVar);
+        Label finish = mm.label();
+        rowVar.ifEq(null, finish);
+
+        Label opTryStart = mm.label().here();
+
+        var makerVar = mm.var(RemoteProxyMaker.class);
+
+        if (variant != "merge") {
+            var resultVar = mm.field("table").invoke(variant, txnVar, rowVar);
+
+            mm.catch_(opTryStart, Throwable.class, exVar -> {
+                pipeVar.invoke("writeObject", exVar);
+                finish.goto_();
+            });
+
+            pipeVar.invoke("writeNull"); // no exception
+            makerVar.invoke("writeResult", resultVar, pipeVar);
+        } else {
+            // Enter a transaction scope to rollback the operation if the call to
+            // encodeValueColumns throws an exception.
+            txnVar.set(mm.field("table").invoke("enterScope", txnVar));
+            Label txnStart = mm.label().here();
+
+            var resultVar = mm.field("table").invoke(variant, txnVar, rowVar);
+
+            Label noOperation = mm.label();
+            resultVar.ifFalse(noOperation);
+
+            var bytesVar = mm.invoke("encodeValueColumns", rowVar.cast(mRowClass));
+
+            txnVar.invoke("commit");
+
+            mm.finally_(txnStart, () -> {
+                txnVar.invoke("exit");
+            });
+
+            mm.catch_(opTryStart, Throwable.class, exVar -> {
+                pipeVar.invoke("writeObject", exVar);
+                finish.goto_();
+            });
+
+            pipeVar.invoke("writeNull"); // no exception
+            bytesVar.aset(0, 1); // set the result code
+
+            pipeVar.invoke("write", bytesVar);
+            finish.goto_();
+
+            noOperation.here();
+            pipeVar.invoke("writeNull"); // no exception
+            pipeVar.invoke("writeByte", 0);
+        }
+
+        finish.here();
+
+        pipeVar.invoke("flush");
+        pipeVar.invoke("recycle");
+
+        mm.return_(null);
+
+        var exVar = mm.catch_(tryStart, mm.label().here(), Throwable.class);
+        makerVar.invoke("handleException", exVar, pipeVar);
+        mm.return_(null);
+    }
+
+    /**
+     * Defines a static method which accepts a Pipe and returns a row object as written by the
+     * client. To do this, it reads the column states and column values from the pipe. If a
+     * conversion exception occurs, the exception is written to the pipe and null is returned.
+     * The caller must then flush and recycle the pipe.
+     */
+    private void addDecodeRow() {
+        MethodMaker mm = mClassMaker.addMethod(mRowClass, "decodeRow", Pipe.class);
+        mm.private_().static_();
+
+        var pipeVar = mm.param(0);
+        var stateVars = readStateFields(pipeVar);
+
+        var makerVar = mm.var(RemoteProxyMaker.class);
+        var keyVar = makerVar.invoke("decodeKey", pipeVar);
+        var valueVar = makerVar.invoke("decodeValue", pipeVar);
+
+        var rowVar = mm.new_(mRowClass);
+
+        Map<String, Integer> rowColumnNumbers = mRowGen.columnNumbers();
+        String[] rowStateFieldNames = mRowGen.stateFields();
+        ColumnCodec[] rowKeyCodecs = mRowGen.keyCodecs();
+        ColumnCodec[] rowValueCodecs = mRowGen.valueCodecs();
+
+        var offsetVar = mm.var(int.class).set(0);
+
+        for (int columnNum = 0; columnNum < mClientCodecs.length; columnNum++) {
+            int stateFieldNum = RowGen.stateFieldNum(columnNum);
+            int stateFieldMask = RowGen.stateFieldMask(columnNum);
+
+            var stateVar = stateVars[stateFieldNum].and(stateFieldMask);
+            Label skip = mm.label();
+            stateVar.ifEq(0, skip);
+
+            Variable bytesVar;
+            if (columnNum < mRowHeader.numKeys) {
+                bytesVar = keyVar;
+            } else {
+                bytesVar = valueVar;
+                if (columnNum == mRowHeader.numKeys) {
+                    offsetVar.set(0);
+                }
+            }
+
+            ColumnCodec codec = mClientCodecs[columnNum].bind(mm);
+
+            var columnVar = mm.var(codec.mInfo.type);
+
+            codec.decode(columnVar, bytesVar, offsetVar, null);
+
+            String rowFieldName = mRowHeader.columnNames[columnNum];
+            var rowField = rowVar.field(rowFieldName);
+            int rowColumnNum = rowColumnNumbers.get(rowFieldName);
+
+            ColumnCodec rowFieldCodec;
+            if (rowColumnNum < rowKeyCodecs.length) {
+                rowFieldCodec = rowKeyCodecs[rowColumnNum];
+            } else {
+                rowFieldCodec = rowValueCodecs[rowColumnNum - rowKeyCodecs.length];
+            }
+
+            Label tryStart = mm.label().here();
+
+            Converter.convertExact(mm, codec.mInfo, columnVar, rowFieldCodec.mInfo, rowField);
+ 
+            mm.catch_(tryStart, RuntimeException.class, exVar -> {
+                // FIXME: Make the exception better: include the field name.
+                pipeVar.invoke("writeObject", exVar);
+                mm.return_(null);
+            });
+
+            int stateShiftLeft = RowGen.stateFieldShift(rowColumnNum)
+                - RowGen.stateFieldShift(columnNum);
+
+            if (stateShiftLeft > 0) {
+                stateVar.shl(stateShiftLeft);
+            } else if (stateShiftLeft != 0) {
+                stateVar.shr(-stateShiftLeft);
+            }
+
+            int rowStateFieldNum = RowGen.stateFieldNum(rowColumnNum);
+            var rowStateField = rowVar.field(rowStateFieldNames[rowStateFieldNum]);
+
+            if (columnNum == 0) {
+                rowStateField.set(stateVar);
+            } else {
+                int mask = ~RowGen.stateFieldMask(rowColumnNum);
+                rowStateField.set(rowStateField.and(mask).or(stateVar));
+            }
+
+            skip.here();
+        }
+
+        mm.return_(rowVar);
+    }
+
+    /**
+     * Defines a static method which accepts a row object and encodes the value columns into a
+     * new byte array which can be decoded by the client. If an exact conversion isn't
+     * possible, a RuntimeException is thrown.
+     *
+     * <p>The first byte of the returned byte array empty, and is expected to be set by the
+     * caller with a operation result code.
+     */
+    private void addEncodeValueColumns() {
+        MethodMaker mm = mClassMaker.addMethod(byte[].class, "encodeValueColumns", mRowClass);
+        mm.private_().static_();
+
+        if (mClientCodecs.length == 0) {
+            var emptyVar = mm.var(byte[].class).setExact(new byte[1]);
+            mm.return_(emptyVar);
+            return;
+        }
+
+        var rowVar = mm.param(0);
+
+        // Prepare all the fields by applying any necessary conversions.
+
+        ColumnCodec[] codecs = ColumnCodec.bind(mClientCodecs, mm);
+        int numKeys = mRowHeader.numKeys;
+        var fieldVars = new Variable[codecs.length - numKeys];
+
+        for (int columnNum = numKeys; columnNum < codecs.length; columnNum++) {
+            String fieldName = mRowHeader.columnNames[columnNum];
+            ColumnInfo srcInfo = mRowGen.info.allColumns.get(fieldName);
+            var srcField = rowVar.field(fieldName);
+            ColumnInfo dstInfo = codecs[columnNum].mInfo;
+            var dstVar = mm.var(dstInfo.type);
+            fieldVars[columnNum - numKeys] = dstVar;
+            // FIXME: Make the exception better: include the field name.
+            Converter.convertExact(mm, srcInfo, srcField, dstInfo, dstVar);
+        }
+
+        // Calculate the value encoding length.
+
+        Variable valueLengthVar = null;
+
+        for (int columnNum = numKeys; columnNum < codecs.length; columnNum++) {
+            var fieldVar = fieldVars[columnNum - numKeys];
+            ColumnCodec codec = codecs[columnNum];
+            codec.encodePrepare();
+            valueLengthVar = codec.encodeSize(fieldVar, valueLengthVar);
+        }
+
+        var utilsVar = mm.var(RowUtils.class);
+        var fullLengthVar = mm.var(int.class).set(1); // for the result code
+        fullLengthVar.inc(utilsVar.invoke("lengthPrefixPF", valueLengthVar));
+        fullLengthVar.inc(valueLengthVar);
+
+        // Allocate the array and encode into it.
+
+        var bytesVar = mm.new_(byte[].class, fullLengthVar);
+        var offsetVar = utilsVar.invoke("encodePrefixPF", bytesVar, 1, valueLengthVar);
+
+        for (int columnNum = numKeys; columnNum < codecs.length; columnNum++) {
+            var fieldVar = fieldVars[columnNum - numKeys];
+            codecs[columnNum].encode(fieldVar, bytesVar, offsetVar);
+        }
+
+        Label cont = mm.label();
+        mm.field("assert").ifFalse(cont);
+        offsetVar.ifEq(bytesVar.alength(), cont);
+        mm.new_(AssertionError.class,
+                mm.concat(offsetVar, " != ", bytesVar.alength()), null).throw_();
+        cont.here();
+
+        mm.return_(bytesVar);
     }
 }

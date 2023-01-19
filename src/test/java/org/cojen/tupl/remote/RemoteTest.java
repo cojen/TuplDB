@@ -128,7 +128,7 @@ public class RemoteTest {
             System.out.println(clientTable.replace(null, row));
         }
 
-            System.out.println("---");
+        System.out.println("---");
 
         {
             Table<Tab> serverTable = db.openTable(Tab.class);
@@ -266,6 +266,12 @@ public class RemoteTest {
         System.out.println(clientTable.scannerPlan(null, "{+name}"));
 
         try (var scanner = clientTable.newScanner(null, "{+name}")) {
+            scanner.forEachRemaining(row -> System.out.println(row));
+        }
+
+        System.out.println("---");
+
+        try (var scanner = clientTable.newScanner(null)) {
             scanner.forEachRemaining(row -> System.out.println(row));
         }
 

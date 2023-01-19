@@ -1009,6 +1009,10 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         mIndexLock.redoPredicateMode(txn);
     }
 
+    public final Transaction enterScope(Transaction txn) throws IOException {
+        return ViewUtils.enterScope(mSource, txn);
+    }
+
     /**
      * Called when no trigger is installed.
      */

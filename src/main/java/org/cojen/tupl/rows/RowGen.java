@@ -233,7 +233,11 @@ class RowGen {
     }
 
     public static int stateFieldMask(int columnNum, int state) {
-        return state << ((columnNum & 0b1111) << 1);
+        return state << stateFieldShift(columnNum);
+    }
+
+    public static int stateFieldShift(int columnNum) {
+        return (columnNum & 0b1111) << 1;
     }
 
     /**

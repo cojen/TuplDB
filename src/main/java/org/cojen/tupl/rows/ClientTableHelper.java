@@ -440,9 +440,34 @@ public abstract class ClientTableHelper<R> implements Table<R> {
         // Encode all the column states first.
 
         if (valueLengthVar != null || valueCodecs.length == 0) {
-            for (String name : stateFieldNames) {
-                utilsVar.invoke("encodeIntBE", bytesVar, offsetVar, rowVar.field(name));
-                offsetVar.inc(4);
+            if (!dirtyOnly) {
+                for (String name : stateFieldNames) {
+                    utilsVar.invoke("encodeIntBE", bytesVar, offsetVar, rowVar.field(name));
+                    offsetVar.inc(4);
+                }
+            } else {
+                // Value columns which are clean aren't encoded, and so CLEAN states must be
+                // converted to UNSET states. Key column states aren't affected.
+
+                final int mask = 0xaaaa_aaaa; // is 0b1010...
+                int keysRemaining = keyCodecs.length;
+
+                for (int i=0; i<stateFieldNames.length; i++) {
+                    Variable stateVar = rowVar.field(stateFieldNames[i]);
+
+                    if (keysRemaining < 16) {
+                        var andMask = mask | ((0b100 << ((keysRemaining - 1) << 1)) - 1);
+                        stateVar.set(stateVar.and(andMask).or(stateVar.and(mask).ushr(1)));
+                    } else {
+                        var maskedStateVar = stateVar.and(mask);
+                        stateVar.set(maskedStateVar.or(maskedStateVar.ushr(1)));
+                    }
+
+                    utilsVar.invoke("encodeIntBE", bytesVar, offsetVar, stateVar);
+
+                    offsetVar.inc(4);
+                    keysRemaining -= 16; // max columns per state field
+                }
             }
         } else {
             // The value columns aren't encoded, and so their states are all zero. Although the
