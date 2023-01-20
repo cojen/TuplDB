@@ -38,7 +38,8 @@ import org.cojen.tupl.Table;
 
 /**
  * Generates classes which are used by the remote client. Although the class implements the
- * Table interface, only the basic "rowType" methods are implemented.
+ * Table interface, not all methods are implemented. The basic "rowType" methods are
+ * implemented, as are a few others.
  *
  * @author Brian S O'Neill
  * @see TableBasicsMaker
@@ -110,8 +111,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
 
     @Override
     public Comparator<R> comparator(String spec) {
-        // FIXME: comparator
-        throw null;
+        return ComparatorMaker.comparator(rowType(), spec);
     }
 
     @Override

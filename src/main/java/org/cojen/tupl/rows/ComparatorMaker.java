@@ -30,11 +30,40 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.core.Pair;
+
 /**
  * @see Table#comparator
  * @author Brian S O'Neill
  */
 final class ComparatorMaker<R> {
+    private static final WeakCache<Pair<Class<?>, String>, Comparator<?>, Object> cCache;
+
+    static {
+        cCache = new WeakCache<>() {
+            @Override
+            public Comparator<?> newValue(Pair<Class<?>, String> key, Object unused) {
+                Class<?> rowType = key.a();
+                String spec = key.b();
+                var maker = new ComparatorMaker<>(rowType, spec);
+                String clean = maker.cleanSpec();
+                if (spec.equals(clean)) {
+                    return maker.finish();
+                } else {
+                    return obtain(new Pair<>(rowType, clean), null);
+                }
+            }
+        };
+    }
+
+    /**
+     * Returns a new or cached comparator instance.
+     */
+    @SuppressWarnings("unchecked")
+    public static <R> Comparator<R> comparator(Class<R> rowType, String spec) {
+        return (Comparator<R>) cCache.obtain(new Pair<>(rowType, spec), null);
+    }
+
     private final Class<R> mRowType;
     private final RowInfo mRowInfo;
     private final OrderBy mOrderBy;

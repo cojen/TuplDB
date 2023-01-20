@@ -26,6 +26,8 @@ import org.cojen.tupl.Index;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 
+import org.cojen.tupl.core.Pair;
+
 import org.cojen.tupl.diag.IndexStats;
 import org.cojen.tupl.diag.VerificationObserver;
 

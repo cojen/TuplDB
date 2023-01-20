@@ -83,9 +83,6 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     private Trigger<R> mTrigger;
     private static final VarHandle cTriggerHandle;
 
-    private WeakCache<String, Comparator<R>, Object> mComparatorCache;
-    private static final VarHandle cComparatorCacheHandle;
-
     protected final RowPredicateLock<R> mIndexLock;
 
     private WeakCache<Object, MethodHandle, byte[]> mDecodePartialCache;
@@ -99,8 +96,6 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             MethodHandles.Lookup lookup = MethodHandles.lookup();
             cTriggerHandle = lookup.findVarHandle
                 (BaseTable.class, "mTrigger", Trigger.class);
-            cComparatorCacheHandle = lookup.findVarHandle
-                (BaseTable.class, "mComparatorCache", WeakCache.class);
             cDecodePartialCacheHandle = lookup.findVarHandle
                 (BaseTable.class, "mDecodePartialCache", WeakCache.class);
             cWriteRowCacheHandle = lookup.findVarHandle
@@ -423,29 +418,8 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public final Comparator<R> comparator(String spec) {
-        WeakCache<String, Comparator<R>, Object> cache = mComparatorCache;
-
-        if (cache == null) {
-            cache = new WeakCache<>() {
-                @Override
-                protected Comparator<R> newValue(String spec, Object unused) {
-                    var maker = new ComparatorMaker<R>(rowType(), spec);
-                    String clean = maker.cleanSpec();
-                    return spec.equals(clean) ? maker.finish() : obtain(clean, null);
-                }
-            };
-
-            var existing = (WeakCache<String, Comparator<R>, Object>)
-                cComparatorCacheHandle.compareAndExchange(this, null, cache);
-
-            if (existing != null) {
-                cache = existing;
-            }
-        }
-
-        return cache.obtain(spec, null);
+        return ComparatorMaker.comparator(rowType(), spec);
     }
 
     @Override

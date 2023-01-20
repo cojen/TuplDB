@@ -15,7 +15,7 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.remote;
+package org.cojen.tupl.core;
 
 /**
  * A very exciting record.
