@@ -23,18 +23,10 @@ import java.lang.invoke.MethodType;
 
 import java.lang.ref.WeakReference;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-
 import org.cojen.tupl.DatabaseException;
 
 import org.cojen.maker.ClassMaker;
-import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
-import org.cojen.maker.Variable;
 
 /**
  * Makes totally ordered Transcoders suitable for feeding entries into a Sorter.

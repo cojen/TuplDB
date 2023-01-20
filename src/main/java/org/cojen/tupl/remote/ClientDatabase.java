@@ -41,7 +41,6 @@ import org.cojen.tupl.Index;
 import org.cojen.tupl.Server;
 import org.cojen.tupl.Snapshot;
 import org.cojen.tupl.Sorter;
-import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
 

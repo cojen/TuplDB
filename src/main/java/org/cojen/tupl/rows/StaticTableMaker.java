@@ -20,7 +20,6 @@ package org.cojen.tupl.rows;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.TreeMap;

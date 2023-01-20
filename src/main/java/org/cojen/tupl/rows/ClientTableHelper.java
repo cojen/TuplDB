@@ -29,7 +29,6 @@ import java.util.function.Predicate;
 import org.cojen.dirmi.Pipe;
 
 import org.cojen.maker.ClassMaker;
-import org.cojen.maker.Field;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;

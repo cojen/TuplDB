@@ -17,9 +17,7 @@
 
 package org.cojen.tupl.remote;
 
-import java.io.InputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 
 import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.Session;
@@ -28,7 +26,6 @@ import org.cojen.dirmi.SessionAware;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Ordering;
-import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.core.Utils;
 

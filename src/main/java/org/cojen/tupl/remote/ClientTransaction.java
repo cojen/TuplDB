@@ -23,7 +23,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.cojen.dirmi.RemoteException;
 
-import org.cojen.tupl.CommitCallback;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DeadlockException;
 import org.cojen.tupl.DurabilityMode;

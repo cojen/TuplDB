@@ -19,8 +19,6 @@ package org.cojen.tupl.remote;
 
 import java.io.IOException;
 
-import org.cojen.dirmi.Pipe;
-
 import org.cojen.tupl.DeadlockException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.LockFailureException;
@@ -28,8 +26,6 @@ import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Ordering;
 import org.cojen.tupl.View;
 import org.cojen.tupl.ViewConstraintException;
-
-import org.cojen.tupl.core.Utils;
 
 /**
  * 

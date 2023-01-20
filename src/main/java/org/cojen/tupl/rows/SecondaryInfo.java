@@ -21,7 +21,7 @@ package org.cojen.tupl.rows;
  * Decoded RowInfo for a secondary index.
  *
  * @author Brian S O'Neill
- * @see RowStore#indexRowInfo
+ * @see RowStore#secondaryRowInfo
  */
 class SecondaryInfo extends RowInfo {
     final RowInfo primaryInfo;

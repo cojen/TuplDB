@@ -27,7 +27,6 @@ import java.util.Map;
 
 import org.cojen.dirmi.Pipe;
 
-import org.cojen.maker.Bootstrap;
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;

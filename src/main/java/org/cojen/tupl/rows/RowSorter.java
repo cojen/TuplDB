@@ -23,14 +23,11 @@ import java.lang.invoke.MethodHandle;
 
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.Set;
 
 import org.cojen.tupl.Entry;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Sorter;
 import org.cojen.tupl.Transaction;
-
-import static java.util.Spliterator.*;
 
 /**
  * 

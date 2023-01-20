@@ -175,7 +175,7 @@ abstract class RefCache<K, V, H> extends ReferenceQueue<Object> {
     /**
      * Caller must be synchronized.
      *
-     * @param obj not null
+     * @param ref not null
      */
     protected abstract void cleanup(Object ref);
 }

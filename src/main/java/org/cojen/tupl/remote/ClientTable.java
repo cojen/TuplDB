@@ -26,8 +26,6 @@ import java.util.Comparator;
 
 import java.util.function.Predicate;
 
-import java.util.stream.Stream;
-
 import org.cojen.dirmi.ClosedException;
 import org.cojen.dirmi.Pipe;
 

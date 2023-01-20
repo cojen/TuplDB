@@ -22,7 +22,6 @@ import java.io.IOException;
 import org.cojen.dirmi.Pipe;
 
 import org.cojen.tupl.DurabilityMode;
-import org.cojen.tupl.Table;
 
 import org.cojen.tupl.diag.QueryPlan;
 

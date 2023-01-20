@@ -26,7 +26,6 @@ import java.lang.ref.WeakReference;
 
 import java.util.Map;
 
-import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
@@ -337,7 +336,7 @@ public class DynamicTableMaker extends TableMaker {
     /**
      * Add a method for remotely serializing rows.
      *
-     * @see RowEvaluator.writeRow
+     * @see RowEvaluator#writeRow
      */
     private void addDynamicWriteRowMethod() {
         MethodMaker mm = mClassMaker.addMethod

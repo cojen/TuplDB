@@ -935,7 +935,7 @@ public class FilteredScanMaker<R> {
     /**
      * Override the inherited writeRow method, but only if given a projection.
      *
-     * @see RowEvaluator.writeRow
+     * @see RowEvaluator#writeRow
      */
     private void addWriteRowMethod() {
         if (mProjectionSpec == null) {

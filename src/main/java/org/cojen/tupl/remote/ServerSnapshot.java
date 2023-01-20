@@ -24,8 +24,6 @@ import org.cojen.dirmi.Pipe;
 
 import org.cojen.tupl.Snapshot;
 
-import org.cojen.tupl.io.Utils;
-
 /**
  * 
  *

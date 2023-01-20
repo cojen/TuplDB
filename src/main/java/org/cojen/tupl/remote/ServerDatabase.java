@@ -21,8 +21,6 @@ import java.io.IOException;
 
 import java.util.Map;
 
-import java.nio.charset.StandardCharsets;
-
 import org.cojen.dirmi.Pipe;
 
 import org.cojen.tupl.Database;

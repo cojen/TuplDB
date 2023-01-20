@@ -145,7 +145,7 @@ final class RowHeader {
     }
 
     /**
-     * @param lengthHeader when true, start with a four byte length field
+     * @param lengthField when true, start with a four byte length field
      */
     byte[] encode(boolean lengthField) {
         int numColumns = columnNames.length;

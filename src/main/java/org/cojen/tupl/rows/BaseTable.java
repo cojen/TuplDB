@@ -30,7 +30,6 @@ import java.util.Comparator;
 import java.util.Map;
 import java.util.Objects;
 
-import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Entry;
@@ -1284,7 +1283,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     /**
-     * @see updateAndTrigger
+     * @see #updateAndTrigger
      */
     @FunctionalInterface
     public static interface ValueUpdater {
