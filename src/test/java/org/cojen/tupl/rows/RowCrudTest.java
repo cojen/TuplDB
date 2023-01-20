@@ -550,5 +550,11 @@ public class RowCrudTest {
 
         assertTrue(table.merge(null, e));
         assertArrayEquals("world!".getBytes(), e.value());
+
+        e.value("world!!!".getBytes());
+        assertTrue(table.merge(null, e));
+        assertArrayEquals("world!!!".getBytes(), e.value());
+
+        assertArrayEquals("world!!!".getBytes(), ix.load(null, e.key()));
     }
 }

@@ -55,6 +55,7 @@ public final class RemoteProxyMaker {
     };
 
     /**
+     * @param schemaVersion is zero if table isn't evolvable
      * @param descriptor encoding format is defined by RowHeader class
      */
     static RemoteTableProxy make(BaseTable<?> table, int schemaVersion, byte[] descriptor) {
@@ -66,7 +67,7 @@ public final class RemoteProxyMaker {
         }
     }
 
-    private final Class<?> mTableClass;
+    private final BaseTable mTable;
     private final Class<?> mRowType;
     private final Class<?> mRowClass;
     private final RowGen mRowGen;
@@ -80,7 +81,7 @@ public final class RemoteProxyMaker {
     private ColumnCodec[] mClientCodecs;
 
     private RemoteProxyMaker(BaseTable table, byte[] descriptor) {
-        mTableClass = table.getClass();
+        mTable = table;
         mRowType = table.rowType();
         mRowClass = RowMaker.find(mRowType);
         mRowGen = RowInfo.find(mRowType).rowGen();
@@ -111,24 +112,30 @@ public final class RemoteProxyMaker {
                 mm.field("EMPTY_ROW").set(mm.new_(mRowClass));
             }
 
-            mClassMaker.addField(int.class, "prefixLength").private_().final_();
-            mClassMaker.addField(int.class, "schemaVersion").private_().final_();
+            if (mTable.isEvolvable()) {
+                mClassMaker.addField(int.class, "prefixLength").private_().final_();
+                mClassMaker.addField(int.class, "schemaVersion").private_().final_();
 
-            var schemaVersionVar = ctorMaker.param(1);
+                var schemaVersionVar = ctorMaker.param(1);
 
-            Label small = ctorMaker.label();
-            schemaVersionVar.ifLt(128, small);
-            ctorMaker.field("prefixLength").set(4);
-            // Version is pre-encoded using the prefix format.
-            schemaVersionVar.set(schemaVersionVar.or(1 << 31));
-            Label cont = ctorMaker.label().goto_();
-            small.here();
-            ctorMaker.field("prefixLength").set(1);
-            cont.here();
-            ctorMaker.field("schemaVersion").set(schemaVersionVar);
+                Label small = ctorMaker.label();
+                schemaVersionVar.ifLt(128, small);
+                ctorMaker.field("prefixLength").set(4);
+                // Version is pre-encoded using the prefix format.
+                schemaVersionVar.set(schemaVersionVar.or(1 << 31));
+                Label cont = ctorMaker.label().goto_();
+                small.here();
+                ctorMaker.field("prefixLength").set(1);
+                cont.here();
+                ctorMaker.field("schemaVersion").set(schemaVersionVar);
+            }
 
             lookup = makeDirect();
         } else {
+            if (!mTable.isEvolvable()) {
+                throw new IllegalStateException();
+            }
+
             lookup = makeConverter();
         }
 
@@ -277,14 +284,20 @@ public final class RemoteProxyMaker {
         paramVars[0] = pipeVar;
         System.arraycopy(stateVars, 0, paramVars, 1, stateVars.length);
         mm.invoke("requireAllSet", paramVars);
+        mm.return_(null);
 
         isReady.here();
 
         var makerVar = mm.var(RemoteProxyMaker.class);
         var keyVar = makerVar.invoke("decodeKey", pipeVar);
-        var valueVar = makerVar.invoke("decodeValue", pipeVar, mm.field("prefixLength"));
 
-        mm.var(RowUtils.class).invoke("encodePrefixPF", valueVar, 0, mm.field("schemaVersion"));
+        Variable valueVar;
+        if (mTable.isEvolvable()) {
+            valueVar = makerVar.invoke("decodeValue", pipeVar, mm.field("prefixLength"));
+            mm.var(RowUtils.class).invoke("encodePrefixPF", valueVar, 0, mm.field("schemaVersion"));
+        } else {
+            valueVar = makerVar.invoke("decodeValue", pipeVar);
+        }
 
         var oldValueVar = makerVar.invoke(variant, mm.field("table"), txnVar, mm.field("EMPTY_ROW"),
                                           keyVar, valueVar, pipeVar);
@@ -329,22 +342,31 @@ public final class RemoteProxyMaker {
 
         final Variable newValueVar = mm.var(byte[].class);
 
-        // All value columns are dirty, so just do a plain store operation as an optimization.
-        newValueVar.set(makerVar.invoke("decodeValue", pipeVar, mm.field("prefixLength")));
-        mm.var(RowUtils.class).invoke("encodePrefixPF", newValueVar, 0, mm.field("schemaVersion"));
+        // All value columns are dirty, so just do a plain replace operation as an optimization.
+
+        if (mTable.isEvolvable()) {
+            newValueVar.set(makerVar.invoke("decodeValue", pipeVar, mm.field("prefixLength")));
+            var utilsVar = mm.var(RowUtils.class);
+            utilsVar.invoke("encodePrefixPF", newValueVar, 0, mm.field("schemaVersion"));
+        } else {
+            newValueVar.set(makerVar.invoke("decodeValue", pipeVar));
+        }
+
         Label mergeReply;
         if (variant == "merge") {
-            var resultVar = makerVar.invoke("storeNoFlush", mm.field("table"), txnVar,
+            var resultVar = makerVar.invoke("mergeReplace", mm.field("table"), txnVar,
                                             mm.field("EMPTY_ROW"), keyVar, newValueVar, pipeVar);
             mergeReply = mm.label();
             resultVar.ifTrue(mergeReply);
-            mm.return_(null);
         } else {
-            makerVar.invoke("store", mm.field("table"), txnVar,
+            makerVar.invoke("replace", mm.field("table"), txnVar,
                             mm.field("EMPTY_ROW"), keyVar, newValueVar, pipeVar);
             mergeReply = null;
-            mm.return_(null);
         }
+
+        mm.return_(null);
+
+        // Normal update/merge operation follows...
 
         partial.here();
 
@@ -353,7 +375,7 @@ public final class RemoteProxyMaker {
         if (mUpdaterFactoryVar == null) {
             // Define and share a reference to the ValueUpdater factory constant.
             mUpdaterFactoryVar = makerVar.condy
-                ("condyValueUpdater", mm.class_(), mTableClass, mRowType)
+                ("condyValueUpdater", mm.class_(), mTable.getClass(), mRowType)
                 .invoke(MethodHandle.class, "_");
         }
 
@@ -450,8 +472,14 @@ public final class RemoteProxyMaker {
 
         var tableVar = mm.var(tableClass);
         Class rowClass = RowMaker.find(rowType);
-        var schemaVersion = mm.field("proxy").field("schemaVersion");
-        TableMaker.convertValueIfNecessary(tableVar, rowClass, schemaVersion, originalValueVar);
+
+        Variable schemaVersion;
+        if (BaseTable.isEvolvable(rowType)) {
+            schemaVersion = mm.field("proxy").field("schemaVersion");
+            TableMaker.convertValueIfNecessary(tableVar, rowClass, schemaVersion, originalValueVar);
+        } else {
+            schemaVersion = null;
+        }
 
         var dirtyValueVar = mm.field("dirtyValue");
 
@@ -465,10 +493,17 @@ public final class RemoteProxyMaker {
 
         Variable[] offsetVars = new Variable[codecs.length];
 
-        var startOffsetVar = mm.var(RowUtils.class).invoke("lengthPrefixPF", schemaVersion);
+        var newSizeVar = dirtyValueVar.alength();
+        var startOffsetVar = mm.var(int.class);
+
+        if (schemaVersion != null) {
+            startOffsetVar.set(mm.var(RowUtils.class).invoke("lengthPrefixPF", schemaVersion));
+            newSizeVar.inc(startOffsetVar); // need room for schemaVersion
+        } else {
+            startOffsetVar.set(0);
+        }
+
         var offsetVar = mm.var(int.class).set(startOffsetVar);
-        var newSizeVar = mm.var(int.class).set(startOffsetVar); // need room for schemaVersion
-        newSizeVar.inc(dirtyValueVar.alength());
 
         int stateFieldNum = -1;
         Variable stateField = null;
@@ -642,10 +677,13 @@ public final class RemoteProxyMaker {
      * Convert the value to the current schema if necessary, and then call writeValue.
      */
     private void convertAndWriteValue(Variable pipeVar, Variable valueVar) {
-        MethodMaker mm = pipeVar.methodMaker();
-        var tableVar = mm.var(mTableClass);
-        var schemaVersion = mm.field("schemaVersion");
-        TableMaker.convertValueIfNecessary(tableVar, mRowClass, schemaVersion, valueVar);
+        if (mTable.isEvolvable()) {
+            MethodMaker mm = pipeVar.methodMaker();
+            var tableVar = mm.var(mTable.getClass());
+            var schemaVersion = mm.field("schemaVersion");
+            TableMaker.convertValueIfNecessary(tableVar, mRowClass, schemaVersion, valueVar);
+        }
+
         writeValue(pipeVar, valueVar);
     }
 
@@ -655,10 +693,15 @@ public final class RemoteProxyMaker {
      */
     private void writeValue(Variable pipeVar, Variable valueVar) {
         MethodMaker mm = pipeVar.methodMaker();
-        var prefixLengthVar = mm.field("prefixLength").get();
-        var lengthVar = valueVar.alength().sub(prefixLengthVar);
-        mm.var(RowUtils.class).invoke("encodePrefixPF", pipeVar, lengthVar);
-        pipeVar.invoke("write", valueVar, prefixLengthVar, lengthVar);
+        if (mTable.isEvolvable()) {
+            var prefixLengthVar = mm.field("prefixLength").get();
+            var lengthVar = valueVar.alength().sub(prefixLengthVar);
+            mm.var(RowUtils.class).invoke("encodePrefixPF", pipeVar, lengthVar);
+            pipeVar.invoke("write", valueVar, prefixLengthVar, lengthVar);
+        } else {
+            mm.var(RowUtils.class).invoke("encodePrefixPF", pipeVar, valueVar.alength());
+            pipeVar.invoke("write", valueVar);
+        }
     }
 
     /**
@@ -783,29 +826,6 @@ public final class RemoteProxyMaker {
 
         pipe.flush();
         pipe.recycle();
-    }
-
-    /**
-     * Called by generated code.
-     *
-     * @return true if the caller must write the response, etc.
-     */
-    @SuppressWarnings("unchecked")
-    public static boolean storeNoFlush(BaseTable table, Transaction txn, Object row,
-                                       byte[] key, byte[] value, Pipe pipe)
-        throws IOException
-    {
-        try {
-            table.storeAndTrigger(txn, row, key, value);
-        } catch (Throwable e) {
-            pipe.writeObject(e);
-            pipe.flush();
-            pipe.recycle();
-            return false;
-        }
-        pipe.writeNull(); // no exception
-        pipe.writeByte(1); // success
-        return true;
     }
 
     /**
@@ -944,6 +964,39 @@ public final class RemoteProxyMaker {
         pipe.recycle();
 
         return null;
+    }
+
+    /**
+     * Called by generated code.
+     *
+     * @return true if the caller must write the response, etc.
+     */
+    @SuppressWarnings("unchecked")
+    public static boolean mergeReplace(BaseTable table, Transaction txn, Object row,
+                                       byte[] key, byte[] value, Pipe pipe)
+        throws IOException
+    {
+        attempt: {
+            boolean result;
+            try {
+                result = table.replaceAndTrigger(txn, row, key, value);
+            } catch (Throwable e) {
+                pipe.writeObject(e);
+                break attempt;
+            }
+            pipe.writeNull(); // no exception
+            if (!result) {
+                pipe.writeByte(0);
+            } else {
+                pipe.writeByte(1);
+                return true;
+            }
+        }
+
+        pipe.flush();
+        pipe.recycle();
+
+        return false;
     }
 
     /**

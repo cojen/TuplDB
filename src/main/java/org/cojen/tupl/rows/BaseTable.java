@@ -985,8 +985,13 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     public final RemoteTableProxy newRemoteProxy(byte[] descriptor) throws IOException {
-        RowInfo rowInfo = RowInfo.find(rowType());
-        int schemaVersion = rowStore().schemaVersion(rowInfo, false, mSource.id(), true);
+        int schemaVersion;
+        if (!isEvolvable()) {
+            schemaVersion = 0;
+        } else {
+            RowInfo rowInfo = RowInfo.find(rowType());
+            schemaVersion = rowStore().schemaVersion(rowInfo, false, mSource.id(), true);
+        }
         return RemoteProxyMaker.make(this, schemaVersion, descriptor);
     }
 
@@ -1438,7 +1443,11 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
      * Note: Is overridden by BaseTableIndex.
      */
     boolean isEvolvable() {
-        return rowType() != Entry.class;
+        return isEvolvable(rowType());
+    }
+
+    static boolean isEvolvable(Class<?> rowType) {
+        return rowType != Entry.class;
     }
 
     /**

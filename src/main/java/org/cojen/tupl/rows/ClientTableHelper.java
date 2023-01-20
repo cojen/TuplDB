@@ -349,7 +349,9 @@ public abstract class ClientTableHelper<R> implements Table<R> {
         Label noOperation = mm.label();
         resultVar.ifEq(0, noOperation);
 
-        if (variant == "merge") {
+        if (variant == "update") {
+            TableMaker.markAllUndirty(rowVar, rowGen.info);
+        } else {
             decodeValueColumns(rowGen, rowVar, pipeVar);
             TableMaker.markAllClean(rowVar, rowGen, rowGen);
         }
@@ -453,7 +455,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
                 int keysRemaining = keyCodecs.length;
 
                 for (int i=0; i<stateFieldNames.length; i++) {
-                    Variable stateVar = rowVar.field(stateFieldNames[i]);
+                    Variable stateVar = rowVar.field(stateFieldNames[i]).get();
 
                     if (keysRemaining < 16) {
                         var andMask = mask | ((0b100 << ((keysRemaining - 1) << 1)) - 1);
