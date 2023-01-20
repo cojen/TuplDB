@@ -37,9 +37,10 @@ import org.cojen.maker.Variable;
 import org.cojen.tupl.Scanner;
 
 /**
- * 
+ * Used for reading remotely serialized rows.
  *
  * @author Brian S O'Neill
+ * @see RowWriter
  */
 public abstract class RowReader<R, DIN extends DataInput> implements Scanner<R> {
     private static final WeakCache<CacheKey, Decoder, Object> cDecoders;

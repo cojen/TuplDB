@@ -27,9 +27,12 @@ import java.util.Spliterator;
 import org.cojen.tupl.Scanner;
 
 /**
- * Defines a context for remotely serializing rows.
+ * Defines a context for remotely serializing rows. Note that RowConsumer is implemented, which
+ * provides the means for a Scanner to write rows into a RowWriter. The RowWriter is passed to
+ * the Scanner as if it's a row.
  *
  * @author Brian S O'Neill
+ * @see RowReader
  */
 public final class RowWriter<R> implements RowConsumer<R> {
     private final DataOutput mOut;
