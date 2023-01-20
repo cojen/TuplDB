@@ -44,21 +44,15 @@ final class ClientCache extends WeakCache<Object, Object, Function<Object, Objec
     /**
      * Registers a cleaning action which disposes the remote object when the client object
      * isn't referenced anymore.
-     *
-     * @return the clientObj
      */
-    public static <C> C autoDispose(C clientObj, Disposable remoteObj) {
-        if (clientObj != null) {
-            CommonCleaner.access().register(clientObj, () -> {
-                try {
-                    remoteObj.dispose();
-                } catch (RemoteException e) {
-                    // Ignore.
-                }
-            });
-        }
-
-        return clientObj;
+    public static void autoDispose(Object clientObj, Disposable remoteObj) {
+        CommonCleaner.access().register(clientObj, () -> {
+            try {
+                remoteObj.dispose();
+            } catch (RemoteException e) {
+                // Ignore.
+            }
+        });
     }
 
     /**

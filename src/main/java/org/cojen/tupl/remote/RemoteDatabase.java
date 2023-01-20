@@ -50,12 +50,6 @@ public interface RemoteDatabase extends Remote, Disposable {
     @Restorable
     public RemoteIndex indexById(long id) throws IOException;
 
-    @Restorable
-    public RemoteTable openTable(String typeName) throws IOException;
-
-    @Restorable
-    public RemoteTable findTable(String typeName) throws IOException;
-
     public void renameIndex(RemoteIndex index, byte[] newName) throws IOException;
 
     public RemoteRunnable deleteIndex(RemoteIndex index) throws IOException;

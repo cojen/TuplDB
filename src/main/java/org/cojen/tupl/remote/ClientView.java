@@ -41,6 +41,7 @@ class ClientView<R extends RemoteView> implements View {
     ClientView(ClientDatabase db, R remote) {
         mDb = db;
         mRemote = remote;
+        ClientCache.autoDispose(this, remote);
     }
 
     @Override

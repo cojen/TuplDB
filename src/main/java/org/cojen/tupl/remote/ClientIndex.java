@@ -66,7 +66,7 @@ class ClientIndex extends ClientView<RemoteIndex> implements Index {
                 throw Utils.rethrow(e);
             }
 
-            return ClientCache.autoDispose(new ClientTable<>(mDb, rtable, type), rtable);
+            return new ClientTable<>(mDb, rtable, type);
         });
     }
 

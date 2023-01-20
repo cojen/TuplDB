@@ -75,6 +75,8 @@ final class ClientTable<R> implements Table<R> {
         mRemote = remote;
         mType = type;
 
+        ClientCache.autoDispose(this, remote);
+
         mHelper = ClientTableHelper.find(type);
     }
 

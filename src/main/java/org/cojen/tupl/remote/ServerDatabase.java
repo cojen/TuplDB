@@ -67,17 +67,6 @@ public final class ServerDatabase implements RemoteDatabase {
     }
 
     @Override
-    public RemoteTable openTable(String typeName) throws IOException {
-        return openIndex(typeName.getBytes(StandardCharsets.UTF_8)).asTable(typeName);
-    }
-
-    @Override
-    public RemoteTable findTable(String typeName) throws IOException {
-        RemoteIndex ix = findIndex(typeName.getBytes(StandardCharsets.UTF_8));
-        return ix == null ? null : ix.asTable(typeName);
-    }
-
-    @Override
     public void renameIndex(RemoteIndex index, byte[] newName) throws IOException {
         mDb.renameIndex(((ServerIndex) index).mView, newName);
     }

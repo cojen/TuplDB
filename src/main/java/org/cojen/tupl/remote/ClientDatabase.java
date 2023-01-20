@@ -143,8 +143,7 @@ public final class ClientDatabase implements Database {
                 @Override
                 public ClientIndex apply(Pair<ClientDatabase, Long> key2) {
                     invoked = true;
-                    var cindex = new ClientIndex(ClientDatabase.this, rindex);
-                    return ClientCache.autoDispose(cindex, rindex);
+                    return new ClientIndex(ClientDatabase.this, rindex);
                 }
             };
 
@@ -173,9 +172,7 @@ public final class ClientDatabase implements Database {
                 throw Utils.rethrow(e);
             }
 
-            var cindex = rindex == null ? null : new ClientIndex(this, rindex);
-
-            return ClientCache.autoDispose(cindex, rindex);
+            return rindex == null ? null : new ClientIndex(this, rindex);
         });
     }
 
@@ -221,7 +218,7 @@ public final class ClientDatabase implements Database {
                 throw Utils.rethrow(e);
             }
 
-            return ClientCache.autoDispose(new ClientView<>(this, rview), rview);
+            return new ClientView<>(this, rview);
         });
     }
 
