@@ -481,7 +481,7 @@ public final class RemoteProxyMaker {
             schemaVersion = null;
         }
 
-        var dirtyValueVar = mm.field("dirtyValue");
+        var dirtyValueVar = mm.field("dirtyValue").get();
 
         // Note: The following code is similar to TableMaker.encodeUpdateEntry.
 

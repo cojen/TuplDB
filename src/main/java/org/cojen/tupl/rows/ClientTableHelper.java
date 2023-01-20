@@ -630,7 +630,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
                 masked.ifEq(0, skip);
             }
 
-            codec.encode(rowVar.field(info.name), bytesVar, offsetVar);
+            codec.encode(rowVar.field(info.name).get(), bytesVar, offsetVar);
 
             skip.here();
         }
