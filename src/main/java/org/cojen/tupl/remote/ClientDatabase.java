@@ -30,8 +30,6 @@ import java.nio.channels.SocketChannel;
 
 import java.util.concurrent.locks.Lock;
 
-import java.util.function.Function;
-
 import org.cojen.dirmi.ClosedException;
 import org.cojen.dirmi.Environment;
 import org.cojen.dirmi.Pipe;
@@ -131,34 +129,7 @@ public final class ClientDatabase implements Database {
                 throw Utils.rethrow(e);
             }
 
-            if (rindex == null) {
-                return null;
-            }
-
-            // Prefer a canonical client instance.
-
-            var factory = new Function<Pair<ClientDatabase, Long>, ClientIndex>() {
-                boolean invoked;
-
-                @Override
-                public ClientIndex apply(Pair<ClientDatabase, Long> key2) {
-                    invoked = true;
-                    return new ClientIndex(ClientDatabase.this, rindex);
-                }
-            };
-
-            ClientIndex cindex = ClientCache.get(new Pair<>(this, rindex.id()), factory);
-
-            if (!factory.invoked) {
-                // An existing ClientIndex was selected, so dispose the unused RemoteIndex.
-                try {
-                    rindex.dispose();
-                } catch (IOException e) {
-                    // Ignore.
-                }
-            }
-
-            return cindex;
+            return rindex == null ? null : new ClientIndex(this, rindex);
         });
     }
 
