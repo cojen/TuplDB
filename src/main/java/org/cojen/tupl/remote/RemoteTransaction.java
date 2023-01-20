@@ -40,7 +40,7 @@ import org.cojen.tupl.LockResult;
  *
  * @author Brian S O'Neill
  */
-public interface RemoteTransaction extends Remote {
+public interface RemoteTransaction extends Remote, Disposable {
     @Batched
     @RemoteFailure(declared=false)
     void lockMode(LockMode mode);
@@ -165,8 +165,4 @@ public interface RemoteTransaction extends Remote {
     long id();
 
     void flush() throws IOException;
-
-    @NoReply
-    @Disposer
-    void dispose() throws RemoteException;
 }

@@ -135,13 +135,13 @@ final class ClientTable<R> implements Table<R> {
 
     @Override
     public Updater<R> newUpdater(Transaction txn) throws IOException {
-        // FIXME
+        // FIXME: newUpdater
         throw null;
     }
 
     @Override
     public Updater<R> newUpdater(Transaction txn, String query, Object... args) throws IOException {
-        // FIXME
+        // FIXME: newUpdater
         throw null;
     }
 
@@ -243,7 +243,12 @@ final class ClientTable<R> implements Table<R> {
 
     @Override
     public void close() throws IOException {
-        mRemote.dispose();
+        ClientCache.remove(this);
+        try {
+            mRemote.dispose();
+        } catch (ClosedException e) {
+            // Ignore.
+        }
     }
 
     @Override

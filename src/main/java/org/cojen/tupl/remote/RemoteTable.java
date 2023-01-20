@@ -38,7 +38,7 @@ import org.cojen.tupl.diag.QueryPlan;
  *
  * @author Brian S O'Neill
  */
-public interface RemoteTable extends Remote {
+public interface RemoteTable extends Remote, Disposable {
     public Pipe newScanner(RemoteTransaction txn, Pipe pipe) throws IOException;
 
     public Pipe newScanner(RemoteTransaction txn, Pipe pipe, String query, Object... args)
@@ -75,8 +75,4 @@ public interface RemoteTable extends Remote {
 
     @RemoteFailure(declared=false)
     public boolean isClosed();
-
-    @NoReply
-    @Disposer
-    public void dispose() throws RemoteException;
 }

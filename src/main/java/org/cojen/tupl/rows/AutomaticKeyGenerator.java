@@ -379,21 +379,9 @@ public abstract class AutomaticKeyGenerator<R> {
         return new LockFailureException(message);
     }
 
-    private static volatile SoftReference<Cleaner> cCleanerRef;
-
     private static KeyState register(Cursor c, RandomGenerator rnd) {
         try {
-            SoftReference<Cleaner> cleanerRef = cCleanerRef;
-            Cleaner cleaner;
-            if (cleanerRef == null || (cleaner = cleanerRef.get()) == null) {
-                synchronized (AutomaticKeyGenerator.class) {
-                    cleanerRef = cCleanerRef;
-                    if (cleanerRef == null || (cleaner = cleanerRef.get()) == null) {
-                        cleaner = Cleaner.create();
-                        cCleanerRef = new SoftReference<>(cleaner);
-                    }
-                }
-            }
+            Cleaner cleaner = CommonCleaner.access();
             var state = new KeyState(c, rnd);
             cleaner.register(state, c::reset);
             return state;

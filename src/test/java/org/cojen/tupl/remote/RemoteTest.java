@@ -54,6 +54,11 @@ public class RemoteTest {
         System.out.println(client.isClosed());
         System.out.println(client.stats());
 
+        System.out.println(client.indexRegistryByName());
+        System.out.println(client.indexRegistryByName());
+        System.out.println(client.indexRegistryById());
+        System.out.println(client.indexRegistryById());
+
         Index ix = client.openIndex("test");
         System.out.println(ix);
         System.out.println(ix.isEmpty());

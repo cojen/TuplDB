@@ -30,6 +30,8 @@ import java.nio.channels.SocketChannel;
 
 import java.util.concurrent.locks.Lock;
 
+import java.util.function.Function;
+
 import org.cojen.dirmi.ClosedException;
 import org.cojen.dirmi.Environment;
 import org.cojen.dirmi.Pipe;
@@ -51,6 +53,10 @@ import org.cojen.tupl.diag.VerificationObserver;
 
 import org.cojen.tupl.ext.CustomHandler;
 import org.cojen.tupl.ext.PrepareHandler;
+
+import org.cojen.tupl.io.Utils;
+
+import org.cojen.tupl.rows.ArrayKey;
 
 /**
  * 
@@ -108,22 +114,69 @@ public final class ClientDatabase implements Database {
 
     @Override
     public Index openIndex(byte[] name) throws IOException {
-        // FIXME: cache index instances
-        return new ClientIndex(this, mRemote.openIndex(name));
+        return findIndex(name.clone(), true);
     }
 
     @Override
     public Index findIndex(byte[] name) throws IOException {
-        // FIXME: cache index instances
-        RemoteIndex ix = mRemote.findIndex(name);
-        return ix == null ? null : new ClientIndex(this, ix);
+        return findIndex(name.clone(), false);
+    }
+
+    private ClientIndex findIndex(byte[] name, boolean open) throws IOException {
+        return ClientCache.get(ArrayKey.make(this, name), key -> {
+            RemoteIndex rindex;
+            try {
+                rindex = open ? mRemote.openIndex(name) : mRemote.findIndex(name);
+            } catch (IOException e) {
+                throw Utils.rethrow(e);
+            }
+
+            if (rindex == null) {
+                return null;
+            }
+
+            // Prefer a canonical client instance.
+
+            var factory = new Function<Pair<ClientDatabase, Long>, ClientIndex>() {
+                boolean invoked;
+
+                @Override
+                public ClientIndex apply(Pair<ClientDatabase, Long> key2) {
+                    invoked = true;
+                    var cindex = new ClientIndex(ClientDatabase.this, rindex);
+                    return ClientCache.autoDispose(cindex, rindex);
+                }
+            };
+
+            ClientIndex cindex = ClientCache.get(new Pair<>(this, rindex.id()), factory);
+
+            if (!factory.invoked) {
+                // An existing ClientIndex was selected, so dispose the unused RemoteIndex.
+                try {
+                    rindex.dispose();
+                } catch (IOException e) {
+                    // Ignore.
+                }
+            }
+
+            return cindex;
+        });
     }
 
     @Override
-    public Index indexById(long id) throws IOException {
-        // FIXME: cache index instances
-        RemoteIndex ix = mRemote.indexById(id);
-        return ix == null ? null : new ClientIndex(this, ix);
+    public ClientIndex indexById(long id) throws IOException {
+        return ClientCache.get(new Pair<>(this, id), key -> {
+            RemoteIndex rindex;
+            try {
+                rindex = mRemote.indexById(id);
+            } catch (IOException e) {
+                throw Utils.rethrow(e);
+            }
+
+            var cindex = rindex == null ? null : new ClientIndex(this, rindex);
+
+            return ClientCache.autoDispose(cindex, rindex);
+        });
     }
 
     @Override
@@ -151,14 +204,25 @@ public final class ClientDatabase implements Database {
 
     @Override
     public View indexRegistryByName() throws IOException {
-        // FIXME: cache view instances
-        return new ClientView<RemoteView>(this, mRemote.indexRegistryByName());
+        return indexRegistry(true);
     }
 
     @Override
     public View indexRegistryById() throws IOException {
-        // FIXME: cache view instances
-        return new ClientView<RemoteView>(this, mRemote.indexRegistryById());
+        return indexRegistry(false);
+    }
+
+    private View indexRegistry(boolean byName) throws IOException {
+        return ClientCache.get(new Pair<>(this, byName), key -> {
+            RemoteView rview;
+            try {
+                rview = byName ? mRemote.indexRegistryByName() : mRemote.indexRegistryById();
+            } catch (IOException e) {
+                throw Utils.rethrow(e);
+            }
+
+            return ClientCache.autoDispose(new ClientView<>(this, rview), rview);
+        });
     }
 
     @Override

@@ -20,8 +20,6 @@ package org.cojen.tupl.remote;
 import java.io.IOException;
 
 import org.cojen.dirmi.Batched;
-import org.cojen.dirmi.Disposer;
-import org.cojen.dirmi.NoReply;
 import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.Remote;
 import org.cojen.dirmi.RemoteException;
@@ -39,7 +37,7 @@ import org.cojen.tupl.ViewConstraintException;
  *
  * @author Brian S O'Neill
  */
-public interface RemoteView extends Remote {
+public interface RemoteView extends Remote, Disposable {
     @RemoteFailure(declared=false)
     public Ordering ordering();
 
@@ -118,8 +116,4 @@ public interface RemoteView extends Remote {
 
     @RemoteFailure(declared=false)
     public boolean isModifyAtomic();
-
-    @NoReply
-    @Disposer
-    public void dispose() throws RemoteException;
 }

@@ -23,7 +23,6 @@ import java.util.Map;
 
 import org.cojen.dirmi.Batched;
 import org.cojen.dirmi.Disposer;
-import org.cojen.dirmi.NoReply;
 import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.Remote;
 import org.cojen.dirmi.RemoteException;
@@ -41,7 +40,7 @@ import org.cojen.tupl.diag.DatabaseStats;
  * @see ClientDatabase
  * @see RemoteDatabaseServer
  */
-public interface RemoteDatabase extends Remote {
+public interface RemoteDatabase extends Remote, Disposable {
     @Restorable
     public RemoteIndex openIndex(byte[] name) throws IOException;
 
@@ -141,8 +140,4 @@ public interface RemoteDatabase extends Remote {
 
     @Disposer
     public void shutdown() throws IOException;
-
-    @NoReply
-    @Disposer
-    public void dispose() throws RemoteException;
 }

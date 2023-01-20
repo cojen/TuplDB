@@ -25,27 +25,27 @@ import java.util.Objects;
  *
  * @author Brian S O'Neill
  */
-abstract class ArrayKey {
-    static Bytes make(byte[] array) {
+public abstract class ArrayKey {
+    public static Bytes make(byte[] array) {
         return new Bytes(array);
     }
 
-    static PrefixBytes make(int prefix, byte[] array) {
+    public static PrefixBytes make(int prefix, byte[] array) {
         return new PrefixBytes(prefix, array);
     }
 
-    static ObjPrefixBytes make(Object prefix, byte[] array) {
+    public static ObjPrefixBytes make(Object prefix, byte[] array) {
         return new ObjPrefixBytes(prefix, array);
     }
 
-    static Obj make(Object first, Object[] rest) {
+    public static Obj make(Object first, Object[] rest) {
         var array = new Object[1 + rest.length];
         array[0] = first;
         System.arraycopy(rest, 0, array, 1, rest.length);
         return new Obj(array);
     }
 
-    static final class Bytes {
+    public static final class Bytes {
         final byte[] array;
 
         Bytes(byte[] array) {
@@ -69,7 +69,7 @@ abstract class ArrayKey {
         }
     }
 
-    static final class PrefixBytes {
+    public static final class PrefixBytes {
         final int prefix;
         final byte[] array;
 
@@ -95,7 +95,7 @@ abstract class ArrayKey {
         }
     }
 
-    static final class ObjPrefixBytes {
+    public static final class ObjPrefixBytes {
         final Object prefix;
         final byte[] array;
 
@@ -121,7 +121,7 @@ abstract class ArrayKey {
         }
     }
 
-    static final class Obj {
+    public static final class Obj {
         final Object[] array;
 
         Obj(Object[] array) {

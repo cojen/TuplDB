@@ -86,7 +86,7 @@ final class ServerTable<R> implements RemoteTable {
 
     @Override
     public Pipe newUpdater(RemoteTransaction txn, Pipe pipe) throws IOException {
-        // FIXME
+        // FIXME: newUpdater
         throw null;
     }
 
@@ -94,7 +94,7 @@ final class ServerTable<R> implements RemoteTable {
     public Pipe newUpdater(RemoteTransaction txn, Pipe pipe, String query, Object... args)
         throws IOException
     {
-        // FIXME
+        // FIXME: newUpdater
         throw null;
     }
 

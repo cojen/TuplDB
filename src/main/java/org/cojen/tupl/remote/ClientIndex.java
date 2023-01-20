@@ -29,6 +29,8 @@ import org.cojen.tupl.Transaction;
 import org.cojen.tupl.diag.IndexStats;
 import org.cojen.tupl.diag.VerificationObserver;
 
+import org.cojen.tupl.io.Utils;
+
 /**
  * 
  *
@@ -56,8 +58,16 @@ class ClientIndex extends ClientView<RemoteIndex> implements Index {
 
     @Override
     public <R> Table<R> asTable(Class<R> type) throws IOException {
-        // FIXME: cache table instances
-        return new ClientTable<R>(mDb, mRemote.asTable(type.getName()), type);
+        return ClientCache.get(new Pair<>(this, type), key -> {
+            RemoteTable rtable;
+            try {
+                rtable = mRemote.asTable(type.getName());
+            } catch (IOException e) {
+                throw Utils.rethrow(e);
+            }
+
+            return ClientCache.autoDispose(new ClientTable<>(mDb, rtable, type), rtable);
+        });
     }
 
     @Override
@@ -81,7 +91,12 @@ class ClientIndex extends ClientView<RemoteIndex> implements Index {
 
     @Override
     public void close() throws IOException {
-        mRemote.dispose();
+        ClientCache.remove(this);
+        try {
+            mRemote.dispose();
+        } catch (ClosedException e) {
+            // Ignore.
+        }
     }
 
     @Override
