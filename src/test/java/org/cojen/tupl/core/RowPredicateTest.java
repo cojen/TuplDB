@@ -185,6 +185,7 @@ public class RowPredicateTest {
 
             try {
                 mLock.addPredicate(txn1, pred1); // range scan action
+                // FIXME: sometimes fails when called by fuzz method
                 fail();
             } catch (LockTimeoutException e) {
                 // expected
