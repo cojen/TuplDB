@@ -29,11 +29,11 @@ import org.cojen.tupl.*;
  *
  * @author Brian S O'Neill
  */
-public class RemoteCrudTest {
+public class RemoteRowCrudTest {
     // FIXME: extend RowCrudTest and don't duplicate the tests
 
     public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(RemoteCrudTest.class.getName());
+        org.junit.runner.JUnitCore.main(RemoteRowCrudTest.class.getName());
     }
 
     @Before
