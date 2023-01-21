@@ -19,6 +19,8 @@ package org.cojen.tupl.remote;
 
 import java.io.IOException;
 
+import java.lang.reflect.Method;
+
 import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.Session;
 import org.cojen.dirmi.SessionAware;
@@ -70,8 +72,12 @@ final class ServerCursor implements RemoteCursor, SessionAware {
     }
 
     @Override
-    public byte[] value() {
-        return mCursor.value();
+    public Object value() {
+        Object value = mCursor.value();
+        if (value == Cursor.NOT_LOADED) {
+            value = false;
+        }
+        return value;
     }
 
     @Override
@@ -141,7 +147,7 @@ final class ServerCursor implements RemoteCursor, SessionAware {
 
     @Override
     public LockResult previousGt(byte[] limitKey) throws IOException {
-        return mCursor.previousGe(limitKey);
+        return mCursor.previousGt(limitKey);
     }
 
     @Override
@@ -330,5 +336,32 @@ final class ServerCursor implements RemoteCursor, SessionAware {
     public Pipe newValueOutputStream(long pos, int bufferSize, Pipe pipe) throws IOException {
         // FIXME: need to read/write chunks; otherwise, pipe must be closed and not recycled
         throw null;
+    }
+
+    /**
+     * Test method.
+     */
+    @Override
+    public boolean equalPositions(RemoteCursor other) {
+        try {
+            var clazz = mCursor.getClass();
+            Method m = clazz.getDeclaredMethod("equalPositions", clazz);
+            return (boolean) m.invoke(mCursor, ((ServerCursor) other).mCursor);
+        } catch (Exception e) {
+            throw Utils.rethrow(e);
+        }
+    }
+
+    /**
+     * Test method.
+     */
+    @Override
+    public boolean verifyExtremities(byte extremity) throws IOException {
+        try {
+            Method m = mCursor.getClass().getDeclaredMethod("verifyExtremities", byte.class);
+            return (boolean) m.invoke(mCursor, extremity);
+        } catch (Exception e) {
+            throw Utils.rethrow(e);
+        }
     }
 }

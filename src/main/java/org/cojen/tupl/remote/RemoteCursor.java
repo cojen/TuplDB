@@ -45,7 +45,7 @@ public interface RemoteCursor extends Remote {
     public byte[] key();
 
     @RemoteFailure(declared=false)
-    public byte[] value();
+    public Object value();
 
     @Batched
     @RemoteFailure(declared=false)
@@ -141,4 +141,14 @@ public interface RemoteCursor extends Remote {
     public Pipe newValueOutputStream(long pos, Pipe pipe) throws IOException;
 
     public Pipe newValueOutputStream(long pos, int bufferSize, Pipe pipe) throws IOException;
+
+    /**
+     * Test method.
+     */
+    public boolean equalPositions(RemoteCursor other) throws IOException;
+
+    /**
+     * Test method.
+     */
+    public boolean verifyExtremities(byte extremity) throws IOException;
 }

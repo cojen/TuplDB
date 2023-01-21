@@ -37,12 +37,12 @@ import org.cojen.tupl.core.Utils;
  *
  * @author Brian S O'Neill
  */
-final class ClientCursor implements Cursor {
+public final class ClientCursor implements Cursor {
     final ClientView mView;
     RemoteCursor mRemote;
 
     Transaction mTxn;
-    boolean mAutoload;
+    boolean mAutoload = true;
 
     ClientCursor(ClientView view, RemoteCursor remote) {
         mView = view;
@@ -76,7 +76,14 @@ final class ClientCursor implements Cursor {
 
     @Override
     public byte[] value() {
-        return mRemote.value();
+        Object value = mRemote.value();
+        if (value == null) {
+            return null;
+        } else if (value instanceof byte[] bytes) {
+            return bytes;
+        } else {
+            return NOT_LOADED;
+        }
     }
 
     @Override
@@ -350,6 +357,20 @@ final class ClientCursor implements Cursor {
     public OutputStream newValueOutputStream(long pos, int bufferSize) throws IOException {
         // FIXME: newValueOutputStream
         throw null;
+    }
+
+    /**
+     * Test method.
+     */
+    public boolean equalPositions(ClientCursor other) throws IOException {
+        return remote().equalPositions(other.remote());
+    }
+
+    /**
+     * Test method.
+     */
+    public boolean verifyExtremities(byte extremity) throws IOException {
+        return remote().verifyExtremities(extremity);
     }
 
     private RemoteCursor remote() {

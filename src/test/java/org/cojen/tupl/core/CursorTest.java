@@ -62,6 +62,10 @@ public class CursorTest {
         return ((Index) ix).verify(null);
     }
 
+    protected <T extends Thread> T startAndWaitUntilBlocked(T t) throws InterruptedException {
+        return TestUtils.startAndWaitUntilBlocked(t);
+    }
+
     // Override and return internal cursor if wrapped.
     protected Cursor treeCursor(Cursor c) {
         return c;
@@ -128,15 +132,15 @@ public class CursorTest {
 
     @Test
     public void stubCursor() throws Exception {
-        stubCursor(false);
+        stubCursor(0);
     }
 
     @Test
     public void stubEviction() throws Exception {
-        stubCursor(true);
+        stubCursor(1_000_000);
     }
 
-    private void stubCursor(boolean eviction) throws Exception {
+    protected void stubCursor(int evictionCount) throws Exception {
         View ix = openIndex("test");
 
         for (int i=0; i<1000; i++) {
@@ -166,13 +170,13 @@ public class CursorTest {
         c2.last();
         assertArrayEquals(key(500), c2.key());
 
-        if (eviction) {
+        if (evictionCount != 0) {
             // Force eviction of stub. Cannot verify directly, however.
             View ix2 = openIndex("test2");
             c.reset();
             c2.reset();
 
-            for (int i=0; i<1000000; i++) {
+            for (int i=0; i<evictionCount; i++) {
                 ix2.store(Transaction.BOGUS, key(i), value(i));
             }
 
@@ -1016,9 +1020,12 @@ public class CursorTest {
 
     @Test
     public void findNearby() throws Exception {
+        findNearby(3000);
+    }
+
+    protected void findNearby(final int count) throws Exception {
         View ix = openIndex("test");
 
-        final int count = 3000;
         final int seed = 3892476;
         var rnd = new Random(seed);
         for (int i=0; i<count; i++) {
@@ -1249,6 +1256,10 @@ public class CursorTest {
 
     @Test
     public void randomNonRange() throws Exception {
+        randomNonRange(20000);
+    }
+
+    protected void randomNonRange(final int count) throws Exception {
         View ix = openIndex("test");
 
         Cursor c = ix.newCursor(null);
@@ -1271,7 +1282,7 @@ public class CursorTest {
         c.random(high, low);
         assertNull(c.key());
 
-        for (int i=1; i<=20000; i+=2) {
+        for (int i=1; i<=count; i+=2) {
             ix.store(Transaction.BOGUS, key(i), value(i));
         }
 
@@ -1379,12 +1390,15 @@ public class CursorTest {
 
     @Test
     public void stubRecycle() throws Exception {
+        stubRecycle(10000);
+    }
+
+    protected void stubRecycle(final int count) throws Exception {
         // When the tree root is deleted, a stub will remain for any other active cursors.
         // Stubs must not be recycled until after all frames bound to it have unbound.
 
         View ix = openIndex("test");
 
-        final int count = 10000;
         for (int i=0; i<count; i++) {
             ix.store(Transaction.BOGUS, key(i), value(i));
         }
@@ -1435,6 +1449,10 @@ public class CursorTest {
 
     @Test
     public void stability() throws Exception {
+        stability(100000);
+    }
+
+    protected void stability(final int count) throws Exception {
         // Verifies that cursors are positioned properly after making structural modifications
         // to the tree.
 
@@ -1443,7 +1461,6 @@ public class CursorTest {
         var rnd = new Random(793846);
         var value = new byte[0];
 
-        final int count = 100000;
         var foundCursors = new Cursor[count];
         var notFoundCursors = new Cursor[count];
 
@@ -1475,6 +1492,10 @@ public class CursorTest {
 
     @Test
     public void stability2() throws Exception {
+        stability2(10000);
+    }
+
+    protected void stability2(final int count) throws Exception {
         // Checks cursor stability while inserting records in descending order. This should
         // exercise internal node rebalancing.
         
@@ -1482,7 +1503,6 @@ public class CursorTest {
 
         var value = new byte[200];
 
-        final int count = 10000;
         var cursors = new Cursor[count];
 
         for (int i=count; --i>=0; ) {
@@ -1501,6 +1521,10 @@ public class CursorTest {
 
     @Test
     public void stability3() throws Exception {
+        stability3(10000);
+    }
+
+    protected void stability3(final int count) throws Exception {
         // Checks cursor stability while inserting records in ascending order. This should
         // exercise internal node rebalancing.
         
@@ -1508,7 +1532,6 @@ public class CursorTest {
 
         var value = new byte[200];
 
-        final int count = 10000;
         var cursors = new Cursor[count];
 
         for (int i=0; i<count; i++) {
@@ -1924,14 +1947,14 @@ public class CursorTest {
         }
     }
 
-    private static Thread delayedUnlock(Transaction txn) {
+    private Thread delayedUnlock(Transaction txn) throws InterruptedException {
         return startAndWaitUntilBlocked(new Thread(() -> {
             sleep(1000);
             txn.reset(null);
         }));
     }
 
-    private static Thread delayedDelete(Cursor c) {
+    private Thread delayedDelete(Cursor c) throws InterruptedException {
         return startAndWaitUntilBlocked(new Thread(() -> {
             sleep(1000);
             try {
@@ -1953,19 +1976,19 @@ public class CursorTest {
         }
     }
 
-    private byte[] key(int i) {
+    protected byte[] key(int i) {
         var key = new byte[4];
         Utils.encodeIntBE(key, 0, i);
         return key;
     }
 
-    private byte[] bigKey(int i) {
+    protected byte[] bigKey(int i) {
         var key = new byte[10000];
         Utils.encodeIntBE(key, key.length - 4, i);
         return key;
     }
 
-    private byte[] value(int i) {
+    protected byte[] value(int i) {
         return ("value-" + i).getBytes();
     }
 }

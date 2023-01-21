@@ -19,10 +19,6 @@ package org.cojen.tupl.remote;
 
 import java.net.ServerSocket;
 
-import java.util.Arrays;
-
-import java.util.concurrent.TimeUnit;
-
 import org.junit.*;
 
 import org.cojen.tupl.*;
@@ -65,34 +61,7 @@ public class RemoteCrudTest extends CrudTest {
 
     @Override
     protected <T extends Thread> T startAndWaitUntilBlocked(T t) throws InterruptedException {
-        t.start();
-
-        StackTraceElement[] lastTrace = null;
-
-        while (true) {
-            Thread.State state = t.getState();
-            if (state != Thread.State.NEW && state != Thread.State.RUNNABLE) {
-                return t;
-            }
-
-            // A thread which is blocked reading from a Socket reports a RUNNABLE state. Need
-            // to inspect the stack trace instead.
-
-            StackTraceElement[] trace = t.getStackTrace();
-            if (Arrays.equals(trace, lastTrace) && trace.length != 0) {
-                StackTraceElement top = trace[0];
-                if (top.isNativeMethod()
-                    && top.getClassName().contains("Socket")
-                    && top.getMethodName().contains("read"))
-                {
-                    return t;
-                }
-            }
-
-            lastTrace = trace;
-
-            Thread.sleep(100);
-        }
+        return startAndWaitUntilBlockedSocket(t);
     }
 
     private Database mServerDb;

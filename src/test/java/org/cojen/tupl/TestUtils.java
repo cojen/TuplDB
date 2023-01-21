@@ -269,6 +269,39 @@ public class TestUtils {
         }
     }
 
+    public static <T extends Thread> T startAndWaitUntilBlockedSocket(T t)
+        throws InterruptedException
+    {
+        t.start();
+
+        StackTraceElement[] lastTrace = null;
+
+        while (true) {
+            Thread.State state = t.getState();
+            if (state != Thread.State.NEW && state != Thread.State.RUNNABLE) {
+                return t;
+            }
+
+            // A thread which is blocked reading from a Socket reports a RUNNABLE state. Need
+            // to inspect the stack trace instead.
+
+            StackTraceElement[] trace = t.getStackTrace();
+            if (Arrays.equals(trace, lastTrace) && trace.length != 0) {
+                StackTraceElement top = trace[0];
+                if (top.isNativeMethod()
+                    && top.getClassName().contains("Socket")
+                    && top.getMethodName().contains("read"))
+                {
+                    return t;
+                }
+            }
+
+            lastTrace = trace;
+
+            Thread.sleep(100);
+        }
+    }
+
     /**
      * Returns a task which when joined, re-throws any exception from the task.
      */

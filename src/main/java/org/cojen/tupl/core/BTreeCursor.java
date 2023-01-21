@@ -52,7 +52,7 @@ import static java.util.Arrays.compareUnsigned;
  *
  * @author Brian S O'Neill
  */
-class BTreeCursor extends CoreValueAccessor implements Cursor {
+public class BTreeCursor extends CoreValueAccessor implements Cursor {
     // Sign is important because values are passed to Node.retrieveKeyCmp
     // method. Bit 0 is set for inclusive variants and clear for exclusive.
     private static final int LIMIT_LE = 1, LIMIT_LT = 2, LIMIT_GE = -1, LIMIT_GT = -2;
