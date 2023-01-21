@@ -323,7 +323,7 @@ final class ClientTransaction implements Transaction {
         }
     }
 
-    private RemoteTransaction remote() {
+    RemoteTransaction remote() {
         RemoteTransaction remote = mRemote;
         return remote != null ? remote : resurrect();
     }

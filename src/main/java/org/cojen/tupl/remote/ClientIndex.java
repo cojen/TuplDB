@@ -87,8 +87,12 @@ class ClientIndex extends ClientView<RemoteIndex> implements Index {
 
     @Override
     public boolean verify(VerificationObserver observer) throws IOException {
-        // FIXME: verify
-        throw null;
+        if (observer == null) {
+            return mRemote.verify(null);
+        } else {
+            // FIXME: verify
+            throw new UnsupportedOperationException();
+        }
     }
 
     @Override

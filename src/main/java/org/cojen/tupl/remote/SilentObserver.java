@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2022 Cojen.org
+ *  Copyright (C) 2023 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -17,24 +17,16 @@
 
 package org.cojen.tupl.remote;
 
-import org.cojen.dirmi.Remote;
-import org.cojen.dirmi.RemoteException;
+import org.cojen.tupl.diag.VerificationObserver;
 
 /**
  * 
  *
  * @author Brian S O'Neill
  */
-public interface RemoteVerificationObserver extends Remote {
-    public boolean indexBegin(long indexId, int height) throws RemoteException;
-
-    public boolean indexComplete(long indexId, boolean passed, String message)
-        throws RemoteException;
-
-    // FIXME: This will generate a flood of messages! Cannot block waiting for a reply.
-    public boolean indexNodePassed(long id, int level,
-                                   int entryCount, int freeBytes, int largeValueCount)
-        throws RemoteException;
-
-    public boolean indexNodeFailed(long id, int level, String message) throws RemoteException;
+final class SilentObserver extends VerificationObserver {
+    @Override
+    public boolean indexNodeFailed(long id, int level, String message) {
+        return false;
+    }
 }

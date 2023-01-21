@@ -206,8 +206,12 @@ public final class ServerDatabase implements RemoteDatabase {
 
     @Override
     public boolean verify(RemoteVerificationObserver observer) throws IOException {
-        // FIXME: verify
-        throw null;
+        if (observer == null) {
+            return mDb.verify(new SilentObserver());
+        } else {
+            // FIXME: verify
+            throw new UnsupportedOperationException();
+        }
     }
 
     @Override

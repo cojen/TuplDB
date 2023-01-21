@@ -55,6 +55,10 @@ public class CrudTest {
         return ((Index) ix).verify(null);
     }
 
+    protected <T extends Thread> T startAndWaitUntilBlocked(T t) throws InterruptedException {
+        return TestUtils.startAndWaitUntilBlocked(t);
+    }
+
     protected Database mDb;
 
     @Test
@@ -659,7 +663,7 @@ public class CrudTest {
         testFill(ix, 100000);
     }
 
-    private void testFill(final View ix, final int count) throws Exception {
+    protected void testFill(final View ix, final int count) throws Exception {
         assertTrue(ix.isEmpty());
 
         final long seed1 = 1860635281L + count;

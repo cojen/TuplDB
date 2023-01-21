@@ -319,8 +319,12 @@ public final class ClientDatabase implements Database {
 
     @Override
     public boolean verify(VerificationObserver observer) throws IOException {
-        // FIXME: verify
-        throw null;
+        if (observer == null) {
+            return mRemote.verify(null);
+        } else {
+            // FIXME: verify
+            throw new UnsupportedOperationException();
+        }
     }
 
     @Override
@@ -388,8 +392,10 @@ public final class ClientDatabase implements Database {
         } else if (txn instanceof ClientTransaction) {
             var ct = (ClientTransaction) txn;
             if (ct.mDb == this) {
-                return ct.mRemote;
+                return ct.remote();
             }
+        } else if (txn.isBogus()) {
+            return mBogus.mRemote;
         }
         throw new IllegalStateException("Transaction belongs to a different database");
     }
