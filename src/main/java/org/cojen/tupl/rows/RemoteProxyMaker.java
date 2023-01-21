@@ -1324,9 +1324,13 @@ public final class RemoteProxyMaker {
         ColumnCodec[] rowKeyCodecs = mRowGen.keyCodecs();
         ColumnCodec[] rowValueCodecs = mRowGen.valueCodecs();
 
-        var offsetVar = mm.var(int.class).set(0);
+        var offsetVar = mm.var(int.class);
 
         for (int columnNum = 0; columnNum < mClientCodecs.length; columnNum++) {
+            if (columnNum == 0 || columnNum == mRowHeader.numKeys) {
+                offsetVar.set(0);
+            }
+
             int stateFieldNum = RowGen.stateFieldNum(columnNum);
             int stateFieldMask = RowGen.stateFieldMask(columnNum);
 
@@ -1339,9 +1343,6 @@ public final class RemoteProxyMaker {
                 bytesVar = keyVar;
             } else {
                 bytesVar = valueVar;
-                if (columnNum == mRowHeader.numKeys) {
-                    offsetVar.set(0);
-                }
             }
 
             ColumnCodec codec = mClientCodecs[columnNum].bind(mm);
@@ -1436,12 +1437,20 @@ public final class RemoteProxyMaker {
         // Calculate the value encoding length.
 
         Variable valueLengthVar = null;
+        int minSize = 0;
 
         for (int columnNum = numKeys; columnNum < codecs.length; columnNum++) {
             var fieldVar = fieldVars[columnNum - numKeys];
             ColumnCodec codec = codecs[columnNum];
             codec.encodePrepare();
             valueLengthVar = codec.encodeSize(fieldVar, valueLengthVar);
+            minSize += codec.minSize();
+        }
+
+        if (valueLengthVar == null) {
+            valueLengthVar = mm.var(int.class).set(minSize);
+        } else if (minSize != 0) {
+            valueLengthVar.inc(minSize);
         }
 
         var utilsVar = mm.var(RowUtils.class);
