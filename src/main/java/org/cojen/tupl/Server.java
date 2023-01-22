@@ -22,6 +22,8 @@ import java.io.IOException;
 
 import java.net.ServerSocket;
 
+import org.cojen.dirmi.ClassResolver;
+
 /**
  * Controls remote access into a database.
  *
@@ -36,6 +38,14 @@ public interface Server extends Closeable {
      * @throws IllegalArgumentException if not given one or two tokens
      */
     void acceptAll(ServerSocket ss, long... tokens) throws IOException;
+
+    /**
+     * Optionally supply an object which helps find classes. This feature is primarily intended
+     * for finding row interface definitions which are dynamically generated. The resolver must
+     * be set before accepting connections in order for it to actually be used. Changing it
+     * doesn't affect existing connections.
+     */
+    void classResolver(ClassResolver resolver);
 
     /**
      * Disables remote access, closes all acceptors, and closes all existing connections.

@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
+import org.cojen.dirmi.ClassResolver;
 import org.cojen.dirmi.Environment;
 
 import org.cojen.tupl.Database;
@@ -66,6 +67,11 @@ final class CoreServer implements Server {
                 throw Utils.rethrow(e);
             }
         });
+    }
+
+    @Override
+    public void classResolver(ClassResolver resolver) {
+        mEnv.classResolver(resolver);
     }
 
     /**

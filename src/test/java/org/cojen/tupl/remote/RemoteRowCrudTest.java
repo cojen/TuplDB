@@ -40,6 +40,9 @@ public class RemoteRowCrudTest {
 
     @Before
     public void setup() throws Exception {
+        mServerDb = Database.open(new DatabaseConfig());
+        Server server = mServerDb.newServer();
+
         // FIXME: create a subclass that forces RemoteProxyMaker to make a converter
         if (false) {
             // Use a different row type definition on the server (num1 is different).
@@ -49,24 +52,11 @@ public class RemoteRowCrudTest {
                                                        String.class, "str2?",
                                                        long.class, "num1");
 
-            RemoteUtils.setLocalClassResolver(name -> {
-                if (name.equals(rowType.getName())) {
-                    return rowType;
-                } else {
-                    return Class.forName(name);
-                }
-            });
+            server.classResolver(name -> name.equals(rowType.getName()) ? rowType : null);
         }
 
-        ServerSocket ss;
-
-        try {
-            mServerDb = Database.open(new DatabaseConfig());
-            ss = new ServerSocket(0);
-            mServerDb.newServer().acceptAll(ss, 123456);
-        } finally {
-            RemoteUtils.setLocalClassResolver(null);
-        }
+        var ss = new ServerSocket(0);
+        server.acceptAll(ss, 123456);
 
         mDb = Database.connect(ss.getLocalSocketAddress(), 111, 123456);
         mTable = mDb.openTable(TestRow.class);
