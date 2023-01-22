@@ -24,6 +24,8 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.ConversionException;
+
 import static org.cojen.tupl.rows.ColumnInfo.*;
 
 /**
@@ -38,6 +40,7 @@ public class Converter {
      * @param srcVar source byte array
      * @param offsetVar int type; is incremented as a side-effect
      * @param endVar end offset, which when null implies the end of the array
+     * @see #decodeExact
      */
     static void decodeLossy(final MethodMaker mm,
                             final Variable srcVar, final Variable offsetVar, final Variable endVar,
@@ -565,12 +568,40 @@ public class Converter {
     }
 
     /**
-     * Generates code which converts a source variable into something that the destination
-     * variable can accept, throwing an exception if the conversion would be lossy.
+     * Generates code which decodes a column and stores it in dstVar, throwing a
+     * ConversionException if the conversion would be lossy.
      *
+     * @param columnName if provided, include the column name in the conversion exception message
+     * @param srcVar source byte array
+     * @param offsetVar int type; is incremented as a side-effect
+     * @param endVar end offset, which when null implies the end of the array
+     * @see #decodeLossy
+     */
+    static void decodeExact(final MethodMaker mm, final String columnName,
+                            final Variable srcVar, final Variable offsetVar, final Variable endVar,
+                            final ColumnCodec srcCodec,
+                            final ColumnInfo dstInfo, final Variable dstVar)
+    {
+        if (dstInfo.type.isAssignableFrom(srcCodec.mInfo.type)
+            && (!srcCodec.mInfo.isNullable() || dstInfo.isNullable()))
+        {
+            srcCodec.decode(dstVar, srcVar, offsetVar, endVar);
+        } else {
+            // Decode into a temp variable and then perform an exact conversion.
+            var tempVar = mm.var(srcCodec.mInfo.type);
+            srcCodec.decode(tempVar, srcVar, offsetVar, endVar);
+            convertExact(mm, columnName, srcCodec.mInfo, tempVar, dstInfo, dstVar);
+        }
+    }
+
+    /**
+     * Generates code which converts a source variable into something that the destination
+     * variable can accept, throwing a ConversionException if the conversion would be lossy.
+     *
+     * @param columnName if provided, include the column name in the conversion exception message
      * @see #convertLossy
      */
-    static void convertExact(final MethodMaker mm,
+    static void convertExact(final MethodMaker mm, final String columnName,
                              final ColumnInfo srcInfo, final Variable srcVar,
                              final ColumnInfo dstInfo, final Variable dstVar)
     {
@@ -578,6 +609,25 @@ public class Converter {
             dstVar.set(srcVar);
             return;
         }
+
+        Label tryStart = mm.label().here();
+        doConvertExact(mm, columnName, srcInfo, srcVar, dstInfo, dstVar);
+        Label tryEnd = mm.label().here();
+        Label done = mm.label().goto_();
+
+        mm.catch_(tryStart, tryEnd, ConversionException.class).throw_();
+
+        var exVar = mm.catch_(tryStart, tryEnd, RuntimeException.class);
+        var messageVar = mm.var(Converter.class).invoke("exceptionMessage", exVar);
+        mm.new_(ConversionException.class, messageVar, columnName).throw_();
+
+        done.here();
+    }
+
+    private static void doConvertExact(final MethodMaker mm, final String columnName,
+                                       final ColumnInfo srcInfo, final Variable srcVar,
+                                       final ColumnInfo dstInfo, final Variable dstVar)
+    {
 
         Label end = mm.label();
 
@@ -587,8 +637,8 @@ public class Converter {
             if (dstInfo.isNullable()) {
                 dstVar.set(null);
             } else {
-                mm.new_(IllegalArgumentException.class,
-                        "Cannot assign null to non-nullable type").throw_();
+                mm.new_(ConversionException.class,
+                        "Cannot assign null to non-nullable type", columnName).throw_();
             }
             mm.goto_(end);
             notNull.here();
@@ -607,14 +657,14 @@ public class Converter {
                 dstVar.set(ConvertUtils.convertArray
                            (mm, dstVar.classType(), srcVar.alength(), ixVar -> {
                                Variable dstElementVar = mm.var(dstElementInfo.type);
-                               convertExact(mm, srcElementInfo, srcVar.aget(ixVar),
+                               convertExact(mm, columnName, srcElementInfo, srcVar.aget(ixVar),
                                             dstElementInfo, dstElementVar);
                                return dstElementVar;
                            }));
 
             } else {
                 // Non-array to array conversion.
-                throwConvertFailException(mm, srcInfo, dstInfo);
+                throwConvertFailException(mm, columnName, srcInfo, dstInfo);
             }
 
             end.here();
@@ -623,7 +673,7 @@ public class Converter {
 
         if (srcInfo.isArray()) {
             // Array to non-array conversion.
-            throwConvertFailException(mm, srcInfo, dstInfo);
+            throwConvertFailException(mm, columnName, srcInfo, dstInfo);
             end.here();
             return;
         }
@@ -896,7 +946,7 @@ public class Converter {
         }
 
         if (!handled) {
-            throwConvertFailException(mm, srcInfo, dstInfo);
+            throwConvertFailException(mm, columnName, srcInfo, dstInfo);
         }
 
         end.here();
@@ -920,11 +970,12 @@ public class Converter {
         }
     }
 
-    private static void throwConvertFailException(MethodMaker mm,
+    private static void throwConvertFailException(MethodMaker mm, String columnName,
                                                   ColumnInfo srcInfo, ColumnInfo dstInfo)
     {
-        mm.new_(IllegalArgumentException.class, "Cannot convert " +
-                typeName(srcInfo) + " to " + typeName(dstInfo)).throw_();
+        var messageVar = mm.var(String.class);
+        messageVar.set("Cannot convert " + typeName(srcInfo) + " to " + typeName(dstInfo));
+        mm.new_(ConversionException.class, messageVar, columnName).throw_();
     }
 
     private static String typeName(ColumnInfo info) {
@@ -1333,5 +1384,14 @@ public class Converter {
             return -1; // max unsigned long
         }
         return BigDecimal.valueOf(d).longValue();
+    }
+
+    // Called by generated code.
+    public static String exceptionMessage(Throwable e) {
+        String message = e.getMessage();
+        if (message == null) {
+            message = e.toString();
+        }
+        return message;
     }
 }

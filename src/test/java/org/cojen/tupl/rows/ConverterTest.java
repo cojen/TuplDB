@@ -77,7 +77,7 @@ public class ConverterTest {
             if (lossy) {
                 Converter.convertLossy(mm, srcInfo, mm.param(0), dstInfo, dstVar);
             } else {
-                Converter.convertExact(mm, srcInfo, mm.param(0), dstInfo, dstVar);
+                Converter.convertExact(mm, "name", srcInfo, mm.param(0), dstInfo, dstVar);
             }
             mm.return_(dstVar);
         }

@@ -1364,10 +1364,10 @@ public final class RemoteProxyMaker {
 
             Label tryStart = mm.label().here();
 
-            Converter.convertExact(mm, codec.mInfo, columnVar, rowFieldCodec.mInfo, rowField);
+            Converter.convertExact(mm, rowFieldName,
+                                   codec.mInfo, columnVar, rowFieldCodec.mInfo, rowField);
  
             mm.catch_(tryStart, RuntimeException.class, exVar -> {
-                // FIXME: Make the exception better: include the field name.
                 pipeVar.invoke("writeObject", exVar);
                 mm.return_(null);
             });
@@ -1430,8 +1430,7 @@ public final class RemoteProxyMaker {
             ColumnInfo dstInfo = codecs[columnNum].mInfo;
             var dstVar = mm.var(dstInfo.type);
             fieldVars[columnNum - numKeys] = dstVar;
-            // FIXME: Make the exception better: include the field name.
-            Converter.convertExact(mm, srcInfo, srcField, dstInfo, dstVar);
+            Converter.convertExact(mm, fieldName, srcInfo, srcField, dstInfo, dstVar);
         }
 
         // Calculate the value encoding length.
