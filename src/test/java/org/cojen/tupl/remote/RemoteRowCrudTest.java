@@ -24,6 +24,8 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
+import org.cojen.tupl.rows.RowTestUtils;
+
 /**
  * 
  *
@@ -38,10 +40,33 @@ public class RemoteRowCrudTest {
 
     @Before
     public void setup() throws Exception {
-        mServerDb = Database.open(new DatabaseConfig());
+        // FIXME: create a subclass that forces RemoteProxyMaker to make a converter
+        if (false) {
+            // Use a different row type definition on the server (num1 is different).
+            Class<?> rowType = RowTestUtils.newRowType(TestRow.class.getName(),
+                                                       long.class, "+id",
+                                                       String.class, "str1",
+                                                       String.class, "str2?",
+                                                       long.class, "num1");
 
-        var ss = new ServerSocket(0);
-        mServerDb.newServer().acceptAll(ss, 123456);
+            RemoteUtils.setLocalClassResolver(name -> {
+                if (name.equals(rowType.getName())) {
+                    return rowType;
+                } else {
+                    return Class.forName(name);
+                }
+            });
+        }
+
+        ServerSocket ss;
+
+        try {
+            mServerDb = Database.open(new DatabaseConfig());
+            ss = new ServerSocket(0);
+            mServerDb.newServer().acceptAll(ss, 123456);
+        } finally {
+            RemoteUtils.setLocalClassResolver(null);
+        }
 
         mDb = Database.connect(ss.getLocalSocketAddress(), 111, 123456);
         mTable = mDb.openTable(TestRow.class);

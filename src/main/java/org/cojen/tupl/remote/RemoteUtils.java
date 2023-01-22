@@ -26,6 +26,7 @@ import java.lang.invoke.VarHandle;
 
 import java.util.concurrent.TimeUnit;
 
+import org.cojen.dirmi.ClassResolver;
 import org.cojen.dirmi.Environment;
 import org.cojen.dirmi.Serializer;
 
@@ -54,6 +55,32 @@ public class RemoteUtils {
         }
     }
 
+    private static volatile ThreadLocal<ClassResolver> cLocalResolver;
+
+    /**
+     * Used by tests.
+     */
+    public static void setLocalClassResolver(ClassResolver resolver) {
+        ThreadLocal<ClassResolver> localResolver = cLocalResolver;
+
+        if (resolver == null) {
+            if (localResolver != null) {
+                localResolver.remove();
+            }
+        } else {
+            if (localResolver == null) {
+                synchronized (RemoteUtils.class) {
+                    localResolver = cLocalResolver;
+                    if (localResolver == null) {
+                        cLocalResolver = localResolver = new ThreadLocal<>();
+                    }
+                }
+            }
+
+            localResolver.set(resolver);
+        }
+    }
+
     public static Environment createEnvironment() {
         Environment env = Environment.create();
 
@@ -67,6 +94,15 @@ public class RemoteUtils {
              LockTimeoutExceptionSerializer.THE,
              DeadlockInfoSerializer.THE,
              DeadlockExceptionSerializer.THE);
+
+        ThreadLocal<ClassResolver> localResolver = cLocalResolver;
+
+        if (localResolver != null) {
+            ClassResolver resolver = localResolver.get();
+            if (resolver != null) {
+                env.classResolver(resolver);
+            }
+        }
 
         return env;
     }
