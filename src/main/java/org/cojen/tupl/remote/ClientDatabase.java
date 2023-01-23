@@ -295,20 +295,41 @@ public final class ClientDatabase implements Database {
 
     @Override
     public void suspendCheckpoints() {
-        // FIXME: suspendCheckpoints
-        throw null;
+        /*
+          Suspend/resume cannot be safely controlled remotely. Suspend is intended to be
+          called during a critical operation, but if the remote connection is dropped, the
+          resume operation must be performed automatically to be safe. The client then has no
+          way of immediately knowing that checkpoints are no longer suspended, and this can
+          break the critical operation.
+
+          If suspend/resume was transactional, and the critical operation was also
+          transactional, suspend/resume could be implemented safely. The feature is intended
+          for low-level coordination between two different systems, and so making it fully
+          transactional isn't always feasible.
+        */
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public void resumeCheckpoints() {
-        // FIXME: resumeCheckpoints
-        throw null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public Lock commitLock() {
-        // FIXME: commitLock
-        throw null;
+        /*
+          A commitLock cannot be safely controlled remotely. The commitLock is intended to be
+          used during a critical operation, but if the remote connection is dropped, the
+          commitLock must be released automatically to be safe. The client then has no way of
+          immediately knowing that the commitLock is no longer held, and this can break the
+          critical operation.
+
+          If the commitLock was transactional, and the critical operation was also
+          transactional, the commitLock could be implemented safely. The feature is intended
+          for low-level coordination between two different systems, and so making it fully
+          transactional isn't always feasible.
+         */
+        throw new UnsupportedOperationException();
     }
 
     @Override

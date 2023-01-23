@@ -185,18 +185,6 @@ public final class ServerDatabase implements RemoteDatabase {
     }
 
     @Override
-    public RemoteSuspend suspendControl() {
-        // FIXME: suspendControl
-        throw null;
-    }
-
-    @Override
-    public RemoteLock commitLock() {
-        // FIXME: commitLock
-        throw null;
-    }
-
-    @Override
     public boolean compactFile(RemoteCompactionObserver observer, double target)
         throws IOException
     {

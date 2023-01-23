@@ -102,14 +102,6 @@ public interface RemoteDatabase extends Remote, Disposable {
 
     public void checkpoint() throws IOException;
 
-    @Restorable
-    @RemoteFailure(declared=false)
-    public RemoteSuspend suspendControl();
-
-    @Restorable
-    @RemoteFailure(declared=false)
-    public RemoteLock commitLock();
-
     public boolean compactFile(RemoteCompactionObserver observer, double target)
         throws IOException;
 
