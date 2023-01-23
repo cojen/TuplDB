@@ -32,6 +32,8 @@ import org.cojen.tupl.SecondaryIndex;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 
+import org.cojen.tupl.diag.VerificationObserver;
+
 /**
  * 
  *
@@ -279,6 +281,34 @@ public class RemoteTest {
         try (var scanner = clientTable.newScanner(null)) {
             scanner.forEachRemaining(row -> System.out.println(row));
         }
+
+        System.out.println("---");
+
+        System.out.println("verify: " + client.verify(null));
+
+        System.out.println("---");
+
+        System.out.println("verify: " + client.verify(new VerificationObserver() {
+            @Override
+            public boolean indexBegin(Index index, int height) {
+                System.out.println("indexBegin: " + index + ", " + height);
+                return true;
+            }
+
+            public boolean indexComplete(Index index, boolean passed, String message) {
+                System.out.println("indexComplete: " + index + ", " + passed + ", " + message);
+                return true;
+            }
+
+            @Override
+            public boolean indexNodePassed(long id, int level,
+                                           int entryCount, int freeBytes, int largeValueCount)
+            {
+                System.out.println("pass: " + id + ", " + level + ", " +
+                                   entryCount + ", " + freeBytes);
+                return true;
+            }
+        }));
 
         client.close();
         db.close();

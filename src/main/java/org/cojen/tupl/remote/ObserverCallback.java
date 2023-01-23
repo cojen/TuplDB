@@ -17,16 +17,11 @@
 
 package org.cojen.tupl.remote;
 
-import org.cojen.tupl.diag.VerificationObserver;
-
 /**
- * 
- *
  * @author Brian S O'Neill
+ * @see VerificationObserverRelay
  */
-final class SilentObserver extends VerificationObserver {
-    @Override
-    public boolean indexNodeFailed(long id, int level, String message) {
-        return false;
-    }
+@FunctionalInterface
+interface ObserverCallback<T, E extends Throwable> {
+    boolean run(T observer) throws E;
 }

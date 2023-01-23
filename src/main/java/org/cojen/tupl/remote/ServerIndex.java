@@ -83,13 +83,8 @@ final class ServerIndex extends ServerView<Index> implements RemoteIndex {
     }
 
     @Override
-    public boolean verify(RemoteVerificationObserver observer) throws IOException {
-        if (observer == null) {
-            return mView.verify(new SilentObserver());
-        } else {
-            // FIXME: verify
-            throw new UnsupportedOperationException();
-        }
+    public boolean verify(int flags, RemoteVerificationObserver remote) throws IOException {
+        return VerificationObserverRelay.verify(flags, remote, mView::verify);
     }
 
     @Override

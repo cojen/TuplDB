@@ -17,6 +17,9 @@
 
 package org.cojen.tupl.remote;
 
+import org.cojen.dirmi.Disposer;
+import org.cojen.dirmi.NoReply;
+import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.Remote;
 import org.cojen.dirmi.RemoteException;
 
@@ -31,10 +34,19 @@ public interface RemoteVerificationObserver extends Remote {
     public boolean indexComplete(long indexId, boolean passed, String message)
         throws RemoteException;
 
-    // FIXME: This will generate a flood of messages! Cannot block waiting for a reply.
-    public boolean indexNodePassed(long id, int level,
-                                   int entryCount, int freeBytes, int largeValueCount)
-        throws RemoteException;
+    /**
+     * Writes the followng fields down the pipe for each index node:
+     *
+     *   long id, int level, int entryCount, int freeBytes, int largeValueCount
+     *
+     * The pipe isn't forcibly flushed until the very end, and nothing is read back. The client
+     * can stop verification by closing the pipe.
+     */
+    public Pipe indexNodePassed(Pipe pipe) throws RemoteException;
 
     public boolean indexNodeFailed(long id, int level, String message) throws RemoteException;
+
+    @NoReply
+    @Disposer
+    public void finished() throws RemoteException;
 }

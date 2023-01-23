@@ -105,7 +105,10 @@ public interface RemoteDatabase extends Remote, Disposable {
     public boolean compactFile(RemoteCompactionObserver observer, double target)
         throws IOException;
 
-    public boolean verify(RemoteVerificationObserver observer) throws IOException;
+    /**
+     * @param flags bit 1: provide indexNodePassed messages
+     */
+    public boolean verify(int flags, RemoteVerificationObserver observer) throws IOException;
 
     @RemoteFailure(declared=false)
     public boolean isLeader();

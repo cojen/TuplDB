@@ -340,12 +340,8 @@ public final class ClientDatabase implements Database {
 
     @Override
     public boolean verify(VerificationObserver observer) throws IOException {
-        if (observer == null) {
-            return mRemote.verify(null);
-        } else {
-            // FIXME: verify
-            throw new UnsupportedOperationException();
-        }
+        var server = ServerVerificationObserver.make(this, observer);
+        return server.check(mRemote.verify(server.flags(), server));
     }
 
     @Override

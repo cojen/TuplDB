@@ -53,7 +53,10 @@ public interface RemoteIndex extends RemoteView {
     @Serialized(filter="java.base/*;org.cojen.tupl.**")
     public IndexStats analyze(byte[] lowKey, byte[] highKey) throws IOException;
 
-    public boolean verify(RemoteVerificationObserver observer) throws IOException;
+    /**
+     * @param flags bit 1: provide indexNodePassed messages
+     */
+    public boolean verify(int flags, RemoteVerificationObserver observer) throws IOException;
 
     @Disposer
     public void close() throws IOException;
