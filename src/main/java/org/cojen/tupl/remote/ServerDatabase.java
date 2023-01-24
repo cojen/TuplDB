@@ -185,11 +185,10 @@ public final class ServerDatabase implements RemoteDatabase {
     }
 
     @Override
-    public boolean compactFile(RemoteCompactionObserver observer, double target)
+    public boolean compactFile(int flags, RemoteCompactionObserver remote, double target)
         throws IOException
-    {
-        // FIXME: compactFile
-        throw null;
+    { 
+        return CompactionObserverRelay.compactFile(flags, mDb, remote, target);
     }
 
     @Override

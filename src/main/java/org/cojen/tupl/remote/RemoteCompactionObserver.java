@@ -17,7 +17,11 @@
 
 package org.cojen.tupl.remote;
 
+import org.cojen.dirmi.Disposer;
+import org.cojen.dirmi.NoReply;
+import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.Remote;
+import org.cojen.dirmi.RemoteException;
 
 /**
  * 
@@ -25,5 +29,19 @@ import org.cojen.dirmi.Remote;
  * @author Brian S O'Neill
  */
 public interface RemoteCompactionObserver extends Remote {
-    // FIXME
+    public boolean indexBegin(long indexId) throws RemoteException;
+
+    public boolean indexComplete(long indexId) throws RemoteException;
+
+    /**
+     * Writes a node id down the pipe for each index node.
+     *
+     * The pipe isn't forcibly flushed until the very end, and nothing is read back. The client
+     * can stop verification by closing the pipe.
+     */
+    public Pipe indexNodeVisited(Pipe pipe) throws RemoteException;
+
+    @NoReply
+    @Disposer
+    public void finished() throws RemoteException;
 }

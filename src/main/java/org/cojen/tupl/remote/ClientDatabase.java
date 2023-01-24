@@ -334,8 +334,8 @@ public final class ClientDatabase implements Database {
 
     @Override
     public boolean compactFile(CompactionObserver observer, double target) throws IOException {
-        // FIXME: compactFile
-        throw null;
+        var server = ServerCompactionObserver.make(this, observer);
+        return server.check(mRemote.compactFile(server.flags(), server, target));
     }
 
     @Override

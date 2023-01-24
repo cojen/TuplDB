@@ -102,7 +102,10 @@ public interface RemoteDatabase extends Remote, Disposable {
 
     public void checkpoint() throws IOException;
 
-    public boolean compactFile(RemoteCompactionObserver observer, double target)
+    /**
+     * @param flags bit 1: provide indexNodePassed messages
+     */
+    public boolean compactFile(int flags, RemoteCompactionObserver observer, double target)
         throws IOException;
 
     /**

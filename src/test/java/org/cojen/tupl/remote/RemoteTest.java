@@ -32,7 +32,10 @@ import org.cojen.tupl.SecondaryIndex;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 
+import org.cojen.tupl.diag.CompactionObserver;
 import org.cojen.tupl.diag.VerificationObserver;
+
+import static org.cojen.tupl.TestUtils.*;
 
 /**
  * 
@@ -44,9 +47,23 @@ public class RemoteTest {
         org.junit.runner.JUnitCore.main(RemoteTest.class.getName());
     }
 
+    @Before
+    public void createTempDb() throws Exception {
+        mServerDb = newTempDatabase(getClass());
+    }
+
+    @After
+    public void teardown() throws Exception {
+        deleteTempDatabases(getClass());
+        mServerDb = null;
+    }
+
+    private Database mServerDb;
+
     @Test
     public void basic() throws Exception {
-        var db = Database.open(new DatabaseConfig());
+        //var db = Database.open(new DatabaseConfig());
+        var db = mServerDb;
 
         var ss = new ServerSocket(0);
         db.newServer().acceptAll(ss, 123456);
@@ -309,6 +326,57 @@ public class RemoteTest {
                 return true;
             }
         }));
+
+        System.out.println("---");
+
+        System.out.println("compactFile: " + client.compactFile(null, 0.5));
+
+        System.out.println("---");
+
+        {
+            Table<Tab> serverTable = db.openTable(Tab.class);
+
+            for (int i=0; i<10000; i++) {
+                Tab row = serverTable.newRow();
+                row.id(10000 + i);
+                row.value("hello-" + i);
+                row.name("name-" + i);
+                serverTable.insert(null, row);
+            }
+
+            client.checkpoint();
+
+            for (int i=0; i<10000; i++) {
+                Tab row = serverTable.newRow();
+                row.id(10000 + i);
+                serverTable.delete(null, row);
+            }
+
+            client.checkpoint();
+        }
+        
+        System.out.println(client.stats());
+
+        System.out.println("compactFile: " + client.compactFile(new CompactionObserver() {
+            @Override
+            public boolean indexBegin(Index index) {
+                System.out.println("indexBegin: " + index);
+                return true;
+            }
+
+            public boolean indexComplete(Index index) {
+                System.out.println("indexComplete: " + index);
+                return true;
+            }
+
+            @Override
+            public boolean indexNodeVisited(long id) {
+                System.out.println("visited: " + id);
+                return true;
+            }
+        }, 0.9));
+
+        System.out.println(client.stats());
 
         client.close();
         db.close();
