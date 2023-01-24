@@ -43,6 +43,17 @@ final class ServerVerificationObserver implements RemoteVerificationObserver {
             observer = new VerificationObserver();
         } else {
             flags = 1; // bit 1: provide indexNodePassed messages
+
+            try {
+                var method = observer.getClass().getMethod
+                    ("indexNodePassed", long.class, int.class, int.class, int.class, int.class);
+                if (method.getDeclaringClass() == VerificationObserver.class) {
+                    // Not overriding the default, so no need to provide the messages.
+                    flags = 0;
+                }
+            } catch (Exception e) {
+                throw Utils.rethrow(e);
+            }
         }
 
         return new ServerVerificationObserver(flags, db, observer);
