@@ -266,7 +266,6 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         RowPredicateLock.Closer closer = null;
 
         addPredicate: {
-
             if (txn == null) {
                 txn = mSource.newTransaction(null);
                 updater = new AutoCommitUpdater<>(this, controller);

@@ -29,7 +29,7 @@ import org.cojen.tupl.Transaction;
  *
  * @author Brian S O'Neill
  */
-class NonRepeatableUpdater<R> extends BasicUpdater<R> {
+final class NonRepeatableUpdater<R> extends BasicUpdater<R> {
     LockResult mLockResult;
 
     NonRepeatableUpdater(BaseTable<R> table, ScanController<R> controller) {
