@@ -406,8 +406,7 @@ public final class ClientDatabase implements Database {
     RemoteTransaction remoteTransaction(Transaction txn) {
         if (txn == null) {
             return null;
-        } else if (txn instanceof ClientTransaction) {
-            var ct = (ClientTransaction) txn;
+        } else if (txn instanceof ClientTransaction ct) {
             if (ct.mDb == this) {
                 return ct.remote();
             }

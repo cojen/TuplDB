@@ -56,7 +56,7 @@ public class ValueAccessorTest {
     protected void doValueModify(Cursor c, int op, long pos, byte[] buf, int off, long len)
         throws Exception
     {
-        ((BTreeCursor) c).doValueModify(BTreeValue.OP_SET_LENGTH, 0, Utils.EMPTY_BYTES, 0, 0);
+        ((BTreeCursor) c).doValueModify(op, pos, buf, off, len);
     }
 
     @After
@@ -161,13 +161,17 @@ public class ValueAccessorTest {
         readFragmented(true, false);
     }
 
-    private void readFragmented(boolean useWrite, boolean setLength) throws Exception {
+    protected void readFragmented(boolean useWrite, boolean setLength) throws Exception {
+        readFragmented(useWrite, setLength, 100);
+    }
+
+    protected void readFragmented(boolean useWrite, boolean setLength, int count) throws Exception {
         Index ix = mDb.openIndex("test");
 
         final long seed = 3984574;
         var rnd = new Random(seed);
 
-        for (int i=1; i<=100; i++) {
+        for (int i=1; i<=count; i++) {
             byte[] key = ("key" + i).getBytes();
             int length = 50 * i;
             byte[] value = randomStr(rnd, length);
@@ -222,12 +226,16 @@ public class ValueAccessorTest {
 
     @Test
     public void readLargeFragmented() throws Exception {
+        readLargeFragmented(30);
+    }
+
+    protected void readLargeFragmented(int count) throws Exception {
         Index ix = mDb.openIndex("test");
 
         final long seed = 3984574;
         var rnd = new Random(seed);
 
-        for (int i=1; i<=30; i++) {
+        for (int i=1; i<=count; i++) {
             byte[] key = ("key" + i).getBytes();
             int length = 5000 * i;
             byte[] value = randomStr(rnd, length);
@@ -367,11 +375,11 @@ public class ValueAccessorTest {
         extendExisting(600, 100_000, true, true);
     }
 
-    private void extendExisting(int fromLen, long toLen, boolean fullCheck) throws Exception {
+    protected void extendExisting(int fromLen, long toLen, boolean fullCheck) throws Exception {
         extendExisting(fromLen, toLen, fullCheck, false);
     }
 
-    private void extendExisting(int fromLen, long toLen, boolean fullCheck, boolean checkpoint)
+    protected void extendExisting(int fromLen, long toLen, boolean fullCheck, boolean checkpoint)
         throws Exception
     {
         Index ix = mDb.openIndex("test");
@@ -978,6 +986,10 @@ public class ValueAccessorTest {
 
     @Test
     public void fill() throws Exception {
+        fill(0, true);
+    }
+
+    protected void fill(int bufferSize, boolean verifyLength) throws Exception {
         // Fills an index with random values, in random order. Intended to exercise tree node
         // splitting and merging.
 
@@ -996,14 +1008,16 @@ public class ValueAccessorTest {
             final int length = rnd.nextInt(1_000_000);
             int remaining = length;
 
-            try (OutputStream out = accessor.newValueOutputStream(0, 0)) {
+            try (OutputStream out = accessor.newValueOutputStream(0, bufferSize)) {
                 while (true) {
                     int amt = Math.min(buf.length, remaining);
                     rnd.nextBytes(buf);
                     out.write(buf, 0, amt);
                     remaining -= amt;
                     if (remaining <= 0) {
-                        assertEquals(length, accessor.valueLength());
+                        if (verifyLength) {
+                            assertEquals(length, accessor.valueLength());
+                        }
                         break;
                     }
                 }
@@ -1027,12 +1041,12 @@ public class ValueAccessorTest {
 
             int remaining = length;
 
-            try (InputStream in = accessor.newValueInputStream(0, 0)) {
+            try (InputStream in = accessor.newValueInputStream(0, bufferSize)) {
                 while (true) {
                     int expect = Math.min(buf.length, remaining);
                     rnd.nextBytes(buf);
 
-                    int amt = in.read(buf2);
+                    int amt = in.readNBytes(buf2, 0, buf2.length);
                     assertEquals(expect, amt);
 
                     if (amt == buf.length) {

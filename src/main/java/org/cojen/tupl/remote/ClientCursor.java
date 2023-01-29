@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 import org.cojen.dirmi.Pipe;
 
@@ -40,13 +41,13 @@ import org.cojen.tupl.core.Utils;
 public final class ClientCursor implements Cursor {
     final ClientView mView;
     RemoteCursor mRemote;
-
     Transaction mTxn;
     boolean mAutoload = true;
 
-    ClientCursor(ClientView view, RemoteCursor remote) {
+    ClientCursor(ClientView view, RemoteCursor remote, Transaction txn) {
         mView = view;
         mRemote = remote;
+        mTxn = txn;
     }
 
     @Override
@@ -113,7 +114,7 @@ public final class ClientCursor implements Cursor {
 
     @Override
     public boolean register() throws IOException {
-        return remote().register();
+        return remoteTxn().register();
     }
 
     @Override
@@ -123,139 +124,139 @@ public final class ClientCursor implements Cursor {
 
     @Override
     public LockResult first() throws IOException {
-        return remote().first();
+        return remoteTxn().first();
     }
 
     @Override
     public LockResult last() throws IOException {
-        return remote().last();
+        return remoteTxn().last();
     }
 
     @Override
     public LockResult skip(long amount) throws IOException {
-        return remote().skip(amount);
+        return remoteTxn().skip(amount);
     }
 
     @Override
     public LockResult skip(long amount, byte[] limitKey, boolean inclusive) throws IOException {
-        return remote().skip(amount, limitKey, inclusive);
+        return remoteTxn().skip(amount, limitKey, inclusive);
     }
 
     @Override
     public LockResult next() throws IOException {
-        return remote().next();
+        return remoteTxn().next();
     }
 
     @Override
     public LockResult nextLe(byte[] limitKey) throws IOException {
-        return remote().nextLe(limitKey);
+        return remoteTxn().nextLe(limitKey);
     }
 
     @Override
     public LockResult nextLt(byte[] limitKey) throws IOException {
-        return remote().nextLt(limitKey);
+        return remoteTxn().nextLt(limitKey);
     }
 
     @Override
     public LockResult previous() throws IOException {
-        return remote().previous();
+        return remoteTxn().previous();
     }
 
     @Override
     public LockResult previousGe(byte[] limitKey) throws IOException {
-        return remote().previousGe(limitKey);
+        return remoteTxn().previousGe(limitKey);
     }
 
     @Override
     public LockResult previousGt(byte[] limitKey) throws IOException {
-        return remote().previousGt(limitKey);
+        return remoteTxn().previousGt(limitKey);
     }
 
     @Override
     public LockResult find(byte[] key) throws IOException {
-        return remote().find(key);
+        return remoteTxn().find(key);
     }
 
     @Override
     public LockResult findGe(byte[] key) throws IOException {
-        return remote().findGe(key);
+        return remoteTxn().findGe(key);
     }
 
     @Override
     public LockResult findGt(byte[] key) throws IOException {
-        return remote().findGt(key);
+        return remoteTxn().findGt(key);
     }
 
     @Override
     public LockResult findLe(byte[] key) throws IOException {
-        return remote().findLe(key);
+        return remoteTxn().findLe(key);
     }
 
     @Override
     public LockResult findLt(byte[] key) throws IOException {
-        return remote().findLt(key);
+        return remoteTxn().findLt(key);
     }
 
     @Override
     public LockResult findNearby(byte[] key) throws IOException {
-        return remote().findNearby(key);
+        return remoteTxn().findNearby(key);
     }
 
     @Override
     public LockResult findNearbyGe(byte[] key) throws IOException {
-        return remote().findNearbyGe(key);
+        return remoteTxn().findNearbyGe(key);
     }
 
     @Override
     public LockResult findNearbyGt(byte[] key) throws IOException {
-        return remote().findNearbyGt(key);
+        return remoteTxn().findNearbyGt(key);
     }
 
     @Override
     public LockResult findNearbyLe(byte[] key) throws IOException {
-        return remote().findNearbyLe(key);
+        return remoteTxn().findNearbyLe(key);
     }
 
     @Override
     public LockResult findNearbyLt(byte[] key) throws IOException {
-        return remote().findNearbyLt(key);
+        return remoteTxn().findNearbyLt(key);
     }
 
     @Override
     public LockResult random(byte[] lowKey, byte[] highKey) throws IOException {
-        return remote().random(lowKey, highKey);
+        return remoteTxn().random(lowKey, highKey);
     }
 
     @Override
     public LockResult random(byte[] lowKey, boolean lowInclusive,
                              byte[] highKey, boolean highInclusive) throws IOException
     {
-        return remote().random(lowKey, lowInclusive, highKey, highInclusive);
+        return remoteTxn().random(lowKey, lowInclusive, highKey, highInclusive);
     }
 
     @Override
     public boolean exists() throws IOException {
-        return remote().exists();
+        return remoteTxn().exists();
     }
 
     @Override
     public LockResult lock() throws IOException {
-        return remote().lock();
+        return remoteTxn().lock();
     }
 
     @Override
     public LockResult load() throws IOException {
-        return remote().load();
+        return remoteTxn().load();
     }
 
     @Override
     public void store(byte[] value) throws IOException {
-        remote().store(value);
+        remoteTxn().store(value);
     }
 
     @Override
     public void delete() throws IOException {
-        remote().delete();
+        remoteTxn().delete();
     }
 
     @Override
@@ -265,8 +266,7 @@ public final class ClientCursor implements Cursor {
 
     @Override
     public Cursor copy() {
-        var copy = new ClientCursor(mView, remote().copy());
-        copy.mTxn = mTxn;
+        var copy = new ClientCursor(mView, remote().copy(), mTxn);
         copy.mAutoload = mAutoload;
         return copy;
     }
@@ -282,17 +282,20 @@ public final class ClientCursor implements Cursor {
 
     @Override
     public long valueLength() throws IOException {
-        return remote().valueLength();
+        return remoteValue().valueLength();
     }
 
     @Override
     public void valueLength(long length) throws IOException {
-        remote().valueLength(length);
+        remoteValue().valueLength(length);
     }
 
     @Override
     public int valueRead(long pos, byte[] buf, int off, int len) throws IOException {
-        Pipe pipe = remote().valueRead(pos, len, null);
+        posCheck(pos);
+        Objects.checkFromIndexSize(off, len, buf.length);
+
+        Pipe pipe = remoteValue().valueRead(pos, len, null);
         Object result;
         doRead: try {
             pipe.flush();
@@ -310,12 +313,16 @@ public final class ClientCursor implements Cursor {
         } catch (Throwable e) {
             throw Utils.fail(pipe, e);
         }
+
         throw Utils.rethrow((Throwable) result);
     }
 
     @Override
     public void valueWrite(long pos, byte[] buf, int off, int len) throws IOException {
-        Pipe pipe = remote().valueWrite(pos, len, null);
+        posCheck(pos);
+        Objects.checkFromIndexSize(off, len, buf.length);
+
+        Pipe pipe = remoteValue().valueWrite(pos, len, null);
         Object result;
         try {
             pipe.write(buf, off, len);
@@ -325,6 +332,7 @@ public final class ClientCursor implements Cursor {
         } catch (Throwable e) {
             throw Utils.fail(pipe, e);
         }
+
         if (result instanceof Throwable) {
             Utils.rethrow((Throwable) result);
         }
@@ -332,31 +340,40 @@ public final class ClientCursor implements Cursor {
 
     @Override
     public void valueClear(long pos, long length) throws IOException {
-        remote().valueClear(pos, length);
+        posCheck(pos);
+        if (length < 0) {
+            throw new IllegalArgumentException();
+        }
+        remoteValue().valueClear(pos, length);
     }
 
     @Override
     public InputStream newValueInputStream(long pos) throws IOException {
-        // FIXME: newValueInputStream
-        throw null;
+        posCheck(pos);
+        return new ValueInputStream(this, remoteValue().valueReadTransfer(pos, null));
     }
 
     @Override
     public InputStream newValueInputStream(long pos, int bufferSize) throws IOException {
-        // FIXME: newValueInputStream
-        throw null;
+        posCheck(pos);
+        return new ValueInputStream(this, remoteValue().valueReadTransfer(pos, bufferSize, null));
     }
 
     @Override
     public OutputStream newValueOutputStream(long pos) throws IOException {
-        // FIXME: newValueOutputStream
-        throw null;
+        return newValueOutputStream(pos, -1);
     }
 
     @Override
     public OutputStream newValueOutputStream(long pos, int bufferSize) throws IOException {
-        // FIXME: newValueOutputStream
-        throw null;
+        posCheck(pos);
+        return new ValueOutputStream(this, remoteValue().valueWriteTransfer(pos, null), bufferSize);
+    }
+
+    private static void posCheck(long pos) {
+        if (pos < 0) {
+            throw new IllegalArgumentException();
+        }
     }
 
     /**
@@ -373,9 +390,45 @@ public final class ClientCursor implements Cursor {
         return remote().verifyExtremities(extremity);
     }
 
+    /**
+     * Ensures that the RemoteCursor is active, resurrecting it if necessary.
+     */
     private RemoteCursor remote() {
         RemoteCursor remote = mRemote;
         return remote != null ? remote : resurrect();
+    }
+
+    /**
+     * Ensures that the RemoteCursor is active and that the transaction is active too.
+     */
+    private RemoteCursor remoteTxn() {
+        RemoteCursor remote = mRemote;
+        if (remote == null) {
+            remote = resurrect();
+        } else {
+            Transaction txn = mTxn;
+            if (txn instanceof ClientTransaction ct) {
+                ct.activeTxn(this);
+            }
+        }
+        return remote;
+    }
+
+    /**
+     * Throws an exception if RemoteCursor isn't active, but otherwise ensures the transaction
+     * is active.
+     */
+    private RemoteCursor remoteValue() {
+        RemoteCursor remote = mRemote;
+        if (remote == null) {
+            throw new IllegalStateException();
+        } else {
+            Transaction txn = mTxn;
+            if (txn instanceof ClientTransaction ct) {
+                ct.activeTxn(this);
+            }
+        }
+        return remote;
     }
 
     private RemoteCursor resurrect() {

@@ -37,6 +37,11 @@ public class LargeValueException extends DatabaseException {
         mLength = length;
     }
 
+    public LargeValueException(String message) {
+        super(message);
+        mLength = 0;
+    }
+
     public long length() {
         return mLength;
     }

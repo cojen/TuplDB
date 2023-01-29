@@ -134,13 +134,20 @@ public interface RemoteCursor extends Remote {
 
     public void valueClear(long pos, long length) throws IOException;
 
-    public Pipe newValueInputStream(long pos, Pipe pipe) throws IOException;
+    /**
+     * Reads the value and transfers it down the pipe.
+     */
+    public Pipe valueReadTransfer(long pos, Pipe pipe) throws IOException;
 
-    public Pipe newValueInputStream(long pos, int bufferSize, Pipe pipe) throws IOException;
+    /**
+     * Reads the value and transfers it down the pipe.
+     */
+    public Pipe valueReadTransfer(long pos, int bufferSize, Pipe pipe) throws IOException;
 
-    public Pipe newValueOutputStream(long pos, Pipe pipe) throws IOException;
-
-    public Pipe newValueOutputStream(long pos, int bufferSize, Pipe pipe) throws IOException;
+    /**
+     * Consumes data from the pipe and writes the value.
+     */
+    public Pipe valueWriteTransfer(long pos, Pipe pipe) throws IOException;
 
     /**
      * Test method.

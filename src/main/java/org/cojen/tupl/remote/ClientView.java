@@ -51,12 +51,12 @@ class ClientView<R extends RemoteView> implements View {
 
     @Override
     public Cursor newCursor(Transaction txn) {
-        return new ClientCursor(this, mRemote.newCursor(mDb.remoteTransaction(txn)));
+        return new ClientCursor(this, mRemote.newCursor(mDb.remoteTransaction(txn)), txn);
     }
 
     @Override
     public Cursor newAccessor(Transaction txn, byte[] key) throws IOException {
-        return new ClientCursor(this, mRemote.newAccessor(mDb.remoteTransaction(txn), key));
+        return new ClientCursor(this, mRemote.newAccessor(mDb.remoteTransaction(txn), key), txn);
     }
 
     @Override

@@ -112,6 +112,7 @@ public interface ValueAccessor extends Closeable {
      * @param pos start position to read from
      * @return buffered unsynchronized InputStream
      * @throws IllegalArgumentException if the position is negative
+     * @throws IllegalStateException if closed
      */
     public InputStream newValueInputStream(long pos) throws IOException;
 

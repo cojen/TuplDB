@@ -323,9 +323,24 @@ final class ClientTransaction implements Transaction {
         }
     }
 
+    /**
+     * Ensures that the RemoteTransaction is active, resurrecting if if necessary.
+     */
     RemoteTransaction remote() {
         RemoteTransaction remote = mRemote;
         return remote != null ? remote : resurrect();
+    }
+
+    /**
+     * Ensures that the transaction is active, possibly by resurrecting it and then updating
+     * the remote cursor.
+     */
+    void activeTxn(ClientCursor c) {
+        RemoteTransaction remote = mRemote;
+        if (remote == null) {
+            remote = resurrect();
+            c.mRemote.link(remote);
+        }
     }
 
     private RemoteTransaction resurrect() {

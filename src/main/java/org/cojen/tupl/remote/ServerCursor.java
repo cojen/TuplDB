@@ -17,7 +17,9 @@
 
 package org.cojen.tupl.remote;
 
+import java.io.InputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 
 import java.lang.reflect.Method;
 
@@ -263,7 +265,7 @@ final class ServerCursor implements RemoteCursor, SessionAware {
     }
 
     @Override
-    public Pipe valueRead(long pos, int len, Pipe pipe) throws IOException {
+    public Pipe valueRead(long pos, int len, Pipe pipe) {
         try {
             doRead: {
                 byte[] buf = new byte[len];
@@ -284,12 +286,13 @@ final class ServerCursor implements RemoteCursor, SessionAware {
             pipe.recycle();
             return null;
         } catch (Throwable e) {
-            throw Utils.fail(pipe, e);
+            Utils.closeQuietly(pipe);
+            return null;
         }
     }
 
     @Override
-    public Pipe valueWrite(long pos, int len, Pipe pipe) throws IOException {
+    public Pipe valueWrite(long pos, int len, Pipe pipe) {
         try {
             doWrite: {
                 byte[] buf = new byte[len];
@@ -306,7 +309,8 @@ final class ServerCursor implements RemoteCursor, SessionAware {
             pipe.recycle();
             return null;
         } catch (Throwable e) {
-            throw Utils.fail(pipe, e);
+            Utils.closeQuietly(pipe);
+            return null;
         }
     }
 
@@ -316,26 +320,125 @@ final class ServerCursor implements RemoteCursor, SessionAware {
     }
 
     @Override
-    public Pipe newValueInputStream(long pos, Pipe pipe) throws IOException {
-        return newValueInputStream(pos, 4096, pipe);
+    public Pipe valueReadTransfer(long pos, Pipe pipe) {
+        try {
+            readTransfer(pos, 4096, pipe);
+            return null;
+        } catch (Throwable e) {
+            Utils.closeQuietly(pipe);
+            return null;
+        }
     }
 
     @Override
-    public Pipe newValueInputStream(long pos, int bufferSize, Pipe pipe) throws IOException {
-        // FIXME: need to read/write chunks; otherwise, pipe must be closed and not recycled
-        //InputStream in = mCursor.newValueInputStream(pos, 0);
-        throw null;
+    public Pipe valueReadTransfer(long pos, int bufferSize, Pipe pipe) {
+        if (bufferSize <= 0) {
+            bufferSize = bufferSize == 0 ? 1 : 4096;
+        } else {
+            bufferSize = Math.min(bufferSize, 0x7ffe);
+        }
+
+        try {
+            readTransfer(pos, bufferSize, pipe);
+            return null;
+        } catch (Throwable e) {
+            Utils.closeQuietly(pipe);
+            return null;
+        }
+    }
+
+    /**
+     * @param bufferSize must be [1..0x7ffe]
+     */
+    private void readTransfer(long pos, int bufferSize, Pipe pipe) throws IOException {
+        // Act upon a copy of the cursor to guard against any odd thread-safety issues. Note
+        // that the cursor stream isn't explicitly closed. The implementation doesn't hold onto
+        // any extra resources, and so it doesn't need to be closed to free memory.
+        doTransfer: try (Cursor c = mCursor.copy()) {
+            byte[] buf;
+            InputStream in;
+            try {
+                buf = new byte[2 + bufferSize];
+                in = c.newValueInputStream(pos, 0);
+            } catch (Throwable e) {
+                pipe.writeShort(0xffff); // indicates an exception
+                pipe.writeObject(e);
+                break doTransfer;
+            }
+
+            while (true) {
+                int amt;
+                try {
+                    amt = in.readNBytes(buf, 2, bufferSize);
+                } catch (Throwable e) {
+                    pipe.writeShort(0xffff); // indicates an exception
+                    pipe.writeObject(e);
+                    break doTransfer;
+                }
+
+                if (amt < bufferSize) {
+                    amt = Math.max(amt, 0);
+                    // Indicate that the end is reached by setting the high bit.
+                    Utils.encodeShortBE(buf, 0, amt | 0x8000);
+                    pipe.write(buf, 0, 2 + amt);
+                    break doTransfer;
+                }
+
+                Utils.encodeShortBE(buf, 0, amt);
+                pipe.write(buf, 0, 2 + amt);
+            }
+        }
+
+        pipe.flush();
+
+        // Wait for ack before the pipe can be safely recycled.
+
+        int ack = pipe.read();
+        if (ack < 0) {
+            pipe.close();
+        } else {
+            pipe.recycle();
+        }
     }
 
     @Override
-    public Pipe newValueOutputStream(long pos, Pipe pipe) throws IOException {
-        return newValueOutputStream(pos, 4096, pipe);
+    public Pipe valueWriteTransfer(long pos, Pipe pipe) {
+        try {
+            writeTransfer(pos, pipe);
+            return null;
+        } catch (Throwable e) {
+            Utils.closeQuietly(pipe);
+            return null;
+        }
     }
 
-    @Override
-    public Pipe newValueOutputStream(long pos, int bufferSize, Pipe pipe) throws IOException {
-        // FIXME: need to read/write chunks; otherwise, pipe must be closed and not recycled
-        throw null;
+    /**
+     * @param bufferSize must be at least 1
+     */
+    private void writeTransfer(long pos, Pipe pipe) throws IOException {
+        var control = (RemoteOutputControl) pipe.readObject();
+
+        // Act upon a copy of the cursor to guard against any odd thread-safety issues. Note
+        // that the cursor stream isn't explicitly closed. The implementation doesn't hold onto
+        // any extra resources, and so it doesn't need to be closed to free memory.
+        try (Cursor c = mCursor.copy()) {
+            OutputStream out = c.newValueOutputStream(pos, 0);
+
+            while (true) {
+                int header = pipe.readUnsignedShort();
+                int length = header & 0x7fff;
+                if (pipe.transferTo(out, length) < length || (header & 0x8000) != 0) {
+                    pipe.write(1); // write ack
+                    pipe.flush();
+                    pipe.recycle();
+                    control.dispose();
+                    return;
+                }
+            }
+        } catch (Throwable e) {
+            control.exception(e);
+            pipe.close();
+        }
     }
 
     /**
