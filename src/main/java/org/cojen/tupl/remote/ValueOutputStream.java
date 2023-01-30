@@ -27,7 +27,7 @@ import org.cojen.tupl.io.Utils;
 /**
  * @author Brian S O'Neill
  * @see ClientCursor#newValueOutputStream
- * @see ServerCursor
+ * @see ServerCursor#writeTransfer
  */
 final class ValueOutputStream extends OutputStream implements RemoteOutputControl {
     private final ClientCursor mCursor;
@@ -62,14 +62,14 @@ final class ValueOutputStream extends OutputStream implements RemoteOutputContro
         byte[] buf = mChunkBuffer;
         int end = mChunkEnd;
         if (end >= buf.length) {
-            doFlush(pipe, end, 0);
+            flushNoAck(pipe, end);
             end = 2;
         }
         buf[end++] = (byte) b;
         if (end < buf.length) {
             mChunkEnd = end;
         } else {
-            doFlush(pipe, end, 0);
+            flushNoAck(pipe, end);
         }
     }
 
@@ -90,7 +90,7 @@ final class ValueOutputStream extends OutputStream implements RemoteOutputContro
                     if (len < avail) {
                         mChunkEnd = end;
                     } else {
-                        doFlush(pipe, end, 0);
+                        flushNoAck(pipe, end);
                     }
                     return;
                 }
@@ -99,7 +99,7 @@ final class ValueOutputStream extends OutputStream implements RemoteOutputContro
                 off += avail;
                 len -= avail;
 
-                doFlush(pipe, buf.length, 0);
+                flushNoAck(pipe, buf.length);
                 end = 2;
             }
         }
@@ -107,10 +107,39 @@ final class ValueOutputStream extends OutputStream implements RemoteOutputContro
 
     @Override
     public void flush() throws IOException {
+        // After writing a data chunk (if any), also write an empty chunk to indicate that an
+        // ack is requested.
+
         Pipe pipe = checkClosed();
+
+        byte[] buf = mChunkBuffer;
         int end = mChunkEnd;
-        if (end > 2) {
-            doFlush(pipe, end, 0);
+
+        try {
+            write: {
+                if (end > 2) {
+                    Utils.encodeShortBE(buf, 0, end - 2); // length of data
+                    if (end <= buf.length - 2) {
+                        // There's room in the buffer to encode the length of the empty chunk
+                        // at the end. This avoids and extra call to the pipe.
+                        Utils.encodeShortBE(buf, end, 0);
+                        pipe.write(buf, 0, end + 2);
+                        mChunkEnd = 2;
+                        break write;
+                    }
+                    pipe.write(buf, 0, end);
+                    mChunkEnd = 2;
+                }
+                pipe.writeShort(0); // length of empty chunk
+            }
+
+            pipe.flush();
+
+            // Wait for ack.
+            pipe.read();
+        } catch (Throwable e) {
+            failed(e);
+            throw e;
         }
     }
 
@@ -121,28 +150,45 @@ final class ValueOutputStream extends OutputStream implements RemoteOutputContro
             return;
         }
 
-        mCursor.reset();
-
         try {
-            doFlush(pipe, mChunkEnd, 0x8000);
+            try {
+                byte[] buf = mChunkBuffer;
+                int end = mChunkEnd;
+                Utils.encodeShortBE(buf, 0, (end - 2) | 0x8000);
+                pipe.write(buf, 0, end);
+                pipe.flush();
+                mChunkEnd = 2;
+            } catch (Throwable e) {
+                failed(e);
+                throw e;
+            } finally {
+                mPipe = null;
+            }
+
+            Throwable ex = mException;
+            if (ex != null) {
+                Utils.closeQuietly(pipe);
+                mException = null;
+                Utils.rethrow(ex);
+            }
+
+            // Wait for ack before the pipe can be safely recycled.
+
+            int ack;
+            try {
+                ack = pipe.read();
+            } catch (Throwable e) {
+                Utils.closeQuietly(pipe);
+                throw e;
+            }
+
+            if (ack < 0) {
+                pipe.close();
+            } else {
+                pipe.recycle();
+            }
         } finally {
-            mPipe = null;
-        }
-
-        Throwable ex = mException;
-        if (ex != null) {
-            Utils.closeQuietly(pipe);
-            mException = null;
-            Utils.rethrow(ex);
-        }
-
-        // Wait for ack before the pipe can be safely recycled.
-
-        int ack = pipe.read();
-        if (ack < 0) {
-            pipe.close();
-        } else {
-            pipe.recycle();
+            mCursor.reset();
         }
     }
 
@@ -158,25 +204,23 @@ final class ValueOutputStream extends OutputStream implements RemoteOutputContro
     }
 
     /**
-     * @param finished is 0x8000 when closing; 0 otherwise
+     * @param end must be more than 2, thus ensuring that a non-empty chunk is flushed. An
+     * empty chunk requests that an ack be sent back.
      */
-    private void doFlush(Pipe pipe, int end, int finished) throws IOException {
-        byte[] buf = mChunkBuffer;
-        Utils.encodeShortBE(buf, 0, (end - 2) | finished);
+    private void flushNoAck(Pipe pipe, int end) throws IOException {
+        if (end <= 2) {
+            throw new AssertionError();
+        }
         try {
-            mPipe.write(buf, 0, end);
-            mPipe.flush();
+            byte[] buf = mChunkBuffer;
+            Utils.encodeShortBE(buf, 0, end - 2);
+            pipe.write(buf, 0, end);
+            mChunkEnd = 2;
+            pipe.flush();
         } catch (Throwable e) {
-            Utils.closeQuietly(mPipe);
-            mChunkEnd = mChunkBuffer.length;
-            Throwable ex = mException;
-            if (ex != null) {
-                Utils.rethrow(ex);
-            }
+            failed(e);
             throw e;
         }
-
-        mChunkEnd = 2;
     }
 
     private Pipe checkClosed() {
@@ -185,5 +229,14 @@ final class ValueOutputStream extends OutputStream implements RemoteOutputContro
             throw new IllegalStateException("Stream closed");
         }
         return pipe;
+    }
+
+    private void failed(Throwable e) {
+        Utils.closeQuietly(mPipe);
+        mChunkEnd = mChunkBuffer.length;
+        Throwable ex = mException;
+        if (ex != null) {
+            Utils.rethrow(ex);
+        }
     }
 }

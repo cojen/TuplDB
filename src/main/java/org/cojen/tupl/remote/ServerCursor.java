@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.remote;
 
+import java.io.EOFException;
 import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -349,8 +350,12 @@ final class ServerCursor implements RemoteCursor, SessionAware {
 
     /**
      * @param bufferSize must be [1..0x7ffe]
+     * @see ValueInputStream
      */
     private void readTransfer(long pos, int bufferSize, Pipe pipe) throws IOException {
+        // Limiting bufferSize to 0x7ffe allows forms 0x7fff and 0xffff to indicate special
+        // conditions. Currently only 0xffff is used, and it indicates a terminal exception.
+
         // Act upon a copy of the cursor to guard against any odd thread-safety issues. Note
         // that the cursor stream isn't explicitly closed. The implementation doesn't hold onto
         // any extra resources, and so it doesn't need to be closed to free memory.
@@ -414,6 +419,7 @@ final class ServerCursor implements RemoteCursor, SessionAware {
 
     /**
      * @param bufferSize must be at least 1
+     * @see ValueOutputStream
      */
     private void writeTransfer(long pos, Pipe pipe) throws IOException {
         var control = (RemoteOutputControl) pipe.readObject();
@@ -427,18 +433,33 @@ final class ServerCursor implements RemoteCursor, SessionAware {
             while (true) {
                 int header = pipe.readUnsignedShort();
                 int length = header & 0x7fff;
-                if (pipe.transferTo(out, length) < length || (header & 0x8000) != 0) {
-                    pipe.write(1); // write ack
+                if (length != 0) {
+                    if (pipe.transferTo(out, length) < length) {
+                        throw new EOFException();
+                    }
+                    if ((header & 0x8000) != 0) {
+                        break;
+                    }
+                } else {
+                    if (header == 0x8000) {
+                        break;
+                    }
+                    // A plain empty chunk indicates that a flush ack is requested.
+                    pipe.write(1); // write flush ack
                     pipe.flush();
-                    pipe.recycle();
-                    control.dispose();
-                    return;
                 }
             }
+
+            pipe.write(2); // write close ack
+            pipe.flush();
+            pipe.recycle();
         } catch (Throwable e) {
             control.exception(e);
             pipe.close();
+            return;
         }
+
+        control.dispose();
     }
 
     /**

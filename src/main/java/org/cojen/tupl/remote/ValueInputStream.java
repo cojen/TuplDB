@@ -27,7 +27,7 @@ import org.cojen.tupl.io.Utils;
 /**
  * @author Brian S O'Neill
  * @see ClientCursor#newValueInputStream
- * @see ServerCursor
+ * @see ServerCursor#readTransfer
  */
 final class ValueInputStream extends InputStream {
     private final ClientCursor mCursor;
