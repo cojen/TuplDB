@@ -64,6 +64,7 @@ final class ServerTable<R> implements RemoteTable {
             return null;
         } catch (IOException e) {
             Utils.closeQuietly(pipe);
+            // FIXME: Can be caused by client closing early, so just drop the exception.
             throw e;
         }
     }
@@ -79,6 +80,7 @@ final class ServerTable<R> implements RemoteTable {
             return null;
         } catch (IOException e) {
             Utils.closeQuietly(pipe);
+            // FIXME: Can be caused by client closing early, so just drop the exception.
             throw e;
         }
     }
