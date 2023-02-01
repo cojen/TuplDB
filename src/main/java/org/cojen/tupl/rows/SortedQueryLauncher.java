@@ -71,7 +71,9 @@ final class SortedQueryLauncher<R> implements QueryLauncher<R> {
             Scanner<R> scanner;
             try {
                 scanner = newScanner(txn, row, args);
-                txn.commit(); // keep the locks
+                // Commit the transaction scope to promote and keep all the locks which were
+                // acquired by the sort operation.
+                txn.commit();
             } finally {
                 txn.exit();
             }
@@ -80,9 +82,10 @@ final class SortedQueryLauncher<R> implements QueryLauncher<R> {
         }
 
         // Need to create a transaction to acquire locks, but true auto-commit behavior isn't
-        // really feasible because update order won't match lock acquisition order. Instead,
-        // keep the transaction open until the updater finishes and always commit.
-        // Unfortunately, if the commit fails then all updates fail instead of just one.
+        // really feasible because update order won't match lock acquisition order. In
+        // particular, the locks cannot be released out of order. Instead, keep the transaction
+        // open until the updater finishes and always commit. Unfortunately, if the commit
+        // fails then all updates fail instead of just one.
 
         txn = mTable.mSource.newTransaction(null);
 
@@ -94,54 +97,7 @@ final class SortedQueryLauncher<R> implements QueryLauncher<R> {
             throw e;
         }
 
-        return new WrappedUpdater<>(mTable, txn, scanner) {
-            @Override
-            public R step() throws IOException {
-                try {
-                    R row = mScanner.step();
-                    if (row == null) {
-                        exception(null);
-                    }
-                    return row;
-                } catch (Throwable e) {
-                    exception(e);
-                    throw e;
-                }
-            }
-
-            @Override
-            public R step(R row) throws IOException {
-                try {
-                    row = mScanner.step(row);
-                    if (row == null) {
-                        exception(null);
-                    }
-                    return row;
-                } catch (Throwable e) {
-                    exception(e);
-                    throw e;
-                }
-            }
-
-            @Override
-            public void close() throws IOException {
-                exception(null);
-                mScanner.close();
-            }
-
-            @Override
-            protected void exception(Throwable e) throws IOException {
-                try {
-                    mTxn.commit();
-                } catch (Throwable e2) {
-                    if (e == null) {
-                        throw e2;
-                    } else {
-                        RowUtils.suppress(e, e2);
-                    }
-                }
-            }
-        };
+        return new WrappedUpdater.EndCommit<>(mTable, txn, scanner);
     }
 
     @Override

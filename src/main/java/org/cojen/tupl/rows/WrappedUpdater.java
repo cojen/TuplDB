@@ -138,4 +138,61 @@ class WrappedUpdater<R> implements Updater<R> {
         }
         return current;
     }
+
+    /**
+     * Implements a WrappedUpdater which commits the transaction when the updater finishes,
+     * throws an exception, or is explicitly closed.
+     */
+    public static final class EndCommit<R> extends WrappedUpdater<R> {
+        EndCommit(Table<R> table, Transaction txn, Scanner<R> scanner) {
+            super(table, txn, scanner);
+        }
+
+        @Override
+        public R step() throws IOException {
+            try {
+                R row = mScanner.step();
+                if (row == null) {
+                    exception(null);
+                }
+                return row;
+            } catch (Throwable e) {
+                exception(e);
+                throw e;
+            }
+        }
+
+        @Override
+        public R step(R row) throws IOException {
+            try {
+                row = mScanner.step(row);
+                if (row == null) {
+                    exception(null);
+                }
+                return row;
+            } catch (Throwable e) {
+                exception(e);
+                throw e;
+            }
+        }
+
+        @Override
+        public void close() throws IOException {
+            exception(null);
+            mScanner.close();
+        }
+
+        @Override
+        protected void exception(Throwable e) throws IOException {
+            try {
+                mTxn.commit();
+            } catch (Throwable e2) {
+                if (e == null) {
+                    throw e2;
+                } else {
+                    RowUtils.suppress(e, e2);
+                }
+            }
+        }
+    }
 }
