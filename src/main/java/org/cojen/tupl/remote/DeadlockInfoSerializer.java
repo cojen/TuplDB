@@ -25,6 +25,7 @@ import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.Serializer;
 
 import org.cojen.tupl.core.CoreDeadlockInfo;
+import org.cojen.tupl.core.DetachedDeadlockInfo;
 
 import org.cojen.tupl.diag.DeadlockInfo;
 
@@ -41,7 +42,7 @@ public final class DeadlockInfoSerializer implements Serializer {
 
     @Override
     public Set<Class<?>> supportedTypes() {
-        return Set.of(DeadlockInfo.class);
+        return Set.of(CoreDeadlockInfo.class, DetachedDeadlockInfo.class);
     }
 
     @Override

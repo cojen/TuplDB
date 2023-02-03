@@ -35,6 +35,7 @@ import org.cojen.dirmi.Environment;
 import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.RemoteException;
 
+import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Index;
@@ -391,11 +392,12 @@ public final class ClientDatabase implements Database {
         }
     }
 
-    RemoteIndex remoteIndex(Index ix) {
+    RemoteIndex remoteIndex(Index ix) throws ClosedIndexException {
         if (ix == null) {
             return null;
         } else if (ix instanceof ClientIndex) {
             var ci = (ClientIndex) ix;
+            ci.checkClosed();
             if (ci.mDb == this) {
                 return ci.mRemote;
             }

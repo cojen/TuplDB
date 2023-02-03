@@ -320,6 +320,17 @@ public class TestUtils {
         return tt;
     }
 
+    /**
+     * Returns a task which when joined, re-throws any exception from the task.
+     */
+    public static <T extends Runnable> TestTask<T> startTestTaskAndWaitUntilBlockedSocket(T task)
+        throws InterruptedException
+    {
+        var tt = new TestTask<>(task);
+        startAndWaitUntilBlockedSocket(new Thread(tt));
+        return tt;
+    }
+
     public static class TestTask<T extends Runnable> implements Runnable {
         private final T mTask;
         private boolean mFinished;

@@ -21,6 +21,7 @@ import java.io.IOException;
 
 import org.cojen.dirmi.ClosedException;
 
+import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.Filter;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.Table;
@@ -115,6 +116,20 @@ class ClientIndex extends ClientView<RemoteIndex> implements Index {
 
     @Override
     public void drop() throws IOException {
-        mRemote.drop();
+        try {
+            mRemote.drop();
+            close();
+        } catch (ClosedIndexException e) {
+            throw e;
+        } catch (IOException e) {
+            checkClosed();
+            throw e;
+        }
+    }
+
+    void checkClosed() throws ClosedIndexException {
+        if (isClosed()) {
+            throw new ClosedIndexException();
+        }
     }
 }
