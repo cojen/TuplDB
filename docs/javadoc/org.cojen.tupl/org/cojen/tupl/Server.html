@@ -125,13 +125,8 @@ extends <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/ja
 <div class="block">Call to enable remote access via all sockets accepted by the given <code>ServerSocket</code>.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#classResolver(org.cojen.dirmi.ClassResolver)" class="member-name-link">classResolver</a><wbr>(org.cojen.dirmi.ClassResolver&nbsp;resolver)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#close()" class="member-name-link">close</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Optionally supply an object which helps find classes.</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#close()" class="member-name-link">close</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Disables remote access, closes all acceptors, and closes all existing connections.</div>
 </div>
 </div>
@@ -161,16 +156,6 @@ extends <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/ja
 <dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if not given one or two tokens</dd>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
-</section>
-</li>
-<li>
-<section class="detail" id="classResolver(org.cojen.dirmi.ClassResolver)">
-<h3>classResolver</h3>
-<div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">classResolver</span><wbr><span class="parameters">(org.cojen.dirmi.ClassResolver&nbsp;resolver)</span></div>
-<div class="block">Optionally supply an object which helps find classes. This feature is primarily intended
- for finding row interface definitions which are dynamically generated. The resolver must
- be set before accepting connections in order for it to actually be used. Changing it
- doesn't affect existing connections.</div>
 </section>
 </li>
 <li>

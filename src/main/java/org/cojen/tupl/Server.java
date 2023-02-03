@@ -44,6 +44,8 @@ public interface Server extends Closeable {
      * for finding row interface definitions which are dynamically generated. The resolver must
      * be set before accepting connections in order for it to actually be used. Changing it
      * doesn't affect existing connections.
+     *
+     * @hidden
      */
     void classResolver(ClassResolver resolver);
 
