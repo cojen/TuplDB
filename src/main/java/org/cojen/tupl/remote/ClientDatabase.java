@@ -156,7 +156,7 @@ public final class ClientDatabase implements Database {
     @Override
     public Runnable deleteIndex(Index index) throws IOException {
         // FIXME: deleteIndex
-        throw null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -215,19 +215,19 @@ public final class ClientDatabase implements Database {
     @Override
     public CustomHandler customWriter(String name) throws IOException {
         // FIXME: customWriter
-        throw null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public PrepareHandler prepareWriter(String name) throws IOException {
         // FIXME: prepareWriter
-        throw null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public Sorter newSorter() {
         // FIXME: newSorter
-        throw null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -352,7 +352,7 @@ public final class ClientDatabase implements Database {
     @Override
     public void uponLeader(Runnable acquired, Runnable lost) {
         // FIXME: uponLeader
-        throw null;
+        throw new UnsupportedOperationException();
     }
 
     @Override

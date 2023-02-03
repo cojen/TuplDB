@@ -136,7 +136,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
     @Override
     public Predicate<R> predicate(String query, Object... args) {
         // FIXME: predicate
-        throw null;
+        throw new UnsupportedOperationException();
     }
 
     /**

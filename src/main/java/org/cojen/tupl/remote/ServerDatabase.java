@@ -73,7 +73,7 @@ public final class ServerDatabase implements RemoteDatabase {
     public RemoteRunnable deleteIndex(RemoteIndex index) throws IOException {
         // FIXME: deleteIndex
         //Runnable task = mDb.deleteIndex(((ServerIndex) index).mView);
-        throw null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -109,19 +109,19 @@ public final class ServerDatabase implements RemoteDatabase {
     @Override
     public RemoteCustomHandler customWriter(String name) throws IOException {
         // FIXME: customWriter
-        throw null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public RemotePrepareHandler prepareWriter(String name) throws IOException {
         // FIXME: prepareWriter
-        throw null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public RemoteSorter newSorter() {
         // FIXME: newSorter
-        throw null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -204,7 +204,7 @@ public final class ServerDatabase implements RemoteDatabase {
     @Override
     public void uponLeader(RemoteRunnable acquired, RemoteRunnable lost) {
         // FIXME: uponLeader
-        throw null;
+        throw new UnsupportedOperationException();
     }
 
     @Override
