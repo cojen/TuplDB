@@ -378,6 +378,37 @@ public class RemoteTest {
 
         System.out.println(client.stats());
 
+        System.out.println("---------------------------");
+
+        try (var updater = clientTable.newUpdater(null)) {
+            updater.forEachRemaining(row -> System.out.println(row));
+        }
+
+        System.out.println("---");
+
+        try (var updater = clientTable.newUpdater(null)) {
+            for (var row = updater.row(); row != null; ) {
+                row.value("v:" + row.id());
+                row = updater.update();
+            }
+        }
+
+        try (var updater = clientTable.newUpdater(null)) {
+            updater.forEachRemaining(row -> System.out.println(row));
+        }
+
+        System.out.println("---");
+
+        try (var updater = clientTable.newUpdater(null)) {
+            for (var row = updater.row(); row != null; ) {
+                row = updater.delete();
+            }
+        }
+
+        try (var updater = clientTable.newUpdater(null)) {
+            updater.forEachRemaining(row -> System.out.println(row));
+        }
+
         client.close();
         db.close();
     }

@@ -23,11 +23,13 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
 import java.util.Comparator;
+import java.util.Spliterator;
 
 import java.util.function.Predicate;
 
 import org.cojen.dirmi.ClosedException;
 import org.cojen.dirmi.Pipe;
+import org.cojen.dirmi.RemoteException;
 
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Scanner;
@@ -135,14 +137,44 @@ final class ClientTable<R> implements Table<R> {
 
     @Override
     public Updater<R> newUpdater(Transaction txn) throws IOException {
-        // FIXME: newUpdater
-        throw null;
+        return newUpdater(mRemote.newUpdater(mDb.remoteTransaction(txn), null));
     }
 
     @Override
     public Updater<R> newUpdater(Transaction txn, String query, Object... args) throws IOException {
-        // FIXME: newUpdater
-        throw null;
+        return newUpdater(mRemote.newUpdater(mDb.remoteTransaction(txn), null, query, args));
+    }
+
+    private ClientUpdater<R> newUpdater(Pipe pipe) throws IOException {
+        RemoteTableProxy proxy = proxy();
+
+        pipe.writeObject(proxy);
+        pipe.flush();
+
+        int characteristics = pipe.readInt();
+        long size = (characteristics & Spliterator.SIZED) == 0 ? Long.MAX_VALUE : pipe.readLong();
+        var updater = (RemoteUpdater) pipe.readObject();
+
+        try {
+            R row;
+            if (updater == null) {
+                row = null;
+                pipe.recycle();
+            } else {
+                row = mHelper.newRow();
+                mHelper.updaterRow(row, pipe); // pipe is recycled or closed as a side-effect
+            }
+            return new ClientUpdater<R>(mHelper, proxy, characteristics, size, updater, row);
+        } catch (Throwable e) {
+            if (updater != null) {
+                try {
+                    updater.dispose();
+                } catch (RemoteException e2) {
+                    e.addSuppressed(e2);
+                }
+            }
+            throw e;
+        }
     }
 
     @Override

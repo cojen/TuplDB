@@ -22,6 +22,7 @@ import java.io.IOException;
 import org.cojen.dirmi.Pipe;
 
 import org.cojen.tupl.DurabilityMode;
+import org.cojen.tupl.Updater;
 
 import org.cojen.tupl.diag.QueryPlan;
 
@@ -87,16 +88,40 @@ final class ServerTable<R> implements RemoteTable {
 
     @Override
     public Pipe newUpdater(RemoteTransaction txn, Pipe pipe) throws IOException {
-        // FIXME: newUpdater
-        throw null;
+        newUpdater(mTable.newUpdater(ServerTransaction.txn(txn)), pipe);
+        return null;
     }
 
     @Override
     public Pipe newUpdater(RemoteTransaction txn, Pipe pipe, String query, Object... args)
         throws IOException
     {
-        // FIXME: newUpdater
-        throw null;
+        newUpdater(mTable.newUpdater(ServerTransaction.txn(txn), query, args), pipe);
+        return null;
+    }
+
+    private void newUpdater(Updater updater, Pipe pipe) throws IOException {
+        try {
+            var proxy = (RemoteTableProxy) pipe.readObject();
+            int characteristics = updater.characteristics();
+            pipe.writeInt(characteristics);
+            if ((characteristics & Updater.SIZED) != 0) {
+                pipe.writeLong(updater.estimateSize());
+            }
+            if (updater.row() == null) {
+                pipe.writeNull();
+                pipe.flush();
+                pipe.recycle();
+            } else {
+                var server = new ServerUpdater(updater);
+                pipe.writeObject(server);
+                proxy.row(server, pipe); // pipe is flushed and recycled as a side-effect
+            }
+        } catch (Throwable e) {
+            Utils.closeQuietly(pipe);
+            Utils.closeQuietly(updater);
+            throw e;
+        }
     }
 
     @Override

@@ -45,4 +45,12 @@ public interface RemoteTableProxy extends Remote {
     public Pipe merge(RemoteTransaction txn, Pipe pipe) throws IOException;
 
     public Pipe delete(RemoteTransaction txn, Pipe pipe) throws IOException;
+
+    public Pipe row(RemoteUpdater updater, Pipe pipe) throws IOException;
+
+    public Pipe step(RemoteUpdater updater, Pipe pipe) throws IOException;
+
+    public Pipe update(RemoteUpdater updater, Pipe pipe) throws IOException;
+
+    public Pipe delete(RemoteUpdater updater, Pipe pipe) throws IOException;
 }

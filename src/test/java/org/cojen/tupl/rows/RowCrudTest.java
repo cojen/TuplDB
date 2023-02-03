@@ -44,8 +44,8 @@ public class RowCrudTest {
         mDb = null;
     }
 
-    private Database mDb;
-    private Table<TestRow> mTable;
+    protected Database mDb;
+    protected Table<TestRow> mTable;
 
     @PrimaryKey("id")
     public interface TestRow {

@@ -108,6 +108,26 @@ public abstract class ClientTableHelper<R> implements Table<R> {
      */
     public abstract boolean delete(R row, Pipe pipe) throws IOException;
 
+    /**
+     * @param pipe is recycled or closed as a side-effect
+     */
+    public abstract boolean updaterRow(R newRow, Pipe pipe) throws IOException;
+
+    /**
+     * @param pipe is recycled or closed as a side-effect
+     */
+    public abstract boolean updaterStep(R row, Pipe pipe) throws IOException;
+
+    /**
+     * @param pipe is recycled or closed as a side-effect
+     */
+    public abstract boolean updaterUpdate(R row, R newRow, Pipe pipe) throws IOException;
+
+    /**
+     * @param pipe is recycled or closed as a side-effect
+     */
+    public abstract boolean updaterDelete(R row, R newRow, Pipe pipe) throws IOException;
+
     @Override
     public Comparator<R> comparator(String spec) {
         return ComparatorMaker.comparator(rowType(), spec);
@@ -125,10 +145,36 @@ public abstract class ClientTableHelper<R> implements Table<R> {
     public abstract byte[] rowDescriptor();
 
     protected void writeAndRead(Pipe pipe, byte[] bytesVar) throws Throwable {
-        pipe.write(bytesVar);
-        pipe.flush();
+        try {
+            pipe.write(bytesVar);
+            pipe.flush();
+        } catch (Throwable e) {
+            fail(pipe, e);
+            throw e;
+        }
 
-        Object obj = pipe.readThrowable();
+        readThrowable(pipe);
+    }
+
+    protected void flushAndRead(Pipe pipe) throws Throwable {
+        try {
+            pipe.flush();
+        } catch (Throwable e) {
+            fail(pipe, e);
+            throw e;
+        }
+
+        readThrowable(pipe);
+    }
+
+    protected void readThrowable(Pipe pipe) throws Throwable {
+        Object obj;
+        try {
+            obj = pipe.readThrowable();
+        } catch (Throwable e) {
+            fail(pipe, e);
+            throw e;
+        }
 
         if (obj instanceof Throwable e) {
             try {
@@ -202,6 +248,12 @@ public abstract class ClientTableHelper<R> implements Table<R> {
 
         addUpdateMethod("update", cm, rowGen, rowClass);
         addUpdateMethod("merge", cm, rowGen, rowClass);
+
+        addUpdaterAccessMethod("updaterRow", cm, rowGen, rowClass);
+        addUpdaterAccessMethod("updaterStep", cm, rowGen, rowClass);
+
+        addUpdaterModifyMethod("updaterUpdate", cm, rowGen, rowClass);
+        addUpdaterModifyMethod("updaterDelete", cm, rowGen, rowClass);
 
         // Need to implement a bridge for the exchange method.
         {
@@ -366,9 +418,105 @@ public abstract class ClientTableHelper<R> implements Table<R> {
     }
 
     /**
+     * @param variant "updaterRow" or "updaterStep"
+     */
+    private static void addUpdaterAccessMethod(String variant,
+                                               ClassMaker cm, RowGen rowGen, Class<?> rowClass)
+    {
+        MethodMaker mm = cm.addMethod(boolean.class, variant, Object.class, Pipe.class).public_();
+
+        var rowVar = mm.param(0).cast(rowClass);
+        var pipeVar = mm.param(1);
+
+        mm.invoke("flushAndRead", pipeVar);
+
+        Label tryStart = mm.label().here();
+
+        var resultVar = pipeVar.invoke("readByte");
+
+        Label finish = mm.label();
+        resultVar.ifEq(0, finish);
+
+        decodeKeyColumns(rowGen, rowVar, pipeVar);
+        pipeVar.invoke("skip", 1); // skip the value result code
+        decodeValueColumns(rowGen, rowVar, pipeVar);
+        TableMaker.markAllClean(rowVar, rowGen, rowGen);
+
+        finish.here();
+        mm.invoke("success", pipeVar);
+        mm.return_(resultVar.ne(0));
+
+        mm.catch_(tryStart, Throwable.class, exVar -> {
+            mm.invoke("fail", pipeVar, exVar);
+            exVar.throw_();
+        });
+    }
+
+    /**
+     * @param variant "updaterUpdate" or "updaterDelete"
+     */
+    private static void addUpdaterModifyMethod(String variant,
+                                               ClassMaker cm, RowGen rowGen, Class<?> rowClass)
+    {
+        MethodMaker mm = cm.addMethod
+            (boolean.class, variant, Object.class, Object.class, Pipe.class).public_();
+
+        var rowVar = mm.param(0).cast(rowClass);
+        var newRowVar = mm.param(1).cast(rowClass);
+        var pipeVar = mm.param(2);
+
+        // Note that all of the key columns are encoded, even if they haven't changed. This is
+        // the safe thing to do considering that modifications might have been made directly to
+        // the client-side row object. The client-side key might not match the server-side key,
+        // and so passing the key columns back ensures that the server-side updater acts upon
+        // the correct row.
+
+        if (variant == "updaterUpdate") {
+            mm.invoke("writeAndRead", pipeVar, mm.invoke("encodeDirtyColumns", rowVar));
+        } else {
+            mm.invoke("writeAndRead", pipeVar, mm.invoke("encodeKeyColumns", rowVar));
+        }
+
+        Label tryStart = mm.label().here();
+
+        var resultVar = pipeVar.invoke("readByte");
+
+        Label finish = mm.label();
+        resultVar.ifEq(0, finish);
+
+        decodeKeyColumns(rowGen, newRowVar, pipeVar);
+        pipeVar.invoke("skip", 1); // skip the value result code
+        decodeValueColumns(rowGen, newRowVar, pipeVar);
+        TableMaker.markAllClean(newRowVar, rowGen, rowGen);
+
+        finish.here();
+        mm.invoke("success", pipeVar);
+        mm.return_(resultVar.ne(0));
+
+        mm.catch_(tryStart, Throwable.class, exVar -> {
+            mm.invoke("fail", pipeVar, exVar);
+            exVar.throw_();
+        });
+    }
+
+    /**
+     * Reads the key columns from a pipe and decodes them into a row.
+     */
+    private static void decodeKeyColumns(RowGen rowGen, Variable rowVar, Variable pipeVar) {
+        decodeColumns(rowGen.keyCodecs(), rowVar, pipeVar);
+    }
+
+    /**
      * Reads the value columns from a pipe and decodes them into a row.
      */
     private static void decodeValueColumns(RowGen rowGen, Variable rowVar, Variable pipeVar) {
+        decodeColumns(rowGen.valueCodecs(), rowVar, pipeVar);
+    }
+
+    /**
+     * Reads the columns from a pipe and decodes them into a row.
+     */
+    private static void decodeColumns(ColumnCodec[] codecs, Variable rowVar, Variable pipeVar) {
         MethodMaker mm = rowVar.methodMaker();
 
         var lengthVar = mm.var(RowUtils.class).invoke("decodePrefixPF", pipeVar);
@@ -376,11 +524,11 @@ public abstract class ClientTableHelper<R> implements Table<R> {
 
         pipeVar.invoke("readFully", bytesVar);
 
-        ColumnCodec[] valueCodecs = ColumnCodec.bind(rowGen.valueCodecs(), mm);
+        codecs = ColumnCodec.bind(codecs, mm);
 
         var offsetVar = mm.var(int.class).set(0);
 
-        for (ColumnCodec codec : valueCodecs) {
+        for (ColumnCodec codec : codecs) {
             codec.decode(rowVar.field(codec.mInfo.name), bytesVar, offsetVar, null);
         }
     }

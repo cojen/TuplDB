@@ -33,6 +33,7 @@ import org.cojen.tupl.Scanner;
  *
  * @author Brian S O'Neill
  * @see RowReader
+ * @see WriteRowMaker
  */
 public final class RowWriter<R> implements RowConsumer<R> {
     private final DataOutput mOut;

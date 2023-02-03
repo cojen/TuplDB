@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.rows;
 
+import java.io.Closeable;
 import java.io.IOException;
 
 import java.lang.invoke.MethodHandle;
@@ -36,7 +37,9 @@ import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.remote.RemoteTableProxy;
 import org.cojen.tupl.remote.RemoteTransaction;
+import org.cojen.tupl.remote.RemoteUpdater;
 import org.cojen.tupl.remote.ServerTransaction;
+import org.cojen.tupl.remote.ServerUpdater;
 
 /**
  * Generates classes which are used by the remote server.
@@ -76,7 +79,6 @@ public final class RemoteProxyMaker {
     // Only needed by addUpdateDirectMethod.
     private Variable mUpdaterFactoryVar;
 
-    // Only needed by makeConverter.
     private ColumnCodec[] mClientCodecs;
 
     private RemoteProxyMaker(BaseTable table, byte[] descriptor) {
@@ -95,6 +97,13 @@ public final class RemoteProxyMaker {
      *     RemoteTableProxy new(BaseTable table, int schemaVersion);
      */
     private MethodHandle finish() {
+        mClassMaker.addField(boolean.class, "assert").private_().static_().final_();
+
+        {
+            MethodMaker mm = mClassMaker.addClinit();
+            mm.field("assert").set(mm.class_().invoke("desiredAssertionStatus"));
+        }
+
         mClassMaker.addField(BaseTable.class, "table").private_().final_();
 
         MethodMaker ctorMaker = mClassMaker.addConstructor(BaseTable.class, int.class).private_();
@@ -163,6 +172,20 @@ public final class RemoteProxyMaker {
 
         addUpdateDirectMethod("update");
         addUpdateDirectMethod("merge");
+
+        // The Updater methods don't currently act upon encoded bytes directly but instead act
+        // upon resolved row objects. This is somewhat less efficient, but a remote Updater
+        // isn't very efficient regardless. All operations require a roundtrip call.
+
+        // The decode and encode methods are needed by the Updater methods.
+        addDecodeRow();
+        addEncodeColumns(true);
+        addEncodeColumns(false);
+
+        addUpdaterMethod("row");
+        addUpdaterMethod("step");
+        addUpdaterMethod("update");
+        addUpdaterMethod("delete");
 
         return mClassMaker.finishLookup();
     }
@@ -631,10 +654,81 @@ public final class RemoteProxyMaker {
     }
 
     /**
+     * @param variant "row" "step", "update" or "delete"
+     */
+    private void addUpdaterMethod(String variant) {
+        MethodMaker mm = mClassMaker.addMethod
+            (Pipe.class, variant, RemoteUpdater.class, Pipe.class).public_();
+
+        var updaterVar = updater(mm.param(0));
+        var pipeVar = mm.param(1);
+
+        Label tryStart = mm.label().here();
+
+        var rowVar = mm.var(mRowClass);
+        var currentRowVar = updaterVar.invoke("row");
+        Label finish = mm.label();
+
+        var makerVar = mm.var(RemoteProxyMaker.class);
+
+        if (variant == "row") {
+            rowVar.set(currentRowVar.cast(mRowClass));
+        } else if (variant == "step") {
+            makerVar.invoke("currentRowCheck", currentRowVar);
+            rowVar.set(updaterVar.invoke(variant, currentRowVar).cast(mRowClass));
+        } else {
+            makerVar.invoke("currentRowCheck", currentRowVar);
+            rowVar.set(mm.invoke("decodeRow", currentRowVar.cast(mRowClass), pipeVar));
+            rowVar.ifEq(null, finish);
+            rowVar.set(updaterVar.invoke(variant, rowVar).cast(mRowClass));
+        }
+
+        Label noRow = mm.label();
+        rowVar.ifEq(null, noRow);
+
+        var keyBytesVar = mm.invoke("encodeKeyColumns", rowVar);
+        var valueBytesVar = mm.invoke("encodeValueColumns", rowVar);
+
+        mm.catch_(tryStart, Throwable.class, exVar -> {
+            pipeVar.invoke("writeObject", exVar);
+            finish.goto_();
+        });
+
+        pipeVar.invoke("writeNull"); // no exception
+        keyBytesVar.aset(0, 1); // set the result code
+        pipeVar.invoke("write", keyBytesVar);
+        pipeVar.invoke("write", valueBytesVar);
+
+        finish.here();
+
+        pipeVar.invoke("flush");
+        pipeVar.invoke("recycle");
+
+        mm.return_(null);
+
+        noRow.here();
+        pipeVar.invoke("writeNull"); // no exception
+        pipeVar.invoke("writeByte", 0); // result code
+        finish.goto_();
+
+        var exVar = mm.catch_(tryStart, mm.label().here(), Throwable.class);
+        makerVar.invoke("handleException", exVar, pipeVar, updaterVar);
+        mm.return_(null);
+    }
+
+    /**
      * Extracts the real transaction object from the remote transaction.
      */
     private Variable txn(Variable remoteTxnVar) {
         return remoteTxnVar.methodMaker().var(ServerTransaction.class).invoke("txn", remoteTxnVar);
+    }
+
+    /**
+     * Extracts the real updater object from the remote updater.
+     */
+    private Variable updater(Variable remoteUpdaterVar) {
+        return remoteUpdaterVar.methodMaker()
+            .var(ServerUpdater.class).invoke("updater", remoteUpdaterVar);
     }
 
     /**
@@ -1039,20 +1133,31 @@ public final class RemoteProxyMaker {
     }
 
     /**
+     * Called by generated code.
+     */
+    public static void handleException(Throwable e, Pipe pipe, Closeable c) {
+        RowUtils.closeQuietly(pipe);
+        RowUtils.closeQuietly(c);
+        if (!(e instanceof IOException)) {
+            RowUtils.rethrow(e);
+        }
+    }
+
+    /**
+     * Called by generated code.
+     */
+    public static void currentRowCheck(Object row) {
+        if (row == null) {
+            throw new IllegalStateException();
+        }
+    }
+
+    /**
      * Makes a RemoteTableProxy class which must perform column conversions.
      */
     private MethodHandles.Lookup makeConverter() {
-        mClassMaker.addField(boolean.class, "assert").private_().static_().final_();
-
-        {
-            MethodMaker mm = mClassMaker.addClinit();
-            mm.field("assert").set(mm.class_().invoke("desiredAssertionStatus"));
-        }
-
-        mClientCodecs = ColumnCodec.make(mRowHeader);
-
         addDecodeRow();
-        addEncodeValueColumns();
+        addEncodeColumns(false);
 
         addByKeyConvertMethod("load");
         addByKeyConvertMethod("exists");
@@ -1065,6 +1170,14 @@ public final class RemoteProxyMaker {
 
         addUpdateConvertMethod("update");
         addUpdateConvertMethod("merge");
+
+        // The encodeKeyColumns method is needed by the Updater methods.
+        addEncodeColumns(true);
+
+        addUpdaterMethod("row");
+        addUpdaterMethod("step");
+        addUpdaterMethod("update");
+        addUpdaterMethod("delete");
 
         return mClassMaker.finishLookup();
     }
@@ -1081,7 +1194,7 @@ public final class RemoteProxyMaker {
 
         Label tryStart = mm.label().here();
 
-        var rowVar = mm.invoke("decodeRow", pipeVar);
+        var rowVar = mm.invoke("decodeRow", mm.new_(mRowClass), pipeVar);
         Label finish = mm.label();
         rowVar.ifEq(null, finish);
 
@@ -1148,7 +1261,7 @@ public final class RemoteProxyMaker {
 
         Label tryStart = mm.label().here();
 
-        var rowVar = mm.invoke("decodeRow", pipeVar);
+        var rowVar = mm.invoke("decodeRow", mm.new_(mRowClass), pipeVar);
         Label finish = mm.label();
         rowVar.ifEq(null, finish);
 
@@ -1235,7 +1348,7 @@ public final class RemoteProxyMaker {
 
         Label tryStart = mm.label().here();
 
-        var rowVar = mm.invoke("decodeRow", pipeVar);
+        var rowVar = mm.invoke("decodeRow", mm.new_(mRowClass), pipeVar);
         Label finish = mm.label();
         rowVar.ifEq(null, finish);
 
@@ -1302,22 +1415,24 @@ public final class RemoteProxyMaker {
 
     /**
      * Defines a static method which accepts a Pipe and returns a row object as written by the
-     * client. To do this, it reads the column states and column values from the pipe. If a
+     * client. The first parameter is the row object to fill in, which can be a new instance.
+     * The second parameter is the pipe.
+     *
+     * The decodeRow method reads the column states and column values from the pipe. If a
      * conversion exception occurs, the exception is written to the pipe and null is returned.
      * The caller must then flush and recycle the pipe.
      */
     private void addDecodeRow() {
-        MethodMaker mm = mClassMaker.addMethod(mRowClass, "decodeRow", Pipe.class);
+        MethodMaker mm = mClassMaker.addMethod(mRowClass, "decodeRow", mRowClass, Pipe.class);
         mm.private_().static_();
 
-        var pipeVar = mm.param(0);
+        var rowVar = mm.param(0);
+        var pipeVar = mm.param(1);
         var stateVars = readStateFields(pipeVar);
 
         var makerVar = mm.var(RemoteProxyMaker.class);
         var keyVar = makerVar.invoke("decodeKey", pipeVar);
         var valueVar = makerVar.invoke("decodeValue", pipeVar);
-
-        var rowVar = mm.new_(mRowClass);
 
         Map<String, Integer> rowColumnNumbers = mRowGen.columnNumbers();
         String[] rowStateFieldNames = mRowGen.stateFields();
@@ -1326,7 +1441,9 @@ public final class RemoteProxyMaker {
 
         var offsetVar = mm.var(int.class);
 
-        for (int columnNum = 0; columnNum < mClientCodecs.length; columnNum++) {
+        ColumnCodec[] clientCodecs = clientCodecs();
+
+        for (int columnNum = 0; columnNum < clientCodecs.length; columnNum++) {
             if (columnNum == 0 || columnNum == mRowHeader.numKeys) {
                 offsetVar.set(0);
             }
@@ -1345,7 +1462,7 @@ public final class RemoteProxyMaker {
                 bytesVar = valueVar;
             }
 
-            ColumnCodec codec = mClientCodecs[columnNum].bind(mm);
+            ColumnCodec codec = clientCodecs[columnNum].bind(mm);
 
             var columnVar = mm.var(codec.mInfo.type);
 
@@ -1398,18 +1515,21 @@ public final class RemoteProxyMaker {
     }
 
     /**
-     * Defines a static method which accepts a row object and encodes the value columns into a
-     * new byte array which can be decoded by the client. If an exact conversion isn't
+     * Defines a static method which accepts a row object and encodes key or value columns into
+     * a new byte array which can be decoded by the client. If an exact conversion isn't
      * possible, a RuntimeException is thrown.
      *
      * <p>The first byte of the returned byte array empty, and is expected to be set by the
-     * caller with a operation result code.
+     * caller with an operation result code.
      */
-    private void addEncodeValueColumns() {
-        MethodMaker mm = mClassMaker.addMethod(byte[].class, "encodeValueColumns", mRowClass);
+    private void addEncodeColumns(boolean forKey) {
+        String methodName = forKey ? "encodeKeyColumns" : "encodeValueColumns";
+        MethodMaker mm = mClassMaker.addMethod(byte[].class, methodName, mRowClass);
         mm.private_().static_();
 
-        if (mClientCodecs.length == 0) {
+        ColumnCodec[] clientCodecs = clientCodecs();
+
+        if (clientCodecs.length == 0) {
             var emptyVar = mm.var(byte[].class).setExact(new byte[1]);
             mm.return_(emptyVar);
             return;
@@ -1419,17 +1539,26 @@ public final class RemoteProxyMaker {
 
         // Prepare all the fields by applying any necessary conversions.
 
-        ColumnCodec[] codecs = ColumnCodec.bind(mClientCodecs, mm);
-        int numKeys = mRowHeader.numKeys;
-        var fieldVars = new Variable[codecs.length - numKeys];
+        clientCodecs = ColumnCodec.bind(clientCodecs, mm);
 
-        for (int columnNum = numKeys; columnNum < codecs.length; columnNum++) {
+        int numStart, numEnd;
+        if (forKey) {
+            numStart = 0;
+            numEnd = mRowHeader.numKeys;
+        } else {
+            numStart = mRowHeader.numKeys;
+            numEnd = clientCodecs.length;
+        }
+
+        var fieldVars = new Variable[clientCodecs.length - numStart];
+
+        for (int columnNum = numStart; columnNum < numEnd; columnNum++) {
             String fieldName = mRowHeader.columnNames[columnNum];
             ColumnInfo srcInfo = mRowGen.info.allColumns.get(fieldName);
             var srcField = rowVar.field(fieldName);
-            ColumnInfo dstInfo = codecs[columnNum].mInfo;
+            ColumnInfo dstInfo = clientCodecs[columnNum].mInfo;
             var dstVar = mm.var(dstInfo.type);
-            fieldVars[columnNum - numKeys] = dstVar;
+            fieldVars[columnNum - numStart] = dstVar;
             Converter.convertExact(mm, fieldName, srcInfo, srcField, dstInfo, dstVar);
         }
 
@@ -1438,9 +1567,9 @@ public final class RemoteProxyMaker {
         Variable valueLengthVar = null;
         int minSize = 0;
 
-        for (int columnNum = numKeys; columnNum < codecs.length; columnNum++) {
-            var fieldVar = fieldVars[columnNum - numKeys];
-            ColumnCodec codec = codecs[columnNum];
+        for (int columnNum = numStart; columnNum < numEnd; columnNum++) {
+            var fieldVar = fieldVars[columnNum - numStart];
+            ColumnCodec codec = clientCodecs[columnNum];
             codec.encodePrepare();
             valueLengthVar = codec.encodeSize(fieldVar, valueLengthVar);
             minSize += codec.minSize();
@@ -1462,9 +1591,9 @@ public final class RemoteProxyMaker {
         var bytesVar = mm.new_(byte[].class, fullLengthVar);
         var offsetVar = utilsVar.invoke("encodePrefixPF", bytesVar, 1, valueLengthVar);
 
-        for (int columnNum = numKeys; columnNum < codecs.length; columnNum++) {
-            var fieldVar = fieldVars[columnNum - numKeys];
-            codecs[columnNum].encode(fieldVar, bytesVar, offsetVar);
+        for (int columnNum = numStart; columnNum < numEnd; columnNum++) {
+            var fieldVar = fieldVars[columnNum - numStart];
+            clientCodecs[columnNum].encode(fieldVar, bytesVar, offsetVar);
         }
 
         Label cont = mm.label();
@@ -1475,5 +1604,13 @@ public final class RemoteProxyMaker {
         cont.here();
 
         mm.return_(bytesVar);
+    }
+
+    private ColumnCodec[] clientCodecs() {
+        ColumnCodec[] codecs = mClientCodecs;
+        if (codecs == null) {
+            mClientCodecs = codecs = ColumnCodec.make(mRowHeader);
+        }
+        return codecs;
     }
 }
