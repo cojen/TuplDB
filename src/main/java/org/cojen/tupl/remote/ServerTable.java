@@ -63,10 +63,12 @@ final class ServerTable<R> implements RemoteTable {
             pipe.flush();
             pipe.recycle();
             return null;
-        } catch (IOException e) {
+        } catch (Throwable e) {
             Utils.closeQuietly(pipe);
-            // FIXME: Can be caused by client closing early, so just drop the exception.
-            throw e;
+            if (!(e instanceof IOException)) {
+                throw e;
+            }
+            return null;
         }
     }
 
@@ -79,10 +81,12 @@ final class ServerTable<R> implements RemoteTable {
             pipe.flush();
             pipe.recycle();
             return null;
-        } catch (IOException e) {
+        } catch (Throwable e) {
             Utils.closeQuietly(pipe);
-            // FIXME: Can be caused by client closing early, so just drop the exception.
-            throw e;
+            if (!(e instanceof IOException)) {
+                throw e;
+            }
+            return null;
         }
     }
 
@@ -120,7 +124,9 @@ final class ServerTable<R> implements RemoteTable {
         } catch (Throwable e) {
             Utils.closeQuietly(pipe);
             Utils.closeQuietly(updater);
-            throw e;
+            if (!(e instanceof IOException)) {
+                throw e;
+            }
         }
     }
 
