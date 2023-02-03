@@ -270,4 +270,38 @@ public class RemoteTest {
         ix.close();
         assertTrue(ix.isClosed());
     }
+
+    @Test
+    public void snapshot() throws Exception {
+        Index ix = mClientDb.openIndex("test");
+        byte[] key = "hello".getBytes();
+        byte[] value = "world".getBytes();
+        ix.store(null, key, value);
+        mClientDb.checkpoint();
+
+        byte[] bytes;
+
+        try (Snapshot snap = mClientDb.beginSnapshot()) {
+            assertTrue(snap.length() > 8192);
+            assertTrue(snap.position() > 100);
+            assertTrue(snap.isCompressible());
+
+            var bout = new ByteArrayOutputStream();
+            snap.writeTo(bout);
+            snap.close();
+
+            bytes = bout.toByteArray();
+
+            assertEquals(snap.length(), bytes.length);
+        }
+
+        var config = new DatabaseConfig().baseFile(newTempBaseFile(getClass()));
+        var copy = Database.restoreFromSnapshot(config, new ByteArrayInputStream(bytes));
+
+        Index ix2 = copy.indexById(ix.id());
+        assertEquals(ix.nameString(), ix2.nameString());
+        assertArrayEquals(value, ix2.load(null, key));
+
+        copy.close();
+    }
 }
