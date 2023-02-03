@@ -208,14 +208,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
-        <version>3.0.1</version>
-        <dependencies>
-          <dependency>
-            <groupId>org.ow2.asm</groupId>
-            <artifactId>asm</artifactId>
-            <version>7.0</version>
-          </dependency>
-        </dependencies>
+        <version>3.4.1</version>
         <configuration>
           <detectJavaApiLink>true</detectJavaApiLink>
           <links>
@@ -227,7 +220,7 @@
           <splitindex>true</splitindex>
           <reportOutputDirectory>${basedir}/docs</reportOutputDirectory>
           <destDir>javadoc</destDir>
-          <excludePackageNames>org.cojen.tupl.core:org.cojen.tupl.ev:org.cojen.tupl.jmx:org.cojen.tupl.views:org.cojen.tupl.filter:org.cojen.tupl.rows</excludePackageNames>
+          <excludePackageNames>org.cojen.tupl.core:org.cojen.tupl.ev:org.cojen.tupl.jmx:org.cojen.tupl.views:org.cojen.tupl.filter:org.cojen.tupl.rows:org.cojen.tupl.remote</excludePackageNames>
           <!-- <additionalOptions>-Xdoclint:none</additionalOptions> -->
         </configuration>
         <executions>

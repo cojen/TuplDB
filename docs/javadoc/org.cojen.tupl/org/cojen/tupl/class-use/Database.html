@@ -75,19 +75,25 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color"><code>static <a href="../Database.html" title="interface in org.cojen.tupl">Database</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">Database.</span><code><a href="../Database.html#destroy(org.cojen.tupl.DatabaseConfig)" class="member-name-link">destroy</a><wbr>(<a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config)</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Database.</span><code><a href="../Database.html#connect(java.net.SocketAddress,long...)" class="member-name-link">connect</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/net/SocketAddress.html" title="class or interface in java.net" class="external-link">SocketAddress</a>&nbsp;addr,
+ long...&nbsp;tokens)</code></div>
 <div class="col-last even-row-color">
-<div class="block">Delete the contents of an existing database, and replace it with an empty one.</div>
+<div class="block">Establish a remote connection to a database which is running a <a href="../Database.html#newServer()"><code>server</code></a>.</div>
 </div>
 <div class="col-first odd-row-color"><code>static <a href="../Database.html" title="interface in org.cojen.tupl">Database</a></code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">Database.</span><code><a href="../Database.html#open(org.cojen.tupl.DatabaseConfig)" class="member-name-link">open</a><wbr>(<a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config)</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Database.</span><code><a href="../Database.html#destroy(org.cojen.tupl.DatabaseConfig)" class="member-name-link">destroy</a><wbr>(<a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config)</code></div>
 <div class="col-last odd-row-color">
-<div class="block">Open a database, creating it if necessary.</div>
+<div class="block">Delete the contents of an existing database, and replace it with an empty one.</div>
 </div>
 <div class="col-first even-row-color"><code>static <a href="../Database.html" title="interface in org.cojen.tupl">Database</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">Database.</span><code><a href="../Database.html#restoreFromSnapshot(org.cojen.tupl.DatabaseConfig,java.io.InputStream)" class="member-name-link">restoreFromSnapshot</a><wbr>(<a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config,
- <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/InputStream.html" title="class or interface in java.io" class="external-link">InputStream</a>&nbsp;in)</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">Database.</span><code><a href="../Database.html#open(org.cojen.tupl.DatabaseConfig)" class="member-name-link">open</a><wbr>(<a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config)</code></div>
 <div class="col-last even-row-color">
+<div class="block">Open a database, creating it if necessary.</div>
+</div>
+<div class="col-first odd-row-color"><code>static <a href="../Database.html" title="interface in org.cojen.tupl">Database</a></code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">Database.</span><code><a href="../Database.html#restoreFromSnapshot(org.cojen.tupl.DatabaseConfig,java.io.InputStream)" class="member-name-link">restoreFromSnapshot</a><wbr>(<a href="../DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a>&nbsp;config,
+ <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/InputStream.html" title="class or interface in java.io" class="external-link">InputStream</a>&nbsp;in)</code></div>
+<div class="col-last odd-row-color">
 <div class="block">Restore from a <a href="../Database.html#beginSnapshot()">snapshot</a>, into the data files defined by the
  given configuration.</div>
 </div>
@@ -115,7 +121,7 @@ loadScripts(document, 'script');</script>
 </main>
 <footer role="contentinfo">
 <hr>
-<p class="legal-copy"><small>Copyright &#169; 2011&#x2013;2022 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
+<p class="legal-copy"><small>Copyright &#169; 2011&#x2013;2023 <a href="https://github.com/cojen">Cojen</a>. All rights reserved.</small></p>
 </footer>
 </div>
 </div>
