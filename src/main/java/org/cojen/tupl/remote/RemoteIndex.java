@@ -20,6 +20,7 @@ package org.cojen.tupl.remote;
 import java.io.IOException;
 
 import org.cojen.dirmi.Disposer;
+import org.cojen.dirmi.RemoteException;
 import org.cojen.dirmi.RemoteFailure;
 import org.cojen.dirmi.Restorable;
 import org.cojen.dirmi.Serialized;
@@ -61,9 +62,7 @@ public interface RemoteIndex extends RemoteView {
     @Disposer
     public void close() throws IOException;
 
-    @RemoteFailure(declared=false)
-    public boolean isClosed();
+    public boolean isClosed() throws RemoteException;
 
-    @Disposer
     public void drop() throws IOException;
 }

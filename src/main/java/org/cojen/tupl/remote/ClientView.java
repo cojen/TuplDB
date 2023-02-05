@@ -19,6 +19,7 @@ package org.cojen.tupl.remote;
 
 import java.io.IOException;
 
+import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.DeadlockException;
 import org.cojen.tupl.DurabilityMode;
@@ -37,6 +38,8 @@ import org.cojen.tupl.ViewConstraintException;
 class ClientView<R extends RemoteView> implements View {
     final ClientDatabase mDb;
     final R mRemote;
+
+    protected volatile boolean mClosed;
 
     ClientView(ClientDatabase db, R remote) {
         mDb = db;
@@ -194,5 +197,15 @@ class ClientView<R extends RemoteView> implements View {
     @Override
     public boolean isModifyAtomic() {
         return mRemote.isModifyAtomic();
+    }
+
+    public boolean isClosed() {
+        return mClosed;
+    }
+
+    void checkClosed() throws ClosedIndexException {
+        if (isClosed()) {
+            throw new ClosedIndexException();
+        }
     }
 }

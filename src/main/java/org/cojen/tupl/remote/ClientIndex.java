@@ -20,8 +20,8 @@ package org.cojen.tupl.remote;
 import java.io.IOException;
 
 import org.cojen.dirmi.ClosedException;
+import org.cojen.dirmi.RemoteException;
 
-import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.Filter;
 import org.cojen.tupl.Index;
 import org.cojen.tupl.Table;
@@ -93,24 +93,17 @@ class ClientIndex extends ClientView<RemoteIndex> implements Index {
     }
 
     @Override
-    public void close() throws IOException {
-        ClientCache.remove(this);
-        try {
-            mRemote.dispose();
-        } catch (ClosedException e) {
-            // Ignore.
-        }
+    public void close() {
+        close(true, false);
     }
 
     @Override
     public boolean isClosed() {
         try {
-            return mRemote.isClosed();
-        } catch (Exception e) {
-            if (e instanceof ClosedException) {
-                return true;
-            }
-            throw e;
+            return mClosed || mRemote.isClosed();
+        } catch (RemoteException e) {
+            close();
+            return true;
         }
     }
 
@@ -118,18 +111,28 @@ class ClientIndex extends ClientView<RemoteIndex> implements Index {
     public void drop() throws IOException {
         try {
             mRemote.drop();
-            close();
-        } catch (ClosedIndexException e) {
-            throw e;
         } catch (IOException e) {
             checkClosed();
             throw e;
         }
+        close();
     }
 
-    void checkClosed() throws ClosedIndexException {
-        if (isClosed()) {
-            throw new ClosedIndexException();
+    protected void close(boolean removeFromCache, boolean remoteClose) {
+        if (!mClosed) {
+            if (removeFromCache) {
+                ClientCache.remove(this);
+            }
+            mClosed = true;
+            try {
+                if (remoteClose) {
+                    mRemote.close();
+                } else {
+                    mRemote.dispose();
+                }
+            } catch (IOException e) {
+                // Ignore.
+            }
         }
     }
 }

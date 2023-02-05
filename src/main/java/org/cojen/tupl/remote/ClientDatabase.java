@@ -166,8 +166,8 @@ public final class ClientDatabase implements Database {
 
         return new ClientIndex(this, ix) {
             @Override
-            public void close() throws IOException {
-                mRemote.close();
+            public void close() {
+                close(false, true);
             }
         };
     }
