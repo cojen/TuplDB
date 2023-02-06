@@ -155,20 +155,24 @@ public class WriteRowMaker {
 
         Variable keyLengthVar;
         List<Range> keyRanges;
+        ColumnCodec lastKeyCodec;
 
         if (rh.numKeys == 0) {
             // No key columns to write.
             keyLengthVar = mm.var(int.class).set(0);
             keyRanges = List.of();
+            lastKeyCodec = null;
         } else if (projSet == null || DecodePartialMaker.allRequested
                    (projSet, 0, keyCodecs.length))
         {
             // All key columns are projected.
             keyLengthVar = keyVar.alength();
             keyRanges = List.of(new Range(0, keyLengthVar));
+            lastKeyCodec = keyCodecs[rh.numKeys - 1];
         } else {
             // A subset of key columns is projected.
-            keyRanges = prepareRanges(projSet, 0, keyCodecs, keyVar, 0);
+            keyRanges = new ArrayList<>();
+            lastKeyCodec = prepareRanges(keyRanges, projSet, 0, keyCodecs, keyVar, 0);
             keyLengthVar = mm.var(int.class).set(0);
             incLength(keyLengthVar, keyRanges);
         }
@@ -189,18 +193,19 @@ public class WriteRowMaker {
             valueRanges = List.of(new Range(valueOffset, valueLengthVar));
         } else {
             // A subset of value columns is projected.
-            valueRanges = prepareRanges
-                (projSet, keyCodecs.length, valueCodecs, valueVar, valueOffset);
+            valueRanges = new ArrayList<>();
+            prepareRanges(valueRanges, projSet, keyCodecs.length,
+                          valueCodecs, valueVar, valueOffset);
             rowLengthVar = keyLengthVar.get();
             incLength(rowLengthVar, valueRanges);
         }
 
-        if (rh.numValues() == 0 || rh.numKeys == 0 || !keyCodecs[rh.numKeys - 1].isLast()) {
+        if (rh.numValues() == 0 || lastKeyCodec == null || !lastKeyCodec.isLast()) {
             writerVar.invoke("writeRowLength", rowLengthVar);
         } else {
-            // No length prefix is written for the last column of the key, but one should be
-            // when key and value are written together into the stream. Rather than retrofit
-            // the encoded column, provide the full key length up front. Decoding of the last
+            // No length prefix is written for the last key column, but one should be when the
+            // key and value are written together into the stream. Rather than retrofit the
+            // encoded column, provide the full key length up front. Decoding of the last
             // column finishes when the offset reaches the end of the full key.
             writerVar.invoke("writeRowAndKeyLength", rowLengthVar, keyLengthVar);
         }
@@ -209,7 +214,12 @@ public class WriteRowMaker {
         writeRanges(writerVar, valueVar, valueRanges);
     }
 
-    private static List<Range> prepareRanges(BitSet projSet, int projOffset, ColumnCodec[] codecs,
+    /**
+     * @param ranges destination
+     * @return the last codec
+     */
+    private static ColumnCodec prepareRanges(List<Range> ranges,
+                                             BitSet projSet, int projOffset, ColumnCodec[] codecs,
                                              Variable bytesVar, int bytesStart)
     {
         codecs = ColumnCodec.bind(codecs, bytesVar.methodMaker());
@@ -222,11 +232,11 @@ public class WriteRowMaker {
             }
         }
 
-        var ranges = new ArrayList<Range>();
-
         MethodMaker mm = bytesVar.methodMaker();
         Variable offsetVar = mm.var(int.class).set(bytesStart);
         boolean gap = true;
+
+        ColumnCodec lastCodec = null;
 
         for (int i = 0; numColumns > 0 && i < codecs.length; i++) {
             ColumnCodec codec = codecs[i];
@@ -255,9 +265,11 @@ public class WriteRowMaker {
 
             numColumns--;
             gap = false;
+
+            lastCodec = codec;
         }
 
-        return ranges;
+        return lastCodec;
     }
 
     private static void incLength(Variable lengthVar, List<Range> ranges) {

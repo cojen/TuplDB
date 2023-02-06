@@ -35,10 +35,24 @@ public class ScannerTest {
         org.junit.runner.JUnitCore.main(ScannerTest.class.getName());
     }
 
+    @Before
+    public void createTempDb() throws Exception {
+        mDb = Database.open(new DatabaseConfig());
+    }
+
+    @After
+    public void teardown() throws Exception {
+        if (mDb != null) {
+            mDb.close();
+            mDb = null;
+        }
+    }
+
+    protected Database mDb;
+
     @Test
     public void projection() throws Exception {
-        var db = Database.open(new DatabaseConfig());
-        var table = (BaseTable<TestRow>)  db.openTable(TestRow.class);
+        var table = mDb.openTable(TestRow.class);
         fill(table, 1, 5);
 
         verify(table.newScanner(null, "{}"), 1, 5);
@@ -58,6 +72,12 @@ public class ScannerTest {
         verify(table.newScanner
                (null, "{*, ~path, ~state} name == ?", "name-3"), 3, 3, "id", "name");
 
+        if (table instanceof BaseTable<TestRow> btable) {
+            checkSecondary(btable);
+        }
+    }
+
+    private void checkSecondary(BaseTable<TestRow> table) throws Exception {
         var ix = table.viewSecondaryIndex("state");
 
         verify(ix.newScanner(null, "{}"), 1, 5);
