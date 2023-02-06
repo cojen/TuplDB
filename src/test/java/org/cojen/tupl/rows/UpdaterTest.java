@@ -37,11 +37,24 @@ public class UpdaterTest {
         org.junit.runner.JUnitCore.main(UpdaterTest.class.getName());
     }
 
+    @Before
+    public void createTempDb() throws Exception {
+        mDb = Database.open(new DatabaseConfig());
+    }
+
+    @After
+    public void teardown() throws Exception {
+        if (mDb != null) {
+            mDb.close();
+            mDb = null;
+        }
+    }
+
+    protected Database mDb;
+
     @Test
     public void projection() throws Exception {
-        var db = Database.open(new DatabaseConfig());
-        var table = (BaseTable<TestRow>) db.openTable(TestRow.class);
-        var ix = table.viewSecondaryIndex("state");
+        var table = mDb.openTable(TestRow.class);
         fill(table, 1, 5);
 
         Set<TestRow> copy1 = copy(table);
@@ -83,8 +96,12 @@ public class UpdaterTest {
         }
 
         assertEquals(5, count(table));
-        assertEquals(5, count(ix.viewUnjoined()));
-        assertEquals(5, count(ix));
+
+        if (table instanceof BaseTable<TestRow> btable) {
+            var ix = btable.viewSecondaryIndex("state");
+            assertEquals(5, count(ix.viewUnjoined()));
+            assertEquals(5, count(ix));
+        }
 
         {
             Set<TestRow> copy2 = copy(table);
@@ -153,20 +170,24 @@ public class UpdaterTest {
             row = u.update(row);
         }
 
-        {
-            var s = ix.newScanner(null, "state == ?", 1104);
-            var row = s.row();
-            assertNull(s.step());
-            assertEquals(4, row.id());
-            assertEquals("name-4", row.name());
-            assertEquals("path-4", row.path());
-            assertEquals(1104, row.state());
-        }
+        if (table instanceof BaseTable<TestRow> btable) {
+            var ix = btable.viewSecondaryIndex("state");
 
-        try {
-            ix.viewUnjoined().newUpdater(null, "{state}");
-            fail();
-        } catch (UnmodifiableViewException e) {
+            {
+                var s = ix.newScanner(null, "state == ?", 1104);
+                var row = s.row();
+                assertNull(s.step());
+                assertEquals(4, row.id());
+                assertEquals("name-4", row.name());
+                assertEquals("path-4", row.path());
+                assertEquals(1104, row.state());
+            }
+
+            try {
+                ix.viewUnjoined().newUpdater(null, "{state}");
+                fail();
+            } catch (UnmodifiableViewException e) {
+            }
         }
     }
 

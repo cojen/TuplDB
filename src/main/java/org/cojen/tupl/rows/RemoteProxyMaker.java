@@ -698,6 +698,9 @@ public final class RemoteProxyMaker {
         keyBytesVar.aset(0, 1); // set the result code
         pipeVar.invoke("write", keyBytesVar);
         pipeVar.invoke("write", valueBytesVar);
+        for (String name : mRowGen.stateFields()) {
+            pipeVar.invoke("writeInt", rowVar.field(name));
+        }
 
         finish.here();
 

@@ -440,7 +440,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
         decodeKeyColumns(rowGen, rowVar, pipeVar);
         pipeVar.invoke("skip", 1); // skip the value result code
         decodeValueColumns(rowGen, rowVar, pipeVar);
-        TableMaker.markAllClean(rowVar, rowGen, rowGen);
+        decodeStateFields(rowGen, rowVar, pipeVar);
 
         finish.here();
         mm.invoke("success", pipeVar);
@@ -487,7 +487,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
         decodeKeyColumns(rowGen, newRowVar, pipeVar);
         pipeVar.invoke("skip", 1); // skip the value result code
         decodeValueColumns(rowGen, newRowVar, pipeVar);
-        TableMaker.markAllClean(newRowVar, rowGen, rowGen);
+        decodeStateFields(rowGen, newRowVar, pipeVar);
 
         finish.here();
         mm.invoke("success", pipeVar);
@@ -530,6 +530,12 @@ public abstract class ClientTableHelper<R> implements Table<R> {
 
         for (ColumnCodec codec : codecs) {
             codec.decode(rowVar.field(codec.mInfo.name), bytesVar, offsetVar, null);
+        }
+    }
+
+    private static void decodeStateFields(RowGen rowGen, Variable rowVar, Variable pipeVar) {
+        for (String name : rowGen.stateFields()) {
+            rowVar.field(name).set(pipeVar.invoke("readInt"));
         }
     }
 
