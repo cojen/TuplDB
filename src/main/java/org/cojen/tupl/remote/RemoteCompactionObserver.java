@@ -36,8 +36,7 @@ public interface RemoteCompactionObserver extends Remote {
     /**
      * Writes a node id down the pipe for each index node.
      *
-     * The pipe isn't forcibly flushed until the very end, and nothing is read back. The client
-     * can stop verification by closing the pipe.
+     * The client can stop verification by closing the pipe.
      */
     public Pipe indexNodeVisited(Pipe pipe) throws RemoteException;
 

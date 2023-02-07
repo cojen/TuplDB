@@ -124,8 +124,12 @@ final class CompactionObserverRelay extends CompactionObserver {
 
             if (pipe == null) {
                 mPipe = pipe = mRemote.indexNodeVisited(null);
-                // Need to flush early to force the remote side to expect terminators.
+                // Notify the remote side to expect terminators and wait for an ack.
+                pipe.write(1);
                 pipe.flush();
+                if (pipe.read() < 0) {
+                    return false;
+                }
             }
 
             pipe.writeLong(id);

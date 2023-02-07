@@ -131,8 +131,12 @@ final class VerificationObserverRelay extends VerificationObserver {
 
             if (pipe == null) {
                 mPipe = pipe = mRemote.indexNodePassed(null);
-                // Need to flush early to force the remote side to expect terminators.
+                // Notify the remote side to expect terminators and wait for an ack.
+                pipe.write(1);
                 pipe.flush();
+                if (pipe.read() < 0) {
+                    return false;
+                }
             }
 
             pipe.writeLong(id);

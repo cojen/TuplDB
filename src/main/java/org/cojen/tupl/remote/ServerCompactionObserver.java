@@ -131,6 +131,10 @@ final class ServerCompactionObserver implements RemoteCompactionObserver {
         }
 
         try {
+            pipe.read();
+            pipe.write(1); // ack
+            pipe.flush();
+
             CompactionObserver observer = mObserver;
 
             while (true) {

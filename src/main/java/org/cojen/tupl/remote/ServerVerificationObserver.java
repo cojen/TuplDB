@@ -137,6 +137,10 @@ final class ServerVerificationObserver implements RemoteVerificationObserver {
         }
 
         try {
+            pipe.read();
+            pipe.write(1); // ack
+            pipe.flush();
+
             VerificationObserver observer = mObserver;
 
             while (true) {

@@ -39,8 +39,7 @@ public interface RemoteVerificationObserver extends Remote {
      *
      *   long id, int level, int entryCount, int freeBytes, int largeValueCount
      *
-     * The pipe isn't forcibly flushed until the very end, and nothing is read back. The client
-     * can stop verification by closing the pipe.
+     * The client can stop verification by closing the pipe.
      */
     public Pipe indexNodePassed(Pipe pipe) throws RemoteException;
 
