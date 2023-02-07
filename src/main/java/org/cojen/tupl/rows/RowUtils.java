@@ -114,7 +114,7 @@ public class RowUtils extends Utils {
     }
 
     public static int decodePrefixPF(DataInput in) throws IOException {
-        int length = in.readUnsignedByte();
+        int length = in.readByte();
 
         if (length < 0) {
             length = ((length & 0x7f) << 24)

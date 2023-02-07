@@ -80,7 +80,7 @@ final class ClientUpdater<R> implements Updater<R> {
     @Override
     public R step(R row) throws IOException {
         RemoteUpdater updater = mUpdater;
-        return doStep(updater, Objects.requireNonNull(row));
+        return updater == null ? null : doStep(updater, Objects.requireNonNull(row));
     }
 
     private R doStep(RemoteUpdater updater, R row) throws IOException {
@@ -99,7 +99,8 @@ final class ClientUpdater<R> implements Updater<R> {
 
     @Override
     public R update(R row) throws IOException {
-        return doUpdate(updater(), Objects.requireNonNull(row));
+        Objects.requireNonNull(row);
+        return doUpdate(updater(), row);
     }
 
     private R doUpdate(RemoteUpdater updater, R newRow) throws IOException {
@@ -118,7 +119,8 @@ final class ClientUpdater<R> implements Updater<R> {
 
     @Override
     public R delete(R row) throws IOException {
-        return doDelete(updater(), Objects.requireNonNull(row));
+        Objects.requireNonNull(row);
+        return doDelete(updater(), row);
     }
 
     private R doDelete(RemoteUpdater updater, R newRow) throws IOException {
@@ -152,7 +154,7 @@ final class ClientUpdater<R> implements Updater<R> {
     private RemoteUpdater updater() {
         RemoteUpdater updater = mUpdater;
         if (updater == null) {
-            throw new IllegalStateException();
+            throw new IllegalStateException("No current row");
         }
         return updater;
     }

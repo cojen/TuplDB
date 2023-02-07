@@ -152,13 +152,10 @@ public final class RowWriter<R> implements RowConsumer<R> {
         }
     }
 
-    /**
-     * @param keyLength must not be zero
-     */
     public void writeRowAndKeyLength(int rowLength, int keyLength) throws IOException {
-        if (keyLength <= 128) {
+        if (keyLength <= 127) {
             writeRowLength(rowLength + 1);
-            mOut.writeByte(keyLength - 1);
+            mOut.writeByte(keyLength);
         } else {
             writeRowLength(rowLength + 4);
             mOut.writeInt(keyLength | (1 << 31));

@@ -280,12 +280,12 @@ public abstract class RowReader<R, DIN extends DataInput> implements Scanner<R> 
             keyEndVar = dataVar.aget(0).cast(int.class).and(0xff);
             Label bigKey = mm.label();
             keyEndVar.ifGe(128, bigKey);
-            keyEndVar.inc(2); // +1 to adjust the encoded length and +1 to skip the length field
+            keyEndVar.inc(1); // +1 to skip the length field
             offsetVar.set(1);
             Label cont = mm.label().goto_();
             bigKey.here();
             var rowUtils = mm.var(RowUtils.class);
-            keyEndVar.set(rowUtils.invoke("decodeIntBE", dataVar, 0).and(~(1 << 32)).add(4));
+            keyEndVar.set(rowUtils.invoke("decodeIntBE", dataVar, 0).and(~(1 << 31)).add(4));
             offsetVar.set(4);
             cont.here();
         }

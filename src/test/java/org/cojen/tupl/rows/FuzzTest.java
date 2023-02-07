@@ -45,6 +45,17 @@ public class FuzzTest {
         org.junit.runner.JUnitCore.main(FuzzTest.class.getName());
     }
 
+    protected Database createTempDb() throws Exception {
+        return Database.open(new DatabaseConfig());
+    }
+
+    protected void closeTempDb(Database db) throws Exception {
+        db.close();
+    }
+
+    protected void installRowType(Database db, Class<?> rowType) {
+    }
+
     @Test
     public void fuzz() throws Exception {
         var tasks = new TestUtils.TestTask[4];
@@ -56,7 +67,7 @@ public class FuzzTest {
         }
     }
 
-    private static void fuzz(int n) {
+    private void fuzz(int n) {
         for (int i=0; i<n; i++) {
             long seed = ThreadLocalRandom.current().nextLong();
             try {
@@ -70,14 +81,15 @@ public class FuzzTest {
     }
 
     @SuppressWarnings("unchecked")
-    private static void fuzz(long seed) throws Exception {
+    private void fuzz(long seed) throws Exception {
         var rnd = new Random(seed);
 
-        Database db = Database.open(new DatabaseConfig());
+        Database db = createTempDb();
 
         for (int i=0; i<100; i++) {
             Column[] columns = randomColumns(rnd);
             Class<?> rowType = randomRowType(rnd, columns);
+            installRowType(db, rowType);
             Index ix = db.openIndex(rowType.getName());
             Table table = ix.asTable(rowType);
 
@@ -140,7 +152,7 @@ public class FuzzTest {
             truncateAndClose(ix, table);
         }
 
-        db.close();
+        closeTempDb(db);
     }
 
     @SuppressWarnings("unchecked")
