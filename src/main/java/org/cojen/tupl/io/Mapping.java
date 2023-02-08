@@ -33,6 +33,8 @@ abstract class Mapping implements Closeable {
         return new NioMapping(file, readOnly, position, size);
     }
 
+    abstract int size();
+
     abstract void read(int start, byte[] b, int off, int len);
 
     abstract void read(int start, ByteBuffer bb);

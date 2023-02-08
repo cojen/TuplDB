@@ -40,6 +40,11 @@ final class PosixMapping extends Mapping {
     }
 
     @Override
+    int size() {
+        return mSize;
+    }
+
+    @Override
     void read(int start, byte[] b, int off, int len) {
         UnsafeAccess.copy(mAddr + start, b, off, len);
     }

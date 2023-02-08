@@ -20,6 +20,7 @@ package org.cojen.tupl.io;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.io.UncheckedIOException;
 
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
@@ -41,6 +42,11 @@ final class NioMapping extends Mapping {
         mRaf = new RandomAccessFile(file, readOnly ? "r" : "rw");
         mChannel = mRaf.getChannel();
         mBuffer = mChannel.map(readOnly ? READ_ONLY : READ_WRITE, position, size);
+    }
+
+    @Override
+    int size() {
+        return mBuffer.capacity();
     }
 
     @Override
@@ -74,7 +80,11 @@ final class NioMapping extends Mapping {
 
     @Override
     void sync(boolean metadata) throws IOException {
-        mBuffer.force();
+        try {
+            mBuffer.force();
+        } catch (UncheckedIOException e) {
+            throw e.getCause();
+        }
         mChannel.force(metadata);
     }
 

@@ -169,7 +169,7 @@ abstract class AbstractFileIO extends FileIO {
                 // Ignore.
             } finally {
                 if (remap) {
-                    doMap(true);
+                    doMap(false); // must pass false because mappings don't exist anymore
                 }
             }
         } finally {
@@ -663,10 +663,12 @@ abstract class AbstractFileIO extends FileIO {
         }
     }
 
+    /**
+     * @param remap when true only update the mappings when the file is already mapped
+     */
     // Caller must hold mRemapLatch exclusively.
     private void doMap(boolean remap) throws IOException {
         Mapping[] oldMappings;
-        int oldMappingDiscardPos;
         Mapping[] newMappings;
         int newLastSize;
 
@@ -682,7 +684,7 @@ abstract class AbstractFileIO extends FileIO {
 
             if (oldMappings != null) {
                 long oldMappedLength = oldMappings.length == 0 ? 0 :
-                    (oldMappings.length - 1) * (long) MAPPING_SIZE + mLastMappingSize;
+                    (oldMappings.length - 1) * ((long) MAPPING_SIZE) + mLastMappingSize;
                 if (length == oldMappedLength) {
                     return;
                 }
@@ -700,32 +702,39 @@ abstract class AbstractFileIO extends FileIO {
                 throw new IOException("Mapping is too large");
             }
 
-            oldMappings = mMappings;
-            oldMappingDiscardPos = 0;
-
-            int i = 0;
-            long pos = 0;
-
-            if (oldMappings != null && oldMappings.length > 0) {
-                i = oldMappings.length;
-                if (mLastMappingSize != MAPPING_SIZE) {
-                    i--;
-                    oldMappingDiscardPos = i;
-                }
-                System.arraycopy(oldMappings, 0, newMappings, 0, i);
-                pos = i * (long) MAPPING_SIZE;
-            }
-
-            while (i < count - 1) {
-                newMappings[i++] = openMapping(mReadOnly, pos, MAPPING_SIZE);
-                pos += MAPPING_SIZE;
-            }
-
             if (count == 0) {
                 newLastSize = 0;
             } else {
                 newLastSize = (int) (MAPPING_SIZE - (count * MAPPING_SIZE - length));
-                newMappings[i] = openMapping(mReadOnly, pos, newLastSize);
+            }
+
+            try {
+                for (int i = 0; i < newMappings.length; i++) {
+                    int mappingSize = (i < newMappings.length - 1) ? MAPPING_SIZE : newLastSize;
+
+                    if (oldMappings != null && i < oldMappings.length) {
+                        Mapping oldMapping = oldMappings[i];
+                        if (mappingSize == oldMapping.size()) {
+                            // Keep the old mapping.
+                            newMappings[i] = oldMapping;
+                            continue;
+                        }
+                    }
+
+                    newMappings[i] = openMapping(mReadOnly, i * (long) MAPPING_SIZE, mappingSize);
+                }
+            } catch (Throwable e) {
+                // Clean up by closing all the newly opened mappings.
+                for (int i = 0; i < newMappings.length; i++) {
+                    Mapping newMapping = newMappings[i];
+                    if (newMapping != null &&
+                        (oldMappings == null || i >= oldMappings.length
+                         || newMapping != oldMappings[i]))
+                    {
+                        Utils.closeQuietly(newMapping);
+                    }
+                }
+                throw e;
             }
         } finally {
             mAccessLock.releaseShared();
@@ -739,8 +748,11 @@ abstract class AbstractFileIO extends FileIO {
 
         if (oldMappings != null) {
             IOException ex = null;
-            while (oldMappingDiscardPos < oldMappings.length) {
-                ex = Utils.closeQuietly(ex, oldMappings[oldMappingDiscardPos++]);
+            for (int i = 0; i < oldMappings.length; i++) {
+                Mapping oldMapping = oldMappings[i];
+                if (i >= newMappings.length || oldMapping != newMappings[i]) {
+                    ex = Utils.closeQuietly(ex, oldMapping);
+                }
             }
             if (ex != null) {
                 throw ex;

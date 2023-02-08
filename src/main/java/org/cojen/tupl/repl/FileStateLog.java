@@ -19,6 +19,7 @@ package org.cojen.tupl.repl;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 
 import java.nio.ByteOrder;
 import java.nio.MappedByteBuffer;
@@ -171,7 +172,11 @@ final class FileStateLog extends Latch implements StateLog {
         }
 
         // Ensure existing contents are durable following a process restart.
-        mMetadataBuffer.force();
+        try {
+            mMetadataBuffer.force();
+        } catch (UncheckedIOException e) {
+            throw e.getCause();
+        }
 
         long counter0 = verifyMetadata(0);
         long counter1 = verifyMetadata(SECTION_SIZE);
@@ -1082,7 +1087,11 @@ final class FileStateLog extends Latch implements StateLog {
         bb.limit(offset + METADATA_SIZE);
         bb.putInt((int) mMetadataCrc.getValue());
 
-        bb.force();
+        try {
+            bb.force();
+        } catch (UncheckedIOException e) {
+            throw e.getCause();
+        }
 
         // Update field values only after successful file I/O.
         mMetadataCounter = counter;
