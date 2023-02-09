@@ -35,7 +35,7 @@ public interface RemoteVerificationObserver extends Remote {
         throws RemoteException;
 
     /**
-     * Writes the followng fields down the pipe for each index node:
+     * Writes the following fields down the pipe for each index node:
      *
      *   long id, int level, int entryCount, int freeBytes, int largeValueCount
      *

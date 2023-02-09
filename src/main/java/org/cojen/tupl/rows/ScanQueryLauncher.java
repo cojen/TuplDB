@@ -64,7 +64,7 @@ final class ScanQueryLauncher<R> implements QueryLauncher<R> {
             while (scanner.step((R) writer) != null);
         } catch (Throwable e) {
             RowUtils.closeQuietly(scanner);
-            RowUtils.rethrow(e);
+            throw RowUtils.rethrow(e);
         }
     }
 

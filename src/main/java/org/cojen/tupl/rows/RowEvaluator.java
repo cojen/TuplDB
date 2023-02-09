@@ -36,7 +36,7 @@ public interface RowEvaluator<R> extends RowDecoder<R> {
     long evolvableTableId();
 
     /**
-     * Returns the encoding descriptor, which is required for for secondary indexes. Returns
+     * Returns the encoding descriptor, which is required for secondary indexes. Returns
      * null if this evaluator decodes against the primary table.
      *
      * @see RowStore#secondaryDescriptor

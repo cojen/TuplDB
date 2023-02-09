@@ -21,10 +21,8 @@ import java.io.IOException;
 
 import org.cojen.dirmi.Batched;
 import org.cojen.dirmi.Disposer;
-import org.cojen.dirmi.NoReply;
 import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.Remote;
-import org.cojen.dirmi.RemoteException;
 import org.cojen.dirmi.RemoteFailure;
 import org.cojen.dirmi.Restorable;
 import org.cojen.dirmi.Serialized;

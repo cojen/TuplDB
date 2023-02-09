@@ -145,21 +145,17 @@ public final class ServerDatabase implements RemoteDatabase {
 
     @Override
     public Pipe createCachePrimer(Pipe pipe) throws IOException {
-        try {
+        try (pipe) {
             mDb.createCachePrimer(pipe.outputStream());
             pipe.flush();
-        } finally {
-            pipe.close();
         }
         return null;
     }
 
     @Override
     public Pipe applyCachePrimer(Pipe pipe) throws IOException {
-        try {
+        try (pipe) {
             mDb.applyCachePrimer(pipe.inputStream());
-        } finally {
-            pipe.close();
         }
         return null;
     }

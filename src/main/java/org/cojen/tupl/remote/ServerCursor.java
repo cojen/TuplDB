@@ -418,7 +418,6 @@ final class ServerCursor implements RemoteCursor, SessionAware {
     }
 
     /**
-     * @param bufferSize must be at least 1
      * @see ValueOutputStream
      */
     private void writeTransfer(long pos, Pipe pipe) throws IOException {

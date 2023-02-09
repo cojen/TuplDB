@@ -224,7 +224,7 @@ public class WeakCache<K, V, H> extends RefCache<K, V, H> {
 
     /**
      * @param collection passed to the function (can be anything or even null)
-     * @param fun accepts a the collection and a value, and returns a collection
+     * @param fun accepts a collection and a value, and returns a collection
      * @return the updated collection
      */
     synchronized <C> C findValues(C collection, BiFunction<C, V, C> fun) {

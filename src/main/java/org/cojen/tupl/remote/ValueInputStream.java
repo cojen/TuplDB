@@ -200,7 +200,6 @@ final class ValueInputStream extends InputStream {
             pipe.recycle();
         } catch (Throwable e) {
             Utils.closeQuietly(pipe);
-            return;
         }
     }
 }

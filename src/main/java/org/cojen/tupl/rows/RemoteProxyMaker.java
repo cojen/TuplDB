@@ -406,9 +406,7 @@ public final class RemoteProxyMaker {
             var params = new Object[2 + stateVars.length];
             params[0] = mm.this_();
             params[1] = dirtyValueVar;
-            for (int i=0; i<stateVars.length; i++) {
-                params[2 + i] = stateVars[i];
-            }
+            System.arraycopy(stateVars, 0, params, 2, stateVars.length);
             // Make sure the updaterFactoryVar is bound to this method.
             var updaterFactoryVar = mm.var(MethodHandle.class).set(mUpdaterFactoryVar);
             updaterVar = updaterFactoryVar.invoke
@@ -1288,7 +1286,7 @@ public final class RemoteProxyMaker {
                 makerVar.invoke("writeResult", resultVar, pipeVar);
             }
         } else {
-            // Enter a transaction scope to rollback the operation if the call to
+            // Enter a transaction scope to roll back the operation if the call to
             // encodeValueColumns throws an exception.
             txnVar.set(mm.field("table").invoke("enterScope", txnVar));
             Label txnStart = mm.label().here();
@@ -1307,9 +1305,7 @@ public final class RemoteProxyMaker {
 
             txnVar.invoke("commit");
 
-            mm.finally_(txnStart, () -> {
-                txnVar.invoke("exit");
-            });
+            mm.finally_(txnStart, () -> txnVar.invoke("exit"));
 
             mm.catch_(opTryStart, Throwable.class, exVar -> {
                 pipeVar.invoke("writeObject", exVar);
@@ -1370,7 +1366,7 @@ public final class RemoteProxyMaker {
             pipeVar.invoke("writeNull"); // no exception
             makerVar.invoke("writeResult", resultVar, pipeVar);
         } else {
-            // Enter a transaction scope to rollback the operation if the call to
+            // Enter a transaction scope to roll back the operation if the call to
             // encodeValueColumns throws an exception.
             txnVar.set(mm.field("table").invoke("enterScope", txnVar));
             Label txnStart = mm.label().here();
@@ -1384,9 +1380,7 @@ public final class RemoteProxyMaker {
 
             txnVar.invoke("commit");
 
-            mm.finally_(txnStart, () -> {
-                txnVar.invoke("exit");
-            });
+            mm.finally_(txnStart, () -> txnVar.invoke("exit"));
 
             mm.catch_(opTryStart, Throwable.class, exVar -> {
                 pipeVar.invoke("writeObject", exVar);

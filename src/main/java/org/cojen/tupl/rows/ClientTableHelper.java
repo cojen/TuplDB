@@ -740,7 +740,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
     }
 
     /**
-     * Generates code which writes all or a subset of columns. Must call call calcLength first
+     * Generates code which writes all or a subset of columns. Must call calcLength first
      * for all the codecs.
      *
      * @param bytesVar destination byte array

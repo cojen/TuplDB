@@ -19,7 +19,6 @@ package org.cojen.tupl.remote;
 
 import java.io.IOException;
 
-import org.cojen.dirmi.ClosedException;
 import org.cojen.dirmi.RemoteException;
 
 import org.cojen.tupl.Filter;

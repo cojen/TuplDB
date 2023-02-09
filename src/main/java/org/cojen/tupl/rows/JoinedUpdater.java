@@ -173,7 +173,7 @@ final class JoinedUpdater<R> extends BasicScanner<R> implements Updater<R> {
     private void triggerStored(Index ix, byte[] key, byte[] value) throws IOException {
         if (mTable.mSource == ix) {
             if (mController.predicate().testP(mRow, key, value)) {
-                // The secondary key changed and it's still in bounds.
+                // The secondary key changed, and it's still in bounds.
                 if (mCursor.compareKeyTo(key) < 0) {
                     // The new key is higher, and so it must be added to the remembered set.
                     mPrimaryUpdater.addKeyToSkip(key);

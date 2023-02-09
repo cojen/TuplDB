@@ -77,7 +77,7 @@ final class ServerVerificationObserver implements RemoteVerificationObserver {
     }
 
     /**
-     * @param returns the flags that should be passed to the remote verify method
+     * @return the flags that should be passed to the remote verify method
      */
     int flags() {
         return mFlags;

@@ -248,24 +248,18 @@ public final class ClientDatabase implements Database {
 
     @Override
     public void createCachePrimer(OutputStream out) throws IOException {
-        Pipe pipe = mRemote.createCachePrimer(null);
-        try {
+        try (Pipe pipe = mRemote.createCachePrimer(null)) {
             pipe.flush();
             pipe.inputStream().transferTo(out);
-        } finally {
-            pipe.close();
         }
     }
 
     @Override
     public void applyCachePrimer(InputStream in) throws IOException {
-        Pipe pipe = mRemote.applyCachePrimer(null);
-        try {
+        try (Pipe pipe = mRemote.applyCachePrimer(null)) {
             pipe.flush();
             in.transferTo(pipe.outputStream());
             pipe.flush();
-        } finally {
-            pipe.close();
         }
     }
 
@@ -395,8 +389,7 @@ public final class ClientDatabase implements Database {
     RemoteIndex remoteIndex(Index ix) throws ClosedIndexException {
         if (ix == null) {
             return null;
-        } else if (ix instanceof ClientIndex) {
-            var ci = (ClientIndex) ix;
+        } else if (ix instanceof ClientIndex ci) {
             ci.checkClosed();
             if (ci.mDb == this) {
                 return ci.mRemote;

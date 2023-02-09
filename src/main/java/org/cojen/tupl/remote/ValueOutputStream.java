@@ -138,7 +138,7 @@ final class ValueOutputStream extends OutputStream implements RemoteOutputContro
             // Wait for ack.
             pipe.read();
         } catch (Throwable e) {
-            failed(e);
+            failed();
             throw e;
         }
     }
@@ -159,7 +159,7 @@ final class ValueOutputStream extends OutputStream implements RemoteOutputContro
                 pipe.flush();
                 mChunkEnd = 2;
             } catch (Throwable e) {
-                failed(e);
+                failed();
                 throw e;
             } finally {
                 mPipe = null;
@@ -169,7 +169,7 @@ final class ValueOutputStream extends OutputStream implements RemoteOutputContro
             if (ex != null) {
                 Utils.closeQuietly(pipe);
                 mException = null;
-                Utils.rethrow(ex);
+                throw Utils.rethrow(ex);
             }
 
             // Wait for ack before the pipe can be safely recycled.
@@ -218,7 +218,7 @@ final class ValueOutputStream extends OutputStream implements RemoteOutputContro
             mChunkEnd = 2;
             pipe.flush();
         } catch (Throwable e) {
-            failed(e);
+            failed();
             throw e;
         }
     }
@@ -231,12 +231,12 @@ final class ValueOutputStream extends OutputStream implements RemoteOutputContro
         return pipe;
     }
 
-    private void failed(Throwable e) {
+    private void failed() {
         Utils.closeQuietly(mPipe);
         mChunkEnd = mChunkBuffer.length;
         Throwable ex = mException;
         if (ex != null) {
-            Utils.rethrow(ex);
+            throw Utils.rethrow(ex);
         }
     }
 }

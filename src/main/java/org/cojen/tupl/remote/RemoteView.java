@@ -20,9 +20,7 @@ package org.cojen.tupl.remote;
 import java.io.IOException;
 
 import org.cojen.dirmi.Batched;
-import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.Remote;
-import org.cojen.dirmi.RemoteException;
 import org.cojen.dirmi.RemoteFailure;
 
 import org.cojen.tupl.DeadlockException;

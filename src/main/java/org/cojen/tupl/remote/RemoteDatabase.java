@@ -38,7 +38,7 @@ import org.cojen.tupl.diag.DatabaseStats;
  *
  * @author Brian S O'Neill
  * @see ClientDatabase
- * @see RemoteDatabaseServer
+ * @see ServerDatabase
  */
 public interface RemoteDatabase extends Remote, Disposable {
     @Restorable
