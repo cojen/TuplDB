@@ -1490,9 +1490,9 @@ public final class RemoteProxyMaker {
                 - RowGen.stateFieldShift(columnNum);
 
             if (stateShiftLeft > 0) {
-                stateVar.shl(stateShiftLeft);
+                stateVar.set(stateVar.shl(stateShiftLeft));
             } else if (stateShiftLeft != 0) {
-                stateVar.shr(-stateShiftLeft);
+                stateVar.set(stateVar.shr(-stateShiftLeft));
             }
 
             int rowStateFieldNum = RowGen.stateFieldNum(rowColumnNum);
