@@ -127,20 +127,36 @@ public class RemoteMissingServerColumnTest {
             }
         }
 
-        // The updater is strict, although it can probably be made lenient at some point.
-        try {
-            mTable.newUpdater(null);
-            fail();
-        } catch (IllegalStateException e) {
-            assertEquals("Unknown column: num1", e.getMessage());
+        try (Scanner<TestRow> scanner = mTable.newScanner(null, "{id, num2}")) {
+            TestRow row = scanner.row();
+            assertTrue(row.toString().endsWith("{id=1, num2=2}"));
+            try {
+                row.num1();
+                fail();
+            } catch (UnsetColumnException e) {
+            }
         }
 
-        /* FIXME: support this case
+        // The updater is also lenient.
+        try (Updater<TestRow> updater = mTable.newUpdater(null)) {
+            TestRow row = updater.row();
+            assertTrue(row.toString().endsWith("{id=1, num2=2, str1=str1}"));
+            try {
+                row.num1();
+                fail();
+            } catch (UnsetColumnException e) {
+            }
+        }
+
         try (Updater<TestRow> updater = mTable.newUpdater(null, "{id, num2}")) {
             TestRow row = updater.row();
             assertTrue(row.toString().endsWith("{id=1, num2=2}"));
+            try {
+                row.num1();
+                fail();
+            } catch (UnsetColumnException e) {
+            }
         }
-        */
     }
 
     @Test

@@ -685,7 +685,7 @@ public final class RemoteProxyMaker {
         rowVar.ifEq(null, noRow);
 
         var keyBytesVar = mm.invoke("encodeKeyColumns", rowVar);
-        var valueBytesVar = mm.invoke("encodeValueColumns", rowVar);
+        var valueBytesVar = mm.invoke("encodeValueColumns", rowVar, false);
 
         mm.catch_(tryStart, Throwable.class, exVar -> {
             pipeVar.invoke("writeObject", exVar);
@@ -1256,7 +1256,7 @@ public final class RemoteProxyMaker {
             Label noOperation = mm.label();
             resultVar.ifFalse(noOperation);
 
-            var bytesVar = mm.invoke("encodeValueColumns", rowVar);
+            var bytesVar = mm.invoke("encodeValueColumns", rowVar, true);
 
             mm.catch_(opTryStart, Throwable.class, exVar -> {
                 pipeVar.invoke("writeObject", exVar);
@@ -1338,7 +1338,7 @@ public final class RemoteProxyMaker {
             bytesVar.set(null);
             Label cont = mm.label().goto_();
             hasOldRow.here();
-            bytesVar.set(mm.invoke("encodeValueColumns", resultVar.cast(mRowClass)));
+            bytesVar.set(mm.invoke("encodeValueColumns", resultVar.cast(mRowClass), true));
             cont.here();
 
             txnVar.invoke("commit");
@@ -1414,7 +1414,7 @@ public final class RemoteProxyMaker {
             Label noOperation = mm.label();
             resultVar.ifFalse(noOperation);
 
-            var bytesVar = mm.invoke("encodeValueColumns", rowVar.cast(mRowClass));
+            var bytesVar = mm.invoke("encodeValueColumns", rowVar.cast(mRowClass), true);
 
             txnVar.invoke("commit");
 
@@ -1561,12 +1561,22 @@ public final class RemoteProxyMaker {
      * a new byte array which can be decoded by the client. If an exact conversion isn't
      * possible, a RuntimeException is thrown.
      *
+     * <p>A second parameter is defined for the encodeValueColumns which when true, the encoder
+     * throws an exception if the client provides a column unknown to the server. When false,
+     * such a column is simply skipped over. The encodeKeyColumns is always strict.
+     *
      * <p>The first byte of the returned byte array empty, and is expected to be set by the
      * caller with an operation result code.
      */
     private void addEncodeColumns(boolean forKey) {
-        String methodName = forKey ? "encodeKeyColumns" : "encodeValueColumns";
-        MethodMaker mm = mClassMaker.addMethod(byte[].class, methodName, mRowClass);
+        MethodMaker mm;
+        if (forKey) {
+            mm = mClassMaker.addMethod(byte[].class, "encodeKeyColumns", mRowClass);
+        } else {
+            mm = mClassMaker.addMethod(byte[].class, "encodeValueColumns", mRowClass,
+                                       boolean.class);
+        }
+
         mm.private_().static_();
 
         ColumnCodec[] clientCodecs = clientCodecs();
@@ -1578,6 +1588,7 @@ public final class RemoteProxyMaker {
         }
 
         var rowVar = mm.param(0);
+        var strictVar = forKey ? null : mm.param(1);
 
         // Prepare all the fields by applying any necessary conversions.
 
@@ -1590,14 +1601,23 @@ public final class RemoteProxyMaker {
             numEnd = clientCodecs.length;
         }
 
+        Label beginEncode = mm.label();
+        if (strictVar != null) {
+            strictVar.ifFalse(beginEncode);
+        }
+
         // If the client provides a column unknown to the server, throw an exception.
         for (int columnNum = numStart; columnNum < numEnd; columnNum++) {
             String fieldName = mRowHeader.columnNames[columnNum];
             if (!mRowGen.info.allColumns.containsKey(fieldName)) {
                 mm.new_(IllegalStateException.class, "Unknown column: " + fieldName).throw_();
-                return;
+                if (strictVar == null) { // always strict
+                    return;
+                }
             }
         }
+
+        beginEncode.here();
 
         clientCodecs = ColumnCodec.bind(clientCodecs, mm);
 
@@ -1605,18 +1625,27 @@ public final class RemoteProxyMaker {
 
         for (int columnNum = numStart; columnNum < numEnd; columnNum++) {
             String fieldName = mRowHeader.columnNames[columnNum];
-            ColumnInfo srcInfo = mRowGen.info.allColumns.get(fieldName);
-            var srcField = rowVar.field(fieldName);
             ColumnInfo dstInfo = clientCodecs[columnNum].mInfo;
             var dstVar = mm.var(dstInfo.type);
             fieldVars[columnNum - numStart] = dstVar;
+            ColumnInfo srcInfo = mRowGen.info.allColumns.get(fieldName);
+
+            if (srcInfo == null) {
+                // The server doesn't have the column, so supply a default value instead. The
+                // client will ignore the column anyhow because the column state it receives
+                // should be UNSET. See the addUpdaterMethod method.
+                Converter.setDefault(mm, dstInfo, dstVar);
+                continue;
+            }
+
+            var srcField = rowVar.field(fieldName);
 
             Label cont = null;
 
             if (!srcInfo.isPrimitive() && !srcInfo.isNullable()) {
-                // If the source field can be null (because it's unset), perform a special
-                // conversion to prevent a NPE. Technically this is a lossy conversion, but the
-                // client will ignore the column because of the column state.
+                // If the source field can be null (because it's unset), supply a default value
+                // to prevent a NPE. Technically this is a lossy conversion, but the client
+                // will ignore the column because the column state it receives should be UNSET.
                 Label notNull = mm.label();
                 srcField.ifNe(null, notNull);
                 Converter.setDefault(mm, dstInfo, dstVar);
