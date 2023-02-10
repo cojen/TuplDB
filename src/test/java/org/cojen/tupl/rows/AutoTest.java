@@ -39,11 +39,13 @@ public class AutoTest {
 
     @After
     public void teardown() throws Exception {
-        mDb.close();
-        mDb = null;
+        if (mDb != null) {
+            mDb.close();
+            mDb = null;
+        }
     }
 
-    private Database mDb;
+    protected Database mDb;
 
     @Test
     public void basicInt() throws Exception {
@@ -58,6 +60,8 @@ public class AutoTest {
             assertTrue(table.insert(null, row));
             if ((i & 1) == 0) {
                 assertEquals(i, row.id());
+            } else {
+                assertTrue(row.id() != 0);
             }
         }
 
@@ -85,7 +89,7 @@ public class AutoTest {
 
     @Test
     public void basicLong() throws Exception {
-        var table = (BaseTable<TestRow2>) mDb.openTable(TestRow2.class);
+        var table = mDb.openTable(TestRow2.class);
 
         for (int i=1; i<=1000; i++) {
             var row = table.newRow();
@@ -96,6 +100,8 @@ public class AutoTest {
             assertTrue(table.insert(null, row));
             if ((i & 1) == 0) {
                 assertEquals(i, row.id());
+            } else {
+                assertTrue(row.id() != 0);
             }
         }
 
@@ -110,16 +116,18 @@ public class AutoTest {
 
         assertEquals(1000, count);
 
-        Table<TestRow2> valIx = table.viewSecondaryIndex("val").viewUnjoined();
-        count = 0;
+        if (table instanceof BaseTable<TestRow2> bt) {
+            Table<TestRow2> valIx = bt.viewSecondaryIndex("val").viewUnjoined();
+            count = 0;
 
-        try (var scanner = valIx.newScanner(null)) {
-            for (var row = scanner.row(); row != null; row = scanner.step()) {
-                count++;
+            try (var scanner = valIx.newScanner(null)) {
+                for (var row = scanner.row(); row != null; row = scanner.step()) {
+                    count++;
+                }
             }
-        }
 
-        assertEquals(1000, count);
+            assertEquals(1000, count);
+        }
     }
 
     @PrimaryKey("id")
@@ -135,7 +143,7 @@ public class AutoTest {
 
     @Test
     public void basicUInt() throws Exception {
-        var table = (BaseTable<TestRow3>) mDb.openTable(TestRow3.class);
+        var table = mDb.openTable(TestRow3.class);
 
         for (int i=1; i<=1000; i++) {
             var row = table.newRow();
@@ -146,6 +154,8 @@ public class AutoTest {
             assertTrue(table.insert(null, row));
             if ((i & 1) == 0) {
                 assertEquals(i, row.id());
+            } else {
+                assertTrue(row.id() != 0);
             }
         }
 
@@ -160,16 +170,18 @@ public class AutoTest {
 
         assertEquals(1000, count);
 
-        Table<TestRow3> valIx = table.viewSecondaryIndex("val").viewUnjoined();
-        count = 0;
+        if (table instanceof BaseTable<TestRow3> bt) {
+            Table<TestRow3> valIx = bt.viewSecondaryIndex("val").viewUnjoined();
+            count = 0;
 
-        try (var scanner = valIx.newScanner(null)) {
-            for (var row = scanner.row(); row != null; row = scanner.step()) {
-                count++;
+            try (var scanner = valIx.newScanner(null)) {
+                for (var row = scanner.row(); row != null; row = scanner.step()) {
+                    count++;
+                }
             }
-        }
 
-        assertEquals(1000, count);
+            assertEquals(1000, count);
+        }
     }
 
     @PrimaryKey("id")
@@ -196,6 +208,8 @@ public class AutoTest {
             assertTrue(table.insert(null, row));
             if ((i & 1) == 0) {
                 assertEquals(i, row.id());
+            } else {
+                assertTrue(row.id() != 0);
             }
         }
 
@@ -234,6 +248,8 @@ public class AutoTest {
             assertTrue(table.insert(null, row));
             if ((i & 1) == 0) {
                 assertEquals(i, row.id());
+            } else {
+                assertTrue(row.id() != 0);
             }
         }
 
@@ -272,6 +288,8 @@ public class AutoTest {
             assertTrue(table.insert(null, row));
             if ((i & 1) == 0) {
                 assertEquals(i, row.id());
+            } else {
+                assertTrue(row.id() != 0);
             }
         }
 
