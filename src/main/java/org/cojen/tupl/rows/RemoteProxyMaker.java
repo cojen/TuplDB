@@ -696,9 +696,47 @@ public final class RemoteProxyMaker {
         keyBytesVar.aset(0, 1); // set the result code
         pipeVar.invoke("write", keyBytesVar);
         pipeVar.invoke("write", valueBytesVar);
-        for (String name : mRowGen.stateFields()) {
-            pipeVar.invoke("writeInt", rowVar.field(name));
+
+        // Write the column states, but the client/server state slots can vary.
+
+        String[] rowStateFieldNames = mRowGen.stateFields();
+        Map<String, Integer> rowColumnNumbers = mRowGen.columnNumbers();
+
+        ColumnCodec[] clientCodecs = clientCodecs();
+        var clientStateVar = mm.var(int.class).set(0);
+
+        for (int columnNum = 0; columnNum < clientCodecs.length; columnNum++) {
+            if (columnNum > 0 && (columnNum & 0b1111) == 0) {
+                pipeVar.invoke("writeInt", clientStateVar);
+                clientStateVar.set(0);
+            }
+
+            Integer rowColumnNumObj = rowColumnNumbers.get(mRowHeader.columnNames[columnNum]);
+
+            if (rowColumnNumObj == null) {
+                continue;
+            }
+
+            int rowColumnNum = rowColumnNumObj;
+
+            int stateFieldNum = RowGen.stateFieldNum(rowColumnNum);
+            int stateFieldMask = RowGen.stateFieldMask(rowColumnNum);
+
+            var rowStateVar = rowVar.field(rowStateFieldNames[stateFieldNum]).and(stateFieldMask);
+
+            int stateShiftRight = RowGen.stateFieldShift(rowColumnNum)
+                - RowGen.stateFieldShift(columnNum);
+
+            if (stateShiftRight > 0) {
+                rowStateVar.set(rowStateVar.shr(stateShiftRight));
+            } else if (stateShiftRight != 0) {
+                rowStateVar.set(rowStateVar.shl(-stateShiftRight));
+            }
+
+            clientStateVar.set(clientStateVar.or(rowStateVar));
         }
+
+        pipeVar.invoke("writeInt", clientStateVar);
 
         finish.here();
 
@@ -1466,43 +1504,50 @@ public final class RemoteProxyMaker {
             codec.decode(columnVar, bytesVar, offsetVar, null);
 
             String rowFieldName = mRowHeader.columnNames[columnNum];
-            var rowField = rowVar.field(rowFieldName);
-            int rowColumnNum = rowColumnNumbers.get(rowFieldName);
 
-            ColumnCodec rowFieldCodec;
-            if (rowColumnNum < rowKeyCodecs.length) {
-                rowFieldCodec = rowKeyCodecs[rowColumnNum];
-            } else {
-                rowFieldCodec = rowValueCodecs[rowColumnNum - rowKeyCodecs.length];
-            }
-
-            Label tryStart = mm.label().here();
-
-            Converter.convertExact(mm, rowFieldName,
-                                   codec.mInfo, columnVar, rowFieldCodec.mInfo, rowField);
- 
-            mm.catch_(tryStart, RuntimeException.class, exVar -> {
+            if (!rowColumnNumbers.containsKey(rowFieldName)) {
+                var exVar = mm.new_(IllegalStateException.class, "Unknown column: " + rowFieldName);
                 pipeVar.invoke("writeObject", exVar);
                 mm.return_(null);
-            });
-
-            int stateShiftLeft = RowGen.stateFieldShift(rowColumnNum)
-                - RowGen.stateFieldShift(columnNum);
-
-            if (stateShiftLeft > 0) {
-                stateVar.set(stateVar.shl(stateShiftLeft));
-            } else if (stateShiftLeft != 0) {
-                stateVar.set(stateVar.shr(-stateShiftLeft));
-            }
-
-            int rowStateFieldNum = RowGen.stateFieldNum(rowColumnNum);
-            var rowStateField = rowVar.field(rowStateFieldNames[rowStateFieldNum]);
-
-            if (columnNum == 0) {
-                rowStateField.set(stateVar);
             } else {
-                int mask = ~RowGen.stateFieldMask(rowColumnNum);
-                rowStateField.set(rowStateField.and(mask).or(stateVar));
+                var rowField = rowVar.field(rowFieldName);
+                int rowColumnNum = rowColumnNumbers.get(rowFieldName);
+
+                ColumnCodec rowFieldCodec;
+                if (rowColumnNum < rowKeyCodecs.length) {
+                    rowFieldCodec = rowKeyCodecs[rowColumnNum];
+                } else {
+                    rowFieldCodec = rowValueCodecs[rowColumnNum - rowKeyCodecs.length];
+                }
+
+                Label tryStart = mm.label().here();
+
+                Converter.convertExact(mm, rowFieldName,
+                                       codec.mInfo, columnVar, rowFieldCodec.mInfo, rowField);
+ 
+                mm.catch_(tryStart, RuntimeException.class, exVar -> {
+                    pipeVar.invoke("writeObject", exVar);
+                    mm.return_(null);
+                });
+
+                int stateShiftLeft = RowGen.stateFieldShift(rowColumnNum)
+                    - RowGen.stateFieldShift(columnNum);
+
+                if (stateShiftLeft > 0) {
+                    stateVar.set(stateVar.shl(stateShiftLeft));
+                } else if (stateShiftLeft != 0) {
+                    stateVar.set(stateVar.shr(-stateShiftLeft));
+                }
+
+                int rowStateFieldNum = RowGen.stateFieldNum(rowColumnNum);
+                var rowStateField = rowVar.field(rowStateFieldNames[rowStateFieldNum]);
+
+                if (columnNum == 0) {
+                    rowStateField.set(stateVar);
+                } else {
+                    int mask = ~RowGen.stateFieldMask(rowColumnNum);
+                    rowStateField.set(rowStateField.and(mask).or(stateVar));
+                }
             }
 
             skip.here();
@@ -1536,8 +1581,6 @@ public final class RemoteProxyMaker {
 
         // Prepare all the fields by applying any necessary conversions.
 
-        clientCodecs = ColumnCodec.bind(clientCodecs, mm);
-
         int numStart, numEnd;
         if (forKey) {
             numStart = 0;
@@ -1546,6 +1589,17 @@ public final class RemoteProxyMaker {
             numStart = mRowHeader.numKeys;
             numEnd = clientCodecs.length;
         }
+
+        // If the client provides a column unknown to the server, throw an exception.
+        for (int columnNum = numStart; columnNum < numEnd; columnNum++) {
+            String fieldName = mRowHeader.columnNames[columnNum];
+            if (!mRowGen.info.allColumns.containsKey(fieldName)) {
+                mm.new_(IllegalStateException.class, "Unknown column: " + fieldName).throw_();
+                return;
+            }
+        }
+
+        clientCodecs = ColumnCodec.bind(clientCodecs, mm);
 
         var fieldVars = new Variable[clientCodecs.length - numStart];
 
@@ -1556,7 +1610,25 @@ public final class RemoteProxyMaker {
             ColumnInfo dstInfo = clientCodecs[columnNum].mInfo;
             var dstVar = mm.var(dstInfo.type);
             fieldVars[columnNum - numStart] = dstVar;
+
+            Label cont = null;
+
+            if (!srcInfo.isPrimitive() && !srcInfo.isNullable()) {
+                // If the source field can be null (because it's unset), perform a special
+                // conversion to prevent a NPE. Technically this is a lossy conversion, but the
+                // client will ignore the column because of the column state.
+                Label notNull = mm.label();
+                srcField.ifNe(null, notNull);
+                Converter.setDefault(mm, dstInfo, dstVar);
+                cont = mm.label().goto_();
+                notNull.here();
+            }
+
             Converter.convertExact(mm, fieldName, srcInfo, srcField, dstInfo, dstVar);
+
+            if (cont != null) {
+                cont.here();
+            }
         }
 
         // Calculate the value encoding length.
