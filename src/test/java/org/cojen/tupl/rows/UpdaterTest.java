@@ -191,6 +191,27 @@ public class UpdaterTest {
         }
     }
 
+    @Test
+    public void unsetRow() throws Exception {
+        var table = mDb.openTable(TestRow.class);
+        fill(table, 1, 1);
+
+        try (var updater = table.newUpdater(null)) {
+            var row = updater.row();
+            table.unsetRow(row);
+            row.state(999);
+            assertNull(updater.update());
+        }
+
+        try (var scanner = table.newScanner(null)) {
+            var row = scanner.row();
+            assertEquals(1, row.id());
+            assertEquals("name-1", row.name());
+            assertEquals("path-1", row.path());
+            assertEquals(999, row.state());
+        }
+    }
+
     private static void fill(Table<TestRow> table, int start, int end) throws Exception {
         for (int i=start; i<=end; i++) {
             var row = table.newRow();
