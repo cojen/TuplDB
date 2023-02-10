@@ -1,6 +1,9 @@
 Changelog
 =========
 
+v1.7.0
+------
+	
 v1.6.0 (2022-05-18)
 ------
 * Fix race condition which can cause the JVM to crash when the database is closed.
