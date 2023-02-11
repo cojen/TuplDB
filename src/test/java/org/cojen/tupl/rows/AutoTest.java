@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.rows;
 
+import java.util.Arrays;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -51,7 +53,9 @@ public class AutoTest {
     public void basicInt() throws Exception {
         Table<TestRow1> table = mDb.openTable(TestRow1.class);
 
-        for (int i=1; i<=1000; i++) {
+        int[] expect = new int[1000];
+
+        for (int i=1; i<=expect.length; i++) {
             var row = table.newRow();
             if ((i & 1) == 0) {
                 row.id(i);
@@ -63,18 +67,22 @@ public class AutoTest {
             } else {
                 assertTrue(row.id() != 0);
             }
+            expect[i - 1] = row.id();
         }
+
+        Arrays.sort(expect);
 
         int count = 0;
 
         try (var scanner = table.newScanner(null)) {
             for (var row = scanner.row(); row != null; row = scanner.step()) {
+                assertEquals(expect[count], row.id());
                 count++;
                 assertTrue(row.id() >= 1);
             }
         }
 
-        assertEquals(1000, count);
+        assertEquals(expect.length, count);
     }
 
     @PrimaryKey("id")
@@ -91,7 +99,9 @@ public class AutoTest {
     public void basicLong() throws Exception {
         var table = mDb.openTable(TestRow2.class);
 
-        for (int i=1; i<=1000; i++) {
+        long[] expect = new long[1000];
+
+        for (int i=1; i<=expect.length; i++) {
             var row = table.newRow();
             if ((i & 1) == 0) {
                 row.id(i);
@@ -103,18 +113,22 @@ public class AutoTest {
             } else {
                 assertTrue(row.id() != 0);
             }
+            expect[i - 1] = row.id();
         }
+
+        Arrays.sort(expect);
 
         int count = 0;
 
         try (var scanner = table.newScanner(null)) {
             for (var row = scanner.row(); row != null; row = scanner.step()) {
+                assertEquals(expect[count], row.id());
                 count++;
                 assertTrue(row.id() >= 1);
             }
         }
 
-        assertEquals(1000, count);
+        assertEquals(expect.length, count);
 
         if (table instanceof BaseTable<TestRow2> bt) {
             Table<TestRow2> valIx = bt.viewSecondaryIndex("val").viewUnjoined();
@@ -126,7 +140,15 @@ public class AutoTest {
                 }
             }
 
-            assertEquals(1000, count);
+            assertEquals(expect.length, count);
+        }
+
+        try (var scanner = table.newScanner(null, "val >= ?", "")) {
+            count = 0;
+            for (var row = scanner.row(); row != null; row = scanner.step()) {
+                count++;
+            }
+            assertEquals(expect.length, count);
         }
     }
 
@@ -145,7 +167,9 @@ public class AutoTest {
     public void basicUInt() throws Exception {
         var table = mDb.openTable(TestRow3.class);
 
-        for (int i=1; i<=1000; i++) {
+        int[] expect = new int[1000];
+
+        for (int i=1; i<=expect.length; i++) {
             var row = table.newRow();
             if ((i & 1) == 0) {
                 row.id(i);
@@ -157,18 +181,22 @@ public class AutoTest {
             } else {
                 assertTrue(row.id() != 0);
             }
+            expect[i - 1] = row.id();
         }
+
+        Arrays.sort(expect);
 
         int count = 0;
 
         try (var scanner = table.newScanner(null)) {
             for (var row = scanner.row(); row != null; row = scanner.step()) {
+                assertEquals(expect[count], row.id());
                 count++;
                 assertTrue(row.id() >= 1);
             }
         }
 
-        assertEquals(1000, count);
+        assertEquals(expect.length, count);
 
         if (table instanceof BaseTable<TestRow3> bt) {
             Table<TestRow3> valIx = bt.viewSecondaryIndex("val").viewUnjoined();
@@ -180,7 +208,15 @@ public class AutoTest {
                 }
             }
 
-            assertEquals(1000, count);
+            assertEquals(expect.length, count);
+        }
+
+        try (var scanner = table.newScanner(null, "val >= ?", "")) {
+            count = 0;
+            for (var row = scanner.row(); row != null; row = scanner.step()) {
+                count++;
+            }
+            assertEquals(expect.length, count);
         }
     }
 

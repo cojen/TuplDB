@@ -49,7 +49,7 @@ public interface RowPredicateLock<R> {
     /**
      * Variant which can act upon a partially filled in row.
      *
-     * @param row partially specified row
+     * @param row partially specified row; is passed to the {@code RowPredicate.testP} method
      * @param key is passed to the {@code RowPredicate.testP} method
      * @param value is passed to the {@code RowPredicate.testP} method
      */
@@ -67,11 +67,18 @@ public interface RowPredicateLock<R> {
      * This method is primarily used in conjunction with automatic columns. If null is
      * returned, another random number is generated.
      *
-     * @param row is passed to the {@code RowPredicate.test} method
+     * If the given row isn't null, then it's assumed to be fully specified (not partial) and
+     * is passed to the RowPredicate.test method. The key and value parameters will be ignored.
+     * Conversely, if the row is null, then the key and value parameters are passed to the test
+     * method instead.
+     *
+     * @param row if not null, the row is passed to the {@code RowPredicate.test} method
+     * @param key if no row is provided, key is passed to the {@code RowPredicate.test} method
+     * @param value if no row is provided, value is passed to the {@code RowPredicate.test} method
      * @return null if not acquired
      * @throws IllegalStateException if too many shared locks
      */
-    Closer tryOpenAcquire(Transaction txn, R row) throws IOException;
+    Closer tryOpenAcquire(Transaction txn, R row, byte[] key, byte[] value) throws IOException;
 
     /**
      * Acquires shared access for all the predicate locks and an upgradable row lock, waiting

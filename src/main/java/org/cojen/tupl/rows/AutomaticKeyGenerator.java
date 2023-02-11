@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.rows;
 
+import java.io.DataOutput;
 import java.io.IOException;
 
 import java.lang.ref.Cleaner;
@@ -67,53 +68,76 @@ public abstract class AutomaticKeyGenerator<R> {
         }
 
         @Override
-        protected void randomKey(byte[] key, RandomGenerator rnd) {
-            int value;
-            do {
-                if (mMax != Integer.MAX_VALUE) {
-                    value = rnd.nextInt(mMin, mMax + 1);
-                } else if (mMin != Integer.MIN_VALUE) {
-                    value = rnd.nextInt(mMin - 1, mMax) + 1;
-                } else {
-                    value = rnd.nextInt();
-                }
-            } while (value == 0);
-
-            encode(key, value);
+        public void writeTail(byte[] key, DataOutput out) throws IOException {
+            out.writeInt(decode(key));
         }
 
         @Override
-        protected RowPredicateLock.Closer incrementKey(Transaction txn,
-                                                       R row, byte[] srcKey, byte[] dstKey)
+        protected void randomKey(byte[] key, RandomGenerator rnd) {
+            int colValue;
+            do {
+                if (mMax != Integer.MAX_VALUE) {
+                    colValue = rnd.nextInt(mMin, mMax + 1);
+                } else if (mMin != Integer.MIN_VALUE) {
+                    colValue = rnd.nextInt(mMin - 1, mMax) + 1;
+                } else {
+                    colValue = rnd.nextInt();
+                }
+            } while (colValue == 0);
+
+            encode(key, colValue);
+        }
+
+        @Override
+        protected RowPredicateLock.Closer incrementKey(Transaction txn, R row,
+                                                       byte[] srcKey, byte[] dstKey, byte[] value)
             throws IOException
         {
-            int value = decode(srcKey) + 1;
-            if (value == 0) {
-                value = 1;
+            int colValue = decode(srcKey) + 1;
+            if (colValue == 0) {
+                colValue = 1;
             }
-            if (value == Integer.MIN_VALUE || value > mMax) {
-                value = mMin;
+            if (colValue == Integer.MIN_VALUE || colValue > mMax) {
+                colValue = mMin;
             }
 
-            encode(dstKey, value);
+            encode(dstKey, colValue);
 
-            return mApplier == null ? RowPredicateLock.NonCloser.THE
-                : mApplier.applyToRow(txn, row, value);
+            var applier = mApplier;
+
+            if (applier == null) {
+                return RowPredicateLock.NonCloser.THE;
+            } else if (row != null) {
+                return applier.applyToRow(txn, row, colValue);
+            } else {
+                return applier.tryOpenAcquire(txn, dstKey, value);
+            }
         }
 
         protected int decode(byte[] key) {
             return RowUtils.decodeIntBE(key, key.length - 4) ^ (1 << 31);
         }
 
-        protected void encode(byte[] key, int value) {
-            RowUtils.encodeIntBE(key, key.length - 4, value ^ (1 << 31));
+        protected void encode(byte[] key, int colValue) {
+            RowUtils.encodeIntBE(key, key.length - 4, colValue ^ (1 << 31));
         }
 
         public static interface Applier<R> {
             /**
+             * Store the given column value into the row and then call tryOpenAcquire.
+             *
              * @see RowPredicateLock#tryOpenAcquire
              */
-            public RowPredicateLock.Closer applyToRow(Transaction txn, R row, int value)
+            public RowPredicateLock.Closer applyToRow(Transaction txn, R row, int colValue)
+                throws IOException;
+
+            /**
+             * Is called when no row object was provided, and so the predicate lock must be
+             * acquired by examining the encoded key and value.
+             *
+             * @see RowPredicateLock#tryOpenAcquire
+             */
+            public RowPredicateLock.Closer tryOpenAcquire(Transaction txn, byte[] key, byte[] value)
                 throws IOException;
         }
     }
@@ -131,8 +155,8 @@ public abstract class AutomaticKeyGenerator<R> {
             return RowUtils.decodeIntBE(key, key.length - 4);
         }
 
-        protected void encode(byte[] key, int value) {
-            RowUtils.encodeIntBE(key, key.length - 4, value);
+        protected void encode(byte[] key, int colValue) {
+            RowUtils.encodeIntBE(key, key.length - 4, colValue);
         }
     }
 
@@ -152,53 +176,76 @@ public abstract class AutomaticKeyGenerator<R> {
         }
 
         @Override
-        protected void randomKey(byte[] key, RandomGenerator rnd) {
-            long value;
-            do {
-                if (mMax != Long.MAX_VALUE) {
-                    value = rnd.nextLong(mMin, mMax + 1);
-                } else if (mMin != Long.MIN_VALUE) {
-                    value = rnd.nextLong(mMin - 1, mMax) + 1;
-                } else {
-                    value = rnd.nextLong();
-                }
-            } while (value == 0);
-
-            encode(key, value);
+        public void writeTail(byte[] key, DataOutput out) throws IOException {
+            out.writeLong(decode(key));
         }
 
         @Override
-        protected RowPredicateLock.Closer incrementKey(Transaction txn,
-                                                       R row, byte[] srcKey, byte[] dstKey)
+        protected void randomKey(byte[] key, RandomGenerator rnd) {
+            long colValue;
+            do {
+                if (mMax != Long.MAX_VALUE) {
+                    colValue = rnd.nextLong(mMin, mMax + 1);
+                } else if (mMin != Long.MIN_VALUE) {
+                    colValue = rnd.nextLong(mMin - 1, mMax) + 1;
+                } else {
+                    colValue = rnd.nextLong();
+                }
+            } while (colValue == 0);
+
+            encode(key, colValue);
+        }
+
+        @Override
+        protected RowPredicateLock.Closer incrementKey(Transaction txn, R row,
+                                                       byte[] srcKey, byte[] dstKey, byte[] value)
             throws IOException
         {
-            long value = decode(srcKey) + 1;
-            if (value == 0) {
-                value = 1;
+            long colValue = decode(srcKey) + 1;
+            if (colValue == 0) {
+                colValue = 1;
             }
-            if (value == Long.MIN_VALUE || value > mMax) {
-                value = mMin;
+            if (colValue == Long.MIN_VALUE || colValue > mMax) {
+                colValue = mMin;
             }
 
-            encode(dstKey, value);
+            encode(dstKey, colValue);
 
-            return mApplier == null ? RowPredicateLock.NonCloser.THE
-                : mApplier.applyToRow(txn, row, value);
+            var applier = mApplier;
+
+            if (applier == null) {
+                return RowPredicateLock.NonCloser.THE;
+            } else if (row != null) {
+                return applier.applyToRow(txn, row, colValue);
+            } else {
+                return applier.tryOpenAcquire(txn, dstKey, value);
+            }
         }
 
         protected long decode(byte[] key) {
             return RowUtils.decodeLongBE(key, key.length - 8) ^ (1L << 63);
         }
 
-        protected void encode(byte[] key, long value) {
-            RowUtils.encodeLongBE(key, key.length - 8, value ^ (1L << 63));
+        protected void encode(byte[] key, long colValue) {
+            RowUtils.encodeLongBE(key, key.length - 8, colValue ^ (1L << 63));
         }
 
         public static interface Applier<R> {
             /**
+             * Store the given column value into the row and then call tryOpenAcquire.
+             *
              * @see RowPredicateLock#tryOpenAcquire
              */
-            public RowPredicateLock.Closer applyToRow(Transaction txn, R row, long value)
+            public RowPredicateLock.Closer applyToRow(Transaction txn, R row, long colValue)
+                throws IOException;
+
+            /**
+             * Is called when no row object was provided, and so the predicate lock must be
+             * acquired by examining the encoded key and value.
+             *
+             * @see RowPredicateLock#tryOpenAcquire
+             */
+            public RowPredicateLock.Closer tryOpenAcquire(Transaction txn, byte[] key, byte[] value)
                 throws IOException;
         }
     }
@@ -216,15 +263,15 @@ public abstract class AutomaticKeyGenerator<R> {
             return RowUtils.decodeLongBE(key, key.length - 8);
         }
 
-        protected void encode(byte[] key, long value) {
-            RowUtils.encodeLongBE(key, key.length - 8, value);
+        protected void encode(byte[] key, long colValue) {
+            RowUtils.encodeLongBE(key, key.length - 8, colValue);
         }
     }
 
     /**
      * Stores an entry against the given non-null transaction.
      *
-     * @param row is passed to the Applier
+     * @param row is passed to the Applier; can be null
      * @param key partially specified key; the tail is updated with the generated portion
      * @return actual key that was stored
      */
@@ -252,7 +299,7 @@ public abstract class AutomaticKeyGenerator<R> {
                 byte[] srcKey = c.key();
 
                 while (true) {
-                    RowPredicateLock.Closer closer = incrementKey(txn, row, srcKey, key);
+                    RowPredicateLock.Closer closer = incrementKey(txn, row, srcKey, key, value);
 
                     if (closer != null) {
                         LockResult result;
@@ -336,6 +383,8 @@ public abstract class AutomaticKeyGenerator<R> {
         }
     }
 
+    public abstract void writeTail(byte[] key, DataOutput out) throws IOException;
+
     /**
      * Closes all the cursors, but doesn't prevent them from being replaced.
      */
@@ -352,8 +401,9 @@ public abstract class AutomaticKeyGenerator<R> {
 
     protected abstract void randomKey(byte[] key, RandomGenerator rnd);
 
-    protected abstract RowPredicateLock.Closer incrementKey(Transaction txn,
-                                                            R row, byte[] srcKey, byte[] dstKey)
+    protected abstract RowPredicateLock.Closer incrementKey(Transaction txn, R row,
+                                                            byte[] srcKey, byte[] dstKey,
+                                                            byte[] value)
         throws IOException;
 
     private void randomPosition(byte[] key, RandomGenerator rnd, Cursor c) throws IOException {

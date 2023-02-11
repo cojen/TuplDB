@@ -345,9 +345,45 @@ public abstract class ClientTableHelper<R> implements Table<R> {
 
         Label tryStart = mm.label().here();
 
-        // FIXME: Support automatic key columns. A different result code indicates that columns
-        // must be loaded, which is expected to be just one.
         var resultVar = pipeVar.invoke("readByte");
+
+        auto: if (variant != "replace") {
+            // If the last column could be automatically generated, need to check that case.
+            // Note that this will never be the case with the replace method, because the
+            // caller must provide a full key up front.
+
+            ColumnCodec[] codecs = rowGen.keyCodecs();
+            ColumnInfo tailInfo = codecs[codecs.length - 1].mInfo;
+
+            if (tailInfo.type != int.class && tailInfo.type != long.class) {
+                // Only int and long column type can be automatic.
+                break auto;
+            }
+
+            // Check for result code 2, which indicates that a key tail was generated. It must
+            // copied into the row for the caller to see it.
+
+            Label noAutoKey = mm.label();
+            resultVar.ifNe(2, noAutoKey);
+
+            if (tailInfo.type == int.class) {
+                rowVar.field(tailInfo.name).set(pipeVar.invoke("readInt"));
+            } else {
+                rowVar.field(tailInfo.name).set(pipeVar.invoke("readLong"));
+            }
+
+            if (variant == "exchange") {
+                TableMaker.markAllClean(rowVar, rowGen, rowGen);
+                mm.invoke("success", pipeVar);
+                mm.return_(null);
+            } else if (variant == "insert") {
+                TableMaker.markAllClean(rowVar, rowGen, rowGen);
+                mm.invoke("success", pipeVar);
+                mm.return_(true);
+            }
+
+            noAutoKey.here();
+        }
 
         if (variant == "store") {
             TableMaker.markAllClean(rowVar, rowGen, rowGen);
@@ -356,13 +392,13 @@ public abstract class ClientTableHelper<R> implements Table<R> {
         } else if (variant == "exchange") {
             TableMaker.markAllClean(rowVar, rowGen, rowGen);
             Variable oldRowVar = mm.var(rowClass).set(null);
-            Label noOperation = mm.label();
-            resultVar.ifEq(0, noOperation);
+            Label noOldRow = mm.label();
+            resultVar.ifEq(0, noOldRow);
             oldRowVar.set(mm.invoke("newRow").cast(rowClass));
             TableMaker.copyFields(rowVar, oldRowVar, rowGen.info.keyColumns.values());
             decodeValueColumns(rowGen, oldRowVar, pipeVar);
             TableMaker.markAllClean(oldRowVar, rowGen, rowGen);
-            noOperation.here();
+            noOldRow.here();
             mm.invoke("success", pipeVar);
             mm.return_(oldRowVar);
         } else {

@@ -261,19 +261,30 @@ class StaticTableMaker extends TableMaker {
 
             mClassMaker.implement(autoGenApplierClass);
 
-            mClassMaker.addField(autoGenClass, "autogen").private_().final_();
+            mClassMaker.addField(autoGenClass, "autogen").final_();
 
             ctor.field("autogen").set
                 (ctor.new_(autoGenClass, ctor.param(1), minVal, maxVal, ctor.this_()));
 
-            MethodMaker mm = mClassMaker.addMethod
-                (RowPredicateLock.Closer.class, "applyToRow",
-                 Transaction.class, Object.class, mAutoColumn.type);
-            mm.public_();
-            var rowVar = mm.param(1).cast(mRowClass);
-            rowVar.field(mAutoColumn.name).set(mm.param(2));
+            {
+                MethodMaker mm = mClassMaker.addMethod
+                    (RowPredicateLock.Closer.class, "applyToRow",
+                     Transaction.class, Object.class, mAutoColumn.type);
+                mm.public_();
+                var rowVar = mm.param(1).cast(mRowClass);
+                rowVar.field(mAutoColumn.name).set(mm.param(2));
+                mm.return_(mm.field("mIndexLock").invoke
+                           ("tryOpenAcquire", mm.param(0), rowVar, null, null));
+            }
 
-            mm.return_(mm.field("mIndexLock").invoke("tryOpenAcquire", mm.param(0), rowVar));
+            {
+                MethodMaker mm = mClassMaker.addMethod
+                    (RowPredicateLock.Closer.class, "tryOpenAcquire",
+                     Transaction.class, byte[].class, byte[].class);
+                mm.public_();
+                mm.return_(mm.field("mIndexLock").invoke
+                           ("tryOpenAcquire", mm.param(0), null, mm.param(1), mm.param(2)));
+            }
 
             var allButAuto = new TreeMap<>(mCodecGen.info.allColumns);
             allButAuto.remove(mAutoColumn.name);
@@ -724,6 +735,8 @@ class StaticTableMaker extends TableMaker {
         txnVar.set(mm.var(ViewUtils.class).invoke("enterScopex", mm.field("mSource"), txnVar));
         Label txnStart = mm.label().here();
 
+        // Enable redoPredicateMode now because the call to the AutomaticKeyGenerator will
+        // acquire a predicate lock.
         mm.invoke("redoPredicateMode", txnVar);
 
         if (!supportsTriggers()) {

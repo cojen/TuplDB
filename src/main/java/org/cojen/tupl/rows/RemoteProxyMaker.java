@@ -25,6 +25,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.cojen.dirmi.Pipe;
 
@@ -75,6 +76,7 @@ public final class RemoteProxyMaker {
     private final RowGen mRowGen;
     private final RowHeader mRowHeader;
     private final ClassMaker mClassMaker;
+    private final ColumnInfo mAutoColumn;
 
     // Only needed by addUpdateDirectMethod.
     private Variable mUpdaterFactoryVar;
@@ -89,6 +91,16 @@ public final class RemoteProxyMaker {
         mRowHeader = RowHeader.decode(descriptor);
         mClassMaker = mRowGen.beginClassMaker(RemoteProxyMaker.class, mRowType, null);
         mClassMaker.implement(RemoteTableProxy.class);
+
+        ColumnInfo auto = null;
+        for (ColumnInfo column : mRowGen.info.keyColumns.values()) {
+            if (column.isAutomatic()) {
+                auto = column;
+                break;
+            }
+        }
+
+        mAutoColumn = auto;
     }
 
     /**
@@ -104,9 +116,10 @@ public final class RemoteProxyMaker {
             mm.field("assert").set(mm.class_().invoke("desiredAssertionStatus"));
         }
 
-        mClassMaker.addField(BaseTable.class, "table").private_().final_();
+        var tableClass = mTable.getClass();
+        mClassMaker.addField(tableClass, "table").private_().final_();
 
-        MethodMaker ctorMaker = mClassMaker.addConstructor(BaseTable.class, int.class).private_();
+        MethodMaker ctorMaker = mClassMaker.addConstructor(tableClass, int.class).private_();
         ctorMaker.invokeSuperConstructor();
         ctorMaker.field("table").set(ctorMaker.param(0));
 
@@ -148,7 +161,7 @@ public final class RemoteProxyMaker {
         }
 
         try {
-            MethodType mt = MethodType.methodType(void.class, BaseTable.class, int.class);
+            MethodType mt = MethodType.methodType(void.class, tableClass, int.class);
             return lookup.findConstructor(lookup.lookupClass(), mt);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
@@ -290,8 +303,6 @@ public final class RemoteProxyMaker {
         MethodMaker mm = mClassMaker.addMethod
             (Pipe.class, variant, RemoteTransaction.class, Pipe.class).public_();
 
-        // FIXME: handle automatic key column (for store/exchange/insert)
-
         var txnVar = txn(mm.param(0));
         var pipeVar = mm.param(1);
 
@@ -302,6 +313,30 @@ public final class RemoteProxyMaker {
         Label isReady = mm.label();
         checkSet(mm, mRowGen.info.allColumns, stateVars).ifTrue(isReady);
 
+        var makerVar = mm.var(RemoteProxyMaker.class);
+
+        if (variant != "replace" && mAutoColumn != null) {
+            // Check if all columns are set except the automatic column.
+            var allButAuto = new TreeMap<>(mRowGen.info.allColumns);
+            allButAuto.remove(mAutoColumn.name);
+            Label notReady = mm.label();
+            checkSet(mm, allButAuto, stateVars).ifFalse(notReady);
+
+            int tailLen = mAutoColumn.type == int.class ? 4 : 8;
+            var keyVar = makerVar.invoke("decodeKey", pipeVar, tailLen);
+            var valueVar = decodeValue(makerVar, pipeVar);
+
+            var tableVar = mm.field("table").get();
+
+            makerVar.invoke
+                ("storeAuto", tableVar, tableVar.field("autogen"),
+                 txnVar, mm.field("EMPTY_ROW"), keyVar, valueVar, pipeVar);
+
+            mm.return_(null);
+
+            notReady.here();
+        }
+
         var paramVars = new Object[1 + stateVars.length];
         paramVars[0] = pipeVar;
         System.arraycopy(stateVars, 0, paramVars, 1, stateVars.length);
@@ -310,16 +345,8 @@ public final class RemoteProxyMaker {
 
         isReady.here();
 
-        var makerVar = mm.var(RemoteProxyMaker.class);
         var keyVar = makerVar.invoke("decodeKey", pipeVar);
-
-        Variable valueVar;
-        if (mTable.isEvolvable()) {
-            valueVar = makerVar.invoke("decodeValue", pipeVar, mm.field("prefixLength"));
-            mm.var(RowUtils.class).invoke("encodePrefixPF", valueVar, 0, mm.field("schemaVersion"));
-        } else {
-            valueVar = makerVar.invoke("decodeValue", pipeVar);
-        }
+        var valueVar = decodeValue(makerVar, pipeVar);
 
         var oldValueVar = makerVar.invoke(variant, mm.field("table"), txnVar, mm.field("EMPTY_ROW"),
                                           keyVar, valueVar, pipeVar);
@@ -338,6 +365,21 @@ public final class RemoteProxyMaker {
         var exVar = mm.catch_(tryStart, mm.label().here(), Throwable.class);
         makerVar.invoke("handleException", exVar, pipeVar);
         mm.return_(null);
+    }
+
+    /**
+     * Decodes a value from the pipe and assignes a schema version if required.
+     */
+    private Variable decodeValue(Variable makerVar, Variable pipeVar) {
+        MethodMaker mm = makerVar.methodMaker();
+        Variable valueVar;
+        if (mTable.isEvolvable()) {
+            valueVar = makerVar.invoke("decodeValue", pipeVar, mm.field("prefixLength"));
+            mm.var(RowUtils.class).invoke("encodePrefixPF", valueVar, 0, mm.field("schemaVersion"));
+        } else {
+            valueVar = makerVar.invoke("decodeValue", pipeVar);
+        }
+        return valueVar;
     }
 
     /**
@@ -362,17 +404,9 @@ public final class RemoteProxyMaker {
         Label partial = mm.label();
         checkDirty(mm, mRowGen.info.valueColumns, stateVars).ifFalse(partial);
 
-        final Variable newValueVar = mm.var(byte[].class);
-
         // All value columns are dirty, so just do a plain replace operation as an optimization.
 
-        if (mTable.isEvolvable()) {
-            newValueVar.set(makerVar.invoke("decodeValue", pipeVar, mm.field("prefixLength")));
-            var utilsVar = mm.var(RowUtils.class);
-            utilsVar.invoke("encodePrefixPF", newValueVar, 0, mm.field("schemaVersion"));
-        } else {
-            newValueVar.set(makerVar.invoke("decodeValue", pipeVar));
-        }
+        var newValueVar = decodeValue(makerVar, pipeVar);
 
         Label mergeReply;
         if (variant == "merge") {
@@ -860,6 +894,21 @@ public final class RemoteProxyMaker {
 
     /**
      * Called by generated code.
+     *
+     * @param tailLen extra bytes to allocate at the end of the returned key
+     */
+    public static byte[] decodeKey(Pipe pipe, int tailLen) throws IOException {
+        int length = RowUtils.decodePrefixPF(pipe);
+        if (length == 0) {
+            return new byte[tailLen];
+        }
+        var bytes = new byte[length + tailLen];
+        pipe.readFully(bytes, 0, length);
+        return bytes;
+    }
+
+    /**
+     * Called by generated code.
      */
     public static byte[] decodeValue(Pipe pipe) throws IOException {
         int length = RowUtils.decodePrefixPF(pipe);
@@ -1157,6 +1206,30 @@ public final class RemoteProxyMaker {
     /**
      * Called by generated code.
      */
+    @SuppressWarnings("unchecked")
+    public static void storeAuto(BaseTable table, AutomaticKeyGenerator autogen,
+                                 Transaction txn, Object row, byte[] key, byte[] value, Pipe pipe)
+        throws IOException
+    {
+        attempt: {
+            try {
+                key = table.storeAutoAndTrigger(autogen, txn, row, key, value);
+            } catch (Throwable e) {
+                pipe.writeObject(e);
+                break attempt;
+            }
+            pipe.writeNull(); // no exception
+            pipe.writeByte(2); // success; code 2 indicates that the key tail is written
+            autogen.writeTail(key, pipe);
+        }
+
+        pipe.flush();
+        pipe.recycle();
+    }
+
+    /**
+     * Called by generated code.
+     */
     public static void writeResult(boolean result, Pipe pipe) throws IOException {
         pipe.writeByte(result ? 1 : 0); // success or failure
     }
@@ -1293,8 +1366,6 @@ public final class RemoteProxyMaker {
         MethodMaker mm = mClassMaker.addMethod
             (Pipe.class, variant, RemoteTransaction.class, Pipe.class).public_();
 
-        // FIXME: handle automatic key column (for store/exchange/insert)
-
         var txnVar = txn(mm.param(0));
         var pipeVar = mm.param(1);
 
@@ -1303,6 +1374,15 @@ public final class RemoteProxyMaker {
         var rowVar = mm.invoke("decodeRow", mm.new_(mRowClass), pipeVar);
         Label finish = mm.label();
         rowVar.ifEq(null, finish);
+
+        Variable isAutoVar = null;
+
+        if (variant != "replace" && mAutoColumn != null) {
+            // Check if the automatic column is unset -- the isAutoVar value will be zero.
+            int columnNum = mRowGen.info.keyColumns.size() - 1;
+            int mask = mRowGen.stateFieldMask(columnNum);
+            isAutoVar = rowVar.field(mRowGen.stateField(columnNum)).and(mask);
+        }
 
         Label opTryStart = mm.label().here();
 
@@ -1317,6 +1397,8 @@ public final class RemoteProxyMaker {
             });
 
             pipeVar.invoke("writeNull"); // no exception
+
+            autoCheck(isAutoVar, rowVar, pipeVar, finish);
 
             if (variant == "store") {
                 pipeVar.invoke("writeByte", 1); // success
@@ -1352,6 +1434,8 @@ public final class RemoteProxyMaker {
 
             pipeVar.invoke("writeNull"); // no exception
 
+            autoCheck(isAutoVar, rowVar, pipeVar, finish);
+
             Label hasBytes = mm.label();
             bytesVar.ifNe(null, hasBytes);
             pipeVar.invoke("writeByte", 0);
@@ -1371,6 +1455,33 @@ public final class RemoteProxyMaker {
         var exVar = mm.catch_(tryStart, mm.label().here(), Throwable.class);
         makerVar.invoke("handleException", exVar, pipeVar);
         mm.return_(null);
+    }
+
+    /**
+     * Makes code which checks if an automatic column was assigned. If so, the column value is
+     * written to the pipe and then the code jumps to the finish label.
+     */
+    private void autoCheck(Variable isAutoVar, Variable rowVar, Variable pipeVar, Label finish) {
+        if (isAutoVar != null) {
+            MethodMaker mm = isAutoVar.methodMaker();
+
+            Label noAutoKey = mm.label();
+            isAutoVar.ifNe(0, noAutoKey);
+
+            // success; code 2 indicates that the key tail is written
+            pipeVar.invoke("writeByte", 2);
+
+            var columnVar = rowVar.field(mAutoColumn.name);
+
+            if (mAutoColumn.type == int.class) {
+                pipeVar.invoke("writeInt", columnVar);
+            } else {
+                pipeVar.invoke("writeLong", columnVar);
+            }
+
+            finish.goto_();
+            noAutoKey.here();
+        }
     }
 
     /**
