@@ -108,14 +108,12 @@ public final class ServerDatabase implements RemoteDatabase {
 
     @Override
     public RemoteCustomHandler customWriter(String name) throws IOException {
-        // FIXME: customWriter
-        throw new UnsupportedOperationException();
+        return ServerCustomHandler.from(mDb.customWriter(name));
     }
 
     @Override
     public RemotePrepareHandler prepareWriter(String name) throws IOException {
-        // FIXME: prepareWriter
-        throw new UnsupportedOperationException();
+        return ServerPrepareHandler.from(mDb.prepareWriter(name));
     }
 
     @Override

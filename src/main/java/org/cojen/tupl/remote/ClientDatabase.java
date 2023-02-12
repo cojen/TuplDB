@@ -46,6 +46,7 @@ import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
 
 import org.cojen.tupl.core.Pair;
+import org.cojen.tupl.core.Triple;
 
 import org.cojen.tupl.diag.CompactionObserver;
 import org.cojen.tupl.diag.DatabaseStats;
@@ -123,6 +124,8 @@ public final class ClientDatabase implements Database {
     }
 
     private ClientIndex findIndex(byte[] name, boolean open) throws IOException {
+        // Note: Must use ArrayKey instead of Pair because records don't handle hashCode and
+        // equals properly for arrays.
         return ClientCache.get(ArrayKey.make(this, name), key -> {
             RemoteIndex rindex;
             try {
@@ -215,14 +218,30 @@ public final class ClientDatabase implements Database {
 
     @Override
     public CustomHandler customWriter(String name) throws IOException {
-        // FIXME: customWriter
-        throw new UnsupportedOperationException();
+        return ClientCache.get(new Triple<>(CustomHandler.class, this, name), key -> {
+            RemoteCustomHandler handler;
+            try {
+                handler = mRemote.customWriter(name);
+            } catch (IOException e) {
+                throw Utils.rethrow(e);
+            }
+
+            return new ClientCustomHandler(this, handler);
+        });
     }
 
     @Override
     public PrepareHandler prepareWriter(String name) throws IOException {
-        // FIXME: prepareWriter
-        throw new UnsupportedOperationException();
+        return ClientCache.get(new Triple<>(PrepareHandler.class, this, name), key -> {
+            RemotePrepareHandler handler;
+            try {
+                handler = mRemote.prepareWriter(name);
+            } catch (IOException e) {
+                throw Utils.rethrow(e);
+            }
+
+            return new ClientPrepareHandler(this, handler);
+        });
     }
 
     @Override

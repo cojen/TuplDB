@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2022 Cojen.org
+ *  Copyright (C) 2023 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -19,18 +19,32 @@ package org.cojen.tupl.remote;
 
 import java.io.IOException;
 
-import org.cojen.dirmi.Remote;
+import org.cojen.tupl.Transaction;
+
+import org.cojen.tupl.ext.PrepareHandler;
 
 /**
  * 
  *
  * @author Brian S O'Neill
  */
-public interface RemoteCustomHandler extends Remote, Disposable {
-    void redo(RemoteTransaction txn, byte[] message) throws IOException;
+final class ClientPrepareHandler implements PrepareHandler {
+    private final ClientDatabase mDb;
+    private final RemotePrepareHandler mRemote;
 
-    void redo(RemoteTransaction txn, byte[] message, long indexId, byte[] key)
-        throws IOException;
+    ClientPrepareHandler(ClientDatabase db, RemotePrepareHandler remote) {
+        mDb = db;
+        mRemote = remote;
+        ClientCache.autoDispose(this, remote);
+    }
 
-    void undo(RemoteTransaction txn, byte[] message) throws IOException;
+    @Override
+    public void prepare(Transaction txn, byte[] message) throws IOException {
+        mRemote.prepare(mDb.remoteTransaction(txn), message);
+    }
+
+    @Override
+    public void prepareCommit(Transaction txn, byte[] message) throws IOException {
+        mRemote.prepareCommit(mDb.remoteTransaction(txn), message);
+    }
 }

@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2022 Cojen.org
+ *  Copyright (C) 2023 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -15,22 +15,13 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.remote;
-
-import java.io.IOException;
-
-import org.cojen.dirmi.Remote;
+package org.cojen.tupl.core;
 
 /**
- * 
+ * A very exciting record.
  *
  * @author Brian S O'Neill
+ * @see Pair
  */
-public interface RemoteCustomHandler extends Remote, Disposable {
-    void redo(RemoteTransaction txn, byte[] message) throws IOException;
-
-    void redo(RemoteTransaction txn, byte[] message, long indexId, byte[] key)
-        throws IOException;
-
-    void undo(RemoteTransaction txn, byte[] message) throws IOException;
+public record Triple<A, B, C>(A a, B b, C c) {
 }

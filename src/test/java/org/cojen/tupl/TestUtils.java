@@ -111,6 +111,12 @@ public class TestUtils {
         return tempFilesFor(context).newTempDatabase(config);
     }
 
+    public static Database copyTempDatabase(Class context, Database db, DatabaseConfig config)
+        throws IOException
+    {
+        return tempFilesFor(context).copyTempDatabase(db, config);
+    }
+
     public static File baseFileForTempDatabase(Class context, Database db) {
         return tempFilesFor(context).baseFileForTempDatabase(db);
     }
@@ -528,6 +534,38 @@ public class TestUtils {
             synchronized (this) {
                 mTempDatabases.put(db, baseFile);
             }
+            return db;
+        }
+
+        Database copyTempDatabase(Database db, DatabaseConfig config) throws IOException {
+            File srcBaseFile = baseFileForTempDatabase(db);
+            File dstBaseFile = newTempBaseFile();
+
+            File srcParentFile = srcBaseFile.getParentFile();
+            String baseName = srcBaseFile.getName();
+            for (File src : srcParentFile.listFiles()) {
+                String name = src.getName();
+                int ix = name.indexOf('.');
+                if (ix < 0) {
+                    continue;
+                }
+                String extension = name.substring(ix);
+                if (name.startsWith(baseName) && !extension.equals(".lock")) {
+                    File dst = new File(srcParentFile, dstBaseFile.getName() + extension);
+                    try (var in = new FileInputStream(src)) {
+                        try (var out = new FileOutputStream(dst)) {
+                            in.transferTo(out);
+                        }
+                    }
+                }
+            }
+
+            db = Database.open(config.baseFile(dstBaseFile));
+
+            synchronized (this) {
+                mTempDatabases.put(db, dstBaseFile);
+            }
+
             return db;
         }
 

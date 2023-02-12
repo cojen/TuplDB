@@ -21,6 +21,7 @@ package org.cojen.tupl.core;
  * A very exciting record.
  *
  * @author Brian S O'Neill
+ * @see Triple
  */
 public record Pair<A, B>(A a, B b) {
 }
