@@ -19,6 +19,10 @@ package org.cojen.tupl.remote;
 
 import java.io.IOException;
 
+import java.net.SocketException;
+
+import java.nio.channels.ClosedChannelException;
+
 import org.cojen.dirmi.ClosedException;
 import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.Session;
@@ -97,7 +101,7 @@ final class ServerSorter implements RemoteSorter, SessionAware {
     public Pipe addAll(Pipe pipe) throws IOException {
         try {
             mSorter.addAll(new PipeEntryScanner(pipe, true));
-        } catch (ClosedException e) {
+        } catch (ClosedException | SocketException | ClosedChannelException e) {
             // Ignore.
         }
         return null;
@@ -113,7 +117,7 @@ final class ServerSorter implements RemoteSorter, SessionAware {
         try {
             var scanner = reverse ? mSorter.finishScanReverse() : mSorter.finishScan();
             PipeEntryWriter.writeAll(scanner, pipe, true);
-        } catch (ClosedException e) {
+        } catch (ClosedException | SocketException | ClosedChannelException e) {
             // Ignore.
         }
         return null;
@@ -132,7 +136,7 @@ final class ServerSorter implements RemoteSorter, SessionAware {
             }
 
             PipeEntryWriter.writeAll(scanner, pipe, true);
-        } catch (ClosedException e) {
+        } catch (ClosedException | SocketException | ClosedChannelException e) {
             // Ignore. PipeEntryScanner or PipeEntryWriter should have cleaned things up.
         }
 
