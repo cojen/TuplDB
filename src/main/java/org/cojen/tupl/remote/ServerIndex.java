@@ -33,12 +33,12 @@ import org.cojen.tupl.rows.BaseTable;
  *
  * @author Brian S O'Neill
  */
-final class ServerIndex extends ServerView<Index> implements RemoteIndex {
+class ServerIndex extends ServerView<Index> implements RemoteIndex {
     static ServerIndex from(Index ix) {
         return new ServerIndex(ix);
     }
 
-    private ServerIndex(Index ix) {
+    protected ServerIndex(Index ix) {
         super(ix);
     }
 

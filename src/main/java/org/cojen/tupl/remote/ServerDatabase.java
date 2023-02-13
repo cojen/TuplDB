@@ -78,7 +78,7 @@ public final class ServerDatabase implements RemoteDatabase {
 
     @Override
     public RemoteIndex newTemporaryIndex() throws IOException {
-        return ServerIndex.from(mDb.newTemporaryIndex());
+        return ServerTemporaryIndex.from(mDb, mDb.newTemporaryIndex());
     }
 
     @Override
