@@ -31,6 +31,7 @@ final class ClientDeleteIndex implements Runnable {
     ClientDeleteIndex(ClientIndex ix, RemoteDeleteIndex remote) {
         mIndex = ix;
         mRemote = remote;
+        ClientCache.autoDispose(this, remote);
     }
 
     @Override

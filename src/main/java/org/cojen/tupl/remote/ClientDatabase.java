@@ -164,21 +164,12 @@ public final class ClientDatabase implements Database {
         Objects.requireNonNull(index);
         RemoteDeleteIndex remote = mRemote.deleteIndex(remoteIndex(index));
         ClientCache.remove(index);
-        var del = new ClientDeleteIndex((ClientIndex) index, remote);
-        ClientCache.autoDispose(del, remote);
-        return del;
+        return new ClientDeleteIndex((ClientIndex) index, remote);
     }
 
     @Override
     public Index newTemporaryIndex() throws IOException {
-        RemoteIndex ix = mRemote.newTemporaryIndex();
-
-        return new ClientIndex(this, ix) {
-            @Override
-            public void close() {
-                close(false, true);
-            }
-        };
+        return new ClientIndex.Temp(this, mRemote.newTemporaryIndex());
     }
 
     @Override
@@ -252,8 +243,11 @@ public final class ClientDatabase implements Database {
 
     @Override
     public Sorter newSorter() {
-        // FIXME: newSorter
-        throw new UnsupportedOperationException();
+        return new ClientSorter(this);
+    }
+
+    RemoteSorter newRemoteSorter() throws RemoteException {
+        return mRemote.newSorter();
     }
 
     @Override

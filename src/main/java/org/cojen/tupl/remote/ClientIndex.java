@@ -134,4 +134,15 @@ class ClientIndex extends ClientView<RemoteIndex> implements Index {
             }
         }
     }
+
+    final static class Temp extends ClientIndex {
+        Temp(ClientDatabase db, RemoteIndex remote) {
+            super(db, remote);
+        }
+
+        @Override
+        public void close() {
+            close(false, true);
+        }
+    }
 }

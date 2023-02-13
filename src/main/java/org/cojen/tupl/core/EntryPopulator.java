@@ -28,6 +28,12 @@ import org.cojen.tupl.rows.RowMaker;
  *
  * @author Brian S O'Neill
  */
-final class EntryPopulator {
-    static final MethodHandle THE = RowMaker.makePopulator(Entry.class);
+public final class EntryPopulator {
+    /**
+     * Given an entry, sets the key and value, returning the original entry or a new one if
+     * given null.
+     *
+     *   Entry populate(Entry e, byte[] key, byte[] value);
+     */
+    public static final MethodHandle THE = RowMaker.makePopulator(Entry.class);
 }

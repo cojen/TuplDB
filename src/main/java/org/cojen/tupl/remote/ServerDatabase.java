@@ -121,8 +121,7 @@ public final class ServerDatabase implements RemoteDatabase {
 
     @Override
     public RemoteSorter newSorter() {
-        // FIXME: newSorter
-        throw new UnsupportedOperationException();
+        return new ServerSorter(mDb, mDb.newSorter());
     }
 
     @Override

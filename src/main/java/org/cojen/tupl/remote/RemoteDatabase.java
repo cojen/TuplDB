@@ -79,8 +79,7 @@ public interface RemoteDatabase extends Remote, Disposable {
     @Restorable
     public RemotePrepareHandler prepareWriter(String name) throws IOException;
 
-    @RemoteFailure(declared=false)
-    public RemoteSorter newSorter();
+    public RemoteSorter newSorter() throws RemoteException;
 
     public long preallocate(long bytes) throws IOException;
 

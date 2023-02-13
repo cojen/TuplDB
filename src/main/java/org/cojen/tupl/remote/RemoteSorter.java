@@ -17,7 +17,14 @@
 
 package org.cojen.tupl.remote;
 
+import java.io.IOException;
+
+import org.cojen.dirmi.Disposer;
+import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.Remote;
+import org.cojen.dirmi.RemoteException;
+
+import org.cojen.tupl.Entry;
 
 /**
  * 
@@ -25,5 +32,23 @@ import org.cojen.dirmi.Remote;
  * @author Brian S O'Neill
  */
 public interface RemoteSorter extends Remote {
-    // FIXME
+    public void add(byte[] key, byte[] value) throws IOException;
+
+    public Pipe addBatch(Pipe pipe) throws IOException;
+
+    public Pipe addAll(Pipe pipe) throws IOException;
+
+    @Disposer
+    public RemoteIndex finish() throws IOException;
+
+    @Disposer
+    public Pipe finishScan(boolean reverse, Pipe pipe) throws IOException;
+
+    @Disposer
+    public Pipe addAllFinishScan(boolean reverse, Pipe pipe) throws IOException;
+
+    public long progress() throws RemoteException;
+
+    @Disposer
+    public void reset() throws IOException;
 }
