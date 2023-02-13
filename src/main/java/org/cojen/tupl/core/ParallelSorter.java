@@ -223,31 +223,6 @@ final class ParallelSorter implements Sorter, Node.Supplier {
     }
 
     @Override
-    public void addAll(Scanner<Entry> s) throws IOException {
-        byte[][] kvPairs = new byte[200][];
-        int size = 0;
-
-        for (Entry e = s.row(); e != null; e = s.step(e)) {
-            kvPairs[size++] = e.key();
-            kvPairs[size++] = e.value();
-
-            if (size >= kvPairs.length) {
-                addBatch(kvPairs, 0, kvPairs.length >> 1);
-
-                if (Thread.interrupted()) {
-                    throw new InterruptedIOException();
-                }
-
-                size = 0;
-            }
-        }
-
-        if (size > 0) {
-            addBatch(kvPairs, 0, size >> 1);
-        }
-    }
-
-    @Override
     public BTree finish() throws IOException {
         try {
             BTree tree = doFinish(null);
