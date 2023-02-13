@@ -596,6 +596,11 @@ public class FilteredScanMaker<R> {
         if (!mAlwaysJoin) {
             // Either not joined to a primary, or this is a covering index, and so Scanner
             // doesn't need to join.
+
+            if (mUnfiltered.isJoined()) {
+                mFilterMaker.addMethod(boolean.class, "isJoined").public_().return_(false);
+            }
+
             MethodHandle decoder = null;
             if (mProjectionSpec != null) {
                 // Obtain the MethodHandle which decodes the key and value columns.
