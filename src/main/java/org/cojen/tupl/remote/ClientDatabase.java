@@ -28,6 +28,8 @@ import java.net.SocketAddress;
 import java.nio.channels.Channels;
 import java.nio.channels.SocketChannel;
 
+import java.util.Objects;
+
 import java.util.concurrent.locks.Lock;
 
 import org.cojen.dirmi.ClosedException;
@@ -158,9 +160,13 @@ public final class ClientDatabase implements Database {
     }
 
     @Override
-    public Runnable deleteIndex(Index index) throws IOException {
-        // FIXME: deleteIndex
-        throw new UnsupportedOperationException();
+    public ClientDeleteIndex deleteIndex(Index index) throws IOException {
+        Objects.requireNonNull(index);
+        RemoteDeleteIndex remote = mRemote.deleteIndex(remoteIndex(index));
+        ClientCache.remove(index);
+        var del = new ClientDeleteIndex((ClientIndex) index, remote);
+        ClientCache.autoDispose(del, remote);
+        return del;
     }
 
     @Override

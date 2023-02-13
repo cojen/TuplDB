@@ -17,29 +17,19 @@
 
 package org.cojen.tupl.remote;
 
-import java.io.IOException;
-
 import org.cojen.dirmi.Session;
 import org.cojen.dirmi.SessionAware;
-
-import org.cojen.tupl.Database;
-import org.cojen.tupl.Index;
 
 /**
  * 
  *
  * @author Brian S O'Neill
  */
-final class ServerTemporaryIndex extends ServerIndex implements RemoteIndex, SessionAware {
-    static ServerTemporaryIndex from(Database db, Index ix) {
-        return new ServerTemporaryIndex(db, ix);
-    }
+final class ServerDeleteIndex implements RemoteDeleteIndex, SessionAware {
+    private final Runnable mTask;
 
-    private volatile Database mDb;
-
-    private ServerTemporaryIndex(Database db, Index ix) {
-        super(ix);
-        mDb = db;
+    ServerDeleteIndex(Runnable task) {
+        mTask = task;
     }
 
     @Override
@@ -48,19 +38,16 @@ final class ServerTemporaryIndex extends ServerIndex implements RemoteIndex, Ses
 
     @Override
     public void detached(Session<?> session) {
-        Database db = mDb;
-        if (db != null) {
-            mDb = null;
-            try {
-                db.deleteIndex(mView).run();
-            } catch (IOException e) {
-                // Ignore.
-            }
-        }
+        dispose();
     }
 
-    void deleted() {
-        // No need for the detached method to attempt deleting the index.
-        mDb = null;
+    @Override
+    public void run() {
+        dispose();
+    }
+
+    @Override
+    public void dispose() {
+        mTask.run();
     }
 }

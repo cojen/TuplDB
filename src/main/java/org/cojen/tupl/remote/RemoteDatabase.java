@@ -52,7 +52,7 @@ public interface RemoteDatabase extends Remote, Disposable {
 
     public void renameIndex(RemoteIndex index, byte[] newName) throws IOException;
 
-    public RemoteRunnable deleteIndex(RemoteIndex index) throws IOException;
+    public RemoteDeleteIndex deleteIndex(RemoteIndex index) throws IOException;
 
     public RemoteIndex newTemporaryIndex() throws IOException;
 

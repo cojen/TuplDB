@@ -28,6 +28,8 @@ import java.util.concurrent.TimeUnit;
 import org.junit.*;
 import static org.junit.Assert.*;
 
+import org.cojen.dirmi.DisposedException;
+
 import org.cojen.tupl.*;
 
 import org.cojen.tupl.diag.*;
@@ -303,5 +305,53 @@ public class RemoteTest {
         assertArrayEquals(value, ix2.load(null, key));
 
         copy.close();
+    }
+
+    @Test
+    public void deleteIndex() throws Exception {
+        Index clientIx = mClientDb.openIndex("test");
+        Index serverIx = mServerDb.findIndex("test");
+        long id = clientIx.id();
+        assertEquals(id, serverIx.id());
+
+        byte[] key = "hello".getBytes();
+        byte[] value = "world".getBytes();
+        clientIx.store(null, key, value);
+
+        Runnable task = mClientDb.deleteIndex(clientIx);
+
+        assertNull(mServerDb.findIndex("test"));
+        assertNull(mServerDb.indexById(id));
+        assertNull(serverIx.load(null, key));
+        try {
+            serverIx.store(null, key, value);
+            fail();
+        } catch (ClosedIndexException e) {
+        }
+
+        assertNull(mClientDb.findIndex("test"));
+        assertNull(mClientDb.indexById(id));
+        assertNull(clientIx.load(null, key));
+        try {
+            clientIx.store(null, key, value);
+            fail();
+        } catch (ClosedIndexException e) {
+        }
+
+        task.run();
+
+        try {
+            mClientDb.deleteIndex(clientIx);
+            fail();
+        } catch (ClosedIndexException e) {
+        }
+
+        try {
+            clientIx.load(null, key);
+            fail();
+        } catch (DisposedException e) {
+            // For the time being, client indexes behave differently than server indexes when
+            // closed. It became fully closed when the task was run.
+        }
     }
 }

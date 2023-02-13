@@ -176,7 +176,7 @@ public class WeakCache<K, V, H> extends RefCache<K, V, H> {
                 V value = e.get();
                 if (value == null || p.test(value)) {
                     if (prev == null) {
-                        entries[i].mNext = e.mNext;
+                        entries[i] = e.mNext;
                     } else {
                         prev.mNext = e.mNext;
                     }

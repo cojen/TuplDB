@@ -70,10 +70,13 @@ public final class ServerDatabase implements RemoteDatabase {
     }
 
     @Override
-    public RemoteRunnable deleteIndex(RemoteIndex index) throws IOException {
-        // FIXME: deleteIndex
-        //Runnable task = mDb.deleteIndex(((ServerIndex) index).mView);
-        throw new UnsupportedOperationException();
+    public RemoteDeleteIndex deleteIndex(RemoteIndex remote) throws IOException {
+        var server = (ServerIndex) remote;
+        var del = new ServerDeleteIndex(mDb.deleteIndex(server.mView));
+        if (server instanceof ServerTemporaryIndex temp) {
+            temp.deleted();
+        }
+        return del;
     }
 
     @Override
