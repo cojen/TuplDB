@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2022 Cojen.org
+ *  Copyright (C) 2023 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -17,18 +17,39 @@
 
 package org.cojen.tupl.remote;
 
-import org.cojen.dirmi.Disposer;
-import org.cojen.dirmi.NoReply;
-import org.cojen.dirmi.Remote;
 import org.cojen.dirmi.RemoteException;
 
 /**
- * Interface for a one-shot runnable task.
+ *
  *
  * @author Brian S O'Neill
  */
-public interface RemoteRunnable extends Remote {
-    @NoReply
-    @Disposer
-    void run() throws RemoteException;
+class ClientRunnable implements Runnable {
+    private RemoteRunnable mRemote;
+
+    ClientRunnable(RemoteRunnable remote) {
+        mRemote = remote;
+    }
+
+    @Override
+    public void run() {
+        // RemoteRunnable is one-shot, and calling run disposes it. Calling this method again
+        // has no effect.
+
+        RemoteRunnable remote;
+
+        synchronized (this) {
+            remote = mRemote;
+            if (remote == null) {
+                return;
+            }
+            mRemote = null;
+        }
+
+        try {
+            remote.run();
+        } catch (RemoteException e) {
+            // Ignore.
+        }
+    }
 }

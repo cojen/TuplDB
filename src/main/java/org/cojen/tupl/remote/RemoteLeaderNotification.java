@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2022 Cojen.org
+ *  Copyright (C) 2023 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -17,18 +17,13 @@
 
 package org.cojen.tupl.remote;
 
-import org.cojen.dirmi.Disposer;
-import org.cojen.dirmi.NoReply;
 import org.cojen.dirmi.Remote;
-import org.cojen.dirmi.RemoteException;
 
 /**
- * Interface for a one-shot runnable task.
+ * This interface is only needed to support a restorable operation, and so special methods need
+ * to be defined. It only inherits a dispose method.
  *
  * @author Brian S O'Neill
  */
-public interface RemoteRunnable extends Remote {
-    @NoReply
-    @Disposer
-    void run() throws RemoteException;
+public interface RemoteLeaderNotification extends Remote, Disposable {
 }

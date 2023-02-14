@@ -198,9 +198,15 @@ public final class ServerDatabase implements RemoteDatabase {
     }
 
     @Override
-    public void uponLeader(RemoteRunnable acquired, RemoteRunnable lost) {
-        // FIXME: uponLeader
-        throw new UnsupportedOperationException();
+    public RemoteLeaderNotification uponLeader(RemoteRunnable acquired, RemoteRunnable lost) {
+        mDb.uponLeader(new ClientRunnable(acquired), new ClientRunnable(lost));
+
+        return new RemoteLeaderNotification() {
+            @Override
+            public void dispose() {
+                // Nothing to do.
+            }
+        };
     }
 
     @Override

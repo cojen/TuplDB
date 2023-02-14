@@ -115,8 +115,9 @@ public interface RemoteDatabase extends Remote, Disposable {
     @RemoteFailure(declared=false)
     public boolean isLeader();
 
-    @RemoteFailure(declared=false)
-    public void uponLeader(RemoteRunnable acquired, RemoteRunnable lost);
+    @Restorable
+    public RemoteLeaderNotification uponLeader(RemoteRunnable acquired, RemoteRunnable lost)
+        throws RemoteException;
 
     public boolean failover() throws IOException;
 

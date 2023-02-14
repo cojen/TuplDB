@@ -36,6 +36,7 @@ import org.cojen.dirmi.ClosedException;
 import org.cojen.dirmi.Environment;
 import org.cojen.dirmi.Pipe;
 import org.cojen.dirmi.RemoteException;
+import org.cojen.dirmi.Session;
 
 import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.Database;
@@ -93,7 +94,7 @@ public final class ClientDatabase implements Database {
         return new ClientDatabase(remote, env);
     }
 
-    private static void initConnection(InputStream in, OutputStream out, long... tokens)
+    static void initConnection(InputStream in, OutputStream out, long... tokens)
         throws IOException
     {
         out.write(RemoteUtils.encodeConnectHeader(tokens));
@@ -365,8 +366,42 @@ public final class ClientDatabase implements Database {
 
     @Override
     public void uponLeader(Runnable acquired, Runnable lost) {
-        // FIXME: uponLeader
-        throw new UnsupportedOperationException();
+        var serverAcquired = new ServerRunnable(acquired);
+        var serverLost = new ServerRunnable(lost);
+        if (!uponLeader(serverAcquired, serverLost)) {
+            Session.access(mRemote).addStateListener((session, exception) -> {
+                return session.state() != Session.State.CONNECTED
+                    || !uponLeader(serverAcquired, serverLost);
+            });
+        }
+    }
+
+    /**
+     * @return true if the remote call succeeded
+     */
+    private boolean uponLeader(ServerRunnable acquired, ServerRunnable lost) {
+        RemoteLeaderNotification notification;
+        try {
+            notification = mRemote.uponLeader(acquired, lost);
+        } catch (RemoteException e) {
+            return false;
+        }
+
+        // The notification object can be disposed when leadership is lost because it's an edge
+        // triggered event. The acquired notification is level triggered and it's invoked
+        // immediately if the database is already the leader. It's not valid to receive a lost
+        // notification before an acquired notification, except in cases when leadership is
+        // immediately lost. The notification object can be disposed of regardless.
+
+        lost.finishTask(() -> {
+            try {
+                notification.dispose();
+            } catch (RemoteException e) {
+                // Ignore
+            }
+        });
+
+        return true;
     }
 
     @Override
