@@ -27,13 +27,9 @@ import org.cojen.tupl.ext.PrepareHandler;
  * @author Brian S O'Neill
  */
 final class ServerPrepareHandler implements RemotePrepareHandler {
-    static ServerPrepareHandler from(PrepareHandler handler) {
-        return new ServerPrepareHandler(handler);
-    }
-
     private final PrepareHandler mHandler;
 
-    private ServerPrepareHandler(PrepareHandler handler) {
+    ServerPrepareHandler(PrepareHandler handler) {
         mHandler = handler;
     }
 

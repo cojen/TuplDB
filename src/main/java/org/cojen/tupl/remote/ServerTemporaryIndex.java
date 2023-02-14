@@ -31,13 +31,9 @@ import org.cojen.tupl.Index;
  * @author Brian S O'Neill
  */
 final class ServerTemporaryIndex extends ServerIndex implements RemoteIndex, SessionAware {
-    static ServerTemporaryIndex from(Database db, Index ix) {
-        return new ServerTemporaryIndex(db, ix);
-    }
-
     private volatile Database mDb;
 
-    private ServerTemporaryIndex(Database db, Index ix) {
+    ServerTemporaryIndex(Database db, Index ix) {
         super(ix);
         mDb = db;
     }

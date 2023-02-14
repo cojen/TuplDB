@@ -33,13 +33,9 @@ import org.cojen.tupl.ViewConstraintException;
  * @author Brian S O'Neill
  */
 class ServerView<V extends View> implements RemoteView {
-    static ServerView from(View ix) {
-        return new ServerView<View>(ix);
-    }
-
     final V mView;
 
-    protected ServerView(V view) {
+    ServerView(V view) {
         mView = view;
     }
 
@@ -50,17 +46,17 @@ class ServerView<V extends View> implements RemoteView {
 
     @Override
     public RemoteCursor newCursor(RemoteTransaction txn) {
-        return ServerCursor.from(mView.newCursor(ServerTransaction.txn(txn)));
+        return new ServerCursor(mView.newCursor(ServerTransaction.txn(txn)));
     }
 
     @Override
     public RemoteCursor newAccessor(RemoteTransaction txn, byte[] key) throws IOException {
-        return ServerCursor.from(mView.newAccessor(ServerTransaction.txn(txn), key));
+        return new ServerCursor(mView.newAccessor(ServerTransaction.txn(txn), key));
     }
 
     @Override
     public RemoteTransaction newTransaction(DurabilityMode dm) {
-        return ServerTransaction.from(mView.newTransaction(dm));
+        return new ServerTransaction(mView.newTransaction(dm));
     }
 
     @Override

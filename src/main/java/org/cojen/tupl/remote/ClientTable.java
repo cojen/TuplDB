@@ -179,7 +179,7 @@ final class ClientTable<R> implements Table<R> {
 
     @Override
     public Transaction newTransaction(DurabilityMode dm) {
-        return ClientTransaction.from(mDb, mRemote.newTransaction(dm), dm);
+        return new ClientTransaction(mDb, mRemote.newTransaction(dm), dm);
     }
 
     @Override

@@ -109,7 +109,7 @@ final class ServerSorter implements RemoteSorter, SessionAware {
 
     @Override
     public RemoteIndex finish() throws IOException {
-        return ServerTemporaryIndex.from(mDb, mSorter.finish());
+        return new ServerTemporaryIndex(mDb, mSorter.finish());
     }
 
     @Override

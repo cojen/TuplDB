@@ -64,7 +64,7 @@ class ClientView<R extends RemoteView> implements View {
 
     @Override
     public Transaction newTransaction(DurabilityMode dm) {
-        return ClientTransaction.from(mDb, mRemote.newTransaction(dm), dm);
+        return new ClientTransaction(mDb, mRemote.newTransaction(dm), dm);
     }
 
     @Override

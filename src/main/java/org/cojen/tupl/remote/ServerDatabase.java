@@ -49,19 +49,19 @@ public final class ServerDatabase implements RemoteDatabase {
 
     @Override
     public RemoteIndex openIndex(byte[] name) throws IOException {
-        return ServerIndex.from(mDb.openIndex(name));
+        return new ServerIndex(mDb.openIndex(name));
     }
 
     @Override
     public RemoteIndex findIndex(byte[] name) throws IOException {
         Index ix = mDb.findIndex(name);
-        return ix == null ? null : ServerIndex.from(ix);
+        return ix == null ? null : new ServerIndex(ix);
     }
 
     @Override
     public RemoteIndex indexById(long id) throws IOException {
         Index ix = mDb.indexById(id);
-        return ix == null ? null : ServerIndex.from(ix);
+        return ix == null ? null : new ServerIndex(ix);
     }
 
     @Override
@@ -81,42 +81,42 @@ public final class ServerDatabase implements RemoteDatabase {
 
     @Override
     public RemoteIndex newTemporaryIndex() throws IOException {
-        return ServerTemporaryIndex.from(mDb, mDb.newTemporaryIndex());
+        return new ServerTemporaryIndex(mDb, mDb.newTemporaryIndex());
     }
 
     @Override
     public RemoteView indexRegistryByName() throws IOException {
-        return ServerIndex.from(mDb.indexRegistryByName());
+        return new ServerView<>(mDb.indexRegistryByName());
     }
 
     @Override
     public RemoteView indexRegistryById() throws IOException {
-        return ServerIndex.from(mDb.indexRegistryById());
+        return new ServerView<>(mDb.indexRegistryById());
     }
 
     @Override
     public RemoteTransaction newTransaction() {
-        return ServerTransaction.from(mDb.newTransaction());
+        return new ServerTransaction(mDb.newTransaction());
     }
 
     @Override
     public RemoteTransaction newTransaction(DurabilityMode dm) {
-        return ServerTransaction.from(mDb.newTransaction(dm));
+        return new ServerTransaction(mDb.newTransaction(dm));
     }
 
     @Override
     public RemoteTransaction bogus() {
-        return ServerTransaction.from(Transaction.BOGUS);
+        return new ServerTransaction(Transaction.BOGUS);
     }
 
     @Override
     public RemoteCustomHandler customWriter(String name) throws IOException {
-        return ServerCustomHandler.from(mDb.customWriter(name));
+        return new ServerCustomHandler(mDb.customWriter(name));
     }
 
     @Override
     public RemotePrepareHandler prepareWriter(String name) throws IOException {
-        return ServerPrepareHandler.from(mDb.prepareWriter(name));
+        return new ServerPrepareHandler(mDb.prepareWriter(name));
     }
 
     @Override

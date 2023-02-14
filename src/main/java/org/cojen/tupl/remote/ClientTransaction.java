@@ -40,10 +40,6 @@ import org.cojen.tupl.core.Utils;
  * @author Brian S O'Neill
  */
 final class ClientTransaction implements Transaction {
-    static ClientTransaction from(ClientDatabase db, RemoteTransaction remote, DurabilityMode dm) {
-        return new ClientTransaction(db, remote, dm);
-    }
-
     final ClientDatabase mDb;
     RemoteTransaction mRemote;
     DurabilityMode mDurabilityMode;
@@ -55,7 +51,7 @@ final class ClientTransaction implements Transaction {
     /**
      * @param dm pass null if default was selected
      */
-    private ClientTransaction(ClientDatabase db, RemoteTransaction remote, DurabilityMode dm) {
+    ClientTransaction(ClientDatabase db, RemoteTransaction remote, DurabilityMode dm) {
         mDb = db;
         mRemote = remote;
         mDurabilityMode = dm;

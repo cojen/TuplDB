@@ -132,7 +132,7 @@ final class ServerTable<R> implements RemoteTable {
 
     @Override
     public RemoteTransaction newTransaction(DurabilityMode dm) {
-        return ServerTransaction.from(mTable.newTransaction(dm));
+        return new ServerTransaction(mTable.newTransaction(dm));
     }
 
     @Override

@@ -40,13 +40,9 @@ import org.cojen.tupl.core.Utils;
  * @author Brian S O'Neill
  */
 final class ServerCursor implements RemoteCursor, SessionAware {
-    static ServerCursor from(Cursor c) {
-        return new ServerCursor(c);
-    }
-
     final Cursor mCursor;
 
-    private ServerCursor(Cursor c) {
+    ServerCursor(Cursor c) {
         mCursor = c;
     }
 
@@ -247,7 +243,7 @@ final class ServerCursor implements RemoteCursor, SessionAware {
 
     @Override
     public RemoteCursor copy() {
-        return from(mCursor.copy());
+        return new ServerCursor(mCursor.copy());
     }
 
     @Override

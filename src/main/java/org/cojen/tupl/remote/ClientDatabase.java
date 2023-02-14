@@ -112,7 +112,7 @@ public final class ClientDatabase implements Database {
     private ClientDatabase(RemoteDatabase remote, Environment env) throws RemoteException {
         mRemote = remote;
         mEnv = env;
-        mBogus = ClientTransaction.from(this, remote.bogus(), null);
+        mBogus = new ClientTransaction(this, remote.bogus(), null);
     }
 
     @Override
@@ -197,7 +197,7 @@ public final class ClientDatabase implements Database {
 
     @Override
     public Transaction newTransaction() {
-        return ClientTransaction.from(this, newRemoteTransaction(), null);
+        return new ClientTransaction(this, newRemoteTransaction(), null);
     }
 
     RemoteTransaction newRemoteTransaction() {
@@ -206,7 +206,7 @@ public final class ClientDatabase implements Database {
 
     @Override
     public Transaction newTransaction(DurabilityMode dm) {
-        return ClientTransaction.from(this, newRemoteTransaction(dm), dm);
+        return new ClientTransaction(this, newRemoteTransaction(dm), dm);
     }
 
     RemoteTransaction newRemoteTransaction(DurabilityMode dm) {

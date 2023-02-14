@@ -27,13 +27,9 @@ import org.cojen.tupl.ext.CustomHandler;
  * @author Brian S O'Neill
  */
 final class ServerCustomHandler implements RemoteCustomHandler {
-    static ServerCustomHandler from(CustomHandler handler) {
-        return new ServerCustomHandler(handler);
-    }
-
     private final CustomHandler mHandler;
 
-    private ServerCustomHandler(CustomHandler handler) {
+    ServerCustomHandler(CustomHandler handler) {
         mHandler = handler;
     }
 
