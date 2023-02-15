@@ -146,8 +146,12 @@ public class RestorableTest {
             }
 
             synchronized boolean waitUntilReady(long timeoutMillis) throws InterruptedException {
+                long end = System.currentTimeMillis() + timeoutMillis;
                 while (!mReady) {
                     wait(timeoutMillis);
+                    if (System.currentTimeMillis() >= end) {
+                        break;
+                    }
                 }
                 return mReady;
             }
