@@ -104,6 +104,8 @@ final class ReplDecoder extends RedoDecoder {
         boolean catchup(Latch decodeLatch) {
             StreamReplicator.Reader reader = mReader;
 
+            boolean bumped = false;
+
             while (true) {
                 // If null, then local member is the leader and has implicitly caught up.
                 if (reader == null) {
@@ -127,9 +129,21 @@ final class ReplDecoder extends RedoDecoder {
                         decodeLatch.acquireShared();
                         long decodePos = mPos;
                         decodeLatch.releaseShared();
-                        if (decodePos >= commitPosition) {
+
+                        while (decodePos >= commitPosition) {
+                            if (!bumped) {
+                                // The commit position may have advanced in the meantime, so
+                                // check against the new position. Only do this once to prevent
+                                // never returning.
+                                commitPosition = reader.commitPosition();
+                                bumped = true;
+                                continue;
+                            }
+
+                            // Caught up enough.
                             return false;
                         }
+
                         // Keep waiting.
                     }
 
