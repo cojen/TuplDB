@@ -32,6 +32,8 @@ import java.util.Objects;
 
 import java.util.concurrent.locks.Lock;
 
+import javax.net.ssl.SSLContext;
+
 import org.cojen.dirmi.ClosedException;
 import org.cojen.dirmi.Environment;
 import org.cojen.dirmi.Pipe;
@@ -72,26 +74,35 @@ public final class ClientDatabase implements Database {
         return new ClientDatabase(remote, null);
     }
 
-    public static ClientDatabase connect(SocketAddress addr, long... tokens) throws IOException {
+    public static ClientDatabase connect(SocketAddress addr, SSLContext context, long... tokens)
+        throws IOException
+    {
         Environment env = RemoteUtils.createEnvironment();
-
-        env.connector(session -> {
-            SocketAddress address = session.remoteAddress();
-            if (address instanceof InetSocketAddress) {
-                var s = new Socket();
-                s.connect(address);
-                initConnection(s.getInputStream(), s.getOutputStream(), tokens);
-                session.connected(s);
-            } else {
-                SocketChannel s = SocketChannel.open(address);
-                initConnection(Channels.newInputStream(s), Channels.newOutputStream(s), tokens);
-                session.connected(s);
-            }
-        });
-
+        env.connector(session -> connect(session, context, tokens));
         var remote = env.connect(RemoteDatabase.class, Database.class.getName(), addr).root();
-
         return new ClientDatabase(remote, env);
+    }
+
+    private static void connect(Session session, SSLContext context, long... tokens)
+        throws IOException
+    {
+        SocketAddress address = session.remoteAddress();
+
+        Socket s;
+        if (context != null) {
+            s = context.getSocketFactory().createSocket();
+        } else if (address instanceof InetSocketAddress) {
+            s = new Socket();
+        } else {
+            SocketChannel sc = SocketChannel.open(address);
+            initConnection(Channels.newInputStream(sc), Channels.newOutputStream(sc), tokens);
+            session.connected(sc);
+            return;
+        }
+
+        s.connect(address);
+        initConnection(s.getInputStream(), s.getOutputStream(), tokens);
+        session.connected(s);
     }
 
     static void initConnection(InputStream in, OutputStream out, long... tokens)

@@ -46,7 +46,7 @@ public class RemoteValueAccessorTest extends ValueAccessorTest {
         var ss = new ServerSocket(0);
         mServerDb.newServer().acceptAll(ss, 123456);
 
-        mDb = Database.connect(ss.getLocalSocketAddress(), 111, 123456);
+        mDb = Database.connect(ss.getLocalSocketAddress(), null, 111, 123456);
     }
 
     @After

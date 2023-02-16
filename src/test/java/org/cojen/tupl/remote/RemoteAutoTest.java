@@ -62,7 +62,7 @@ public class RemoteAutoTest extends AutoTest {
         var ss = new ServerSocket(0);
         server.acceptAll(ss, 123456);
 
-        mDb = Database.connect(ss.getLocalSocketAddress(), 123456);
+        mDb = Database.connect(ss.getLocalSocketAddress(), null, 123456);
     }
 
     @After

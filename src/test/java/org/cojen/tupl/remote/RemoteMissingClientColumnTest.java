@@ -53,7 +53,7 @@ public class RemoteMissingClientColumnTest {
         var ss = new ServerSocket(0);
         server.acceptAll(ss, 123456);
 
-        mDb = Database.connect(ss.getLocalSocketAddress(), 111, 123456);
+        mDb = Database.connect(ss.getLocalSocketAddress(), null, 111, 123456);
         mTable = mDb.openTable(TestRow.class);
     }
 

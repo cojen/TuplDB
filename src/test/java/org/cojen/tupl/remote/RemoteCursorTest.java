@@ -48,7 +48,7 @@ public class RemoteCursorTest extends CursorTest {
         var ss = new ServerSocket(0);
         mServerDb.newServer().acceptAll(ss, 123456);
 
-        mDb = Database.connect(ss.getLocalSocketAddress(), 111, 123456);
+        mDb = Database.connect(ss.getLocalSocketAddress(), null, 111, 123456);
     }
 
     @After

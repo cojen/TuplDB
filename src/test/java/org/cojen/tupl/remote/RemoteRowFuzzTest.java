@@ -48,7 +48,7 @@ public class RemoteRowFuzzTest extends FuzzTest {
         var ss = new ServerSocket(0);
         stuff.acceptAll(ss, 123456);
 
-        Database clientDb = Database.connect(ss.getLocalSocketAddress(), 123456);
+        Database clientDb = Database.connect(ss.getLocalSocketAddress(), null, 123456);
 
         mClientToServerMap.put(clientDb, stuff);
 

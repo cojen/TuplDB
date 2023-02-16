@@ -28,6 +28,8 @@ import java.net.SocketAddress;
 
 import java.nio.charset.StandardCharsets;
 
+import javax.net.ssl.SSLContext;
+
 import org.cojen.tupl.diag.CompactionObserver;
 import org.cojen.tupl.diag.DatabaseStats;
 import org.cojen.tupl.diag.EventListener;
@@ -104,10 +106,13 @@ public interface Database extends CauseCloseable, Flushable {
     /**
      * Establish a remote connection to a database which is running a {@link #newServer server}.
      *
+     * @param context optionally pass a context to open a secure connection
      * @throws IllegalArgumentException if not given one or two tokens
      */
-    public static Database connect(SocketAddress addr, long... tokens) throws IOException {
-        return ClientDatabase.connect(addr, tokens);
+    public static Database connect(SocketAddress addr, SSLContext context, long... tokens)
+        throws IOException
+    {
+        return ClientDatabase.connect(addr, context, tokens);
     }
 
     /**
@@ -398,6 +403,9 @@ public interface Database extends CauseCloseable, Flushable {
     /**
      * Returns an object for enabling remote access into this database. As long as the server
      * is still open, the JVM won't exit. Closing the database will also close the server.
+     *
+     * <p>If the database is configured with {@link DatabaseConfig#replicate replication},
+     * remote access is already enabled, and so a server doesn't need to be created.
      */
     public abstract Server newServer() throws IOException;
 

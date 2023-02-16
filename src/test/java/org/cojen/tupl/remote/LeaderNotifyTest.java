@@ -65,8 +65,8 @@ public class LeaderNotifyTest {
 
         mServerDb2 = newTempDatabase(getClass(), config2);
 
-        mClientDb1 = Database.connect(ss1.getLocalSocketAddress(), 123456);
-        mClientDb2 = Database.connect(ss2.getLocalSocketAddress(), 123456);
+        mClientDb1 = Database.connect(ss1.getLocalSocketAddress(), null, 123456);
+        mClientDb2 = Database.connect(ss2.getLocalSocketAddress(), null, 123456);
     }
 
     @After
