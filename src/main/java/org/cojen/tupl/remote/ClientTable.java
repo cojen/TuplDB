@@ -19,6 +19,7 @@ package org.cojen.tupl.remote;
 
 import java.io.IOException;
 
+import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
@@ -36,6 +37,8 @@ import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.Updater;
+
+import org.cojen.tupl.core.Triple;
 
 import org.cojen.tupl.io.Utils;
 
@@ -255,7 +258,13 @@ final class ClientTable<R> implements Table<R> {
 
     @Override
     public Predicate<R> predicate(String query, Object... args) {
-        return mHelper.predicate(query, args);
+        var key = new Triple<>(Predicate.class, this, query);
+        MethodHandle mh = ClientCache.get(key, k -> mHelper.predicateHandle(query));
+        try {
+            return (Predicate<R>) mh.invokeExact(args);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
     }
 
     @Override

@@ -19,12 +19,11 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
+import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 
 import java.util.Comparator;
 import java.util.Map;
-
-import java.util.function.Predicate;
 
 import org.cojen.dirmi.Pipe;
 
@@ -133,10 +132,12 @@ public abstract class ClientTableHelper<R> implements Table<R> {
         return ComparatorMaker.comparator(rowType(), spec);
     }
 
-    @Override
-    public Predicate<R> predicate(String query, Object... args) {
-        // FIXME: predicate
-        throw new UnsupportedOperationException();
+    /**
+     * Returns a MethodHandle which constructs a Predicate from an Object[] parameter for the
+     * filter arguments.
+     */
+    public MethodHandle predicateHandle(String query) {
+        return RowPredicateMaker.makePlain(rowType(), query);
     }
 
     /**

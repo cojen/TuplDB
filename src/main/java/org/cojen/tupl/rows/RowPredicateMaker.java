@@ -29,6 +29,7 @@ import java.lang.ref.WeakReference;
 import java.util.HashMap;
 
 import java.util.function.IntFunction;
+import java.util.function.Predicate;
 
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Label;
@@ -47,6 +48,7 @@ import org.cojen.tupl.filter.ColumnToColumnFilter;
 import org.cojen.tupl.filter.GroupFilter;
 import org.cojen.tupl.filter.InFilter;
 import org.cojen.tupl.filter.OrFilter;
+import org.cojen.tupl.filter.Parser;
 import org.cojen.tupl.filter.RowFilter;
 import org.cojen.tupl.filter.TrueFilter;
 import org.cojen.tupl.filter.Visitor;
@@ -135,6 +137,32 @@ public class RowPredicateMaker {
     }
 
     /**
+     * Constructor for making a plain predicate class.
+     */
+    private RowPredicateMaker(Class<?> rowType, RowGen rowGen, RowFilter filter, String filterStr) {
+        mStoreRef = null;
+
+        mBaseClass = null;
+        mRowType = rowType;
+        mRowGen = rowGen;
+        mPrimaryRowGen = null;
+        mPrimaryIndexId = 0;
+        mIndexId = 0;
+        mFilter = filter;
+        mFilterRef = new WeakReference<>(filter);
+        mFilterStr = filterStr;
+        mRanges = null;
+
+        mClassMaker = rowGen.beginClassMaker(getClass(), rowType, null, "predicate")
+            .final_().implement(Predicate.class);
+
+        mCtorMaker = mClassMaker.addConstructor(Object[].class).varargs();
+        mCtorMaker.invokeSuperConstructor();
+
+        mCodecs = rowGen.codecsCopy();
+    }
+
+    /**
      * Returns a class which contains filtering fields and is constructed with an Object[]
      * parameter for filter arguments.
      */
@@ -173,15 +201,40 @@ public class RowPredicateMaker {
             addKeyTestMethod();
         }
 
-        // Add toString method.
-        {
-            MethodMaker mm = mClassMaker.addMethod(String.class, "toString").public_();
-            var indy = mm.var(RowPredicateMaker.class).indy
-                ("indyToString", mRowType, mFilterRef, mFilterStr);
-            mm.return_(indy.invoke(String.class, "toString", null, mm.this_()));
-        }
+        addToStringMethod();
 
         return (Class) mClassMaker.finish();
+    }
+
+    /**
+     * Returns a MethodHandle which constructs a plain Predicate (not a RowPredicate) from an
+     * Object[] parameter for the filter arguments.
+     */
+    static MethodHandle makePlain(Class<?> rowType, String filterStr) {
+        RowInfo info = RowInfo.find(rowType);
+        RowFilter filter = new Parser(info.allColumns, filterStr).parseQuery(null).filter();
+
+        var maker = new RowPredicateMaker(rowType, info.rowGen(), filter, filterStr);
+
+        maker.makeAllFields(new HashMap<String, ColumnCodec>(), maker.mFilter, false, true);
+        maker.addDirectRowTestMethod();
+
+        // Doesn't work with hidden class because the predicate instance (this class) must be
+        // passed along, and it must be specified in a NameAndType structure. Hidden classes
+        // don't have names. Two alternatives: Implement the method eagerly or else call
+        // finishLookup. The problem with finishLookup is that the class won't be unloaded
+        // unless a single-use ClassLoader instance is used.
+        //maker.addToStringMethod();
+
+        MethodHandles.Lookup lookup = maker.mClassMaker.finishHidden();
+
+        try {
+            MethodType mt = MethodType.methodType(void.class, Object[].class);
+            MethodHandle mh = lookup.findConstructor(lookup.lookupClass(), mt);
+            return mh.asType(MethodType.methodType(Predicate.class, Object[].class));
+        } catch (Throwable e) {
+            throw RowUtils.rethrow(e);
+        }
     }
 
     /**
@@ -286,6 +339,13 @@ public class RowPredicateMaker {
         return codec;
     }
 
+    private void addToStringMethod() {
+        MethodMaker mm = mClassMaker.addMethod(String.class, "toString").public_();
+        var indy = mm.var(RowPredicateMaker.class).indy
+            ("indyToString", mRowType, mFilterRef, mFilterStr);
+        mm.return_(indy.invoke(String.class, "toString", null, mm.this_()));
+    }
+
     private void addRowTestMethod() {
         MethodMaker mm = mClassMaker.addMethod(boolean.class, "test", Object.class).public_();
         var indy = mm.var(RowPredicateMaker.class).indy
@@ -293,6 +353,17 @@ public class RowPredicateMaker {
         Class<?> rowClass = RowMaker.find(mRowType);
         mm.return_(indy.invoke(boolean.class, "test", null,
                                mm.param(0).cast(rowClass), mm.this_()));
+    }
+
+    /**
+     * Variant which doesn't rely on indy.
+     */
+    private void addDirectRowTestMethod() {
+        MethodMaker mm = mClassMaker.addMethod(boolean.class, "test", Object.class).public_();
+        Class<?> rowClass = RowMaker.find(mRowType);
+        var tm = new RowTestMaker(mm, mm.param(0).cast(rowClass), mm.this_());
+        mFilter.accept(tm);
+        tm.finish();
     }
 
     /**
