@@ -5,37 +5,37 @@ v1.7.0
 ------
 
 * Bug fixes:
- * Don't truncate extra pages if there were any issues when opening the file. It might indicate
-   a configuration error which will be detected later as indexes are opened up.
- * When replicated, cannot start checkpoints or tasks that depend on checkpoints until after
-   the ReplController is ready. A race condition would sometimes cause a NullPointerException
-   on the first checkpoint and panic the database.
- * Fixed handling of file mappings during a remap operation which caused live mappings to be
-   closed.
- * When waiting for replication to catch up, double check the commit position at most
-   once. Without this check, the database would start up much sooner, allowing access to stale
-   data.
- * Queries no longer select table indexes which aren't available.
- * Optimizations and fixes for table row predicate locks.
- * Numerous query plan optimizations and fixes.
+  * Don't truncate extra pages if there were any issues when opening the file. It might
+    indicate a configuration error which will be detected later as indexes are opened up.
+  * When replicated, cannot start checkpoints or tasks that depend on checkpoints until after
+    the ReplController is ready. A race condition would sometimes cause a NullPointerException
+    on the first checkpoint and panic the database.
+  * Fixed handling of file mappings during a remap operation which caused live mappings to be
+    closed.
+  * When waiting for replication to catch up, double check the commit position at most
+    once. Without this check, the database would start up much sooner, allowing access to stale
+    data.
+  * Queries no longer select table indexes which aren't available.
+  * Optimizations and fixes for table row predicate locks.
+  * Numerous query plan optimizations and fixes.
 
 * Breaking changes:
- * Removed the EntryConsumer, EntryFunction, RowScanner, and RowUpdater interfaces.
- * Repurposed the Scanner and Updater interfaces to only work with tables.
- * Introduced an internal table definition version number, which can cause issues when opening
-   up tables which were created in earlier releases.
- * Table query parameters follow a one-based argument numbering scheme now instead of a
-   zero-based scheme. It's now consistent with JDBC.
- * Removed the ':' separator from the query specification.
- * Removed the Table view methods.
+  * Removed the EntryConsumer, EntryFunction, RowScanner, and RowUpdater interfaces.
+  * Repurposed the Scanner and Updater interfaces to only work with tables.
+  * Introduced an internal table definition version number, which can cause issues when opening
+    up tables which were created in earlier releases.
+  * Table query parameters follow a one-based argument numbering scheme now instead of a
+    zero-based scheme. It's now consistent with JDBC.
+  * Removed the ':' separator from the query specification.
+  * Removed the Table view methods.
 
 * New features:
- * Support remote database access.
- * Support table query ordering, which selects an appropriate index or performs a sort.
- * Support null ordered low behavior for index columns and query projections. The default is
-   still null ordered high when unspecified.
- * Added a table close method.
- * Added more JMX operations, and enabled notifications.
+  * Support remote database access.
+  * Support table query ordering, which selects an appropriate index or performs a sort.
+  * Support null ordered low behavior for index columns and query projections. The default is
+    still null ordered high when unspecified.
+  * Added a table close method.
+  * Added more JMX operations, and enabled notifications.
 
 
 v1.6.0 (2022-05-18)
