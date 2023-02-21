@@ -48,7 +48,6 @@ import org.cojen.tupl.filter.ColumnToColumnFilter;
 import org.cojen.tupl.filter.GroupFilter;
 import org.cojen.tupl.filter.InFilter;
 import org.cojen.tupl.filter.OrFilter;
-import org.cojen.tupl.filter.Parser;
 import org.cojen.tupl.filter.RowFilter;
 import org.cojen.tupl.filter.TrueFilter;
 import org.cojen.tupl.filter.Visitor;
@@ -137,9 +136,9 @@ public class RowPredicateMaker {
     }
 
     /**
-     * Constructor for making a plain predicate class.
+     * Constructor for making a plain Predicate class.
      */
-    private RowPredicateMaker(Class<?> rowType, RowGen rowGen, RowFilter filter, String filterStr) {
+    RowPredicateMaker(Class<?> rowType, RowGen rowGen, RowFilter filter, String filterStr) {
         mStoreRef = null;
 
         mBaseClass = null;
@@ -209,24 +208,22 @@ public class RowPredicateMaker {
     /**
      * Returns a MethodHandle which constructs a plain Predicate (not a RowPredicate) from an
      * Object[] parameter for the filter arguments.
+     *
+     * Note: This RowPredicateMaker instance should have been constructed for making a plain
+     * Predicate class.
      */
-    static MethodHandle makePlain(Class<?> rowType, String filterStr) {
-        RowInfo info = RowInfo.find(rowType);
-        RowFilter filter = new Parser(info.allColumns, filterStr).parseQuery(null).filter();
-
-        var maker = new RowPredicateMaker(rowType, info.rowGen(), filter, filterStr);
-
-        maker.makeAllFields(new HashMap<String, ColumnCodec>(), maker.mFilter, false, true);
-        maker.addDirectRowTestMethod();
+    MethodHandle finishPlain() {
+        makeAllFields(new HashMap<String, ColumnCodec>(), mFilter, false, true);
+        addDirectRowTestMethod();
 
         // Doesn't work with hidden class because the predicate instance (this class) must be
         // passed along, and it must be specified in a NameAndType structure. Hidden classes
         // don't have names. Two alternatives: Implement the method eagerly or else call
         // finishLookup. The problem with finishLookup is that the class won't be unloaded
         // unless a single-use ClassLoader instance is used.
-        //maker.addToStringMethod();
+        //addToStringMethod();
 
-        MethodHandles.Lookup lookup = maker.mClassMaker.finishHidden();
+        MethodHandles.Lookup lookup = mClassMaker.finishHidden();
 
         try {
             MethodType mt = MethodType.methodType(void.class, Object[].class);

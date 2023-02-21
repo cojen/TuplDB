@@ -64,7 +64,7 @@ public class RemoteRowTest {
     @Test
     public void predicate() throws Exception {
         Table<TestRow> table = mClientDb.openTable(TestRow.class);
-        var predicate = table.predicate("id == ? || str1 == ?", 10, "hello");
+        var predicate = table.predicate("{*} id == ? || str1 == ?", 10, "hello");
         var row = table.newRow();
         row.id(1);
         row.str1("hello");
