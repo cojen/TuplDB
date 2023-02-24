@@ -632,16 +632,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             doubleCheckRemainder(ranges, primaryRowGen.info);
         }
 
-        Class<? extends RowPredicate> baseClass;
-
-        // FIXME: Although no predicate lock is required, a row lock is required.
-        if (false && ranges.length == 1 && RowFilter.matchesOne(ranges[0], keyColumns)) {
-            // No predicate lock is required when the filter matches at most one row.
-            baseClass = null;
-        } else {
-            baseClass = mIndexLock.evaluatorClass();
-        }
-
+        Class<? extends RowPredicate> baseClass = mIndexLock.evaluatorClass();
         RowGen rowGen = rowInfo.rowGen();
 
         Class<? extends RowPredicate> predClass = new RowPredicateMaker

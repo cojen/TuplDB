@@ -94,8 +94,10 @@ public class RowPredicateMaker {
     private ColumnCodec[] mPrimaryCodecs;
 
     /**
+     * Constructor for making a full RowPredicate class.
+     *
      * @param storeRef is passed along to the generated code
-     * @param baseClass pass null if predicate locking isn't supported
+     * @param baseClass required
      * @param primaryRowGen pass non-null to when joining a secondary to a primary
      * @param filter the complete scan filter, not broken down into ranges
      * @param ranges filter broken down into ranges, or null if not applicable. See
@@ -107,10 +109,6 @@ public class RowPredicateMaker {
                       RowFilter filter, String filterStr, RowFilter[][] ranges)
     {
         mStoreRef = storeRef;
-
-        if (baseClass == null) {
-            baseClass = RowPredicate.None.class;
-        }
 
         mBaseClass = baseClass;
         mRowType = rowType;
@@ -164,6 +162,9 @@ public class RowPredicateMaker {
     /**
      * Returns a class which contains filtering fields and is constructed with an Object[]
      * parameter for filter arguments.
+     *
+     * Note: This RowPredicateMaker instance should have been constructed for making a full
+     * RowPredicate class.
      */
     @SuppressWarnings("unchecked")
     Class<? extends RowPredicate> finish() {
