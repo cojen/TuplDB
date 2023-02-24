@@ -75,6 +75,11 @@ public interface RowPredicate<R> extends Predicate<R> {
         public final boolean test(byte[] key, byte[] value) {
             return false;
         }
+
+        @Override
+        public final boolean test(byte[] key) {
+            return false;
+        }
     }
 
     static final class All implements RowPredicate {

@@ -27,8 +27,8 @@ import org.cojen.tupl.LockResult;
  *
  * @author Brian S O'Neill
  */
-final class AutoCommitScanner<R> extends BasicScanner<R> {
-    AutoCommitScanner(BaseTable<R> table, ScanController<R> controller) {
+final class AutoUnlockScanner<R> extends TxnResetScanner<R> {
+    AutoUnlockScanner(BaseTable<R> table, ScanController<R> controller) {
         super(table, controller);
     }
 
@@ -41,11 +41,5 @@ final class AutoCommitScanner<R> extends BasicScanner<R> {
             c.link().unlock();
         }
         return decoded;
-    }
-
-    @Override
-    protected void finished() throws IOException {
-        mRow = null;
-        mCursor.link().reset();
     }
 }

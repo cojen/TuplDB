@@ -338,6 +338,13 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
         return evaluator;
     }
 
+    @Override
+    public Closer addGuard(Transaction txn) throws LockFailureException {
+        var guard = new Guard<R>();
+        addEvaluator(txn, guard);
+        return guard;
+    }
+
     private void addEvaluator(final Transaction txn, final Evaluator<R> evaluator)
         throws LockFailureException
     {
@@ -974,6 +981,22 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
             var bucket = mBucket;
             bucket.acquireExclusive();
             doUnlockOwnedUnrestricted(bucket);
+        }
+    }
+
+    private static final class Guard<R> extends Evaluator<R> {
+        @Override
+        public boolean test(R row) {
+            return false;
+        }
+
+        @Override
+        public boolean test(byte[] key, byte[] value) {
+            return false;
+        }
+
+        public boolean test(byte[] key) {
+            return false;
         }
     }
 }

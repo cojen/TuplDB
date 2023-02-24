@@ -667,6 +667,52 @@ public class RowPredicateTest {
         w5.join();
     }
 
+    @Test
+    public void guard() throws Exception {
+        var txn1 = mDb.newTransaction();
+        mLock.addGuard(txn1);
+
+        // Exclusive lock isn't granted until guard is released.
+        var txn2 = mDb.newTransaction();
+        txn2.lockTimeout(10, TimeUnit.SECONDS);
+        var latch1 = new Latch(Latch.EXCLUSIVE);
+        var latch2 = new Latch(Latch.EXCLUSIVE);
+        Waiter w2 = start(() -> {
+            mLock.withExclusiveNoRedo(txn2, null, () -> {
+                latch1.releaseExclusive();
+                latch2.acquireExclusive();
+            });
+        });
+
+        // Exclusive lock not granted yet.
+        assertFalse(latch1.tryAcquireExclusiveNanos(100_000_000L));
+
+        txn1.exit();
+
+        // Exclusive lock was granted.
+        assertTrue(latch1.tryAcquireExclusiveNanos(2_000_000_000L));
+
+        // New calls to addGuard are blocked.
+        var txn3 = mDb.newTransaction();
+        try {
+            mLock.addGuard(txn3);
+            fail();
+        } catch (LockTimeoutException e) {
+            txn3.exit();
+        }
+
+        txn3.lockTimeout(10, TimeUnit.SECONDS);
+        Waiter w3 = start(() -> {
+            mLock.addGuard(txn3);
+        });
+
+        // Allow exclusive lock to be released.
+        latch2.releaseExclusive();
+
+        // Wait for exclusive to be released.
+        w3.join();
+    }
+
     static interface Task {
         void run() throws Exception;
     }

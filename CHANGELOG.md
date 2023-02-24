@@ -16,6 +16,8 @@ v1.7.0
     once. Without this check, the database would start up much sooner, allowing access to stale
     data.
   * Queries no longer select table indexes which aren't available.
+  * Guard against table indexes from being concurrently dropped when scanning with a null
+    transaction.
   * Optimizations and fixes for table row predicate locks.
   * Numerous query plan optimizations and fixes.
 

@@ -116,9 +116,23 @@ public interface RowPredicateLock<R> {
     Closer addPredicate(Transaction txn, RowPredicate<R> predicate) throws LockFailureException;
 
     /**
-     * Acquires an exclusive lock, which blocks all calls to openAcquire and addPredicate, and
-     * waits for existing locks to be released. The exclusive lock is released when the
-     * callback returns or throws an exception.
+     * Adds a guard into the set which is like adding a predicate lock which always evaluates
+     * to false. A guard essentially just blocks calls to withExclusiveNoRedo. Once the guard is
+     * added, it remains in the set for the entire scope of the given transaction.
+     *
+     * <p>This method is intended to be called by queries which merely want to ensure that an
+     * index which is being scanned isn't concurrently dropped. Guards don't prevent new rows
+     * from being inserted, and so they're not suitable for supporting serializable isolation.
+     *
+     * @param txn exclusive owner of the lock
+     * @return an object which can release the guard before the transaction exits
+     */
+    Closer addGuard(Transaction txn) throws LockFailureException;
+
+    /**
+     * Acquires an exclusive lock, which blocks all calls to openAcquire, addPredicate, and
+     * addGuard, and then waits for existing locks to be released. The exclusive lock is
+     * released when the callback returns or throws an exception.
      *
      * <p>This method is intended to be called when dropping an index. It ensures that the index
      * isn't dropped while being used by an active query.

@@ -173,14 +173,31 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         final BasicScanner<R> scanner;
         RowPredicateLock.Closer closer = null;
 
-        if (txn == null && controller.isJoined()) {
-            txn = mSource.newTransaction(null);
-            txn.lockMode(LockMode.REPEATABLE_READ);
-            scanner = new AutoCommitScanner<>(this, controller);
-        } else {
-            scanner = new BasicScanner<>(this, controller);
+        newScanner: {
+            if (txn == null) {
+                // A null transaction behaves like a read committed transaction (as usual), but
+                // it doesn't acquire predicate locks. This makes it weaker that a transaction
+                // which is explicitly read committed.
 
-            if (txn != null && !txn.lockMode().noReadLock) {
+                if (joinedPrimaryTableClass() != null) {
+                    // Need to guard against this secondary index from being concurrently
+                    // dropped. This is like adding a predicate lock which matches nothing.
+                    txn = mSource.newTransaction(null);
+                    closer = mIndexLock.addGuard(txn);
+
+                    if (controller.isJoined()) {
+                        // Need to retain row locks against the secondary until after the primary
+                        // row has been loaded.
+                        txn.lockMode(LockMode.REPEATABLE_READ);
+                        scanner = new AutoUnlockScanner<>(this, controller);
+                    } else {
+                        txn.lockMode(LockMode.READ_COMMITTED);
+                        scanner = new TxnResetScanner<>(this, controller);
+                    }
+
+                    break newScanner;
+                }
+            } else if (!txn.lockMode().noReadLock) {
                 // This case is reached when a transaction was provided which is read committed
                 // or higher. Adding a predicate lock prevents new rows from being inserted
                 // into the scan range for the duration of the transaction scope. If the lock
@@ -188,6 +205,8 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
                 // effectively making the transaction serializable.
                 closer = mIndexLock.addPredicate(txn, controller.predicate());
             }
+
+            scanner = new BasicScanner<>(this, controller);
         }
 
         try {
@@ -269,7 +288,11 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             if (txn == null) {
                 txn = mSource.newTransaction(null);
                 updater = new AutoCommitUpdater<>(this, controller);
-                // Don't add a predicate lock.
+                if (secondary != null) {
+                    // Need to guard against the secondary index from being concurrently
+                    // dropped. This is like adding a predicate lock which matches nothing.
+                    secondary.mIndexLock.addGuard(txn);
+                }
                 break addPredicate;
             }
 
