@@ -134,7 +134,7 @@ extends <a href="View.html" title="interface in org.cojen.tupl">View</a>, <a hre
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#close()" class="member-name-link">close</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Closes this index reference, causing it to appear empty and <a href="ClosedIndexException.html" title="class in org.cojen.tupl">unmodifiable</a>.</div>
+<div class="block">Closes this index reference.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#drop()" class="member-name-link">drop</a>()</code></div>
@@ -300,8 +300,8 @@ extends <a href="View.html" title="interface in org.cojen.tupl">View</a>, <a hre
 <h3>close</h3>
 <div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">close</span>()
     throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<div class="block">Closes this index reference, causing it to appear empty and <a href="ClosedIndexException.html" title="class in org.cojen.tupl">unmodifiable</a>. The underlying index is still valid and can be
- re-opened, unless it's a <a href="Database.html#newTemporaryIndex()">temporary</a> index.
+<div class="block">Closes this index reference. The underlying index is still valid and can be re-opened,
+ unless it's a <a href="Database.html#newTemporaryIndex()">temporary</a> index.
 
  <p>In general, indexes should not be closed if they are referenced by active
  transactions. Although closing the index is safe, the transaction might re-open it.</div>
@@ -312,6 +312,12 @@ extends <a href="View.html" title="interface in org.cojen.tupl">View</a>, <a hre
 <dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/Closeable.html#close()" title="class or interface in java.io" class="external-link">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></code></dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
+<dt>See Also:</dt>
+<dd>
+<ul class="see-list">
+<li><a href="ClosedIndexException.html" title="class in org.cojen.tupl"><code>ClosedIndexException</code></a></li>
+</ul>
+</dd>
 </dl>
 </section>
 </li>
