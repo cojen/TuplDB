@@ -24,6 +24,7 @@ v1.7.0
 * Breaking changes:
   * Removed the EntryConsumer, EntryFunction, RowScanner, and RowUpdater interfaces.
   * Repurposed the Scanner and Updater interfaces to only work with tables.
+  * Reading from a closed/deleted index now throws ClosedIndexException or DeletedIndexException.
   * Introduced an internal table definition version number, which can cause issues when opening
     up tables which were created in earlier releases.
   * Table query parameters follow a one-based argument numbering scheme now instead of a

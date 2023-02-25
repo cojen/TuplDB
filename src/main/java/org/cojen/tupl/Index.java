@@ -93,12 +93,13 @@ public interface Index extends View, Closeable {
     public boolean verify(VerificationObserver observer) throws IOException;
 
     /**
-     * Closes this index reference, causing it to appear empty and {@linkplain
-     * ClosedIndexException unmodifiable}. The underlying index is still valid and can be
-     * re-opened, unless it's a {@linkplain Database#newTemporaryIndex temporary} index.
+     * Closes this index reference. The underlying index is still valid and can be re-opened,
+     * unless it's a {@linkplain Database#newTemporaryIndex temporary} index.
      *
      * <p>In general, indexes should not be closed if they are referenced by active
      * transactions. Although closing the index is safe, the transaction might re-open it.
+     *
+     * @see ClosedIndexException
      */
     @Override
     public void close() throws IOException;

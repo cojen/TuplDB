@@ -586,10 +586,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
 
     private Runnable doDeleteIndex(long indexId, Index ix) {
         try {
-            if (ix != null) {
-                ix.close();
-            }
-            return mDatabase.replicaDeleteTree(indexId);
+            return mDatabase.replicaDeleteTree(indexId, ix);
         } catch (IOException e) {
             throw rethrow(e);
         }
@@ -1739,9 +1736,19 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         throws IOException
     {
         BTreeCursor tc = ce.mCursor;
-        tc.mTxn = txn;
-        tc.findNearby(key);
-        register(tc);
+
+        do {
+            try {
+                tc.mTxn = txn;
+                tc.findNearby(key);
+                register(tc);
+                break;
+            } catch (ClosedIndexException e) {
+                tc.mKey = key;
+                tc = reopenCursor(e, ce);
+            }
+        } while (tc != null);
+
         return tc;
     }
 

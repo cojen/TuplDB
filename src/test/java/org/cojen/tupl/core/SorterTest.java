@@ -100,7 +100,12 @@ public class SorterTest {
         fastAssertArrayEquals("world".getBytes(), ix2.load(null, "hello".getBytes()));
 
         mDatabase.deleteIndex(ix2);
-        assertEquals(0, ix2.count(null, null));
+
+        try {
+            ix2.count(null, null);
+            fail();
+        } catch (ClosedIndexException e) {
+        }
 
         // dups
         s.add("hello".getBytes(), "world".getBytes());

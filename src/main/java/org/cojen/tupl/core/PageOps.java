@@ -23,6 +23,11 @@ import java.nio.ByteBuffer;
 
 import java.util.zip.CRC32;
 
+import org.cojen.tupl.ClosedIndexException;
+import org.cojen.tupl.DeletedIndexException;
+
+import static org.cojen.tupl.core.Node.*;
+
 import static org.cojen.tupl.core.Utils.*;
 
 import static java.util.Arrays.compareUnsigned;
@@ -47,17 +52,16 @@ final class PageOps {
      */
     static final int NODE_OVERHEAD = 100;
 
-    private static final byte[] CLOSED_TREE_PAGE;
-    private static final byte[] STUB_TREE_PAGE;
+    private static final byte[] CLOSED_TREE_PAGE, DELETED_TREE_PAGE, STUB_TREE_PAGE;
 
     static {
-        CLOSED_TREE_PAGE = newEmptyTreeLeafPage();
-        STUB_TREE_PAGE = newEmptyTreePage(Node.TN_HEADER_SIZE + 8, Node.TYPE_TN_IN);
-    }
+        // Note that none of these special nodes set the extremity bits. See p_stubTreePage.
 
-    private static byte[] newEmptyTreeLeafPage() {
-        return newEmptyTreePage
-            (Node.TN_HEADER_SIZE, Node.TYPE_TN_LEAF | Node.LOW_EXTREMITY | Node.HIGH_EXTREMITY);
+        CLOSED_TREE_PAGE = newEmptyTreePage(TN_HEADER_SIZE + 8, TYPE_TN_IN);
+
+        DELETED_TREE_PAGE = newEmptyTreePage(TN_HEADER_SIZE + 8, TYPE_TN_IN);
+
+        STUB_TREE_PAGE = newEmptyTreePage(TN_HEADER_SIZE + 8, TYPE_TN_IN);
     }
 
     private static byte[] newEmptyTreePage(int pageSize, int type) {
@@ -68,10 +72,10 @@ final class PageOps {
         // Set fields such that binary search returns ~0 and availableBytes returns 0.
 
         // Note: Same as Node.clearEntries.
-        p_shortPutLE(empty, 4,  Node.TN_HEADER_SIZE);     // leftSegTail
-        p_shortPutLE(empty, 6,  pageSize - 1);            // rightSegTail
-        p_shortPutLE(empty, 8,  Node.TN_HEADER_SIZE);     // searchVecStart
-        p_shortPutLE(empty, 10, Node.TN_HEADER_SIZE - 2); // searchVecEnd
+        p_shortPutLE(empty, 4,  TN_HEADER_SIZE);     // leftSegTail
+        p_shortPutLE(empty, 6,  pageSize - 1);       // rightSegTail
+        p_shortPutLE(empty, 8,  TN_HEADER_SIZE);     // searchVecStart
+        p_shortPutLE(empty, 10, TN_HEADER_SIZE - 2); // searchVecEnd
 
         return empty;
     }
@@ -81,11 +85,39 @@ final class PageOps {
     }
 
     /**
-     * Returned page is 12 bytes, defining a closed tree leaf node. Contents must not be
-     * modified.
+     * Returned page is 20 bytes, defining a closed tree internal node. Contents must not be
+     * modified. The page can also be acted upon as a leaf node, considering that an empty leaf
+     * node has the same structure. The extra 8 bytes at the end will simply be ignored.
      */
     static byte[] p_closedTreePage() {
         return CLOSED_TREE_PAGE;
+    }
+
+    /**
+     * See p_closedTreePage.
+     */
+    static byte[] p_deletedTreePage() {
+        return DELETED_TREE_PAGE;
+    }
+
+    static boolean isClosedOrDeleted(byte[] page) {
+        return page == CLOSED_TREE_PAGE || page == DELETED_TREE_PAGE;
+    }
+
+    /**
+     * Throws a ClosedIndexException or a DeletedIndexException, depending on the page type.
+     */
+    static void checkClosedIndexException(byte[] page) throws ClosedIndexException {
+        if (isClosedOrDeleted(page)) {
+            throw newClosedIndexException(page);
+        }
+    }
+
+    /**
+     * Returns a ClosedIndexException or a DeletedIndexException, depending on the page type.
+     */
+    static ClosedIndexException newClosedIndexException(byte[] page) throws ClosedIndexException {
+        return page == DELETED_TREE_PAGE ? new DeletedIndexException() : new ClosedIndexException();
     }
 
     /**

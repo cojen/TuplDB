@@ -222,8 +222,8 @@ public interface Database extends CauseCloseable, Flushable {
      * Fully closes and deletes the given index, but does not immediately reclaim the pages it
      * occupied. Run the returned task in any thread to reclaim the pages.
      *
-     * <p>Once deleted, the index reference appears empty and {@linkplain DeletedIndexException
-     * unmodifiable}. A new index by the original name can be created, which will be assigned a
+     * <p>Once deleted, accesing the index causes {@linkplain DeletedIndexException exceptions}
+     * to be thrown. A new index by the original name can be created, which will be assigned a
      * different unique identifier. Any transactions still referring to the old index will not
      * affect the new index.
      *

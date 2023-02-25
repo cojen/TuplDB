@@ -115,7 +115,12 @@ public class TempIndexTest {
             assertEquals(temp.id(), temp2.id());
         }
 
-        assertEquals(0, temp.count(null, null));
+        try {
+            assertEquals(0, temp.count(null, null));
+            fail();
+        } catch (ClosedIndexException e) {
+        }
+
         assertEquals(0, temp2.count(null, null));
     }
 
@@ -154,7 +159,12 @@ public class TempIndexTest {
             assertEquals(temp.id(), temp2.id());
         }
 
-        assertEquals(0, temp.count(null, null));
+        try {
+            assertEquals(0, temp.count(null, null));
+            fail();
+        } catch (DeletedIndexException e) {
+        }
+
         assertEquals(0, temp2.count(null, null));
     }
 

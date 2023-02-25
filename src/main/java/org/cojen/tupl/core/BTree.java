@@ -863,10 +863,18 @@ class BTree extends Tree implements View, Index {
     }
 
     /**
+     * Closes the database such that it throws DeletedIndexException, but doesn't actually run
+     * the code to truly delete the index.
+     */
+    final void closeAsDeleted() {
+        close(false, false, false, p_deletedTreePage());
+    }
+
+    /**
      * @param rootLatched true if root node is already latched by the current thread
      * @return root node if forDelete; null if already closed
      */
-    final Node close(boolean forDelete, final boolean rootLatched) {
+    final Node close(boolean forDelete, boolean rootLatched) {
         return close(forDelete, rootLatched, false);
     }
 
@@ -882,7 +890,18 @@ class BTree extends Tree implements View, Index {
      * @param rootLatched true if root node is already latched by the current thread
      * @return root node if forDelete; null if already closed
      */
-    private Node close(boolean forDelete, final boolean rootLatched, boolean force) {
+    private Node close(boolean forDelete, boolean rootLatched, boolean force) {
+        var closedPage = forDelete ? p_deletedTreePage() : p_closedTreePage();
+        return close(forDelete, rootLatched, force, closedPage);
+    }
+
+    /**
+     * @param rootLatched true if root node is already latched by the current thread
+     * @return root node if forDelete; null if already closed
+     */
+    private Node close(boolean forDelete, final boolean rootLatched, boolean force,
+                       /*P*/ byte[] closedPage)
+    {
         Node root = mRoot;
 
         if (!rootLatched) {
@@ -890,7 +909,7 @@ class BTree extends Tree implements View, Index {
         }
 
         try {
-            if (root.mPage == p_closedTreePage()) {
+            if (isClosedOrDeleted(root.mPage)) {
                 // Already closed.
                 return null;
             }
@@ -908,10 +927,10 @@ class BTree extends Tree implements View, Index {
                 mDatabase.commitLock().acquireExclusive();
                 try {
                     root.acquireExclusive();
-                    if (root.mPage == p_closedTreePage()) {
+                    if (isClosedOrDeleted(root.mPage)) {
                         return null;
                     }
-                    root.invalidateCursors();
+                    root.invalidateCursors(closedPage);
                 } finally {
                     mDatabase.commitLock().releaseExclusive();
                 }
@@ -920,7 +939,7 @@ class BTree extends Tree implements View, Index {
                 // to release the latch, preventing a race condition when Index.drop is called.
                 // Releasing the root latch would allow another thread to sneak in and insert
                 // entries, which would then get silently deleted.
-                root.invalidateCursors();
+                root.invalidateCursors(closedPage);
             }
 
             // Root node reference cannot be cleared, so instead make it non-functional. Move
@@ -933,7 +952,7 @@ class BTree extends Tree implements View, Index {
                 mDatabase.nodeMapRemove(root);
             }
 
-            root.closeRoot();
+            root.closeRoot(closedPage);
 
             if (forDelete) {
                 mDatabase.treeClosed(this);
@@ -963,7 +982,7 @@ class BTree extends Tree implements View, Index {
     public final boolean isClosed() {
         Node root = mRoot;
         root.acquireShared();
-        boolean closed = root.mPage == p_closedTreePage();
+        boolean closed = isClosedOrDeleted(root.mPage);
         root.releaseShared();
         return closed;
     }
@@ -1002,9 +1021,7 @@ class BTree extends Tree implements View, Index {
 
         try {
             try {
-                if (root.mPage == p_closedTreePage()) {
-                    throw mDatabase.newClosedIndexException(this);
-                }
+                checkClosedIndexException(root.mPage);
 
                 if (mustBeEmpty && (!root.isLeaf() || root.hasKeys())) {
                     // Note that this check also covers the transactional case, because deletes

@@ -322,20 +322,28 @@ public class RemoteTest {
 
         assertNull(mServerDb.findIndex("test"));
         assertNull(mServerDb.indexById(id));
-        assertNull(serverIx.load(null, key));
+        try {
+            assertNull(serverIx.load(null, key));
+            fail();
+        } catch (DeletedIndexException e) {
+        }
         try {
             serverIx.store(null, key, value);
             fail();
-        } catch (ClosedIndexException e) {
+        } catch (DeletedIndexException e) {
         }
 
         assertNull(mClientDb.findIndex("test"));
         assertNull(mClientDb.indexById(id));
-        assertNull(clientIx.load(null, key));
+        try {
+            assertNull(clientIx.load(null, key));
+            fail();
+        } catch (DeletedIndexException e) {
+        }
         try {
             clientIx.store(null, key, value);
             fail();
-        } catch (ClosedIndexException e) {
+        } catch (DeletedIndexException e) {
         }
 
         task.run();

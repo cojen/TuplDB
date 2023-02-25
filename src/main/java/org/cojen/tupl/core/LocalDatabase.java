@@ -1217,23 +1217,6 @@ final class LocalDatabase extends CoreDatabase {
             && !findNumberedFiles(mBaseFile, REDO_FILE_SUFFIX, 0, Long.MAX_VALUE).isEmpty();
     }
 
-    /**
-     * Returns a ClosedIndexException or a DeletedIndexException.
-     */
-    ClosedIndexException newClosedIndexException(BTree tree) {
-        if (lookupIndexById(tree.mId) == null && tree.mIdBytes != null) {
-            try {
-                if (!mRegistry.exists(Transaction.BOGUS, tree.mIdBytes) && !isClosed()) {
-                    return new DeletedIndexException();
-                }
-            } catch (IOException e) {
-                // Can't truly know if deleted or not.
-            }
-        }
-
-        return new ClosedIndexException();
-    }
-
     @Override
     public Index findIndex(byte[] name) throws IOException {
         return openTree(name, false);
@@ -1398,9 +1381,7 @@ final class LocalDatabase extends CoreDatabase {
         final Node root = tree.mRoot;
         root.acquireExclusive();
         try {
-            if (root.mPage == p_closedTreePage()) {
-                throw newClosedIndexException(tree);
-            }
+            checkClosedIndexException(root.mPage);
 
             if (Tree.isInternal(tree.mId)) {
                 throw new IllegalStateException("Cannot rename an internal index");
@@ -1558,7 +1539,13 @@ final class LocalDatabase extends CoreDatabase {
     /**
      * Returns a deletion task for a tree which just moved to the trash.
      */
-    Runnable replicaDeleteTree(long treeId) throws IOException {
+    Runnable replicaDeleteTree(long treeId, Index ix) throws IOException {
+        if (ix instanceof BTree bt) {
+            bt.closeAsDeleted();
+        } else if (ix != null) {
+            ix.close();
+        }
+
         var treeIdBytes = new byte[8];
         encodeLongBE(treeIdBytes, 0, treeId);
 
@@ -1606,7 +1593,7 @@ final class LocalDatabase extends CoreDatabase {
 
                 if (!doMoveToTrash(txn, tree.mIdBytes)) {
                     // Handle concurrent delete attempt.
-                    throw newClosedIndexException(tree);
+                    throw newClosedIndexException(tree.mRoot.mPage);
                 }
 
                 if (txn.mRedo != null) {
@@ -1647,7 +1634,7 @@ final class LocalDatabase extends CoreDatabase {
         Node root = tree.close(true, true);
         if (root == null) {
             // Handle concurrent close attempt.
-            throw newClosedIndexException(tree);
+            throw newClosedIndexException(tree.mRoot.mPage);
         }
 
         BTree trashed = newBTreeInstance(tree.mId, tree.mIdBytes, tree.mName, root);
@@ -1678,7 +1665,7 @@ final class LocalDatabase extends CoreDatabase {
         try {
             root.acquireExclusive();
 
-            if (!root.hasKeys() && root.mPage != p_closedTreePage()) {
+            if (!root.hasKeys() && !isClosedOrDeleted(root.mPage)) {
                 // Delete and remove from trash.
                 prepareToDelete(root);
                 deleteNode(root);
@@ -3354,7 +3341,7 @@ final class LocalDatabase extends CoreDatabase {
         try {
             if (root != null) {
                 root.acquireExclusive();
-                if (root.mPage == p_closedTreePage()) {
+                if (isClosedOrDeleted(root.mPage)) {
                     // Database has been closed.
                     root.releaseExclusive();
                     return;
@@ -4701,8 +4688,10 @@ final class LocalDatabase extends CoreDatabase {
             slot++;
         }
 
-        // Free up more memory in case something refers to this object for a long time.
-        mNodeMapTable = null;
+        // Free up more memory in case something refers to this object for a long time. Need to
+        // store a valid array to prevent a NullPointerException if any indexes are accessed
+        // after the database is closed.
+        mNodeMapTable = new Node[1];
     }
 
     /**
@@ -5196,7 +5185,7 @@ final class LocalDatabase extends CoreDatabase {
         /*P*/ //     if (node.mPage == p_nonTreePage()) {
         /*P*/ //         node.mPage = mPageDb.dirtyPage(newId);
         /*P*/ //         node.asEmptyRoot();
-        /*P*/ //     } else if (node.mPage != p_closedTreePage()) {
+        /*P*/ //     } else if (!isClosedOrDeleted(node.mPage)) {
         /*P*/ //         node.mPage = mPageDb.copyPage(node.id(), newId); // copy on write
         /*P*/ //     }
         /*P*/ // }

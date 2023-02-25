@@ -18,7 +18,7 @@
 package org.cojen.tupl;
 
 /**
- * Thrown when attempting to modify the contents of an index which was deleted.
+ * Thrown when attempting to access or modify the contents of an index which was deleted.
  *
  * @author Brian S O'Neill
  */

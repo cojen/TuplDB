@@ -680,8 +680,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                 CursorFrame parentFrame = frame.mParentFrame;
 
                 if (parentFrame == null) {
-                    node.releaseShared();
-                    reset();
+                    reachedEnd(node);
                     return null;
                 }
 
@@ -800,8 +799,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                 CursorFrame parentFrame = frame.mParentFrame;
 
                 if (parentFrame == null) {
-                    node.releaseShared();
-                    reset();
+                    reachedEnd(node);
                     return null;
                 }
 
@@ -930,10 +928,8 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
 
             while (true) {
                 if (!node.isBottomInternal()) {
-                    if (node.mPage == p_closedTreePage()) {
-                        return null;
-                    }
                     try {
+                        checkClosedIndexException(node.mPage);
                         throw new CorruptDatabaseException(node.toString());
                     } finally {
                         node.releaseShared();
@@ -1083,9 +1079,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
         while (true) {
             if (!node.isBottomInternal()) {
                 try {
-                    if (node.mPage == p_closedTreePage()) {
-                        return count;
-                    }
+                    checkClosedIndexException(node.mPage);
                     throw new CorruptDatabaseException(node.toString());
                 } finally {
                     node.releaseShared();
@@ -1309,8 +1303,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                 CursorFrame parentFrame = frame.mParentFrame;
 
                 if (parentFrame == null) {
-                    node.releaseShared();
-                    reset();
+                    reachedEnd(node);
                     return null;
                 }
 
@@ -1429,8 +1422,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                 CursorFrame parentFrame = frame.mParentFrame;
 
                 if (parentFrame == null) {
-                    node.releaseShared();
-                    reset();
+                    reachedEnd(node);
                     return null;
                 }
 
@@ -1560,9 +1552,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
             while (true) {
                 if (!node.isBottomInternal()) {
                     try {
-                        if (node.mPage == p_closedTreePage()) {
-                            return null;
-                        }
+                        checkClosedIndexException(node.mPage);
                         throw new CorruptDatabaseException(node.toString());
                     } finally {
                         node.releaseShared();
@@ -2936,8 +2926,12 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                 if (mTree.isLockAvailable(txn, key, keyHash)) {
                     // No need to acquire full lock.
                     int pos = leaf.mNodePos;
-                    mValue = pos < 0 ? null
-                        : keyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
+                    if (pos >= 0) {
+                        mValue = keyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
+                    } else {
+                        checkClosedIndexException(node.mPage);
+                        mValue = null;
+                    }
                     return true;
                 }
             } finally {
@@ -3416,7 +3410,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                 CommitLock.Shared shared = prepareStoreUpgrade(leaf, null);
 
                 Node node = leaf.mNode;
-                if (node.mPage == p_closedTreePage()) {
+                if (isClosedOrDeleted(node.mPage)) {
                     node.releaseExclusive();
                     shared.release();
                     return false;
@@ -4589,6 +4583,18 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
     }
 
     /**
+     * Called when next/previous reached the end. Must be called with the node latch held
+     * shared, which is always released. The cursor is also always reset.
+     */
+    private void reachedEnd(Node node) throws ClosedIndexException {
+        boolean closed = isClosedOrDeleted(node.mPage);
+        resetLatched(node);
+        if (closed) {
+            throw newClosedIndexException(node.mPage);
+        }
+    }
+
+    /**
      * Called if an exception is thrown while frames are being constructed.
      * Given frame does not need to be bound, but it must not be latched.
      */
@@ -4725,17 +4731,24 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
         try {
             LocalDatabase db = mTree.mDatabase;
 
-            TransactionContext context;
-            RedoWriter redo;
-            if (txn == null) {
-                context = db.anyTransactionContext();
-                redo = db.txnRedoWriter();
-            } else {
-                context = txn.mContext;
-                redo = txn.mRedo;
-            }
+            doRedo: {
+                TransactionContext context;
+                RedoWriter redo;
+                if (txn == null) {
+                    context = db.anyTransactionContext();
+                    redo = db.txnRedoWriter();
+                } else {
+                    context = txn.mContext;
+                    redo = txn.mRedo;
+                    if (redo == null) {
+                        // RedoWriter can be null if the transaction is used for redo recovery
+                        // or for replica-side operation processing.
+                        break doRedo;
+                    }
+                }
 
-            context.redoCursorUnregister(redo, cursorId);
+                context.redoCursorUnregister(redo, cursorId);
+            }
 
             db.unregisterCursor(cursorId);
             mCursorId = 0;

@@ -347,15 +347,15 @@ final class Node extends Clutch implements DatabaseAccess {
         /*P*/ // [|
         /*P*/ // if (db.mFullyMapped) {
         /*P*/ //     // Cannot delete mapped pages.
-        /*P*/ //     closeRoot();
+        /*P*/ //     closeRoot(p_closedTreePage());
         /*P*/ //     return;
         /*P*/ // }
         /*P*/ // ]
 
         var page = mPage;
-        if (page != p_closedTreePage()) {
+        if (!isClosedOrDeleted(page)) {
             p_delete(page);
-            closeRoot();
+            closeRoot(p_closedTreePage());
         }
     }
 
@@ -405,12 +405,14 @@ final class Node extends Clutch implements DatabaseAccess {
 
     /**
      * Close the root node when closing a tree.
+     *
+     * @page page p_closedTreePage or p_deletedTreePage
      */
-    void closeRoot() {
+    void closeRoot(/*P*/ byte[] page) {
         // Prevent node from being marked dirty.
         id(CLOSED_ID);
         mCachedState = CACHED_CLEAN;
-        mPage = p_closedTreePage();
+        mPage = page;
         readFields();
     }
 
@@ -507,7 +509,8 @@ final class Node extends Clutch implements DatabaseAccess {
             lock = new Node(childId);
 
             if (childId <= 1) {
-                throw new AssertionError("Illegal child id: " + childId);
+                checkClosedIndexException(mPage);
+                throw new CorruptDatabaseException("Illegal child id: " + childId);
             }
         } catch (Throwable e) {
             releaseEither();
@@ -887,12 +890,14 @@ final class Node extends Clutch implements DatabaseAccess {
     /**
      * Invalidate all cursors, starting from the root. Used when closing an index which still
      * has active cursors. Caller must hold exclusive latch on node.
+     *
+     * @page page p_closedTreePage or p_deletedTreePage
      */
-    void invalidateCursors() {
-        invalidateCursors(createClosedNode());
+    void invalidateCursors(/*P*/ byte[] page) {
+        invalidateCursors(page, createClosedNode(page));
     }
 
-    private void invalidateCursors(Node closed) {
+    private void invalidateCursors(/*P*/ byte[] page, Node closed) {
         int pos = isLeaf() ? -1 : 0;
 
         closed.acquireExclusive();
@@ -923,9 +928,9 @@ final class Node extends Clutch implements DatabaseAccess {
             if (child != null) {
                 try {
                     if (closed == null) {
-                        closed = createClosedNode();
+                        closed = createClosedNode(page);
                     }
-                    child.invalidateCursors(closed);
+                    child.invalidateCursors(page, closed);
                 } finally {
                     child.releaseExclusive();
                 }
@@ -933,8 +938,11 @@ final class Node extends Clutch implements DatabaseAccess {
         }
     }
 
-    private static Node createClosedNode() {
-        var closed = new Node(null, p_closedTreePage());
+    /**
+     * @page page p_closedTreePage or p_deletedTreePage
+     */
+    private static Node createClosedNode(/*P*/ byte[] page) {
+        var closed = new Node(null, page);
         closed.id(CLOSED_ID);
         closed.mCachedState = CACHED_CLEAN;
         closed.readFields();
@@ -4727,11 +4735,7 @@ final class Node extends Clutch implements DatabaseAccess {
         }
 
         var page = mPage;
-
-        if (page == p_closedTreePage()) {
-            // Node is a closed tree root.
-            throw tree.mDatabase.newClosedIndexException(tree);
-        }
+        checkClosedIndexException(page);
 
         Node newNode = tree.mDatabase.allocDirtyNode(NodeGroup.MODE_UNEVICTABLE);
         tree.mDatabase.nodeMapPut(newNode);
@@ -4797,11 +4801,7 @@ final class Node extends Clutch implements DatabaseAccess {
         // fragmentation to ensure that split is successful.
 
         var page = mPage;
-
-        if (page == p_closedTreePage()) {
-            // Node is a closed tree root.
-            throw tree.mDatabase.newClosedIndexException(tree);
-        }
+        checkClosedIndexException(page);
 
         Node newNode = tree.mDatabase.allocDirtyNode(NodeGroup.MODE_UNEVICTABLE);
         tree.mDatabase.nodeMapPut(newNode);
@@ -5837,7 +5837,7 @@ final class Node extends Clutch implements DatabaseAccess {
                     int start;
                     if (tail == TN_HEADER_SIZE) {
                         // Freshly initialized node.
-                        if (page == p_closedTreePage()) {
+                        if (isClosedOrDeleted(page)) {
                             throw new DatabaseException("Closed");
                         }
                         start = node.pageSize(page) - 2;

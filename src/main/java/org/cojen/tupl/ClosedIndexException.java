@@ -18,7 +18,7 @@
 package org.cojen.tupl;
 
 /**
- * Thrown when attempting to modify the contents of an index through a closed
+ * Thrown when attempting to access or modify the contents of an index through a closed
  * reference.
  *
  * @author Brian S O'Neill

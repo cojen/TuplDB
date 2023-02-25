@@ -355,18 +355,23 @@ public class ReplicationTest {
 
         fence();
 
-        assertNull(rix.load(null, "hello".getBytes()));
+        try {
+            assertNull(rix.load(null, "hello".getBytes()));
+            fail();
+        } catch (DeletedIndexException e) {
+            // Expected.
+        }
 
         try {
             lix.store(null, "hello".getBytes(), "world".getBytes());
             fail();
-        } catch (ClosedIndexException e) {
+        } catch (DeletedIndexException e) {
             // Expected.
         }
 
         try {
             rix.store(null, "hello".getBytes(), "world".getBytes());
-        } catch (ClosedIndexException e) {
+        } catch (DeletedIndexException e) {
             // Expected.
         }
     }

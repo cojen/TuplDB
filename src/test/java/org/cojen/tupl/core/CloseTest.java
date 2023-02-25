@@ -61,6 +61,24 @@ public class CloseTest {
         assertNotSame(ix, ix2);
 
         try {
+            ix.load(null, "hello".getBytes());
+            fail();
+        } catch (DeletedIndexException e) {
+            throw e;
+        } catch (ClosedIndexException e) {
+            // expected -- index is closed
+        }
+
+        try {
+            ix.exists(null, "hello".getBytes());
+            fail();
+        } catch (DeletedIndexException e) {
+            throw e;
+        } catch (ClosedIndexException e) {
+            // expected -- index is closed
+        }
+
+        try {
             ix.store(null, "hello".getBytes(), "world".getBytes());
             fail();
         } catch (DeletedIndexException e) {
@@ -70,27 +88,32 @@ public class CloseTest {
         }
 
         Cursor c = ix.newCursor(null);
-        c.first();
-        assertNull(c.key());
-        try {
-            c.next();
-            fail();
-        } catch (UnpositionedCursorException e) {
-            // expected -- cursor is unpositioned
-        }
 
-        c.find("nothing".getBytes());
-        fastAssertArrayEquals("nothing".getBytes(), c.key());
-        assertNull(c.value());
-        c.load();
         try {
-            c.store("something".getBytes());
+            c.first();
             fail();
         } catch (DeletedIndexException e) {
             throw e;
         } catch (ClosedIndexException e) {
             // expected -- index is closed
         }
+
+        try {
+            c.find("nothing".getBytes());
+            fail();
+        } catch (DeletedIndexException e) {
+            throw e;
+        } catch (ClosedIndexException e) {
+            // expected -- index is closed
+        }
+
+        try {
+            c.load();
+            fail();
+        } catch (UnpositionedCursorException e) {
+            // expected
+        }
+
         c.reset();
 
         ix2.store(null, "hello".getBytes(), "world".getBytes());
@@ -117,7 +140,15 @@ public class CloseTest {
         fastAssertArrayEquals("hello".getBytes(), c.key());
         fastAssertArrayEquals("world".getBytes(), c.value());
 
-        c.next();
+        try {
+            c.next();
+            fail();
+        } catch (DeletedIndexException e) {
+            throw e;
+        } catch (ClosedIndexException e) {
+            // expected
+        }
+
         assertNull(c.key());
         assertNull(c.value());
 
@@ -233,7 +264,11 @@ public class CloseTest {
         assertNull(mDb.findIndex("drop"));
         assertNull(mDb.indexById(id));
 
-        ix.store(null, "hello".getBytes(), null);
+        try {
+            ix.store(null, "hello".getBytes(), null);
+            fail();
+        } catch (DeletedIndexException e) {
+        }
 
         try {
             ix.store(null, "hello".getBytes(), "world".getBytes());
@@ -282,15 +317,18 @@ public class CloseTest {
 
         ix.drop();
 
-        c.load();
-        assertArrayEquals("hello".getBytes(), c.key());
-        assertNull(c.value());
-        c.reset();
+        try {
+            c.load();
+            fail();
+        } catch (DeletedIndexException e) {
+            // expected
+        }
 
         try {
             ix.drop();
             fail();
         } catch (DeletedIndexException e) {
+            // expected
         }
 
         assertNull(mDb.findIndex("drop"));
@@ -346,8 +384,9 @@ public class CloseTest {
             ix.store(null, "hello".getBytes(), "world!".getBytes());
             fail();
         } catch (DeletedIndexException e) {
-            throw e;
+            // expected
         } catch (ClosedIndexException e) {
+            throw e;
         }
 
         task.run();
@@ -391,15 +430,217 @@ public class CloseTest {
 
         ix.close();
 
-        c.findNearby("hello-3".getBytes());
-        assertTrue(c.value() == null);
-
         try {
-            c.store("stuff".getBytes());
+            c.findNearby("hello-3".getBytes());
             fail();
         } catch (DeletedIndexException e) {
             throw e;
         } catch (ClosedIndexException e) {
+        }
+
+        try {
+            c.store("stuff".getBytes());
+            fail();
+        } catch (UnpositionedCursorException e) {
+        }
+    }
+
+    @Test
+    public void nextClosed() throws Exception {
+        move(false, false, false);
+    }
+
+    @Test
+    public void skipNextClosed() throws Exception {
+        move(false, false, true);
+    }
+
+    @Test
+    public void previousClosed() throws Exception {
+        move(false, true, false);
+    }
+
+    @Test
+    public void skipPreviousClosed() throws Exception {
+        move(false, true, true);
+    }
+
+    @Test
+    public void nextDeleted() throws Exception {
+        move(true, false, false);
+    }
+
+    @Test
+    public void skipNextDeleted() throws Exception {
+        move(true, false, true);
+    }
+
+    @Test
+    public void previousDeleted() throws Exception {
+        move(true, true, false);
+    }
+
+    @Test
+    public void skipPreviousDeleted() throws Exception {
+        move(true, true, true);
+    }
+
+    private void move(boolean delete, boolean previous, boolean skip) throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        for (int i=0; i<1000; i++) {
+            ix.store(null, ("hello-" + i).getBytes(), ("world-" + i).getBytes());
+        }
+
+        Cursor c = ix.newCursor(null);
+        c.find("hello-500".getBytes());
+        assertTrue(c.value() != null);
+
+        if (!delete) {
+            ix.close();
+        } else {
+            mDb.deleteIndex(ix);
+        }
+
+        try {
+            if (previous) {
+                if (skip) {
+                    c.skip(-1);
+                } else {
+                    c.previous();
+                }
+            } else {
+                if (skip) {
+                    c.skip(10);
+                } else {
+                    c.next();
+                }
+            }
+
+            fail();
+        } catch (ClosedIndexException e) {
+            if (delete) {
+                assertTrue(e instanceof DeletedIndexException);
+            }
+        }
+    }
+
+    @Test
+    public void count() throws Exception {
+        count(false);
+    }
+
+    @Test
+    public void countDeleted() throws Exception {
+        count(true);
+    }
+
+    private void count(boolean delete) throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        for (int i=0; i<1000; i++) {
+            ix.store(null, ("hello-" + i).getBytes(), ("world-" + i).getBytes());
+        }
+
+        assertEquals(1000, ix.count(null, null));
+
+        if (!delete) {
+            ix.close();
+        } else {
+            mDb.deleteIndex(ix);
+        }
+
+        try {
+            ix.count(null, null);
+            fail();
+        } catch (ClosedIndexException e) {
+            if (delete) {
+                assertTrue(e instanceof DeletedIndexException);
+            }
+        }
+
+        try {
+            ix.count("a".getBytes(), null);
+            fail();
+        } catch (ClosedIndexException e) {
+            if (delete) {
+                assertTrue(e instanceof DeletedIndexException);
+            }
+        }
+    }
+
+    @Test
+    public void random() throws Exception {
+        random(false);
+    }
+
+    @Test
+    public void randomDeleted() throws Exception {
+        random(true);
+    }
+
+    private void random(boolean delete) throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        for (int i=0; i<1000; i++) {
+            ix.store(null, ("hello-" + i).getBytes(), ("world-" + i).getBytes());
+        }
+
+        if (!delete) {
+            ix.close();
+        } else {
+            mDb.deleteIndex(ix);
+        }
+
+        try {
+            ix.newCursor(null).random(null, null);
+            fail();
+        } catch (ClosedIndexException e) {
+            if (delete) {
+                assertTrue(e instanceof DeletedIndexException);
+            }
+        }
+
+        try {
+            ix.newCursor(null).random("a".getBytes(), null);
+            fail();
+        } catch (ClosedIndexException e) {
+            if (delete) {
+                assertTrue(e instanceof DeletedIndexException);
+            }
+        }
+    }
+
+    @Test
+    public void verify() throws Exception {
+        verify(false);
+    }
+
+    @Test
+    public void verifyDeleted() throws Exception {
+        verify(true);
+    }
+
+    private void verify(boolean delete) throws Exception {
+        Index ix = mDb.openIndex("test");
+
+        for (int i=0; i<1000; i++) {
+            ix.store(null, ("hello-" + i).getBytes(), ("world-" + i).getBytes());
+        }
+
+        if (!delete) {
+            ix.close();
+        } else {
+            mDb.deleteIndex(ix);
+        }
+
+        try {
+            ix.verify(null);
+            fail();
+        } catch (ClosedIndexException e) {
+            if (delete) {
+                assertTrue(e instanceof DeletedIndexException);
+            }
         }
     }
 

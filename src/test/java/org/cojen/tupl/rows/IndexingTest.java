@@ -1013,12 +1013,16 @@ public class IndexingTest {
         }
 
         for (int i=100; --i>=0; ) {
-            long count = nameTable.newStream(null).count();
-            if (count == 0) {
-                break;
+            try {
+                nameTable.newStream(null).count();
+            } catch (Throwable e) {
+                if (e instanceof DeletedIndexException) {
+                    break;
+                }
+                throw e;
             }
             if (i == 0) {
-                assertEquals(0, count);
+                fail();
             }
             sleep(100);
         }
@@ -1044,7 +1048,14 @@ public class IndexingTest {
             assertTrue(e.getMessage().contains("not found"));
         }
 
-        assertEquals(0, nameTable.newStream(null).count());
+        try {
+            nameTable.newStream(null).count();
+            fail();
+        } catch (Throwable e) {
+            if (!(e instanceof DeletedIndexException)) {
+                throw e;
+            }
+        }
 
         assertNull(db.indexById(nameTableId));
     }
@@ -1130,23 +1141,31 @@ public class IndexingTest {
         }
 
         for (int i=100; --i>=0; ) {
-            long count = nameTable.newStream(null).count();
-            if (count == 0) {
-                break;
+            try {
+                nameTable.newStream(null).count();
+            } catch (Throwable e) {
+                if (e instanceof DeletedIndexException) {
+                    break;
+                }
+                throw e;
             }
             if (i == 0) {
-                assertEquals(0, count);
+                fail();
             }
             sleep(100);
         }
 
         for (int i=100; --i>=0; ) {
-            long count = replicaNameTable.newStream(null).count();
-            if (count == 0) {
-                break;
+            try {
+                replicaNameTable.newStream(null).count();
+            } catch (Throwable e) {
+                if (e instanceof DeletedIndexException) {
+                    break;
+                }
+                throw e;
             }
             if (i == 0) {
-                assertEquals(0, count);
+                fail();
             }
             sleep(100);
         }

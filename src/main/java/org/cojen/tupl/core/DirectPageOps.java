@@ -25,12 +25,17 @@ import java.util.Arrays;
 
 import java.util.zip.CRC32;
 
+import org.cojen.tupl.ClosedIndexException;
+import org.cojen.tupl.DeletedIndexException;
+
 import org.cojen.tupl.io.DirectAccess;
 import org.cojen.tupl.io.MappedPageArray;
 import org.cojen.tupl.io.UnsafeAccess;
 
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.Runner;
+
+import static org.cojen.tupl.core.Node.*;
 
 /**
  * Implementation of {@link PageOps} which accesses memory directly (unsafe). DirectPageOps is
@@ -46,9 +51,7 @@ public final class DirectPageOps {
 
     private static final sun.misc.Unsafe UNSAFE = UnsafeAccess.obtain();
     private static final long BYTE_ARRAY_OFFSET = UNSAFE.arrayBaseOffset(byte[].class);
-    private static final long EMPTY_TREE_LEAF;
-    private static final long CLOSED_TREE_PAGE;
-    private static final long STUB_TREE_PAGE;
+    private static final long EMPTY_TREE_LEAF, CLOSED_TREE_PAGE, DELETED_TREE_PAGE, STUB_TREE_PAGE;
 
     static {
         Integer checkedPageSize = Integer.getInteger
@@ -62,14 +65,14 @@ public final class DirectPageOps {
             CHECKED_PAGE_SIZE = checkedPageSize;
         }
 
-        EMPTY_TREE_LEAF = newEmptyTreeLeafPage();
-        CLOSED_TREE_PAGE = newEmptyTreeLeafPage();
-        STUB_TREE_PAGE = newEmptyTreePage(Node.TN_HEADER_SIZE + 8, Node.TYPE_TN_IN);
-    }
+        EMPTY_TREE_LEAF = newEmptyTreePage
+            (TN_HEADER_SIZE, TYPE_TN_LEAF | LOW_EXTREMITY | HIGH_EXTREMITY);
 
-    private static long newEmptyTreeLeafPage() {
-        return newEmptyTreePage
-            (Node.TN_HEADER_SIZE, Node.TYPE_TN_LEAF | Node.LOW_EXTREMITY | Node.HIGH_EXTREMITY);
+        CLOSED_TREE_PAGE = newEmptyTreePage(TN_HEADER_SIZE + 8, TYPE_TN_IN);
+
+        DELETED_TREE_PAGE = newEmptyTreePage(TN_HEADER_SIZE + 8, TYPE_TN_IN);
+
+        STUB_TREE_PAGE = newEmptyTreePage(TN_HEADER_SIZE + 8, TYPE_TN_IN);
     }
 
     private static long newEmptyTreePage(int pageSize, int type) {
@@ -80,10 +83,10 @@ public final class DirectPageOps {
         // Set fields such that binary search returns ~0 and availableBytes returns 0.
 
         // Note: Same as Node.clearEntries.
-        p_shortPutLE(empty, 4,  Node.TN_HEADER_SIZE);     // leftSegTail
-        p_shortPutLE(empty, 6,  pageSize - 1);            // rightSegTail
-        p_shortPutLE(empty, 8,  Node.TN_HEADER_SIZE);     // searchVecStart
-        p_shortPutLE(empty, 10, Node.TN_HEADER_SIZE - 2); // searchVecEnd
+        p_shortPutLE(empty, 4,  TN_HEADER_SIZE);     // leftSegTail
+        p_shortPutLE(empty, 6,  pageSize - 1);       // rightSegTail
+        p_shortPutLE(empty, 8,  TN_HEADER_SIZE);     // searchVecStart
+        p_shortPutLE(empty, 10, TN_HEADER_SIZE - 2); // searchVecEnd
 
         return empty;
     }
@@ -98,6 +101,30 @@ public final class DirectPageOps {
 
     static long p_closedTreePage() {
         return CLOSED_TREE_PAGE;
+    }
+
+    static long p_deletedTreePage() {
+        return DELETED_TREE_PAGE;
+    }
+
+    static boolean isClosedOrDeleted(long page) {
+        return page == CLOSED_TREE_PAGE || page == DELETED_TREE_PAGE;
+    }
+
+    /**
+     * Throws a ClosedIndexException or a DeletedIndexException, depending on the page type.
+     */
+    static void checkClosedIndexException(long page) throws ClosedIndexException {
+        if (isClosedOrDeleted(page)) {
+            throw newClosedIndexException(page);
+        }
+    }
+
+    /**
+     * Returns a ClosedIndexException or a DeletedIndexException, depending on the page type.
+     */
+    static ClosedIndexException newClosedIndexException(long page) {
+        return page == DELETED_TREE_PAGE ? new DeletedIndexException() : new ClosedIndexException();
     }
 
     static long p_stubTreePage() {
