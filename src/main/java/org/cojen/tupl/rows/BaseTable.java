@@ -30,10 +30,12 @@ import java.util.Comparator;
 import java.util.Map;
 import java.util.Objects;
 
+import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Entry;
 import org.cojen.tupl.Index;
+import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Updater;
@@ -164,7 +166,29 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     protected Scanner<R> newScanner(Transaction txn, R row, String queryStr, Object... args)
         throws IOException
     {
-        return scannerQueryLauncher(txn, queryStr).newScanner(txn, row, args);
+        QueryLauncher<R> launcher = scannerQueryLauncher(txn, queryStr);
+
+        while (true) {
+            try {
+                return launcher.newScanner(txn, row, args);
+            } catch (ClosedIndexException | LockFailureException e) {
+                // An index might have been dropped, so check and retry. The
+                // ClosedIndexException could have come from the dropped index directly, and
+                // the LockFailureException could be caused while waiting for the index lock.
+                QueryLauncher<R> newLauncher;
+                try {
+                    newLauncher = scannerQueryLauncher(txn, queryStr);
+                } catch (Throwable e2) {
+                    e.addSuppressed(e);
+                    throw e;
+                }
+                if (newLauncher == launcher) {
+                    // No change.
+                    throw e;
+                }
+                launcher = newLauncher;
+            }
+        }
     }
 
     final Scanner<R> newScanner(Transaction txn, R row, ScanController<R> controller)
@@ -265,7 +289,27 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     protected Updater<R> newUpdater(Transaction txn, R row, String queryStr, Object... args)
         throws IOException
     {
-        return updaterQueryLauncher(txn, queryStr).newUpdater(txn, row, args);
+        QueryLauncher<R> launcher = updaterQueryLauncher(txn, queryStr);
+
+        while (true) {
+            try {
+                return launcher.newUpdater(txn, row, args);
+            } catch (ClosedIndexException | LockFailureException e) {
+                // An index might have been dropped, so check and retry.
+                QueryLauncher<R> newLauncher;
+                try {
+                    newLauncher = updaterQueryLauncher(txn, queryStr);
+                } catch (Throwable e2) {
+                    e.addSuppressed(e);
+                    throw e;
+                }
+                if (newLauncher == launcher) {
+                    // No change.
+                    throw e;
+                }
+                launcher = newLauncher;
+            }
+        }
     }
 
     protected Updater<R> newUpdater(Transaction txn, R row, ScanController<R> controller)
