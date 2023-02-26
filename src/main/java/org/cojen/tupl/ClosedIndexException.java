@@ -23,9 +23,14 @@ package org.cojen.tupl;
  *
  * @author Brian S O'Neill
  */
-public class ClosedIndexException extends UnmodifiableViewException {
+public class ClosedIndexException extends DatabaseException {
     private static final long serialVersionUID = 1L;
 
     public ClosedIndexException() {
+    }
+
+    @Override
+    public boolean isRecoverable() {
+        return true;
     }
 }
