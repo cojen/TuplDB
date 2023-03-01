@@ -89,9 +89,7 @@ loadScripts(document, 'script');</script>
 </div>
 <div class="inheritance" title="Inheritance Tree"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">java.lang.Object</a>
 <div class="inheritance"><a href="QueryPlan.html" title="class in org.cojen.tupl.diag">org.cojen.tupl.diag.QueryPlan</a>
-<div class="inheritance"><a href="QueryPlan.Table.html" title="class in org.cojen.tupl.diag">org.cojen.tupl.diag.QueryPlan.Table</a>
 <div class="inheritance">org.cojen.tupl.diag.QueryPlan.NaturalJoin</div>
-</div>
 </div>
 </div>
 <section class="class-description" id="class-description">
@@ -100,13 +98,18 @@ loadScripts(document, 'script');</script>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/io/Serializable.html" title="class or interface in java.io" class="external-link">Serializable</a></code></dd>
 </dl>
 <dl class="notes">
+<dt>Direct Known Subclasses:</dt>
+<dd><code><a href="QueryPlan.PrimaryJoin.html" title="class in org.cojen.tupl.diag">QueryPlan.PrimaryJoin</a></code></dd>
+</dl>
+<dl class="notes">
 <dt>Enclosing class:</dt>
 <dd><code><a href="QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></code></dd>
 </dl>
 <hr>
-<div class="type-signature"><span class="modifiers">public static final class </span><span class="element-name type-name-label">QueryPlan.NaturalJoin</span>
-<span class="extends-implements">extends <a href="QueryPlan.Table.html" title="class in org.cojen.tupl.diag">QueryPlan.Table</a></span></div>
-<div class="block">Query plan node which joins rows to another table by a fully specified key.</div>
+<div class="type-signature"><span class="modifiers">public static sealed class </span><span class="element-name type-name-label">QueryPlan.NaturalJoin</span>
+<span class="extends-implements">extends <a href="QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></span>
+<span class="permits">permits <a href="QueryPlan.PrimaryJoin.html" title="class in org.cojen.tupl.diag">QueryPlan.PrimaryJoin</a></span></div>
+<div class="block">Query plan node which joins two sources based on a common set of columns.</div>
 <dl class="notes">
 <dt>See Also:</dt>
 <dd>
@@ -124,7 +127,7 @@ loadScripts(document, 'script');</script>
 <h2>Nested Class Summary</h2>
 <div class="inherited-list">
 <h2 id="nested-classes-inherited-from-class-org.cojen.tupl.diag.QueryPlan">Nested classes/interfaces inherited from class&nbsp;org.cojen.tupl.diag.<a href="QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></h2>
-<code><a href="QueryPlan.DisjointUnion.html" title="class in org.cojen.tupl.diag">QueryPlan.DisjointUnion</a>, <a href="QueryPlan.Empty.html" title="class in org.cojen.tupl.diag">QueryPlan.Empty</a>, <a href="QueryPlan.Filter.html" title="class in org.cojen.tupl.diag">QueryPlan.Filter</a>, <a href="QueryPlan.FullScan.html" title="class in org.cojen.tupl.diag">QueryPlan.FullScan</a>, <a href="QueryPlan.GroupSort.html" title="class in org.cojen.tupl.diag">QueryPlan.GroupSort</a>, <a href="QueryPlan.LoadOne.html" title="class in org.cojen.tupl.diag">QueryPlan.LoadOne</a>, <a href="QueryPlan.NaturalJoin.html" title="class in org.cojen.tupl.diag">QueryPlan.NaturalJoin</a>, <a href="QueryPlan.RangeScan.html" title="class in org.cojen.tupl.diag">QueryPlan.RangeScan</a>, <a href="QueryPlan.RangeUnion.html" title="class in org.cojen.tupl.diag">QueryPlan.RangeUnion</a>, <a href="QueryPlan.Scan.html" title="class in org.cojen.tupl.diag">QueryPlan.Scan</a>, <a href="QueryPlan.Set.html" title="class in org.cojen.tupl.diag">QueryPlan.Set</a>, <a href="QueryPlan.Sort.html" title="class in org.cojen.tupl.diag">QueryPlan.Sort</a>, <a href="QueryPlan.Table.html" title="class in org.cojen.tupl.diag">QueryPlan.Table</a>, <a href="QueryPlan.Union.html" title="class in org.cojen.tupl.diag">QueryPlan.Union</a></code></div>
+<code><a href="QueryPlan.DisjointUnion.html" title="class in org.cojen.tupl.diag">QueryPlan.DisjointUnion</a>, <a href="QueryPlan.Empty.html" title="class in org.cojen.tupl.diag">QueryPlan.Empty</a>, <a href="QueryPlan.Filter.html" title="class in org.cojen.tupl.diag">QueryPlan.Filter</a>, <a href="QueryPlan.FullScan.html" title="class in org.cojen.tupl.diag">QueryPlan.FullScan</a>, <a href="QueryPlan.GroupSort.html" title="class in org.cojen.tupl.diag">QueryPlan.GroupSort</a>, <a href="QueryPlan.LoadOne.html" title="class in org.cojen.tupl.diag">QueryPlan.LoadOne</a>, <a href="QueryPlan.NaturalJoin.html" title="class in org.cojen.tupl.diag">QueryPlan.NaturalJoin</a>, <a href="QueryPlan.PrimaryJoin.html" title="class in org.cojen.tupl.diag">QueryPlan.PrimaryJoin</a>, <a href="QueryPlan.RangeScan.html" title="class in org.cojen.tupl.diag">QueryPlan.RangeScan</a>, <a href="QueryPlan.RangeUnion.html" title="class in org.cojen.tupl.diag">QueryPlan.RangeUnion</a>, <a href="QueryPlan.Scan.html" title="class in org.cojen.tupl.diag">QueryPlan.Scan</a>, <a href="QueryPlan.Set.html" title="class in org.cojen.tupl.diag">QueryPlan.Set</a>, <a href="QueryPlan.Sort.html" title="class in org.cojen.tupl.diag">QueryPlan.Sort</a>, <a href="QueryPlan.Table.html" title="class in org.cojen.tupl.diag">QueryPlan.Table</a>, <a href="QueryPlan.Union.html" title="class in org.cojen.tupl.diag">QueryPlan.Union</a></code></div>
 </section>
 </li>
 <!-- =========== FIELD SUMMARY =========== -->
@@ -136,13 +139,16 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Field</div>
 <div class="table-header col-last">Description</div>
+<div class="col-first even-row-color"><code>final <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]</code></div>
+<div class="col-second even-row-color"><code><a href="#columns" class="member-name-link">columns</a></code></div>
+<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-first odd-row-color"><code>final <a href="QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></code></div>
+<div class="col-second odd-row-color"><code><a href="#source" class="member-name-link">source</a></code></div>
+<div class="col-last odd-row-color">&nbsp;</div>
 <div class="col-first even-row-color"><code>final <a href="QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></code></div>
-<div class="col-second even-row-color"><code><a href="#source" class="member-name-link">source</a></code></div>
+<div class="col-second even-row-color"><code><a href="#target" class="member-name-link">target</a></code></div>
 <div class="col-last even-row-color">&nbsp;</div>
 </div>
-<div class="inherited-list">
-<h3 id="fields-inherited-from-class-org.cojen.tupl.diag.QueryPlan.Table">Fields inherited from class&nbsp;org.cojen.tupl.diag.<a href="QueryPlan.Table.html" title="class in org.cojen.tupl.diag">QueryPlan.Table</a></h3>
-<code><a href="QueryPlan.Table.html#keyColumns">keyColumns</a>, <a href="QueryPlan.Table.html#table">table</a>, <a href="QueryPlan.Table.html#which">which</a></code></div>
 </section>
 </li>
 <!-- ======== CONSTRUCTOR SUMMARY ======== -->
@@ -153,9 +159,8 @@ loadScripts(document, 'script');</script>
 <div class="summary-table two-column-summary">
 <div class="table-header col-first">Constructor</div>
 <div class="table-header col-last">Description</div>
-<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(java.lang.String,java.lang.String,java.lang.String%5B%5D,org.cojen.tupl.diag.QueryPlan)" class="member-name-link">NaturalJoin</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;table,
- <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;which,
- <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;keyColumns,
+<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(java.lang.String%5B%5D,org.cojen.tupl.diag.QueryPlan,org.cojen.tupl.diag.QueryPlan)" class="member-name-link">NaturalJoin</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;columns,
+ <a href="QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a>&nbsp;target,
  <a href="QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a>&nbsp;source)</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
 </div>
@@ -199,6 +204,18 @@ loadScripts(document, 'script');</script>
 <h2>Field Details</h2>
 <ul class="member-list">
 <li>
+<section class="detail" id="columns">
+<h3>columns</h3>
+<div class="member-signature"><span class="modifiers">public final</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]</span>&nbsp;<span class="element-name">columns</span></div>
+</section>
+</li>
+<li>
+<section class="detail" id="target">
+<h3>target</h3>
+<div class="member-signature"><span class="modifiers">public final</span>&nbsp;<span class="return-type"><a href="QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></span>&nbsp;<span class="element-name">target</span></div>
+</section>
+</li>
+<li>
 <section class="detail" id="source">
 <h3>source</h3>
 <div class="member-signature"><span class="modifiers">public final</span>&nbsp;<span class="return-type"><a href="QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></span>&nbsp;<span class="element-name">source</span></div>
@@ -213,18 +230,11 @@ loadScripts(document, 'script');</script>
 <h2>Constructor Details</h2>
 <ul class="member-list">
 <li>
-<section class="detail" id="&lt;init&gt;(java.lang.String,java.lang.String,java.lang.String[],org.cojen.tupl.diag.QueryPlan)">
+<section class="detail" id="&lt;init&gt;(java.lang.String[],org.cojen.tupl.diag.QueryPlan,org.cojen.tupl.diag.QueryPlan)">
 <h3>NaturalJoin</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">NaturalJoin</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;table,
- <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;which,
- <a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;keyColumns,
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">NaturalJoin</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;columns,
+ <a href="QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a>&nbsp;target,
  <a href="QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a>&nbsp;source)</span></div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>which</code> - primary key, alternate key, or secondary index</dd>
-<dd><code>keyColumns</code> - columns with '+' or '-' prefix</dd>
-<dd><code>source</code> - child plan node</dd>
-</dl>
 </section>
 </li>
 </ul>
@@ -251,7 +261,7 @@ loadScripts(document, 'script');</script>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">int</span>&nbsp;<span class="element-name">hashCode</span>()</div>
 <dl class="notes">
 <dt>Overrides:</dt>
-<dd><code><a href="QueryPlan.Table.html#hashCode()">hashCode</a></code>&nbsp;in class&nbsp;<code><a href="QueryPlan.Table.html" title="class in org.cojen.tupl.diag">QueryPlan.Table</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/Object.html#hashCode()" title="class or interface in java.lang" class="external-link">hashCode</a></code>&nbsp;in class&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></code></dd>
 </dl>
 </section>
 </li>
