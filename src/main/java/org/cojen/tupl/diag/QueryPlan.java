@@ -84,28 +84,19 @@ public abstract sealed class QueryPlan implements Serializable {
         return a;
     }
 
-    private static Appendable appendSource(Appendable a, String in1, String in2, QueryPlan source)
+    /**
+     * @param title optional
+     */
+    private static Appendable appendSub(Appendable a, String indent, String title, QueryPlan sub)
         throws IOException
     {
-        if (source != null) {
-            source.appendTo(a, in1, in2);
-        }
-        return a;
-    }
-
-    private static Appendable appendSources(Appendable a, String in1, String in2,
-                                            QueryPlan[] sources)
-        throws IOException
-    {
-        if (sources != null) {
-            String subIn2 = null;
-            for (int i=0; i<sources.length; i++) {
-                String subIn1 = in2 + "- ";
-                if (subIn2 == null || subIn2.length() < subIn1.length()) {
-                    subIn2 = " ".repeat(subIn1.length());
-                }
-                appendSource(a, subIn1, subIn2, sources[i]);
+        if (sub != null) {
+            String in1 = indent + "- ";
+            if (title != null) {
+                in1 = in1 + title + ": ";
             }
+            String in2 = indent + "  ";
+            sub.appendTo(a, in1, in2);
         }
         return a;
     }
@@ -280,16 +271,12 @@ public abstract sealed class QueryPlan implements Serializable {
     public static final class LoadOne extends Table {
         private static final long serialVersionUID = 1L;
 
-        public final String expression;
-
         /**
          * @param which primary key, alternate key, or secondary index
          * @param keyColumns columns with '+' or '-' prefix
-         * @param expression filter expression
          */
-        public LoadOne(String table, String which, String[] keyColumns, String expression) {
+        public LoadOne(String table, String which, String[] keyColumns) {
             super(table, which, keyColumns);
-            this.expression = expression;
         }
 
         @Override
@@ -297,7 +284,6 @@ public abstract sealed class QueryPlan implements Serializable {
             a.append(in1).append("load one using ").append(which).append('\n');
             appendItem(a, in2, "table").append(table).append('\n');
             appendKeyColumns(a, in2).append('\n');
-            appendItem(a, in2, "expression").append(expression).append('\n');
         }
 
         @Override
@@ -305,15 +291,9 @@ public abstract sealed class QueryPlan implements Serializable {
             return obj instanceof LoadOne load && matches(load);
         }
 
-        boolean matches(LoadOne other) {
-            return super.matches(other) && Objects.equals(expression, other.expression);
-        }
-
         @Override
         public int hashCode() {
-            int hash = super.hashCode();
-            hash = hash * 31 + Objects.hashCode(expression);
-            return hash ^ -1241565554;
+            return super.hashCode() ^ -1241565554;
         }
     }
 
@@ -338,8 +318,7 @@ public abstract sealed class QueryPlan implements Serializable {
         @Override
         void appendTo(Appendable a, String in1, String in2) throws IOException {
             a.append(in1).append("filter").append(": ").append(expression).append('\n');
-            in2 += "  ";
-            appendSource(a, in2, in2, source);
+            appendSub(a, in2, null, source);
         }
 
         @Override
@@ -382,8 +361,7 @@ public abstract sealed class QueryPlan implements Serializable {
         void appendTo(Appendable a, String in1, String in2) throws IOException {
             a.append(in1).append("sort").append(": ");
             appendArray(a, sortColumns).append('\n');
-            in2 += "  ";
-            appendSource(a, in2, in2, source);
+            appendSub(a, in2, null, source);
         }
 
         @Override
@@ -428,8 +406,7 @@ public abstract sealed class QueryPlan implements Serializable {
             a.append(in1).append("group sort").append(": [");
             appendArray(a, groupColumns).append("], ");
             appendArray(a, sortColumns).append('\n');
-            in2 += "  ";
-            appendSource(a, in2, in2, source);
+            appendSub(a, in2, null, source);
         }
 
         @Override
@@ -450,30 +427,28 @@ public abstract sealed class QueryPlan implements Serializable {
     }
 
     /**
-     * Query plan node which joins rows to another table by a fully specified key.
+     * Query plan node which joins two sources based on a common set of columns.
      */
-    public static final class NaturalJoin extends Table {
+    public static sealed class NaturalJoin extends QueryPlan {
         private static final long serialVersionUID = 1L;
 
+        public final String[] columns;
+        public final QueryPlan target;
         public final QueryPlan source;
 
-        /**
-         * @param which primary key, alternate key, or secondary index
-         * @param keyColumns columns with '+' or '-' prefix
-         * @param source child plan node
-         */
-        public NaturalJoin(String table, String which, String[] keyColumns, QueryPlan source) {
-            super(table, which, keyColumns);
+        public NaturalJoin(String[] columns, QueryPlan target, QueryPlan source) {
+            this.columns = columns;
+            this.target = target;
             this.source = source;
         }
 
         @Override
         void appendTo(Appendable a, String in1, String in2) throws IOException {
-            a.append(in1).append("natural join to ").append(which).append('\n');
-            appendItem(a, in2, "table").append(table).append('\n');
-            appendKeyColumns(a, in2).append('\n');
-            in2 += "  ";
-            appendSource(a, in2, in2, source);
+            a.append(in1).append("natural join").append('\n');
+            appendItem(a, in2, "columns");
+            appendArray(a, columns).append('\n');
+            appendSub(a, in2, "target", target);
+            appendSub(a, in2, "source", source);
         }
 
         @Override
@@ -482,14 +457,54 @@ public abstract sealed class QueryPlan implements Serializable {
         }
 
         boolean matches(NaturalJoin other) {
-            return super.matches(other) && Objects.equals(source, other.source);
+            return Arrays.equals(columns, other.columns) &&
+                Objects.equals(target, other.target) && Objects.equals(source, other.source);
+                
         }
 
         @Override
         public int hashCode() {
-            int hash = super.hashCode();
-            hash = hash * 31 + Objects.hashCode(source);
-            return hash ^ 2047385165;
+            int hash = Objects.hashCode(source);
+            hash = hash * 31 + Objects.hashCode(target);
+            hash = hash * 31 + Arrays.hashCode(columns);
+            return hash ^ 2016719916;
+        }
+    }
+
+    /**
+     * Query plan node which joins index rows to primary rows.
+     */
+    public static final class PrimaryJoin extends NaturalJoin {
+        private static final long serialVersionUID = 1L;
+
+        public final String table;
+
+        /**
+         * @param keyColumns columns with '+' or '-' prefix
+         * @param source child plan node
+         */
+        public PrimaryJoin(String table, String[] keyColumns, QueryPlan source) {
+            super(keyColumns, new LoadOne(table, "primary key", keyColumns), source);
+            this.table = table;
+        }
+
+        @Override
+        void appendTo(Appendable a, String in1, String in2) throws IOException {
+            a.append(in1).append("primary join").append('\n');
+            appendItem(a, in2, "table").append(table).append('\n');
+            appendItem(a, in2, "key columns");
+            appendArray(a, columns).append('\n');
+            appendSub(a, in2, null, source);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof PrimaryJoin join && matches(join);
+        }
+
+        @Override
+        public int hashCode() {
+            return super.hashCode() ^ 2047385165;
         }
     }
 
@@ -508,7 +523,11 @@ public abstract sealed class QueryPlan implements Serializable {
 
         void appendTo(Appendable a, String in1, String in2, String title) throws IOException {
             a.append(in1).append(title).append('\n');
-            appendSources(a, in1, in2, sources);
+            if (sources != null) {
+                for (int i=0; i<sources.length; i++) {
+                    appendSub(a, in2, null, sources[i]);
+                }
+            }
         }
 
         boolean matches(Set other) {

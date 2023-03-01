@@ -834,7 +834,7 @@ public class TableMaker {
     
         if ((option & 0b10) != 0) {
             rowInfo = primaryRowInfo;
-            plan = new QueryPlan.NaturalJoin(rowInfo.name, "primary key", rowInfo.keySpec(), plan);
+            plan = new QueryPlan.PrimaryJoin(rowInfo.name, rowInfo.keySpec(), plan);
         }
 
         return plan;
