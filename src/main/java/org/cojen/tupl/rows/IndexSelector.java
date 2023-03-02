@@ -430,7 +430,7 @@ final class IndexSelector<R> {
      * Returns true if index scan should go in reverse order.
      */
     boolean selectedReverse(int i) {
-        return mSelectedReverse == null ? false : mSelectedReverse[i];
+        return mSelectedReverse != null && mSelectedReverse[i];
     }
 
     /**
@@ -569,13 +569,14 @@ final class IndexSelector<R> {
      */
     private long keyMatchScore(List<Term> terms, ColumnSet cs) {
         long score = 0;
+        int primaryMatches = 0;
 
         scan: for (ColumnInfo column : cs.keyColumns.values()) {
             Term term;
             findTerm: {
                 for (Term t : terms) {
                     if (t.mType > HALF_RANGE) {
-                        break;
+                        break scan;
                     }
                     if (t.mFilter.column().name.equals(column.name)) {
                         term = t;
@@ -588,6 +589,16 @@ final class IndexSelector<R> {
 
             switch (term.mType) {
                 case EQUALITY -> {
+                    if (cs != mPrimaryInfo
+                        && mPrimaryInfo.keyColumns.containsKey(column.name)
+                        && ++primaryMatches == mPrimaryInfo.keyColumns.size())
+                    {
+                        // If an index has exactly matched all of the primary key columns, then
+                        // peg the score to match that of the primary index. This prevents it
+                        // from being immediately ranked higher than the primary index.
+                        score = primaryMatches * 3;
+                        break scan;
+                    }
                     score += 3;
                     continue;
                 }
