@@ -338,12 +338,9 @@ public abstract class RowFilter implements Comparable<RowFilter> {
 
     /**
      * Returns true if the given range (as provided by rangeExtract or multiRangeExtract)
-     * exactly matches one row.
+     * exactly matches one row, if found. The range might contain remainder filters.
      */
     public static boolean matchesOne(RowFilter[] range, ColumnInfo... keyColumns) {
-        if (range[2] != null) { // remainder
-            return false;
-        }
         RowFilter low = range[0];
         RowFilter high = range[1];
         return low != null && high != null && low.matchesOne(high, keyColumns);
