@@ -257,9 +257,9 @@ public class OrFilter extends GroupFilter {
     }
 
     @Override
-    public boolean matchesOne(String columnName) {
+    public boolean isDistinct(String columnName) {
         for (RowFilter sub : mSubFilters) {
-            if (!sub.matchesOne(columnName)) {
+            if (!sub.isDistinct(columnName)) {
                 return false;
             }
         }
