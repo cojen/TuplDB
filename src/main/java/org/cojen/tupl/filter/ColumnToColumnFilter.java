@@ -100,7 +100,7 @@ public final class ColumnToColumnFilter extends ColumnFilter {
     }
 
     @Override
-    public boolean isDistinct(String columnName) {
+    public boolean matchesOne(String columnName) {
         return false;
     }
 

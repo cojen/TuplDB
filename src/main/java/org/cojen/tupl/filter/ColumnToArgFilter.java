@@ -153,7 +153,7 @@ public class ColumnToArgFilter extends ColumnFilter {
     }
 
     @Override
-    public boolean isDistinct(String columnName) {
+    public boolean matchesOne(String columnName) {
         return mOperator == OP_EQ
             && mColumn.type != BigDecimal.class
             && mColumn.name.equals(columnName);

@@ -261,7 +261,7 @@ final class IndexSelector<R> {
         boolean copied = false;
 
         for (String name : orderBy.keySet()) {
-            if (filter.isDistinct(name)) {
+            if (filter.matchesOne(name)) {
                 if (!copied) {
                     orderBy = new OrderBy(orderBy);
                     copied = true;

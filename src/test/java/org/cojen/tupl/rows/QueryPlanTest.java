@@ -974,40 +974,29 @@ public class QueryPlanTest {
     public void orderByFullMatched() throws Exception {
         // No need to sort by columns which are fully matched. Column b is dropped from the
         // ordering specification.
-        QueryPlan plan = mTable.scannerPlan(null, "{+c, +b} b == ? || b == ? && c != ?");
+        QueryPlan plan = mTable.scannerPlan(null, "{+c, +b} b == ? && c != ?");
         comparePlans(new QueryPlan.Sort
-                     (new String[] {"+c"}, new QueryPlan.RangeUnion
-                      (new QueryPlan.PrimaryJoin
+                     (new String[] {"+c"},
+                      new QueryPlan.Filter
+                      ("c != ?2", new QueryPlan.PrimaryJoin
                        (TestRow.class.getName(), new String[] {"+id"},
                         new QueryPlan.RangeScan
                         (TestRow.class.getName(), "secondary index", new String[] { "+b", "+id"},
-                         false, "b >= ?1", "b <= ?1")),
-                       new QueryPlan.Filter
-                       ("c != ?3", new QueryPlan.PrimaryJoin
-                        (TestRow.class.getName(), new String[] {"+id"},
-                         new QueryPlan.RangeScan
-                         (TestRow.class.getName(), "secondary index", new String[] { "+b", "+id"},
-                          false, "b >= ?2", "b <= ?2"))))),
+                         false, "b >= ?1", "b <= ?1")))),
                      plan);
 
         // BigDecimal equal matching is fuzzy, and so multiple matches are possible. Column d
         // isn't dropped from the order specification.
-        plan = mTable.scannerPlan(null, "{+c, +d} d == ? || d == ? && c != ?");
+        plan = mTable.scannerPlan(null, "{+c, +d} d == ? && c != ?");
         comparePlans(new QueryPlan.Sort
-                     (new String[] {"+c", "+d"}, new QueryPlan.RangeUnion
-                      (new QueryPlan.PrimaryJoin
+                     (new String[] {"+c", "+d"},
+                      new QueryPlan.Filter
+                      ("c != ?2", new QueryPlan.PrimaryJoin
                        (TestRow.class.getName(), new String[] {"+id"},
                         new QueryPlan.Filter
                         ("d == ?1", new QueryPlan.RangeScan
                          (TestRow.class.getName(), "secondary index", new String[] { "+d", "+id"},
-                          false, "d == ?1", "d == ?1"))),
-                       new QueryPlan.Filter
-                       ("c != ?3", new QueryPlan.PrimaryJoin
-                        (TestRow.class.getName(), new String[] {"+id"},
-                         new QueryPlan.Filter
-                         ("d == ?2", new QueryPlan.RangeScan
-                          (TestRow.class.getName(), "secondary index", new String[] { "+d", "+id"},
-                           false, "d == ?2", "d == ?2")))))),
+                          false, "d == ?1", "d == ?1"))))),
                      plan);
     }
 

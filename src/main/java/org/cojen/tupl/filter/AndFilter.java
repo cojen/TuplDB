@@ -343,9 +343,9 @@ public class AndFilter extends GroupFilter {
     }
 
     @Override
-    public boolean isDistinct(String columnName) {
+    public boolean matchesOne(String columnName) {
         for (RowFilter sub : mSubFilters) {
-            if (sub.isDistinct(columnName)) {
+            if (sub.matchesOne(columnName)) {
                 return true;
             }
         }
