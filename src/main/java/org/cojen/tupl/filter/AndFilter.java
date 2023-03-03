@@ -304,7 +304,7 @@ public class AndFilter extends GroupFilter {
     }
 
     @Override
-    boolean matchesOne(RowFilter high, ColumnInfo... keyColumns) {
+    public boolean matchesOne(RowFilter high, ColumnInfo... keyColumns) {
         if (!(high instanceof AndFilter highCol) ||
             mSubFilters.length != keyColumns.length ||
             mSubFilters.length != highCol.mSubFilters.length)

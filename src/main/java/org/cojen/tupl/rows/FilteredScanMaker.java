@@ -228,15 +228,28 @@ public class FilteredScanMaker<R> {
         ctorParams[3] = false;
         ctorParams[4] = reverseVar;
 
-        if (mLowBound != null || mHighBound != null) {
-            // TODO: Optimize if bounds are the same strings (name >= ? && name <= ?) by
-            // avoiding duplicate calls to perform lex encoding.
-            if (mLowBound != null) {
-                encodeBound(ctorParams, mLowBound, true);
+        if (mLowBound != null) {
+            encodeBound(ctorParams, mLowBound, true);
+        }
+
+        high: if (mHighBound != null) {
+            matchCheck: if (mLowBound != null) {
+                var keyColumns = mRowGen.info.keyColumns.values().toArray(ColumnInfo[]::new);
+                if (!mLowBound.matchesOne(mHighBound, keyColumns)) {
+                    break matchCheck;
+                }
+                // The low and high bounds are exactly the same, and so at most one row
+                // will be matched.
+                if (ctorParams[1] != Boolean.TRUE) {
+                    // Bounds are expected to be inclusive.
+                    throw new AssertionError();
+                }
+                ctorParams[2] = ctorParams[0];
+                ctorParams[3] = true;
+                break high;
             }
-            if (mHighBound != null) {
-                encodeBound(ctorParams, mHighBound, false);
-            }
+
+            encodeBound(ctorParams, mHighBound, false);
         }
 
         mFilterCtorMaker.invokeSuperConstructor(ctorParams);
@@ -332,7 +345,12 @@ public class FilteredScanMaker<R> {
     }
 
     /**
-     * Adds code to the constructor.
+     * Adds code to the constructor by filling in the low or high constructor parameters.
+     *
+     * @param ctorParams references to the parameters to be passed to the super constructor
+     * (byte[] lowBound, boolean lowInclusive, byte[] highBound, boolean highInclusive)
+     * @param bound low or high bound
+     * @param low indicates which bound is to be encoded
      */
     private void encodeBound(Object[] ctorParams, RowFilter bound, boolean low) {
         ColumnCodec[] codecs = mRowGen.keyCodecs();

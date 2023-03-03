@@ -337,20 +337,10 @@ public abstract class RowFilter implements Comparable<RowFilter> {
     }
 
     /**
-     * Returns true if the given range (as provided by rangeExtract or multiRangeExtract)
-     * exactly matches one row, if found. The range might contain remainder filters.
+     * Returns true if the bounding range defined by this low filter and the given high filter
+     * matches at most one row. False is returned if a column is a "fuzzy" BigDecimal match.
      */
-    public static boolean matchesOne(RowFilter[] range, ColumnInfo... keyColumns) {
-        RowFilter low = range[0];
-        RowFilter high = range[1];
-        return low != null && high != null && low.matchesOne(high, keyColumns);
-    }
-
-    /**
-     * Returns true if this low filter and the given high filter fully matches all the given
-     * key columns. False is returned if a column is a "fuzzy" BigDecimal match.
-     */
-    boolean matchesOne(RowFilter high, ColumnInfo... keyColumns) {
+    public boolean matchesOne(RowFilter high, ColumnInfo... keyColumns) {
         return false;
     }
 

@@ -145,7 +145,7 @@ public class ColumnToArgFilter extends ColumnFilter {
     }
 
     @Override
-    boolean matchesOne(RowFilter high, ColumnInfo... keyColumns) {
+    public boolean matchesOne(RowFilter high, ColumnInfo... keyColumns) {
         return (high instanceof ColumnToArgFilter highCol) &&
             mOperator == OP_GE && highCol.mOperator == OP_LE &&
             mArgNum == highCol.mArgNum && mColumn.name.equals(highCol.mColumn.name) &&
