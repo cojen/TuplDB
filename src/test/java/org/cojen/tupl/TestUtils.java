@@ -265,12 +265,33 @@ public class TestUtils {
     }
 
     public static <T extends Thread> T startAndWaitUntilBlocked(T t) {
+        return startAndWaitUntilBlocked(t, (String) null, null);
+    }
+
+    public static <T extends Thread> T startAndWaitUntilBlocked(T t, Class where, String method) {
+        String whereName = where == null ? null : where.getName();
+        return startAndWaitUntilBlocked(t, whereName, method);
+    }
+
+    public static <T extends Thread> T startAndWaitUntilBlocked(T t, String where, String method) {
         t.start();
         while (true) {
             Thread.State state = t.getState();
+
             if (state != Thread.State.NEW && state != Thread.State.RUNNABLE) {
-                return t;
+                if (where == null) {
+                    return t;
+                }
+
+                for (var trace : t.getStackTrace()) {
+                    if (where.equals(trace.getClassName())) {
+                        if (method == null || method.equals(trace.getMethodName())) {
+                            return t;
+                        }
+                    }
+                }
             }
+
             Thread.yield();
         }
     }

@@ -928,9 +928,10 @@ public class IndexLockTest {
             row.name("newname");
             table.store(txn, row);
             txn.commit();
-        });
+        }, "org.cojen.tupl.core.Lock", "tryLockUpgradable");
 
         // Cannot read a row because it's blocked by w1.
+        String waitAt = mode == LockMode.UPGRADABLE_READ ? "tryLockUpgradable" : "tryLockShared";
         Waiter w2 = start(() -> {
             Transaction txn = mDatabase.newTransaction();
             txn.lockMode(mode);
@@ -939,7 +940,7 @@ public class IndexLockTest {
             scanner.step();
             scanner.close();
             txn.reset();
-        });
+        }, "org.cojen.tupl.core.Lock", waitAt);
 
         txn0.reset();
 
@@ -961,7 +962,6 @@ public class IndexLockTest {
                 e2 = e;
             }
 
-            // FIXME: still fails sometimes
             assertTrue(e1 instanceof DeadlockException || e2 instanceof DeadlockException);
         }
     }
@@ -1099,14 +1099,15 @@ public class IndexLockTest {
     }
 
     @Test
-    @Ignore("Fails under load for unknown reason")
     public void joinNullTxn() throws Exception {
         // Test that a scanner over a secondary index with a null transaction acquires the
         // secondary lock first, and then acquires the primary lock while the secondary lock is
         // still held.
 
         teardown();
-        mDatabase = Database.open(new DatabaseConfig().lockTimeout(2, TimeUnit.SECONDS));
+        mDatabase = Database.open(new DatabaseConfig()
+                                  .directPageAccess(false)
+                                  .lockTimeout(2, TimeUnit.SECONDS));
 
         Index tableSource = mDatabase.openIndex("test");
         var table = (BaseTable<TestRow2>) tableSource.asTable(TestRow2.class);
@@ -1140,12 +1141,12 @@ public class IndexLockTest {
         // Blocked on primary key lock until txn1 rolls back.
         Waiter w2 = start(() -> {
             tableSource.lockExclusive(txn2, pk2);
-        });
+        }, "org.cojen.tupl.core.Lock", "tryLockExclusive");
 
         // Blocked on secondary key lock until txn1 rolls back.
         Waiter w3 = start(() -> {
             var scanner = nameIx.newScanner(null, "name == ?", "name-2");
-        });
+        }, "org.cojen.tupl.core.Lock", "tryLockShared");
 
         // This causes w2 to acquire the primary key lock, and now w3 should be waiting on w2.
         txn1.reset();
@@ -1254,6 +1255,14 @@ public class IndexLockTest {
 
     static Waiter start(Task task) {
         return TestUtils.startAndWaitUntilBlocked(new Waiter(task));
+    }
+
+    static Waiter start(Task task, Class where, String method) {
+        return TestUtils.startAndWaitUntilBlocked(new Waiter(task), where, method);
+    }
+
+    static Waiter start(Task task, String where, String method) {
+        return TestUtils.startAndWaitUntilBlocked(new Waiter(task), where, method);
     }
 
     @PrimaryKey("id")
