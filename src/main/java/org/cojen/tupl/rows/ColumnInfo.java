@@ -110,7 +110,11 @@ public class ColumnInfo implements Cloneable {
 
     long autoMin, autoMax;
 
-    boolean isAutomatic() {
+    public boolean isHidden() {
+        return hidden;
+    }
+
+    public boolean isAutomatic() {
         return autoMin != autoMax;
     }
 
@@ -130,7 +134,13 @@ public class ColumnInfo implements Cloneable {
         return typeCode & ~TYPE_DESCENDING;
     }
 
-    boolean isUnsigned() {
+    public boolean isSigned() {
+        int plain = plainTypeCode();
+        return (TYPE_BYTE <= plain && plain <= TYPE_DOUBLE) 
+            || (TYPE_BIG_INTEGER <= plain && plain <= TYPE_BIG_DECIMAL);
+    }
+
+    public boolean isUnsigned() {
         return isUnsigned(typeCode);
     }
 
@@ -138,7 +148,7 @@ public class ColumnInfo implements Cloneable {
         return plainTypeCode(typeCode) < 0b01000;
     }
 
-    boolean isUnsignedInteger() {
+    public boolean isUnsignedInteger() {
         return isUnsignedInteger(typeCode);
     }
 
@@ -146,7 +156,7 @@ public class ColumnInfo implements Cloneable {
         return isUnsigned(typeCode) && plainTypeCode(typeCode) != TYPE_BOOLEAN;
     }
 
-    boolean isNullLow() {
+    public boolean isNullLow() {
         return isNullLow(typeCode);
     }
 
@@ -162,7 +172,7 @@ public class ColumnInfo implements Cloneable {
         return (typeCode & TYPE_DESCENDING) != 0;
     }
 
-    boolean isNullable() {
+    public boolean isNullable() {
         return isNullable(typeCode);
     }
 
@@ -170,7 +180,7 @@ public class ColumnInfo implements Cloneable {
         return (typeCode & TYPE_NULLABLE) != 0;
     }
 
-    boolean isArray() {
+    public boolean isArray() {
         return isArray(typeCode);
     }
 
@@ -181,7 +191,7 @@ public class ColumnInfo implements Cloneable {
     /**
      * @return true if type is primitive and not nullable
      */
-    boolean isPrimitive() {
+    public boolean isPrimitive() {
         return isPrimitive(typeCode);
     }
 

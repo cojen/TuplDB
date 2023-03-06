@@ -27,15 +27,36 @@ import java.util.NavigableMap;
  *
  * @author Brian S O'Neill
  */
-class ColumnSet {
-    // Map is ordered lexicographically by name.
-    NavigableMap<String, ColumnInfo> allColumns;
+public class ColumnSet {
+    // Map order matches declaration order and excludes value columns.
+    Map<String, ColumnInfo> keyColumns;
 
     // Map is ordered lexicographically by name and excludes key columns.
     NavigableMap<String, ColumnInfo> valueColumns;
 
-    // Map order matches declaration order and excludes value columns.
-    Map<String, ColumnInfo> keyColumns;
+    // Map is ordered lexicographically by name.
+    NavigableMap<String, ColumnInfo> allColumns;
+
+    /**
+     * Returns an unmodifiable map of key columns in their declaration order.
+     */
+    public Map<String, ColumnInfo> keyColumns() {
+        return Collections.unmodifiableMap(keyColumns);
+    }
+
+    /**
+     * Returns an unmodifiable map of value columns in lexicographical order.
+     */
+    public Map<String, ColumnInfo> valueColumns() {
+        return Collections.unmodifiableMap(valueColumns);
+    }
+
+    /**
+     * Returns an unmodifiable map of all columns in lexicographical order.
+     */
+    public Map<String, ColumnInfo> allColumns() {
+        return Collections.unmodifiableMap(allColumns);
+    }
 
     /**
      * Compares all columns for equality based on their natural order.

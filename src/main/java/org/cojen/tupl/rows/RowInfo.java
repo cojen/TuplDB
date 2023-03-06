@@ -50,7 +50,7 @@ import static org.cojen.tupl.rows.ColumnInfo.*;
  *
  * @author Brian S O'Neill
  */
-class RowInfo extends ColumnSet {
+public class RowInfo extends ColumnSet {
     private static final WeakClassCache<RowInfo> cache = new WeakClassCache<>();
 
     /**
@@ -58,7 +58,7 @@ class RowInfo extends ColumnSet {
      *
      * @throws IllegalArgumentException if row type is malformed
      */
-    static RowInfo find(Class<?> rowType) {
+    public static RowInfo find(Class<?> rowType) {
         RowInfo info = cache.get(rowType);
 
         if (info == null) {

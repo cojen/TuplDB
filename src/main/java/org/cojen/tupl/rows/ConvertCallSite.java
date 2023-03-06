@@ -79,7 +79,7 @@ public class ConvertCallSite extends MutableCallSite {
      * @param from variable declared as an object type which contains the "from" value
      * @return the "to" value, of type "toType"
      */
-    static Variable make(MethodMaker mm, Class toType, Variable from) {
+    public static Variable make(MethodMaker mm, Class toType, Variable from) {
         return mm.var(ConvertCallSite.class).indy("makeNext").invoke(toType, "_", null, from);
     }
 
