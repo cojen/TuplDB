@@ -979,7 +979,13 @@ public class Converter {
     }
 
     private static String typeName(ColumnInfo info) {
-        String name = info.boxedType().getSimpleName();
+        String name;
+        if (!info.isArray()) {
+            name = info.boxedType().getSimpleName();
+        } else {
+            name = info.unboxedType().arrayType().getSimpleName();
+        }
+
         if (info.isUnsigned()) {
             return "unsigned " + name;
         } else {
