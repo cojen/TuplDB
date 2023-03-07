@@ -131,6 +131,7 @@ public class TableTest {
     }
 
     @PrimaryKey("id")
+    @SecondaryIndex("name")
     public interface TestRow {
         long id();
         void id(long id);

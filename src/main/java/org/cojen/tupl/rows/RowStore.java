@@ -962,10 +962,16 @@ public final class RowStore {
                     for (Runnable task : tasks) {
                         task.run();
                     }
-                    mSchemata.delete(txn, taskKey);
-                    txn.commit();
+                    if (taskKey != null) {
+                        mSchemata.delete(txn, taskKey);
+                    }
+                    if (txn != null) {
+                        txn.commit();
+                    }
                 } finally {
-                    txn.reset();
+                    if (txn != null) {
+                        txn.reset();
+                    }
                 }
             } catch (Throwable e) {
                 uncaught(e);
@@ -1084,7 +1090,10 @@ public final class RowStore {
         }
 
         // Remove it from the cache.
-        tableManager(mDatabase.indexById(primaryIndexId)).removeFromIndexTables(secondaryIndexId);
+        Index primaryIndex = mDatabase.indexById(primaryIndexId);
+        if (primaryIndex != null) {
+            tableManager(primaryIndex).removeFromIndexTables(secondaryIndexId);
+        }
 
         EventListener listener = mDatabase.eventListener();
 
