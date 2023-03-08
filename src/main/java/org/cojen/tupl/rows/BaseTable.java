@@ -589,11 +589,23 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     @Override
     public void close() throws IOException {
         mSource.close();
+        // Secondary indexes aren't closed immediately (see RowStore.deleteSchema), and so
+        // clearing the query cache forces calls to be made to the checkClosed method.
+        clearQueryCache();
     }
 
     @Override
     public boolean isClosed() {
         return mSource.isClosed();
+    }
+
+    private void checkClosed() throws IOException {
+        if (isClosed()) {
+            // Calling isEmpty should throw the preferred exception...
+            mSource.isEmpty();
+            // ...or else throw the generic one instead.
+            throw new ClosedIndexException();
+        }
     }
 
     @Override // ScanControllerFactory
@@ -811,6 +823,8 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     private QueryLauncher<R> newQueryLauncher(int type, String queryStr, IndexSelector selector)
         throws IOException
     {
+        checkClosed();
+
         RowInfo rowInfo;
 
         if (selector != null) {
