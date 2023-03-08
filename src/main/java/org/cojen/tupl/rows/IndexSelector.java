@@ -741,6 +741,19 @@ final class IndexSelector<R> {
     }
 
     /**
+     * Returns -1 if cs1 is better than cs2, ...
+     *
+     * @param required set of column names
+     */
+    private int compareCoveringAndOrdering(Set<String> required, ColumnSet cs1, ColumnSet cs2) {
+        int cmp = compareCovering(required, cs1, cs2);
+        if (cmp == 0) {
+            cmp = compareOrdering(cs1, cs2);
+        }
+        return cmp;
+    }
+
+    /**
      * Returns the number of requested filtering columns which are available in an index.
      */
     private static int columnAvailability(List<Term> terms, ColumnSet cs) {
@@ -883,13 +896,13 @@ final class IndexSelector<R> {
             });
 
             for (ColumnSet cs : mAlternateKeys) {
-                if (compareCovering(required, cs, best) < 0) {
+                if (compareCoveringAndOrdering(required, cs, best) < 0) {
                     best = cs;
                 }
             }
 
             for (ColumnSet cs : mSecondaryIndexes) {
-                if (compareCovering(required, cs, best) < 0) {
+                if (compareCoveringAndOrdering(required, cs, best) < 0) {
                     best = cs;
                 }
             }
