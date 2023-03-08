@@ -589,9 +589,21 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     @Override
     public void close() throws IOException {
         mSource.close();
+
         // Secondary indexes aren't closed immediately, and so clearing the query cache forces
-        // calls to be made to the checkClosed method.
-        clearQueryCache();
+        // calls to be made to the checkClosed method. Explictly closing the old launchers
+        // forces any in-progress scans to abort. Scans over sorted results aren't necessarily
+        // affected, athough it would be nice if those always aborted too.
+
+        if (mQueryLauncherCache != null) {
+            mQueryLauncherCache.clear((QueryLauncher<R> launcher) -> {
+                try {
+                    launcher.close();
+                } catch (IOException e) {
+                    throw Utils.rethrow(e);
+                }
+            });
+        }
     }
 
     @Override

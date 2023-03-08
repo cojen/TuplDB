@@ -77,4 +77,9 @@ final class ScanQueryLauncher<R> implements QueryLauncher<R> {
     public Set<String> projection() {
         return mProjection;
     }
+
+    @Override
+    public void close() throws IOException {
+        mTable.close();
+    }
 }

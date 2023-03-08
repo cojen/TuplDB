@@ -141,6 +141,11 @@ public class TableTest {
         // This should use only the secondary index and never join to the primary.
         assertEquals(1, table.newStream(null, "{name}name==?", "name-50").count());
 
+        // This should use only the secondary index and never join to the primary. Keep it open
+        // for now and check again below.
+        var byName = table.newScanner(null, "{+name}");
+        assertEquals("name-0", byName.row().name());
+
         assertFalse(table.isClosed());
         table.close();
         assertTrue(table.isClosed());
@@ -156,13 +161,11 @@ public class TableTest {
             fail();
         } catch (ClosedIndexException e) {
         }
-    }
 
-    private void dump(View ix) throws Exception {
-        try (var c = ix.newCursor(null)) {
-            for (c.first(); c.key() != null; c.next()) {
-                System.out.println(RowUtils.toHex(c.key()) + " -> " + RowUtils.toHex(c.value()));
-            }
+        try {
+            byName.step();
+            fail();
+        } catch (ClosedIndexException e) {
         }
     }
 

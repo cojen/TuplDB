@@ -105,4 +105,11 @@ final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
     public Set<String> projection() {
         return mLaunchers[0].projection();
     }
+
+    @Override
+    public void close() throws IOException {
+        for (QueryLauncher launcher : mLaunchers) {
+            launcher.close();
+        }
+    }
 }
