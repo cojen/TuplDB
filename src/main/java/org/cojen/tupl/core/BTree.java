@@ -156,9 +156,12 @@ class BTree extends Tree implements View, Index {
     public boolean isEmpty() throws IOException {
         Node root = mRoot;
         root.acquireShared();
-        boolean empty = root.isLeaf() && !root.hasKeys();
-        root.releaseShared();
-        return empty;
+        try {
+            checkClosedIndexException(root.mPage);        
+            return root.isLeaf() && !root.hasKeys();
+        } finally {
+            root.releaseShared();
+        }
     }
 
     @Override

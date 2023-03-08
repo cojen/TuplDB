@@ -61,6 +61,15 @@ public class CloseTest {
         assertNotSame(ix, ix2);
 
         try {
+            ix.isEmpty();
+            fail();
+        } catch (DeletedIndexException e) {
+            throw e;
+        } catch (ClosedIndexException e) {
+            // expected -- index is closed
+        }
+
+        try {
             ix.load(null, "hello".getBytes());
             fail();
         } catch (DeletedIndexException e) {
@@ -382,6 +391,15 @@ public class CloseTest {
 
         try {
             ix.store(null, "hello".getBytes(), "world!".getBytes());
+            fail();
+        } catch (DeletedIndexException e) {
+            // expected
+        } catch (ClosedIndexException e) {
+            throw e;
+        }
+
+        try {
+            ix.isEmpty();
             fail();
         } catch (DeletedIndexException e) {
             // expected
