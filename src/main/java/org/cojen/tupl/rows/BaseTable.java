@@ -589,8 +589,8 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     @Override
     public void close() throws IOException {
         mSource.close();
-        // Secondary indexes aren't closed immediately (see RowStore.deleteSchema), and so
-        // clearing the query cache forces calls to be made to the checkClosed method.
+        // Secondary indexes aren't closed immediately, and so clearing the query cache forces
+        // calls to be made to the checkClosed method.
         clearQueryCache();
     }
 
