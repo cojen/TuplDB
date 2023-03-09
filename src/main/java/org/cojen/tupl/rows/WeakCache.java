@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import java.util.function.BiFunction;
+import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import java.util.function.Predicate;
 
@@ -41,16 +42,40 @@ public class WeakCache<K, V, H> extends RefCache<K, V, H> {
     private Entry<K, V>[] mEntries;
     private int mSize;
 
+    @SuppressWarnings({"unchecked"})
     public WeakCache() {
-        clear();
+        // Initial capacity must be a power of 2.
+        mEntries = new Entry[2];
     }
 
     @Override
     @SuppressWarnings({"unchecked"})
     public synchronized void clear() {
-        // Initial capacity must be a power of 2.
-        mEntries = new Entry[2];
-        mSize = 0;
+        if (mSize != 0 || mEntries.length != 2) {
+            mEntries = new Entry[2];
+            mSize = 0;
+        }
+    }
+
+    @Override
+    public void clear(Consumer<V> c) {
+        Entry<K, V>[] entries;
+        int size;
+
+        synchronized (this) {
+            entries = mEntries;
+            size = mSize;
+            clear();
+        }
+
+        if (size > 0) for (int i=0; i<entries.length; i++) {
+            for (var e = entries[i]; e != null; e = e.mNext) {
+                V value = e.get();
+                if (value != null) {
+                    c.accept(value);
+                }
+            }
+        }
     }
 
     /**
@@ -113,7 +138,7 @@ public class WeakCache<K, V, H> extends RefCache<K, V, H> {
             // Rehash.
             var newEntries = new Entry[entries.length << 1];
             int size = 0;
-            for (int i=entries.length; --i>=0 ;) {
+            for (int i=0; i<entries.length; i++) {
                 for (var existing = entries[i]; existing != null; ) {
                     var e = existing;
                     existing = existing.mNext;

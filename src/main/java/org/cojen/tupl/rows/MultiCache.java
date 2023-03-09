@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.rows;
 
+import java.util.function.Consumer;
 import java.util.function.IntFunction;
 
 /**
@@ -85,6 +86,15 @@ final class MultiCache<K, V, H> {
     public void clear() {
         for (var cache : mCaches) {
             cache.clear();
+        }
+    }
+
+    /**
+     * Calls the consumer for each value that was in the cache that was removed.
+     */
+    public void clear(Consumer<V> c) {
+        for (var cache : mCaches) {
+            cache.clear(c);
         }
     }
 

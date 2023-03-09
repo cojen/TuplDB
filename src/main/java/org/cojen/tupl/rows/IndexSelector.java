@@ -534,7 +534,7 @@ final class IndexSelector<R> {
         }
 
         // Select an index which contains all filtering and projected columns, thus averting a join.
-        cmp = compareCovering(terms, cs1, cs2);
+        cmp = compareCovering(terms, cs1, cs2, false);
         if (cmp != 0) {
             return cmp;
         }
@@ -700,8 +700,9 @@ final class IndexSelector<R> {
 
     /**
      * Returns -1 if cs1 is better than cs2, ...
+     * @param ordering pass true to also consider natural order when neither set is covering
      */
-    private int compareCovering(List<Term> terms, ColumnSet cs1, ColumnSet cs2) {
+    private int compareCovering(List<Term> terms, ColumnSet cs1, ColumnSet cs2, boolean ordering) {
         Map<String, ColumnInfo> pmap = mQuery.projection();
 
         Set<String> required;
@@ -718,23 +719,32 @@ final class IndexSelector<R> {
             }
         }
 
-        return compareCovering(required, cs1, cs2);
+        return compareCovering(required, cs1, cs2, ordering);
     }
 
     /**
      * Returns -1 if cs1 is better than cs2, ...
      *
      * @param required set of column names
+     * @param ordering pass true to also consider natural order when neither set is covering
      */
-    private int compareCovering(Set<String> required, ColumnSet cs1, ColumnSet cs2) {
+    private int compareCovering(Set<String> required, ColumnSet cs1, ColumnSet cs2,
+                                boolean ordering)
+    {
         if (cs1.allColumns.keySet().containsAll(required)) {
             if (cs2.allColumns.keySet().containsAll(required)) {
-                return Integer.compare(cs1.allColumns.size(), cs2.allColumns.size());
+                int cmp = compareOrdering(cs1, cs2);
+                if (cmp == 0) {
+                    cmp = Integer.compare(cs1.allColumns.size(), cs2.allColumns.size());
+                }
+                return cmp;
             } else {
                 return -1;
             }
         } else if (cs2.allColumns.keySet().containsAll(required)) {
             return 1;
+        } else if (ordering) {
+            return compareOrdering(cs1, cs2);
         } else {
             return 0;
         }
@@ -883,13 +893,13 @@ final class IndexSelector<R> {
             });
 
             for (ColumnSet cs : mAlternateKeys) {
-                if (compareCovering(required, cs, best) < 0) {
+                if (compareCovering(required, cs, best, true) < 0) {
                     best = cs;
                 }
             }
 
             for (ColumnSet cs : mSecondaryIndexes) {
-                if (compareCovering(required, cs, best) < 0) {
+                if (compareCovering(required, cs, best, true) < 0) {
                     best = cs;
                 }
             }

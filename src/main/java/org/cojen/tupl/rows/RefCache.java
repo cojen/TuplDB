@@ -24,6 +24,8 @@ import java.lang.invoke.MethodType;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 
+import java.util.function.Consumer;
+
 import org.cojen.tupl.util.Latch;
 
 /**
@@ -69,6 +71,11 @@ abstract class RefCache<K, V, H> extends ReferenceQueue<Object> {
     }
 
     public abstract void clear();
+
+    /**
+     * Clears the cache and then calls the consumer for each value that was in the cache.
+     */
+    public abstract void clear(Consumer<V> c);
 
     /**
      * Can be called without explicit synchronization, but entries can appear to go missing.

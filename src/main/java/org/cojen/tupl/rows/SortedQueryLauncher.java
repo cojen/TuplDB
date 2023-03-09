@@ -116,4 +116,10 @@ final class SortedQueryLauncher<R> implements QueryLauncher<R> {
     public Set<String> projection() {
         return mSource.projection();
     }
+
+    @Override
+    public void close() throws IOException {
+        mSource.close();
+        mTable.close();
+    }
 }

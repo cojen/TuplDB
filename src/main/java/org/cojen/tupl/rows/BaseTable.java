@@ -589,11 +589,35 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     @Override
     public void close() throws IOException {
         mSource.close();
+
+        // Secondary indexes aren't closed immediately, and so clearing the query cache forces
+        // calls to be made to the checkClosed method. Explictly closing the old launchers
+        // forces any in-progress scans to abort. Scans over sorted results aren't necessarily
+        // affected, athough it would be nice if those always aborted too.
+
+        if (mQueryLauncherCache != null) {
+            mQueryLauncherCache.clear((QueryLauncher<R> launcher) -> {
+                try {
+                    launcher.close();
+                } catch (IOException e) {
+                    throw Utils.rethrow(e);
+                }
+            });
+        }
     }
 
     @Override
     public boolean isClosed() {
         return mSource.isClosed();
+    }
+
+    private void checkClosed() throws IOException {
+        if (isClosed()) {
+            // Calling isEmpty should throw the preferred exception...
+            mSource.isEmpty();
+            // ...or else throw the generic one instead.
+            throw new ClosedIndexException();
+        }
     }
 
     @Override // ScanControllerFactory
@@ -811,6 +835,8 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     private QueryLauncher<R> newQueryLauncher(int type, String queryStr, IndexSelector selector)
         throws IOException
     {
+        checkClosed();
+
         RowInfo rowInfo;
 
         if (selector != null) {

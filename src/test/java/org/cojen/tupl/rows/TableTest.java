@@ -122,15 +122,55 @@ public class TableTest {
         }
     }
 
-    private void dump(View ix) throws Exception {
-        try (var c = ix.newCursor(null)) {
-            for (c.first(); c.key() != null; c.next()) {
-                System.out.println(RowUtils.toHex(c.key()) + " -> " + RowUtils.toHex(c.value()));
-            }
+    @Test
+    public void closeTable() throws Exception {
+        var db = Database.open(new DatabaseConfig());
+
+        var table = db.openTable(TestRow.class);
+
+        for (int i=0; i<100; i++) {
+            var row = table.newRow();
+            row.id(i);
+            row.name("name-" + i);
+            table.store(null, row);
+        }
+
+        // This should use the primary index.
+        assertEquals(1, table.newStream(null, "id==?", 50).count());
+
+        // This should use only the secondary index and never join to the primary.
+        assertEquals(1, table.newStream(null, "{name}name==?", "name-50").count());
+
+        // This should use only the secondary index and never join to the primary. Keep it open
+        // for now and check again below.
+        var byName = table.newScanner(null, "{+name}");
+        assertEquals("name-0", byName.row().name());
+
+        assertFalse(table.isClosed());
+        table.close();
+        assertTrue(table.isClosed());
+
+        try {
+            table.newScanner(null, "id==?", 50);
+            fail();
+        } catch (ClosedIndexException e) {
+        }
+
+        try {
+            table.newScanner(null, "{name}name==?", "name-50");
+            fail();
+        } catch (ClosedIndexException e) {
+        }
+
+        try {
+            byName.step();
+            fail();
+        } catch (ClosedIndexException e) {
         }
     }
 
     @PrimaryKey("id")
+    @SecondaryIndex("name")
     public interface TestRow {
         long id();
         void id(long id);

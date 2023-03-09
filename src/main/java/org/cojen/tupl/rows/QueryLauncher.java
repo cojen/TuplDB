@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.rows;
 
+import java.io.Closeable;
 import java.io.IOException;
 
 import java.util.Set;
@@ -32,7 +33,7 @@ import org.cojen.tupl.diag.QueryPlan;
  *
  * @author Brian S O'Neill
  */
-interface QueryLauncher<R> {
+interface QueryLauncher<R> extends Closeable {
     /**
      * @param row initial row; can be null
      */
