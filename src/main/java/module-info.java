@@ -19,6 +19,8 @@ module org.cojen.tupl {
     requires org.cojen.maker;
     requires org.cojen.dirmi;
 
+    requires static java.sql;
+
     // Could be transitive because it's part of the public API, but only in EventListener.
     // I doubt that the java.logging module is used much.
     requires static java.logging;
