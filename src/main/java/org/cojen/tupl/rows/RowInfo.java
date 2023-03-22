@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.rows;
 
+import java.lang.invoke.VarHandle;
+
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
@@ -144,6 +146,10 @@ class RowInfo extends ColumnSet {
 
         info.alternateKeys = info.finishIndexSet(info.alternateKeys);
         info.secondaryIndexes = info.finishIndexSet(info.secondaryIndexes);
+
+        // This is necessary because not all fields are final, and the cache is initially
+        // accessed without being synchronized.
+        VarHandle.storeStoreFence();
 
         return info;
     }
