@@ -67,9 +67,9 @@ public class Parser {
      * ProjColumn   = ( ( ( ( "+" | "-" ) [ "!" ] ) | "~" ) ColumnName ) | "*"
      *
      * Returns null if string doesn't start with a projection or if the projection is all of
-     * the available columns. If the projection ends with a colon, then a subsequent call to
-     * parseFilter expects a filter. Without the colon, parseFilter expects nothing, and it
-     * returns TrueFilter if successful.
+     * the available columns. If the projection ends with a non-whitespace character, then a
+     * subsequent call to parseFilter expects a filter. If only whitespace characters remain,
+     * parseFilter expects nothing, and so it returns TrueFilter.
      *
      * @param availableColumns can pass null if same as all columns
      */
