@@ -171,24 +171,37 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         while (true) {
             try {
                 return launcher.newScanner(txn, row, args);
-            } catch (ClosedIndexException | LockFailureException e) {
-                // An index might have been dropped, so check and retry. The
-                // ClosedIndexException could have come from the dropped index directly, and
-                // the LockFailureException could be caused while waiting for the index lock.
-                QueryLauncher<R> newLauncher;
-                try {
-                    newLauncher = scannerQueryLauncher(txn, queryStr);
-                } catch (Throwable e2) {
-                    e.addSuppressed(e);
-                    throw e;
-                }
-                if (newLauncher == launcher) {
-                    // No change.
-                    throw e;
-                }
-                launcher = newLauncher;
+            } catch (Throwable e) {
+                launcher = newScannerRetry(txn, queryStr, launcher, e);
             }
         }
+    }
+
+    /**
+     * To be called when attempting to launch a new scanner and an exception is thrown. An
+     * index might have been dropped, so check and retry. Returns a new QueryLauncher to use or
+     * else throws the original exception.
+     */
+    private QueryLauncher<R> newScannerRetry(Transaction txn, String queryStr,
+                                             QueryLauncher<R> launcher, Throwable cause)
+    {
+        // A ClosedIndexException could have come from the dropped index directly, and a
+        // LockFailureException could be caused while waiting for the index lock. Other
+        // exceptions aren't expected so don't bother trying to obtain a new launcher.
+        if (cause instanceof ClosedIndexException || cause instanceof LockFailureException) {
+            QueryLauncher<R> newLauncher;
+            try {
+                newLauncher = scannerQueryLauncher(txn, queryStr);
+                if (newLauncher != launcher) {
+                    // Only return the launcher if it changed.
+                    return newLauncher;
+                }
+            } catch (Throwable e) {
+                cause.addSuppressed(e);
+            }
+        }
+
+        throw Utils.rethrow(cause);
     }
 
     final Scanner<R> newScanner(Transaction txn, R row, ScanController<R> controller)
@@ -294,22 +307,37 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         while (true) {
             try {
                 return launcher.newUpdater(txn, row, args);
-            } catch (ClosedIndexException | LockFailureException e) {
-                // An index might have been dropped, so check and retry.
-                QueryLauncher<R> newLauncher;
-                try {
-                    newLauncher = updaterQueryLauncher(txn, queryStr);
-                } catch (Throwable e2) {
-                    e.addSuppressed(e);
-                    throw e;
-                }
-                if (newLauncher == launcher) {
-                    // No change.
-                    throw e;
-                }
-                launcher = newLauncher;
+            } catch (Throwable e) {
+                launcher = newUpdaterRetry(txn, queryStr, launcher, e);
             }
         }
+    }
+
+    /**
+     * To be called when attempting to launch a new updater and an exception is thrown. An
+     * index might have been dropped, so check and retry. Returns a new QueryLauncher to use or
+     * else throws the original exception.
+     */
+    private QueryLauncher<R> newUpdaterRetry(Transaction txn, String queryStr,
+                                             QueryLauncher<R> launcher, Throwable cause)
+    {
+        // A ClosedIndexException could have come from the dropped index directly, and a
+        // LockFailureException could be caused while waiting for the index lock. Other
+        // exceptions aren't expected so don't bother trying to obtain a new launcher.
+        if (cause instanceof ClosedIndexException || cause instanceof LockFailureException) {
+            QueryLauncher<R> newLauncher;
+            try {
+                newLauncher = updaterQueryLauncher(txn, queryStr);
+                if (newLauncher != launcher) {
+                    // Only return the launcher if it changed.
+                    return newLauncher;
+                }
+            } catch (Throwable e) {
+                cause.addSuppressed(e);
+            }
+        }
+
+        throw Utils.rethrow(cause);
     }
 
     protected Updater<R> newUpdater(Transaction txn, R row, ScanController<R> controller)
