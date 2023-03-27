@@ -52,14 +52,16 @@ public interface Scanner<R> extends Spliterator<R>, Closeable {
      *
      * @return the next row or null if no more rows remain and scanner has been closed
      */
-    R step() throws IOException;
+    default R step() throws IOException {
+        return step(null);
+    }
 
     /**
      * Step to the next row.
      *
-     * @param row use this for the next row instead of creating a new one
+     * @param row use this for the next row instead of creating a new one; if null is passed
+     * in, a new instance will be created if necessary
      * @return the next row or null if no more rows remain and scanner has been closed
-     * @throws NullPointerException if the given row object is null
      */
     R step(R row) throws IOException;
 

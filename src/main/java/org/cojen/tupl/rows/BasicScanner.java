@@ -19,8 +19,6 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
-import java.util.Objects;
-
 import org.cojen.tupl.Cursor;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Scanner;
@@ -128,13 +126,7 @@ class BasicScanner<R> implements Scanner<R> {
     }
 
     @Override
-    public final R step() throws IOException {
-        return doStep(null);
-    }
-
-    @Override
     public final R step(R row) throws IOException {
-        Objects.requireNonNull(row);
         return doStep(row);
     }
 

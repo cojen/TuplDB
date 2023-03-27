@@ -26,7 +26,6 @@ import java.io.IOException;
 
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Objects;
 import java.util.Spliterator;
 
 import org.cojen.maker.ClassMaker;
@@ -99,17 +98,7 @@ public abstract class RowReader<R, DIN extends DataInput> implements Scanner<R> 
     }
 
     @Override
-    public final R step() throws IOException {
-        try {
-            return doStep(null);
-        } catch (Throwable e) {
-            throw RowUtils.fail(this, e);
-        }
-    }
-
-    @Override
     public final R step(R row) throws IOException {
-        Objects.requireNonNull(row);
         try {
             return doStep(row);
         } catch (Throwable e) {

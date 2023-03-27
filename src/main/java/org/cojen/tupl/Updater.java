@@ -50,14 +50,16 @@ public interface Updater<R> extends Scanner<R> {
      * @throws IllegalStateException if no current row
      * @throws UniqueConstraintException if update creates a conflicting primary or alternate key
      */
-    R update() throws IOException;
+    default R update() throws IOException {
+        return update(null);
+    }
 
     /**
      * Update the current row and then step to the next row.
      *
-     * @param row use this for the next row instead of creating a new one
+     * @param row use this for the next row instead of creating a new one; if null is passed
+     * in, a new instance will be created if necessary
      * @return the next row or null if no more rows remain and scanner has been closed
-     * @throws NullPointerException if the given row object is null
      * @throws IllegalStateException if no current row
      * @throws UniqueConstraintException if update creates a conflicting primary or alternate key
      */
@@ -69,14 +71,16 @@ public interface Updater<R> extends Scanner<R> {
      * @return the next row or null if no more rows remain and scanner has been closed
      * @throws IllegalStateException if no current row
      */
-    R delete() throws IOException;
+    default R delete() throws IOException {
+        return delete(null);
+    }
 
     /**
      * Delete the current row and then step to the next row.
      *
-     * @param row use this for the next row instead of creating a new one
+     * @param row use this for the next row instead of creating a new one; if null is passed
+     * in, a new instance will be created if necessary
      * @return the next row or null if no more rows remain and scanner has been closed
-     * @throws NullPointerException if the given row object is null
      * @throws IllegalStateException if no current row
      */
     R delete(R row) throws IOException;

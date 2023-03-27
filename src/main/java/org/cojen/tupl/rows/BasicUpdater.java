@@ -20,7 +20,6 @@ package org.cojen.tupl.rows;
 import java.io.IOException;
 
 import java.util.Arrays;
-import java.util.Objects;
 import java.util.TreeSet;
 
 import org.cojen.tupl.Cursor;
@@ -48,14 +47,7 @@ class BasicUpdater<R> extends BasicScanner<R> implements Updater<R> {
     }
 
     @Override
-    public final R update() throws IOException {
-        updateCurrent();
-        return doStep(null);
-    }
-
-    @Override
     public final R update(R row) throws IOException {
-        Objects.requireNonNull(row);
         updateCurrent();
         return doStep(row);
     }
@@ -249,14 +241,7 @@ class BasicUpdater<R> extends BasicScanner<R> implements Updater<R> {
     }
 
     @Override
-    public final R delete() throws IOException {
-        deleteCurrent();
-        return doStep(null);
-    }
-
-    @Override
     public final R delete(R row) throws IOException {
-        Objects.requireNonNull(row);
         deleteCurrent();
         return doStep(row);
     }
