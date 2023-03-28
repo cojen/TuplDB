@@ -345,11 +345,10 @@ public abstract class RowFilter implements Comparable<RowFilter> {
     }
 
     /**
-     * Returns true if the given column is exactly specified with the '==' operator such that
-     * at most one row will match this filter. False is returned if the column is a "fuzzy"
-     * BigDecimal match.
+     * Returns true if all rows which match this filter will have the same value for the given
+     * column. False is returned if the column is a "fuzzy" BigDecimal match.
      */
-    public abstract boolean matchesOne(String columnName);
+    public abstract boolean uniqueColumn(String columnName);
 
     @Override
     public final int hashCode() {

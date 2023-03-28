@@ -257,13 +257,13 @@ public class OrFilter extends GroupFilter {
     }
 
     @Override
-    public boolean matchesOne(String columnName) {
+    public boolean uniqueColumn(String columnName) {
         // To return true, none of the sub filters can match more than one, and all of the sub
         // filters must be the same. In practice, this method will always return false due to
         // filter reduction.
         RowFilter prev = null;
         for (RowFilter sub : mSubFilters) {
-            if (!sub.matchesOne(columnName)) {
+            if (!sub.uniqueColumn(columnName)) {
                 return false;
             }
             if (prev != null && !prev.equals(sub)) {
