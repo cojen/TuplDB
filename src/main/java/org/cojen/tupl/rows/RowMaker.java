@@ -209,6 +209,9 @@ public class RowMaker {
         state.set(state.or(RowGen.stateFieldMask(columnNum))); // set dirty
     }
 
+    /**
+     * Generates hashCode, equals, and toString methods.
+     */
     public static CallSite indyObjectMethod(MethodHandles.Lookup lookup, String name, MethodType mt,
                                             Class<?> rowType)
     {

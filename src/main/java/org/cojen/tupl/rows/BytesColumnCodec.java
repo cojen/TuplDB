@@ -250,7 +250,7 @@ abstract class BytesColumnCodec extends ColumnCodec {
         var argVar = bytesField(argObjVar, argNum);
 
         if (dstInfo.isDescending()) {
-            op = ColumnFilter.descendingOperator(op);
+            op = ColumnFilter.reverseOperator(op);
         }
 
         if (ColumnFilter.isIn(op)) {

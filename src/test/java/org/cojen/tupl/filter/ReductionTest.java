@@ -118,7 +118,7 @@ public class ReductionTest {
                     handled++;
                 } else if (hasEqualComponent(op1)) {
                     if (hasEqualComponent(op2)) {
-                        if (descendingOperator(op1) == op2) {
+                        if (reverseOperator(op1) == op2) {
                             assertEquals(~OP_EQ, result);
                         } else {
                             assertTrue(op1 == OP_EQ || op2 == OP_EQ);
@@ -149,7 +149,7 @@ public class ReductionTest {
                             handled++;
                         }
                     } else {
-                        if (descendingOperator(op1) == op2) {
+                        if (reverseOperator(op1) == op2) {
                             assertEquals(Integer.MAX_VALUE, result);
                         } else {
                             assertTrue(op1 == OP_NE || op2 == OP_NE);

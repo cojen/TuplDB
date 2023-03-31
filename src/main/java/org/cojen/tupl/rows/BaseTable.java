@@ -213,7 +213,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         newScanner: {
             if (txn == null) {
                 // A null transaction behaves like a read committed transaction (as usual), but
-                // it doesn't acquire predicate locks. This makes it weaker that a transaction
+                // it doesn't acquire predicate locks. This makes it weaker than a transaction
                 // which is explicitly read committed.
 
                 if (joinedPrimaryTableClass() != null) {

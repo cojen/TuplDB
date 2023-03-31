@@ -427,7 +427,7 @@ public abstract sealed class QueryPlan implements Serializable {
     }
 
     /**
-     * Query plan node which joins two sources based on a common set of columns.
+     * Query plan node which joins a target to a source based on a common set of columns.
      */
     public static sealed class NaturalJoin extends QueryPlan {
         private static final long serialVersionUID = 1L;

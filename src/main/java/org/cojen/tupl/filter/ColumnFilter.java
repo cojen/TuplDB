@@ -35,11 +35,17 @@ public abstract class ColumnFilter extends RowFilter {
     // Used by InFilter.
     public static final int OP_IN = 6, OP_NOT_IN = 7;
 
+    /**
+     * Returns the operator for 'not' matching.
+     */
     public static int flipOperator(int op) {
         return op ^ 1;
     }
 
-    public static int descendingOperator(int op) {
+    /**
+     * Returns the operator with reverse ordering.
+     */
+    public static int reverseOperator(int op) {
         return switch (op) {
             case OP_GE -> OP_LE;
             case OP_LT -> OP_GT;
