@@ -50,6 +50,8 @@ public class AndFilter extends GroupFilter {
             RowFilter sub = subFilters[i];
             if (sub instanceof AndFilter af) {
                 count += af.mSubFilters.length;
+            } else if (sub instanceof FalseFilter) {
+                return FalseFilter.THE;
             } else {
                 count++;
             }

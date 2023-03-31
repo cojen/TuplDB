@@ -46,6 +46,8 @@ public class OrFilter extends GroupFilter {
             RowFilter sub = subFilters[i];
             if (sub instanceof OrFilter of) {
                 count += of.mSubFilters.length;
+            } else if (sub instanceof TrueFilter) {
+                return TrueFilter.THE;
             } else {
                 count++;
             }
