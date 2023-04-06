@@ -149,7 +149,6 @@ final class MessageStreamReplicator implements MessageReplicator {
         return mRepl.isReadable(position);
     }
 
-    @Override
     public Reader newReader(long position, boolean follow) {
         StreamReplicator.Reader source = mRepl.newReader(position, follow);
         if (source == null) {
@@ -577,7 +576,7 @@ final class MessageStreamReplicator implements MessageReplicator {
         @Override
         public synchronized int writeMessage(byte[] message, int offset, int length,
                                              boolean finished)
-            throws IOException
+                throws IOException
         {
             byte[] prefix;
             if (length < 128) {

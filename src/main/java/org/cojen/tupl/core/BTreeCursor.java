@@ -23,18 +23,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.concurrent.ThreadLocalRandom;
 
-import org.cojen.tupl.ClosedIndexException;
-import org.cojen.tupl.CorruptDatabaseException;
-import org.cojen.tupl.Cursor;
-import org.cojen.tupl.DatabaseException;
-import org.cojen.tupl.DeadlockException;
-import org.cojen.tupl.DurabilityMode;
-import org.cojen.tupl.LockFailureException;
-import org.cojen.tupl.LockMode;
-import org.cojen.tupl.LockResult;
-import org.cojen.tupl.Ordering;
-import org.cojen.tupl.Transaction;
-import org.cojen.tupl.UnmodifiableReplicaException;
+import org.cojen.tupl.*;
 
 import org.cojen.tupl.diag.CompactionObserver;
 import org.cojen.tupl.diag.IndexStats;
@@ -67,7 +56,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
     byte[] mValue;
 
     boolean mKeyOnly;
-    
+
     // Hashcode is defined by LockManager.
     private int mKeyHash;
 
@@ -138,7 +127,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
         }
     }
 
-    
+
     @Override
     public final boolean autoload(boolean mode) {
         boolean old = mKeyOnly;
@@ -462,6 +451,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
 
     @Override
     public final LockResult skip(long amount) throws IOException {
+        final int MOST_SIGNIFICANT_BIT = 63;
         if (amount == 0) {
             LocalTransaction txn = mTxn;
             if (txn != null && !txn.isBogus()) {
@@ -473,7 +463,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
             return LockResult.UNOWNED;
         }
 
-        mCursorId &= ~(1L << 63); // key will change, but cursor isn't reset
+        mCursorId &= ~(1L << MOST_SIGNIFICANT_BIT); // key will change, but cursor isn't reset
 
         try {
             CursorFrame frame = frameSharedNotSplit();
@@ -495,7 +485,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
 
     @Override
     public final LockResult skip(long amount, byte[] limitKey, boolean inclusive)
-        throws IOException
+            throws IOException
     {
         if (amount == 0 || limitKey == null) {
             return skip(amount);
@@ -512,7 +502,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                 return nextCmp(limitKey, inclusive ? LIMIT_LE : LIMIT_LT, frame);
             } else {
                 if (amount < -1
-                    && (frame = skipPreviousGap(frame, -1 - amount, limitKey)) == null)
+                        && (frame = skipPreviousGap(frame, -1 - amount, limitKey)) == null)
                 {
                     return LockResult.UNOWNED;
                 }
@@ -544,7 +534,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
     }
 
     private LockResult nextCmp(byte[] limitKey, int limitMode, CursorFrame frame)
-        throws IOException
+            throws IOException
     {
         mCursorId &= ~(1L << 63); // key will change, but cursor isn't reset
         LocalTransaction txn = mTxn;
@@ -893,7 +883,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
      * @return latched leaf frame or null if reached end
      */
     private CursorFrame skipNextGap(CursorFrame frame, long amount, byte[] inLimit)
-        throws IOException
+            throws IOException
     {
         start: while (true) {
             int pos = frame.mNodePos;
@@ -991,7 +981,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                     if (child.mCachedState == Node.CACHED_CLEAN && node.tryUpgrade()) {
                         try {
                             CommitLock.Shared shared =
-                                mTree.mDatabase.commitLock().tryAcquireShared();
+                                    mTree.mDatabase.commitLock().tryAcquireShared();
                             if (shared != null) {
                                 try {
                                     if (tryNotSplitDirty(frame)) {
@@ -1098,7 +1088,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                 CursorFrame highFrame;
 
                 while (node == (highFrame = high.mFrame.mParentFrame).mNode &&
-                       frame.mNodePos >= highFrame.mNodePos)
+                        frame.mNodePos >= highFrame.mNodePos)
                 {
                     // Access the child for obtaining a partial count.
                     Node child = high.mFrame.acquireShared();
@@ -1201,7 +1191,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
     }
 
     private LockResult previousCmp(byte[] limitKey, int limitMode, CursorFrame frame)
-        throws IOException
+            throws IOException
     {
         mCursorId &= ~(1L << 63); // key will change, but cursor isn't reset
         LocalTransaction txn = mTxn;
@@ -1229,7 +1219,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
      * @param frame leaf frame, not split, with shared latch
      */
     private LockResult previous(LocalTransaction txn, CursorFrame frame)
-        throws IOException
+            throws IOException
     {
         mCursorId &= ~(1L << 63); // key will change, but cursor isn't reset
 
@@ -1516,7 +1506,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
      * @return latched leaf frame or null if reached end
      */
     private CursorFrame skipPreviousGap(CursorFrame frame, long amount, byte[] inLimit)
-        throws IOException
+            throws IOException
     {
         start: while (true) {
             int pos = frame.mNodePos;
@@ -1614,7 +1604,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                     if (child.mCachedState == Node.CACHED_CLEAN && node.tryUpgrade()) {
                         try {
                             CommitLock.Shared shared =
-                                mTree.mDatabase.commitLock().tryAcquireShared();
+                                    mTree.mDatabase.commitLock().tryAcquireShared();
                             if (shared != null) {
                                 try {
                                     if (tryNotSplitDirty(frame)) {
@@ -1732,7 +1722,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
      * limit. If limit is reached, cursor is reset and UNOWNED is returned.
      */
     private LockResult tryCopyCurrentCmp(LocalTransaction txn, byte[] limitKey, int limitMode)
-        throws IOException
+            throws IOException
     {
         try {
             return doTryCopyCurrentCmp(txn, limitKey, limitMode);
@@ -1747,7 +1737,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
      * limit. If limit is reached, cursor is reset and UNOWNED is returned.
      */
     private LockResult doTryCopyCurrentCmp(LocalTransaction txn, byte[] limitKey, int limitMode)
-        throws IOException
+            throws IOException
     {
         final Node node;
         final int pos;
@@ -1916,9 +1906,9 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
     }
 
     private static final int
-        VARIANT_REGULAR = 0,
-        VARIANT_RETAIN  = 1, // retain node latch
-        VARIANT_CHECK   = 2; // retain node latch, don't lock entry, don't load entry
+            VARIANT_REGULAR = 0,
+            VARIANT_RETAIN  = 1, // retain node latch
+            VARIANT_CHECK   = 2; // retain node latch, don't lock entry, don't load entry
 
     @Override
     public final LockResult find(byte[] key) throws IOException {
@@ -2025,7 +2015,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                     } else {
                         try {
                             mValue = mKeyOnly ? node.hasLeafValue(pos)
-                                : node.retrieveLeafValue(pos);
+                                    : node.retrieveLeafValue(pos);
                             return result;
                         } catch (Throwable e) {
                             mValue = NOT_LOADED;
@@ -2037,7 +2027,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                 }
                 return doLoad(txn, key, frame, VARIANT_REGULAR);
             } else if ((pos != ~0 || (node.type() & Node.LOW_EXTREMITY) != 0) &&
-                       (~pos <= node.highestLeafPos() || (node.type() & Node.HIGH_EXTREMITY) != 0))
+                    (~pos <= node.highestLeafPos() || (node.type() & Node.HIGH_EXTREMITY) != 0))
             {
                 // Not found, but insertion pos is in bounds.
                 frame.mNotFoundKey = key;
@@ -2090,7 +2080,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                 }
 
                 if ((pos == 0 && (node.type() & Node.LOW_EXTREMITY) == 0) ||
-                    (pos >= node.highestInternalPos() && (node.type() & Node.HIGH_EXTREMITY) == 0))
+                        (pos >= node.highestInternalPos() && (node.type() & Node.HIGH_EXTREMITY) == 0))
                 {
                     // Cannot be certain if position is in this node, so pop up.
                     continue;
@@ -2118,7 +2108,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
      */
     private LockResult find(LocalTransaction txn, byte[] key, int variant,
                             CursorFrame frame, Node node)
-        throws IOException
+            throws IOException
     {
         while (true) {
             if (node.isLeaf()) {
@@ -2288,7 +2278,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
     @Override
     public final LockResult random(byte[] lowKey, boolean lowInclusive,
                                    byte[] highKey, boolean highInclusive)
-        throws IOException
+            throws IOException
     {
         if (!lowInclusive && lowKey != null) {
             // Switch to exclusive start behavior.
@@ -2361,7 +2351,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                     } else {
                         try {
                             mValue = mKeyOnly ? node.hasLeafValue(pos)
-                                : node.retrieveLeafValue(pos);
+                                    : node.retrieveLeafValue(pos);
                         } catch (Throwable e) {
                             mValue = NOT_LOADED;
                             node.releaseShared();
@@ -2381,14 +2371,14 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
 
                         if (rnd.nextBoolean()) {
                             result = highKey == null ? next(txn, frame)
-                                : nextCmp(highKey, LIMIT_LT, frame);
+                                    : nextCmp(highKey, LIMIT_LT, frame);
                             if (mValue == null) {
                                 // Wrap around.
                                 return first();
                             }
                         } else {
                             result = lowKey == null ? previous(txn, frame)
-                                : previousCmp(lowKey, LIMIT_GE, frame);
+                                    : previousCmp(lowKey, LIMIT_GE, frame);
                             if (mValue == null) {
                                 // Wrap around.
                                 return last();
@@ -2409,9 +2399,9 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
             }
         }
     }
-    
+
     /**
-     * Select a random node, steering towards a node that is not cached.  
+     * Select a random node, steering towards a node that is not cached.
      *
      * @param lowKey inclusive lowest key from which to pick the random node; pass null for
      * open range
@@ -2434,11 +2424,11 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
             var frame = new CursorFrame();
             Node node = latchRootNode();
 
-            // Until the cursor hits a node that is 3 deep (parent of a bottom internal node), the 
-            // algorithm proceeds by picking random nodes. At that point, the algorithm tries to 
+            // Until the cursor hits a node that is 3 deep (parent of a bottom internal node), the
+            // algorithm proceeds by picking random nodes. At that point, the algorithm tries to
             // pick a 2 deep (bottom internal node) node that is not in cache. It tries to do this
-            // twice. On the third attempt, it picks a random bottom internal node. 
-            int remainingAttemptsBIN = 2; 
+            // twice. On the third attempt, it picks a random bottom internal node.
+            int remainingAttemptsBIN = 2;
 
             // Once the cursor is at a bottom internal node, the algorithm tries twice to pick
             // a leaf node that is not in the cache. On the third attempt, it picks a random
@@ -2509,7 +2499,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                     } else {
                         try {
                             mValue = mKeyOnly ? node.hasLeafValue(pos)
-                                : node.retrieveLeafValue(pos);
+                                    : node.retrieveLeafValue(pos);
                         } catch (Throwable e) {
                             mValue = NOT_LOADED;
                             node.releaseShared();
@@ -2524,7 +2514,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                 long childId = node.retrieveChildRefId(pos);
                 Node child = mTree.mDatabase.nodeMapGet(childId);
 
-                if (child != null) { 
+                if (child != null) {
                     // Node is in cache. If its not cache, we found a good path and so we go
                     // down directly to the latchToChild code below.
 
@@ -2555,7 +2545,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                                     break; // go down to latching the node and then on to search
                                 }
                                 if (highKey != null && spos <= highestKeyPos
-                                    && node.compareKey(spos, highKey) >= 0)
+                                        && node.compareKey(spos, highKey) >= 0)
                                 {
                                     break;
                                 }
@@ -2589,7 +2579,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                             // - If loaded child is in cache, is a bottom internal node, and
                             // there are no more remaining on BIN, then use the node.
                             if (childId == child.id() && child.isBottomInternal()
-                                && --remainingAttemptsBIN >= 0)
+                                    && --remainingAttemptsBIN >= 0)
                             {
                                 // Retry another child of the same node.
                                 continue search;
@@ -2617,7 +2607,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
      * @param variant VARIANT_REGULAR or VARIANT_RETAIN
      */
     private LockResult doLoad(LocalTransaction txn, byte[] key, CursorFrame leaf, int variant)
-        throws IOException
+            throws IOException
     {
         LockResult result;
         Locker locker;
@@ -2644,7 +2634,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                     }
                 } else {
                     result = txn.doLock
-                        (mode.repeatable, mTree.mId, key, keyHash, txn.mLockTimeoutNanos);
+                            (mode.repeatable, mTree.mId, key, keyHash, txn.mLockTimeoutNanos);
                     locker = null;
                 }
             }
@@ -2658,7 +2648,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
             try {
                 int pos = leaf.mNodePos;
                 mValue = pos < 0 ? null
-                    : mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
+                        : mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
             } catch (Throwable e) {
                 node.releaseShared();
                 throw e;
@@ -2755,7 +2745,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
             // Perform additional checks in case the value is a ghost.
             LockManager manager;
             if (mTxn == null || (manager = mTxn.mManager) == null
-                || node.hasLeafValue(pos) != null)
+                    || node.hasLeafValue(pos) != null)
             {
                 // Value isn't a ghost, or without a transaction holding a lock, can't check.
                 return true;
@@ -2807,7 +2797,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                     locker = txn;
                 } else {
                     result = txn.doLock
-                        (mode.repeatable, mTree.mId, key, keyHash, txn.mLockTimeoutNanos);
+                            (mode.repeatable, mTree.mId, key, keyHash, txn.mLockTimeoutNanos);
                     if (result != LockResult.ACQUIRED) {
                         return result;
                     }
@@ -2827,7 +2817,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
             try {
                 int pos = leaf.mNodePos;
                 mValue = pos < 0 ? null
-                    : mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
+                        : mKeyOnly ? node.hasLeafValue(pos) : node.retrieveLeafValue(pos);
             } catch (Throwable e) {
                 node.releaseShared();
                 throw e;
@@ -2882,7 +2872,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                         }
                     } else {
                         result = txn.doLock
-                            (mode.repeatable, mTree.mId, key, keyHash, txn.mLockTimeoutNanos);
+                                (mode.repeatable, mTree.mId, key, keyHash, txn.mLockTimeoutNanos);
                         locker = null;
                     }
                 }
@@ -2915,7 +2905,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
 
     private boolean tryLockLoad(LocalTransaction txn, byte[] key, int keyHash, boolean keyOnly,
                                 CursorFrame leaf)
-        throws IOException
+            throws IOException
     {
         Node node = leaf.tryAcquireShared();
         if (node != null) {
@@ -2984,7 +2974,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
             throw handleException(e, false);
         }
     }
-    
+
     private void storeAutoCommit(byte[] value) throws IOException {
         byte[] key = mKey;
         ViewUtils.positionCheck(key);
@@ -3044,7 +3034,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                     mTxn.doLockExclusive(mTree.mId, key, keyHash());
                     if (allowRedo() && mTxn.mDurabilityMode != DurabilityMode.NO_REDO) {
                         mTxn.storeCommit(requireTransaction() ? mTxn : LocalTransaction.BOGUS,
-                                         this, value);
+                                this, value);
                         return;
                     }
                 } else if (allowRedo()) {
@@ -3148,7 +3138,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
      * @return original value
      */
     private byte[] doFindAndStore(LocalTransaction txn, byte[] key, byte[] value)
-        throws IOException
+            throws IOException
     {
         // Find with no lock because it has already been acquired. Leaf latch is retained too.
         find(null, key, VARIANT_CHECK, new CursorFrame(), latchRootNode());
@@ -3185,7 +3175,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
     }
 
     static final byte[]
-        MODIFY_INSERT = new byte[0], MODIFY_REPLACE = new byte[0], MODIFY_UPDATE = new byte[0];
+            MODIFY_INSERT = new byte[0], MODIFY_REPLACE = new byte[0], MODIFY_UPDATE = new byte[0];
 
     /**
      * Atomic find and modify operation. Cursor must be in a reset state when this method is
@@ -3289,7 +3279,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
      */
     private boolean doFindAndModify(LocalTransaction txn,
                                     byte[] key, byte[] oldValue, byte[] newValue)
-        throws IOException
+            throws IOException
     {
         // Find with no lock because caller must already acquire exclusive lock.
         find(null, key, VARIANT_CHECK, new CursorFrame(), latchRootNode());
@@ -3545,13 +3535,13 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
      * @param value pass null to delete
      */
     private void maybeRedoStore(LocalTransaction txn, CommitLock.Shared shared, byte[] value)
-        throws IOException
+            throws IOException
     {
         long commitPos;
 
         if (txn == null) {
             try {
-                commitPos = mTree.redoStoreNullTxn(mKey, value);
+                commitPos = mTree.nullTxnStoreRedo(mKey, value);
             } finally {
                 shared.release();
             }
@@ -3674,7 +3664,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
      * @return held commitLock
      */
     private CommitLock.Shared prepareStoreUpgrade(CursorFrame leaf, byte[] value)
-        throws IOException
+            throws IOException
     {
         CommitLock commitLock = mTree.mDatabase.commitLock();
         CommitLock.Shared shared = commitLock.tryAcquireShared();
@@ -3717,7 +3707,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
      * @param leaf leaf frame, latched exclusively, which is always released by this method
      */
     private void storeNoRedo(LocalTransaction txn, CursorFrame leaf, byte[] value)
-        throws IOException
+            throws IOException
     {
         try {
             Node node = leaf.mNode;
@@ -4115,7 +4105,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
 
         return true;
     }
- 
+
     /**
      * Non-transactionally deletes the current entry, and then moves to the previous one. No
      * other cursors or threads can be active in the tree.
@@ -4259,43 +4249,43 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
      * @return {@literal <0 if node is empty or out of bounds}
      */
     private int randomPosition(ThreadLocalRandom rnd, Node node, byte[] lowKey, byte[] highKey)
-        throws IOException
+            throws IOException
     {
-       int pos;
-       if (highKey == null) {
-           pos = node.highestPos() + 2;
-       } else {
-           pos = node.binarySearch(highKey);
-           if (pos < 0) {    // highKey is not found
-               pos = ~pos;
-           }
-           if (!node.isLeaf()) {
-               pos += 2;
-           }
-       }
+        int pos;
+        if (highKey == null) {
+            pos = node.highestPos() + 2;
+        } else {
+            pos = node.binarySearch(highKey);
+            if (pos < 0) {    // highKey is not found
+                pos = ~pos;
+            }
+            if (!node.isLeaf()) {
+                pos += 2;
+            }
+        }
 
-       if (lowKey == null) {
-           if (pos > 0) {
-               // search vector has 2 byte long entries
-               pos = (pos == 2) ? 0 : (rnd.nextInt(pos >> 1) << 1);
-               return pos;
-           }
-       } else {
-           int lowPos = node.binarySearch(lowKey);
-           if (!node.isLeaf()) {
-               lowPos = Node.internalPos(lowPos);
-           } else if (lowPos < 0) {  // lowKey not found
-               lowPos = ~lowPos;
-           }
-           int range = pos - lowPos;
-           if (range > 0) {
-               // search vector has 2 byte long entries
-               pos = (range == 2) ? lowPos : lowPos + (rnd.nextInt(range >> 1) << 1);
-               return pos;
-           }
-       }
-       // node is empty or out of bounds
-       return -1;
+        if (lowKey == null) {
+            if (pos > 0) {
+                // search vector has 2 byte long entries
+                pos = (pos == 2) ? 0 : (rnd.nextInt(pos >> 1) << 1);
+                return pos;
+            }
+        } else {
+            int lowPos = node.binarySearch(lowKey);
+            if (!node.isLeaf()) {
+                lowPos = Node.internalPos(lowPos);
+            } else if (lowPos < 0) {  // lowKey not found
+                lowPos = ~lowPos;
+            }
+            int range = pos - lowPos;
+            if (range > 0) {
+                // search vector has 2 byte long entries
+                pos = (range == 2) ? lowPos : lowPos + (rnd.nextInt(range >> 1) << 1);
+                return pos;
+            }
+        }
+        // node is empty or out of bounds
+        return -1;
     }
 
     /**
@@ -4422,7 +4412,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
      * @param buf pass EMPTY_BYTES for OP_SET_LENGTH or OP_CLEAR
      */
     protected final void doValueModify(int op, long pos, byte[] buf, int off, long len)
-        throws IOException
+            throws IOException
     {
         if (mTxn == null) {
             doValueModifyAutoCommit(op, pos, buf, off, len);
@@ -4435,7 +4425,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
      * Can only be called when cursor is linked to a transaction.
      */
     private void doTxnValueModify(int op, long pos, byte[] buf, int off, long len)
-        throws IOException
+            throws IOException
     {
         byte[] key = mKey;
         ViewUtils.positionCheck(key);
@@ -4470,7 +4460,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
     }
 
     private void doValueModifyAutoCommit(int op, long pos, byte[] buf, int off, long len)
-        throws IOException
+            throws IOException
     {
         LocalDatabase db = mTree.mDatabase;
 
@@ -4798,7 +4788,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                 Node node = frame.acquireShared();
 
                 if (frameNodes[level] == node &&
-                    (level == 0 || nodePositions[level] == frame.mNodePos))
+                        (level == 0 || nodePositions[level] == frame.mNodePos))
                 {
                     // No point in checking upwards if this level is unchanged.
                     node.releaseShared();
@@ -4901,7 +4891,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
      * @return new node id; caller must check if it is outside compaction zone and abort
      */
     private long compactFrame(long highestNodeId, CursorFrame frame, Node node)
-        throws IOException
+            throws IOException
     {
         long id = node.id();
         node.releaseShared();
@@ -4957,7 +4947,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
      */
     private Node compactFragmentedEntry(final CursorFrame frame, Node node, boolean isKey,
                                         long highestNodeId)
-        throws IOException
+            throws IOException
     {
         int pLen = pageSize(node.mPage);
         long pos = 0;
@@ -5080,7 +5070,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
 
     private boolean verifyFrames(int level, Node[] stack, CursorFrame frame,
                                  VerificationObserver observer)
-        throws IOException
+            throws IOException
     {
         CursorFrame parentFrame = frame.mParentFrame;
         Node childNode;
@@ -5108,7 +5098,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                 boolean result;
                 try {
                     result = verifyParentChildFrames
-                        (level, parentFrame, parentNode, frame, childNode, observer);
+                            (level, parentFrame, parentNode, frame, childNode, observer);
                 } catch (Throwable e) {
                     childNode.releaseShared();
                     throw e;
@@ -5131,7 +5121,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                                             CursorFrame parentFrame, Node parentNode,
                                             CursorFrame childFrame, Node childNode,
                                             VerificationObserver observer)
-        throws IOException
+            throws IOException
     {
         final long childId = childNode.id();
 
@@ -5139,7 +5129,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
         // they're deleted. Also, skip nodes which are splitting.
 
         if (childNode.hasKeys() && parentNode.hasKeys()
-            && childNode.mSplit == null && parentNode.mSplit == null)
+                && childNode.mSplit == null && parentNode.mSplit == null)
         {
             int parentPos = parentFrame.mNodePos;
 
@@ -5165,7 +5155,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                 if (compare >= 0) {
                     observer.failed = true;
                     if (!observer.indexNodeFailed
-                        (childId, level, "Child keys are not less than parent key: " + parentNode))
+                            (childId, level, "Child keys are not less than parent key: " + parentNode))
                     {
                         return false;
                     }
@@ -5174,8 +5164,8 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                 if (compare <= 0) {
                     observer.failed = true;
                     if (!observer.indexNodeFailed
-                        (childId, level,
-                         "Internal child keys are not greater than parent key: " + parentNode))
+                            (childId, level,
+                                    "Internal child keys are not greater than parent key: " + parentNode))
                     {
                         return false;
                     }
@@ -5183,8 +5173,8 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
             } else if (compare < 0) {
                 observer.failed = true;
                 if (!observer.indexNodeFailed
-                    (childId, level,
-                     "Child keys are not greater than or equal to parent key: " + parentNode))
+                        (childId, level,
+                                "Child keys are not greater than or equal to parent key: " + parentNode))
                 {
                     return false;
                 }
@@ -5193,22 +5183,22 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
             // Verify extremities.
 
             if ((childNode.type() & Node.LOW_EXTREMITY) != 0
-                && (parentNode.type() & Node.LOW_EXTREMITY) == 0)
+                    && (parentNode.type() & Node.LOW_EXTREMITY) == 0)
             {
                 observer.failed = true;
                 if (!observer.indexNodeFailed
-                    (childId, level, "Child is low extremity but parent is not: " + parentNode))
+                        (childId, level, "Child is low extremity but parent is not: " + parentNode))
                 {
                     return false;
                 }
             }
 
             if ((childNode.type() & Node.HIGH_EXTREMITY) != 0
-                && (parentNode.type() & Node.HIGH_EXTREMITY) == 0)
+                    && (parentNode.type() & Node.HIGH_EXTREMITY) == 0)
             {
                 observer.failed = true;
                 if (!observer.indexNodeFailed
-                    (childId, level, "Child is high extremity but parent is not: " + parentNode))
+                        (childId, level, "Child is high extremity but parent is not: " + parentNode))
                 {
                     return false;
                 }
@@ -5217,42 +5207,75 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
 
         // Verify node level types.
 
+        abstract class NodeVerifier {
+            public abstract boolean verifyNode(int level, Node parentNode, Node childNode, VerificationObserver observer);
+        }
+
+        class RegularInternalVerifier extends NodeVerifier {
+            @Override
+            public boolean verifyNode(int level, Node parentNode, Node childNode, VerificationObserver observer) {
+                if (childNode.isLeaf() && parentNode.id() > 1) { // stubs are never bins
+                    observer.failed = true;
+                    if (!observer.indexNodeFailed(childNode.id(), level,
+                            "Child is a leaf, but parent is a regular internal node: " + parentNode)) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        }
+
+        class BottomInternalVerifier extends NodeVerifier {
+            @Override
+            public boolean verifyNode(int level, Node parentNode, Node childNode, VerificationObserver observer) {
+                if (!childNode.isLeaf()) {
+                    observer.failed = true;
+                    if (!observer.indexNodeFailed(childNode.id(), level,
+                            "Child is not a leaf, but parent is a bottom internal node: " + parentNode)) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        }
+
+        class LeafVerifier extends NodeVerifier {
+            @Override
+            public boolean verifyNode(int level, Node parentNode, Node childNode, VerificationObserver observer) {
+                observer.failed = true;
+                if (!observer.indexNodeFailed(childNode.id(), level,
+                        "Child parent is a leaf node: " + parentNode)) {
+                    return false;
+                }
+                return true;
+            }
+        }
+
+        NodeVerifier nodeVerifier = null ;
         switch (parentNode.type()) {
-        case Node.TYPE_TN_IN:
-            if (childNode.isLeaf() && parentNode.id() > 1) { // stubs are never bins
-                observer.failed = true;
-                if (!observer.indexNodeFailed
-                    (childId, level,
-                     "Child is a leaf, but parent is a regular internal node: " + parentNode))
-                {
-                    return false;
-                }
-            }
-            break;
-        case Node.TYPE_TN_BIN:
-            if (!childNode.isLeaf()) {
-                observer.failed = true;
-                if (!observer.indexNodeFailed
-                    (childId, level,
-                     "Child is not a leaf, but parent is a bottom internal node: " + parentNode))
-                {
-                    return false;
-                }
-            }
-            break;
-        default:
-            if (!parentNode.isLeaf()) {
+            case Node.TYPE_TN_IN:
+                nodeVerifier = new RegularInternalVerifier();
                 break;
-            }
-            // Fallthrough...
-        case Node.TYPE_TN_LEAF:
-            observer.failed = true;
-            if (!observer.indexNodeFailed
-                (childId, level, "Child parent is a leaf node: " + parentNode))
-            {
+            case Node.TYPE_TN_BIN:
+                nodeVerifier = new BottomInternalVerifier();
+                break;
+            default:
+                if (!parentNode.isLeaf()) {
+                    break;
+                }
+                // Fallthrough...
+            case Node.TYPE_TN_LEAF:
+                nodeVerifier = new LeafVerifier();
+                break;
+        }
+
+
+        if(nodeVerifier!=null) {
+            if (!nodeVerifier.verifyNode(level, parentNode, childNode, observer)) {
                 return false;
             }
-            break;
+            else
+                return true;
         }
 
         return true;
@@ -5386,7 +5409,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
      * @return true if latch was never released for the upgrade
      */
     final boolean notSplitDirtyUpgrade(final CursorFrame frame, boolean exclusive)
-        throws IOException
+            throws IOException
     {
         final Node node = frame.mNode;
 
@@ -5554,7 +5577,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                 } else {
                     try {
                         leftNode = mTree.mDatabase
-                            .latchChildRetainParentEx(parentNode, pos - 2, false);
+                                .latchChildRetainParentEx(parentNode, pos - 2, false);
                     } catch (Throwable e) {
                         node.releaseExclusive();
                         throw e;
@@ -5569,7 +5592,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                             node = null;
                             try {
                                 parentNode.insertSplitChildRef
-                                    (parentFrame, mTree, pos - 2, leftNode);
+                                        (parentFrame, mTree, pos - 2, leftNode);
                                 continue;
                             } catch (Throwable e) {
                                 return;
@@ -5597,7 +5620,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                 } else {
                     try {
                         rightNode = mTree.mDatabase
-                            .latchChildRetainParentEx(parentNode, pos + 2, false);
+                                .latchChildRetainParentEx(parentNode, pos + 2, false);
                     } catch (Throwable e) {
                         if (leftNode != null) {
                             leftNode.releaseExclusive();
@@ -5618,7 +5641,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
                             node = null;
                             try {
                                 parentNode.insertSplitChildRef
-                                    (parentFrame, mTree, pos + 2, rightNode);
+                                        (parentFrame, mTree, pos + 2, rightNode);
                                 continue;
                             } catch (Throwable e) {
                                 return;
@@ -5772,7 +5795,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
             } else {
                 try {
                     leftNode = mTree.mDatabase
-                        .latchChildRetainParentEx(parentNode, pos - 2, false);
+                            .latchChildRetainParentEx(parentNode, pos - 2, false);
                 } catch (Throwable e) {
                     node.releaseExclusive();
                     throw e;
@@ -5796,7 +5819,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
             } else {
                 try {
                     rightNode = mTree.mDatabase
-                        .latchChildRetainParentEx(parentNode, pos + 2, false);
+                            .latchChildRetainParentEx(parentNode, pos + 2, false);
                 } catch (Throwable e) {
                     if (leftNode != null) {
                         leftNode.releaseExclusive();
@@ -5867,7 +5890,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
         int parentEntryLoc = p_ushortGetLE(parentPage, parentNode.searchVecStart() + leftPos);
         int parentEntryLen = Node.keyLengthAtLoc(parentPage, parentEntryLoc);
         int remaining = leftAvail - parentEntryLen
-            + rightAvail - pageSize(parentPage) + (Node.TN_HEADER_SIZE - 2);
+                + rightAvail - pageSize(parentPage) + (Node.TN_HEADER_SIZE - 2);
 
         if (remaining < 0) {
             if (rightNode != null) {
@@ -5891,7 +5914,7 @@ public class BTreeCursor extends CoreValueAccessor implements Cursor {
 
             try {
                 Node.moveInternalToLeftAndDelete
-                    (mTree, leftNode, rightNode, parentPage, parentEntryLoc, parentEntryLen);
+                        (mTree, leftNode, rightNode, parentPage, parentEntryLoc, parentEntryLen);
             } catch (Throwable e) {
                 leftNode.releaseExclusive();
                 parentNode.releaseExclusive();

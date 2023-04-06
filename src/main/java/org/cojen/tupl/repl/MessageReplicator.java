@@ -43,7 +43,6 @@ public interface MessageReplicator extends Replicator {
      * {@inheritDoc}
      * @throws InvalidReadException if position is lower than the start position
      */
-    @Override
     Reader newReader(long position, boolean follow);
 
     /**
@@ -134,6 +133,6 @@ public interface MessageReplicator extends Replicator {
          * messages and then close the writer
          */
         int writeMessage(byte[] message, int offset, int length, boolean finished)
-            throws IOException;
+                throws IOException;
     }
 }

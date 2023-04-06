@@ -66,7 +66,7 @@ public interface Replicator extends Closeable {
      * Connect to a remote replication group member, for receiving a database snapshot. An
      * {@linkplain #snapshotRequestAcceptor acceptor} must be installed on the group member
      * being connected to for the request to succeed.
-     * 
+     *
      * <p>The sender is selected as the one which has the fewest count of active snapshot
      * sessions. If all the counts are the same, then a sender is instead randomly selected,
      * favoring a follower over a leader.
@@ -90,26 +90,6 @@ public interface Replicator extends Closeable {
      * @throws IllegalStateException if replicator is closed
      */
     boolean isReadable(long position);
-
-    /**
-     * Returns a new reader which accesses data starting from the given position. The reader
-     * returns EOF whenever the end of a term is reached. At the end of a term, try to obtain a
-     * new writer to determine if the local member has become the leader.
-     *
-     * <p>When passing true for the follow parameter, a reader is always provided at the
-     * requested position. When passing false for the follow parameter, null is returned if the
-     * current member is the leader for the given position.
-     *
-     * <p><b>Note: Reader instances are not expected to be thread-safe.</b>
-     *
-     * @param position position to start reading from, known to have been committed
-     * @param follow pass true to obtain an active reader, even if local member is the leader
-     * @return reader or possibly null when follow is false
-     * @throws InvalidReadException if position is lower than the start position, or if
-     * position is higher than the commit position
-     * @throws IllegalStateException if replicator is closed
-     */
-    Reader newReader(long position, boolean follow);
 
     /**
      * Returns a new writer for the leader to write into, or else returns null if the local

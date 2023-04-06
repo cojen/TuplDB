@@ -157,7 +157,7 @@ class BTree extends Tree implements View, Index {
         Node root = mRoot;
         root.acquireShared();
         try {
-            checkClosedIndexException(root.mPage);        
+            checkClosedIndexException(root.mPage);
             return root.isLeaf() && !root.hasKeys();
         } finally {
             root.releaseShared();
@@ -167,7 +167,7 @@ class BTree extends Tree implements View, Index {
     @Override
     public long count(byte[] lowKey, boolean lowInclusive,
                       byte[] highKey, boolean highInclusive)
-        throws IOException
+            throws IOException
     {
         BTreeCursor cursor = newCursor(Transaction.BOGUS);
         BTreeCursor high = null;
@@ -281,7 +281,7 @@ class BTree extends Tree implements View, Index {
                         if ((header & Node.ENTRY_FRAGMENTED) != 0) {
                             // Note: An optimized version wouldn't need to copy the whole key.
                             byte[] compareKey = mDatabase.reconstructKey
-                                (page, compareLoc, compareLen);
+                                    (page, compareLoc, compareLen);
 
                             int fullCompareLen = compareKey.length;
 
@@ -338,8 +338,8 @@ class BTree extends Tree implements View, Index {
                     highMatch = i;
                 } else {
                     if ((local != null && local.lockMode() != LockMode.READ_COMMITTED) ||
-                        mLockManager.isAvailable
-                        (local, mId, key, keyHash = LockManager.hash(mId, key)))
+                            mLockManager.isAvailable
+                                    (local, mId, key, keyHash = LockManager.hash(mId, key)))
                     {
                         return Node.retrieveLeafValueAtLoc(node, page, compareLoc + compareLen);
                     }
@@ -356,7 +356,7 @@ class BTree extends Tree implements View, Index {
             }
 
             if ((local != null && local.lockMode() != LockMode.READ_COMMITTED) ||
-                mLockManager.isAvailable(local, mId, key, keyHash = LockManager.hash(mId, key)))
+                    mLockManager.isAvailable(local, mId, key, keyHash = LockManager.hash(mId, key)))
             {
                 return null;
             }
@@ -465,7 +465,7 @@ class BTree extends Tree implements View, Index {
             int pos = node.binarySearch(key);
 
             if ((local != null && local.lockMode() != LockMode.READ_COMMITTED) ||
-                mLockManager.isAvailable(local, mId, key, keyHash = LockManager.hash(mId, key)))
+                    mLockManager.isAvailable(local, mId, key, keyHash = LockManager.hash(mId, key)))
             {
                 return pos >= 0 && node.hasLeafValue(pos) != null;
             }
@@ -576,7 +576,7 @@ class BTree extends Tree implements View, Index {
 
     @Override
     public final boolean update(Transaction txn, byte[] key, byte[] oldValue, byte[] newValue)
-        throws IOException
+            throws IOException
     {
         keyCheck(key);
         BTreeCursor cursor = newCursor(txn);
@@ -596,27 +596,35 @@ class BTree extends Tree implements View, Index {
         if (local == null || (mode = local.lockMode()) == LockMode.READ_COMMITTED) {
             int hash = LockManager.hash(mId, key);
             if (!isLockAvailable(local, key, hash)) {
-                // Acquire and release.
-                if (local == null) {
-                    lockSharedLocal(key, hash).doUnlock();
-                } else {
-                    LockResult result = local.doLock(0, mId, key, hash, local.mLockTimeoutNanos);
-                    if (result == LockResult.ACQUIRED) {
-                        local.doUnlock();
-                    }
-                }
+                acquireLock(key, local, hash);
             }
         } else if (!mode.noReadLock) {
-            int hash = LockManager.hash(mId, key);
-            return local.doLock(mode.repeatable, mId, key, hash, local.mLockTimeoutNanos);
+            return acquireLockNoWriteLock(key, local, mode);
         }
 
         return LockResult.UNOWNED;
     }
 
+    private LockResult acquireLockNoWriteLock(byte[] key, LocalTransaction local, LockMode mode) throws LockFailureException {
+        int hash = LockManager.hash(mId, key);
+        return local.doLock(mode.repeatable, mId, key, hash, local.mLockTimeoutNanos);
+    }
+
+    private void acquireLock(byte[] key, LocalTransaction local, int hash) throws LockFailureException {
+        // Acquire and release.
+        if (local == null) {
+            lockSharedLocal(key, hash).doUnlock();
+        } else {
+            LockResult result = local.doLock(0, mId, key, hash, local.mLockTimeoutNanos);
+            if (result == LockResult.ACQUIRED) {
+                local.doUnlock();
+            }
+        }
+    }
+
     @Override
     public final LockResult tryLockShared(Transaction txn, byte[] key, long nanosTimeout)
-        throws LockFailureException
+            throws LockFailureException
     {
         return check(txn).tryLockShared(mId, key, nanosTimeout);
     }
@@ -628,28 +636,28 @@ class BTree extends Tree implements View, Index {
 
     @Override
     public final LockResult tryLockUpgradable(Transaction txn, byte[] key, long nanosTimeout)
-        throws LockFailureException
+            throws LockFailureException
     {
         return check(txn).tryLockUpgradable(mId, key, nanosTimeout);
     }
 
     @Override
     public final LockResult lockUpgradable(Transaction txn, byte[] key)
-        throws LockFailureException
+            throws LockFailureException
     {
         return check(txn).lockUpgradable(mId, key);
     }
 
     @Override
     public final LockResult tryLockExclusive(Transaction txn, byte[] key, long nanosTimeout)
-        throws LockFailureException
+            throws LockFailureException
     {
         return check(txn).tryLockExclusive(mId, key, nanosTimeout);
     }
 
     @Override
     public final LockResult lockExclusive(Transaction txn, byte[] key)
-        throws LockFailureException
+            throws LockFailureException
     {
         return check(txn).lockExclusive(mId, key);
     }
@@ -696,21 +704,21 @@ class BTree extends Tree implements View, Index {
 
     /**
      * Current approach for evicting data is as follows:
-     * - Search for a random Node, steered towards un-cached nodes. 
-     * - Once a node is picked, iterate through the keys in the node 
-     *   and delete all the entries from it (provided they are within 
+     * - Search for a random Node, steered towards un-cached nodes.
+     * - Once a node is picked, iterate through the keys in the node
+     *   and delete all the entries from it (provided they are within
      *   the highkey and lowKey boundaries).
      * - This simple algorithm is an approximate LRU algorithm, which
      *   is expected to evict entries that are least recently accessed.
-     * 
+     *
      * An alternative approach that was considered:
      * - Search for a random Node, steered towards un-cached nodes.
-     * - Delete the node directly. 
-     * - This works when all the keys and values fit within a page.  
+     * - Delete the node directly.
+     * - This works when all the keys and values fit within a page.
      *   If they don't, then the entries must be fully decoded. This is
      *   necessary because there's no quick way of determining if any of
-     *   the entries in a page overflow.  
-     * 
+     *   the entries in a page overflow.
+     *
      * Note: It could be that the node initially has three keys: A, B, D. As eviction is
      * progressing along, a key C could be inserted concurrently, which could then be
      * immediately deleted. This case is expected to be rare and harmless.
@@ -718,7 +726,7 @@ class BTree extends Tree implements View, Index {
     @Override
     public long evict(Transaction txn, byte[] lowKey, byte[] highKey,
                       Filter evictionFilter, boolean autoload)
-        throws IOException
+            throws IOException
     {
         long length = 0;
         BTreeCursor cursor = newCursor(txn);
@@ -730,8 +738,8 @@ class BTree extends Tree implements View, Index {
                 // We did not find anything to evict.  Move on.
                 return length;
             }
-            
-            if (lowKey != null) { 
+
+            if (lowKey != null) {
                 if (compareUnsigned(lowKey, endKey) > 0) {
                     // lowKey is past the end key.  Move on.
                     return length;
@@ -744,11 +752,11 @@ class BTree extends Tree implements View, Index {
                     cursor.findNearby(lowKey);
                 }
             }
-            
+
             if (highKey != null && compareUnsigned(highKey, endKey) <= 0) {
-                endKey = highKey; 
+                endKey = highKey;
             }
-            
+
             var stats = new long[2];
             while (cursor.key() != null) {
                 byte[] key = cursor.key();
@@ -756,13 +764,13 @@ class BTree extends Tree implements View, Index {
                 if (value != null) {
                     cursor.valueStats(stats);
                     if (stats[0] > 0 &&
-                        (evictionFilter == null || evictionFilter.isAllowed(key, value)))
+                            (evictionFilter == null || evictionFilter.isAllowed(key, value)))
                     {
-                        length += key.length + stats[0]; 
+                        length += key.length + stats[0];
                         cursor.store(null);
                     }
                 } else {
-                    // This is either a ghost or findNearby got us to a 
+                    // This is either a ghost or findNearby got us to a
                     // key that does not exist.  Move on to next key.
                 }
                 cursor.nextLe(endKey);
@@ -793,7 +801,7 @@ class BTree extends Tree implements View, Index {
 
     @Override
     final boolean compactTree(Index view, long highestNodeId, CompactionObserver observer)
-        throws IOException
+            throws IOException
     {
         try {
             if (!observer.indexBegin(view)) {
@@ -880,7 +888,6 @@ class BTree extends Tree implements View, Index {
     final Node close(boolean forDelete, boolean rootLatched) {
         return close(forDelete, rootLatched, false);
     }
-
     /**
      * Close any kind of index, even an internal one.
      */
@@ -903,7 +910,7 @@ class BTree extends Tree implements View, Index {
      * @return root node if forDelete; null if already closed
      */
     private Node close(boolean forDelete, final boolean rootLatched, boolean force,
-                       /*P*/ byte[] closedPage)
+            /*P*/ byte[] closedPage)
     {
         Node root = mRoot;
 
@@ -981,7 +988,7 @@ class BTree extends Tree implements View, Index {
         }
     }
 
-    @Override 
+    @Override
     public final boolean isClosed() {
         Node root = mRoot;
         root.acquireShared();
@@ -1103,7 +1110,7 @@ class BTree extends Tree implements View, Index {
 
     private static BTree doGraftTempTree(BTree lowTree, BTree highTree,
                                          BTreeCursor lowCursor, BTreeCursor highCursor)
-        throws IOException
+            throws IOException
     {
 
         // Dirty the edge nodes and find the mid key.
@@ -1194,59 +1201,8 @@ class BTree extends Tree implements View, Index {
             }
 
             tryMerge: {
-                if (leftNode.isLeaf()) {
-                    // See BTreeCursor.mergeLeaf method.
-
-                    int leftAvail = leftNode.availableLeafBytes();
-                    int rightAvail = rightNode.availableLeafBytes();
-
-                    int remaining = leftAvail
-                        + rightAvail - survivor.pageSize() + Node.TN_HEADER_SIZE;
-
-                    if (remaining < 0) {
-                        // No room to merge.
-                        break tryMerge;
-                    }
-
-                    try {
-                        Node.moveLeafToLeftAndDelete(survivor, leftNode, rightNode);
-                    } catch (Throwable e) {
-                        leftNode.releaseExclusive();
-                        rootNode.releaseExclusive();
-                        throw e;
-                    }
-                } else {
-                    // See BTreeCursor.mergeInternal method.
-
-                    var rootPage = rootNode.mPage;
-                    int rootEntryLoc = p_ushortGetLE(rootPage, rootNode.searchVecStart());
-                    int rootEntryLen = Node.keyLengthAtLoc(rootPage, rootEntryLoc);
-
-                    int leftAvail = leftNode.availableInternalBytes();
-                    int rightAvail = rightNode.availableInternalBytes();
-
-                    int remaining = leftAvail - rootEntryLen
-                        + rightAvail - survivor.pageSize() + (Node.TN_HEADER_SIZE - 2);
-
-                    if (remaining < 0) {
-                        // No room to merge.
-                        break tryMerge;
-                    }
-
-                    try {
-                        Node.moveInternalToLeftAndDelete
-                            (survivor, leftNode, rightNode, rootPage, rootEntryLoc, rootEntryLen);
-                    } catch (Throwable e) {
-                        leftNode.releaseExclusive();
-                        rootNode.releaseExclusive();
-                        throw e;
-                    }
-                }
-
-                // Success!
-                rootNode.deleteRightChildRef(2);
-                survivor.rootDelete(leftNode);
-                return survivor;
+                BTree survivor1 = mergeTryLeafNode(survivor, rootNode, leftNode, rightNode);
+                if (survivor1 != null) return survivor1;
             }
 
             rightNode.releaseExclusive();
@@ -1255,6 +1211,62 @@ class BTree extends Tree implements View, Index {
 
         rootNode.releaseExclusive();
 
+        return survivor;
+    }
+
+    private static BTree mergeTryLeafNode(BTree survivor, Node rootNode, Node leftNode, Node rightNode) throws IOException {
+        if (leftNode.isLeaf()) {
+            // See BTreeCursor.mergeLeaf method.
+
+            int leftAvail = leftNode.availableLeafBytes();
+            int rightAvail = rightNode.availableLeafBytes();
+
+            int remaining = leftAvail
+                    + rightAvail - survivor.pageSize() + Node.TN_HEADER_SIZE;
+
+            if (remaining < 0) {
+                // No room to merge.
+                return null;
+            }
+
+            try {
+                Node.moveLeafToLeftAndDelete(survivor, leftNode, rightNode);
+            } catch (Throwable e) {
+                leftNode.releaseExclusive();
+                rootNode.releaseExclusive();
+                throw e;
+            }
+        } else {
+            // See BTreeCursor.mergeInternal method.
+
+            var rootPage = rootNode.mPage;
+            int rootEntryLoc = p_ushortGetLE(rootPage, rootNode.searchVecStart());
+            int rootEntryLen = Node.keyLengthAtLoc(rootPage, rootEntryLoc);
+
+            int leftAvail = leftNode.availableInternalBytes();
+            int rightAvail = rightNode.availableInternalBytes();
+
+            int remaining = leftAvail - rootEntryLen
+                    + rightAvail - survivor.pageSize() + (Node.TN_HEADER_SIZE - 2);
+
+            if (remaining < 0) {
+                // No room to merge.
+                return null;
+            }
+
+            try {
+                Node.moveInternalToLeftAndDelete
+                        (survivor, leftNode, rightNode, rootPage, rootEntryLoc, rootEntryLen);
+            } catch (Throwable e) {
+                leftNode.releaseExclusive();
+                rootNode.releaseExclusive();
+                throw e;
+            }
+        }
+
+        // Success!
+        rootNode.deleteRightChildRef(2);
+        survivor.rootDelete(leftNode);
         return survivor;
     }
 
@@ -1362,12 +1374,12 @@ class BTree extends Tree implements View, Index {
     }
 
     @Override
-    final void writeCachePrimer(final DataOutput dout) throws IOException {
+    final void writeCachePrimer(final DataOutput dataOutput) throws IOException {
         // Encode name instead of identifier, to support priming set portability
         // between databases. The identifiers won't match, but the names might.
         byte[] name = mName;
-        dout.writeInt(name.length);
-        dout.write(name);
+        dataOutput.writeInt(name.length);
+        dataOutput.write(name);
 
         traverseLoaded((node) -> {
             byte[] midKey;
@@ -1391,13 +1403,13 @@ class BTree extends Tree implements View, Index {
             // Omit entries with very large keys. The primer encoding format would need to
             // change for supporting larger keys.
             if (midKey.length < 0xffff) {
-                dout.writeShort(midKey.length);
-                dout.write(midKey);
+                dataOutput.writeShort(midKey.length);
+                dataOutput.write(midKey);
             }
         });
 
         // Terminator.
-        dout.writeShort(0xffff);
+        dataOutput.writeShort(0xffff);
     }
 
     @Override
@@ -1558,7 +1570,7 @@ class BTree extends Tree implements View, Index {
                     Utils.uncaught(cause);
                 } else {
                     listener.notify(EventType.PANIC_UNHANDLED_EXCEPTION,
-                                    "Retrying node split due to exception: %1$s", cause);
+                            "Retrying node split due to exception: %1$s", cause);
                 }
 
                 reported = true;
@@ -1707,19 +1719,9 @@ class BTree extends Tree implements View, Index {
         return mLockManager.lockExclusiveLocal(mId, key, hash);
     }
 
-    /**
-     * Writes to the redo log if defined and the default durability mode isn't NO_REDO.
-     *
-     * @return non-zero position if caller should call txnCommitSync
-     */
-    final long redoStoreNullTxn(byte[] key, byte[] value) throws IOException {
-        RedoWriter redo = mDatabase.mRedoWriter;
-        DurabilityMode mode;
-        if (redo == null || (mode = mDatabase.mDurabilityMode) == DurabilityMode.NO_REDO) {
-            return 0;
-        }
-        return mDatabase.anyTransactionContext().redoStoreAutoCommit
-            (redo.txnRedoWriter(), mId, key, value, mode);
+    final long nullTxnStoreRedo(byte[] key, byte[] value) throws IOException {
+
+        return mDatabase.redoStoreNullTxn(key,value,mId);
     }
 
     final void txnCommitSync(long commitPos) throws IOException {

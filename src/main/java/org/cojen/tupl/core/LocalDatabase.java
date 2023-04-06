@@ -297,8 +297,8 @@ final class LocalDatabase extends CoreDatabase {
     static {
         try {
             cClosedHandle =
-                MethodHandles.lookup().findVarHandle
-                (LocalDatabase.class, "mClosed", int.class);
+                    MethodHandles.lookup().findVarHandle
+                            (LocalDatabase.class, "mClosed", int.class);
 
             /*P*/ // [|
             /*P*/ // cCommitHeaderHandle =
@@ -367,8 +367,8 @@ final class LocalDatabase extends CoreDatabase {
     private LocalDatabase(Launcher launcher, boolean destroy) throws IOException {
         mEncodingVersion = launcher.mBasicMode ? 20130113 : 20130112;
 
-        launcher.mEventListener = mEventListener = 
-            SafeEventListener.makeSafe(launcher.mEventListener);
+        launcher.mEventListener = mEventListener =
+                SafeEventListener.makeSafe(launcher.mEventListener);
 
         mCustomHandlers = Launcher.mapClone(launcher.mCustomHandlers);
         mCustomHandlersById = Launcher.newByIdMap(mCustomHandlers);
@@ -387,10 +387,10 @@ final class LocalDatabase extends CoreDatabase {
             explicitPageSize = false;
         } else if (pageSize < MINIMUM_PAGE_SIZE) {
             throw new IllegalArgumentException
-                ("Page size is too small: " + pageSize + " < " + MINIMUM_PAGE_SIZE);
+                    ("Page size is too small: " + pageSize + " < " + MINIMUM_PAGE_SIZE);
         } else if (pageSize > MAXIMUM_PAGE_SIZE) {
             throw new IllegalArgumentException
-                ("Page size is too large: " + pageSize + " > " + MAXIMUM_PAGE_SIZE);
+                    ("Page size is too large: " + pageSize + " > " + MAXIMUM_PAGE_SIZE);
         } else if ((pageSize & 1) != 0) {
             throw new IllegalArgumentException("Page size must be even: " + pageSize);
         }
@@ -410,8 +410,8 @@ final class LocalDatabase extends CoreDatabase {
 
             if (minCacheBytes > maxCacheBytes) {
                 throw new IllegalArgumentException
-                    ("Minimum cache size exceeds maximum: " +
-                     minCacheBytes + " > " + maxCacheBytes);
+                        ("Minimum cache size exceeds maximum: " +
+                                minCacheBytes + " > " + maxCacheBytes);
             }
 
             minCache = nodeCountFromBytes(minCacheBytes, pageSize);
@@ -502,7 +502,7 @@ final class LocalDatabase extends CoreDatabase {
                     dataPageArray = dataPageArray.open();
                     Crypto crypto = launcher.mDataCrypto;
                     mPageDb = StoredPageDb.open(debugListener, dataPageArray,
-                                                launcher.mChecksumFactory, crypto, destroy);
+                            launcher.mChecksumFactory, crypto, destroy);
                     /*P*/ // [|
                     /*P*/ // fullyMapped = crypto == null && dataPageArray.isFullyMapped();
                     /*P*/ // ]
@@ -513,8 +513,8 @@ final class LocalDatabase extends CoreDatabase {
                 PageDb pageDb;
                 try {
                     pageDb = StoredPageDb.open
-                        (debugListener, explicitPageSize, pageSize, dataFiles, options,
-                         launcher.mChecksumFactory, launcher.mDataCrypto, destroy);
+                            (debugListener, explicitPageSize, pageSize, dataFiles, options,
+                                    launcher.mChecksumFactory, launcher.mDataCrypto, destroy);
                 } catch (FileNotFoundException e) {
                     if (!mReadOnly) {
                         throw e;
@@ -546,7 +546,7 @@ final class LocalDatabase extends CoreDatabase {
 
             if (mEventListener != null) {
                 mEventListener.notify(EventType.CACHE_INIT_BEGIN,
-                                      "Initializing %1$d cache nodes", minCache);
+                        "Initializing %1$d cache nodes", minCache);
             }
 
             NodeGroup[] groups;
@@ -620,8 +620,8 @@ final class LocalDatabase extends CoreDatabase {
             } catch (OutOfMemoryError e) {
                 groups = null;
                 var oom = new OutOfMemoryError
-                    ("Unable to allocate the minimum required number of cache nodes: " +
-                     minCache + " (" + (minCache * (long) (pageSize + NODE_OVERHEAD)) + " bytes)");
+                        ("Unable to allocate the minimum required number of cache nodes: " +
+                                minCache + " (" + (minCache * (long) (pageSize + NODE_OVERHEAD)) + " bytes)");
                 oom.initCause(e.getCause());
                 throw oom;
             }
@@ -631,8 +631,8 @@ final class LocalDatabase extends CoreDatabase {
             if (mEventListener != null) {
                 double duration = (System.nanoTime() - cacheInitStart) / 1_000_000_000.0;
                 mEventListener.notify(EventType.CACHE_INIT_COMPLETE,
-                                      "Cache initialization completed in %1$1.3f seconds",
-                                      duration, TimeUnit.SECONDS);
+                        "Cache initialization completed in %1$1.3f seconds",
+                        duration, TimeUnit.SECONDS);
             }
 
             mTxnContexts = new TransactionContext[procCount * 4];
@@ -682,7 +682,7 @@ final class LocalDatabase extends CoreDatabase {
 
             if (debugListener != null) {
                 debugListener.notify(EventType.DEBUG, "MASTER_UNDO_LOG_PAGE_ID: %1$d",
-                                     decodeLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID));
+                        decodeLongLE(header, I_MASTER_UNDO_LOG_PAGE_ID));
                 debugListener.notify(EventType.DEBUG, "TRANSACTION_ID: %1$d", txnId);
                 debugListener.notify(EventType.DEBUG, "CHECKPOINT_NUMBER: %1$d", redoNum);
                 debugListener.notify(EventType.DEBUG, "REDO_TXN_ID: %1$d", redoTxnId);
@@ -700,7 +700,7 @@ final class LocalDatabase extends CoreDatabase {
                             long indexId = decodeLongBE(c.key(), 0);
                             String nameStr = utf8(c.value());
                             debugListener.notify(EventType.DEBUG, "Index: id=%1$d, name=%2$s",
-                                                 indexId, nameStr);
+                                    indexId, nameStr);
                         }
                     } finally {
                         c.reset();
@@ -760,13 +760,13 @@ final class LocalDatabase extends CoreDatabase {
                     if (masterNodeId != 0) {
                         if (mEventListener != null) {
                             mEventListener.notify
-                                (EventType.RECOVERY_LOAD_UNDO_LOGS, "Loading undo logs");
+                                    (EventType.RECOVERY_LOAD_UNDO_LOGS, "Loading undo logs");
                         }
 
                         UndoLog master = UndoLog.recoverMasterUndoLog(this, masterNodeId);
 
                         boolean trace = debugListener != null &&
-                            Boolean.TRUE.equals(launcher.mDebugOpen.get("traceUndo"));
+                                Boolean.TRUE.equals(launcher.mDebugOpen.get("traceUndo"));
 
                         // TODO: Can this be done in parallel?
                         master.recoverTransactions(debugListener, trace, txns);
@@ -827,7 +827,7 @@ final class LocalDatabase extends CoreDatabase {
                 if (repl != null) {
                     if (mEventListener != null) {
                         mEventListener.notify(EventType.REPLICATION_DEBUG,
-                                              "Starting at: %1$d", redoPos);
+                                "Starting at: %1$d", redoPos);
                     }
 
                     repl.start();
@@ -836,14 +836,14 @@ final class LocalDatabase extends CoreDatabase {
                         mRedoWriter = null;
 
                         if (debugListener != null &&
-                            Boolean.TRUE.equals(launcher.mDebugOpen.get("traceRedo")))
+                                Boolean.TRUE.equals(launcher.mDebugOpen.get("traceRedo")))
                         {
                             var printer = new RedoEventPrinter(debugListener, EventType.DEBUG);
                             new ReplDecoder(repl, redoPos, redoTxnId, new Latch()).run(printer);
                         }
                     } else {
                         var engine = new ReplEngine
-                            (repl, launcher.mMaxReplicaThreads, this, txns, cursors);
+                                (repl, launcher.mMaxReplicaThreads, this, txns, cursors);
                         mRedoWriter = engine.initWriter(redoNum);
 
                         // Cannot start recovery until constructor is finished and final field
@@ -863,15 +863,15 @@ final class LocalDatabase extends CoreDatabase {
                         mRedoWriter = null;
 
                         if (debugListener != null &&
-                            Boolean.TRUE.equals(launcher.mDebugOpen.get("traceRedo")))
+                                Boolean.TRUE.equals(launcher.mDebugOpen.get("traceRedo")))
                         {
                             var printer = new RedoEventPrinter(debugListener, EventType.DEBUG);
 
                             var replayLog = new RedoLog(launcher, logId, redoPos);
 
                             replayLog.replay
-                                (printer, debugListener, EventType.RECOVERY_APPLY_REDO_LOG,
-                                 "Applying redo log: %1$d");
+                                    (printer, debugListener, EventType.RECOVERY_APPLY_REDO_LOG,
+                                            "Applying redo log: %1$d");
                         }
                     } else {
                         // Make sure old redo logs are deleted. Process might have exited
@@ -881,13 +881,13 @@ final class LocalDatabase extends CoreDatabase {
                         boolean doCheckpoint = txns.size() != 0;
 
                         var applier = new RedoLogApplier
-                            (launcher.mMaxReplicaThreads, this, txns, cursors);
+                                (launcher.mMaxReplicaThreads, this, txns, cursors);
                         var replayLog = new RedoLog(launcher, logId, redoPos);
 
                         // As a side-effect, log id is set one higher than last file scanned.
                         TreeMap<Long, File> redoFiles = replayLog.replay
-                            (applier, mEventListener, EventType.RECOVERY_APPLY_REDO_LOG,
-                             "Applying redo log: %1$d");
+                                (applier, mEventListener, EventType.RECOVERY_APPLY_REDO_LOG,
+                                        "Applying redo log: %1$d");
 
                         doCheckpoint |= !redoFiles.isEmpty();
 
@@ -996,7 +996,7 @@ final class LocalDatabase extends CoreDatabase {
 
         // Until ready is called, checkpoints cannot be performed.
         ReplDecoder decoder = controller.ready
-            (launcher.mReplInitialPosition, launcher.mReplInitialTxnId);
+                (launcher.mReplInitialPosition, launcher.mReplInitialTxnId);
 
         finishInit2(launcher);
 
@@ -1078,7 +1078,7 @@ final class LocalDatabase extends CoreDatabase {
 
             try {
                 UndoLog.RTP rtp = txn.rollbackForRecovery
-                    (redo, mDurabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
+                        (redo, mDurabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
 
                 int handlerId = rtp.handlerId;
                 byte[] message = rtp.message;
@@ -1106,8 +1106,8 @@ final class LocalDatabase extends CoreDatabase {
                         uncaught(e);
                     } else {
                         listener.notify
-                            (EventType.RECOVERY_HANDLER_UNCAUGHT,
-                             "Uncaught exception when recovering a prepared transaction: %1$s", e);
+                                (EventType.RECOVERY_HANDLER_UNCAUGHT,
+                                        "Uncaught exception when recovering a prepared transaction: %1$s", e);
                     }
                 }
             }
@@ -1123,7 +1123,7 @@ final class LocalDatabase extends CoreDatabase {
                 if (launcher.mCachePriming && primer.exists()) {
                     if (mEventListener != null) {
                         mEventListener.notify(EventType.RECOVERY_CACHE_PRIMING,
-                                              "Cache priming");
+                                "Cache priming");
                     }
                     FileInputStream fin;
                     try {
@@ -1142,6 +1142,23 @@ final class LocalDatabase extends CoreDatabase {
                 }
             }
         }
+    }
+
+    /**
+     * Writes to the redo log if defined and the default durability mode isn't NO_REDO.
+     *
+     * @param key
+     * @param value
+     * @return non-zero position if caller should call txnCommitSync
+     */
+    protected long redoStoreNullTxn(byte[] key, byte[] value, long mId) throws IOException {
+        RedoWriter redo = mRedoWriter;
+        DurabilityMode mode;
+        if (redo == null || (mode = mDurabilityMode) == DurabilityMode.NO_REDO) {
+            return 0;
+        }
+        return anyTransactionContext().redoStoreAutoCommit
+                (redo.txnRedoWriter(), mId, key, value, mode);
     }
 
     static class ShutdownPrimer extends ShutdownHook.Weak<LocalDatabase> {
@@ -1182,7 +1199,7 @@ final class LocalDatabase extends CoreDatabase {
             if ((mMode & 2) != 0) {
                 if (db.mEventListener != null) {
                     db.mEventListener.notify
-                        (EventType.SHUTDOWN_CLEAN, "Database is cleanly shutting down");
+                            (EventType.SHUTDOWN_CLEAN, "Database is cleanly shutting down");
                 }
                 try {
                     db.shutdown();
@@ -1201,8 +1218,8 @@ final class LocalDatabase extends CoreDatabase {
         if (mEventListener != null) {
             double duration = (System.nanoTime() - recoveryStart) / 1_000_000_000.0;
             mEventListener.notify(EventType.RECOVERY_COMPLETE,
-                                  "Recovery completed in %1$1.3f seconds",
-                                  duration, TimeUnit.SECONDS);
+                    "Recovery completed in %1$1.3f seconds",
+                    duration, TimeUnit.SECONDS);
         }
     }
 
@@ -1214,7 +1231,7 @@ final class LocalDatabase extends CoreDatabase {
 
     private boolean hasRedoLogFiles() throws IOException {
         return mBaseFile != null
-            && !findNumberedFiles(mBaseFile, REDO_FILE_SUFFIX, 0, Long.MAX_VALUE).isEmpty();
+                && !findNumberedFiles(mBaseFile, REDO_FILE_SUFFIX, 0, Long.MAX_VALUE).isEmpty();
     }
 
     @Override
@@ -1282,7 +1299,7 @@ final class LocalDatabase extends CoreDatabase {
             }
 
             var treeIdBytes = new byte[8];
-            encodeLongBE(treeIdBytes, 0, id);            
+            encodeLongBE(treeIdBytes, 0, id);
 
             index = openTree(txn, treeIdBytes, name, false);
         } catch (Throwable e) {
@@ -1354,7 +1371,7 @@ final class LocalDatabase extends CoreDatabase {
      * @param redoTxnId non-zero if rename is performed by recovery
      */
     void renameIndex(final Index index, final byte[] newName, final long redoTxnId)
-        throws IOException
+            throws IOException
     {
         // Design note: Rename is a Database method instead of an Index method because it
         // offers an extra degree of safety. It's too easy to call rename and pass a byte[] by
@@ -1370,7 +1387,7 @@ final class LocalDatabase extends CoreDatabase {
      * @param redoTxnId non-zero if rename is performed by recovery
      */
     void renameBTree(final BTree tree, final byte[] newName, final long redoTxnId)
-        throws IOException
+            throws IOException
     {
         final byte[] idKey, trashIdKey;
         final byte[] oldName, oldNameKey;
@@ -1484,7 +1501,7 @@ final class LocalDatabase extends CoreDatabase {
                 try {
                     txn.check();
                     commitPos = txn.mContext.redoRenameIndexCommitFinal
-                        (txn.mRedo, txn.txnId(), tree.mId, newName, txn.durabilityMode());
+                            (txn.mRedo, txn.txnId(), tree.mId, newName, txn.durabilityMode());
                 } finally {
                     shared.release();
                 }
@@ -1606,7 +1623,7 @@ final class LocalDatabase extends CoreDatabase {
 
                     txn.check();
                     long commitPos = txn.mContext.redoDeleteIndexCommitFinal
-                        (txn.mRedo, txn.txnId(), tree.mId, txn.durabilityMode());
+                            (txn.mRedo, txn.txnId(), tree.mId, txn.durabilityMode());
                     shared.release();
                     shared = null;
 
@@ -1801,9 +1818,9 @@ final class LocalDatabase extends CoreDatabase {
         private void delete() {
             if (mListener != null) {
                 mListener.notify(EventType.DELETION_BEGIN,
-                                 "Index deletion " + (mResumed ? "resumed" : "begin") +
-                                 ": %1$d, name: %2$s",
-                                 mTrashed.id(), mTrashed.nameString());
+                        "Index deletion " + (mResumed ? "resumed" : "begin") +
+                                ": %1$d, name: %2$s",
+                        mTrashed.id(), mTrashed.nameString());
             }
 
             final byte[] idBytes = mTrashed.mIdBytes;
@@ -1822,16 +1839,16 @@ final class LocalDatabase extends CoreDatabase {
                 if (mListener != null) {
                     double duration = (System.nanoTime() - start) / 1_000_000_000.0;
                     mListener.notify(EventType.DELETION_COMPLETE,
-                                     "Index deletion complete: %1$d, name: %2$s, " +
-                                     "duration: %3$1.3f seconds",
-                                     mTrashed.id(), mTrashed.nameString(), duration);
+                            "Index deletion complete: %1$d, name: %2$s, " +
+                                    "duration: %3$1.3f seconds",
+                            mTrashed.id(), mTrashed.nameString(), duration);
                 }
             } catch (IOException e) {
                 if (!isClosed() && mListener != null) {
                     mListener.notify
-                        (EventType.DELETION_FAILED,
-                         "Index deletion failed: %1$d, name: %2$s, exception: %3$s",
-                         mTrashed.id(), mTrashed.nameString(), rootCause(e));
+                            (EventType.DELETION_FAILED,
+                                    "Index deletion failed: %1$d, name: %2$s, exception: %3$s",
+                                    mTrashed.id(), mTrashed.nameString(), rootCause(e));
                 }
                 closeQuietly(mTrashed);
                 return;
@@ -1845,8 +1862,8 @@ final class LocalDatabase extends CoreDatabase {
                 } catch (IOException e) {
                     if (!isClosed() && mListener != null) {
                         mListener.notify
-                            (EventType.DELETION_FAILED,
-                             "Unable to resume deletion: %1$s", rootCause(e));
+                                (EventType.DELETION_FAILED,
+                                        "Unable to resume deletion: %1$s", rootCause(e));
                     }
                     return;
                 }
@@ -1984,9 +2001,9 @@ final class LocalDatabase extends CoreDatabase {
     @Override
     public View indexRegistryById() throws IOException {
         return mRegistryKeyMap.viewPrefix(new byte[] {RK_INDEX_ID}, 1)
-            .viewUnmodifiable()
-            // Filter out anonymous indexes.
-            .viewFiltered((id, name) -> !isAnonymousIndex(Transaction.BOGUS, name));
+                .viewUnmodifiable()
+                // Filter out anonymous indexes.
+                .viewFiltered((id, name) -> !isAnonymousIndex(Transaction.BOGUS, name));
     }
 
     @Override
@@ -2002,7 +2019,7 @@ final class LocalDatabase extends CoreDatabase {
     private LocalTransaction doNewTransaction(DurabilityMode durabilityMode) {
         RedoWriter redo = txnRedoWriter();
         return new LocalTransaction
-            (this, redo, durabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
+                (this, redo, durabilityMode, LockMode.UPGRADABLE_READ, mDefaultLockTimeoutNanos);
     }
 
     LocalTransaction newAlwaysRedoTransaction() {
@@ -2025,8 +2042,8 @@ final class LocalDatabase extends CoreDatabase {
      */
     private LocalTransaction newNoRedoTransaction(long redoTxnId) {
         return redoTxnId == 0 ? newNoRedoTransaction() :
-            new LocalTransaction(this, redoTxnId, LockMode.UPGRADABLE_READ,
-                                 mDefaultLockTimeoutNanos);
+                new LocalTransaction(this, redoTxnId, LockMode.UPGRADABLE_READ,
+                        mDefaultLockTimeoutNanos);
     }
 
     /**
@@ -2107,7 +2124,7 @@ final class LocalDatabase extends CoreDatabase {
      */
     CustomHandler findCustomRecoveryHandler(int handlerId) throws IOException {
         return findRecoveryHandler(handlerId, RK_CUSTOM_ID,
-                                   mCustomHandlers, mCustomHandlersById);
+                mCustomHandlers, mCustomHandlersById);
     }
 
     @Override
@@ -2122,7 +2139,7 @@ final class LocalDatabase extends CoreDatabase {
      */
     PrepareHandler findPrepareRecoveryHandler(int handlerId) throws IOException {
         return findRecoveryHandler(handlerId, RK_PREPARE_ID,
-                                   mPrepareHandlers, mPrepareHandlersById);
+                mPrepareHandlers, mPrepareHandlersById);
     }
 
     /**
@@ -2161,7 +2178,7 @@ final class LocalDatabase extends CoreDatabase {
     @SuppressWarnings("unchecked")
     private <H extends Handler> HandlerWriter findOrCreateWriter(String name, byte rkNamePrefix,
                                                                  Map<String, H> handlers)
-        throws IOException
+            throws IOException
     {
         if (handlers == null) {
             throw new IllegalStateException("Recovery handler not installed: " + name);
@@ -2202,7 +2219,7 @@ final class LocalDatabase extends CoreDatabase {
      */
     private int findOrCreateHandlerId(String name, byte rkNamePrefix,
                                       Map<String, ? extends Handler> handlers)
-        throws IOException
+            throws IOException
     {
         final byte[] nameBytes = name.getBytes(StandardCharsets.UTF_8);
         final byte[] nameKey = newKey(rkNamePrefix, nameBytes);
@@ -2267,7 +2284,7 @@ final class LocalDatabase extends CoreDatabase {
     private <H extends Handler> H findRecoveryHandler(int handlerId, byte rkIdPrefix,
                                                       Map<String, H> handlers,
                                                       LHashTable.Obj<H> handlersById)
-        throws IOException
+            throws IOException
     {
         long scrambledId = fibHash(handlerId);
 
@@ -2291,7 +2308,7 @@ final class LocalDatabase extends CoreDatabase {
             };
 
             throw new CorruptDatabaseException
-                ("Unable to find " + type + " handler name for id " + handlerId);
+                    ("Unable to find " + type + " handler name for id " + handlerId);
         }
 
         H handler = findRecoveryHandler(name, handlers);
@@ -2403,7 +2420,7 @@ final class LocalDatabase extends CoreDatabase {
             deleteNumberedFiles(launcher.mBaseFile, REDO_FILE_SUFFIX);
 
             restored = StoredPageDb.restoreFromSnapshot
-                (dataPageArray, launcher.mChecksumFactory, launcher.mDataCrypto, in);
+                    (dataPageArray, launcher.mChecksumFactory, launcher.mDataCrypto, in);
 
             // Delete the object, but keep the page array open.
             restored.delete();
@@ -2427,7 +2444,7 @@ final class LocalDatabase extends CoreDatabase {
             }
 
             restored = StoredPageDb.restoreFromSnapshot
-                (pageSize, dataFiles, options, launcher.mChecksumFactory, launcher.mDataCrypto, in);
+                    (pageSize, dataFiles, options, launcher.mChecksumFactory, launcher.mDataCrypto, in);
 
             try {
                 restored.close();
@@ -2532,7 +2549,7 @@ final class LocalDatabase extends CoreDatabase {
                 mOpenTreesLatch.releaseExclusive();
             }
         }
-            
+
         return servers;
     }
 
@@ -2563,8 +2580,8 @@ final class LocalDatabase extends CoreDatabase {
             }
 
             cursorCount += countCursors(mRegistry, strict) + countCursors(mRegistryKeyMap, strict)
-                + countCursors(mFragmentedTrash, strict) + countCursors(mCursorRegistry, strict)
-                + countCursors(mPreparedTxns, strict);
+                    + countCursors(mFragmentedTrash, strict) + countCursors(mCursorRegistry, strict)
+                    + countCursors(mPreparedTxns, strict);
 
             RowStore rs = mRowStore;
             if (rs != null) {
@@ -2917,9 +2934,9 @@ final class LocalDatabase extends CoreDatabase {
      */
     private boolean scanAllIndexes(ScanVisitor visitor) throws IOException {
         if (!scan(visitor, mRegistry) || !scan(visitor, mRegistryKeyMap)
-            || !scan(visitor, openFragmentedTrash(false))
-            || !scan(visitor, openCursorRegistry(false))
-            || !scan(visitor, openPreparedTxns(false)))
+                || !scan(visitor, openFragmentedTrash(false))
+                || !scan(visitor, openCursorRegistry(false))
+                || !scan(visitor, openPreparedTxns(false)))
         {
             return false;
         }
@@ -2998,8 +3015,8 @@ final class LocalDatabase extends CoreDatabase {
                 uncaught(rootCause);
             } else {
                 mEventListener.notify(EventType.PANIC_UNHANDLED_EXCEPTION,
-                                      "Closing database due to unhandled exception: %1$s",
-                                      rootCause);
+                        "Closing database due to unhandled exception: %1$s",
+                        rootCause);
             }
         }
 
@@ -3291,7 +3308,7 @@ final class LocalDatabase extends CoreDatabase {
      * @return false if already in the trash
      */
     private boolean doMoveToTrash(LocalTransaction txn, byte[] treeIdBytes)
-        throws IOException
+            throws IOException
     {
         final byte[] trashIdKey = newKey(RK_TRASH_ID, treeIdBytes);
 
@@ -3621,15 +3638,15 @@ final class LocalDatabase extends CoreDatabase {
             if (replEncoding != 0 && !hasRedoLogFiles()) {
                 // Conversion to non-replicated mode is allowed by simply touching redo file 0.
                 throw new DatabaseException
-                    ("Database must be configured with a replicator, " +
-                     "identified by: " + replEncoding);
+                        ("Database must be configured with a replicator, " +
+                                "identified by: " + replEncoding);
             }
         } else if (replEncoding == 0) {
             // Check if conversion to replicated mode is allowed. The replication log must have
             // data starting at position 0, and no redo log files can exist.
 
             String msg = "Database was created initially without a replicator. " +
-                "Conversion isn't possible ";
+                    "Conversion isn't possible ";
 
             if (!repl.isReadable(0)) {
                 msg += "without complete replication data.";
@@ -3647,8 +3664,8 @@ final class LocalDatabase extends CoreDatabase {
             encodeLongLE(header, I_REDO_POSITION, 0);
         } else if (replEncoding != repl.encoding()) {
             throw new DatabaseException
-                ("Database was created initially with a different replicator, " +
-                 "identified by: " + replEncoding);
+                    ("Database was created initially with a different replicator, " +
+                            "identified by: " + replEncoding);
         }
 
         return loadTreeRoot(rootId);
@@ -3659,7 +3676,7 @@ final class LocalDatabase extends CoreDatabase {
     }
 
     private BTree openInternalTree(long treeId, boolean create, Launcher launcher)
-        throws IOException
+            throws IOException
     {
         CommitLock.Shared shared = mCommitLock.acquireShared();
         try {
@@ -3704,7 +3721,7 @@ final class LocalDatabase extends CoreDatabase {
      * @param name required, unless anonymous and treeIdBytes is provided
      */
     private Tree openTree(Transaction findTxn, byte[] treeIdBytes, byte[] name, boolean create)
-        throws IOException
+            throws IOException
     {
         find: if (name != null) {
             TreeRef treeRef;
@@ -3745,7 +3762,7 @@ final class LocalDatabase extends CoreDatabase {
      * @param name required, unless anonymous and treeIdBytes is provided
      */
     private Tree doOpenTree(Transaction findTxn, byte[] treeIdBytes, byte[] name, boolean create)
-        throws IOException
+            throws IOException
     {
         checkClosed();
 
@@ -3897,7 +3914,7 @@ final class LocalDatabase extends CoreDatabase {
             }
 
             long rootId = (rootIdBytes == null || rootIdBytes.length == 0) ? 0
-                : decodeLongLE(rootIdBytes, 0);
+                    : decodeLongLE(rootIdBytes, 0);
 
             Node root = loadTreeRoot(rootId);
 
@@ -4082,7 +4099,7 @@ final class LocalDatabase extends CoreDatabase {
     @Override
     public void createSecondaryIndexes(Transaction txn, long primaryIndexId,
                                        long[] ids, Runnable callback)
-        throws IOException
+            throws IOException
     {
         Objects.requireNonNull(txn);
         Objects.requireNonNull(ids);
@@ -4128,7 +4145,7 @@ final class LocalDatabase extends CoreDatabase {
                     // Note: No harm is caused by the second commit below, which will generate
                     // another redo message. It must be called to ensure the log is flushed.
                     localTxn.mContext.redoCommitFinalNotifySchema
-                        (localTxn.mRedo, localTxn.id(), primaryIndexId);
+                            (localTxn.mRedo, localTxn.id(), primaryIndexId);
                 }
 
                 localTxn.commitAll();
@@ -4352,7 +4369,7 @@ final class LocalDatabase extends CoreDatabase {
      */
     private static Node nodeMapLock(final Node[] table, final int slot, Node first) {
         while (first == NM_LOCK
-               || !cNodeMapElementHandle.compareAndSet(table, slot, first, NM_LOCK))
+                || !cNodeMapElementHandle.compareAndSet(table, slot, first, NM_LOCK))
         {
             Thread.onSpinWait();
             first = (Node) cNodeMapElementHandle.getVolatile(table, slot);
@@ -4728,9 +4745,9 @@ final class LocalDatabase extends CoreDatabase {
         tryFind: if (childNode != null) {
             checkChild: {
                 evictChild: if (childNode.mCachedState != Node.CACHED_CLEAN
-                                && parent.mCachedState == Node.CACHED_CLEAN
-                                // Must be a valid parent -- not a stub from Node.rootDelete.
-                                && parent.id() > 1)
+                        && parent.mCachedState == Node.CACHED_CLEAN
+                        // Must be a valid parent -- not a stub from Node.rootDelete.
+                        && parent.id() > 1)
                 {
                     // Parent was evicted before child. Evict child now and mark as clean. If
                     // this isn't done, the notSplitDirty method will short-circuit and not
@@ -4797,7 +4814,7 @@ final class LocalDatabase extends CoreDatabase {
      * @return child node, possibly split
      */
     final Node latchChildRetainParentEx(Node parent, int childPos, boolean required)
-        throws IOException
+            throws IOException
     {
         long childId = parent.retrieveChildRefId(childPos);
 
@@ -4822,9 +4839,9 @@ final class LocalDatabase extends CoreDatabase {
         }
 
         if (childNode.mCachedState != Node.CACHED_CLEAN
-            && parent.mCachedState == Node.CACHED_CLEAN
-            // Must be a valid parent -- not a stub from Node.rootDelete.
-            && parent.id() > 1)
+                && parent.mCachedState == Node.CACHED_CLEAN
+                // Must be a valid parent -- not a stub from Node.rootDelete.
+                && parent.id() > 1)
         {
             // Parent was evicted before child. Evict child now and mark as clean. If
             // this isn't done, the notSplitDirty method will short-circuit and not
@@ -5308,7 +5325,7 @@ final class LocalDatabase extends CoreDatabase {
     }
 
     final byte[] fragment(final byte[] value, final long vlength, int max)
-        throws IOException
+            throws IOException
     {
         return fragment(value, vlength, max, 65535);
     }
@@ -5333,7 +5350,7 @@ final class LocalDatabase extends CoreDatabase {
      * @return null if max is too small
      */
     final byte[] fragment(final byte[] value, final long vlength, int max, int maxInline)
-        throws IOException
+            throws IOException
     {
         final int pageSize = mPageSize;
         long pageCount = vlength / pageSize;
@@ -5365,7 +5382,7 @@ final class LocalDatabase extends CoreDatabase {
         byte[] newValue;
         final int inline; // length of inline field size
         if (remainder <= max && remainder <= maxInline
-            && (pointerSpace <= (max + 6 - (inline = remainder == 0 ? 0 : 2) - remainder)))
+                && (pointerSpace <= (max + 6 - (inline = remainder == 0 ? 0 : 2) - remainder)))
         {
             // Remainder fits inline, minimizing internal fragmentation. All
             // extra pages will be full. All pointers fit too; encode direct.
@@ -5588,7 +5605,7 @@ final class LocalDatabase extends CoreDatabase {
      */
     private void writeMultilevelFragments(int level, Node inode,
                                           byte[] value, int voffset, long vlength)
-        throws IOException
+            throws IOException
     {
         var page = inode.mPage;
         level--;
@@ -5643,7 +5660,7 @@ final class LocalDatabase extends CoreDatabase {
 
     private static int childNodeCountOverflow(long vlength, long levelCap) {
         return BigInteger.valueOf(vlength).add(BigInteger.valueOf(levelCap - 1))
-            .divide(BigInteger.valueOf(levelCap)).intValue();
+                .divide(BigInteger.valueOf(levelCap)).intValue();
     }
 
     /**
@@ -5672,7 +5689,7 @@ final class LocalDatabase extends CoreDatabase {
      * @return null if stats requested
      */
     byte[] reconstruct(/*P*/ byte[] fragmented, int off, int len, long[] stats)
-        throws IOException
+            throws IOException
     {
         int header = p_byteGet(fragmented, off++);
         len--;
@@ -5791,7 +5808,7 @@ final class LocalDatabase extends CoreDatabase {
      */
     private long readMultilevelFragments(int level, Node inode,
                                          byte[] value, int voffset, long vlength)
-        throws IOException
+            throws IOException
     {
         try {
             long pagesRead = 0;
@@ -5816,7 +5833,7 @@ final class LocalDatabase extends CoreDatabase {
                         childNode.releaseShared();
                     } else {
                         pagesRead += readMultilevelFragments
-                            (level, childNode, value, voffset, len);
+                                (level, childNode, value, voffset, len);
                     }
                 }
 
@@ -5836,7 +5853,7 @@ final class LocalDatabase extends CoreDatabase {
      * @param fragmented page containing fragmented value 
      */
     void deleteFragments(/*P*/ byte[] fragmented, int off, int len)
-        throws IOException
+            throws IOException
     {
         int header = p_byteGet(fragmented, off++);
         len--;
@@ -5891,7 +5908,7 @@ final class LocalDatabase extends CoreDatabase {
      * @param inode exclusive latched parent inode; always released by this method
      */
     private void deleteMultilevelFragments(int level, Node inode, long vlength)
-        throws IOException
+            throws IOException
     {
         var page = inode.mPage;
         level--;
@@ -6150,7 +6167,7 @@ final class LocalDatabase extends CoreDatabase {
      * @param force 0: no force, 1: force if not closed, -1: force even if closed
      */
     private void checkpoint(int force, long sizeThreshold, long delayThresholdNanos)
-        throws IOException
+            throws IOException
     {
         while (!isClosed() && !isCacheOnly()) {
             // Checkpoint lock ensures consistent state between page store and logs.
@@ -6292,7 +6309,7 @@ final class LocalDatabase extends CoreDatabase {
      * @param force 0: no force, 1: force if not closed, -1: force even if closed
      */
     private void doCheckpoint(int force, long sizeThreshold, long delayThresholdNanos)
-        throws IOException
+            throws IOException
     {
         if (force >= 0 && isClosed()) {
             return;
@@ -6314,7 +6331,7 @@ final class LocalDatabase extends CoreDatabase {
                 }
 
                 if (delayThresholdNanos > 0 &&
-                    ((nowNanos - mLastCheckpointStartNanos) >= delayThresholdNanos))
+                        ((nowNanos - mLastCheckpointStartNanos) >= delayThresholdNanos))
                 {
                     break thresholdCheck;
                 }
@@ -6572,8 +6589,8 @@ final class LocalDatabase extends CoreDatabase {
         if (mEventListener != null) {
             double duration = mLastCheckpointDurationNanos / 1_000_000_000.0;
             mEventListener.notify(EventType.CHECKPOINT_COMPLETE,
-                                  "Checkpoint completed in %1$1.3f seconds",
-                                  duration, TimeUnit.SECONDS);
+                    "Checkpoint completed in %1$1.3f seconds",
+                    duration, TimeUnit.SECONDS);
         }
     }
 

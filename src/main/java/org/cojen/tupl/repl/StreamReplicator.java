@@ -102,7 +102,7 @@ public interface StreamReplicator extends Replicator {
             // joining the group early, which can cause an existing member's role to be
             // downgraded to observer.
             localSocket = ChannelManager.newServerSocket
-                (config.mServerSocketFactory, listenAddress);
+                    (config.mServerSocketFactory, listenAddress);
         }
 
         StateLog log = null;
@@ -121,12 +121,12 @@ public interface StreamReplicator extends Replicator {
             log = FileStateLog.open(base);
 
             return Controller.open(config.mEventListener,
-                                   log, groupToken1, groupToken2,
-                                   new File(base.getPath() + ".group"), 
-                                   config.mSocketFactory,
-                                   localAddress, listenAddress, config.mLocalRole,
-                                   seeds, localSocket,
-                                   config.mProxyWrites, config.mChecksumSockets);
+                    log, groupToken1, groupToken2,
+                    new File(base.getPath() + ".group"),
+                    config.mSocketFactory,
+                    localAddress, listenAddress, config.mLocalRole,
+                    seeds, localSocket,
+                    config.mProxyWrites, config.mChecksumSockets);
         } catch (Throwable e) {
             closeQuietly(localSocket);
             closeQuietly(log);
@@ -138,7 +138,6 @@ public interface StreamReplicator extends Replicator {
      * {@inheritDoc}
      * @throws InvalidReadException if position is lower than the start position
      */
-    @Override
     Reader newReader(long position, boolean follow);
 
     /**
@@ -287,7 +286,7 @@ public interface StreamReplicator extends Replicator {
          * messages and then close the writer
          */
         default int write(byte[] messages, int offset, int length, long highestPosition)
-            throws IOException
+                throws IOException
         {
             return write(null, messages, offset, length, highestPosition);
         }
@@ -303,6 +302,6 @@ public interface StreamReplicator extends Replicator {
          * messages and then close the writer
          */
         int write(byte[] prefix, byte[] messages, int offset, int length, long highestPosition)
-            throws IOException;
+                throws IOException;
     }
 }

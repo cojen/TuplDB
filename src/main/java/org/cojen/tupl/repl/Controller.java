@@ -89,7 +89,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private static final int FAILOVER_STALL = 10;
 
     private static final byte CONTROL_OP_JOIN = 1, CONTROL_OP_UPDATE_ROLE = 2,
-        CONTROL_OP_UNJOIN = 3;
+            CONTROL_OP_UNJOIN = 3;
 
     private static final byte[] EMPTY_DATA = new byte[0];
 
@@ -165,19 +165,19 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                            SocketAddress localAddress, SocketAddress listenAddress,
                            Role localRole, Set<SocketAddress> seeds, ServerSocket localSocket,
                            boolean proxyWrites, boolean writeCRCs)
-        throws IOException
+            throws IOException
     {
         boolean canCreate = seeds.isEmpty() && localRole == Role.NORMAL;
         GroupFile gf = GroupFile.open(eventListener, groupFile, localAddress, canCreate);
 
         if (gf == null && seeds.isEmpty()) {
             throw new JoinException
-                ("Not a member of the group and no seeds are provided. Local role must be " +
-                 Role.NORMAL + " to create the group, but configured role is: " + localRole);
+                    ("Not a member of the group and no seeds are provided. Local role must be " +
+                            Role.NORMAL + " to create the group, but configured role is: " + localRole);
         }
 
         var con = new Controller
-            (eventListener, log, groupToken1, groupToken2, gf, factory, proxyWrites, writeCRCs);
+                (eventListener, log, groupToken1, groupToken2, gf, factory, proxyWrites, writeCRCs);
 
         try {
             con.init(groupFile, localAddress, listenAddress, localRole, seeds, localSocket);
@@ -201,7 +201,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         mStateLog = log;
         mScheduler = new Scheduler();
         mChanMan = new ChannelManager(factory, mScheduler, groupToken1, groupToken2,
-                                      gf == null ? 0 : gf.groupId(), writeCRCs, this::uncaught);
+                gf == null ? 0 : gf.groupId(), writeCRCs, this::uncaught);
         mGroupFile = gf;
         mSyncCommitCondition = new LatchCondition();
         mProxyWrites = proxyWrites;
@@ -210,7 +210,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private void init(File groupFile,
                       SocketAddress localAddress, SocketAddress listenAddress,
                       Role localRole, Set<SocketAddress> seeds, final ServerSocket localSocket)
-        throws IOException
+            throws IOException
     {
         acquireExclusive();
         try {
@@ -222,9 +222,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 for (int trials = 2; --trials >= 0; ) {
                     try {
                         var joiner = new GroupJoiner
-                            (mEventListener, groupFile,
-                             mChanMan.groupToken1(), mChanMan.groupToken2(),
-                             localAddress, listenAddress);
+                                (mEventListener, groupFile,
+                                        mChanMan.groupToken1(), mChanMan.groupToken2(),
+                                        localAddress, listenAddress);
 
                         joiner.join(seeds, JOIN_TIMEOUT_MILLIS);
 
@@ -245,8 +245,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
             if (localMemberId == 0) {
                 throw new JoinException("Not in the replication group. Local address \""
-                                        + mGroupFile.localMemberAddress() + "\" wasn't found in "
-                                        + groupFile.getPath());
+                        + mGroupFile.localMemberAddress() + "\" wasn't found in "
+                        + groupFile.getPath());
             }
 
             mChanMan.setLocalMemberId(localMemberId, localSocket);
@@ -318,8 +318,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         if (mLeaderReplWriter != null) {
             mLeaderReplWriter.update
-                (mLeaderLogWriter, mAllChannels, candidateChannels.isEmpty(),
-                 mProxyWrites ? mProxyChannels : null);
+                    (mLeaderLogWriter, mAllChannels, candidateChannels.isEmpty(),
+                            mProxyWrites ? mProxyChannels : null);
         }
 
         if (mLocalMode != MODE_FOLLOWER && localMemberRole() != Role.NORMAL) {
@@ -463,7 +463,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         return mStateLog.isReadable(position);
     }
 
-    @Override
     public Reader newReader(long position, boolean follow) {
         if (follow) {
             return doNewReader(position);
@@ -473,9 +472,9 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         try {
             Reader reader;
             if (mLeaderLogWriter != null
-                && position >= mLeaderLogWriter.termStartPosition()
-                && position < mLeaderLogWriter.termEndPosition()
-                && localMemberRole() != Role.STANDBY)
+                    && position >= mLeaderLogWriter.termStartPosition()
+                    && position < mLeaderLogWriter.termEndPosition()
+                    && localMemberRole() != Role.STANDBY)
             {
                 reader = null;
             } else {
@@ -495,7 +494,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         }
         reader.close();
         throw new InvalidReadException
-            ("Position is higher than commit position: " + position + " > " + commitPosition);
+                ("Position is higher than commit position: " + position + " > " + commitPosition);
     }
 
     @Override
@@ -516,17 +515,17 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         try {
             if (mLeaderReplWriter != null) {
                 throw new IllegalStateException
-                    ("Writer already exists: term=" + mLeaderReplWriter.term());
+                        ("Writer already exists: term=" + mLeaderReplWriter.term());
             }
             if (mLeaderLogWriter == null
-                || (position >= 0 && position < mLeaderLogWriter.position())
-                || localMemberRole() == Role.STANDBY)
+                    || (position >= 0 && position < mLeaderLogWriter.position())
+                    || localMemberRole() == Role.STANDBY)
             {
                 return null;
             }
             var writer = new ReplWriter
-                (mLeaderLogWriter, mAllChannels, mConsensusPeers.length == 0,
-                 mProxyWrites ? mProxyChannels : null);
+                    (mLeaderLogWriter, mAllChannels, mConsensusPeers.length == 0,
+                            mProxyWrites ? mProxyChannels : null);
             mLeaderReplWriter = writer;
             return writer;
         } finally {
@@ -659,7 +658,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     private static IllegalStateException invalidCommit(long position, long commitPosition) {
         throw new IllegalStateException
-            ("Invalid commit position: " + position + " > " + commitPosition);
+                ("Invalid commit position: " + position + " > " + commitPosition);
     }
 
     @Override
@@ -807,21 +806,21 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             boolean refresh;
 
             switch (message[0]) {
-            default:
-                // Unknown message type.
-                return;
-            case CONTROL_OP_JOIN:
-                // Counterpart to GroupFile.proposeJoin.
-                refresh = mGroupFile.applyJoin(position, message) != null;
-                break;
-            case CONTROL_OP_UPDATE_ROLE:
-                // Counterpart to GroupFile.proposeUpdateRole.
-                refresh = mGroupFile.applyUpdateRole(message);
-                break;
-            case CONTROL_OP_UNJOIN:
-                // Counterpart to GroupFile.proposeRemovePeer.
-                refresh = mGroupFile.applyRemovePeer(message);
-                break;
+                default:
+                    // Unknown message type.
+                    return;
+                case CONTROL_OP_JOIN:
+                    // Counterpart to GroupFile.proposeJoin.
+                    refresh = mGroupFile.applyJoin(position, message) != null;
+                    break;
+                case CONTROL_OP_UPDATE_ROLE:
+                    // Counterpart to GroupFile.proposeUpdateRole.
+                    refresh = mGroupFile.applyUpdateRole(message);
+                    break;
+                case CONTROL_OP_UNJOIN:
+                    // Counterpart to GroupFile.proposeRemovePeer.
+                    refresh = mGroupFile.applyRemovePeer(message);
+                    break;
             }
 
             // TODO: Followers should inform the leader very early of their current group
@@ -864,7 +863,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     private SocketSnapshotReceiver requestSnapshot(Map<String, String> options,
                                                    long timeoutMillis)
-        throws IOException
+            throws IOException
     {
         // Request snapshots from normal, standby, and proxy members. Observers aren't
         // first-class and might not have the data.
@@ -1039,7 +1038,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         public int write(byte[] prefix,
                          byte[] data, int offset, int length,
                          long highestPosition)
-            throws IOException
+                throws IOException
         {
             Channel[] proxyChannels;
             long prevTerm, term, position, commitPosition;
@@ -1116,8 +1115,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
                 for (Channel peerChan : peerChannels) {
                     peerChan.writeData(null, prevTerm, term,
-                                       position, highestPosition, commitPosition,
-                                       prefix, data, offset, length);
+                            position, highestPosition, commitPosition,
+                            prefix, data, offset, length);
                 }
 
                 return result;
@@ -1129,8 +1128,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 Channel peerChan = proxyChannels[proxy];
 
                 if (peerChan.writeDataAndProxy
-                    (null, prevTerm, term, position, highestPosition, commitPosition,
-                     prefix, data, offset, length))
+                        (null, prevTerm, term, position, highestPosition, commitPosition,
+                                prefix, data, offset, length))
                 {
                     // Success.
                     return result;
@@ -1307,7 +1306,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
             private void schedule() {
                 int delayMillis = ThreadLocalRandom.current()
-                    .nextInt(SYNC_RATE_LOW_MILLIS, SYNC_RATE_HIGH_MILLIS);
+                        .nextInt(SYNC_RATE_LOW_MILLIS, SYNC_RATE_HIGH_MILLIS);
                 mCounter = System.nanoTime() + delayMillis * 1_000_000L;
                 mScheduler.scheduleNanos(this);
             }
@@ -1316,7 +1315,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     private void scheduleMissingDataTask() {
         int delayMillis = ThreadLocalRandom.current()
-            .nextInt(MISSING_DELAY_LOW_MILLIS, MISSING_DELAY_HIGH_MILLIS);
+                .nextInt(MISSING_DELAY_LOW_MILLIS, MISSING_DELAY_HIGH_MILLIS);
         mScheduler.scheduleMillis(this::missingDataTask, delayMillis);
     }
 
@@ -1353,7 +1352,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             };
 
             mMissingContigPosition = mStateLog.checkForMissingData
-                (mMissingContigPosition, collector);
+                    (mMissingContigPosition, collector);
 
             if (collector.mSize <= 0) {
                 acquireShared();
@@ -1361,7 +1360,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 Channel leader = mLeaderReplyChannel;
                 releaseShared();
                 if (local == Role.NORMAL && leader != null
-                    && leader.peer().role() == Role.STANDBY)
+                        && leader.peer().role() == Role.STANDBY)
                 {
                     acquireExclusive();
                     forceElection(); // releases exclusive latch as a side-effect
@@ -1385,8 +1384,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     private void requestMissingData(final long startPosition, final long endPosition) {
         event(EventType.REPLICATION_DEBUG, () ->
-              String.format("Requesting missing data: %1$,d bytes @[%2$d, %3$d)",
-                            endPosition - startPosition, startPosition, endPosition));
+                String.format("Requesting missing data: %1$,d bytes @[%2$d, %3$d)",
+                        endPosition - startPosition, startPosition, endPosition));
 
         // TODO: Need a way to abort outstanding requests.
 
@@ -1451,7 +1450,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
     private void scheduleElectionTask() {
         int delayMillis = ThreadLocalRandom.current()
-            .nextInt(ELECTION_DELAY_LOW_MILLIS, ELECTION_DELAY_HIGH_MILLIS);
+                .nextInt(ELECTION_DELAY_LOW_MILLIS, ELECTION_DELAY_HIGH_MILLIS);
         mScheduler.scheduleMillis(this::electionTask, delayMillis);
     }
 
@@ -1485,8 +1484,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             mElectionValidated--;
 
             if (mElectionValidated >= 0
-                || !isCandidate(localMemberRole())
-                || (peerChannels = mCandidateChannels).length <= 0)
+                    || !isCandidate(localMemberRole())
+                    || (peerChannels = mCandidateChannels).length <= 0)
             {
                 releaseExclusive();
                 return;
@@ -1588,7 +1587,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 b.append("a ");
             }
             b.append("candidate: term=").append(term).append(", highestTerm=")
-                .append(info.mTerm).append(", highestPosition=").append(info.mHighestPosition);
+                    .append(info.mTerm).append(", highestPosition=").append(info.mHighestPosition);
 
             event(EventType.REPLICATION_INFO, b.toString());
 
@@ -1635,7 +1634,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 mElectionValidated--;
             } else {
                 String reason = "commit position is stalled: " +
-                    commitPosition + " < " + highestPosition;
+                        commitPosition + " < " + highestPosition;
                 if (mLeaderReplWriter == null) {
                     toFollower(reason);
                     return;
@@ -1655,7 +1654,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
 
         for (Channel peerChan : peerChannels) {
             peerChan.writeData(null, prevTerm, term, position, highestPosition, commitPosition,
-                               null, EMPTY_DATA, 0, 0);
+                    null, EMPTY_DATA, 0, 0);
         }
     }
 
@@ -1667,7 +1666,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         try {
             if (mLeaderReplWriter == from) {
                 toFollower(reason);
-            }            
+            }
         } finally {
             releaseExclusive();
         }
@@ -1831,17 +1830,17 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         int op = in.read();
 
         switch (op) {
-        default:
-            return joinFailure(s, ErrorCodes.UNKNOWN_OPERATION);
-        case GroupJoiner.OP_ADDRESS:
-        case GroupJoiner.OP_UNJOIN_ADDRESS:
-            addr = GroupFile.parseSocketAddress(in.readStr(in.readIntLE()));
-            memberId = 0;
-            break;
-        case GroupJoiner.OP_UNJOIN_MEMBER:
-            addr = null;
-            memberId = in.readLongLE();
-            break;
+            default:
+                return joinFailure(s, ErrorCodes.UNKNOWN_OPERATION);
+            case GroupJoiner.OP_ADDRESS:
+            case GroupJoiner.OP_UNJOIN_ADDRESS:
+                addr = GroupFile.parseSocketAddress(in.readStr(in.readIntLE()));
+                memberId = 0;
+                break;
+            case GroupJoiner.OP_UNJOIN_MEMBER:
+                addr = null;
+                memberId = in.readLongLE();
+                break;
         }
 
         OutputStream out = s.getOutputStream();
@@ -1872,99 +1871,99 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         byte[] message;
 
         switch (op) {
-        case GroupJoiner.OP_ADDRESS:
-            message = mGroupFile.proposeJoin(CONTROL_OP_JOIN, addr, (gfIn, position) -> {
-                // Join is accepted, so reply with the log position info and the group
-                // file. The position is immediately after the control message.
+            case GroupJoiner.OP_ADDRESS:
+                message = mGroupFile.proposeJoin(CONTROL_OP_JOIN, addr, (gfIn, position) -> {
+                    // Join is accepted, so reply with the log position info and the group
+                    // file. The position is immediately after the control message.
 
-                // Note: This callback is invoked with the GroupFile shared latch held.
+                    // Note: This callback is invoked with the GroupFile shared latch held.
 
-                try {
-                    if (gfIn == null) {
-                        out.write(new byte[] {
-                            // Assume failure is due to version mismatch, but could be
-                            // something else.
-                            // TODO: Use more specific error code.
-                            GroupJoiner.OP_ERROR, ErrorCodes.VERSION_MISMATCH
-                        });
-                        return;
-                    }
-
-                    TermLog termLog = mStateLog.termLogAt(position);
-
-                    var buf = new byte[1000];
-                    int off = 0;
-                    buf[off++] = GroupJoiner.OP_JOINED;
-                    encodeLongLE(buf, off, termLog.prevTermAt(position)); off += 8;
-                    encodeLongLE(buf, off, termLog.term()); off += 8;
-                    encodeLongLE(buf, off, position); off += 8;
-
-                    while (true) {
-                        int amt;
-                        try {
-                            amt = gfIn.read(buf, off, buf.length - off);
-                        } catch (IOException e) {
-                            // Report any GroupFile corruption.
-                            uncaught(e);
+                    try {
+                        if (gfIn == null) {
+                            out.write(new byte[] {
+                                    // Assume failure is due to version mismatch, but could be
+                                    // something else.
+                                    // TODO: Use more specific error code.
+                                    GroupJoiner.OP_ERROR, ErrorCodes.VERSION_MISMATCH
+                            });
                             return;
                         }
-                        if (amt < 0) {
+
+                        TermLog termLog = mStateLog.termLogAt(position);
+
+                        var buf = new byte[1000];
+                        int off = 0;
+                        buf[off++] = GroupJoiner.OP_JOINED;
+                        encodeLongLE(buf, off, termLog.prevTermAt(position)); off += 8;
+                        encodeLongLE(buf, off, termLog.term()); off += 8;
+                        encodeLongLE(buf, off, position); off += 8;
+
+                        while (true) {
+                            int amt;
+                            try {
+                                amt = gfIn.read(buf, off, buf.length - off);
+                            } catch (IOException e) {
+                                // Report any GroupFile corruption.
+                                uncaught(e);
+                                return;
+                            }
+                            if (amt < 0) {
+                                break;
+                            }
+                            out.write(buf, 0, off + amt);
+                            off = 0;
+                        }
+                    } catch (IOException e) {
+                        // Ignore.
+                    } finally {
+                        closeQuietly(out);
+                    }
+                });
+
+                break;
+
+            case GroupJoiner.OP_UNJOIN_ADDRESS:
+                // Find the member and fall through to the next case.
+                if (mGroupFile.localMemberAddress().equals(addr)) {
+                    memberId = mGroupFile.localMemberId();
+                } else {
+                    for (Peer peer : mGroupFile.allPeers()) {
+                        if (peer.mAddress.equals(addr)) {
+                            memberId = peer.mMemberId;
                             break;
                         }
-                        out.write(buf, 0, off + amt);
-                        off = 0;
-                    }
-                } catch (IOException e) {
-                    // Ignore.
-                } finally {
-                    closeQuietly(out);
-                }
-            });
-
-            break;
-
-        case GroupJoiner.OP_UNJOIN_ADDRESS:
-            // Find the member and fall through to the next case.
-            if (mGroupFile.localMemberAddress().equals(addr)) {
-                memberId = mGroupFile.localMemberId();
-            } else {
-                for (Peer peer : mGroupFile.allPeers()) {
-                    if (peer.mAddress.equals(addr)) {
-                        memberId = peer.mMemberId;
-                        break;
                     }
                 }
-            }
 
-        case GroupJoiner.OP_UNJOIN_MEMBER:
-            message = mGroupFile.proposeRemovePeer(CONTROL_OP_UNJOIN, memberId, success -> {
-                // Note: This callback is invoked without any GroupFile latch.
+            case GroupJoiner.OP_UNJOIN_MEMBER:
+                message = mGroupFile.proposeRemovePeer(CONTROL_OP_UNJOIN, memberId, success -> {
+                    // Note: This callback is invoked without any GroupFile latch.
 
-                try {
-                    byte[] reply;
+                    try {
+                        byte[] reply;
 
-                    if (success) {
-                        reply = new byte[] {GroupJoiner.OP_UNJOINED};
-                    } else {
-                        reply = new byte[] {
-                            // Assume failure is due to version mismatch, but could be
-                            // something else.
-                            // TODO: Use more specific error code.
-                            GroupJoiner.OP_ERROR, ErrorCodes.VERSION_MISMATCH
-                        };
+                        if (success) {
+                            reply = new byte[] {GroupJoiner.OP_UNJOINED};
+                        } else {
+                            reply = new byte[] {
+                                    // Assume failure is due to version mismatch, but could be
+                                    // something else.
+                                    // TODO: Use more specific error code.
+                                    GroupJoiner.OP_ERROR, ErrorCodes.VERSION_MISMATCH
+                            };
+                        }
+
+                        out.write(reply);
+                    } catch (IOException e) {
+                        // Ignore.
+                    } finally {
+                        closeQuietly(out);
                     }
+                });
+                break;
 
-                    out.write(reply);
-                } catch (IOException e) {
-                    // Ignore.
-                } finally {
-                    closeQuietly(out);
-                }
-            });
-            break;
-
-        default:
-            throw new AssertionError();
+            default:
+                throw new AssertionError();
         }
 
         mScheduler.scheduleMillis(() -> {
@@ -2075,10 +2074,10 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 uncaught(e);
             } else {
                 var b = new StringBuilder()
-                    .append(e.isFatal() ? "Fatal commit" : "Commit")
-                    .append(" conflict detected: position=").append(e.mPosition)
-                    .append(", conflicting term=").append(e.mTermInfo.mTerm)
-                    .append(", commit position=").append(e.mTermInfo.mCommitPosition);
+                        .append(e.isFatal() ? "Fatal commit" : "Commit")
+                        .append(" conflict detected: position=").append(e.mPosition)
+                        .append(", conflicting term=").append(e.mTermInfo.mTerm)
+                        .append(", commit position=").append(e.mTermInfo.mCommitPosition);
                 if (!e.isFatal()) {
                     b.append(". Restarting might rollback the conflict and resolve the issue.");
                 }
@@ -2108,7 +2107,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 registered = mRegisteredControlMessages;
                 if (registered == null) {
                     mRegisteredControlMessages = registered =
-                        new ConcurrentSkipListSet<>(Arrays::compareUnsigned);
+                            new ConcurrentSkipListSet<>(Arrays::compareUnsigned);
                     registered.add(message);
                     return true;
                 }
@@ -2146,7 +2145,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     @Override // Channel
     public void unknown(Channel from, int op) {
         event(EventType.REPLICATION_WARNING,
-              "Unknown operation received from: " + from.peer().mAddress + ", op=" + op);
+                "Unknown operation received from: " + from.peer().mAddress + ", op=" + op);
     }
 
     /**
@@ -2189,8 +2188,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private boolean isBehind(Channel from, long term, long position) {
         LogInfo info = mStateLog.captureHighest();
         return term < info.mTerm || (term == info.mTerm && position < info.mHighestPosition)
-            // Don't elect an interim leader if it's at the same position.
-            || (localMemberRole() == Role.NORMAL && from.peer().role() == Role.STANDBY
+                // Don't elect an interim leader if it's at the same position.
+                || (localMemberRole() == Role.NORMAL && from.peer().role() == Role.STANDBY
                 && position <= info.mHighestPosition);
     }
 
@@ -2298,7 +2297,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     @Override // Channel
     public boolean forceElection(Channel from) {
         event(EventType.REPLICATION_INFO,
-              "Forcing an election, as requested by: " + from.peer().mAddress);
+                "Forcing an election, as requested by: " + from.peer().mAddress);
         acquireExclusive();
         forceElection(); // releases exclusive latch as a side-effect
         return true;
@@ -2410,7 +2409,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     }
 
     private void doQueryData(Channel from, long startPosition, long endPosition)
-        throws IOException
+            throws IOException
     {
         LogReader reader = mStateLog.openReader(startPosition);
 
@@ -2452,12 +2451,12 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                         continue;
                     }
                     from.queryDataReplyMissing
-                        (null, currentTerm, prevTerm, term, position, position + remaining);
+                            (null, currentTerm, prevTerm, term, position, position + remaining);
                     break;
                 }
 
                 if (!from.queryDataReply
-                    (null, currentTerm, prevTerm, term, position, buf, 0, amt))
+                        (null, currentTerm, prevTerm, term, position, buf, 0, amt))
                 {
                     break;
                 }
@@ -2778,7 +2777,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                                      byte[] prefix, byte[] data, int off, int len)
     {
         writeData(from, prevTerm, term, position, highestPosition, commitPosition,
-                  prefix, data, off, len);
+                prefix, data, off, len);
 
         // Always proxy the data, even if it was locally rejected. The local member might be a
         // bit behind with respect to the current leadership status.
@@ -2795,8 +2794,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                 Peer peer = peerChan.peer();
                 if (!fromPeer.equals(peer)) {
                     peerChan.writeDataViaProxy(null, prevTerm, term,
-                                               position, highestPosition, commitPosition,
-                                               prefix, data, off, len);
+                            position, highestPosition, commitPosition,
+                            prefix, data, off, len);
                 }
             }
         }
@@ -2814,7 +2813,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     {
         // From is null to prevent proxy channel from being selected as the leader channel.
         return writeData(null, prevTerm, term, position, highestPosition, commitPosition,
-                         prefix, data, off, len);
+                prefix, data, off, len);
     }
 
     /**
@@ -2846,7 +2845,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         try {
             TermLog termLog;
             if (mConsensusPeers.length == 0
-                || (termLog = mStateLog.termLogAt(position)) == null || term != termLog.term())
+                    || (termLog = mStateLog.termLogAt(position)) == null || term != termLog.term())
             {
                 // Received a stale reply.
                 return true;
@@ -2862,8 +2861,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             // Updating and sorting the peers by match position is simple, but for large groups
             // (>10?), a tree data structure should be used instead.
             Arrays.sort(mConsensusPeers, (a, b) ->
-                        Long.compare(a.mSyncMatchPosition, b.mSyncMatchPosition));
-            
+                    Long.compare(a.mSyncMatchPosition, b.mSyncMatchPosition));
+
             durablePosition = mConsensusPeers[mConsensusPeers.length >> 1].mSyncMatchPosition;
         } finally {
             releaseExclusive();
@@ -3036,7 +3035,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             releaseShared();
             if (desiredRole != null && (result != ErrorCodes.VERSION_MISMATCH || !versionOk)) {
                 event(ErrorCodes.typeFor(result),
-                      "Unable to update role: " + ErrorCodes.toString(result));
+                        "Unable to update role: " + ErrorCodes.toString(result));
             }
         }
 
@@ -3087,7 +3086,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
      */
     @Override // Channel
     public boolean groupFileReply(Channel from, InputStream in, Consumer<OutputStream> unused)
-        throws IOException
+            throws IOException
     {
         if (in == null || unused != null) {
             throw new IllegalArgumentException();
