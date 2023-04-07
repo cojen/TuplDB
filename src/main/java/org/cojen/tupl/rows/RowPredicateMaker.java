@@ -446,9 +446,24 @@ public class RowPredicateMaker {
         @Override
         public void visit(ColumnToColumnFilter filter) {
             ColumnInfo c1 = filter.column();
-            var c1Var = mRowVar.field(c1.name);
+            Variable c1Var = mRowVar.field(c1.name);
             ColumnInfo c2 = filter.otherColumn();
-            var c2Var = mRowVar.field(c2.name);
+            Variable c2Var = mRowVar.field(c2.name);
+
+            if (c1Var.classType() != c2Var.classType()) {
+                ColumnInfo ci = filter.common();
+
+                var c1ConvertedVar = mMaker.var(ci.type);
+                Converter.convertExact(mMaker, null, c1, c1Var, ci, c1ConvertedVar);
+                c1 = ci;
+                c1Var = c1ConvertedVar;
+
+                var c2ConvertedVar = mMaker.var(ci.type);
+                Converter.convertExact(mMaker, null, c2, c2Var, ci, c2ConvertedVar);
+                c2 = ci;
+                c2Var = c2ConvertedVar;
+            }
+
             CompareUtils.compare(mMaker, c1, c1Var, c2, c2Var, filter.operator(), mPass, mFail);
         }
     }
