@@ -912,7 +912,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
         OrderBy orderBy = selector.orderBy();
         if (orderBy != null) {
-            launcher = new SortedQueryLauncher<R>(this, launcher, orderBy);
+            launcher = new SortedQueryLauncher<R>(this, launcher, selector.projection(), orderBy);
         }
 
         return launcher;
@@ -933,7 +933,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             subFactory = subFactory.reverse();
         }
 
-        return new ScanQueryLauncher<>(subTable, subFactory, selector.projection());
+        return new ScanQueryLauncher<>(subTable, subFactory);
     }
 
     /**

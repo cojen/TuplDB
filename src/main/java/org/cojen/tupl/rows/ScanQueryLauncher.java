@@ -19,7 +19,6 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
-import java.util.Set;
 
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Updater;
@@ -35,14 +34,10 @@ import org.cojen.tupl.diag.QueryPlan;
 final class ScanQueryLauncher<R> implements QueryLauncher<R> {
     private final BaseTable<R> mTable;
     private final ScanControllerFactory<R> mFactory;
-    private final Set<String> mProjection;
 
-    ScanQueryLauncher(BaseTable<R> table, ScanControllerFactory<R> factory,
-                      Set<String> projection)
-    {
+    ScanQueryLauncher(BaseTable<R> table, ScanControllerFactory<R> factory) {
         mTable = table;
         mFactory = factory;
-        mProjection = projection;
     }
 
     @Override
@@ -71,11 +66,6 @@ final class ScanQueryLauncher<R> implements QueryLauncher<R> {
     @Override
     public QueryPlan plan(Object... args) {
         return mFactory.plan(args);
-    }
-
-    @Override
-    public Set<String> projection() {
-        return mProjection;
     }
 
     @Override

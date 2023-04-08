@@ -450,7 +450,7 @@ final class IndexSelector<R> {
 
     Set<String> projection() {
         if (mProjection == null && mQuery.projection() != null) {
-            // Create a copy to reduce the memory footprint of QueryLauncher instances.
+            // Create a copy to reduce the memory footprint of SortedQueryLauncher instances.
             // FIXME: Consider defining a general intern set for this. Or define a projection
             // spec string instead, which gets passed to the SortDecoderMaker.
             mProjection = Set.of(mQuery.projection().keySet().toArray(String[]::new));
