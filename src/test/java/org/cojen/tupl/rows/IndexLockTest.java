@@ -659,6 +659,13 @@ public class IndexLockTest {
             replicaTable.newScanner(scanTxn, "id == ?", 5);
             fail();
         } catch (LockTimeoutException e) {
+            rowLockTimeout(e);
+        }
+
+        try {
+            replicaTable.newScanner(scanTxn, "id >= ? && id <= ?", 5, 5);
+            fail();
+        } catch (LockTimeoutException e) {
             predicateLockTimeout(e);
         }
 
@@ -1214,7 +1221,7 @@ public class IndexLockTest {
 
     private static void rowLockTimeout(LockTimeoutException e) throws LockTimeoutException {
         for (StackTraceElement elem : e.getStackTrace()) {
-            if (elem.getClassName().contains("BTreeCursor")) {
+            if (elem.getClassName().contains("BTree")) {
                 return;
             }
         }

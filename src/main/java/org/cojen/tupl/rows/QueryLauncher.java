@@ -47,5 +47,7 @@ interface QueryLauncher<R> extends Closeable {
      */
     void scanWrite(Transaction txn, RowWriter writer, Object... args) throws IOException;
 
-    QueryPlan plan(Object... args);
+    QueryPlan scannerPlan(Transaction txn, Object... args);
+
+    QueryPlan updaterPlan(Transaction txn, Object... args);
 }

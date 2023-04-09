@@ -588,7 +588,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         if (queryStr == null) {
             return plan(args);
         } else {
-            return scannerQueryLauncher(txn, queryStr).plan(args);
+            return scannerQueryLauncher(txn, queryStr).scannerPlan(txn, args);
         }
     }
 
@@ -599,7 +599,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         if (queryStr == null) {
             return plan(args);
         } else {
-            return updaterQueryLauncher(txn, queryStr).plan(args);
+            return updaterQueryLauncher(txn, queryStr).updaterPlan(txn, args);
         }
     }
 
@@ -927,7 +927,12 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         String subQueryStr = subQuery.toString();
 
         ScanControllerFactory<R> subFactory =
-           subTable.mFilterFactoryCache.obtain(type & ~FOR_UPDATE, subQueryStr, subQuery);
+            subTable.mFilterFactoryCache.obtain(type & ~FOR_UPDATE, subQueryStr, subQuery);
+
+        if ((type & FOR_UPDATE) == 0 && subFactory.loadsOne()) {
+            // Return an optimized launcher.
+            return new LoadOneQueryLauncher<>(subTable, subFactory);
+        }
 
         if (selector.selectedReverse(i)) {
             subFactory = subFactory.reverse();

@@ -91,10 +91,19 @@ final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
-    public QueryPlan plan(Object... args) {
+    public QueryPlan scannerPlan(Transaction txn, Object... args) {
         var subPlans = new QueryPlan[mLaunchers.length];
         for (int i=0; i<subPlans.length; i++) {
-            subPlans[i] = mLaunchers[i].plan(args);
+            subPlans[i] = mLaunchers[i].scannerPlan(txn, args);
+        }
+        return new QueryPlan.DisjointUnion(subPlans);
+    }
+
+    @Override
+    public QueryPlan updaterPlan(Transaction txn, Object... args) {
+        var subPlans = new QueryPlan[mLaunchers.length];
+        for (int i=0; i<subPlans.length; i++) {
+            subPlans[i] = mLaunchers[i].updaterPlan(txn, args);
         }
         return new QueryPlan.DisjointUnion(subPlans);
     }

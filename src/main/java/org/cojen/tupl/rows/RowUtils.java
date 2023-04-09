@@ -26,8 +26,10 @@ import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 
 import org.cojen.tupl.LockMode;
+import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Transaction;
 
+import org.cojen.tupl.core.RowPredicate;
 import org.cojen.tupl.core.Utils;
 
 /**
@@ -794,5 +796,20 @@ public class RowUtils extends Utils {
             }
             bob.append(quote).append(s).append(quote);
         }
+    }
+
+    public static String scannerToString(Scanner scanner, ScanController<?> controller) {
+        var b = new StringBuilder();
+        appendMiniString(b, scanner);
+        b.append('{');
+
+        RowPredicate<?> predicate = controller.predicate();
+        if (predicate == RowPredicate.all()) {
+            b.append("unfiltered");
+        } else {
+            b.append("filter").append(": ").append(predicate);
+        }
+
+        return b.append('}').toString();
     }
 }

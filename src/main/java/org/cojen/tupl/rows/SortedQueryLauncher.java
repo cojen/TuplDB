@@ -112,8 +112,13 @@ final class SortedQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
-    public QueryPlan plan(Object... args) {
-        return new QueryPlan.Sort(OrderBy.splitSpec(mSpec), mSource.plan(args));
+    public QueryPlan scannerPlan(Transaction txn, Object... args) {
+        return new QueryPlan.Sort(OrderBy.splitSpec(mSpec), mSource.scannerPlan(txn, args));
+    }
+
+    @Override
+    public QueryPlan updaterPlan(Transaction txn, Object... args) {
+        return new QueryPlan.Sort(OrderBy.splitSpec(mSpec), mSource.updaterPlan(txn, args));
     }
 
     @Override
