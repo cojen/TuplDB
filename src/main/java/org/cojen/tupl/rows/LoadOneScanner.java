@@ -17,13 +17,9 @@
 
 package org.cojen.tupl.rows;
 
-import java.io.InputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 
-import org.cojen.tupl.Cursor;
 import org.cojen.tupl.LockResult;
-import org.cojen.tupl.Ordering;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.View;
@@ -34,7 +30,7 @@ import org.cojen.tupl.View;
  * @author Brian S O'Neill
  * @see LoadOneQueryLauncher
  */
-final class LoadOneScanner<R> implements Scanner<R>, Cursor {
+final class LoadOneScanner<R> implements Scanner<R>, UnsupportedCursor {
     private final ScanController mController;
     private byte[] mKey, mValue;
     private R mRow;
@@ -106,7 +102,7 @@ final class LoadOneScanner<R> implements Scanner<R>, Cursor {
         mRow = null;
     }
 
-    // The remainding methods are defined in the Cursor interface. RowEvaluator only needs the
+    // The remaining methods are defined in the Cursor interface. RowEvaluator only needs the
     // key, value and reset methods. The rest aren't implemented.
 
     @Override
@@ -122,132 +118,5 @@ final class LoadOneScanner<R> implements Scanner<R>, Cursor {
     @Override
     public void reset() {
         close();
-    }
-
-    @Override
-    public long valueLength() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void valueLength(long length) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public int valueRead(long pos, byte[] buf, int off, int len) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void valueWrite(long pos, byte[] buf, int off, int len) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void valueClear(long pos, long length) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public InputStream newValueInputStream(long pos) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public InputStream newValueInputStream(long pos, int bufferSize) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public OutputStream newValueOutputStream(long pos) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public OutputStream newValueOutputStream(long pos, int bufferSize) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Ordering ordering() {
-        return Ordering.UNSPECIFIED;
-    }
-
-    @Override
-    public Transaction link(Transaction txn) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Transaction link() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean autoload(boolean mode) {
-        return true;
-    }
-
-    @Override
-    public boolean autoload() {
-        return true;
-    }
-
-    @Override
-    public LockResult first() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public LockResult last() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public LockResult skip(long amount) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public LockResult next() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public LockResult previous() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public LockResult find(byte[] key) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public LockResult random(byte[] lowKey, boolean lowInclusive,
-                             byte[] highKey, boolean highInclusive)
-    {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public boolean exists() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public LockResult load() {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public void store(byte[] value) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public Cursor copy() {
-        throw new UnsupportedOperationException();
     }
 }
