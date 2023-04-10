@@ -329,9 +329,10 @@ public class FilteredScanMaker<R> {
             MethodMaker mm = mFilterMaker.addMethod
                 (QueryPlan.class, "loadOnePlan", Object[].class).public_().varargs();
             int options = 0b100 + (mAlwaysJoin ? 0b010 : 0b000);
+            String bound = toString(mLowBound).replace(">=", "==");
             var condy = mm.var(FilteredScanMaker.class).condy
                 ("condyPlan", mRowType, mSecondaryDescriptor, options,
-                 null, null, toString(mFilter), toString(mJoinFilter));
+                 bound, null, toString(mFilter), toString(mJoinFilter));
             mm.return_(condy.invoke(QueryPlan.class, "loadOnePlan"));
 
             // Specified by ScanController.
@@ -958,7 +959,7 @@ public class FilteredScanMaker<R> {
         boolean reverse = (options & 0b001) != 0;
 
         if ((options & 0b100) != 0) {
-            plan = new QueryPlan.LoadOne(rowInfo.name, which, rowInfo.keySpec());
+            plan = new QueryPlan.LoadOne(rowInfo.name, which, rowInfo.keySpec(), lowBoundStr);
         } else if (lowBoundStr == null && highBoundStr == null) {
             plan = new QueryPlan.FullScan(rowInfo.name, which, rowInfo.keySpec(), reverse);
         } else {

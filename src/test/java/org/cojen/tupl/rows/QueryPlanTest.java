@@ -98,7 +98,7 @@ public class QueryPlanTest {
 
         plan = mTable.scannerPlan(null, "id == ?");
         comparePlans(new QueryPlan.LoadOne
-                     (TestRow.class.getName(), "primary key", new String[] {"+id"}),
+                     (TestRow.class.getName(), "primary key", new String[] {"+id"}, "id == ?1"),
                      plan);
 
         plan = mTable.viewPrimaryKey().scannerPlan(null, "a == ?");
@@ -845,7 +845,8 @@ public class QueryPlanTest {
                         (TestRow.class.getName(), new String[] {"+id"},
                          new QueryPlan.Filter
                          ("a != ?4 && id < ?5", new QueryPlan.LoadOne
-                          (TestRow.class.getName(), "alternate key", new String[] {"+a"}))))))
+                          (TestRow.class.getName(), "alternate key", new String[] {"+a"},
+                           "a == ?3"))))))
                      , plan);
 
         results = mTable.newStream(null, query, "hello1", "hello2", 4, 1, 4).toList();

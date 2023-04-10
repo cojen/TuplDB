@@ -271,12 +271,16 @@ public abstract sealed class QueryPlan implements Serializable {
     public static final class LoadOne extends Table {
         private static final long serialVersionUID = 1L;
 
+        public final String match;
+
         /**
          * @param which primary key, alternate key, or secondary index
          * @param keyColumns columns with '+' or '-' prefix
+         * @param match filter which matches to one row (or null if unspecified)
          */
-        public LoadOne(String table, String which, String[] keyColumns) {
+        public LoadOne(String table, String which, String[] keyColumns, String match) {
             super(table, which, keyColumns);
+            this.match = match;
         }
 
         @Override
@@ -284,6 +288,9 @@ public abstract sealed class QueryPlan implements Serializable {
             a.append(in1).append("load one using ").append(which).append('\n');
             appendItem(a, in2, "table").append(table).append('\n');
             appendKeyColumns(a, in2).append('\n');
+            if (match != null) {
+                appendItem(a, in2, "match").append(match).append('\n');
+            }
         }
 
         @Override
@@ -484,7 +491,7 @@ public abstract sealed class QueryPlan implements Serializable {
          * @param source child plan node
          */
         public PrimaryJoin(String table, String[] keyColumns, QueryPlan source) {
-            super(keyColumns, new LoadOne(table, "primary key", keyColumns), source);
+            super(keyColumns, new LoadOne(table, "primary key", keyColumns, null), source);
             this.table = table;
         }
 
