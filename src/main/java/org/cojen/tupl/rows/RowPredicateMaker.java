@@ -250,7 +250,7 @@ public class RowPredicateMaker {
         }
     }
 
-    private class FieldMaker extends Visitor {
+    private class FieldMaker implements Visitor {
         private final HashMap<String, ColumnCodec> mDefined;
         private final boolean mPrimaryOnly, mInit;
 
@@ -387,7 +387,7 @@ public class RowPredicateMaker {
     /**
      * Implements a predicate test method for a completely filled in row object.
      */
-    private static class RowTestMaker extends Visitor {
+    private static class RowTestMaker implements Visitor {
         private final MethodMaker mMaker;
         private final Variable mRowVar, mPredicateVar;
         private Label mPass, mFail;
@@ -671,7 +671,7 @@ public class RowPredicateMaker {
 
     }
 
-    private static class ToStringMaker extends Visitor {
+    private static class ToStringMaker implements Visitor {
         private final MethodMaker mMaker;
         private final Variable mPredicateVar;
 

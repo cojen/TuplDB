@@ -22,28 +22,28 @@ package org.cojen.tupl.filter;
  *
  * @author Brian S O'Neill
  */
-public abstract class Visitor {
-    public void visit(OrFilter filter) {
+public interface Visitor {
+    public default void visit(OrFilter filter) {
         subVisit(filter);
     }
 
-    public void visit(AndFilter filter) {
+    public default void visit(AndFilter filter) {
         subVisit(filter);
     }
 
-    protected void subVisit(GroupFilter filter) {
+    public default void subVisit(GroupFilter filter) {
         for (RowFilter sub : filter.mSubFilters) {
             sub.accept(this);
         }
     }
 
-    public void visit(InFilter filter) {
+    public default void visit(InFilter filter) {
         visit((ColumnToArgFilter) filter);
     }
 
-    public void visit(ColumnToArgFilter filter) {
+    public default void visit(ColumnToArgFilter filter) {
     }
 
-    public void visit(ColumnToColumnFilter filter) {
+    public default void visit(ColumnToColumnFilter filter) {
     }
 }

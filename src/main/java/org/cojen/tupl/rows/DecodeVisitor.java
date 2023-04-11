@@ -40,7 +40,7 @@ import org.cojen.tupl.filter.Visitor;
  * @author Brian S O'Neill
  * @see FilteredScanMaker
  */
-class DecodeVisitor extends Visitor {
+class DecodeVisitor implements Visitor {
     private final MethodMaker mMaker;
     private Variable mRowVar, mKeyVar, mValueVar, mCursorVar;
     private final int mValueOffset;
