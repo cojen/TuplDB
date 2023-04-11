@@ -17,7 +17,11 @@
 
 package org.cojen.tupl.rows;
 
+import java.util.Arrays;
+
 import java.util.concurrent.TimeUnit;
+
+import java.util.concurrent.locks.LockSupport;
 
 import org.junit.*;
 import static org.junit.Assert.*;
@@ -1155,8 +1159,25 @@ public class IndexLockTest {
             var scanner = nameIx.newScanner(null, "name == ?", "name-2");
         }, "org.cojen.tupl.core.Lock", "tryLockShared");
 
+        StackTraceElement[] w3trace1 = w3.getStackTrace();
+
         // This causes w2 to acquire the primary key lock, and now w3 should be waiting on w2.
         txn1.reset();
+
+        // Wait for w3 to be waiting on something else.
+        wait: while (true) {
+            StackTraceElement[] w3trace2 = w3.getStackTrace();
+            if (!Arrays.equals(w3trace1, w3trace2)) {
+                for (StackTraceElement e : w3trace2) {
+                    if (e.getClassName().equals(LockSupport.class.getName())
+                        && e.getMethodName().equals("parkNanos"))
+                    {
+                        break wait;
+                    }
+                }
+            }
+            Thread.yield();
+        }
 
         w2.await();
 
