@@ -146,6 +146,8 @@ class DecodeVisitor implements Visitor {
             mPass = mMaker.label();
             mFail = mMaker.label();
             initVars(true);
+            mHighestLocatedKey = -1;
+            mHighestLocatedValue = -1;
             filter.accept(this);
         }
     }
@@ -451,25 +453,34 @@ class DecodeVisitor implements Visitor {
                 // Key column.
                 highestNum = mHighestLocatedKey;
                 srcVar = mKeyVar;
-                if ((located = mLocatedKeys) != null) {
+                located = mLocatedKeys;
+                if (highestNum >= 0) {
                     break init;
                 }
-                mLocatedKeys = located = new LocatedColumn[mRowGen.info.keyColumns.size()];
+                if (located == null) {
+                    mLocatedKeys = located = new LocatedColumn[mRowGen.info.keyColumns.size()];
+                }
                 startOffset = 0;
+                mHighestLocatedKey = 0;
             } else {
                 // Value column.
                 colNum -= codecs.length;
                 highestNum = mHighestLocatedValue;
                 srcVar = mValueVar;
                 codecs = mValueCodecs;
-                if ((located = mLocatedValues) != null) {
+                located = mLocatedValues;
+                if (highestNum >= 0) {
                     break init;
                 }
-                mLocatedValues = located = new LocatedColumn[mRowGen.info.valueColumns.size()];
+                if (located == null) {
+                    mLocatedValues = located = new LocatedColumn[mRowGen.info.valueColumns.size()];
+                }
                 startOffset = mValueOffset;
+                mHighestLocatedValue = 0;
             }
             located[0] = new LocatedColumn();
             located[0].located(srcVar, mMaker.var(int.class).set(startOffset));
+            highestNum = 0;
         }
 
         if (colNum < highestNum) {
