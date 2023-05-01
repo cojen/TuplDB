@@ -1118,7 +1118,7 @@ public class IndexLockTest {
         teardown();
         mDatabase = Database.open(new DatabaseConfig()
                                   .directPageAccess(false)
-                                  .lockTimeout(2, TimeUnit.SECONDS));
+                                  .lockTimeout(5, TimeUnit.SECONDS));
 
         Index tableSource = mDatabase.openIndex("test");
         var table = (BaseTable<TestRow2>) tableSource.asTable(TestRow2.class);
@@ -1176,6 +1176,12 @@ public class IndexLockTest {
                     }
                 }
             }
+
+            if (!w3.isAlive()) {
+                w3.await();
+                fail();
+            }
+
             Thread.yield();
         }
 
