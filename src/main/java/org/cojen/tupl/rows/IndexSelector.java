@@ -31,15 +31,15 @@ import java.util.NavigableSet;
 import java.util.Set;
 import java.util.TreeSet;
 
-import org.cojen.tupl.filter.AndFilter;
-import org.cojen.tupl.filter.ColumnFilter;
-import org.cojen.tupl.filter.ColumnToArgFilter;
-import org.cojen.tupl.filter.ColumnToColumnFilter;
-import org.cojen.tupl.filter.OrFilter;
-import org.cojen.tupl.filter.Query;
-import org.cojen.tupl.filter.RowFilter;
-import org.cojen.tupl.filter.TrueFilter;
-import org.cojen.tupl.filter.Visitor;
+import org.cojen.tupl.rows.filter.AndFilter;
+import org.cojen.tupl.rows.filter.ColumnFilter;
+import org.cojen.tupl.rows.filter.ColumnToArgFilter;
+import org.cojen.tupl.rows.filter.ColumnToColumnFilter;
+import org.cojen.tupl.rows.filter.OrFilter;
+import org.cojen.tupl.rows.filter.Query;
+import org.cojen.tupl.rows.filter.RowFilter;
+import org.cojen.tupl.rows.filter.TrueFilter;
+import org.cojen.tupl.rows.filter.Visitor;
 
 /**
  * Selects one or more indexes which are best suited for handling a query.

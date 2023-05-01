@@ -15,7 +15,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.filter;
+package org.cojen.tupl.rows.filter;
 
 import java.math.BigDecimal;
 
@@ -24,7 +24,7 @@ import java.util.Map;
 
 import org.cojen.tupl.rows.ColumnInfo;
 
-import static org.cojen.tupl.filter.ColumnFilter.*;
+import static org.cojen.tupl.rows.filter.ColumnFilter.*;
 
 /**
  * 

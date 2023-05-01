@@ -24,7 +24,7 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.filter.ColumnFilter;
+import org.cojen.tupl.rows.filter.ColumnFilter;
 
 /**
  * Abstract class for encoding and decoding columns that can be encoded as a variable length

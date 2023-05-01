@@ -49,12 +49,12 @@ import org.cojen.tupl.diag.EventListener;
 import org.cojen.tupl.diag.EventType;
 import org.cojen.tupl.diag.QueryPlan;
 
-import org.cojen.tupl.filter.ComplexFilterException;
-import org.cojen.tupl.filter.FalseFilter;
-import org.cojen.tupl.filter.Parser;
-import org.cojen.tupl.filter.Query;
-import org.cojen.tupl.filter.RowFilter;
-import org.cojen.tupl.filter.TrueFilter;
+import org.cojen.tupl.rows.filter.ComplexFilterException;
+import org.cojen.tupl.rows.filter.FalseFilter;
+import org.cojen.tupl.rows.filter.Parser;
+import org.cojen.tupl.rows.filter.Query;
+import org.cojen.tupl.rows.filter.RowFilter;
+import org.cojen.tupl.rows.filter.TrueFilter;
 
 import org.cojen.tupl.io.Utils;
 

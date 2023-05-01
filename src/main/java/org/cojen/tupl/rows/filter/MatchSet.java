@@ -15,7 +15,7 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.filter;
+package org.cojen.tupl.rows.filter;
 
 import org.cojen.tupl.core.Utils;
 

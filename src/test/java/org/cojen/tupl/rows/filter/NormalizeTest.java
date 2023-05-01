@@ -15,7 +15,7 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.filter;
+package org.cojen.tupl.rows.filter;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -32,7 +32,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.junit.*;
 import static org.junit.Assert.*;
 
-import static org.cojen.tupl.filter.ColumnFilter.*;
+import static org.cojen.tupl.rows.filter.ColumnFilter.*;
 
 import org.cojen.tupl.rows.ColumnInfo;
 

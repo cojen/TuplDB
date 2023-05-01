@@ -25,13 +25,13 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.Cursor;
 
-import org.cojen.tupl.filter.AndFilter;
-import org.cojen.tupl.filter.ColumnToArgFilter;
-import org.cojen.tupl.filter.ColumnToColumnFilter;
-import org.cojen.tupl.filter.OrFilter;
-import org.cojen.tupl.filter.RowFilter;
-import org.cojen.tupl.filter.TrueFilter;
-import org.cojen.tupl.filter.Visitor;
+import org.cojen.tupl.rows.filter.AndFilter;
+import org.cojen.tupl.rows.filter.ColumnToArgFilter;
+import org.cojen.tupl.rows.filter.ColumnToColumnFilter;
+import org.cojen.tupl.rows.filter.OrFilter;
+import org.cojen.tupl.rows.filter.RowFilter;
+import org.cojen.tupl.rows.filter.TrueFilter;
+import org.cojen.tupl.rows.filter.Visitor;
 
 /**
  * Generates code to filter and decode rows for a specific schema version. After passing this

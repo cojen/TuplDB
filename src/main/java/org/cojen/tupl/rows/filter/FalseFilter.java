@@ -15,17 +15,17 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.filter;
+package org.cojen.tupl.rows.filter;
 
 /**
- * An empty "and" filter which always evaluates to true.
+ * An empty "or" filter which always evaluates to false.
  *
  * @author Brian S O'Neill
  */
-public final class TrueFilter extends AndFilter {
-    public static final TrueFilter THE = new TrueFilter();
+public final class FalseFilter extends OrFilter {
+    public static final FalseFilter THE = new FalseFilter();
 
-    private TrueFilter() {
+    private FalseFilter() {
         mFlags = FLAG_DNF_SET | FLAG_IS_DNF | FLAG_CNF_SET | FLAG_IS_CNF;
         mReduced = this;
         mDnf = this;
@@ -33,17 +33,17 @@ public final class TrueFilter extends AndFilter {
     }
 
     @Override
-    public FalseFilter not() {
-        return FalseFilter.THE;
+    public TrueFilter not() {
+        return TrueFilter.THE;
     }
 
     @Override
-    public TrueFilter or(RowFilter filter) {
-        return this;
-    }
-
-    @Override
-    public RowFilter and(RowFilter filter) {
+    public RowFilter or(RowFilter filter) {
         return filter;
+    }
+
+    @Override
+    public FalseFilter and(RowFilter filter) {
+        return this;
     }
 }

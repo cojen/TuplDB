@@ -41,16 +41,16 @@ import org.cojen.tupl.Entry;
 
 import org.cojen.tupl.core.RowPredicate;
 
-import org.cojen.tupl.filter.AndFilter;
-import org.cojen.tupl.filter.ColumnFilter;
-import org.cojen.tupl.filter.ColumnToArgFilter;
-import org.cojen.tupl.filter.ColumnToColumnFilter;
-import org.cojen.tupl.filter.GroupFilter;
-import org.cojen.tupl.filter.InFilter;
-import org.cojen.tupl.filter.OrFilter;
-import org.cojen.tupl.filter.RowFilter;
-import org.cojen.tupl.filter.TrueFilter;
-import org.cojen.tupl.filter.Visitor;
+import org.cojen.tupl.rows.filter.AndFilter;
+import org.cojen.tupl.rows.filter.ColumnFilter;
+import org.cojen.tupl.rows.filter.ColumnToArgFilter;
+import org.cojen.tupl.rows.filter.ColumnToColumnFilter;
+import org.cojen.tupl.rows.filter.GroupFilter;
+import org.cojen.tupl.rows.filter.InFilter;
+import org.cojen.tupl.rows.filter.OrFilter;
+import org.cojen.tupl.rows.filter.RowFilter;
+import org.cojen.tupl.rows.filter.TrueFilter;
+import org.cojen.tupl.rows.filter.Visitor;
 
 import org.cojen.tupl.io.Utils;
 
