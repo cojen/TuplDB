@@ -128,8 +128,8 @@ class RowGen {
 
         // Generated code needs access to these non-exported packages.
         thisModule.addExports("org.cojen.tupl.core", thatModule);
-        thisModule.addExports("org.cojen.tupl.filter", thatModule);
         thisModule.addExports("org.cojen.tupl.rows", thatModule);
+        thisModule.addExports("org.cojen.tupl.rows.filter", thatModule);
         thisModule.addExports("org.cojen.tupl.views", thatModule);
 
         return cm;
