@@ -57,7 +57,7 @@ public abstract sealed class QueryPlan implements Serializable {
     }
 
     public void appendTo(Appendable a) throws IOException {
-        appendTo(a, "", "");
+        appendTo(a, "- ", "  ");
     }
 
     /**
@@ -69,7 +69,7 @@ public abstract sealed class QueryPlan implements Serializable {
     private static Appendable appendItem(Appendable a, String indent, String title)
         throws IOException
     {
-        return a.append(indent).append("...").append(title).append(": ");
+        return a.append(indent).append(title).append(": ");
     }
 
     private static Appendable appendArray(Appendable a, String[] array) throws IOException {
@@ -271,16 +271,16 @@ public abstract sealed class QueryPlan implements Serializable {
     public static final class LoadOne extends Table {
         private static final long serialVersionUID = 1L;
 
-        public final String match;
+        public final String filter;
 
         /**
          * @param which primary key, alternate key, or secondary index
          * @param keyColumns columns with '+' or '-' prefix
-         * @param match filter which matches to one row (or null if unspecified)
+         * @param filter filter which matches to the row (filter can be null if unspecified)
          */
-        public LoadOne(String table, String which, String[] keyColumns, String match) {
+        public LoadOne(String table, String which, String[] keyColumns, String filter) {
             super(table, which, keyColumns);
-            this.match = match;
+            this.filter = filter;
         }
 
         @Override
@@ -288,8 +288,8 @@ public abstract sealed class QueryPlan implements Serializable {
             a.append(in1).append("load one using ").append(which).append('\n');
             appendItem(a, in2, "table").append(table).append('\n');
             appendKeyColumns(a, in2).append('\n');
-            if (match != null) {
-                appendItem(a, in2, "match").append(match).append('\n');
+            if (filter != null) {
+                appendItem(a, in2, "filter").append(filter).append('\n');
             }
         }
 
@@ -298,9 +298,15 @@ public abstract sealed class QueryPlan implements Serializable {
             return obj instanceof LoadOne load && matches(load);
         }
 
+        boolean matches(LoadOne other) {
+            return super.matches(other) && Objects.equals(filter, other.filter);
+        }
+
         @Override
         public int hashCode() {
-            return super.hashCode() ^ -1241565554;
+            int hash = super.hashCode();
+            hash = hash * 31 + Objects.hashCode(filter);
+            return hash ^ -1241565554;
         }
     }
 
@@ -466,7 +472,6 @@ public abstract sealed class QueryPlan implements Serializable {
         boolean matches(NaturalJoin other) {
             return Arrays.equals(columns, other.columns) &&
                 Objects.equals(target, other.target) && Objects.equals(source, other.source);
-                
         }
 
         @Override
@@ -509,9 +514,15 @@ public abstract sealed class QueryPlan implements Serializable {
             return obj instanceof PrimaryJoin join && matches(join);
         }
 
+        boolean matches(PrimaryJoin other) {
+            return super.matches(other) && Objects.equals(table, other.table);
+        }
+
         @Override
         public int hashCode() {
-            return super.hashCode() ^ 2047385165;
+            int hash = super.hashCode();
+            hash = hash * 31 + Objects.hashCode(table);
+            return hash ^ 2047385165;
         }
     }
 
