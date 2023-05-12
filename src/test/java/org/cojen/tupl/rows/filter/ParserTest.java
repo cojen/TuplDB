@@ -115,7 +115,7 @@ public class ParserTest {
     @Test
     public void basic() throws Exception {
         pass("{}");
-        pass("{*}", "T");
+        pass("{*}");
         pass("{~b, *}", "{a, c\u1f600}");
         pass("{*, ~a}", "{b, c\u1f600}");
         pass("{*, ~ a}", "{b, c\u1f600}");

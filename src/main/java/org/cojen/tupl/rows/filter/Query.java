@@ -53,8 +53,10 @@ public record Query(Map<String, ColumnInfo> projection, OrderBy orderBy, RowFilt
             names = projection.keySet();
         } else if (orderBy != null) {
             names = orderBy.keySet();
-        } else {
+        } else if (filter != TrueFilter.THE) {
             return filter.toString();
+        } else {
+            return "{*}";
         }
 
         var b = new StringBuilder().append('{');
