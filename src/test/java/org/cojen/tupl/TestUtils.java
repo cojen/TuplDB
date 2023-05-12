@@ -292,6 +292,10 @@ public class TestUtils {
                 }
             }
 
+            if (state == Thread.State.TERMINATED) {
+                throw new IllegalStateException("Thread terminated early: " + t);
+            }
+
             Thread.yield();
         }
     }
