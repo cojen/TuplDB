@@ -616,7 +616,7 @@ public abstract class ColumnCodec {
 
         // Column isn't null...
 
-        Label match = CompareUtils.selectColumnToNullArg(op, pass, fail);
+        Label match = CompareUtils.selectColumnToNullArg(info, op, pass, fail);
 
         if (argVar.classType() == boolean.class) {
             argVar.ifTrue(match);
@@ -639,7 +639,7 @@ public abstract class ColumnCodec {
             }
             CompareUtils.compareIn(maker, argVar, op, pass, fail, (a, p, f) -> a.ifEq(null, p));
         } else {
-            Label mismatch = CompareUtils.selectNullColumnToArg(op, pass, fail);
+            Label mismatch = CompareUtils.selectNullColumnToArg(info, op, pass, fail);
             if (match != mismatch) {
                 if (argVar.classType() == boolean.class) {
                     argVar.ifTrue(match);

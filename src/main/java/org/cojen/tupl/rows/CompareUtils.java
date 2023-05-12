@@ -41,7 +41,7 @@ public class CompareUtils {
      * example, int cannot be compared to float. Such a comparison requires that both be
      * widened to double.
      *
-     * When applicable, null is considered to be higher than non-null.
+     * When applicable, null is considered to be higher than non-null by default.
      *
      * @param op defined in ColumnFilter
      * @param pass branch here when comparison passes
@@ -69,16 +69,16 @@ public class CompareUtils {
                 Label argNotNull = mm.label();
                 argVar.ifNe(null, argNotNull);
                 Label match = selectNullColumnToNullArg(op, pass, fail);
-                Label mismatch = selectColumnToNullArg(op, pass, fail);
+                Label mismatch = selectColumnToNullArg(colInfo, op, pass, fail);
                 if (match != mismatch) {
                     colVar.ifEq(null, match);
                 }
                 mm.goto_(mismatch);
                 argNotNull.here();
             }
-            colVar.ifEq(null, selectNullColumnToArg(op, pass, fail));
+            colVar.ifEq(null, selectNullColumnToArg(colInfo, op, pass, fail));
         } else if (argInfo.isNullable() && !argVar.classType().isPrimitive()) {
-            argVar.ifEq(null, selectColumnToNullArg(op, pass, fail));
+            argVar.ifEq(null, selectColumnToNullArg(colInfo, op, pass, fail));
         }
 
         // At this point, neither variable is null. Note that a column which is primitive can
@@ -369,42 +369,42 @@ public class CompareUtils {
 
     /**
      * Selects a target label when comparing a null column value to a non-null filter argument.
-     * Null is considered to be higher than non-null.
+     * Null is considered to be higher than non-null by default.
      *
      * @param op defined in ColumnFilter
      * @param pass branch here when comparison passes
      * @param fail branch here when comparison fails
      * @return pass or fail
      */
-    public static Label selectNullColumnToArg(int op, Label pass, Label fail) {
+    public static Label selectNullColumnToArg(ColumnInfo colInfo, int op, Label pass, Label fail) {
         return switch (op) {
             case ColumnFilter.OP_EQ -> fail; // null == !null? false
             case ColumnFilter.OP_NE -> pass; // null != !null? true
-            case ColumnFilter.OP_GE -> pass; // null >= !null? true
-            case ColumnFilter.OP_LT -> fail; // null <  !null? false
-            case ColumnFilter.OP_LE -> fail; // null <= !null? false
-            case ColumnFilter.OP_GT -> pass; // null >  !null? true
+            case ColumnFilter.OP_GE -> colInfo.isNullLow() ? fail : pass; // null >= !null? true
+            case ColumnFilter.OP_LT -> colInfo.isNullLow() ? pass : fail; // null <  !null? false
+            case ColumnFilter.OP_LE -> colInfo.isNullLow() ? pass : fail; // null <= !null? false
+            case ColumnFilter.OP_GT -> colInfo.isNullLow() ? fail : pass; // null >  !null? true
             default -> throw new AssertionError();
         };
     }
 
     /**
      * Selects a target label when comparing a non-null column value to a null filter argument.
-     * Null is considered to be higher than non-null.
+     * Null is considered to be higher than non-null by default.
      *
      * @param op defined in ColumnFilter
      * @param pass branch here when comparison passes
      * @param fail branch here when comparison fails
      * @return pass or fail
      */
-    public static Label selectColumnToNullArg(int op, Label pass, Label fail) {
+    public static Label selectColumnToNullArg(ColumnInfo colInfo, int op, Label pass, Label fail) {
         return switch (op) {
             case ColumnFilter.OP_EQ -> fail; // !null == null? false
             case ColumnFilter.OP_NE -> pass; // !null != null? true
-            case ColumnFilter.OP_GE -> fail; // !null >= null? false
-            case ColumnFilter.OP_LT -> pass; // !null <  null? true
-            case ColumnFilter.OP_LE -> pass; // !null <= null? true
-            case ColumnFilter.OP_GT -> fail; // !null >  null? false
+            case ColumnFilter.OP_GE -> colInfo.isNullLow() ? pass : fail; // !null >= null? false
+            case ColumnFilter.OP_LT -> colInfo.isNullLow() ? fail : pass; // !null <  null? true
+            case ColumnFilter.OP_LE -> colInfo.isNullLow() ? fail : pass; // !null <= null? true
+            case ColumnFilter.OP_GT -> colInfo.isNullLow() ? pass : fail; // !null >  null? false
 
             // Treat a null "in" array as if it was empty.
             case ColumnFilter.OP_IN -> fail;

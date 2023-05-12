@@ -211,7 +211,7 @@ abstract class BytesColumnCodec extends ColumnCodec {
         Label notNull = maker.label();
         argVar.ifNe(null, notNull);
         // Argument is null...
-        Label mismatch = CompareUtils.selectColumnToNullArg(op, pass, fail);
+        Label mismatch = CompareUtils.selectColumnToNullArg(info, op, pass, fail);
         if (isNullVar != null) {
             Label match = CompareUtils.selectNullColumnToNullArg(op, pass, fail);
             if (match != mismatch) {
@@ -223,7 +223,7 @@ abstract class BytesColumnCodec extends ColumnCodec {
         // Argument isn't null...
         notNull.here();
         if (isNullVar != null) {
-            isNullVar.ifTrue(CompareUtils.selectNullColumnToArg(op, pass, fail));
+            isNullVar.ifTrue(CompareUtils.selectNullColumnToArg(info, op, pass, fail));
         }
 
         CompareUtils.compareArrays(maker, compareBytesUnsigned(),
