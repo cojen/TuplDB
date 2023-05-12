@@ -42,6 +42,8 @@ import org.cojen.tupl.remote.RemoteUpdater;
 import org.cojen.tupl.remote.ServerTransaction;
 import org.cojen.tupl.remote.ServerUpdater;
 
+import org.cojen.tupl.rows.codec.ColumnCodec;
+
 /**
  * Generates classes which are used by the remote server.
  *
@@ -569,7 +571,7 @@ public final class RemoteProxyMaker {
             offsetVars[i] = offsetVar.get();
             codec.decodeSkip(originalValueVar, offsetVar, null);
 
-            ColumnInfo info = codec.mInfo;
+            ColumnInfo info = codec.info;
             int num = columnNumbers.get(info.name);
 
             int sfNum = rowGen.stateFieldNum(num);
@@ -601,7 +603,7 @@ public final class RemoteProxyMaker {
 
         for (int i=0; i<codecs.length; i++) {
             ColumnCodec codec = codecs[i];
-            ColumnInfo info = codec.mInfo;
+            ColumnInfo info = codec.info;
             int num = columnNumbers.get(info.name);
 
             Variable columnLenVar;
@@ -1610,7 +1612,7 @@ public final class RemoteProxyMaker {
 
             ColumnCodec codec = clientCodecs[columnNum].bind(mm);
 
-            var columnVar = mm.var(codec.mInfo.type);
+            var columnVar = mm.var(codec.info.type);
 
             codec.decode(columnVar, bytesVar, offsetVar, null);
 
@@ -1634,7 +1636,7 @@ public final class RemoteProxyMaker {
                 Label tryStart = mm.label().here();
 
                 Converter.convertExact(mm, rowFieldName,
-                                       codec.mInfo, columnVar, rowFieldCodec.mInfo, rowField);
+                                       codec.info, columnVar, rowFieldCodec.info, rowField);
  
                 mm.catch_(tryStart, RuntimeException.class, exVar -> {
                     pipeVar.invoke("writeObject", exVar);
@@ -1736,7 +1738,7 @@ public final class RemoteProxyMaker {
 
         for (int columnNum = numStart; columnNum < numEnd; columnNum++) {
             String fieldName = mRowHeader.columnNames[columnNum];
-            ColumnInfo dstInfo = clientCodecs[columnNum].mInfo;
+            ColumnInfo dstInfo = clientCodecs[columnNum].info;
             var dstVar = mm.var(dstInfo.type);
             fieldVars[columnNum - numStart] = dstVar;
             ColumnInfo srcInfo = mRowGen.info.allColumns.get(fieldName);

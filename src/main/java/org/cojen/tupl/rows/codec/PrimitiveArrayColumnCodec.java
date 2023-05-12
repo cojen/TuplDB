@@ -15,11 +15,14 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.rows;
+package org.cojen.tupl.rows.codec;
 
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
+
+import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.PrimitiveArrayUtils;
 
 import static org.cojen.tupl.rows.ColumnInfo.*;
 
@@ -58,8 +61,8 @@ abstract class PrimitiveArrayColumnCodec extends BytesColumnCodec {
         if (mFlags != other.mFlags || mBitPow != other.mBitPow) {
             return false;
         }
-        int typeCode = mInfo.typeCode;
-        int otherTypeCode = other.mInfo.typeCode;
+        int typeCode = info.typeCode;
+        int otherTypeCode = other.info.typeCode;
         if (!isLex()) {
             typeCode = ColumnInfo.unorderedTypeCode(typeCode);
             otherTypeCode = ColumnInfo.unorderedTypeCode(otherTypeCode);
@@ -69,28 +72,28 @@ abstract class PrimitiveArrayColumnCodec extends BytesColumnCodec {
 
     @Override
     public final int doHashCode() {
-        return mInfo.unorderedTypeCode();
+        return info.unorderedTypeCode();
     }
 
     @Override
-    final int codecFlags() {
+    public final int codecFlags() {
         return mFlags;
     }
 
     @Override
     protected Variable filterPrepareBytes(Variable argVar) {
-        final Variable bytesVar = mMaker.var(byte[].class);
+        final Variable bytesVar = maker.var(byte[].class);
         Label cont = null;
 
-        if (mInfo.isNullable()) {
-            Label notNull = mMaker.label();
+        if (info.isNullable()) {
+            Label notNull = maker.label();
             argVar.ifNe(null, notNull);
             bytesVar.set(null);
-            cont = mMaker.label().goto_();
+            cont = maker.label().goto_();
             notNull.here();
         }
 
-        bytesVar.set(mMaker.new_(byte[].class, byteArrayLength(argVar)));
+        bytesVar.set(maker.new_(byte[].class, byteArrayLength(argVar)));
         encodeByteArray(argVar, bytesVar, 0);
 
         if (cont != null) {
@@ -102,7 +105,7 @@ abstract class PrimitiveArrayColumnCodec extends BytesColumnCodec {
 
     @Override
     protected boolean compareBytesUnsigned() {
-        return isLex() || mInfo.isUnsigned() || ColumnInfo.isFloat(mInfo.plainTypeCode());
+        return isLex() || info.isUnsigned() || ColumnInfo.isFloat(info.plainTypeCode());
     }
 
     /**
@@ -123,11 +126,11 @@ abstract class PrimitiveArrayColumnCodec extends BytesColumnCodec {
      * @param offset variable or constant
      */
     protected void encodeByteArray(Variable srcVar, Variable dstVar, Object offset) {
-        var utilsVar = mMaker.var(PrimitiveArrayUtils.class);
+        var utilsVar = maker.var(PrimitiveArrayUtils.class);
         if (mBitPow == 3) {
             var lengthVar = srcVar.alength();
-            mMaker.var(System.class).invoke("arraycopy", srcVar, 0, dstVar, offset, lengthVar);
-            if (isLex() && !mInfo.isUnsigned()) {
+            maker.var(System.class).invoke("arraycopy", srcVar, 0, dstVar, offset, lengthVar);
+            if (isLex() && !info.isUnsigned()) {
                 utilsVar.invoke("signFlip", dstVar, offset, lengthVar);
             }
         } else {
@@ -142,17 +145,17 @@ abstract class PrimitiveArrayColumnCodec extends BytesColumnCodec {
      * @param length variable or constant
      */
     protected void decodeByteArray(Variable dstVar, Variable srcVar, Object offset, Object length) {
-        var utilsVar = mMaker.var(PrimitiveArrayUtils.class);
+        var utilsVar = maker.var(PrimitiveArrayUtils.class);
 
         Variable valueVar;
         if (mBitPow == 3) {
-            valueVar = mMaker.new_(byte[].class, length);
-            mMaker.var(System.class).invoke("arraycopy", srcVar, offset, valueVar, 0, length);
-            if (isLex() && !mInfo.isUnsigned()) {
+            valueVar = maker.new_(byte[].class, length);
+            maker.var(System.class).invoke("arraycopy", srcVar, offset, valueVar, 0, length);
+            if (isLex() && !info.isUnsigned()) {
                 utilsVar.invoke("signFlip", valueVar, 0, length);
             }
         } else {
-            String method = switch (mInfo.plainTypeCode()) {
+            String method = switch (info.plainTypeCode()) {
                 case TYPE_BOOLEAN -> "Boolean";
                 case TYPE_USHORT  -> "Short";
                 case TYPE_UINT    -> "Int";
@@ -175,6 +178,6 @@ abstract class PrimitiveArrayColumnCodec extends BytesColumnCodec {
     protected String methodSuffix() {
         // Note that descending order isn't supported, so fewer key formats to implement. Only
         // LexPrimitiveArrayColumnCodec supports descending order.
-        return mBitPow == 0 ? "" : ((isLex() && !mInfo.isUnsigned()) ? "Lex" : "BE");
+        return mBitPow == 0 ? "" : ((isLex() && !info.isUnsigned()) ? "Lex" : "BE");
     }
 }

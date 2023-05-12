@@ -44,8 +44,8 @@ public class ConvertUtils {
      * @param elementConverter given an array index, return a converted element
      * @return toType result array
      */
-    static Variable convertArray(MethodMaker mm, Class toType, Variable lengthVar,
-                                 Function<Variable, Variable> elementConverter)
+    public static Variable convertArray(MethodMaker mm, Class toType, Variable lengthVar,
+                                        Function<Variable, Variable> elementConverter)
     {
         var toArrayVar = mm.new_(toType, lengthVar);
         var ixVar = mm.var(int.class).set(0);

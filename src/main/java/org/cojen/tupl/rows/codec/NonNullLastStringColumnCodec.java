@@ -15,86 +15,72 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.rows;
+package org.cojen.tupl.rows.codec;
 
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
+
+import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.RowUtils;
 
 /**
  * Encoding suitable for non-null key or value columns which are the last in the set. No
  * length prefix is encoded.
  *
+ * @see RowUtils#encodeStringUTF
  * @author Brian S O'Neill
  */
-class NonNullLastBigIntegerColumnCodec extends BigIntegerColumnCodec {
-    protected Variable mBytesVar;
-
+class NonNullLastStringColumnCodec extends StringColumnCodec {
     /**
      * @param info non-null
      * @param mm is null for stateless instance
      */
-    NonNullLastBigIntegerColumnCodec(ColumnInfo info, MethodMaker mm) {
+    NonNullLastStringColumnCodec(ColumnInfo info, MethodMaker mm) {
         super(info, mm);
     }
 
     @Override
-    ColumnCodec bind(MethodMaker mm) {
-        return new NonNullLastBigIntegerColumnCodec(mInfo, mm);
+    public ColumnCodec bind(MethodMaker mm) {
+        return new NonNullLastStringColumnCodec(info, mm);
     }
 
     @Override
-    int codecFlags() {
+    public int codecFlags() {
         return F_LAST;
     }
 
     @Override
-    void encodePrepare() {
-        mBytesVar = mMaker.var(byte[].class);
+    public void encodePrepare() {
     }
 
     @Override
-    void encodeSkip() {
-        mBytesVar.set(null);
+    public void encodeSkip() {
     }
 
-    /**
-     * @param srcVar BigInteger type
-     */
     @Override
-    Variable encodeSize(Variable srcVar, Variable totalVar) {
-        mBytesVar.set(srcVar.invoke("toByteArray"));
-        return accum(totalVar, mBytesVar.alength());
+    public Variable encodeSize(Variable srcVar, Variable totalVar) {
+        var rowUtils = maker.var(RowUtils.class);
+        return accum(totalVar, rowUtils.invoke("lengthStringUTF", srcVar));
     }
 
-    /**
-     * @param srcVar BigInteger type
-     * @param dstVar byte[] type
-     */
     @Override
-    void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
-        var lengthVar = mBytesVar.alength();
-        mMaker.var(System.class).invoke("arraycopy", mBytesVar, 0, dstVar, offsetVar, lengthVar);
-        offsetVar.inc(lengthVar);
+    public void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
+        var rowUtils = maker.var(RowUtils.class);
+        offsetVar.set(rowUtils.invoke("encodeStringUTF", dstVar, offsetVar, srcVar));
     }
 
-    /**
-     * @param dstVar BigInteger type
-     * @param srcVar byte[] type
-     */
     @Override
-    void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
+    public void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
+        var rowUtils = maker.var(RowUtils.class);
         var alengthVar = endVar == null ? srcVar.alength() : endVar;
         var lengthVar = alengthVar.sub(offsetVar);
-        var valueVar = mMaker.new_(dstVar, srcVar, offsetVar, lengthVar);
-        dstVar.set(valueVar);
+        var valueVar = rowUtils.invoke("decodeStringUTF", srcVar, offsetVar, lengthVar);
         offsetVar.set(alengthVar);
+        dstVar.set(valueVar);
     }
 
-    /**
-     * @param srcVar byte[] type
-     */
     @Override
-    void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
+    public void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
         offsetVar.set(endVar == null ? srcVar.alength() : endVar);
     }
 

@@ -25,6 +25,8 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.Cursor;
 
+import org.cojen.tupl.rows.codec.ColumnCodec;
+
 import org.cojen.tupl.rows.filter.AndFilter;
 import org.cojen.tupl.rows.filter.ColumnToArgFilter;
 import org.cojen.tupl.rows.filter.ColumnToColumnFilter;

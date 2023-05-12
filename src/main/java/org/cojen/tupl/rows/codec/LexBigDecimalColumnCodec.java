@@ -15,13 +15,16 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.rows;
+package org.cojen.tupl.rows.codec;
 
 import java.math.BigDecimal;
 
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
+
+import org.cojen.tupl.rows.BigDecimalUtils;
+import org.cojen.tupl.rows.ColumnInfo;
 
 /**
  * Encoding suitable for lexicographically ordered columns which supports nulls.
@@ -36,50 +39,50 @@ final class LexBigDecimalColumnCodec extends ColumnCodec {
     }
 
     @Override
-    ColumnCodec bind(MethodMaker mm) {
-        return new LexBigDecimalColumnCodec(mInfo, mm);
+    public ColumnCodec bind(MethodMaker mm) {
+        return new LexBigDecimalColumnCodec(info, mm);
     }
 
     @Override
-    protected final boolean doEquals(Object obj) {
+    protected boolean doEquals(Object obj) {
         return equalOrdering(obj);
     }
 
     @Override
-    public final int doHashCode() {
+    public int doHashCode() {
         return 0;
     }
 
     @Override
-    int codecFlags() {
+    public int codecFlags() {
         return F_LEX;
     }
 
     @Override
-    int minSize() {
+    public int minSize() {
         return 0;
     }
 
     @Override
-    void encodePrepare() {
-        mBytesVar = mMaker.var(byte[].class);
+    public void encodePrepare() {
+        mBytesVar = maker.var(byte[].class);
     }
 
     @Override
-    void encodeSkip() {
+    public void encodeSkip() {
         mBytesVar.set(null);
     }
 
     @Override
-    Variable encodeSize(Variable srcVar, Variable totalVar) {
+    public Variable encodeSize(Variable srcVar, Variable totalVar) {
         String methodName = "encodeBigDecimalLex";
-        if (mInfo.isDescending()) {
+        if (info.isDescending()) {
             methodName += "Desc";
         }
 
-        var utilsVar = mMaker.var(BigDecimalUtils.class);
+        var utilsVar = maker.var(BigDecimalUtils.class);
 
-        if (!mInfo.isNullable()) {
+        if (!info.isNullable()) {
             mBytesVar.set(utilsVar.invoke(methodName, srcVar));
             return accum(totalVar, mBytesVar.alength());
         }
@@ -87,20 +90,20 @@ final class LexBigDecimalColumnCodec extends ColumnCodec {
         boolean unset = false;
         if (totalVar == null) {
             unset = true;
-            totalVar = mMaker.var(int.class);
+            totalVar = maker.var(int.class);
         }
 
-        Label notNull = mMaker.label();
+        Label notNull = maker.label();
         srcVar.ifNe(null, notNull);
 
-        mBytesVar.set(mMaker.new_(byte[].class, 1));
+        mBytesVar.set(maker.new_(byte[].class, 1));
         mBytesVar.aset(0, nullByte());
         if (unset) {
             totalVar.set(1);
         } else {
             totalVar.inc(1);
         }
-        Label end = mMaker.label().goto_();
+        Label end = maker.label().goto_();
 
         notNull.here();
         mBytesVar.set(utilsVar.invoke(methodName, srcVar));
@@ -117,22 +120,22 @@ final class LexBigDecimalColumnCodec extends ColumnCodec {
     }
 
     @Override
-    void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
+    public void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
         var lengthVar = mBytesVar.alength();
-        mMaker.var(System.class).invoke("arraycopy", mBytesVar, 0, dstVar, offsetVar, lengthVar);
+        maker.var(System.class).invoke("arraycopy", mBytesVar, 0, dstVar, offsetVar, lengthVar);
         offsetVar.inc(lengthVar);
     }
 
     @Override
-    void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
+    public void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
         String methodName = "decodeBigDecimalLex";
-        if (mInfo.isDescending()) {
+        if (info.isDescending()) {
             methodName += "Desc";
         }
 
-        Variable bdRefVar = dstVar == null ? null : mMaker.new_(BigDecimal[].class, 1);
+        Variable bdRefVar = dstVar == null ? null : maker.new_(BigDecimal[].class, 1);
 
-        var rowUtils = mMaker.var(BigDecimalUtils.class);
+        var rowUtils = maker.var(BigDecimalUtils.class);
         offsetVar.set(rowUtils.invoke(methodName, srcVar, offsetVar, bdRefVar));
 
         if (dstVar != null) {
@@ -141,7 +144,7 @@ final class LexBigDecimalColumnCodec extends ColumnCodec {
     }
 
     @Override
-    void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
+    public void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
         decode(null, srcVar, offsetVar, endVar);
     }
 }

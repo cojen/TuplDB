@@ -15,11 +15,13 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.rows;
+package org.cojen.tupl.rows.codec;
 
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
+
+import org.cojen.tupl.rows.ColumnInfo;
 
 /**
  * Encoding suitable for nullable key or value columns which are the last in the set. No length
@@ -37,30 +39,30 @@ final class NullableLastBigIntegerColumnCodec extends NonNullLastBigIntegerColum
     }
 
     @Override
-    ColumnCodec bind(MethodMaker mm) {
-        return new NullableLastBigIntegerColumnCodec(mInfo, mm);
+    public ColumnCodec bind(MethodMaker mm) {
+        return new NullableLastBigIntegerColumnCodec(info, mm);
     }
 
     @Override
-    int codecFlags() {
+    public int codecFlags() {
         return F_LAST;
     }
 
     @Override
-    int minSize() {
+    public int minSize() {
         // Header byte.
         return 1;
     }
 
     @Override
-    Variable encodeSize(Variable srcVar, Variable totalVar) {
+    public Variable encodeSize(Variable srcVar, Variable totalVar) {
         if (totalVar == null) {
-            totalVar = mMaker.var(int.class).set(0);
+            totalVar = maker.var(int.class).set(0);
         }
-        Label notNull = mMaker.label();
+        Label notNull = maker.label();
         srcVar.ifNe(null, notNull);
         mBytesVar.set(null);
-        Label cont = mMaker.label().goto_();
+        Label cont = maker.label().goto_();
         notNull.here();
         mBytesVar.set(srcVar.invoke("toByteArray"));
         totalVar.inc(mBytesVar.alength());
@@ -69,24 +71,24 @@ final class NullableLastBigIntegerColumnCodec extends NonNullLastBigIntegerColum
     }
 
     @Override
-    void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
-        Label end = mMaker.label();
+    public void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
+        Label end = maker.label();
         encodeNullHeader(end, srcVar, dstVar, offsetVar);
         super.encode(srcVar, dstVar, offsetVar);
         end.here();
     }
 
     @Override
-    void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
-        Label end = mMaker.label();
+    public void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
+        Label end = maker.label();
         decodeNullHeader(end, dstVar, srcVar, offsetVar);
         super.decode(dstVar, srcVar, offsetVar, endVar);
         end.here();
     }
 
     @Override
-    void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
-        Label end = mMaker.label();
+    public void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
+        Label end = maker.label();
         decodeNullHeader(end, null, srcVar, offsetVar);
         super.decodeSkip(srcVar, offsetVar, endVar);
         end.here();
@@ -97,10 +99,10 @@ final class NullableLastBigIntegerColumnCodec extends NonNullLastBigIntegerColum
                                 Variable lengthVar, Variable isNullVar)
     {
         decodeNullHeader(null, isNullVar, srcVar, offsetVar);
-        Label notNull = mMaker.label();
+        Label notNull = maker.label();
         isNullVar.ifFalse(notNull);
         lengthVar.set(0);
-        Label cont = mMaker.label().goto_();
+        Label cont = maker.label().goto_();
         notNull.here();
         super.decodeHeader(srcVar, offsetVar, endVar, lengthVar, null);
         cont.here();

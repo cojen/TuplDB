@@ -29,6 +29,9 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.rows.codec.ColumnCodec;
+import org.cojen.tupl.rows.codec.SchemaVersionColumnCodec;
+
 /**
  * Cache of objects used by code generation.
  *
@@ -212,7 +215,7 @@ class RowGen {
         }
         for (ColumnCodec codec : valueCodecs()) { // use encoding order
             if (!(codec instanceof SchemaVersionColumnCodec)) {
-                map.put(codec.mInfo.name, num++);
+                map.put(codec.info.name, num++);
             }
         }
 
@@ -343,7 +346,7 @@ class RowGen {
 
             var pkCodecs = new HashMap<String, ColumnCodec>();
             for (ColumnCodec codec : primaryInfo.rowGen().keyCodecs()) {
-                pkCodecs.put(codec.mInfo.name, codec);
+                pkCodecs.put(codec.info.name, codec);
             }
 
             codecs = ColumnCodec.make(infos, pkCodecs);
@@ -377,7 +380,7 @@ class RowGen {
     private static Map<String, ColumnCodec> makeCodecMap(ColumnCodec[] codecs) {
         var map = new LinkedHashMap<String, ColumnCodec>(codecs.length);
         for (ColumnCodec codec : codecs) {
-            map.put(codec.mInfo.name, codec);
+            map.put(codec.info.name, codec);
         }
         return map;
     }
@@ -433,7 +436,7 @@ class RowGen {
             var baseCodecs = step == 0 ? keyCodecs() : valueCodecs();
 
             for (ColumnCodec codec : baseCodecs) {
-                ColumnInfo info = codec.mInfo;
+                ColumnInfo info = codec.info;
 
                 if (columns.containsKey(info.name)) {
                     mask |= RowGen.stateFieldMask(num);
@@ -508,7 +511,7 @@ class RowGen {
             var baseCodecs = step == 0 ? keyCodecs() : valueCodecs();
 
             for (ColumnCodec codec : baseCodecs) {
-                ColumnInfo info = codec.mInfo;
+                ColumnInfo info = codec.info;
 
                 if (columns.containsKey(info.name)) {
                     mask |= stateFieldMask(num);
@@ -570,7 +573,7 @@ class RowGen {
             var baseCodecs = step == 0 ? keyCodecs() : valueCodecs();
 
             for (ColumnCodec codec : baseCodecs) {
-                ColumnInfo info = codec.mInfo;
+                ColumnInfo info = codec.info;
 
                 if (columns.containsKey(info.name)) {
                     mask |= stateFieldMask(num, 0b10);

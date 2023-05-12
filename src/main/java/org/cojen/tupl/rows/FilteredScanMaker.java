@@ -45,6 +45,8 @@ import org.cojen.tupl.core.RowPredicate;
 
 import org.cojen.tupl.diag.QueryPlan;
 
+import org.cojen.tupl.rows.codec.ColumnCodec;
+
 import org.cojen.tupl.rows.filter.ColumnToArgFilter;
 import org.cojen.tupl.rows.filter.RowFilter;
 import org.cojen.tupl.rows.filter.TrueFilter;
@@ -714,7 +716,7 @@ public class FilteredScanMaker<R> {
     }
 
     /**
-     * Given a non-null primary key and value, fully or partially decodes the a row. The
+     * Given a non-null primary key and value, fully or partially decodes a row. The
      * generated method never returns null.
      *
      * public R decodeRow(R row, byte[] primaryKey, byte[] primaryValue)
@@ -727,7 +729,7 @@ public class FilteredScanMaker<R> {
         var primaryKeyVar = mm.param(1);
         var primaryValueVar = mm.param(2);
 
-        if (mJoinFilter == null && mJoinFilter == TrueFilter.THE) {
+        if (mJoinFilter == null || mJoinFilter == TrueFilter.THE) {
             // Can call the eval method because no redundant filtering will be applied.
             mm.return_(mm.invoke("joinedEval", primaryKeyVar, primaryValueVar, rowVar));
             return;

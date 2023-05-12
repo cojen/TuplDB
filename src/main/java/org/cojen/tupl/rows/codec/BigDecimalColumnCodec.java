@@ -15,13 +15,16 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.rows;
+package org.cojen.tupl.rows.codec;
 
 import java.math.BigInteger;
 
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
+
+import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.RowUtils;
 
 /**
  * 
@@ -43,57 +46,57 @@ final class BigDecimalColumnCodec extends ColumnCodec {
     }
 
     @Override
-    ColumnCodec bind(MethodMaker mm) {
-        return new BigDecimalColumnCodec(mInfo, mUnscaledCodec.bind(mm), mm);
+    public ColumnCodec bind(MethodMaker mm) {
+        return new BigDecimalColumnCodec(info, mUnscaledCodec.bind(mm), mm);
     }
 
     @Override
-    protected final boolean doEquals(Object obj) {
+    protected boolean doEquals(Object obj) {
         return ((BigDecimalColumnCodec) obj).mUnscaledCodec.equals(mUnscaledCodec);
     }
 
     @Override
-    public final int doHashCode() {
+    public int doHashCode() {
         return mUnscaledCodec.doHashCode();
     }
 
     @Override
-    int codecFlags() {
+    public int codecFlags() {
         return mUnscaledCodec.codecFlags();
     }
 
     @Override
-    int minSize() {
+    public int minSize() {
         return 0;
     }
 
     @Override
-    void encodePrepare() {
-        mScaleVar = mMaker.var(int.class);
-        mUnscaledVar = mMaker.var(BigInteger.class);
+    public void encodePrepare() {
+        mScaleVar = maker.var(int.class);
+        mUnscaledVar = maker.var(BigInteger.class);
         mUnscaledCodec.encodePrepare();
     }
 
     @Override
-    void encodeSkip() {
+    public void encodeSkip() {
         mScaleVar.set(0);
         mUnscaledVar.set(null);
         mUnscaledCodec.encodeSkip();
     }
 
     @Override
-    Variable encodeSize(Variable srcVar, Variable totalVar) {
+    public Variable encodeSize(Variable srcVar, Variable totalVar) {
         boolean newTotal = false;
         if (totalVar == null) {
-            totalVar = mMaker.var(int.class);
+            totalVar = maker.var(int.class);
             newTotal = true;
         }
 
         Label end = null;
 
-        if (mInfo.isNullable()) {
-            end = mMaker.label();
-            Label notNull = mMaker.label();
+        if (info.isNullable()) {
+            end = maker.label();
+            Label notNull = maker.label();
             srcVar.ifNe(null, notNull);
             encodeSkip();
             if (newTotal) {
@@ -101,11 +104,11 @@ final class BigDecimalColumnCodec extends ColumnCodec {
             } else {
                 totalVar.inc(1);
             }
-            mMaker.goto_(end);
+            maker.goto_(end);
             notNull.here();
         }
 
-        var rowUtils = mMaker.var(RowUtils.class);
+        var rowUtils = maker.var(RowUtils.class);
 
         mScaleVar.set(rowUtils.invoke("convertSignedVarInt", srcVar.invoke("scale")));
 
@@ -128,14 +131,14 @@ final class BigDecimalColumnCodec extends ColumnCodec {
     }
 
     @Override
-    void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
+    public void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
         Label end = null;
-        if (mInfo.isNullable()) {
-            end = mMaker.label();
+        if (info.isNullable()) {
+            end = maker.label();
             encodeNullHeaderIfNull(end, srcVar, dstVar, offsetVar);
         }
 
-        var rowUtils = mMaker.var(RowUtils.class);
+        var rowUtils = maker.var(RowUtils.class);
         offsetVar.set(rowUtils.invoke("encodeUnsignedVarInt", dstVar, offsetVar, mScaleVar));
 
         mUnscaledCodec.encode(mUnscaledVar, dstVar, offsetVar);
@@ -146,28 +149,28 @@ final class BigDecimalColumnCodec extends ColumnCodec {
     }
 
     @Override
-    void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
+    public void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
         Label end = null;
 
-        if (mInfo.isNullable()) {
-            end = mMaker.label();
+        if (info.isNullable()) {
+            end = maker.label();
             Variable h = srcVar.aget(offsetVar).cast(int.class).and(0xff);
-            Label notNull = mMaker.label();
+            Label notNull = maker.label();
             h.ifLt(0xf8, notNull);
             dstVar.set(null);
             offsetVar.inc(1);
-            mMaker.goto_(end);
+            maker.goto_(end);
             notNull.here();
         }
 
-        var rowUtils = mMaker.var(RowUtils.class);
+        var rowUtils = maker.var(RowUtils.class);
         var decodedVar = rowUtils.invoke("decodeSignedVarInt", srcVar, offsetVar);
 
         offsetVar.set(decodedVar.shr(32).cast(int.class));
         var scaleVar = decodedVar.cast(int.class);
-        var unscaledVar = mMaker.var(BigInteger.class);
+        var unscaledVar = maker.var(BigInteger.class);
         mUnscaledCodec.decode(unscaledVar, srcVar, offsetVar, endVar);
-        dstVar.set(mMaker.new_(dstVar, unscaledVar, scaleVar));
+        dstVar.set(maker.new_(dstVar, unscaledVar, scaleVar));
 
         if (end != null) {
             end.here();
@@ -175,12 +178,12 @@ final class BigDecimalColumnCodec extends ColumnCodec {
     }
 
     @Override
-    void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
+    public void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
         if (isLast()) {
             mUnscaledCodec.decodeSkip(srcVar, offsetVar, endVar);
         } else {
-            String method = mInfo.isNullable() ? "skipNullableBigDecimal" : "skipBigDecimal";
-            offsetVar.set(mMaker.var(RowUtils.class).invoke(method, srcVar, offsetVar));
+            String method = info.isNullable() ? "skipNullableBigDecimal" : "skipBigDecimal";
+            offsetVar.set(maker.var(RowUtils.class).invoke(method, srcVar, offsetVar));
         }
     }
 }

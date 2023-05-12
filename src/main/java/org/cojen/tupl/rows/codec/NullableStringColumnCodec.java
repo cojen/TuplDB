@@ -15,11 +15,14 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.rows;
+package org.cojen.tupl.rows.codec;
 
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
+
+import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.RowUtils;
 
 /**
  * Encoding suitable for nullable value columns.
@@ -39,31 +42,31 @@ final class NullableStringColumnCodec extends NonNullStringColumnCodec {
     }
 
     @Override
-    ColumnCodec bind(MethodMaker mm) {
-        return new NullableStringColumnCodec(mInfo, mm);
+    public ColumnCodec bind(MethodMaker mm) {
+        return new NullableStringColumnCodec(info, mm);
     }
 
     @Override
-    int codecFlags() {
+    public int codecFlags() {
         return 0;
     }
 
     @Override
-    Variable encodeSize(Variable srcVar, Variable totalVar) {
+    public Variable encodeSize(Variable srcVar, Variable totalVar) {
         // The length prefix encodes the byte length with one added. This allows zero to be
         // used to indicate null. As a result, this limits the maximum byte length to be one
         // less is possible, and encoding is corrupt. In practice this doesn't cause any
         // persistent issues because the final row is encoded in a byte array anyhow. It will
         // fail to be encoded as the offset wraps around negative.
 
-        var rowUtils = mMaker.var(RowUtils.class);
+        var rowUtils = maker.var(RowUtils.class);
 
-        Variable strLengthVar = mMaker.var(int.class);
-        Label notNull = mMaker.label();
+        Variable strLengthVar = maker.var(int.class);
+        Label notNull = maker.label();
         srcVar.ifNe(null, notNull);
         strLengthVar.set(0);
         mLengthVar.set(0); // zero means null
-        Label cont = mMaker.label().goto_();
+        Label cont = maker.label().goto_();
         notNull.here();
         strLengthVar.set(rowUtils.invoke("lengthStringUTF", srcVar));
         mLengthVar.set(strLengthVar.add(1)); // add one for non-null string
@@ -77,8 +80,8 @@ final class NullableStringColumnCodec extends NonNullStringColumnCodec {
     }
 
     @Override
-    void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
-        offsetVar.set(mMaker.var(RowUtils.class).invoke("skipNullableBytesPF", srcVar, offsetVar));
+    public void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
+        offsetVar.set(maker.var(RowUtils.class).invoke("skipNullableBytesPF", srcVar, offsetVar));
     }
 
     @Override
@@ -93,7 +96,7 @@ final class NullableStringColumnCodec extends NonNullStringColumnCodec {
     protected void finishEncode(Variable srcVar, Variable rowUtils,
                                 Variable dstVar, Variable offsetVar)
     {
-        Label isNull = mMaker.label();
+        Label isNull = maker.label();
         srcVar.ifEq(null, isNull);
         super.finishEncode(srcVar, rowUtils, dstVar, offsetVar);
         isNull.here();
@@ -104,10 +107,10 @@ final class NullableStringColumnCodec extends NonNullStringColumnCodec {
                                 Variable srcVar, Variable offsetVar, Variable lengthVar)
     {
         // Actual length is encoded plus one, and zero means null.
-        Label notNull = mMaker.label();
+        Label notNull = maker.label();
         lengthVar.ifNe(0, notNull);
         dstVar.set(null);
-        Label cont = mMaker.label().goto_();
+        Label cont = maker.label().goto_();
         notNull.here();
         super.finishDecode(dstVar, rowUtils, srcVar, offsetVar, lengthVar.sub(1));
         cont.here();

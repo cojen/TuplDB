@@ -15,30 +15,33 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.rows;
+package org.cojen.tupl.rows.codec;
 
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.RowUtils;
+
 /**
- * Abstract class for encoding and decoding BigInteger type columns.
+ * Abstract class for encoding and decoding string type columns.
  *
  * @author Brian S O'Neill
  */
-abstract class BigIntegerColumnCodec extends BytesColumnCodec {
+abstract class StringColumnCodec extends BytesColumnCodec {
     /**
      * @param info non-null
      * @param mm is null for stateless instance
      */
-    BigIntegerColumnCodec(ColumnInfo info, MethodMaker mm) {
+    StringColumnCodec(ColumnInfo info, MethodMaker mm) {
         super(info, mm);
     }
 
     @Override
-    protected boolean doEquals(Object obj) {
-        return true;
+    protected final boolean doEquals(Object obj) {
+        return equalOrdering(obj);
     }
-
+    
     @Override
     protected final int doHashCode() {
         return 0;
@@ -46,11 +49,11 @@ abstract class BigIntegerColumnCodec extends BytesColumnCodec {
 
     @Override
     protected Variable filterPrepareBytes(Variable argVar) {
-        return mMaker.var(RowUtils.class).invoke("encodeBigInteger", argVar);
+        return maker.var(RowUtils.class).invoke("encodeStringUTF", argVar);
     }
 
     @Override
     protected boolean compareBytesUnsigned() {
-        return false;
+        return true;
     }
 }

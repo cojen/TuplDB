@@ -15,7 +15,7 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.rows;
+package org.cojen.tupl.rows.codec;
 
 import java.math.BigInteger;
 
@@ -29,6 +29,11 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.CompareUtils;
+import org.cojen.tupl.rows.RowHeader;
+import org.cojen.tupl.rows.RowUtils;
+
 import org.cojen.tupl.rows.filter.ColumnFilter;
 
 import static org.cojen.tupl.rows.ColumnInfo.*;
@@ -38,16 +43,16 @@ import static org.cojen.tupl.rows.ColumnInfo.*;
  *
  * @author Brian S O'Neill
  */
-abstract class ColumnCodec {
-    static final int F_LAST = 1; // last column encoding
-    static final int F_LEX = 2; // lexicographical order
+public abstract class ColumnCodec {
+    public static final int F_LAST = 1; // last column encoding
+    public static final int F_LEX = 2; // lexicographical order
 
     /**
      * Returns an array of new stateless ColumnCodec instances.
      *
      * @param flags 0 or else F_LEX to use lexicographical encoding
      */
-    static ColumnCodec[] make(Map<String, ColumnInfo> infoMap, int flags) {
+    public static ColumnCodec[] make(Map<String, ColumnInfo> infoMap, int flags) {
         return make(infoMap.values(), flags);
     }
 
@@ -56,7 +61,7 @@ abstract class ColumnCodec {
      *
      * @param flags 0 or else F_LEX to use lexicographical encoding
      */
-    static ColumnCodec[] make(Collection<ColumnInfo> infos, int flags) {
+    public static ColumnCodec[] make(Collection<ColumnInfo> infos, int flags) {
         var codecs = new ColumnCodec[infos.size()];
 
         if (codecs.length != 0) {
@@ -80,7 +85,9 @@ abstract class ColumnCodec {
      * Returns an array of new stateless ColumnCodec instances, favoring non-lexicographical
      * encoding, but adopting the encoding from the given map if preferred.
      */
-    static ColumnCodec[] make(Collection<ColumnInfo> infos, Map<String, ColumnCodec> pkCodecs) {
+    public static ColumnCodec[] make(Collection<ColumnInfo> infos,
+                                     Map<String, ColumnCodec> pkCodecs)
+    {
         var codecs = new ColumnCodec[infos.size()];
 
         if (codecs.length != 0) {
@@ -111,7 +118,7 @@ abstract class ColumnCodec {
      * Returns an array of new stateless ColumnCodec instances suitable for decoding rows which
      * were remotely serialized.
      */
-    static ColumnCodec[] make(RowHeader header) {
+    public static ColumnCodec[] make(RowHeader header) {
         int numColumns = header.columnNames.length;
         var codecs = new ColumnCodec[numColumns];
 
@@ -224,22 +231,22 @@ abstract class ColumnCodec {
         }
     }
 
-    final ColumnInfo mInfo;
-    final MethodMaker mMaker;
+    public final ColumnInfo info;
+    public final MethodMaker maker;
 
     /**
      * @param info non-null (except for SchemaVersionColumnCodec)
      * @param mm is null for stateless instance
      */
     ColumnCodec(ColumnInfo info, MethodMaker mm) {
-        mInfo = info;
-        mMaker = mm;
+        this.info = info;
+        this.maker = mm;
     }
 
     /**
      * Return stateful instances suitable for making code.
      */
-    static ColumnCodec[] bind(ColumnCodec[] codecs, MethodMaker mm) {
+    public static ColumnCodec[] bind(ColumnCodec[] codecs, MethodMaker mm) {
         if (codecs.length != 0) {
             codecs = codecs.clone();
             for (int i=0; i<codecs.length; i++) {
@@ -254,7 +261,7 @@ abstract class ColumnCodec {
      * first element in the returned array is a SchemaVersionColumnCodec, which can only be
      * used for encoding.
      */
-    static ColumnCodec[] bind(int schemaVersion, ColumnCodec[] codecs, MethodMaker mm) {
+    public static ColumnCodec[] bind(int schemaVersion, ColumnCodec[] codecs, MethodMaker mm) {
         if (codecs.length == 0) {
             return codecs;
         }
@@ -269,7 +276,7 @@ abstract class ColumnCodec {
     /**
      * Returns a stateful instance suitable for making code.
      */
-    abstract ColumnCodec bind(MethodMaker mm);
+    public abstract ColumnCodec bind(MethodMaker mm);
 
     @Override
     public final boolean equals(Object obj) {
@@ -284,7 +291,7 @@ abstract class ColumnCodec {
 
     @Override
     public final int hashCode() {
-        int hash = mInfo == null ? 0 : Objects.hashCode(mInfo.name);
+        int hash = info == null ? 0 : Objects.hashCode(info.name);
         return (doHashCode() * 31 + hash) ^ getClass().hashCode();
     }
 
@@ -298,8 +305,8 @@ abstract class ColumnCodec {
     protected final boolean equalOrdering(Object obj) {
         // TODO: optimize transform which just alters the null ordering or if bits can be flipped
         var other = (ColumnCodec) obj;
-        return mInfo.isDescending() == other.mInfo.isDescending()
-            && mInfo.isNullLow() == other.mInfo.isNullLow();
+        return info.isDescending() == other.info.isDescending()
+            && info.isNullLow() == other.info.isNullLow();
     }
 
     /**
@@ -310,13 +317,13 @@ abstract class ColumnCodec {
     /**
      * F_LAST, F_NULLS, F_LEX, etc.
      */
-    abstract int codecFlags();
+    public abstract int codecFlags();
 
     /**
      * Returns true if column is variable length but doesn't have a length prefix encoded
      * because it's the last column in the key or value.
      */
-    final boolean isLast() {
+    public final boolean isLast() {
         return (codecFlags() & F_LAST) != 0;
     }
 
@@ -330,20 +337,20 @@ abstract class ColumnCodec {
     /**
      * Returns the minimum number of bytes to encode the column.
      */
-    abstract int minSize();
+    public abstract int minSize();
 
     /**
      * Makes code which declares all necessary variables used for encoding. Must be called
      * before calling any other encode methods.
      */
-    abstract void encodePrepare();
+    public abstract void encodePrepare();
 
     /**
      * Called when the column won't be encoded, but any variables that would be used by the
      * encode method need to be defined and initialized to anything. This is necessary to keep
      * the class code verifier happy. Must be called before calling encode.
      */
-    abstract void encodeSkip();
+    public abstract void encodeSkip();
 
     /**
      * Makes code which adds to the total size variable, excluding the minSize. Must be called
@@ -353,7 +360,7 @@ abstract class ColumnCodec {
      * @param totalVar int type, which can be null initially
      * @return new or existing total variable (can still be null)
      */
-    abstract Variable encodeSize(Variable srcVar, Variable totalVar);
+    public abstract Variable encodeSize(Variable srcVar, Variable totalVar);
 
     /**
      * Makes code which encodes the column.
@@ -362,7 +369,7 @@ abstract class ColumnCodec {
      * @param dstVar destination byte array
      * @param offsetVar int type; is incremented as a side-effect
      */
-    abstract void encode(Variable srcVar, Variable dstVar, Variable offsetVar);
+    public abstract void encode(Variable srcVar, Variable dstVar, Variable offsetVar);
 
     /**
      * Makes code which decodes the column.
@@ -372,7 +379,7 @@ abstract class ColumnCodec {
      * @param offsetVar int type; is incremented as a side-effect
      * @param endVar end offset, which when null implies the end of the array
      */
-    abstract void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar);
+    public abstract void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar);
 
     /**
      * Makes code which skips the column instead of decoding it.
@@ -381,7 +388,7 @@ abstract class ColumnCodec {
      * @param offsetVar int type; is incremented as a side-effect
      * @param endVar end offset, which when null implies the end of the array
      */
-    abstract void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar);
+    public abstract void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar);
 
     /**
      * Makes code which defines and initializes extra final field(s) for filter arguments.
@@ -394,7 +401,7 @@ abstract class ColumnCodec {
      * @param argVar argument value to compare against, converted to the the column type; if null,
      * extra fields aren't final and are lazily initialized
      */
-    void filterDefineExtraFields(boolean in, Variable argVar, String argFieldName) {
+    public void filterDefineExtraFields(boolean in, Variable argVar, String argFieldName) {
     }
 
     /**
@@ -408,7 +415,7 @@ abstract class ColumnCodec {
      *
      * @param dstInfo current definition for column
      */
-    boolean canFilterQuick(ColumnInfo dstInfo) {
+    public boolean canFilterQuick(ColumnInfo dstInfo) {
         return false;
     }
 
@@ -427,8 +434,8 @@ abstract class ColumnCodec {
      * @param endVar end offset, which when null implies the end of the array
      * @return a non-null object with decoded state
      */
-    Object filterQuickDecode(ColumnInfo dstInfo,
-                             Variable srcVar, Variable offsetVar, Variable endVar)
+    public Object filterQuickDecode(ColumnInfo dstInfo,
+                                    Variable srcVar, Variable offsetVar, Variable endVar)
     {
         throw new UnsupportedOperationException();
     }
@@ -449,31 +456,31 @@ abstract class ColumnCodec {
      * @param pass branch here when comparison passes
      * @param fail branch here when comparison fails
      */
-    void filterQuickCompare(ColumnInfo dstInfo,
-                            Variable srcVar, Variable offsetVar,
-                            int op, Object decoded, Variable argObjVar, int argNum,
-                            Label pass, Label fail)
+    public void filterQuickCompare(ColumnInfo dstInfo,
+                                   Variable srcVar, Variable offsetVar,
+                                   int op, Object decoded, Variable argObjVar, int argNum,
+                                   Label pass, Label fail)
     {
         throw new UnsupportedOperationException();
     }
 
-    static String argFieldName(String colName, int argNum) {
+    public static String argFieldName(String colName, int argNum) {
         return colName + '$' + argNum;
     }
 
-    static String argFieldName(ColumnInfo info, int argNum) {
+    public static String argFieldName(ColumnInfo info, int argNum) {
         return argFieldName(info.name, argNum);
     }
 
-    final String argFieldName(int argNum) {
-        return argFieldName(mInfo, argNum);
+    public final String argFieldName(int argNum) {
+        return argFieldName(info, argNum);
     }
 
-    final String argFieldName(int argNum, String suffix) {
+    public final String argFieldName(int argNum, String suffix) {
         return argFieldName(argFieldName(argNum), suffix);
     }
 
-    static String argFieldName(String base, String suffix) {
+    public static String argFieldName(String base, String suffix) {
         return base + '$' + suffix;
     }
 
@@ -482,24 +489,24 @@ abstract class ColumnCodec {
      *
      * @param initVar initial and final value to assign
      */
-    final void defineArgField(Object type, String name, Variable initVar) {
+    public final void defineArgField(Object type, String name, Variable initVar) {
         defineArgField(type, name).final_();
-        mMaker.field(name).set(initVar);
+        maker.field(name).set(initVar);
     }
 
     /**
      * Define a non-final arg field, to be lazily initialzied.
      */
     final FieldMaker defineArgField(Object type, String name) {
-        return mMaker.classMaker().addField(type, name);
+        return maker.classMaker().addField(type, name);
     }
 
     /**
      * @return new or existing accumulator variable
      */
-    protected final Variable accum(Variable accumVar, Object amount) {
+    public final Variable accum(Variable accumVar, Object amount) {
         if (accumVar == null) {
-            accumVar = mMaker.var(int.class).set(amount);
+            accumVar = maker.var(int.class).set(amount);
         } else {
             accumVar.inc(amount);
         }
@@ -507,12 +514,12 @@ abstract class ColumnCodec {
     }
 
     protected final byte nullByte() {
-        return (mInfo.isDescending() == mInfo.isNullLow())
+        return (info.isDescending() == info.isNullLow())
             ? RowUtils.NULL_BYTE_HIGH : RowUtils.NULL_BYTE_LOW;
     }
 
     protected final byte notNullByte() {
-        return (mInfo.isDescending() == mInfo.isNullLow())
+        return (info.isDescending() == info.isNullLow())
             ? RowUtils.NOT_NULL_BYTE_HIGH : RowUtils.NOT_NULL_BYTE_LOW;
     }
 
@@ -527,7 +534,7 @@ abstract class ColumnCodec {
     protected final void encodeNullHeaderIfNull(Label end, Variable srcVar,
                                                 Variable dstVar, Variable offsetVar)
     {
-        Label notNull = mMaker.label();
+        Label notNull = maker.label();
         srcVar.ifNe(null, notNull);
 
         byte nb = nullByte();
@@ -537,7 +544,7 @@ abstract class ColumnCodec {
             dstVar.aset(offsetVar, nb);
             offsetVar.inc(1);
         }
-        mMaker.goto_(end);
+        maker.goto_(end);
 
         notNull.here();
     }
@@ -577,10 +584,10 @@ abstract class ColumnCodec {
         } else if (dstVar.classType() == boolean.class) {
             dstVar.set(header.eq(nullHeader));
         } else {
-            Label notNull = mMaker.label();        
+            Label notNull = maker.label();
             header.ifNe(nullHeader, notNull);
             dstVar.set(null);
-            mMaker.goto_(end);
+            maker.goto_(end);
             notNull.here();
         }
     }
@@ -600,7 +607,7 @@ abstract class ColumnCodec {
     protected final void compareNullHeader(Variable srcVar, Variable offsetVar,
                                            Variable argVar, int op, Label pass, Label fail)
     {
-        Label isColumnNull = mMaker.label();
+        Label isColumnNull = maker.label();
         if (srcVar.classType() == boolean.class) {
             srcVar.ifTrue(isColumnNull);
         } else {
@@ -617,7 +624,7 @@ abstract class ColumnCodec {
             argVar.ifEq(null, match);
         }
 
-        Label cont = mMaker.label().goto_();
+        Label cont = maker.label().goto_();
 
         // Column is null...
 
@@ -630,7 +637,7 @@ abstract class ColumnCodec {
             } else {
                 argVar.ifEq(null, match);
             }
-            CompareUtils.compareIn(mMaker, argVar, op, pass, fail, (a, p, f) -> a.ifEq(null, p));
+            CompareUtils.compareIn(maker, argVar, op, pass, fail, (a, p, f) -> a.ifEq(null, p));
         } else {
             Label mismatch = CompareUtils.selectNullColumnToArg(op, pass, fail);
             if (match != mismatch) {
@@ -640,7 +647,7 @@ abstract class ColumnCodec {
                     argVar.ifEq(null, match);
                 }
             }
-            mMaker.goto_(mismatch);
+            maker.goto_(mismatch);
         }
 
         // Neither is null...

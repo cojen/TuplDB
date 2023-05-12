@@ -15,11 +15,14 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.rows;
+package org.cojen.tupl.rows.codec;
 
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
+
+import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.PrimitiveArrayUtils;
 
 /**
  * Encoding suitable for lexicographically ordered columns which supports nulls.
@@ -32,33 +35,33 @@ final class LexPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
     }
 
     @Override
-    ColumnCodec bind(MethodMaker mm) {
-        return new LexPrimitiveArrayColumnCodec(mInfo, mm);
+    public ColumnCodec bind(MethodMaker mm) {
+        return new LexPrimitiveArrayColumnCodec(info, mm);
     }
 
     @Override
-    void encodePrepare() {
+    public void encodePrepare() {
     }
 
     @Override
-    void encodeSkip() {
+    public void encodeSkip() {
     }
 
     @Override
-    Variable encodeSize(Variable srcVar, Variable totalVar) {
-        return accum(totalVar, calcLength(mMaker.var(PrimitiveArrayUtils.class), srcVar));
+    public Variable encodeSize(Variable srcVar, Variable totalVar) {
+        return accum(totalVar, calcLength(maker.var(PrimitiveArrayUtils.class), srcVar));
     }
 
     private Variable calcLength(Variable rowUtils, Variable srcVar) {
-        Variable lengthVar = mMaker.var(int.class);
+        Variable lengthVar = maker.var(int.class);
 
         Label cont = null;
 
-        if (mInfo.isNullable()) {
-            Label notNull = mMaker.label();
+        if (info.isNullable()) {
+            Label notNull = maker.label();
             srcVar.ifNe(null, notNull);
             lengthVar.set(1);
-            cont = mMaker.label().goto_();
+            cont = maker.label().goto_();
             notNull.here();
         }
 
@@ -72,27 +75,27 @@ final class LexPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
     }
 
     @Override
-    void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
-        doEncode(mMaker.var(PrimitiveArrayUtils.class), srcVar, dstVar, offsetVar);
+    public void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
+        doEncode(maker.var(PrimitiveArrayUtils.class), srcVar, dstVar, offsetVar);
     }
 
     /**
      * @param offsetVar can be null to use an offset of zero
      */
     private void doEncode(Variable rowUtils, Variable srcVar, Variable dstVar, Variable offsetVar) {
-        if (mInfo.plainTypeCode() != ColumnInfo.TYPE_UBYTE) {
+        if (info.plainTypeCode() != ColumnInfo.TYPE_UBYTE) {
             // Convert to a byte array, or flip the sign bits if already a byte array.
             srcVar = super.filterPrepareBytes(srcVar);
         }
 
         Label end = null;
-        if (mInfo.isNullable()) {
-            end = mMaker.label();
+        if (info.isNullable()) {
+            end = maker.label();
             encodeNullHeaderIfNull(end, srcVar, dstVar, offsetVar);
         }
 
         String methodName = "encodeBytes32K";
-        if (mInfo.isDescending()) {
+        if (info.isDescending()) {
             methodName += "Desc";
         }
 
@@ -108,37 +111,37 @@ final class LexPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
     }
 
     @Override
-    void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
+    public void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
         String methodName = "decodeBytes32K";
-        if (mInfo.isDescending()) {
+        if (info.isDescending()) {
             methodName += "Desc";
         }
-        var rowUtils = mMaker.var(PrimitiveArrayUtils.class);
+        var rowUtils = maker.var(PrimitiveArrayUtils.class);
         var lengthVar = rowUtils.invoke("lengthBytes32K", srcVar, offsetVar);
         var arrayVar = rowUtils.invoke(methodName, srcVar, offsetVar, lengthVar);
         offsetVar.inc(lengthVar);
 
-        int plain = mInfo.plainTypeCode();
+        int plain = info.plainTypeCode();
         if (plain == ColumnInfo.TYPE_BYTE) {
             // No need to make an extra copy since the new instance isn't shared by anything.
-            if (!mInfo.isNullable()) {
+            if (!info.isNullable()) {
                 rowUtils.invoke("signFlip", arrayVar, 0, arrayVar.alength());
             } else {
-                Label isNull = mMaker.label();
+                Label isNull = maker.label();
                 arrayVar.ifEq(null, isNull);
                 rowUtils.invoke("signFlip", arrayVar, 0, arrayVar.alength());
                 isNull.here();
             }
         } else if (plain != ColumnInfo.TYPE_UBYTE) {
-            var newArrayVar = mMaker.var(mInfo.type);
-            if (!mInfo.isNullable()) {
+            var newArrayVar = maker.var(info.type);
+            if (!info.isNullable()) {
                 decodeByteArray(newArrayVar, arrayVar, 0, arrayVar.alength());
             } else {
-                Label notNull = mMaker.label();
+                Label notNull = maker.label();
                 arrayVar.ifNe(null, notNull);
-                Label cont = mMaker.label();
+                Label cont = maker.label();
                 newArrayVar.set(null);
-                mMaker.goto_(cont);
+                maker.goto_(cont);
                 notNull.here();
                 decodeByteArray(newArrayVar, arrayVar, 0, arrayVar.alength());
                 cont.here();
@@ -150,15 +153,15 @@ final class LexPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
     }
 
     @Override
-    void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
-        var utilsVar = mMaker.var(PrimitiveArrayUtils.class);
+    public void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
+        var utilsVar = maker.var(PrimitiveArrayUtils.class);
         offsetVar.inc(utilsVar.invoke("lengthBytes32K", srcVar, offsetVar));
     }
 
     @Override
     protected Variable filterPrepareBytes(Variable argVar) {
-        var rowUtils = mMaker.var(PrimitiveArrayUtils.class);
-        var bytesVar = mMaker.new_(byte[].class, calcLength(rowUtils, argVar));
+        var rowUtils = maker.var(PrimitiveArrayUtils.class);
+        var bytesVar = maker.new_(byte[].class, calcLength(rowUtils, argVar));
         doEncode(rowUtils, argVar, bytesVar, null);
         return bytesVar;
     }
@@ -169,13 +172,13 @@ final class LexPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
     }
 
     @Override
-    boolean canFilterQuick(ColumnInfo dstInfo) {
-        return dstInfo.typeCode == mInfo.typeCode;
+    public boolean canFilterQuick(ColumnInfo dstInfo) {
+        return dstInfo.typeCode == info.typeCode;
     }
 
     @Override
-    Object filterQuickDecode(ColumnInfo dstInfo,
-                             Variable srcVar, Variable offsetVar, Variable endVar)
+    public Object filterQuickDecode(ColumnInfo dstInfo,
+                                    Variable srcVar, Variable offsetVar, Variable endVar)
     {
         decodeSkip(srcVar, offsetVar, endVar);
         // Return a stable copy to the end offset.
@@ -186,9 +189,9 @@ final class LexPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
      * @param decoded the string end offset
      */
     @Override
-    void filterQuickCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar,
-                            int op, Object decoded, Variable argObjVar, int argNum,
-                            Label pass, Label fail)
+    public void filterQuickCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar,
+                                   int op, Object decoded, Variable argObjVar, int argNum,
+                                   Label pass, Label fail)
     {
         filterQuickCompareLex(dstInfo, srcVar, offsetVar, (Variable) decoded,
                               op, argObjVar, argNum, pass, fail);

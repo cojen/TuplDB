@@ -35,6 +35,8 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.Scanner;
 
+import org.cojen.tupl.rows.codec.ColumnCodec;
+
 /**
  * Used for reading remotely serialized rows.
  *
@@ -285,7 +287,7 @@ public abstract class RowReader<R, DIN extends DataInput> implements Scanner<R> 
 
         for (int i=0; i<codecs.length; i++) {
             ColumnCodec codec = codecs[i];
-            String name = codec.mInfo.name;
+            String name = codec.info.name;
             ColumnInfo colInfo = rowInfo.allColumns.get(name);
 
             Variable endVar = valueEndVar;

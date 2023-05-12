@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2021 Cojen.org
+ *  Copyright 2021 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -12,72 +12,83 @@
  *  GNU Affero General Public License for more details.
  *
  *  You should have received a copy of the GNU Affero General Public License
- *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.rows;
+package org.cojen.tupl.rows.codec;
 
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.RowUtils;
+
 /**
  * Encoding suitable for nullable key or value columns which are the last in the set. No length
  * prefix is encoded.
  *
+ * @see #encodeNullHeader
+ * @see RowUtils#encodeStringUTF
  * @author Brian S O'Neill
  */
-final class NullableLastPrimitiveArrayColumnCodec extends NonNullLastPrimitiveArrayColumnCodec {
+final class NullableLastStringColumnCodec extends NonNullLastStringColumnCodec {
     /**
      * @param info non-null
      * @param mm is null for stateless instance
      */
-    NullableLastPrimitiveArrayColumnCodec(ColumnInfo info, MethodMaker mm, int flags) {
-        super(info, mm, flags);
+    NullableLastStringColumnCodec(ColumnInfo info, MethodMaker mm) {
+        super(info, mm);
     }
 
     @Override
-    ColumnCodec bind(MethodMaker mm) {
-        return new NullableLastPrimitiveArrayColumnCodec(mInfo, mm, mFlags);
+    public ColumnCodec bind(MethodMaker mm) {
+        return new NullableLastStringColumnCodec(info, mm);
     }
 
     @Override
-    int minSize() {
+    public int codecFlags() {
+        return F_LAST;
+    }
+
+    @Override
+    public int minSize() {
         // Header byte.
         return 1;
     }
 
     @Override
-    Variable encodeSize(Variable srcVar, Variable totalVar) {
+    public Variable encodeSize(Variable srcVar, Variable totalVar) {
         if (totalVar == null) {
-            totalVar = mMaker.var(int.class).set(0);
+            totalVar = maker.var(int.class).set(0);
         }
-        Label isNull = mMaker.label();
+        var rowUtils = maker.var(RowUtils.class);
+        Label isNull = maker.label();
         srcVar.ifEq(null, isNull);
-        totalVar.inc(byteArrayLength(srcVar));
+        totalVar.inc(rowUtils.invoke("lengthStringUTF", srcVar));
         isNull.here();
         return totalVar;
     }
 
     @Override
-    void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
-        Label end = mMaker.label();
+    public void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
+        Label end = maker.label();
         encodeNullHeader(end, srcVar, dstVar, offsetVar);
         super.encode(srcVar, dstVar, offsetVar);
         end.here();
     }
 
     @Override
-    void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
-        Label end = mMaker.label();
+    public void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
+        Label end = maker.label();
         decodeNullHeader(end, dstVar, srcVar, offsetVar);
         super.decode(dstVar, srcVar, offsetVar, endVar);
         end.here();
     }
 
     @Override
-    void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
-        Label end = mMaker.label();
+    public void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
+        Label end = maker.label();
         decodeNullHeader(end, null, srcVar, offsetVar);
         super.decodeSkip(srcVar, offsetVar, endVar);
         end.here();
@@ -88,10 +99,10 @@ final class NullableLastPrimitiveArrayColumnCodec extends NonNullLastPrimitiveAr
                                 Variable lengthVar, Variable isNullVar)
     {
         decodeNullHeader(null, isNullVar, srcVar, offsetVar);
-        Label notNull = mMaker.label();
+        Label notNull = maker.label();
         isNullVar.ifFalse(notNull);
         lengthVar.set(0);
-        Label cont = mMaker.label().goto_();
+        Label cont = maker.label().goto_();
         notNull.here();
         super.decodeHeader(srcVar, offsetVar, endVar, lengthVar, null);
         cont.here();

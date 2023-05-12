@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2021 Cojen.org
+ *  Copyright 2021 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -12,74 +12,71 @@
  *  GNU Affero General Public License for more details.
  *
  *  You should have received a copy of the GNU Affero General Public License
- *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.rows;
+package org.cojen.tupl.rows.codec;
 
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.RowUtils;
+
 /**
- * 
+ * Encoding suitable for nullable value columns.
  *
  * @author Brian S O'Neill
  */
-final class NullablePrimitiveArrayColumnCodec extends NonNullPrimitiveArrayColumnCodec {
-    private Variable mBytesLengthVar;
-
+final class NullableBigIntegerColumnCodec extends NonNullBigIntegerColumnCodec {
     /**
      * @param info non-null
      * @param mm is null for stateless instance
      */
-    NullablePrimitiveArrayColumnCodec(ColumnInfo info, MethodMaker mm) {
+    NullableBigIntegerColumnCodec(ColumnInfo info, MethodMaker mm) {
         super(info, mm);
     }
 
     @Override
-    ColumnCodec bind(MethodMaker mm) {
-        return new NullablePrimitiveArrayColumnCodec(mInfo, mm);
+    public ColumnCodec bind(MethodMaker mm) {
+        return new NullableBigIntegerColumnCodec(info, mm);
     }
 
     @Override
-    void encodePrepare() {
-        super.encodePrepare();
-        mBytesLengthVar = mMaker.var(int.class);
+    public int codecFlags() {
+        return 0;
     }
 
     @Override
-    void encodeSkip() {
-        super.encodeSkip();
-        mBytesLengthVar.set(0);
-    }
+    public Variable encodeSize(Variable srcVar, Variable totalVar) {
+        // See notes in NullableStringColumnCodec regarding length prefix encoding.
 
-    @Override
-    Variable encodeSize(Variable srcVar, Variable totalVar) {
-        // The length prefix encodes the byte length with one added. This allows zero to be
-        // used to indicate null. See comments in NullableStringColumnCodec.encodeSize.
-
-        Label notNull = mMaker.label();
+        Variable arrayLengthVar = maker.var(int.class);
+        Label notNull = maker.label();
         srcVar.ifNe(null, notNull);
-        mBytesLengthVar.set(0);
+        mBytesVar.set(null);
+        arrayLengthVar.set(0);
         mLengthVar.set(0); // zero means null
-        Label cont = mMaker.label().goto_();
+        Label cont = maker.label();
+        maker.goto_(cont);
         notNull.here();
-        mBytesLengthVar.set(byteArrayLength(srcVar));
-        mLengthVar.set(mBytesLengthVar.add(1)); // add one for non-null array
+        mBytesVar.set(srcVar.invoke("toByteArray"));
+        arrayLengthVar.set(mBytesVar.alength());
+        mLengthVar.set(arrayLengthVar.add(1)); // add one for non-null array
         cont.here();
 
         // Add the prefix length.
-        var rowUtils = mMaker.var(RowUtils.class);
+        var rowUtils = maker.var(RowUtils.class);
         totalVar = accum(totalVar, rowUtils.invoke("lengthPrefixPF", mLengthVar));
 
-        // Add the byte array length.
-        return accum(totalVar, mBytesLengthVar);
+        // Add the array length.
+        return accum(totalVar, arrayLengthVar);
     }
 
     @Override
-    void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
-        offsetVar.set(mMaker.var(RowUtils.class).invoke("skipNullableBytesPF", srcVar, offsetVar));
+    public void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
+        offsetVar.set(maker.var(RowUtils.class).invoke("skipNullableBytesPF", srcVar, offsetVar));
     }
 
     @Override
@@ -91,11 +88,10 @@ final class NullablePrimitiveArrayColumnCodec extends NonNullPrimitiveArrayColum
     }
 
     @Override
-    protected void finishEncode(Variable srcVar, Variable dstVar, Variable offsetVar) {
-        Label isNull = mMaker.label();
-        srcVar.ifEq(null, isNull);
-        encodeByteArray(srcVar, dstVar, offsetVar);
-        offsetVar.inc(mBytesLengthVar);
+    protected void finishEncode(Variable dstVar, Variable offsetVar, Variable lengthVar) {
+        Label isNull = maker.label();
+        mBytesVar.ifEq(null, isNull);
+        super.finishEncode(dstVar, offsetVar, mBytesVar.alength());
         isNull.here();
     }
 
@@ -104,10 +100,11 @@ final class NullablePrimitiveArrayColumnCodec extends NonNullPrimitiveArrayColum
                                 Variable srcVar, Variable offsetVar, Variable lengthVar)
     {
         // Actual length is encoded plus one, and zero means null.
-        Label notNull = mMaker.label();
+        Label notNull = maker.label();
         lengthVar.ifNe(0, notNull);
         dstVar.set(null);
-        Label cont = mMaker.label().goto_();
+        Label cont = maker.label();
+        maker.goto_(cont);
         notNull.here();
         super.finishDecode(dstVar, srcVar, offsetVar, lengthVar.sub(1));
         cont.here();

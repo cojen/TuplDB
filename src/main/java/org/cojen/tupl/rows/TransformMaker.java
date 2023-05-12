@@ -29,6 +29,9 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.rows.codec.ColumnCodec;
+import org.cojen.tupl.rows.codec.VoidColumnCodec;
+
 /**
  * Utility for making code which transforms binary encoded rows to one or more other binary
  * encodings. This utility is designed for column placement and transcoding, performing
@@ -224,7 +227,7 @@ class TransformMaker<R> {
         var bitMap = new Variable[numBitMapWords(mColumnSources)];
 
         for (ColumnSource oldSource : oldMaker.mColumnSources.values()) {
-            ColumnSource source = mColumnSources.get(oldSource.mCodec.mInfo.name);
+            ColumnSource source = mColumnSources.get(oldSource.mCodec.info.name);
 
             if (source.mIsKey || source.mCodec instanceof VoidColumnCodec) {
                 continue;
@@ -400,7 +403,7 @@ class TransformMaker<R> {
                                     Target target, ColumnCodec[] targetCodecs)
     {
         for (ColumnCodec targetCodec : targetCodecs) {
-            String name = targetCodec.mInfo.name;
+            String name = targetCodec.info.name;
             ColumnCodec srcCodec = srcCodecMap.get(name);
             if (srcCodec == null) {
                 continue;
@@ -430,10 +433,10 @@ class TransformMaker<R> {
                                         ColumnCodec[] targetCodecs)
     {
         for (ColumnCodec targetCodec : targetCodecs) {
-            String name = targetCodec.mInfo.name;
+            String name = targetCodec.info.name;
             if (!sources.containsKey(name)) {
                 int slot = sources.size();
-                var srcCodec = new VoidColumnCodec(targetCodec.mInfo, null);
+                var srcCodec = new VoidColumnCodec(targetCodec.info, null);
                 sources.put(name, new ColumnSource(slot, false, srcCodec, Availability.NEVER));
             }
         }
@@ -492,7 +495,7 @@ class TransformMaker<R> {
         Variable endVar = null;
 
         for (ColumnCodec codec : codecs) {
-            ColumnSource source = mColumnSources.get(codec.mInfo.name);
+            ColumnSource source = mColumnSources.get(codec.info.name);
 
             if (source == null || !source.mustFind()) {
                 // Can't re-use end offset for next start offset when a gap exists.
@@ -512,7 +515,7 @@ class TransformMaker<R> {
             }
 
             if (source.mustDecodeEagerly()) {
-                var columnVar = mMaker.var(codec.mInfo.type);
+                var columnVar = mMaker.var(codec.info.type);
                 codec.decode(columnVar, srcVar, offsetVar, null);
                 source.initColumnVar(columnVar);
             } else {
@@ -572,7 +575,7 @@ class TransformMaker<R> {
         ColumnCodec[] codecs = target.mIsKey ? targetGen.keyCodecs() : targetGen.valueCodecs();
 
         for (ColumnCodec codec : codecs) {
-            ColumnSource source = mColumnSources.get(codec.mInfo.name);
+            ColumnSource source = mColumnSources.get(codec.info.name);
             if (!source.mustCopyBytes(codec)) {
                 source.prepareColumn(this);
             }
@@ -603,7 +606,7 @@ class TransformMaker<R> {
 
         int minSize = target.mOffset;
         for (ColumnCodec codec : codecs) {
-            ColumnSource source = mColumnSources.get(codec.mInfo.name);
+            ColumnSource source = mColumnSources.get(codec.info.name);
             if (!source.mustCopyBytes(codec)) {
                 if (source.hasStash(codec) == null) {
                     minSize += codec.minSize();
@@ -617,7 +620,7 @@ class TransformMaker<R> {
 
         Variable totalVar = null;
         for (ColumnCodec codec : codecs) {
-            ColumnSource source = mColumnSources.get(codec.mInfo.name);
+            ColumnSource source = mColumnSources.get(codec.info.name);
             if (source.mustCopyBytes(codec)) {
                 totalVar = codec.accum(totalVar, source.mEndVar.sub(source.mStartVar));
             } else {
@@ -646,7 +649,7 @@ class TransformMaker<R> {
         var offsetVar = mMaker.var(int.class).set(target.mOffset);
         for (int i=0; i<codecs.length; i++) {
             ColumnCodec codec = codecs[i];
-            String name = codec.mInfo.name;
+            String name = codec.info.name;
             ColumnSource source = mColumnSources.get(name);
 
             if (source.mustCopyBytes(codec)) {
@@ -808,11 +811,11 @@ class TransformMaker<R> {
 
         ColumnTarget addTarget(ColumnCodec targetCodec, boolean eager) {
             if (mTargetInfo == null) {
-                mTargetInfo = targetCodec.mInfo;
+                mTargetInfo = targetCodec.info;
                 if (mTargetInfo.type == null) {
                     mTargetInfo.assignType();
                 }
-            } else if (!mTargetInfo.isCompatibleWith(targetCodec.mInfo)) {
+            } else if (!mTargetInfo.isCompatibleWith(targetCodec.info)) {
                 // For now, all targets must have the same column type.
                 throw new IllegalStateException();
             }
@@ -834,7 +837,7 @@ class TransformMaker<R> {
          * Returns true if source type is an unboxed primitive type.
          */
         boolean isPrimitive() {
-            return mCodec.mInfo.type.isPrimitive();
+            return mCodec.info.type.isPrimitive();
         }
 
         /**
@@ -933,13 +936,13 @@ class TransformMaker<R> {
             }
 
             if (mCodec instanceof VoidColumnCodec vcc) {
-                mColumnVar = tm.mMaker.var(vcc.mInfo.type);
+                mColumnVar = tm.mMaker.var(vcc.info.type);
                 vcc.decode(mColumnVar, null, null, null);
                 return;
             }
 
             if (mAvailability == Availability.ALWAYS) {
-                mColumnVar = tm.mRowVar.field(mCodec.mInfo.name);
+                mColumnVar = tm.mRowVar.field(mCodec.info.name);
                 return;
             }
 
@@ -971,7 +974,7 @@ class TransformMaker<R> {
             if (mColumnVar != null) {
                 throw new IllegalStateException();
             }
-            if (mCodec.mInfo.isCompatibleWith(mTargetInfo)) {
+            if (mCodec.info.isCompatibleWith(mTargetInfo)) {
                 mColumnVar = columnVar;
             } else {
                 mColumnVar = columnVar.methodMaker().var(mTargetInfo.type);
@@ -983,11 +986,11 @@ class TransformMaker<R> {
          * @param columnVar must be assigned
          */
         private void setToColumnVar(Variable columnVar) {
-            if (mCodec.mInfo.isCompatibleWith(mTargetInfo)) {
+            if (mCodec.info.isCompatibleWith(mTargetInfo)) {
                 mColumnVar.set(columnVar);
             } else {
                 MethodMaker mm = columnVar.methodMaker();
-                Converter.convertLossy(mm, mCodec.mInfo, columnVar, mTargetInfo, mColumnVar);
+                Converter.convertLossy(mm, mCodec.info, columnVar, mTargetInfo, mColumnVar);
             }
         }
 
@@ -1030,10 +1033,10 @@ class TransformMaker<R> {
                 tm.mRequiresRow = true;
 
                 RowGen rowGen = rowInfo.rowGen();
-                String columnName = mCodec.mInfo.name;
+                String columnName = mCodec.info.name;
                 int columnNum = rowGen.columnNumbers().get(columnName);
                 String stateField = rowGen.stateField(columnNum);
-                int stateFieldMask = rowGen.stateFieldMask(columnNum);
+                int stateFieldMask = RowGen.stateFieldMask(columnNum);
 
                 Label mustDecode = mm.label();
                 rowVar.field(stateField).and(stateFieldMask).ifNe(stateFieldMask, mustDecode);

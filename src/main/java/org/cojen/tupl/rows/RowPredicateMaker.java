@@ -41,6 +41,8 @@ import org.cojen.tupl.Entry;
 
 import org.cojen.tupl.core.RowPredicate;
 
+import org.cojen.tupl.rows.codec.ColumnCodec;
+
 import org.cojen.tupl.rows.filter.AndFilter;
 import org.cojen.tupl.rows.filter.ColumnFilter;
 import org.cojen.tupl.rows.filter.ColumnToArgFilter;
@@ -330,7 +332,7 @@ public class RowPredicateMaker {
         int colNum = num;
         ColumnCodec codec = codecs[colNum];
 
-        if (codec.mMaker != mCtorMaker) { // check if not bound
+        if (codec.maker != mCtorMaker) { // check if not bound
             codecs[colNum] = codec = codec.bind(mCtorMaker);
         }
 

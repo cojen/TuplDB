@@ -15,11 +15,15 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.rows;
+package org.cojen.tupl.rows.codec;
 
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
+
+import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.CompareUtils;
+import org.cojen.tupl.rows.RowUtils;
 
 import static org.cojen.tupl.rows.ColumnInfo.*;
 
@@ -44,18 +48,18 @@ final class PrimitiveColumnCodec extends ColumnCodec {
     }
 
     @Override
-    ColumnCodec bind(MethodMaker mm) {
-        return new PrimitiveColumnCodec(mInfo, mm, mFlags, mSize);
+    public ColumnCodec bind(MethodMaker mm) {
+        return new PrimitiveColumnCodec(info, mm, mFlags, mSize);
     }
 
     @Override
-    protected final boolean doEquals(Object obj) {
+    protected boolean doEquals(Object obj) {
         var other = (PrimitiveColumnCodec) obj;
         if (mFlags != other.mFlags || mSize != other.mSize) {
             return false;
         }
-        int typeCode = mInfo.typeCode;
-        int otherTypeCode = other.mInfo.typeCode;
+        int typeCode = info.typeCode;
+        int otherTypeCode = other.info.typeCode;
         if (!isLex()) {
             typeCode = ColumnInfo.unorderedTypeCode(typeCode);
             otherTypeCode = ColumnInfo.unorderedTypeCode(otherTypeCode);
@@ -64,36 +68,36 @@ final class PrimitiveColumnCodec extends ColumnCodec {
     }
 
     @Override
-    public final int doHashCode() {
-        return mInfo.unorderedTypeCode();
+    public int doHashCode() {
+        return info.unorderedTypeCode();
     }
 
     @Override
-    int codecFlags() {
+    public int codecFlags() {
         return mFlags;
     }
 
     @Override
-    int minSize() {
+    public int minSize() {
         // Return just the header size if nullable.
-        return mInfo.isNullable() ? 1 : mSize;
+        return info.isNullable() ? 1 : mSize;
     }
 
     @Override
-    void encodePrepare() {
+    public void encodePrepare() {
     }
 
     @Override
-    void encodeSkip() {
+    public void encodeSkip() {
     }
 
     @Override
-    Variable encodeSize(Variable srcVar, Variable totalVar) {
-        if (mInfo.isNullable() && mInfo.plainTypeCode() != TYPE_BOOLEAN) {
+    public Variable encodeSize(Variable srcVar, Variable totalVar) {
+        if (info.isNullable() && info.plainTypeCode() != TYPE_BOOLEAN) {
             if (totalVar == null) {
-                totalVar = mMaker.var(int.class).set(0);
+                totalVar = maker.var(int.class).set(0);
             }
-            Label isNull = mMaker.label();
+            Label isNull = maker.label();
             srcVar.ifEq(null, isNull);
             totalVar.inc(mSize);
             isNull.here();
@@ -103,13 +107,13 @@ final class PrimitiveColumnCodec extends ColumnCodec {
     }
 
     @Override
-    void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
+    public void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
         Label end = null;
 
-        int plain = mInfo.plainTypeCode();
+        int plain = info.plainTypeCode();
 
-        if (mInfo.isNullable() && plain != TYPE_BOOLEAN) {
-            end = mMaker.label();
+        if (info.isNullable() && plain != TYPE_BOOLEAN) {
+            end = maker.label();
             encodeNullHeader(end, srcVar, dstVar, offsetVar);
         }
 
@@ -127,27 +131,27 @@ final class PrimitiveColumnCodec extends ColumnCodec {
                     } else {
                         f = (byte) 0x80;
                         t = (byte) 0x81;
-                        if (mInfo.isDescending()) {
+                        if (info.isDescending()) {
                             f = (byte) ~f;
                             t = (byte) ~t;
                         }
                     }
 
-                    var byteVar = mMaker.var(byte.class);
-                    Label cont = mMaker.label();
+                    var byteVar = maker.var(byte.class);
+                    Label cont = maker.label();
 
-                    if (mInfo.isNullable()) {
-                        Label notNull = mMaker.label();
+                    if (info.isNullable()) {
+                        Label notNull = maker.label();
                         srcVar.ifNe(null, notNull);
                         byteVar.set(n);
-                        mMaker.goto_(cont);
+                        maker.goto_(cont);
                         notNull.here();
                     }
 
-                    Label trueCase = mMaker.label();
+                    Label trueCase = maker.label();
                     srcVar.ifTrue(trueCase);
                     byteVar.set(f);
-                    mMaker.goto_(cont);
+                    maker.goto_(cont);
                     trueCase.here();
                     byteVar.set(t);
                     srcVar = byteVar;
@@ -155,9 +159,9 @@ final class PrimitiveColumnCodec extends ColumnCodec {
                     cont.here();
                 } else if (isLex()) {
                     if (plain == TYPE_BYTE) {
-                        byte mask = (byte) (mInfo.isDescending() ? 0x7f : 0x80);
+                        byte mask = (byte) (info.isDescending() ? 0x7f : 0x80);
                         srcVar = srcVar.unbox().xor(mask);
-                    } else if (mInfo.isDescending()) {
+                    } else if (info.isDescending()) {
                         srcVar = srcVar.unbox().xor(-1);
                     }
                 }
@@ -173,13 +177,13 @@ final class PrimitiveColumnCodec extends ColumnCodec {
                 break;
 
             case TYPE_FLOAT:
-                srcVar = mMaker.var(Float.class).invoke("floatToRawIntBits", srcVar);
+                srcVar = maker.var(Float.class).invoke("floatToRawIntBits", srcVar);
             case TYPE_INT: case TYPE_UINT:
                 methodType = "Int";
                 break;
 
             case TYPE_DOUBLE:
-                srcVar = mMaker.var(Double.class).invoke("doubleToRawLongBits", srcVar);
+                srcVar = maker.var(Double.class).invoke("doubleToRawLongBits", srcVar);
             case TYPE_LONG: case TYPE_ULONG:
                 methodType = "Long";
                 break;
@@ -188,7 +192,7 @@ final class PrimitiveColumnCodec extends ColumnCodec {
                 throw new AssertionError();
             }
 
-            var rowUtils = mMaker.var(RowUtils.class);
+            var rowUtils = maker.var(RowUtils.class);
 
             String format;
             if (!isLex()) {
@@ -197,13 +201,13 @@ final class PrimitiveColumnCodec extends ColumnCodec {
                 format = "BE";
                 if (ColumnInfo.isFloat(plain)) {
                     String method = "encodeFloatSign";
-                    if (mInfo.isDescending()) {
+                    if (info.isDescending()) {
                         method += "Desc";
                     }
                     srcVar = rowUtils.invoke(method, srcVar);
-                } else if (!mInfo.isUnsigned()) {
+                } else if (!info.isUnsigned()) {
                     srcVar = srcVar.unbox().xor(signMask());
-                } else if (mInfo.isDescending()) {
+                } else if (info.isDescending()) {
                     srcVar = srcVar.unbox().xor(-1);
                 }
             }
@@ -219,17 +223,17 @@ final class PrimitiveColumnCodec extends ColumnCodec {
     }
 
     @Override
-    void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
-        decode(dstVar, srcVar, offsetVar, mInfo.isNullable());
+    public void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
+        decode(dstVar, srcVar, offsetVar, info.isNullable());
     }
 
     private void decode(Variable dstVar, Variable srcVar, Variable offsetVar, boolean isNullable) {
         Label end = null;
 
-        int plain = mInfo.plainTypeCode();
+        int plain = info.plainTypeCode();
 
         if (isNullable && plain != TYPE_BOOLEAN) {
-            end = mMaker.label();
+            end = maker.label();
             decodeNullHeader(end, dstVar, srcVar, offsetVar);
         }
 
@@ -247,18 +251,18 @@ final class PrimitiveColumnCodec extends ColumnCodec {
                         Label cont = null;
 
                         if (!isNullable) {
-                            valueVar = mMaker.var(boolean.class);
+                            valueVar = maker.var(boolean.class);
                         } else {
                             byte n = nullByte();
-                            valueVar = mMaker.var(Boolean.class);
-                            Label notNull = mMaker.label();
+                            valueVar = maker.var(Boolean.class);
+                            Label notNull = maker.label();
                             byteVar.ifNe(n, notNull);
                             valueVar.set(null);
-                            cont = mMaker.label().goto_();
+                            cont = maker.label().goto_();
                             notNull.here();
                         }
 
-                        if (mInfo.isDescending()) {
+                        if (info.isDescending()) {
                             byteVar = byteVar.com();
                         }
 
@@ -270,9 +274,9 @@ final class PrimitiveColumnCodec extends ColumnCodec {
                     } else {
                         if (isLex()) {
                             if (plain == TYPE_BYTE) {
-                                byte mask = (byte) (mInfo.isDescending() ? 0x7f : 0x80);
+                                byte mask = (byte) (info.isDescending() ? 0x7f : 0x80);
                                 byteVar = byteVar.xor(mask);
-                            } else if (mInfo.isDescending()) {
+                            } else if (info.isDescending()) {
                                 byteVar = byteVar.xor((byte) 0xff);
                             }
                         }
@@ -287,7 +291,7 @@ final class PrimitiveColumnCodec extends ColumnCodec {
                 default -> throw new AssertionError();
             }
 
-            var rowUtils = mMaker.var(RowUtils.class);
+            var rowUtils = maker.var(RowUtils.class);
 
             String methodName = "decode" + methodType + (isLex() ? "BE" : "LE");
             valueVar = rowUtils.invoke(methodName, srcVar, offsetVar);
@@ -296,13 +300,13 @@ final class PrimitiveColumnCodec extends ColumnCodec {
             if (isLex()) {
                 if (isFloat(plain)) {
                     String method = "decodeFloatSign";
-                    if (mInfo.isDescending()) {
+                    if (info.isDescending()) {
                         method += "Desc";
                     }
                     valueVar = rowUtils.invoke(method, valueVar);
-                } else if (!mInfo.isUnsigned()) {
+                } else if (!info.isUnsigned()) {
                     valueVar = valueVar.xor(signMask());
-                } else if (mInfo.isDescending()) {
+                } else if (info.isDescending()) {
                     valueVar = valueVar.xor(-1);
                 }
             }
@@ -310,8 +314,8 @@ final class PrimitiveColumnCodec extends ColumnCodec {
             valueVar = switch (plain) {
                 case TYPE_SHORT, TYPE_USHORT -> valueVar.cast(short.class);
                 case TYPE_CHAR -> valueVar.cast(char.class);
-                case TYPE_FLOAT -> mMaker.var(Float.class).invoke("intBitsToFloat", valueVar);
-                case TYPE_DOUBLE -> mMaker.var(Double.class).invoke("longBitsToDouble", valueVar);
+                case TYPE_FLOAT -> maker.var(Float.class).invoke("intBitsToFloat", valueVar);
+                case TYPE_DOUBLE -> maker.var(Double.class).invoke("longBitsToDouble", valueVar);
                 default -> valueVar;
             };
         }
@@ -324,11 +328,11 @@ final class PrimitiveColumnCodec extends ColumnCodec {
     }
 
     @Override
-    void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
+    public void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
         Label end = null;
 
-        if (mInfo.isNullable() && mInfo.plainTypeCode() != TYPE_BOOLEAN) {
-            end = mMaker.label();
+        if (info.isNullable() && info.plainTypeCode() != TYPE_BOOLEAN) {
+            end = maker.label();
             decodeNullHeader(end, null, srcVar, offsetVar);
         }
 
@@ -340,18 +344,18 @@ final class PrimitiveColumnCodec extends ColumnCodec {
     }
 
     @Override
-    boolean canFilterQuick(ColumnInfo dstInfo) {
+    public boolean canFilterQuick(ColumnInfo dstInfo) {
         // The quick variant skips conversions and boxing. If no boxing is necessary, or boxing
         // is cheap (Boolean), then use the regular full decode.
-        return dstInfo.typeCode == mInfo.typeCode
+        return dstInfo.typeCode == info.typeCode
             && !dstInfo.type.isPrimitive() && dstInfo.plainTypeCode() != TYPE_BOOLEAN;
     }
 
     @Override
-    Object filterQuickDecode(ColumnInfo dstInfo,
-                             Variable srcVar, Variable offsetVar, Variable endVar)
+    public Object filterQuickDecode(ColumnInfo dstInfo,
+                                    Variable srcVar, Variable offsetVar, Variable endVar)
     {
-        var columnVar = mMaker.var(dstInfo.unboxedType());
+        var columnVar = maker.var(dstInfo.unboxedType());
 
         if (!dstInfo.isNullable()) {
             decode(columnVar, srcVar, offsetVar, false);
@@ -359,9 +363,9 @@ final class PrimitiveColumnCodec extends ColumnCodec {
         }
 
         columnVar.set(0);
-        Variable isNullVar = mMaker.var(boolean.class);
+        Variable isNullVar = maker.var(boolean.class);
         decodeNullHeader(null, isNullVar, srcVar, offsetVar);
-        Label isNull = mMaker.label();
+        Label isNull = maker.label();
         isNullVar.ifTrue(isNull);
         decode(columnVar, srcVar, offsetVar, false);
         isNull.here();
@@ -370,9 +374,9 @@ final class PrimitiveColumnCodec extends ColumnCodec {
     }
 
     @Override
-    void filterQuickCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar,
-                            int op, Object decoded, Variable argObjVar, int argNum,
-                            Label pass, Label fail)
+    public void filterQuickCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar,
+                                   int op, Object decoded, Variable argObjVar, int argNum,
+                                   Label pass, Label fail)
     {
         Variable columnVar, isNullVar;
         if (decoded instanceof Variable) {
@@ -388,12 +392,12 @@ final class PrimitiveColumnCodec extends ColumnCodec {
 
         if (isNullVar != null) {
             compareNullHeader(isNullVar, null, argField, op, pass, fail);
-        } else if (mInfo.isNullable()) {
-            CompareUtils.compare(mMaker, dstInfo, columnVar, dstInfo, argField, op, pass, fail);
+        } else if (info.isNullable()) {
+            CompareUtils.compare(maker, dstInfo, columnVar, dstInfo, argField, op, pass, fail);
             return;
         }
 
-        CompareUtils.comparePrimitives(mMaker, dstInfo, columnVar,
+        CompareUtils.comparePrimitives(maker, dstInfo, columnVar,
                                        dstInfo, argField, op, pass, fail);
     }
 
@@ -403,22 +407,22 @@ final class PrimitiveColumnCodec extends ColumnCodec {
     private Object signMask() {
         if (mSize == 8) {
             long lmask = 1L << 63;
-            if (mInfo.isDescending()) {
+            if (info.isDescending()) {
                 lmask = ~lmask;
             }
             return lmask;
         } else if (mSize == 4) {
             int imask = 1 << 31;
-            if (mInfo.isDescending()) {
+            if (info.isDescending()) {
                 imask = ~imask;
             }
             return imask;
         } else {
             int imask = 1 << 15;
-            if (mInfo.isDescending()) {
+            if (info.isDescending()) {
                 imask = ~imask;
             }
-            return mInfo.plainTypeCode() == TYPE_CHAR ? (char) imask : (short) imask;
+            return info.plainTypeCode() == TYPE_CHAR ? (char) imask : (short) imask;
         }
     }
 }

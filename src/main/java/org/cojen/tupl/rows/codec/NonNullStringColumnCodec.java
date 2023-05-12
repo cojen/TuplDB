@@ -15,123 +15,116 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.rows;
+package org.cojen.tupl.rows.codec;
 
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.RowUtils;
+
 /**
  * Encoding suitable for non-null value columns.
- *
+ * 
+ * @see RowUtils#encodePrefixPF
+ * @see RowUtils#lengthStringUTF
+ * @see RowUtils#encodeStringUTF
  * @author Brian S O'Neill
  */
-class NonNullBigIntegerColumnCodec extends BigIntegerColumnCodec {
-    protected Variable mBytesVar;
+class NonNullStringColumnCodec extends StringColumnCodec {
     protected Variable mLengthVar;
 
     /**
      * @param info non-null
      * @param mm is null for stateless instance
      */
-    NonNullBigIntegerColumnCodec(ColumnInfo info, MethodMaker mm) {
+    NonNullStringColumnCodec(ColumnInfo info, MethodMaker mm) {
         super(info, mm);
     }
 
     @Override
-    ColumnCodec bind(MethodMaker mm) {
-        return new NonNullBigIntegerColumnCodec(mInfo, mm);
+    public ColumnCodec bind(MethodMaker mm) {
+        return new NonNullStringColumnCodec(info, mm);
     }
 
     @Override
-    int codecFlags() {
+    public int codecFlags() {
         return 0;
     }
 
     @Override
-    void encodePrepare() {
-        mBytesVar = mMaker.var(byte[].class);
-        mLengthVar = mMaker.var(int.class);
+    public void encodePrepare() {
+        mLengthVar = maker.var(int.class);
     }
 
     @Override
-    void encodeSkip() {
-        mBytesVar.set(null);
+    public void encodeSkip() {
         mLengthVar.set(0);
     }
 
-    /**
-     * @param srcVar BigInteger type
-     */
     @Override
-    Variable encodeSize(Variable srcVar, Variable totalVar) {
-        mBytesVar.set(srcVar.invoke("toByteArray"));
-        mLengthVar.set(mBytesVar.alength());
+    public Variable encodeSize(Variable srcVar, Variable totalVar) {
+        var rowUtils = maker.var(RowUtils.class);
+
+        // Length prefix will be needed by the encode method.
+        mLengthVar.set(rowUtils.invoke("lengthStringUTF", srcVar));
 
         // Add the prefix length.
-        var rowUtils = mMaker.var(RowUtils.class);
         totalVar = accum(totalVar, rowUtils.invoke("lengthPrefixPF", mLengthVar));
 
-        // Add the array length.
+        // Add the string length.
         return accum(totalVar, mLengthVar);
     }
 
-    /**
-     * @param srcVar BigInteger type
-     * @param dstVar byte[] type
-     */
     @Override
-    void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
-        var rowUtils = mMaker.var(RowUtils.class);
+    public void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
+        var rowUtils = maker.var(RowUtils.class);
         offsetVar.set(rowUtils.invoke("encodePrefixPF", dstVar, offsetVar, mLengthVar));
-        finishEncode(dstVar, offsetVar, mLengthVar);
+        finishEncode(srcVar, rowUtils, dstVar, offsetVar);
     }
 
     /**
-     * @param dstVar BigInteger type
-     * @param srcVar byte[] type
+     * @param dstVar String type
      */
     @Override
-    void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
-        var rowUtils = mMaker.var(RowUtils.class);
+    public void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
+        var rowUtils = maker.var(RowUtils.class);
         var lengthVar = rowUtils.invoke("decodePrefixPF", srcVar, offsetVar);
         offsetVar.inc(rowUtils.invoke("lengthPrefixPF", lengthVar));
-        finishDecode(dstVar, srcVar, offsetVar, lengthVar);
+        finishDecode(dstVar, rowUtils, srcVar, offsetVar, lengthVar);
     }
 
-    /**
-     * @param srcVar byte[] type
-     */
-    void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
-        offsetVar.set(mMaker.var(RowUtils.class).invoke("skipBytesPF", srcVar, offsetVar));
+    @Override
+    public void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
+        offsetVar.set(maker.var(RowUtils.class).invoke("skipBytesPF", srcVar, offsetVar));
     }
 
     @Override
     protected void decodeHeader(Variable srcVar, Variable offsetVar, Variable endVar,
                                 Variable lengthVar, Variable isNullVar)
     {
-        var rowUtils = mMaker.var(RowUtils.class);
+        var rowUtils = maker.var(RowUtils.class);
         lengthVar.set(rowUtils.invoke("decodePrefixPF", srcVar, offsetVar));
         offsetVar.inc(rowUtils.invoke("lengthPrefixPF", lengthVar));
     }
 
     /**
-     * @param dstVar byte[] type
      * @param offsetVar never null
      */
-    protected void finishEncode(Variable dstVar, Variable offsetVar, Variable lengthVar) {
-        mMaker.var(System.class).invoke("arraycopy", mBytesVar, 0, dstVar, offsetVar, lengthVar);
-        offsetVar.inc(lengthVar);
+    protected void finishEncode(Variable srcVar, Variable rowUtils,
+                                Variable dstVar, Variable offsetVar)
+    {
+        offsetVar.set(rowUtils.invoke("encodeStringUTF", dstVar, offsetVar, srcVar));
     }
 
     /**
-     * @param dstVar BigInteger type
-     * @param srcVar byte[] type
+     * @param dstVar String type
      * @param offsetVar never null
      */
-    protected void finishDecode(Variable dstVar,
+    protected void finishDecode(Variable dstVar, Variable rowUtils,
                                 Variable srcVar, Variable offsetVar, Variable lengthVar)
     {
-        dstVar.set(mMaker.new_(dstVar, srcVar, offsetVar, lengthVar));
+        dstVar.set(rowUtils.invoke("decodeStringUTF", srcVar, offsetVar, lengthVar));
         offsetVar.inc(lengthVar);
     }
 }

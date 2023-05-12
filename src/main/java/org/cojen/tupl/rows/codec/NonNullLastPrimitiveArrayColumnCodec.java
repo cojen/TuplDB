@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Cojen.org
+ *  Copyright (C) 2021 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -12,72 +12,67 @@
  *  GNU Affero General Public License for more details.
  *
  *  You should have received a copy of the GNU Affero General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.rows;
+package org.cojen.tupl.rows.codec;
 
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
+
+import org.cojen.tupl.rows.ColumnInfo;
 
 /**
  * Encoding suitable for non-null key or value columns which are the last in the set. No
  * length prefix is encoded.
  *
- * @see RowUtils#encodeStringUTF
  * @author Brian S O'Neill
  */
-class NonNullLastStringColumnCodec extends StringColumnCodec {
+class NonNullLastPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
     /**
      * @param info non-null
      * @param mm is null for stateless instance
      */
-    NonNullLastStringColumnCodec(ColumnInfo info, MethodMaker mm) {
-        super(info, mm);
+    NonNullLastPrimitiveArrayColumnCodec(ColumnInfo info, MethodMaker mm, int flags) {
+        super(info, mm, flags);
+        if (info.isDescending()) {
+            throw new AssertionError();
+        }
     }
 
     @Override
-    ColumnCodec bind(MethodMaker mm) {
-        return new NonNullLastStringColumnCodec(mInfo, mm);
+    public ColumnCodec bind(MethodMaker mm) {
+        return new NonNullLastPrimitiveArrayColumnCodec(info, mm, mFlags);
     }
 
     @Override
-    int codecFlags() {
-        return F_LAST;
+    public void encodePrepare() {
     }
 
     @Override
-    void encodePrepare() {
+    public void encodeSkip() {
     }
 
     @Override
-    void encodeSkip() {
+    public Variable encodeSize(Variable srcVar, Variable totalVar) {
+        return accum(totalVar, byteArrayLength(srcVar));
     }
 
     @Override
-    Variable encodeSize(Variable srcVar, Variable totalVar) {
-        var rowUtils = mMaker.var(RowUtils.class);
-        return accum(totalVar, rowUtils.invoke("lengthStringUTF", srcVar));
+    public void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
+        encodeByteArray(srcVar, dstVar, offsetVar);
+        offsetVar.inc(byteArrayLength(srcVar));
     }
 
     @Override
-    void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
-        var rowUtils = mMaker.var(RowUtils.class);
-        offsetVar.set(rowUtils.invoke("encodeStringUTF", dstVar, offsetVar, srcVar));
-    }
-
-    @Override
-    void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
-        var rowUtils = mMaker.var(RowUtils.class);
+    public void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
         var alengthVar = endVar == null ? srcVar.alength() : endVar;
-        var lengthVar = alengthVar.sub(offsetVar);
-        var valueVar = rowUtils.invoke("decodeStringUTF", srcVar, offsetVar, lengthVar);
+        decodeByteArray(dstVar, srcVar, offsetVar, alengthVar.sub(offsetVar));
         offsetVar.set(alengthVar);
-        dstVar.set(valueVar);
     }
 
     @Override
-    void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
+    public void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
         offsetVar.set(endVar == null ? srcVar.alength() : endVar);
     }
 

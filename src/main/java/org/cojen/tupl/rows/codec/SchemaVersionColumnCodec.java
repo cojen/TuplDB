@@ -15,10 +15,12 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.rows;
+package org.cojen.tupl.rows.codec;
 
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
+
+import org.cojen.tupl.rows.RowUtils;
 
 /**
  * Makes code for encoding the schema version pseudo column.
@@ -26,7 +28,7 @@ import org.cojen.maker.Variable;
  * @see RowUtils#lengthPrefixPF
  * @author Brian S O'Neill
  */
-final class SchemaVersionColumnCodec extends ColumnCodec {
+public final class SchemaVersionColumnCodec extends ColumnCodec {
     // Version is pre-encoded using the prefix format.
     private final int mVersion;
 
@@ -44,61 +46,61 @@ final class SchemaVersionColumnCodec extends ColumnCodec {
     }
 
     @Override
-    ColumnCodec bind(MethodMaker mm) {
+    public ColumnCodec bind(MethodMaker mm) {
         return new SchemaVersionColumnCodec(mm, mVersion);
     }
 
     @Override
-    protected final boolean doEquals(Object obj) {
+    protected boolean doEquals(Object obj) {
         return ((SchemaVersionColumnCodec) obj).mVersion == mVersion;
     }
 
     @Override
-    protected final int doHashCode() {
+    protected int doHashCode() {
         return mVersion;
     }
 
     @Override
-    int codecFlags() {
+    public int codecFlags() {
         return 0;
     }
 
     @Override
-    int minSize() {
+    public int minSize() {
         return mVersion < 0 ? 4 : 1;
     }
 
     @Override
-    void encodePrepare() {
+    public void encodePrepare() {
     }
 
     @Override
-    void encodeSkip() {
+    public void encodeSkip() {
     }
 
     @Override
-    Variable encodeSize(Variable srcVar, Variable totalVar) {
+    public Variable encodeSize(Variable srcVar, Variable totalVar) {
         return totalVar;
     }
 
     @Override
-    void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
+    public void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
         if (mVersion >= 0) {
             dstVar.aset(offsetVar, (byte) mVersion);
             offsetVar.inc(1);
         } else {
-            mMaker.var(RowUtils.class).invoke("encodeIntBE", dstVar, offsetVar, mVersion);
+            maker.var(RowUtils.class).invoke("encodeIntBE", dstVar, offsetVar, mVersion);
             offsetVar.inc(4);
         }
     }
 
     @Override
-    void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
+    public void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
+    public void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
         throw new UnsupportedOperationException();
     }
 }

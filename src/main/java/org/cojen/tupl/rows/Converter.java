@@ -26,6 +26,8 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.ConversionException;
 
+import org.cojen.tupl.rows.codec.ColumnCodec;
+
 import static org.cojen.tupl.rows.ColumnInfo.*;
 
 /**
@@ -47,15 +49,15 @@ public class Converter {
                             final ColumnCodec srcCodec,
                             final ColumnInfo dstInfo, final Variable dstVar)
     {
-        if (dstInfo.type.isAssignableFrom(srcCodec.mInfo.type)
-            && (!srcCodec.mInfo.isNullable() || dstInfo.isNullable()))
+        if (dstInfo.type.isAssignableFrom(srcCodec.info.type)
+            && (!srcCodec.info.isNullable() || dstInfo.isNullable()))
         {
             srcCodec.decode(dstVar, srcVar, offsetVar, endVar);
         } else {
             // Decode into a temp variable and then perform a best-effort conversion.
-            var tempVar = mm.var(srcCodec.mInfo.type);
+            var tempVar = mm.var(srcCodec.info.type);
             srcCodec.decode(tempVar, srcVar, offsetVar, endVar);
-            convertLossy(mm, srcCodec.mInfo, tempVar, dstInfo, dstVar);
+            convertLossy(mm, srcCodec.info, tempVar, dstInfo, dstVar);
         }
     }
 
@@ -582,15 +584,15 @@ public class Converter {
                             final ColumnCodec srcCodec,
                             final ColumnInfo dstInfo, final Variable dstVar)
     {
-        if (dstInfo.type.isAssignableFrom(srcCodec.mInfo.type)
-            && (!srcCodec.mInfo.isNullable() || dstInfo.isNullable()))
+        if (dstInfo.type.isAssignableFrom(srcCodec.info.type)
+            && (!srcCodec.info.isNullable() || dstInfo.isNullable()))
         {
             srcCodec.decode(dstVar, srcVar, offsetVar, endVar);
         } else {
             // Decode into a temp variable and then perform an exact conversion.
-            var tempVar = mm.var(srcCodec.mInfo.type);
+            var tempVar = mm.var(srcCodec.info.type);
             srcCodec.decode(tempVar, srcVar, offsetVar, endVar);
-            convertExact(mm, columnName, srcCodec.mInfo, tempVar, dstInfo, dstVar);
+            convertExact(mm, columnName, srcCodec.info, tempVar, dstInfo, dstVar);
         }
     }
 
@@ -955,7 +957,7 @@ public class Converter {
     /**
      * Assigns a default value to the variable: null, 0, false, etc.
      */
-    static void setDefault(MethodMaker mm, ColumnInfo dstInfo, Variable dstVar) {
+    public static void setDefault(MethodMaker mm, ColumnInfo dstInfo, Variable dstVar) {
         if (dstInfo.isNullable()) {
             dstVar.set(null);
         } else if (dstInfo.isArray()) {

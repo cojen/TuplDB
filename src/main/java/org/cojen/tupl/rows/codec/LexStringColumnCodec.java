@@ -15,11 +15,14 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.rows;
+package org.cojen.tupl.rows.codec;
 
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
+
+import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.RowUtils;
 
 /**
  * Encoding suitable for lexicographically ordered columns which supports nulls.
@@ -33,32 +36,32 @@ final class LexStringColumnCodec extends StringColumnCodec {
     }
 
     @Override
-    ColumnCodec bind(MethodMaker mm) {
-        return new LexStringColumnCodec(mInfo, mm);
+    public ColumnCodec bind(MethodMaker mm) {
+        return new LexStringColumnCodec(info, mm);
     }
 
     @Override
-    int codecFlags() {
+    public int codecFlags() {
         return F_LEX;
     }
 
     @Override
-    void encodePrepare() {
+    public void encodePrepare() {
     }
 
     @Override
-    void encodeSkip() {
+    public void encodeSkip() {
     }
 
     @Override
-    Variable encodeSize(Variable srcVar, Variable totalVar) {
-        var rowUtils = mMaker.var(RowUtils.class);
+    public Variable encodeSize(Variable srcVar, Variable totalVar) {
+        var rowUtils = maker.var(RowUtils.class);
         return accum(totalVar, rowUtils.invoke("lengthStringLex", srcVar));
     }
 
     @Override
-    void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
-        doEncode(mMaker.var(RowUtils.class), srcVar, dstVar, offsetVar);
+    public void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
+        doEncode(maker.var(RowUtils.class), srcVar, dstVar, offsetVar);
     }
 
     /**
@@ -66,13 +69,13 @@ final class LexStringColumnCodec extends StringColumnCodec {
      */
     private void doEncode(Variable rowUtils, Variable srcVar, Variable dstVar, Variable offsetVar) {
         Label end = null;
-        if (mInfo.isNullable()) {
-            end = mMaker.label();
+        if (info.isNullable()) {
+            end = maker.label();
             encodeNullHeaderIfNull(end, srcVar, dstVar, offsetVar);
         }
 
         String methodName = "encodeStringLex";
-        if (mInfo.isDescending()) {
+        if (info.isDescending()) {
             methodName += "Desc";
         }
 
@@ -88,12 +91,12 @@ final class LexStringColumnCodec extends StringColumnCodec {
     }
 
     @Override
-    void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
+    public void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
         String methodName = "decodeStringLex";
-        if (mInfo.isDescending()) {
+        if (info.isDescending()) {
             methodName += "Desc";
         }
-        var rowUtils = mMaker.var(RowUtils.class);
+        var rowUtils = maker.var(RowUtils.class);
         var lengthVar = rowUtils.invoke("lengthStringLex", srcVar, offsetVar);
         var valueVar = rowUtils.invoke(methodName, srcVar, offsetVar, lengthVar);
         offsetVar.inc(lengthVar);
@@ -101,27 +104,27 @@ final class LexStringColumnCodec extends StringColumnCodec {
     }
 
     @Override
-    void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
-        offsetVar.inc(mMaker.var(RowUtils.class).invoke("lengthStringLex", srcVar, offsetVar));
+    public void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
+        offsetVar.inc(maker.var(RowUtils.class).invoke("lengthStringLex", srcVar, offsetVar));
     }
 
     @Override
     protected Variable filterPrepareBytes(Variable strVar) {
-        var rowUtils = mMaker.var(RowUtils.class);
+        var rowUtils = maker.var(RowUtils.class);
         var lengthVar = rowUtils.invoke("lengthStringLex", strVar);
-        var bytesVar = mMaker.new_(byte[].class, lengthVar);
+        var bytesVar = maker.new_(byte[].class, lengthVar);
         doEncode(rowUtils, strVar, bytesVar, null);
         return bytesVar;
     }
 
     @Override
-    boolean canFilterQuick(ColumnInfo dstInfo) {
-        return dstInfo.typeCode == mInfo.typeCode;
+    public boolean canFilterQuick(ColumnInfo dstInfo) {
+        return dstInfo.typeCode == info.typeCode;
     }
 
     @Override
-    Object filterQuickDecode(ColumnInfo dstInfo,
-                             Variable srcVar, Variable offsetVar, Variable endVar)
+    public Object filterQuickDecode(ColumnInfo dstInfo,
+                                    Variable srcVar, Variable offsetVar, Variable endVar)
     {
         decodeSkip(srcVar, offsetVar, endVar);
         // Return a stable copy to the end offset.
@@ -132,9 +135,9 @@ final class LexStringColumnCodec extends StringColumnCodec {
      * @param decoded the string end offset
      */
     @Override
-    void filterQuickCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar,
-                            int op, Object decoded, Variable argObjVar, int argNum,
-                            Label pass, Label fail)
+    public void filterQuickCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar,
+                                   int op, Object decoded, Variable argObjVar, int argNum,
+                                   Label pass, Label fail)
     {
         filterQuickCompareLex(dstInfo, srcVar, offsetVar, (Variable) decoded,
                               op, argObjVar, argNum, pass, fail);

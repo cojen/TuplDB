@@ -15,7 +15,7 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.rows;
+package org.cojen.tupl.rows.codec;
 
 import java.lang.reflect.Modifier;
 
@@ -23,6 +23,11 @@ import org.cojen.maker.FieldMaker;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
+
+import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.CompareUtils;
+import org.cojen.tupl.rows.ConvertUtils;
+import org.cojen.tupl.rows.Converter;
 
 import org.cojen.tupl.rows.filter.ColumnFilter;
 
@@ -42,7 +47,7 @@ abstract class BytesColumnCodec extends ColumnCodec {
     }
 
     @Override
-    int minSize() {
+    public int minSize() {
         return 0;
     }
 
@@ -51,7 +56,7 @@ abstract class BytesColumnCodec extends ColumnCodec {
      * then the field is a byte[][].
      */
     @Override
-    void filterDefineExtraFields(boolean in, Variable argVar, String argFieldName) {
+    public void filterDefineExtraFields(boolean in, Variable argVar, String argFieldName) {
         Class<?> fieldType = in ? byte[][].class : byte[].class;
         String fieldName = argFieldName(argFieldName, bytesFieldSuffix());
 
@@ -66,13 +71,13 @@ abstract class BytesColumnCodec extends ColumnCodec {
 
         if (argVar != null) { 
             fm.final_();
-            mMaker.field(fieldName).set(filterPrepareBytes(argVar, in));
+            maker.field(fieldName).set(filterPrepareBytes(argVar, in));
             return;
         }
 
         // Define a method for accessing the field, which lazily initializes it.
 
-        MethodMaker mm = mMaker.classMaker().addMethod(byte[].class, fieldName);
+        MethodMaker mm = maker.classMaker().addMethod(byte[].class, fieldName);
         var codec = (BytesColumnCodec) bind(mm);
 
         var bytes = mm.field(fieldName).getOpaque();
@@ -89,7 +94,7 @@ abstract class BytesColumnCodec extends ColumnCodec {
     private Variable filterPrepareBytes(Variable argVar, boolean in) {
         if (in) {
             var lengthVar = argVar.alength();
-            return ConvertUtils.convertArray(mMaker, byte[][].class, lengthVar, ixVar -> {
+            return ConvertUtils.convertArray(maker, byte[][].class, lengthVar, ixVar -> {
                 return filterPrepareBytes(argVar.aget(ixVar));
             });
         } else {
@@ -110,16 +115,16 @@ abstract class BytesColumnCodec extends ColumnCodec {
     protected abstract boolean compareBytesUnsigned();
 
     @Override
-    boolean canFilterQuick(ColumnInfo dstInfo) {
-        return dstInfo.unorderedTypeCode() == mInfo.unorderedTypeCode();
+    public boolean canFilterQuick(ColumnInfo dstInfo) {
+        return dstInfo.unorderedTypeCode() == info.unorderedTypeCode();
     }
 
     @Override
-    Object filterQuickDecode(ColumnInfo dstInfo,
-                             Variable srcVar, Variable offsetVar, Variable endVar)
+    public Object filterQuickDecode(ColumnInfo dstInfo,
+                                    Variable srcVar, Variable offsetVar, Variable endVar)
     {
-        Variable lengthVar = mMaker.var(int.class);
-        Variable isNullVar = mInfo.isNullable() ? mMaker.var(boolean.class) : null;
+        Variable lengthVar = maker.var(int.class);
+        Variable isNullVar = info.isNullable() ? maker.var(boolean.class) : null;
 
         decodeHeader(srcVar, offsetVar, endVar, lengthVar, isNullVar);
 
@@ -152,10 +157,10 @@ abstract class BytesColumnCodec extends ColumnCodec {
      */
     protected void decodeNullableLength(Variable lengthVar, Variable isNullVar) {
         // Actual length is encoded plus one, and zero means null.
-        Label notNull = mMaker.label();
+        Label notNull = maker.label();
         lengthVar.ifNe(0, notNull);
         isNullVar.set(true);
-        Label cont = mMaker.label().goto_();
+        Label cont = maker.label().goto_();
         notNull.here();
         isNullVar.set(false);
         lengthVar.inc(-1);
@@ -163,27 +168,27 @@ abstract class BytesColumnCodec extends ColumnCodec {
     }
 
     @Override
-    void filterQuickCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar,
-                            int op, Object decoded, Variable argObjVar, int argNum,
-                            Label pass, Label fail)
+    public void filterQuickCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar,
+                                   int op, Object decoded, Variable argObjVar, int argNum,
+                                   Label pass, Label fail)
     {
         var decodedVars = (Variable[]) decoded;
 
-        if (!dstInfo.isNullable() && mInfo.isNullable()) {
-            Label cont = mMaker.label();
+        if (!dstInfo.isNullable() && info.isNullable()) {
+            Label cont = maker.label();
             Variable isNullVar = decodedVars[2];
             isNullVar.ifFalse(cont);
-            var columnVar = mMaker.var(dstInfo.type);
-            Converter.setDefault(mMaker, dstInfo, columnVar);
+            var columnVar = maker.var(dstInfo.type);
+            Converter.setDefault(maker, dstInfo, columnVar);
             var argField = argObjVar.field(argFieldName(argNum));
-            CompareUtils.compare(mMaker, dstInfo, columnVar, dstInfo, argField, op, pass, fail);
+            CompareUtils.compare(maker, dstInfo, columnVar, dstInfo, argField, op, pass, fail);
             cont.here();
         }
 
         var argVar = bytesField(argObjVar, argNum);
 
         if (ColumnFilter.isIn(op)) {
-            CompareUtils.compareIn(mMaker, argVar, op, pass, fail, (a, p, f) -> {
+            CompareUtils.compareIn(maker, argVar, op, pass, fail, (a, p, f) -> {
                 compareQuickElement(srcVar, ColumnFilter.OP_EQ, decodedVars, a, p, f);
             });
         } else {
@@ -203,7 +208,7 @@ abstract class BytesColumnCodec extends ColumnCodec {
         Variable lengthVar = decodedVars[1];
         Variable isNullVar = decodedVars[2];
 
-        Label notNull = mMaker.label();
+        Label notNull = maker.label();
         argVar.ifNe(null, notNull);
         // Argument is null...
         Label mismatch = CompareUtils.selectColumnToNullArg(op, pass, fail);
@@ -213,7 +218,7 @@ abstract class BytesColumnCodec extends ColumnCodec {
                 isNullVar.ifTrue(match);
             }
         }
-        mMaker.goto_(mismatch);
+        maker.goto_(mismatch);
 
         // Argument isn't null...
         notNull.here();
@@ -221,7 +226,7 @@ abstract class BytesColumnCodec extends ColumnCodec {
             isNullVar.ifTrue(CompareUtils.selectNullColumnToArg(op, pass, fail));
         }
 
-        CompareUtils.compareArrays(mMaker, compareBytesUnsigned(),
+        CompareUtils.compareArrays(maker, compareBytesUnsigned(),
                                    srcVar, dataOffsetVar, dataOffsetVar.add(lengthVar),
                                    argVar, 0, argVar.alength(),
                                    op, pass, fail);
@@ -254,14 +259,14 @@ abstract class BytesColumnCodec extends ColumnCodec {
         }
 
         if (ColumnFilter.isIn(op)) {
-            CompareUtils.compareIn(mMaker, argVar, op, pass, fail, (a, p, f) -> {
-                    CompareUtils.compareArrays(mMaker, true,
+            CompareUtils.compareIn(maker, argVar, op, pass, fail, (a, p, f) -> {
+                    CompareUtils.compareArrays(maker, true,
                                            srcVar, offsetVar, endVar,
                                            a, 0, a.alength(),
                                            ColumnFilter.OP_EQ, p, f);
             });
         } else {
-            CompareUtils.compareArrays(mMaker, true,
+            CompareUtils.compareArrays(maker, true,
                                        srcVar, offsetVar, endVar,
                                        argVar, 0, argVar.alength(),
                                        op, pass, fail);

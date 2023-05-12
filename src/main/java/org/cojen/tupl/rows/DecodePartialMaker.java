@@ -34,6 +34,8 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.DatabaseException;
 
+import org.cojen.tupl.rows.codec.ColumnCodec;
+
 /**
  * Makes a call site which decodes rows partially.
  *
@@ -335,7 +337,7 @@ public class DecodePartialMaker {
 
         int remaining = 0;
         for (ColumnCodec srcCodec : srcCodecs) {
-            if (toDecode.get(columnNumbers.get(srcCodec.mInfo.name))) {
+            if (toDecode.get(columnNumbers.get(srcCodec.info.name))) {
                 remaining++;
             }
         }
@@ -345,7 +347,7 @@ public class DecodePartialMaker {
         }
 
         for (ColumnCodec srcCodec : srcCodecs) {
-            String name = srcCodec.mInfo.name;
+            String name = srcCodec.info.name;
 
             if (toDecode.get(columnNumbers.get(name))) {
                 ColumnInfo dstInfo = dstRowInfo.allColumns.get(name);

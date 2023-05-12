@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Cojen.org
+ *  Copyright (C) 2021 Cojen.org
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU Affero General Public License as
@@ -12,95 +12,88 @@
  *  GNU Affero General Public License for more details.
  *
  *  You should have received a copy of the GNU Affero General Public License
- *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.rows;
+package org.cojen.tupl.rows.codec;
 
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.RowUtils;
+
 /**
- * Encoding suitable for non-null value columns.
  * 
- * @see RowUtils#encodePrefixPF
- * @see RowUtils#lengthStringUTF
- * @see RowUtils#encodeStringUTF
+ *
  * @author Brian S O'Neill
  */
-class NonNullStringColumnCodec extends StringColumnCodec {
+class NonNullPrimitiveArrayColumnCodec extends PrimitiveArrayColumnCodec {
     protected Variable mLengthVar;
 
     /**
      * @param info non-null
      * @param mm is null for stateless instance
      */
-    NonNullStringColumnCodec(ColumnInfo info, MethodMaker mm) {
-        super(info, mm);
+    NonNullPrimitiveArrayColumnCodec(ColumnInfo info, MethodMaker mm) {
+        super(info, mm, 0);
     }
 
     @Override
-    ColumnCodec bind(MethodMaker mm) {
-        return new NonNullStringColumnCodec(mInfo, mm);
+    public ColumnCodec bind(MethodMaker mm) {
+        return new NonNullPrimitiveArrayColumnCodec(info, mm);
     }
 
     @Override
-    int codecFlags() {
-        return 0;
+    public void encodePrepare() {
+        mLengthVar = maker.var(int.class);
     }
 
     @Override
-    void encodePrepare() {
-        mLengthVar = mMaker.var(int.class);
-    }
-
-    @Override
-    void encodeSkip() {
+    public void encodeSkip() {
         mLengthVar.set(0);
     }
 
     @Override
-    Variable encodeSize(Variable srcVar, Variable totalVar) {
-        var rowUtils = mMaker.var(RowUtils.class);
-
-        // Length prefix will be needed by the encode method.
-        mLengthVar.set(rowUtils.invoke("lengthStringUTF", srcVar));
+    public Variable encodeSize(Variable srcVar, Variable totalVar) {
+        mLengthVar.set(byteArrayLength(srcVar));
 
         // Add the prefix length.
+        var rowUtils = maker.var(RowUtils.class);
         totalVar = accum(totalVar, rowUtils.invoke("lengthPrefixPF", mLengthVar));
 
-        // Add the string length.
+        // Add the byte array length.
         return accum(totalVar, mLengthVar);
     }
 
     @Override
-    void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
-        var rowUtils = mMaker.var(RowUtils.class);
+    public void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
+        var rowUtils = maker.var(RowUtils.class);
         offsetVar.set(rowUtils.invoke("encodePrefixPF", dstVar, offsetVar, mLengthVar));
-        finishEncode(srcVar, rowUtils, dstVar, offsetVar);
+        finishEncode(srcVar, dstVar, offsetVar);
     }
 
     /**
-     * @param dstVar String type
+     * @param dstVar primitive array type
      */
     @Override
-    void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
-        var rowUtils = mMaker.var(RowUtils.class);
+    public void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
+        var rowUtils = maker.var(RowUtils.class);
         var lengthVar = rowUtils.invoke("decodePrefixPF", srcVar, offsetVar);
         offsetVar.inc(rowUtils.invoke("lengthPrefixPF", lengthVar));
-        finishDecode(dstVar, rowUtils, srcVar, offsetVar, lengthVar);
+        finishDecode(dstVar, srcVar, offsetVar, lengthVar);
     }
 
     @Override
-    void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
-        offsetVar.set(mMaker.var(RowUtils.class).invoke("skipBytesPF", srcVar, offsetVar));
+    public void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
+        offsetVar.set(maker.var(RowUtils.class).invoke("skipBytesPF", srcVar, offsetVar));
     }
 
     @Override
     protected void decodeHeader(Variable srcVar, Variable offsetVar, Variable endVar,
                                 Variable lengthVar, Variable isNullVar)
     {
-        var rowUtils = mMaker.var(RowUtils.class);
+        var rowUtils = maker.var(RowUtils.class);
         lengthVar.set(rowUtils.invoke("decodePrefixPF", srcVar, offsetVar));
         offsetVar.inc(rowUtils.invoke("lengthPrefixPF", lengthVar));
     }
@@ -108,20 +101,19 @@ class NonNullStringColumnCodec extends StringColumnCodec {
     /**
      * @param offsetVar never null
      */
-    protected void finishEncode(Variable srcVar, Variable rowUtils,
-                                Variable dstVar, Variable offsetVar)
-    {
-        offsetVar.set(rowUtils.invoke("encodeStringUTF", dstVar, offsetVar, srcVar));
+    protected void finishEncode(Variable srcVar, Variable dstVar, Variable offsetVar) {
+        encodeByteArray(srcVar, dstVar, offsetVar);
+        offsetVar.inc(mLengthVar);
     }
 
     /**
-     * @param dstVar String type
+     * @param dstVar primitive array type
      * @param offsetVar never null
      */
-    protected void finishDecode(Variable dstVar, Variable rowUtils,
+    protected void finishDecode(Variable dstVar,
                                 Variable srcVar, Variable offsetVar, Variable lengthVar)
     {
-        dstVar.set(rowUtils.invoke("decodeStringUTF", srcVar, offsetVar, lengthVar));
+        decodeByteArray(dstVar, srcVar, offsetVar, lengthVar);
         offsetVar.inc(lengthVar);
     }
 }

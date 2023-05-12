@@ -15,11 +15,14 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.rows;
+package org.cojen.tupl.rows.codec;
 
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
+
+import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.RowUtils;
 
 /**
  * Encoding suitable for lexicographically ordered columns which supports nulls.
@@ -35,48 +38,48 @@ final class LexBigIntegerColumnCodec extends BigIntegerColumnCodec {
     }
 
     @Override
-    ColumnCodec bind(MethodMaker mm) {
-        return new LexBigIntegerColumnCodec(mInfo, mm);
+    public ColumnCodec bind(MethodMaker mm) {
+        return new LexBigIntegerColumnCodec(info, mm);
     }
 
     @Override
-    protected final boolean doEquals(Object obj) {
+    protected boolean doEquals(Object obj) {
         return equalOrdering(obj);
     }
 
     @Override
-    int codecFlags() {
+    public int codecFlags() {
         return F_LEX;
     }
 
     @Override
-    int minSize() {
+    public int minSize() {
         return 1;
     }
 
     @Override
-    void encodePrepare() {
-        mBytesVar = mMaker.var(byte[].class);
+    public void encodePrepare() {
+        mBytesVar = maker.var(byte[].class);
     }
 
     @Override
-    void encodeSkip() {
+    public void encodeSkip() {
         mBytesVar.set(null);
     }
 
     @Override
-    Variable encodeSize(Variable srcVar, Variable totalVar) {
+    public Variable encodeSize(Variable srcVar, Variable totalVar) {
         return encodeSize(srcVar, totalVar, mBytesVar);
     }
 
     private Variable encodeSize(Variable srcVar, Variable totalVar, Variable bytesVar) {
         if (totalVar == null) {
-            totalVar = mMaker.var(int.class).set(0);
+            totalVar = maker.var(int.class).set(0);
         }
-        Label notNull = mMaker.label();
+        Label notNull = maker.label();
         srcVar.ifNe(null, notNull);
         bytesVar.set(null);
-        Label cont = mMaker.label().goto_();
+        Label cont = maker.label().goto_();
         notNull.here();
         bytesVar.set(srcVar.invoke("toByteArray"));
         var lengthVar = bytesVar.alength();
@@ -88,7 +91,7 @@ final class LexBigIntegerColumnCodec extends BigIntegerColumnCodec {
     }
 
     @Override
-    void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
+    public void encode(Variable srcVar, Variable dstVar, Variable offsetVar) {
         doEncode(mBytesVar, dstVar, offsetVar);
     }
 
@@ -97,17 +100,17 @@ final class LexBigIntegerColumnCodec extends BigIntegerColumnCodec {
      */
     private void doEncode(Variable srcVar, Variable dstVar, Variable offsetVar) {
         Label end = null;
-        if (mInfo.isNullable()) {
-            end = mMaker.label();
+        if (info.isNullable()) {
+            end = maker.label();
             encodeNullHeaderIfNull(end, srcVar, dstVar, offsetVar);
         }
 
         String methodName = "encodeBigIntegerLex";
-        if (mInfo.isDescending()) {
+        if (info.isDescending()) {
             methodName += "Desc";
         }
 
-        var rowUtils = mMaker.var(RowUtils.class);
+        var rowUtils = maker.var(RowUtils.class);
 
         if (offsetVar == null) {
             rowUtils.invoke(methodName, dstVar, 0, srcVar);
@@ -121,8 +124,8 @@ final class LexBigIntegerColumnCodec extends BigIntegerColumnCodec {
     }
 
     @Override
-    void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
-        var rowUtils = mMaker.var(RowUtils.class);
+    public void decode(Variable dstVar, Variable srcVar, Variable offsetVar, Variable endVar) {
+        var rowUtils = maker.var(RowUtils.class);
         var resultVar = rowUtils.invoke("decodeBigIntegerLexHeader", srcVar, offsetVar);
         offsetVar.set(resultVar.cast(int.class));
 
@@ -131,20 +134,20 @@ final class LexBigIntegerColumnCodec extends BigIntegerColumnCodec {
         if (dstVar == null) {
             offsetVar.inc(lengthVar);
         } else {
-            Label notNull = mMaker.label();
+            Label notNull = maker.label();
             lengthVar.ifNe(0, notNull);
             dstVar.set(null);
-            Label cont = mMaker.label().goto_();
+            Label cont = maker.label().goto_();
             notNull.here();
-            if (mInfo.isDescending()) {
+            if (info.isDescending()) {
                 rowUtils.invoke("flip", srcVar, offsetVar, lengthVar);
-                Label tryStart = mMaker.label().here();
-                dstVar.set(mMaker.new_(dstVar, srcVar, offsetVar, lengthVar));
-                mMaker.finally_(tryStart, () -> {
+                Label tryStart = maker.label().here();
+                dstVar.set(maker.new_(dstVar, srcVar, offsetVar, lengthVar));
+                maker.finally_(tryStart, () -> {
                     rowUtils.invoke("flip", srcVar, offsetVar, lengthVar);
                 });
             } else {
-                dstVar.set(mMaker.new_(dstVar, srcVar, offsetVar, lengthVar));
+                dstVar.set(maker.new_(dstVar, srcVar, offsetVar, lengthVar));
             }
             offsetVar.inc(lengthVar);
             cont.here();
@@ -152,15 +155,15 @@ final class LexBigIntegerColumnCodec extends BigIntegerColumnCodec {
     }
 
     @Override
-    void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
+    public void decodeSkip(Variable srcVar, Variable offsetVar, Variable endVar) {
         decode(null, srcVar, offsetVar, endVar);
     }
 
     @Override
     protected Variable filterPrepareBytes(Variable argVar) {
-        var bytesVar = mMaker.var(byte[].class);
-        var lengthVar = encodeSize(argVar, mMaker.var(int.class).set(minSize()), bytesVar);
-        var encodedBytesVar = mMaker.new_(byte[].class, lengthVar);
+        var bytesVar = maker.var(byte[].class);
+        var lengthVar = encodeSize(argVar, maker.var(int.class).set(minSize()), bytesVar);
+        var encodedBytesVar = maker.new_(byte[].class, lengthVar);
         doEncode(bytesVar, encodedBytesVar, null);
         return encodedBytesVar;
     }
@@ -171,13 +174,13 @@ final class LexBigIntegerColumnCodec extends BigIntegerColumnCodec {
     }
 
     @Override
-    boolean canFilterQuick(ColumnInfo dstInfo) {
-        return dstInfo.typeCode == mInfo.typeCode;
+    public boolean canFilterQuick(ColumnInfo dstInfo) {
+        return dstInfo.typeCode == info.typeCode;
     }
 
     @Override
-    Object filterQuickDecode(ColumnInfo dstInfo,
-                             Variable srcVar, Variable offsetVar, Variable endVar)
+    public Object filterQuickDecode(ColumnInfo dstInfo,
+                                    Variable srcVar, Variable offsetVar, Variable endVar)
     {
         decodeSkip(srcVar, offsetVar, endVar);
         // Return a stable copy to the end offset.
@@ -188,9 +191,9 @@ final class LexBigIntegerColumnCodec extends BigIntegerColumnCodec {
      * @param decoded the string end offset, unless a String compare should be performed
      */
     @Override
-    void filterQuickCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar,
-                            int op, Object decoded, Variable argObjVar, int argNum,
-                            Label pass, Label fail)
+    public void filterQuickCompare(ColumnInfo dstInfo, Variable srcVar, Variable offsetVar,
+                                   int op, Object decoded, Variable argObjVar, int argNum,
+                                   Label pass, Label fail)
     {
         filterQuickCompareLex(dstInfo, srcVar, offsetVar, (Variable) decoded,
                               op, argObjVar, argNum, pass, fail);

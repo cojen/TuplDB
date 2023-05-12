@@ -34,7 +34,7 @@ import static org.cojen.tupl.rows.ColumnInfo.*;
  *
  * @author Brian S O'Neill
  */
-class CompareUtils {
+public class CompareUtils {
     /**
      * Generates code which compares a column to an argument and branches to a pass or fail
      * target. One of the variables can be widened if necessary, but not both of them. For
@@ -47,10 +47,10 @@ class CompareUtils {
      * @param pass branch here when comparison passes
      * @param fail branch here when comparison fails
      */
-    static void compare(MethodMaker mm,
-                        ColumnInfo colInfo, Variable colVar,
-                        ColumnInfo argInfo, Variable argVar,
-                        int op, Label pass, Label fail)
+    public static void compare(MethodMaker mm,
+                               ColumnInfo colInfo, Variable colVar,
+                               ColumnInfo argInfo, Variable argVar,
+                               int op, Label pass, Label fail)
     {
         if (ColumnFilter.isIn(op)) {
             if (colInfo.isPrimitive() && !colInfo.isNullable() &&
@@ -149,10 +149,10 @@ class CompareUtils {
      * @param pass branch here when comparison passes
      * @param fail branch here when comparison fails
      */
-    static void comparePrimitives(MethodMaker mm,
-                                  ColumnInfo colInfo, Variable colVar,
-                                  ColumnInfo argInfo, Variable argVar,
-                                  int op, Label pass, Label fail)
+    public static void comparePrimitives(MethodMaker mm,
+                                         ColumnInfo colInfo, Variable colVar,
+                                         ColumnInfo argInfo, Variable argVar,
+                                         int op, Label pass, Label fail)
     {
         Class<?> colType = colVar.classType();
         if (!colType.isPrimitive()) {
@@ -271,7 +271,7 @@ class CompareUtils {
     }
 
     @FunctionalInterface
-    static interface CompareArg {
+    public static interface CompareArg {
         void apply(Variable argVar, Label pass, Label fail);
     }
 
@@ -285,8 +285,8 @@ class CompareUtils {
      * @param fail branch here when comparison fails
      * @param compareArg called for each element
      */
-    static void compareIn(MethodMaker mm, Variable argVar, int op, Label pass, Label fail,
-                          CompareArg compareArg)
+    public static void compareIn(MethodMaker mm, Variable argVar, int op, Label pass, Label fail,
+                                 CompareArg compareArg)
     {
         // FIXME: Use binary search if large enough. Must have already been sorted.
 
@@ -376,7 +376,7 @@ class CompareUtils {
      * @param fail branch here when comparison fails
      * @return pass or fail
      */
-    static Label selectNullColumnToArg(int op, Label pass, Label fail) {
+    public static Label selectNullColumnToArg(int op, Label pass, Label fail) {
         return switch (op) {
             case ColumnFilter.OP_EQ -> fail; // null == !null? false
             case ColumnFilter.OP_NE -> pass; // null != !null? true
@@ -397,7 +397,7 @@ class CompareUtils {
      * @param fail branch here when comparison fails
      * @return pass or fail
      */
-    static Label selectColumnToNullArg(int op, Label pass, Label fail) {
+    public static Label selectColumnToNullArg(int op, Label pass, Label fail) {
         return switch (op) {
             case ColumnFilter.OP_EQ -> fail; // !null == null? false
             case ColumnFilter.OP_NE -> pass; // !null != null? true
@@ -421,7 +421,7 @@ class CompareUtils {
      * @param fail branch here when comparison fails
      * @return pass or fail
      */
-    static Label selectNullColumnToNullArg(int op, Label pass, Label fail) {
+    public static Label selectNullColumnToNullArg(int op, Label pass, Label fail) {
         return switch (op) {
             case ColumnFilter.OP_EQ -> pass; // null == null? true
             case ColumnFilter.OP_NE -> fail; // null != null? false
@@ -444,10 +444,10 @@ class CompareUtils {
      * @param pass branch here when comparison passes
      * @param fail branch here when comparison fails
      */
-    static void compareArrays(MethodMaker mm, boolean unsigned,
-                              Object a, Object aFrom, Object aTo,
-                              Object b, Object bFrom, Object bTo,
-                              int op, Label pass, Label fail)
+    public static void compareArrays(MethodMaker mm, boolean unsigned,
+                                     Object a, Object aFrom, Object aTo,
+                                     Object b, Object bFrom, Object bTo,
+                                     int op, Label pass, Label fail)
     {
         var arraysVar = mm.var(Arrays.class);
 
