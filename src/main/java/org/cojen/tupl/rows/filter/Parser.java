@@ -28,17 +28,16 @@ import java.util.Set;
 import org.cojen.tupl.rows.ColumnInfo;
 import org.cojen.tupl.rows.ConvertUtils;
 import org.cojen.tupl.rows.OrderBy;
+import org.cojen.tupl.rows.SimpleParser;
 
 /**
  * 
  *
  * @author Brian S O'Neill
  */
-public class Parser {
+public final class Parser extends SimpleParser {
     private final Map<String, ColumnInfo> mAllColumns;
-    private final String mFilter;
 
-    private int mPos;
     private int mNextArg;
     private Map<Integer, Boolean> mInArgs;
     private boolean mNoFilter;
@@ -47,8 +46,8 @@ public class Parser {
     private OrderBy mOrderBy;
 
     public Parser(Map<String, ColumnInfo> allColumns, String filter) {
+        super(filter);
         mAllColumns = allColumns;
-        mFilter = filter;
     }
 
     /**
@@ -212,9 +211,9 @@ public class Parser {
         final int start = mPos;
         int c = nextCharIgnoreWhitespace();
         if (c == '{') {
-            mPos = mFilter.indexOf('}', mPos);
+            mPos = mText.indexOf('}', mPos);
             if (mPos < 0) {
-                mPos = mFilter.length();
+                mPos = mText.length();
                 mNoFilter = true;
             } else {
                 mPos++;
@@ -515,7 +514,7 @@ public class Parser {
             c = nextChar();
         } while (Character.isJavaIdentifierPart(c));
 
-        String name = mFilter.substring(start, --mPos);
+        String name = mText.substring(start, --mPos);
 
         if (availableColumns == null) {
             availableColumns = mAllColumns;
@@ -579,59 +578,8 @@ public class Parser {
         return (int) arg;
     }
 
-    /**
-     * Returns -1 if no more characters.
-     */
-    private int nextChar() {
-        String filter = mFilter;
-        int pos = mPos;
-        int c = (pos >= filter.length()) ? -1 : filter.charAt(pos);
-        mPos = pos + 1;
-        return c;
-    }
-
-    private int nextCharIgnoreWhitespace() {
-        int c;
-        while ((c = nextChar()) >= 0) {
-            switch (c) {
-            case ' ': case '\r': case '\n': case '\t': case '\0':
-                break;
-            default:
-                if (Character.isWhitespace(c)) {
-                    break;
-                }
-                return c;
-            }
-        }
-        return c;
-    }
-
-    private int skipCharIgnoreWhitespace() {
-        mPos++;
-        int c = nextCharIgnoreWhitespace();
-        mPos--;
-        return c;
-    }
-
-    private IllegalArgumentException error(String message) {
-        return error(message, mPos);
-    }
-
-    private IllegalArgumentException error(String message, int pos) {
-        if (pos <= 0 || mFilter.length() == 0) {
-            message += " (at start of filter expression)";
-        } else if (pos >= mFilter.length()) {
-            message += " (at end of filter expression)";
-        } else {
-            // Show the next 20 characters, or show 17 + ellipsis if more than 20.
-            int remaining = mFilter.length() - pos;
-            if (remaining <= 20) {
-                message = message + " (at \"" + mFilter.substring(pos) + "\")";
-            } else {
-                message = message + " (at \"" + mFilter.substring(pos, pos + 17) + "...\")";
-            }
-        }
-        // TODO: More specific exception type?
-        return new IllegalArgumentException(message);
+    @Override
+    protected String describe() {
+        return "filter expression";
     }
 }
