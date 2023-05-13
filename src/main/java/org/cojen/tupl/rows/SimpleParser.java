@@ -35,7 +35,7 @@ public abstract class SimpleParser {
 
     /**
      * Returns the character at mPos and increments it by one. If mPos is past the end, then -1
-     * is returned and mPos isn't updated.
+     * is returned, and mPos is still incremented by one.
      */
     protected int nextChar() {
         String text = mText;
