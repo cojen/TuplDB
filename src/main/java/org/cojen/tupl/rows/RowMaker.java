@@ -37,6 +37,8 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.UnsetColumnException;
 
+import org.cojen.tupl.rows.codec.ColumnCodec;
+
 import static org.cojen.tupl.rows.ColumnInfo.*;
 
 /**
@@ -209,6 +211,9 @@ public class RowMaker {
         state.set(state.or(RowGen.stateFieldMask(columnNum))); // set dirty
     }
 
+    /**
+     * Generates hashCode, equals, and toString methods.
+     */
     public static CallSite indyObjectMethod(MethodHandles.Lookup lookup, String name, MethodType mt,
                                             Class<?> rowType)
     {
@@ -367,7 +372,7 @@ public class RowMaker {
             num++;
         }
         for (ColumnCodec codec : rowGen.valueCodecs()) { // use encoding order
-            append(mm, rowGen, rowObject, bob, initSize, num, codec.mInfo);
+            append(mm, rowGen, rowObject, bob, initSize, num, codec.info);
             num++;
         }
 

@@ -49,7 +49,8 @@ public interface RowEvaluator<R> extends RowDecoder<R> {
      * Decodes a row unless it's filtered out. If a row instance is returned, then all
      * projected columns are marked clean.
      *
-     * @param c refers the key and value to evaluate and decode
+     * @param c refers the key and value to evaluate and decode; reset might be called to abort
+     * the scan
      * @param result LockResult from cursor access
      * @param row can pass null to construct a new instance; can also be a RowConsumer
      * @return null if row is filtered out
@@ -60,7 +61,8 @@ public interface RowEvaluator<R> extends RowDecoder<R> {
      * Eval variant used when updating via a secondary index. By positioning a cursor over
      * the primary table, it can be updated directly without the cost of an additional search.
      *
-     * @param secondary refers the key and value to evaluate and decode
+     * @param secondary refers the key and value to evaluate and decode; reset might be called
+     * to abort the scan
      * @param result LockResult from secondary cursor access
      * @param row can pass null to construct a new instance; can also be a RowConsumer
      * @param primary cursor is positioned as a side effect

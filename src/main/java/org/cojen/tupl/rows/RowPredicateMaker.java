@@ -41,16 +41,18 @@ import org.cojen.tupl.Entry;
 
 import org.cojen.tupl.core.RowPredicate;
 
-import org.cojen.tupl.filter.AndFilter;
-import org.cojen.tupl.filter.ColumnFilter;
-import org.cojen.tupl.filter.ColumnToArgFilter;
-import org.cojen.tupl.filter.ColumnToColumnFilter;
-import org.cojen.tupl.filter.GroupFilter;
-import org.cojen.tupl.filter.InFilter;
-import org.cojen.tupl.filter.OrFilter;
-import org.cojen.tupl.filter.RowFilter;
-import org.cojen.tupl.filter.TrueFilter;
-import org.cojen.tupl.filter.Visitor;
+import org.cojen.tupl.rows.codec.ColumnCodec;
+
+import org.cojen.tupl.rows.filter.AndFilter;
+import org.cojen.tupl.rows.filter.ColumnFilter;
+import org.cojen.tupl.rows.filter.ColumnToArgFilter;
+import org.cojen.tupl.rows.filter.ColumnToColumnFilter;
+import org.cojen.tupl.rows.filter.GroupFilter;
+import org.cojen.tupl.rows.filter.InFilter;
+import org.cojen.tupl.rows.filter.OrFilter;
+import org.cojen.tupl.rows.filter.RowFilter;
+import org.cojen.tupl.rows.filter.TrueFilter;
+import org.cojen.tupl.rows.filter.Visitor;
 
 import org.cojen.tupl.io.Utils;
 
@@ -250,7 +252,7 @@ public class RowPredicateMaker {
         }
     }
 
-    private class FieldMaker extends Visitor {
+    private class FieldMaker implements Visitor {
         private final HashMap<String, ColumnCodec> mDefined;
         private final boolean mPrimaryOnly, mInit;
 
@@ -330,7 +332,7 @@ public class RowPredicateMaker {
         int colNum = num;
         ColumnCodec codec = codecs[colNum];
 
-        if (codec.mMaker != mCtorMaker) { // check if not bound
+        if (codec.maker != mCtorMaker) { // check if not bound
             codecs[colNum] = codec = codec.bind(mCtorMaker);
         }
 
@@ -387,7 +389,7 @@ public class RowPredicateMaker {
     /**
      * Implements a predicate test method for a completely filled in row object.
      */
-    private static class RowTestMaker extends Visitor {
+    private static class RowTestMaker implements Visitor {
         private final MethodMaker mMaker;
         private final Variable mRowVar, mPredicateVar;
         private Label mPass, mFail;
@@ -446,9 +448,24 @@ public class RowPredicateMaker {
         @Override
         public void visit(ColumnToColumnFilter filter) {
             ColumnInfo c1 = filter.column();
-            var c1Var = mRowVar.field(c1.name);
+            Variable c1Var = mRowVar.field(c1.name);
             ColumnInfo c2 = filter.otherColumn();
-            var c2Var = mRowVar.field(c2.name);
+            Variable c2Var = mRowVar.field(c2.name);
+
+            if (c1Var.classType() != c2Var.classType()) {
+                ColumnInfo ci = filter.common();
+
+                var c1ConvertedVar = mMaker.var(ci.type);
+                Converter.convertExact(mMaker, null, c1, c1Var, ci, c1ConvertedVar);
+                c1 = ci;
+                c1Var = c1ConvertedVar;
+
+                var c2ConvertedVar = mMaker.var(ci.type);
+                Converter.convertExact(mMaker, null, c2, c2Var, ci, c2ConvertedVar);
+                c2 = ci;
+                c2Var = c2ConvertedVar;
+            }
+
             CompareUtils.compare(mMaker, c1, c1Var, c2, c2Var, filter.operator(), mPass, mFail);
         }
     }
@@ -656,7 +673,7 @@ public class RowPredicateMaker {
 
     }
 
-    private static class ToStringMaker extends Visitor {
+    private static class ToStringMaker implements Visitor {
         private final MethodMaker mMaker;
         private final Variable mPredicateVar;
 

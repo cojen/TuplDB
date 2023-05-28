@@ -27,7 +27,21 @@ import org.cojen.tupl.diag.QueryPlan;
  * @author Brian S O'Neill
  */
 public interface ScanControllerFactory<R> {
+    /**
+     * Returns true if the ScanController attempts to load exactly one row.
+     */
+    default boolean loadsOne() {
+        return false;
+    }
+
     QueryPlan plan(Object... args);
+
+    /**
+     * If loadsOne returns true, call this method to obtain the plan for it.
+     */
+    default QueryPlan loadOnePlan(Object... args) {
+        return plan(args);
+    }
 
     ScanControllerFactory<R> reverse();
 

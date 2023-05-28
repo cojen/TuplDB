@@ -32,6 +32,8 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.rows.codec.ColumnCodec;
+
 /**
  * 
  *
@@ -262,7 +264,7 @@ class SortDecoderMaker {
                 codec = valueCodecs[num - keyCodecs.length];
             }
 
-            if (projection.contains(codec.mInfo.name)) {
+            if (projection.contains(codec.info.name)) {
                 mask |= RowGen.stateFieldMask(num, 0b01); // clean state
             }
 
@@ -297,7 +299,7 @@ class SortDecoderMaker {
             var offsetVar = mm.var(int.class).set(0);
             for (int i=0; i<codecs.length; i++) {
                 ColumnCodec codec = codecs[i];
-                String name = codec.mInfo.name;
+                String name = codec.info.name;
                 if (projection.contains(name)) {
                     codec.decode(rowVar.field(name), srcVar, offsetVar, null);
                 } else if (i < codecs.length - 1) {

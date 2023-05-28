@@ -20,8 +20,6 @@ package org.cojen.tupl.rows;
 import java.io.Closeable;
 import java.io.IOException;
 
-import java.util.Set;
-
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Updater;
 import org.cojen.tupl.Transaction;
@@ -49,10 +47,7 @@ interface QueryLauncher<R> extends Closeable {
      */
     void scanWrite(Transaction txn, RowWriter writer, Object... args) throws IOException;
 
-    QueryPlan plan(Object... args);
+    QueryPlan scannerPlan(Transaction txn, Object... args);
 
-    /**
-     * Returns the projected columns, which can be null if all are projected.
-     */
-    Set<String> projection();
+    QueryPlan updaterPlan(Transaction txn, Object... args);
 }

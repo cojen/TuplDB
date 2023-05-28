@@ -34,6 +34,8 @@ import org.cojen.tupl.UnmodifiableViewException;
 
 import org.cojen.tupl.core.RowPredicateLock;
 
+import org.cojen.tupl.rows.codec.ColumnCodec;
+
 import org.cojen.tupl.views.ViewUtils;
 
 /**

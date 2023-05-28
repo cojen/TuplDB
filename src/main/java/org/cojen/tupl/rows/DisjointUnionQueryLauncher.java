@@ -19,8 +19,6 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
-import java.util.Set;
-
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Updater;
 import org.cojen.tupl.Transaction;
@@ -93,17 +91,21 @@ final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
-    public QueryPlan plan(Object... args) {
+    public QueryPlan scannerPlan(Transaction txn, Object... args) {
         var subPlans = new QueryPlan[mLaunchers.length];
         for (int i=0; i<subPlans.length; i++) {
-            subPlans[i] = mLaunchers[i].plan(args);
+            subPlans[i] = mLaunchers[i].scannerPlan(txn, args);
         }
         return new QueryPlan.DisjointUnion(subPlans);
     }
 
     @Override
-    public Set<String> projection() {
-        return mLaunchers[0].projection();
+    public QueryPlan updaterPlan(Transaction txn, Object... args) {
+        var subPlans = new QueryPlan[mLaunchers.length];
+        for (int i=0; i<subPlans.length; i++) {
+            subPlans[i] = mLaunchers[i].updaterPlan(txn, args);
+        }
+        return new QueryPlan.DisjointUnion(subPlans);
     }
 
     @Override

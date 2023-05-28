@@ -122,7 +122,7 @@ public class ColumnInfo implements Cloneable {
         return plainTypeCode(typeCode);
     }
 
-    static int plainTypeCode(int typeCode) {
+    public static int plainTypeCode(int typeCode) {
         return typeCode & 0b11111;
     }
 
@@ -130,7 +130,7 @@ public class ColumnInfo implements Cloneable {
         return unorderedTypeCode(typeCode);
     }
 
-    static int unorderedTypeCode(int typeCode) {
+    public static int unorderedTypeCode(int typeCode) {
         return typeCode & ~TYPE_DESCENDING;
     }
 
@@ -184,7 +184,7 @@ public class ColumnInfo implements Cloneable {
         return isArray(typeCode);
     }
 
-    static boolean isArray(int typeCode) {
+    public static boolean isArray(int typeCode) {
         return (typeCode & TYPE_ARRAY) != 0;
     }
 
@@ -198,14 +198,14 @@ public class ColumnInfo implements Cloneable {
     /**
      * @return true if type is primitive and not nullable
      */
-    static boolean isPrimitive(int typeCode) {
+    public static boolean isPrimitive(int typeCode) {
         return (typeCode & ~TYPE_DESCENDING) < 0b11000;
     }
 
     /**
      * @param typeCode must be plain
      */
-    static boolean isFloat(int typeCode) {
+    public static boolean isFloat(int typeCode) {
         return 0b10000 <= typeCode && typeCode <= 0b10011;
     }
 
@@ -243,7 +243,7 @@ public class ColumnInfo implements Cloneable {
     /**
      * Return the primitive unboxed type or the regular type if not primitive.
      */
-    Class<?> unboxedType() {
+    public Class<?> unboxedType() {
         return switch (plainTypeCode()) {
             case TYPE_BOOLEAN            -> boolean.class;
             case TYPE_BYTE,  TYPE_UBYTE  -> byte.class;
@@ -311,7 +311,7 @@ public class ColumnInfo implements Cloneable {
         };
     }
 
-    ColumnInfo copy() {
+    public ColumnInfo copy() {
         try {
             return (ColumnInfo) clone();
         } catch (CloneNotSupportedException e) {

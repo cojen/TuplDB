@@ -26,7 +26,6 @@ import java.io.IOException;
 
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Objects;
 import java.util.Spliterator;
 
 import org.cojen.maker.ClassMaker;
@@ -35,6 +34,8 @@ import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 import org.cojen.tupl.Scanner;
+
+import org.cojen.tupl.rows.codec.ColumnCodec;
 
 /**
  * Used for reading remotely serialized rows.
@@ -99,17 +100,7 @@ public abstract class RowReader<R, DIN extends DataInput> implements Scanner<R> 
     }
 
     @Override
-    public final R step() throws IOException {
-        try {
-            return doStep(null);
-        } catch (Throwable e) {
-            throw RowUtils.fail(this, e);
-        }
-    }
-
-    @Override
     public final R step(R row) throws IOException {
-        Objects.requireNonNull(row);
         try {
             return doStep(row);
         } catch (Throwable e) {
@@ -296,7 +287,7 @@ public abstract class RowReader<R, DIN extends DataInput> implements Scanner<R> 
 
         for (int i=0; i<codecs.length; i++) {
             ColumnCodec codec = codecs[i];
-            String name = codec.mInfo.name;
+            String name = codec.info.name;
             ColumnInfo colInfo = rowInfo.allColumns.get(name);
 
             Variable endVar = valueEndVar;

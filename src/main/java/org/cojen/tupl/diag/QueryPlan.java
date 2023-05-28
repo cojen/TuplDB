@@ -57,7 +57,7 @@ public abstract sealed class QueryPlan implements Serializable {
     }
 
     public void appendTo(Appendable a) throws IOException {
-        appendTo(a, "", "");
+        appendTo(a, "- ", "  ");
     }
 
     /**
@@ -69,7 +69,7 @@ public abstract sealed class QueryPlan implements Serializable {
     private static Appendable appendItem(Appendable a, String indent, String title)
         throws IOException
     {
-        return a.append(indent).append("...").append(title).append(": ");
+        return a.append(indent).append(title).append(": ");
     }
 
     private static Appendable appendArray(Appendable a, String[] array) throws IOException {
@@ -271,12 +271,16 @@ public abstract sealed class QueryPlan implements Serializable {
     public static final class LoadOne extends Table {
         private static final long serialVersionUID = 1L;
 
+        public final String filter;
+
         /**
          * @param which primary key, alternate key, or secondary index
          * @param keyColumns columns with '+' or '-' prefix
+         * @param filter filter which matches to the row (filter can be null if unspecified)
          */
-        public LoadOne(String table, String which, String[] keyColumns) {
+        public LoadOne(String table, String which, String[] keyColumns, String filter) {
             super(table, which, keyColumns);
+            this.filter = filter;
         }
 
         @Override
@@ -284,6 +288,9 @@ public abstract sealed class QueryPlan implements Serializable {
             a.append(in1).append("load one using ").append(which).append('\n');
             appendItem(a, in2, "table").append(table).append('\n');
             appendKeyColumns(a, in2).append('\n');
+            if (filter != null) {
+                appendItem(a, in2, "filter").append(filter).append('\n');
+            }
         }
 
         @Override
@@ -291,9 +298,15 @@ public abstract sealed class QueryPlan implements Serializable {
             return obj instanceof LoadOne load && matches(load);
         }
 
+        boolean matches(LoadOne other) {
+            return super.matches(other) && Objects.equals(filter, other.filter);
+        }
+
         @Override
         public int hashCode() {
-            return super.hashCode() ^ -1241565554;
+            int hash = super.hashCode();
+            hash = hash * 31 + Objects.hashCode(filter);
+            return hash ^ -1241565554;
         }
     }
 
@@ -427,7 +440,7 @@ public abstract sealed class QueryPlan implements Serializable {
     }
 
     /**
-     * Query plan node which joins two sources based on a common set of columns.
+     * Query plan node which joins a target to a source based on a common set of columns.
      */
     public static sealed class NaturalJoin extends QueryPlan {
         private static final long serialVersionUID = 1L;
@@ -459,7 +472,6 @@ public abstract sealed class QueryPlan implements Serializable {
         boolean matches(NaturalJoin other) {
             return Arrays.equals(columns, other.columns) &&
                 Objects.equals(target, other.target) && Objects.equals(source, other.source);
-                
         }
 
         @Override
@@ -484,7 +496,7 @@ public abstract sealed class QueryPlan implements Serializable {
          * @param source child plan node
          */
         public PrimaryJoin(String table, String[] keyColumns, QueryPlan source) {
-            super(keyColumns, new LoadOne(table, "primary key", keyColumns), source);
+            super(keyColumns, new LoadOne(table, "primary key", keyColumns, null), source);
             this.table = table;
         }
 
@@ -502,9 +514,15 @@ public abstract sealed class QueryPlan implements Serializable {
             return obj instanceof PrimaryJoin join && matches(join);
         }
 
+        boolean matches(PrimaryJoin other) {
+            return super.matches(other) && Objects.equals(table, other.table);
+        }
+
         @Override
         public int hashCode() {
-            return super.hashCode() ^ 2047385165;
+            int hash = super.hashCode();
+            hash = hash * 31 + Objects.hashCode(table);
+            return hash ^ 2047385165;
         }
     }
 

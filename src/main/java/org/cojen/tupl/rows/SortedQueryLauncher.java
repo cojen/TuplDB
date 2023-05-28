@@ -41,6 +41,7 @@ import static java.util.Spliterator.*;
 final class SortedQueryLauncher<R> implements QueryLauncher<R> {
     final BaseTable<R> mTable;
     final QueryLauncher<R> mSource;
+    final Set<String> mProjection;
     final String mSpec;
     final Comparator<R> mComparator;
 
@@ -49,9 +50,12 @@ final class SortedQueryLauncher<R> implements QueryLauncher<R> {
     RowDecoder<R> mDecoder;
     MethodHandle mWriteRow;
 
-    SortedQueryLauncher(BaseTable<R> table, QueryLauncher<R> source, OrderBy orderBy) {
+    SortedQueryLauncher(BaseTable<R> table, QueryLauncher<R> source,
+                        Set<String> projection, OrderBy orderBy)
+    {
         mTable = table;
         mSource = source;
+        mProjection = projection;
         mSpec = orderBy.spec();
         mComparator = table.comparator(mSpec);
     }
@@ -108,13 +112,13 @@ final class SortedQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
-    public QueryPlan plan(Object... args) {
-        return new QueryPlan.Sort(OrderBy.splitSpec(mSpec), mSource.plan(args));
+    public QueryPlan scannerPlan(Transaction txn, Object... args) {
+        return new QueryPlan.Sort(OrderBy.splitSpec(mSpec), mSource.scannerPlan(txn, args));
     }
 
     @Override
-    public Set<String> projection() {
-        return mSource.projection();
+    public QueryPlan updaterPlan(Transaction txn, Object... args) {
+        return new QueryPlan.Sort(OrderBy.splitSpec(mSpec), mSource.updaterPlan(txn, args));
     }
 
     @Override

@@ -19,8 +19,6 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
-import java.util.Objects;
-
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Updater;
 import org.cojen.tupl.Table;
@@ -80,7 +78,6 @@ class WrappedUpdater<R> implements Updater<R> {
 
     @Override
     public final R update(R row) throws IOException {
-        Objects.requireNonNull(row);
         try {
             mTable.update(mTxn, current());
         } catch (Throwable e) {
@@ -103,7 +100,6 @@ class WrappedUpdater<R> implements Updater<R> {
 
     @Override
     public final R delete(R row) throws IOException {
-        Objects.requireNonNull(row);
         try {
             mTable.delete(mTxn, current());
         } catch (Throwable e) {

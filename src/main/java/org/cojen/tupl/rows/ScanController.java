@@ -54,7 +54,17 @@ public interface ScanController<R> {
     int characteristics();
 
     /**
-     * Returns a new cursor for the current scan batch.
+     * Returns the one key which will be loaded, which is only applicable when
+     * ScanControllerFactory.loadsOne returns true.
+     *
+     * @throws IllegalStateException if not applicable
+     */
+    default byte[] oneKey() {
+        throw new IllegalStateException();
+    }
+
+    /**
+     * Returns a new cursor for the current scan batch, bounded to the proper range.
      */
     Cursor newCursor(View view, Transaction txn) throws IOException;
 

@@ -26,8 +26,10 @@ import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 
 import org.cojen.tupl.LockMode;
+import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Transaction;
 
+import org.cojen.tupl.core.RowPredicate;
 import org.cojen.tupl.core.Utils;
 
 /**
@@ -37,16 +39,16 @@ import org.cojen.tupl.core.Utils;
  */
 public class RowUtils extends Utils {
     /** Byte to use for null, low ordering */
-    static final byte NULL_BYTE_LOW = 0;
+    public static final byte NULL_BYTE_LOW = 0;
 
     /** Byte to use for null, high ordering */
-    static final byte NULL_BYTE_HIGH = (byte) ~NULL_BYTE_LOW; // 0xff
+    public static final byte NULL_BYTE_HIGH = (byte) ~NULL_BYTE_LOW; // 0xff
 
     /** Byte to use for not-null, high ordering */
-    static final byte NOT_NULL_BYTE_HIGH = (byte) 128; // 0x80
+    public static final byte NOT_NULL_BYTE_HIGH = (byte) 128; // 0x80
 
     /** Byte to use for not-null, low ordering */
-    static final byte NOT_NULL_BYTE_LOW = (byte) ~NOT_NULL_BYTE_HIGH; // 0x7f
+    public static final byte NOT_NULL_BYTE_LOW = (byte) ~NOT_NULL_BYTE_HIGH; // 0x7f
 
     /** Byte to terminate variable data encoded for ascending order */
     static final byte TERMINATOR = 1;
@@ -794,5 +796,20 @@ public class RowUtils extends Utils {
             }
             bob.append(quote).append(s).append(quote);
         }
+    }
+
+    public static String scannerToString(Scanner scanner, ScanController<?> controller) {
+        var b = new StringBuilder();
+        appendMiniString(b, scanner);
+        b.append('{');
+
+        RowPredicate<?> predicate = controller.predicate();
+        if (predicate == RowPredicate.all()) {
+            b.append("unfiltered");
+        } else {
+            b.append("filter").append(": ").append(predicate);
+        }
+
+        return b.append('}').toString();
     }
 }

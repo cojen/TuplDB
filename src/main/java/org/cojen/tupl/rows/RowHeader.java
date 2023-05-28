@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.rows;
 
+import org.cojen.tupl.rows.codec.ColumnCodec;
+
 import java.io.DataInput;
 import java.io.IOException;
 
@@ -29,7 +31,7 @@ import java.util.BitSet;
  * @author Brian S O'Neill
  * @see RowWriter
  */
-final class RowHeader {
+public final class RowHeader {
     static RowHeader make(RowGen rowGen) {
         return make(rowGen.keyCodecs(), rowGen.valueCodecs());
     }
@@ -43,7 +45,7 @@ final class RowHeader {
         int num = 0;
 
         for (ColumnCodec codec : keyCodecs) {
-            ColumnInfo info = codec.mInfo;
+            ColumnInfo info = codec.info;
             columnNames[num] = info.name;
             columnTypes[num] = info.typeCode;
             columnFlags[num] = codec.codecFlags();
@@ -51,7 +53,7 @@ final class RowHeader {
         }
 
         for (ColumnCodec codec : valueCodecs) {
-            ColumnInfo info = codec.mInfo;
+            ColumnInfo info = codec.info;
             columnNames[num] = info.name;
             columnTypes[num] = info.typeCode;
             columnFlags[num] = codec.codecFlags();
@@ -84,7 +86,7 @@ final class RowHeader {
         for (int i=0; i<keyCodecs.length; i++) {
             if (projection.get(i)) {
                 ColumnCodec codec = keyCodecs[i];
-                ColumnInfo info = codec.mInfo;
+                ColumnInfo info = codec.info;
                 columnNames[num] = info.name;
                 columnTypes[num] = info.typeCode;
                 columnFlags[num] = codec.codecFlags();
@@ -97,7 +99,7 @@ final class RowHeader {
         for (int i=0; i<valueCodecs.length; i++) {
             if (projection.get(keyCodecs.length + i)) {
                 ColumnCodec codec = valueCodecs[i];
-                ColumnInfo info = codec.mInfo;
+                ColumnInfo info = codec.info;
                 columnNames[num] = info.name;
                 columnTypes[num] = info.typeCode;
                 columnFlags[num] = codec.codecFlags();
@@ -109,9 +111,9 @@ final class RowHeader {
     }
 
     final int numKeys;
-    final String[] columnNames;
-    final int[] columnTypes;
-    final int[] columnFlags;
+    public final String[] columnNames;
+    public final int[] columnTypes;
+    public final int[] columnFlags;
 
     private final int mHashCode;
 
@@ -156,8 +158,8 @@ final class RowHeader {
             length += 4;
         }
 
-        for (int i=0; i<numColumns; i++) {
-            length += RowUtils.lengthStringUTF(columnNames[i]);
+        for (String columnName : columnNames) {
+            length += RowUtils.lengthStringUTF(columnName);
         }
 
         byte[] bytes = new byte[length];

@@ -21,8 +21,6 @@ import java.io.IOException;
 
 import java.lang.invoke.MethodHandle;
 
-import java.util.Objects;
-
 import org.cojen.dirmi.Pipe;
 
 import org.cojen.tupl.Entry;
@@ -74,16 +72,13 @@ final class PipeEntryScanner implements Scanner<Entry> {
         return mCharacteristics;
     }
 
+    @Override
     public Entry row() {
         return mEntry;
     }
 
-    public Entry step() throws IOException {
-        return doStep((Entry) null);
-    }
-
+    @Override
     public Entry step(Entry row) throws IOException {
-        Objects.requireNonNull(row);
         return doStep(row);
     }
 
@@ -124,6 +119,7 @@ final class PipeEntryScanner implements Scanner<Entry> {
         }
     }
 
+    @Override
     public void close() throws IOException {
         Pipe pipe = mPipe;
         if (pipe != null) {

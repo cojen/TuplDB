@@ -22,8 +22,8 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.*;
 
-import org.cojen.tupl.filter.Parser;
-import org.cojen.tupl.filter.Query;
+import org.cojen.tupl.rows.filter.Parser;
+import org.cojen.tupl.rows.filter.Query;
 
 /**
  * 

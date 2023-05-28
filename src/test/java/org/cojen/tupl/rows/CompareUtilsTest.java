@@ -28,7 +28,7 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
-import static org.cojen.tupl.filter.ColumnFilter.*;
+import static org.cojen.tupl.rows.filter.ColumnFilter.*;
 
 import static org.cojen.tupl.rows.ColumnInfo.*;
 

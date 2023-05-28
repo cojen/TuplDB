@@ -43,7 +43,7 @@ import org.cojen.tupl.Updater;
 
 import org.cojen.tupl.core.RowPredicateLock;
 
-import org.cojen.tupl.filter.ColumnFilter;
+import org.cojen.tupl.rows.filter.ColumnFilter;
 
 /**
  * Makes Table classes that extend BaseTableIndex for secondary index tables that can join to

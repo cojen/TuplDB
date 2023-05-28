@@ -25,13 +25,15 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.Cursor;
 
-import org.cojen.tupl.filter.AndFilter;
-import org.cojen.tupl.filter.ColumnToArgFilter;
-import org.cojen.tupl.filter.ColumnToColumnFilter;
-import org.cojen.tupl.filter.OrFilter;
-import org.cojen.tupl.filter.RowFilter;
-import org.cojen.tupl.filter.TrueFilter;
-import org.cojen.tupl.filter.Visitor;
+import org.cojen.tupl.rows.codec.ColumnCodec;
+
+import org.cojen.tupl.rows.filter.AndFilter;
+import org.cojen.tupl.rows.filter.ColumnToArgFilter;
+import org.cojen.tupl.rows.filter.ColumnToColumnFilter;
+import org.cojen.tupl.rows.filter.OrFilter;
+import org.cojen.tupl.rows.filter.RowFilter;
+import org.cojen.tupl.rows.filter.TrueFilter;
+import org.cojen.tupl.rows.filter.Visitor;
 
 /**
  * Generates code to filter and decode rows for a specific schema version. After passing this
@@ -40,7 +42,7 @@ import org.cojen.tupl.filter.Visitor;
  * @author Brian S O'Neill
  * @see FilteredScanMaker
  */
-class DecodeVisitor extends Visitor {
+class DecodeVisitor implements Visitor {
     private final MethodMaker mMaker;
     private Variable mRowVar, mKeyVar, mValueVar, mCursorVar;
     private final int mValueOffset;
@@ -146,6 +148,8 @@ class DecodeVisitor extends Visitor {
             mPass = mMaker.label();
             mFail = mMaker.label();
             initVars(true);
+            mHighestLocatedKey = -1;
+            mHighestLocatedValue = -1;
             filter.accept(this);
         }
     }
@@ -451,25 +455,34 @@ class DecodeVisitor extends Visitor {
                 // Key column.
                 highestNum = mHighestLocatedKey;
                 srcVar = mKeyVar;
-                if ((located = mLocatedKeys) != null) {
+                located = mLocatedKeys;
+                if (highestNum >= 0) {
                     break init;
                 }
-                mLocatedKeys = located = new LocatedColumn[mRowGen.info.keyColumns.size()];
+                if (located == null) {
+                    mLocatedKeys = located = new LocatedColumn[mRowGen.info.keyColumns.size()];
+                }
                 startOffset = 0;
+                mHighestLocatedKey = 0;
             } else {
                 // Value column.
                 colNum -= codecs.length;
                 highestNum = mHighestLocatedValue;
                 srcVar = mValueVar;
                 codecs = mValueCodecs;
-                if ((located = mLocatedValues) != null) {
+                located = mLocatedValues;
+                if (highestNum >= 0) {
                     break init;
                 }
-                mLocatedValues = located = new LocatedColumn[mRowGen.info.valueColumns.size()];
+                if (located == null) {
+                    mLocatedValues = located = new LocatedColumn[mRowGen.info.valueColumns.size()];
+                }
                 startOffset = mValueOffset;
+                mHighestLocatedValue = 0;
             }
             located[0] = new LocatedColumn();
             located[0].located(srcVar, mMaker.var(int.class).set(startOffset));
+            highestNum = 0;
         }
 
         if (colNum < highestNum) {

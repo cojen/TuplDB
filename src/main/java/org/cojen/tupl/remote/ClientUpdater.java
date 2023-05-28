@@ -19,8 +19,6 @@ package org.cojen.tupl.remote;
 
 import java.io.IOException;
 
-import java.util.Objects;
-
 import org.cojen.dirmi.RemoteException;
 
 import org.cojen.tupl.Updater;
@@ -80,7 +78,7 @@ final class ClientUpdater<R> implements Updater<R> {
     @Override
     public R step(R row) throws IOException {
         RemoteUpdater updater = mUpdater;
-        return updater == null ? null : doStep(updater, Objects.requireNonNull(row));
+        return updater == null ? null : doStep(updater, row);
     }
 
     private R doStep(RemoteUpdater updater, R row) throws IOException {
@@ -99,7 +97,9 @@ final class ClientUpdater<R> implements Updater<R> {
 
     @Override
     public R update(R row) throws IOException {
-        Objects.requireNonNull(row);
+        if (row == null) {
+            row = mHelper.newRow();
+        }
         return doUpdate(updater(), row);
     }
 
@@ -119,7 +119,9 @@ final class ClientUpdater<R> implements Updater<R> {
 
     @Override
     public R delete(R row) throws IOException {
-        Objects.requireNonNull(row);
+        if (row == null) {
+            row = mHelper.newRow();
+        }
         return doDelete(updater(), row);
     }
 

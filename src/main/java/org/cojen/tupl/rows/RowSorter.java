@@ -97,7 +97,7 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
             RowGen rowGen = info.rowGen();
             // This is a bit ugly -- creating a projection specification only to immediately
             // crack it open.
-            byte[] spec = DecodePartialMaker.makeFullSpec(rowGen, null, launcher.projection());
+            byte[] spec = DecodePartialMaker.makeFullSpec(rowGen, null, launcher.mProjection);
             launcher.mWriteRow = mh = WriteRowMaker.makeWriteRowHandle(info, spec);
         }
 
@@ -138,7 +138,7 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
 
             if (decoder == null) {
                 launcher.mDecoder = decoder = SortDecoderMaker
-                    .findDecoder(ext.mRowType, ext.mSortedInfo, launcher.projection());
+                    .findDecoder(ext.mRowType, ext.mSortedInfo, launcher.mProjection);
             }
 
             // Transfer all the undecoded rows into the sorter.
@@ -226,7 +226,7 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
 
             if (sortedInfo == null) {
                 launcher.mSortedInfo = sortedInfo = SortDecoderMaker.findSortedInfo
-                    (mRowType, launcher.mSpec, launcher.projection(), true);
+                    (mRowType, launcher.mSpec, launcher.mProjection, true);
             }
 
             mSortedInfo = sortedInfo;

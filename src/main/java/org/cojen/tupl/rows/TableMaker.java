@@ -37,6 +37,8 @@ import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.diag.QueryPlan;
 
+import org.cojen.tupl.rows.codec.ColumnCodec;
+
 /**
  * Base class for StaticTableMaker, DynamicTableMaker, and JoinedTableMaker.
  *
@@ -93,7 +95,7 @@ public class TableMaker {
      * @return null if no field is defined for the column (probably SchemaVersionColumnCodec)
      */
     protected static Field findField(Variable row, ColumnCodec codec) {
-        ColumnInfo info = codec.mInfo;
+        ColumnInfo info = codec.info;
         return info == null ? null : row.field(info.name);
     }
 
@@ -161,7 +163,7 @@ public class TableMaker {
             var baseCodecs = step == 0 ? rowGen.keyCodecs() : rowGen.valueCodecs();
 
             for (ColumnCodec codec : baseCodecs) {
-                if (columns.containsKey(codec.mInfo.name)) {
+                if (columns.containsKey(codec.info.name)) {
                     mask |= RowGen.stateFieldMask(num, 0b01); // clean state
                 }
                 if ((++num & 0b1111) == 0 || num >= maxNum) {
@@ -211,7 +213,7 @@ public class TableMaker {
             var baseCodecs = step == 0 ? mRowGen.keyCodecs() : mRowGen.valueCodecs();
 
             for (ColumnCodec codec : baseCodecs) {
-                if (!keyColumns.containsKey(codec.mInfo.name)) {
+                if (!keyColumns.containsKey(codec.info.name)) {
                     mask |= RowGen.stateFieldMask(num);
                 }
                 if ((++num & 0b1111) == 0 || num >= maxNum) {
@@ -261,7 +263,7 @@ public class TableMaker {
 
         if (mRowType == Entry.class && codecs.length == 1) {
             // No need to encode anything -- just return the byte[] reference directly.
-            mm.return_(mm.param(0).field(codecs[0].mInfo.name));
+            mm.return_(mm.param(0).field(codecs[0].info.name));
             return;
         }
 
@@ -323,7 +325,7 @@ public class TableMaker {
 
         if (mRowType == Entry.class && codecs.length == 1) {
             // No need to decode anything -- just copy the byte[] reference directly.
-            mm.param(0).field(codecs[0].mInfo.name).set(mm.param(1));
+            mm.param(0).field(codecs[0].info.name).set(mm.param(1));
             return;
         }
 
@@ -343,7 +345,7 @@ public class TableMaker {
         Variable offsetVar = mm.var(int.class).set(fixedOffset);
 
         for (ColumnCodec srcCodec : srcCodecs) {
-            String name = srcCodec.mInfo.name;
+            String name = srcCodec.info.name;
             ColumnInfo dstInfo = dstRowInfo.allColumns.get(name);
 
             if (dstInfo == null) {
@@ -438,7 +440,7 @@ public class TableMaker {
             offsetVars[i] = offsetVar.get();
             codec.decodeSkip(originalVar, offsetVar, null);
 
-            ColumnInfo info = codec.mInfo;
+            ColumnInfo info = codec.info;
             int num = columnNumbers.get(info.name);
 
             String sfName = rowGen.stateField(num);
@@ -475,7 +477,7 @@ public class TableMaker {
 
         for (int i=0; i<codecs.length; i++) {
             ColumnCodec codec = codecs[i];
-            ColumnInfo info = codec.mInfo;
+            ColumnInfo info = codec.info;
             int num = columnNumbers.get(info.name);
 
             Variable columnLenVar;
@@ -753,7 +755,7 @@ public class TableMaker {
 
         for (int i=0; i<codecs.length; i++) {
             ColumnCodec codec = codecs[i];
-            ColumnInfo info = codec.mInfo;
+            ColumnInfo info = codec.info;
             int num = columnNumbers.get(info.name);
 
             String sfName = rowGen.stateField(num);

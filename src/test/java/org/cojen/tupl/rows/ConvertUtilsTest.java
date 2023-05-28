@@ -19,7 +19,7 @@ package org.cojen.tupl.rows;
 
 import java.util.Arrays;
 
-import org.cojen.tupl.filter.ColumnFilter;
+import org.cojen.tupl.rows.filter.ColumnFilter;
 
 import static org.cojen.tupl.rows.ColumnInfo.*;
 

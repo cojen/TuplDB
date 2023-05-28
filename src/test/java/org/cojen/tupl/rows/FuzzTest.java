@@ -239,11 +239,7 @@ public class FuzzTest {
         assertNull(scanner.row());
         assertNull(scanner.step());
         assertNull(scanner.step(row));
-        try {
-            scanner.step(null);
-            fail();
-        } catch (NullPointerException e) {
-        }
+        assertNull(scanner.step(null));
         scanner.close();
 
         Updater updater = table.newUpdater(null);
@@ -259,7 +255,8 @@ public class FuzzTest {
         try {
             updater.update(null);
             fail();
-        } catch (NullPointerException e) {
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().contains("current"));
         }
         try {
             updater.delete();
@@ -270,7 +267,8 @@ public class FuzzTest {
         try {
             updater.delete(null);
             fail();
-        } catch (NullPointerException e) {
+        } catch (IllegalStateException e) {
+            assertTrue(e.getMessage().contains("current"));
         }
         updater.close();
     }

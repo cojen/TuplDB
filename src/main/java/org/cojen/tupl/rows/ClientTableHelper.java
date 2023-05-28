@@ -35,6 +35,8 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.Table;
 
+import org.cojen.tupl.rows.codec.ColumnCodec;
+
 /**
  * Generates classes which are used by the remote client. Although the class implements the
  * Table interface, not all methods are implemented. The basic "rowType" methods are
@@ -64,67 +66,67 @@ public abstract class ClientTableHelper<R> implements Table<R> {
     }
 
     /**
-     * @param pipe is recycled or closed as a side-effect
+     * @param pipe is recycled or closed as a side effect
      */
     public abstract boolean load(R row, Pipe pipe) throws IOException;
 
     /**
-     * @param pipe is recycled or closed as a side-effect
+     * @param pipe is recycled or closed as a side effect
      */
     public abstract boolean exists(R row, Pipe pipe) throws IOException;
 
     /**
-     * @param pipe is recycled or closed as a side-effect
+     * @param pipe is recycled or closed as a side effect
      */
     public abstract void store(R row, Pipe pipe) throws IOException;
 
     /**
-     * @param pipe is recycled or closed as a side-effect
+     * @param pipe is recycled or closed as a side effect
      */
     public abstract R exchange(R row, Pipe pipe) throws IOException;
 
     /**
-     * @param pipe is recycled or closed as a side-effect
+     * @param pipe is recycled or closed as a side effect
      */
     public abstract boolean insert(R row, Pipe pipe) throws IOException;
 
     /**
-     * @param pipe is recycled or closed as a side-effect
+     * @param pipe is recycled or closed as a side effect
      */
     public abstract boolean replace(R row, Pipe pipe) throws IOException;
 
     /**
-     * @param pipe is recycled or closed as a side-effect
+     * @param pipe is recycled or closed as a side effect
      */
     public abstract boolean update(R row, Pipe pipe) throws IOException;
 
     /**
-     * @param pipe is recycled or closed as a side-effect
+     * @param pipe is recycled or closed as a side effect
      */
     public abstract boolean merge(R row, Pipe pipe) throws IOException;
 
     /**
-     * @param pipe is recycled or closed as a side-effect
+     * @param pipe is recycled or closed as a side effect
      */
     public abstract boolean delete(R row, Pipe pipe) throws IOException;
 
     /**
-     * @param pipe is recycled or closed as a side-effect
+     * @param pipe is recycled or closed as a side effect
      */
     public abstract boolean updaterRow(R newRow, Pipe pipe) throws IOException;
 
     /**
-     * @param pipe is recycled or closed as a side-effect
+     * @param pipe is recycled or closed as a side effect
      */
     public abstract boolean updaterStep(R row, Pipe pipe) throws IOException;
 
     /**
-     * @param pipe is recycled or closed as a side-effect
+     * @param pipe is recycled or closed as a side effect
      */
     public abstract boolean updaterUpdate(R row, R newRow, Pipe pipe) throws IOException;
 
     /**
-     * @param pipe is recycled or closed as a side-effect
+     * @param pipe is recycled or closed as a side effect
      */
     public abstract boolean updaterDelete(R row, R newRow, Pipe pipe) throws IOException;
 
@@ -352,7 +354,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
             // caller must provide a full key up front.
 
             ColumnCodec[] codecs = rowGen.keyCodecs();
-            ColumnInfo tailInfo = codecs[codecs.length - 1].mInfo;
+            ColumnInfo tailInfo = codecs[codecs.length - 1].info;
 
             if (tailInfo.type != int.class && tailInfo.type != long.class) {
                 // Only int and long column type can be automatic.
@@ -360,7 +362,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
             }
 
             // Check for result code 2, which indicates that a key tail was generated. It must
-            // copied into the row for the caller to see it.
+            // be copied into the row for the caller to see it.
 
             Label noAutoKey = mm.label();
             resultVar.ifNe(2, noAutoKey);
@@ -500,7 +502,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
         var newRowVar = mm.param(1).cast(rowClass);
         var pipeVar = mm.param(2);
 
-        // Note that all of the key columns are encoded, even if they haven't changed. This is
+        // Note that all the key columns are encoded, even if they haven't changed. This is
         // the safe thing to do considering that modifications might have been made directly to
         // the client-side row object. The client-side key might not match the server-side key,
         // and so passing the key columns back ensures that the server-side updater acts upon
@@ -564,7 +566,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
         var offsetVar = mm.var(int.class).set(0);
 
         for (ColumnCodec codec : codecs) {
-            codec.decode(rowVar.field(codec.mInfo.name), bytesVar, offsetVar, null);
+            codec.decode(rowVar.field(codec.info.name), bytesVar, offsetVar, null);
         }
     }
 
@@ -642,8 +644,8 @@ public abstract class ClientTableHelper<R> implements Table<R> {
                 final int mask = 0xaaaa_aaaa; // is 0b1010...
                 int keysRemaining = keyCodecs.length;
 
-                for (int i=0; i<stateFieldNames.length; i++) {
-                    Variable stateVar = rowVar.field(stateFieldNames[i]).get();
+                for (String stateFieldName : stateFieldNames) {
+                    Variable stateVar = rowVar.field(stateFieldName).get();
 
                     if (keysRemaining < 16) {
                         var andMask = mask | ((0b100 << ((keysRemaining - 1) << 1)) - 1);
@@ -736,11 +738,10 @@ public abstract class ClientTableHelper<R> implements Table<R> {
         String stateFieldName = null;
         Variable stateField = null;
 
-        for (int i=0; i<codecs.length; i++) {
-            ColumnCodec codec = codecs[i];
+        for (ColumnCodec codec : codecs) {
             codec.encodePrepare();
 
-            ColumnInfo info = codec.mInfo;
+            ColumnInfo info = codec.info;
             int num = columnNumbers.get(info.name);
 
             String sfName = rowGen.stateField(num);
@@ -797,10 +798,8 @@ public abstract class ClientTableHelper<R> implements Table<R> {
         String stateFieldName = null;
         Variable stateField = null;
 
-        for (int i=0; i<codecs.length; i++) {
-            ColumnCodec codec = codecs[i];
-
-            ColumnInfo info = codec.mInfo;
+        for (ColumnCodec codec : codecs) {
+            ColumnInfo info = codec.info;
             int num = columnNumbers.get(info.name);
 
             String sfName = rowGen.stateField(num);

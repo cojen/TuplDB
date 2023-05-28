@@ -23,8 +23,8 @@ import java.util.function.Predicate;
 
 import org.cojen.tupl.core.Pair;
 
-import org.cojen.tupl.filter.Parser;
-import org.cojen.tupl.filter.RowFilter;
+import org.cojen.tupl.rows.filter.Parser;
+import org.cojen.tupl.rows.filter.RowFilter;
 
 /**
  * @see Table#predicate

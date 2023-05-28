@@ -32,6 +32,8 @@ import org.cojen.maker.Variable;
 
 import org.cojen.tupl.DatabaseException;
 
+import org.cojen.tupl.rows.codec.ColumnCodec;
+
 /**
  * Makes a call site for implementing the RowEvaluator.writeRow method.
  *

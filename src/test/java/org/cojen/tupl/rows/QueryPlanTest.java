@@ -96,11 +96,9 @@ public class QueryPlanTest {
                       new String[] {"+id"}, false, "id >= ?1", "id < ?2"),
                      plan);
 
-        // This test should fail when LoadOne is supported.
         plan = mTable.scannerPlan(null, "id == ?");
-        comparePlans(new QueryPlan.RangeScan
-                     (TestRow.class.getName(), "primary key",
-                      new String[] {"+id"}, false, "id >= ?1", "id <= ?1"),
+        comparePlans(new QueryPlan.LoadOne
+                     (TestRow.class.getName(), "primary key", new String[] {"+id"}, "id == ?1"),
                      plan);
 
         plan = mTable.viewPrimaryKey().scannerPlan(null, "a == ?");
@@ -846,9 +844,10 @@ public class QueryPlanTest {
                         new QueryPlan.PrimaryJoin
                         (TestRow.class.getName(), new String[] {"+id"},
                          new QueryPlan.Filter
-                         ("a != ?4 && id < ?5", new QueryPlan.RangeScan
+                         ("a != ?4 && id < ?5", new QueryPlan.LoadOne
                           (TestRow.class.getName(), "alternate key", new String[] {"+a"},
-                           false, "a >= ?3", "a <= ?3")))))), plan);
+                           "a == ?3"))))))
+                     , plan);
 
         results = mTable.newStream(null, query, "hello1", "hello2", 4, 1, 4).toList();
         assertEquals(4, results.size());

@@ -39,13 +39,15 @@ abstract class RefCache<K, V, H> extends ReferenceQueue<Object> {
 
     static {
         MethodHandle mh;
-        try {
-            var mt = MethodType.methodType(Thread.class, Runnable.class);
-            mh = MethodHandles.lookup().findStatic(Thread.class, "startVirtualThread", mt);
-            // Test if feature is enabled.
-            var t = (Thread) mh.invokeExact((Runnable) () -> { });
-        } catch (Throwable e) {
+        if (Runtime.version().feature() < 21) {
             mh = null;
+        } else {
+            try {
+                var mt = MethodType.methodType(Thread.class, Runnable.class);
+                mh = MethodHandles.lookup().findStatic(Thread.class, "startVirtualThread", mt);
+            } catch (Throwable e) {
+                throw new ExceptionInInitializerError(e);
+            }
         }
 
         START_VIRTUAL_THREAD = mh;

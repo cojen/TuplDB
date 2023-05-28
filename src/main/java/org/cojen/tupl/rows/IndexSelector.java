@@ -31,15 +31,15 @@ import java.util.NavigableSet;
 import java.util.Set;
 import java.util.TreeSet;
 
-import org.cojen.tupl.filter.AndFilter;
-import org.cojen.tupl.filter.ColumnFilter;
-import org.cojen.tupl.filter.ColumnToArgFilter;
-import org.cojen.tupl.filter.ColumnToColumnFilter;
-import org.cojen.tupl.filter.OrFilter;
-import org.cojen.tupl.filter.Query;
-import org.cojen.tupl.filter.RowFilter;
-import org.cojen.tupl.filter.TrueFilter;
-import org.cojen.tupl.filter.Visitor;
+import org.cojen.tupl.rows.filter.AndFilter;
+import org.cojen.tupl.rows.filter.ColumnFilter;
+import org.cojen.tupl.rows.filter.ColumnToArgFilter;
+import org.cojen.tupl.rows.filter.ColumnToColumnFilter;
+import org.cojen.tupl.rows.filter.OrFilter;
+import org.cojen.tupl.rows.filter.Query;
+import org.cojen.tupl.rows.filter.RowFilter;
+import org.cojen.tupl.rows.filter.TrueFilter;
+import org.cojen.tupl.rows.filter.Visitor;
 
 /**
  * Selects one or more indexes which are best suited for handling a query.
@@ -261,7 +261,7 @@ final class IndexSelector<R> {
         boolean copied = false;
 
         for (String name : orderBy.keySet()) {
-            if (filter.matchesOne(name)) {
+            if (filter.uniqueColumn(name)) {
                 if (!copied) {
                     orderBy = new OrderBy(orderBy);
                     copied = true;
@@ -450,7 +450,7 @@ final class IndexSelector<R> {
 
     Set<String> projection() {
         if (mProjection == null && mQuery.projection() != null) {
-            // Create a copy to reduce the memory footprint of QueryLauncher instances.
+            // Create a copy to reduce the memory footprint of SortedQueryLauncher instances.
             // FIXME: Consider defining a general intern set for this. Or define a projection
             // spec string instead, which gets passed to the SortDecoderMaker.
             mProjection = Set.of(mQuery.projection().keySet().toArray(String[]::new));

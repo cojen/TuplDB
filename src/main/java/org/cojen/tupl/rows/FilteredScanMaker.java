@@ -45,10 +45,12 @@ import org.cojen.tupl.core.RowPredicate;
 
 import org.cojen.tupl.diag.QueryPlan;
 
-import org.cojen.tupl.filter.ColumnToArgFilter;
-import org.cojen.tupl.filter.RowFilter;
-import org.cojen.tupl.filter.TrueFilter;
-import org.cojen.tupl.filter.Visitor;
+import org.cojen.tupl.rows.codec.ColumnCodec;
+
+import org.cojen.tupl.rows.filter.ColumnToArgFilter;
+import org.cojen.tupl.rows.filter.RowFilter;
+import org.cojen.tupl.rows.filter.TrueFilter;
+import org.cojen.tupl.rows.filter.Visitor;
 
 import org.cojen.tupl.io.Utils;
 
@@ -232,6 +234,8 @@ public class FilteredScanMaker<R> {
             encodeBound(ctorParams, mLowBound, true);
         }
 
+        boolean loadsOne = false;
+
         high: if (mHighBound != null) {
             matchCheck: if (mLowBound != null) {
                 var keyColumns = mRowGen.info.keyColumns.values().toArray(ColumnInfo[]::new);
@@ -240,6 +244,7 @@ public class FilteredScanMaker<R> {
                 }
                 // The low and high bounds are exactly the same, and so at most one row
                 // will be matched.
+                loadsOne = true;
                 if (ctorParams[1] != Boolean.TRUE) {
                     // Bounds are expected to be inclusive.
                     throw new AssertionError();
@@ -272,14 +277,14 @@ public class FilteredScanMaker<R> {
         }
 
         // Define two query plan methods, backed by a dynamic constant.
-        for (int i = 0b00; i <= 0b01; i += 0b01) {
-            String name = i == 0b00 ? "plan" : "planReverse";
+        for (int i = 0b000; i <= 0b001; i += 0b001) {
+            String name = i == 0b000 ? "plan" : "planReverse";
             MethodMaker mm = mFilterMaker.addMethod(QueryPlan.class, name).private_().static_();
 
-            int option = i + (mAlwaysJoin ? 0b10 : 0b00);
+            int options = i + (mAlwaysJoin ? 0b010 : 0b000);
 
             var condy = mm.var(FilteredScanMaker.class).condy
-                ("condyPlan", mRowType, mSecondaryDescriptor, option,
+                ("condyPlan", mRowType, mSecondaryDescriptor, options,
                  toString(mLowBound), toString(mHighBound),
                  toString(mFilter), toString(mJoinFilter));
 
@@ -289,7 +294,7 @@ public class FilteredScanMaker<R> {
         {
             // Specified by ScanControllerFactory.
             MethodMaker mm = mFilterMaker.addMethod
-                (QueryPlan.class, "plan", Object[].class).public_();
+                (QueryPlan.class, "plan", Object[].class).public_().varargs();
 
             Variable planVar = mm.var(QueryPlan.class);
             Label isReverse = mm.label();
@@ -312,11 +317,34 @@ public class FilteredScanMaker<R> {
             mm.return_(mm.new_(mFilterMaker, mm.this_()));
         }
 
-        if (!mDistinct) {
+        if (loadsOne) {
+            // Override the methods specified by ScanController and implemented by
+            // SingleScanController. Return the same value plus SIZED.
+            mFilterMaker.addMethod(long.class, "estimateSize").public_().return_(1L);
+            mFilterMaker.addMethod(int.class, "characteristics").public_()
+                .return_(NONNULL | ORDERED | CONCURRENT | DISTINCT | SIZED);
+
+            // Specified by ScanControllerFactory.
+            mFilterMaker.addMethod(boolean.class, "loadsOne").public_().return_(true);
+
+            // Specified by ScanControllerFactory.
+            MethodMaker mm = mFilterMaker.addMethod
+                (QueryPlan.class, "loadOnePlan", Object[].class).public_().varargs();
+            int options = 0b100 + (mAlwaysJoin ? 0b010 : 0b000);
+            String bound = toString(mLowBound).replace(">=", "==");
+            var condy = mm.var(FilteredScanMaker.class).condy
+                ("condyPlan", mRowType, mSecondaryDescriptor, options,
+                 bound, null, toString(mFilter), toString(mJoinFilter));
+            mm.return_(condy.invoke(QueryPlan.class, "loadOnePlan"));
+
+            // Specified by ScanController.
+            mm = mFilterMaker.addMethod(byte[].class, "oneKey").public_();
+            mm.return_(mm.invoke("lowBound"));
+        } else if (!mDistinct) {
             // Override the method specified by ScanController and implemented by
-            // SingleScanController. Return the same value except without DISTINCT.
-            MethodMaker mm = mFilterMaker.addMethod(int.class, "characteristics").public_();
-            mm.return_(NONNULL | ORDERED | CONCURRENT);
+            // SingleScanController. Return the same value minus DISTINCT.
+            mFilterMaker.addMethod(int.class, "characteristics").public_()
+                .return_(NONNULL | ORDERED | CONCURRENT);
         }
 
         // Define the factory methods.
@@ -688,7 +716,7 @@ public class FilteredScanMaker<R> {
     }
 
     /**
-     * Given a non-null primary key and value, fully or partially decodes the a row. The
+     * Given a non-null primary key and value, fully or partially decodes a row. The
      * generated method never returns null.
      *
      * public R decodeRow(R row, byte[] primaryKey, byte[] primaryValue)
@@ -701,7 +729,7 @@ public class FilteredScanMaker<R> {
         var primaryKeyVar = mm.param(1);
         var primaryValueVar = mm.param(2);
 
-        if (mJoinFilter == null && mJoinFilter == TrueFilter.THE) {
+        if (mJoinFilter == null || mJoinFilter == TrueFilter.THE) {
             // Can call the eval method because no redundant filtering will be applied.
             mm.return_(mm.invoke("joinedEval", primaryKeyVar, primaryValueVar, rowVar));
             return;
@@ -909,10 +937,10 @@ public class FilteredScanMaker<R> {
     }
 
     /**
-     * @param option bit 1: reverse, bit 2: joined
+     * @param options bit 1: reverse, bit 2: joined, bit 3: load one
      */
     public static QueryPlan condyPlan(MethodHandles.Lookup lookup, String name, Class type,
-                                      Class rowType, byte[] secondaryDesc, int option,
+                                      Class rowType, byte[] secondaryDesc, int options,
                                       String lowBoundStr, String highBoundStr,
                                       String filterStr, String joinFilterStr)
     {
@@ -930,9 +958,11 @@ public class FilteredScanMaker<R> {
         }
 
         QueryPlan plan;
-        boolean reverse = (option & 0b01) != 0;
+        boolean reverse = (options & 0b001) != 0;
 
-        if (lowBoundStr == null && highBoundStr == null) {
+        if ((options & 0b100) != 0) {
+            plan = new QueryPlan.LoadOne(rowInfo.name, which, rowInfo.keySpec(), lowBoundStr);
+        } else if (lowBoundStr == null && highBoundStr == null) {
             plan = new QueryPlan.FullScan(rowInfo.name, which, rowInfo.keySpec(), reverse);
         } else {
             plan = new QueryPlan.RangeScan(rowInfo.name, which, rowInfo.keySpec(), reverse,
@@ -943,7 +973,7 @@ public class FilteredScanMaker<R> {
             plan = new QueryPlan.Filter(filterStr, plan);
         }
 
-        if ((option & 0b10) != 0) {
+        if ((options & 0b010) != 0) {
             rowInfo = primaryRowInfo;
             plan = new QueryPlan.PrimaryJoin(rowInfo.name, rowInfo.keySpec(), plan);
 

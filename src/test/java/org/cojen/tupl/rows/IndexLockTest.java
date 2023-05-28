@@ -17,7 +17,11 @@
 
 package org.cojen.tupl.rows;
 
+import java.util.Arrays;
+
 import java.util.concurrent.TimeUnit;
+
+import java.util.concurrent.locks.LockSupport;
 
 import org.junit.*;
 import static org.junit.Assert.*;
@@ -659,6 +663,13 @@ public class IndexLockTest {
             replicaTable.newScanner(scanTxn, "id == ?", 5);
             fail();
         } catch (LockTimeoutException e) {
+            rowLockTimeout(e);
+        }
+
+        try {
+            replicaTable.newScanner(scanTxn, "id >= ? && id <= ?", 5, 5);
+            fail();
+        } catch (LockTimeoutException e) {
             predicateLockTimeout(e);
         }
 
@@ -1107,7 +1118,7 @@ public class IndexLockTest {
         teardown();
         mDatabase = Database.open(new DatabaseConfig()
                                   .directPageAccess(false)
-                                  .lockTimeout(2, TimeUnit.SECONDS));
+                                  .lockTimeout(5, TimeUnit.SECONDS));
 
         Index tableSource = mDatabase.openIndex("test");
         var table = (BaseTable<TestRow2>) tableSource.asTable(TestRow2.class);
@@ -1146,10 +1157,35 @@ public class IndexLockTest {
         // Blocked on secondary key lock until txn1 rolls back.
         Waiter w3 = start(() -> {
             var scanner = nameIx.newScanner(null, "name == ?", "name-2");
+            fail("Obtained scanner instance: " + scanner);
         }, "org.cojen.tupl.core.Lock", "tryLockShared");
+
+        StackTraceElement[] w3trace1 = w3.getStackTrace();
 
         // This causes w2 to acquire the primary key lock, and now w3 should be waiting on w2.
         txn1.reset();
+
+        // Wait for w3 to be waiting on something else.
+        wait: while (true) {
+            StackTraceElement[] w3trace2 = w3.getStackTrace();
+            if (!Arrays.equals(w3trace1, w3trace2)) {
+                for (StackTraceElement e : w3trace2) {
+                    if (e.getClassName().equals(LockSupport.class.getName())
+                        && e.getMethodName().equals("parkNanos"))
+                    {
+                        break wait;
+                    }
+                }
+            }
+
+            if (!w3.isAlive()) {
+                // FIXME: This thread sometimes terminates early for an unknown reason.
+                w3.await();
+                fail();
+            }
+
+            Thread.yield();
+        }
 
         w2.await();
 
@@ -1214,7 +1250,7 @@ public class IndexLockTest {
 
     private static void rowLockTimeout(LockTimeoutException e) throws LockTimeoutException {
         for (StackTraceElement elem : e.getStackTrace()) {
-            if (elem.getClassName().contains("BTreeCursor")) {
+            if (elem.getClassName().contains("BTree")) {
                 return;
             }
         }
@@ -1236,6 +1272,10 @@ public class IndexLockTest {
 
         void await() throws Exception {
             join();
+            check();
+        }
+
+        void check() throws Exception {
             Throwable failed = mFailed;
             if (failed != null) {
                 Utils.addLocalTrace(failed);
@@ -1253,16 +1293,34 @@ public class IndexLockTest {
         }
     }
 
-    static Waiter start(Task task) {
-        return TestUtils.startAndWaitUntilBlocked(new Waiter(task));
+    static Waiter start(Task task) throws Exception {
+        var w = new Waiter(task);
+        try {
+            return TestUtils.startAndWaitUntilBlocked(w);
+        } catch (Throwable e) {
+            w.check();
+            throw e;
+        }
     }
 
-    static Waiter start(Task task, Class where, String method) {
-        return TestUtils.startAndWaitUntilBlocked(new Waiter(task), where, method);
+    static Waiter start(Task task, Class where, String method) throws Exception {
+        var w = new Waiter(task);
+        try {
+            return TestUtils.startAndWaitUntilBlocked(w, where, method);
+        } catch (Throwable e) {
+            w.check();
+            throw e;
+        }
     }
 
-    static Waiter start(Task task, String where, String method) {
-        return TestUtils.startAndWaitUntilBlocked(new Waiter(task), where, method);
+    static Waiter start(Task task, String where, String method) throws Exception {
+        var w = new Waiter(task);
+        try {
+            return TestUtils.startAndWaitUntilBlocked(w, where, method);
+        } catch (Throwable e) {
+            w.check();
+            throw e;
+        }
     }
 
     @PrimaryKey("id")
