@@ -34,7 +34,7 @@ import org.cojen.tupl.util.Latch;
  *
  * @author Brian S O'Neill
  */
-abstract class RefCache<K, V, H> extends ReferenceQueue<Object> {
+abstract class RefCache<K, V, H> extends ReferenceQueue<Object> implements Runnable {
     private static final MethodHandle START_VIRTUAL_THREAD;
 
     static {
@@ -56,17 +56,7 @@ abstract class RefCache<K, V, H> extends ReferenceQueue<Object> {
     public RefCache() {
         if (START_VIRTUAL_THREAD != null) {
             try {
-                var t = (Thread) START_VIRTUAL_THREAD.invokeExact((Runnable) () -> {
-                    try {
-                        while (true) {
-                            Object ref = remove();
-                            synchronized (RefCache.this) {
-                                cleanup(ref);
-                            }
-                        }
-                    } catch (InterruptedException e) {
-                    }
-                });
+                var t = (Thread) START_VIRTUAL_THREAD.invokeExact((Runnable) this);
             } catch (Throwable e) {
             }
         }
@@ -187,4 +177,17 @@ abstract class RefCache<K, V, H> extends ReferenceQueue<Object> {
      * @param ref not null
      */
     protected abstract void cleanup(Object ref);
+
+    @Override
+    public final void run() {
+        try {
+            while (true) {
+                Object ref = remove();
+                synchronized (this) {
+                    cleanup(ref);
+                }
+            }
+        } catch (InterruptedException e) {
+        }
+    }
 }
