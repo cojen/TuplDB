@@ -19,8 +19,6 @@ package org.cojen.tupl.core;
 
 import java.io.IOException;
 
-import java.nio.ByteBuffer;
-
 import java.util.Arrays;
 
 import java.util.zip.CRC32;
@@ -724,16 +722,6 @@ public final class DirectPageOps {
             }
         }
         UNSAFE.copyMemory(null, srcPage + srcStart, dst, BYTE_ARRAY_OFFSET + dstStart, len);
-    }
-
-    static void p_copyFromBB(ByteBuffer src, final long dstPage, int dstStart, int len) {
-        src.limit(src.position() + len);
-        DirectAccess.ref(dstPage + dstStart, len).put(src);
-        src.limit(src.capacity());
-    }
-
-    static void p_copyToBB(final long srcPage, int srcStart, ByteBuffer dst, int len) {
-        dst.put(DirectAccess.ref(srcPage + srcStart, len));
     }
 
     public static void p_copy(final long srcPage, int srcStart,
