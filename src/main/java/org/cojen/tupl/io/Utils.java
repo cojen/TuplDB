@@ -381,7 +381,7 @@ public class Utils {
             return false;
         }
 
-        // http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=4724038
+        // https://bugs.openjdk.org/browse/JDK-4724038
 
         int deleteSupport = cDeleteSupport;
 
