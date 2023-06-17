@@ -113,6 +113,7 @@ abstract class ChecksumPageArray extends TransformedPageArray {
     }
 
     private static class Standard extends ChecksumPageArray {
+        // TODO: Design a better pooling mechanism. This creates a "leak" of buffers.
         private final ThreadLocal<BufRef> mBufRef;
 
         Standard(PageArray source, Supplier<Checksum> supplier) {
