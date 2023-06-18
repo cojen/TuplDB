@@ -76,7 +76,7 @@ public class UnreplicatedTest {
         Thread.yield();
 
         Index ix = null;
-        for (int i=0; i<10; i++) {
+        for (int i=0; i<100; i++) {
             try {
                 ix = mDb.openIndex("test");
                 break;
@@ -151,7 +151,7 @@ public class UnreplicatedTest {
         Thread.yield();
 
         Index ix = null;
-        for (int i=0; i<10; i++) {
+        for (int i=0; i<100; i++) {
             try {
                 ix = mDb.openIndex("test");
                 break;
