@@ -371,7 +371,15 @@ public class RowPredicateTest {
             mLock.addPredicate(txn2, pred1);
         });
 
-        assertEquals(Thread.State.TIMED_WAITING, w.getState());
+        check: {
+            for (int i=0; i<10; i++) {
+                if (w.getState() == Thread.State.TIMED_WAITING) {
+                    break check;
+                }
+                Thread.sleep(500);
+            }
+            assertEquals(Thread.State.TIMED_WAITING, w.getState());
+        }
 
         // Unblock the waiter.
         txn1.reset();
