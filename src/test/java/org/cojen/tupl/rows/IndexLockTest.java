@@ -1159,6 +1159,7 @@ public class IndexLockTest {
         table.delete(txn1, row);
 
         Transaction txn2 = mDatabase.newTransaction();
+        txn2.lockTimeout(20, TimeUnit.SECONDS);
 
         // Blocked on primary key lock until txn1 rolls back.
         Waiter w2 = start(() -> {
@@ -1199,6 +1200,9 @@ public class IndexLockTest {
                 // FIXME: This thread sometimes terminates early for an unknown reason.
                 // Obtained scanner instance: org.cojen.tupl.rows.AutoUnlockScanner@7f7791fe{filter: name == "name-2"}
                 w2.check();
+                if (!w2.isAlive()) {
+                    w2.await();
+                }
                 System.err.println(Arrays.toString(w2.getStackTrace()));
                 w3.await();
                 fail();
