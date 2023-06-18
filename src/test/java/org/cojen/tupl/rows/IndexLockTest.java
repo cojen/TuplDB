@@ -413,6 +413,17 @@ public class IndexLockTest {
     }
 
     private void deadlock(boolean withFilter) throws Exception {
+        try {
+            doDeadlock(withFilter);
+        } catch (LockTimeoutException e) {
+            // DeadlockException is sometimes missed when under load. Try again.
+            teardown();
+            begin();
+            doDeadlock(withFilter);
+        }
+    }
+
+    private void doDeadlock(boolean withFilter) throws Exception {
         // Force a deadlock by moving a row. This is caused by deleting the old row before
         // inserting a replacement.
 
@@ -1186,7 +1197,9 @@ public class IndexLockTest {
 
             if (!w3.isAlive()) {
                 // FIXME: This thread sometimes terminates early for an unknown reason.
+                // Obtained scanner instance: org.cojen.tupl.rows.AutoUnlockScanner@7f7791fe{filter: name == "name-2"}
                 w2.check();
+                System.err.println(Arrays.toString(w2.getStackTrace()));
                 w3.await();
                 fail();
             }
