@@ -1151,7 +1151,13 @@ public class IndexLockTest {
 
         // Blocked on primary key lock until txn1 rolls back.
         Waiter w2 = start(() -> {
-            tableSource.lockExclusive(txn2, pk2);
+            long start = System.currentTimeMillis();
+            try {
+                tableSource.lockExclusive(txn2, pk2);
+            } catch (Throwable e) {
+                long end = System.currentTimeMillis();
+                throw new Exception("lock failure; actual wait: " + (end - start) + "ms", e); 
+            }
         }, "org.cojen.tupl.core.Lock", "tryLockExclusive");
 
         // Blocked on secondary key lock until txn1 rolls back.
@@ -1180,6 +1186,7 @@ public class IndexLockTest {
 
             if (!w3.isAlive()) {
                 // FIXME: This thread sometimes terminates early for an unknown reason.
+                w2.check();
                 w3.await();
                 fail();
             }
