@@ -99,7 +99,7 @@ public class DeadlockTest {
                 // The first lock doesn't participate in deadlock.
                 locker.doLockExclusive(1, "xxx".getBytes(), timeout / 2);
                 locker.doLockExclusive(1, keys[0], timeout / 2);
-                fail();
+                fail(); // FIXME: fails under load
             } catch (DeadlockException e) {
                 // Deadlock observed, but this thread didn't create it.
                 assertFalse(e.isGuilty());
