@@ -1197,13 +1197,11 @@ public class IndexLockTest {
             }
 
             if (!w3.isAlive()) {
-                // FIXME: This thread sometimes terminates early for an unknown reason.
-                // Obtained scanner instance: org.cojen.tupl.rows.AutoUnlockScanner@7f7791fe{filter: name == "name-2"}
-                w2.check();
-                if (!w2.isAlive()) {
-                    w2.await();
+                // FIXME: This thread sometimes terminates early, sometimes due to a w2 timeout.
+                w2.await(10000);
+                if (w2.isAlive()) {
+                    System.err.println(Arrays.toString(w2.getStackTrace()));
                 }
-                System.err.println(Arrays.toString(w2.getStackTrace()));
                 w3.await();
                 fail();
             }
@@ -1296,6 +1294,11 @@ public class IndexLockTest {
 
         void await() throws Exception {
             join();
+            check();
+        }
+
+        void await(long timeout) throws Exception {
+            join(timeout);
             check();
         }
 
