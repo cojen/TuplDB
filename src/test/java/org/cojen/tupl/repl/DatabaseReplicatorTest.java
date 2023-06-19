@@ -806,6 +806,14 @@ public class DatabaseReplicatorTest {
 
         // Now the old leader is the leader again.
 
+        /* FIXME
+java.lang.AssertionError: expected:<org.cojen.tupl.core.LocalDatabase@254e75b5> but was:<org.cojen.tupl.core.LocalDatabase@1edbd700>
+	 at org.junit.Assert.fail(Assert.java:88)
+	 at org.junit.Assert.failNotEquals(Assert.java:743)
+	 at org.junit.Assert.assertEquals(Assert.java:118)
+	 at org.junit.Assert.assertEquals(Assert.java:144)
+	 at org.cojen.tupl.repl.DatabaseReplicatorTest.prepareTransferPingPong(DatabaseReplicatorTest.java:809)
+        */
         assertEquals(leaderDb, dbQueue.take());
         Transaction txn3 = txnQueue.take();
 

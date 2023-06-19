@@ -476,6 +476,7 @@ public class MessageReplicatorTest {
 
         for (int i=0; i<readers.length; i++) {
             while (true) {
+                // FIXME: Gets stuck here forever when tests are under load.
                 byte[] msg = readers[i].readMessage();
                 if (msg == null) {
                     readers[i].close();
