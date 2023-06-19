@@ -1146,12 +1146,24 @@ public class IndexLockTest {
             pk2 = c.key();
         }
 
+        byte[] expectPk2 = {
+            -128, 0, 0, 0, 0, 0, 0, 2
+        };
+
+        fastAssertArrayEquals(expectPk2, pk2);
+
         byte[] sk2;
         try (Cursor c = nameIxSouce.newCursor(null)) {
             c.first();
             c.next();
             sk2 = c.key();
         }
+
+        byte[] expectSk2 = {
+            112, 99, 111, 103, 47, 52, 1, -128, 0, 0, 0, 0, 0, 0, 2
+        };
+
+        fastAssertArrayEquals(expectSk2, sk2);
 
         Transaction txn1 = mDatabase.newTransaction();
         TestRow2 row = table.newRow();
@@ -1180,8 +1192,10 @@ public class IndexLockTest {
 
         StackTraceElement[] w3trace1 = w3.getStackTrace();
 
-        // This causes w2 to acquire the primary key lock, and now w3 should be waiting on w2.
+        // This causes w2 to acquire the primary key lock, and now w3 should be waiting on txn2.
         txn1.reset();
+        w2.await();
+        assertEquals(LockResult.OWNED_EXCLUSIVE, txn2.lockCheck(tableSource.id(), pk2));
 
         // Wait for w3 to be waiting on something else.
         wait: while (true) {
@@ -1197,19 +1211,13 @@ public class IndexLockTest {
             }
 
             if (!w3.isAlive()) {
-                // FIXME: This thread sometimes terminates early, sometimes due to a w2 timeout.
-                w2.await(10000);
-                if (w2.isAlive()) {
-                    System.err.println(Arrays.toString(w2.getStackTrace()));
-                }
+                // FIXME: This thread sometimes terminates early.
                 w3.await();
                 fail();
             }
 
             Thread.yield();
         }
-
-        w2.await();
 
         // This should cause a deadlock with w3, indicating that it still holds sk2.
         boolean deadlock = false;
