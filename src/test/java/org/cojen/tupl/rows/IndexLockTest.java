@@ -1184,18 +1184,35 @@ public class IndexLockTest {
             }
         }, "org.cojen.tupl.core.Lock", "tryLockExclusive");
 
+        // Blocked on primary key lock until w2 releases it. Intended to prevent w3 (below)
+        // from acquiring the pk2 lock before w2.
+        Waiter barrier = start(() -> {
+            Transaction txn3 = mDatabase.newTransaction();
+            txn3.lockTimeout(-1, null);
+            tableSource.lockExclusive(txn3, pk2);
+        }, "org.cojen.tupl.core.Lock", "tryLockExclusive");
+
         // Blocked on secondary key lock until txn1 rolls back.
         Waiter w3 = start(() -> {
             var scanner = nameIx.newScanner(null, "name == ?", "name-2");
-            fail("Obtained scanner instance: " + scanner);
+            fail("Obtained scanner instance: " + scanner + ", " + scanner.row());
         }, "org.cojen.tupl.core.Lock", "tryLockShared");
 
         StackTraceElement[] w3trace1 = w3.getStackTrace();
 
         // This causes w2 to acquire the primary key lock, and now w3 should be waiting on txn2.
         txn1.reset();
+
         w2.await();
         assertEquals(LockResult.OWNED_EXCLUSIVE, txn2.lockCheck(tableSource.id(), pk2));
+
+        barrier.interrupt();
+        try {
+            barrier.await();
+            fail();
+        } catch (LockInterruptedException e) {
+            // Expected.
+        }
 
         // Wait for w3 to be waiting on something else.
         wait: while (true) {
@@ -1211,7 +1228,6 @@ public class IndexLockTest {
             }
 
             if (!w3.isAlive()) {
-                // FIXME: This thread sometimes terminates early.
                 w3.await();
                 fail();
             }
