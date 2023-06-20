@@ -18,19 +18,11 @@
 package org.cojen.tupl.io;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 
 import java.util.EnumSet;
 
-import com.sun.jna.Native;
-import com.sun.jna.Pointer;
-
-import com.sun.jna.platform.win32.Kernel32;
-import com.sun.jna.platform.win32.Kernel32Util;
 import com.sun.jna.platform.win32.WinNT;
-
-import com.sun.jna.win32.W32APIOptions;
 
 /**
  * 
@@ -38,12 +30,6 @@ import com.sun.jna.win32.W32APIOptions;
  * @author Brian S O'Neill
  */
 class WindowsMappedPageArray extends MappedPageArray {
-    private static final Kernel32Ex cKernel;
-
-    static {
-        cKernel = Native.load("kernel32", Kernel32Ex.class, W32APIOptions.UNICODE_OPTIONS);
-    }
-
     private final File mFile;
     private final EnumSet<OpenOption> mOptions;
 
@@ -64,18 +50,7 @@ class WindowsMappedPageArray extends MappedPageArray {
         mOptions = options;
 
         if (file == null) {
-            long mappingPtr = cKernel.VirtualAlloc
-                (0, // lpAddress
-                 pageSize * pageCount,
-                 0x1000 | 0x2000, // MEM_COMMIT | MEM_RESERVE
-                 0x04); // PAGE_READWRITE
- 
-            if (mappingPtr == 0) {
-                int error = cKernel.GetLastError();
-                throw new IOException(Kernel32Util.formatMessage(error));
-            }
-
-            setMappingPtr(mappingPtr);
+            setMappingPtr(WindowsFileIO.valloc(pageSize * pageCount));
 
             mFileHandle = null;
             mMappingHandle = null;
@@ -85,81 +60,16 @@ class WindowsMappedPageArray extends MappedPageArray {
             return;
         }
 
-        String path = file.getPath();
-
-        mEmpty = file.length() == 0;
         mNonDurable = options.contains(OpenOption.NON_DURABLE);
+        mEmpty = file.length() == 0;
 
-        int access = WinNT.GENERIC_READ;
-        boolean readOnly = options.contains(OpenOption.READ_ONLY);
-        if (!readOnly) {
-            access |= WinNT.GENERIC_WRITE;
-        }
+        WindowsFileIO.MappedFile mf =
+            WindowsFileIO.mapFile(file, 0, pageSize * pageCount, options, false);
 
-        int create = options.contains(OpenOption.CREATE) ? WinNT.OPEN_ALWAYS : WinNT.OPEN_EXISTING;
+        mFileHandle = mf.fileHandle();
+        mMappingHandle = mf.mappingHandle();
 
-        int flags;
-        if (mNonDurable) {
-            flags = WinNT.FILE_ATTRIBUTE_TEMPORARY;
-        } else {
-            flags = WinNT.FILE_ATTRIBUTE_NORMAL;
-        }
-
-        if (options.contains(OpenOption.RANDOM_ACCESS)) {
-            flags |= WinNT.FILE_FLAG_RANDOM_ACCESS;
-        }
-
-        WinNT.HANDLE hFile = cKernel.CreateFile
-            (path,
-             access,
-             0, // no sharing
-             null, // security attributes
-             create,
-             flags,
-             null // template file
-             );
-
-        if (hFile == null || hFile == WinNT.INVALID_HANDLE_VALUE) {
-            int error = cKernel.GetLastError();
-            throw new FileNotFoundException(Kernel32Util.formatMessage(error));
-        }
-
-        long mappingSize = pageSize * pageCount;
-
-        WinNT.HANDLE hMapping = cKernel.CreateFileMapping
-            (hFile,
-             null, // security attributes
-             readOnly ? WinNT.PAGE_READONLY : WinNT.PAGE_READWRITE,
-             (int) (mappingSize >>> 32),
-             (int) mappingSize,
-             null // no name
-             );
-
-        if (hMapping == null || hMapping == WinNT.INVALID_HANDLE_VALUE) {
-            int error = cKernel.GetLastError();
-            closeHandle(hFile);
-            throw toException(error);
-        }
-
-        Pointer ptr = cKernel.MapViewOfFile
-            (hMapping,
-             readOnly ? WinNT.SECTION_MAP_READ : WinNT.SECTION_MAP_WRITE,
-             0, // offset high
-             0, // offset low
-             mappingSize
-             );
-
-        if (ptr == null) {
-            int error = cKernel.GetLastError();
-            closeHandle(hMapping);
-            closeHandle(hFile);
-            throw toException(error);
-        }
-
-        mFileHandle = hFile;
-        mMappingHandle = hMapping;
-
-        setMappingPtr(Pointer.nativeValue(ptr));
+        setMappingPtr(mf.addr());
     }
 
     @Override
@@ -180,69 +90,25 @@ class WindowsMappedPageArray extends MappedPageArray {
         return pa;
     }
 
+    @Override
     void doSync(long mappingPtr, boolean metadata) throws IOException {
         if (!mNonDurable) {
-            if (!cKernel.FlushViewOfFile(mappingPtr, super.pageCount() * pageSize())) {
-                throw toException(cKernel.GetLastError());
-            }
-            fsync();
+            WindowsFileIO.flushMapping(mFileHandle, mappingPtr, super.pageCount() * pageSize());
         }
         mEmpty = false;
     }
 
+    @Override
     void doSyncPage(long mappingPtr, long index) throws IOException {
         if (!mNonDurable) {
             int pageSize = pageSize();
-            if (!cKernel.FlushViewOfFile(mappingPtr + index * pageSize, pageSize)) {
-                throw toException(cKernel.GetLastError());
-            }
-            fsync();
+            WindowsFileIO.flushMapping(mFileHandle, mappingPtr + index * pageSize, pageSize);
         }
         mEmpty = false;
     }
 
+    @Override
     void doClose(long mappingPtr) throws IOException {
-        if (mFileHandle == null) {
-            if (!cKernel.VirtualFree(mappingPtr, 0, 0x8000)) { // MEM_RELEASE
-                int error = cKernel.GetLastError();
-                throw new IOException(Kernel32Util.formatMessage(error)); 
-            }
-        } else {
-            cKernel.UnmapViewOfFile(new Pointer(mappingPtr));
-            closeHandle(mMappingHandle);
-            closeHandle(mFileHandle);
-        }
-    }
-
-    private static IOException toException(int error) {
-        return new IOException(Kernel32Util.formatMessage(error));
-    }
-
-    private static void closeHandle(WinNT.HANDLE handle) throws IOException {
-        cKernel.CloseHandle(handle);
-    }
-
-    private void fsync() throws IOException {
-        if (mFileHandle != null) {
-            // Note: Win32 doesn't have a flush metadata flag.
-            if (!cKernel.FlushFileBuffers(mFileHandle)) {
-                throw toException(cKernel.GetLastError());
-            }
-        }
-    }
-
-    public static interface Kernel32Ex extends Kernel32 {
-        // Inherited method only supports 32-bit mapping size.
-        Pointer MapViewOfFile(WinNT.HANDLE hFileMappingObject,
-                              int dwDesiredAccess,
-                              int dwFileOffsetHigh,
-                              int dwFileOffsetLow,
-                              long dwNumberOfBytesToMap);
-
-        boolean FlushViewOfFile(long baseAddress, long numberOfBytesToFlush);
-
-        long VirtualAlloc(long lpAddress, long dwSize, int flAllocationType, int flProtect);
-
-        boolean VirtualFree(long lpAddress, long dwSize, int dwFreeType);
+        WindowsFileIO.closeMappedFile(mMappingHandle, mFileHandle, mappingPtr);
     }
 }

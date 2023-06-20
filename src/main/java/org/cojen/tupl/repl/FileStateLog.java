@@ -160,6 +160,7 @@ final class FileStateLog extends Latch implements StateLog {
 
         boolean mdFileExists = mMetadataFile.size() != 0;
 
+        // FIXME: Don't use NIO mapped buffer. It's buggy.
         mMetadataBuffer = mMetadataFile.map(FileChannel.MapMode.READ_WRITE, 0, METADATA_FILE_SIZE);
         mMetadataBuffer.order(ByteOrder.LITTLE_ENDIAN);
 

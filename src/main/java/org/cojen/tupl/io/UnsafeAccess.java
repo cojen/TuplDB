@@ -88,16 +88,16 @@ public class UnsafeAccess {
      * Allocate native memory, zero filled.
      */
     public static long calloc(int size, boolean aligned) {
-        long ptr = alloc(size, aligned);
-        UNSAFE.setMemory(ptr, size, (byte) 0);
-        return ptr;
+        long addr = alloc(size, aligned);
+        UNSAFE.setMemory(addr, size, (byte) 0);
+        return addr;
     }
 
     /**
      * Fill a range of native memory.
      */
-    public static void fill(long ptr, long len, byte value) {
-        UNSAFE.setMemory(ptr, len, value);
+    public static void fill(long addr, long len, byte value) {
+        UNSAFE.setMemory(addr, len, value);
     }
 
     /**
@@ -124,8 +124,8 @@ public class UnsafeAccess {
     /**
      * Free allocated native memory.
      */
-    public static void free(long ptr) {
-        UNSAFE.freeMemory(ptr);
+    public static void free(long addr) {
+        UNSAFE.freeMemory(addr);
     }
 
     static class JNA {
@@ -133,7 +133,8 @@ public class UnsafeAccess {
             Native.register(Platform.C_LIBRARY_NAME);
         }
 
-        // TODO: Define variant that works on Windows.
+        // TODO: Define a variant that works on Windows. Call WindowsFileIO.valloc, but must
+        // also call WindowsFileIO.vfree.
         static native long valloc(int size);
     }
 }

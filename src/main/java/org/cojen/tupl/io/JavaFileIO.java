@@ -42,8 +42,8 @@ import static org.cojen.tupl.io.Utils.*;
  *
  * @author Brian S O'Neill
  */
-final class JavaFileIO extends AbstractFileIO {
-    private final File mFile;
+class JavaFileIO extends AbstractFileIO {
+    protected final File mFile;
     private final String mMode;
 
     // Access these file pool fields using this latch.
@@ -114,12 +114,17 @@ final class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    public boolean isDirectIO() {
+    public final boolean isDirectIO() {
         return false;
     }
 
     @Override
-    protected long doLength() throws IOException {
+    protected final File file() {
+        return mFile;
+    }
+
+    @Override
+    protected final long doLength() throws IOException {
         FileAccess file = accessFile();
         try {
             return file.length();
@@ -129,7 +134,7 @@ final class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected void doSetLength(long length) throws IOException {
+    protected final void doSetLength(long length) throws IOException {
         FileAccess file = accessFile();
         try {
             file.setLength(length);
@@ -139,7 +144,7 @@ final class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected void doRead(long pos, byte[] buf, int offset, int length) throws IOException {
+    protected final void doRead(long pos, byte[] buf, int offset, int length) throws IOException {
         try {
             FileAccess file = accessFile();
             try {
@@ -154,14 +159,14 @@ final class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected void doRead(long pos, byte[] buf, int offset, int length, ByteBuffer tail)
+    protected final void doRead(long pos, byte[] buf, int offset, int length, ByteBuffer tail)
         throws IOException
     {
         doRead(pos, ByteBuffer.wrap(buf, offset, length), tail);
     }
 
     @Override
-    protected void doRead(long pos, ByteBuffer bb) throws IOException {
+    protected final void doRead(long pos, ByteBuffer bb) throws IOException {
         boolean interrupted = false;
 
         FileAccess file = accessFile();
@@ -193,7 +198,7 @@ final class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected void doRead(long pos, ByteBuffer bb, ByteBuffer tail) throws IOException {
+    protected final void doRead(long pos, ByteBuffer bb, ByteBuffer tail) throws IOException {
         boolean interrupted = false;
 
         FileAccess file = accessFile();
@@ -234,7 +239,7 @@ final class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected void doWrite(long pos, byte[] buf, int offset, int length) throws IOException {
+    protected final void doWrite(long pos, byte[] buf, int offset, int length) throws IOException {
         FileAccess file = accessFile();
         try {
             file.seek(pos);
@@ -245,14 +250,14 @@ final class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected void doWrite(long pos, byte[] buf, int offset, int length, ByteBuffer tail)
+    protected final void doWrite(long pos, byte[] buf, int offset, int length, ByteBuffer tail)
         throws IOException
     {
         doWrite(pos, ByteBuffer.wrap(buf, offset, length), tail);
     }
 
     @Override
-    protected void doWrite(long pos, ByteBuffer bb) throws IOException {
+    protected final void doWrite(long pos, ByteBuffer bb) throws IOException {
         boolean interrupted = false;
 
         FileAccess file = accessFile();
@@ -280,7 +285,7 @@ final class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected void doWrite(long pos, ByteBuffer bb, ByteBuffer tail) throws IOException {
+    protected final void doWrite(long pos, ByteBuffer bb, ByteBuffer tail) throws IOException {
         boolean interrupted = false;
 
         FileAccess file = accessFile();
@@ -312,11 +317,11 @@ final class JavaFileIO extends AbstractFileIO {
 
     @Override
     protected Mapping openMapping(boolean readOnly, long pos, int size) throws IOException {
-        return Mapping.open(mFile, readOnly, pos, size);
+        return new NioMapping(mFile, readOnly, pos, size);
     }
 
     @Override
-    protected void reopen() throws IOException {
+    protected final void reopen() throws IOException {
         // Caller should hold mAccessLock exclusively.
 
         IOException ex = null;
@@ -348,7 +353,7 @@ final class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected void doSync(boolean metadata) throws IOException {
+    protected final void doSync(boolean metadata) throws IOException {
         boolean interrupted = false;
 
         FileAccess file = accessFile();
@@ -373,7 +378,7 @@ final class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    public void close(Throwable cause) throws IOException {
+    public final void close(Throwable cause) throws IOException {
         IOException ex = null;
 
         mAccessLock.acquireExclusive();
@@ -508,7 +513,7 @@ final class JavaFileIO extends AbstractFileIO {
         }
     }
 
-    static class FileAccess extends RandomAccessFile {
+    final static class FileAccess extends RandomAccessFile {
         private long mPosition;
 
         FileAccess(File file, String mode) throws IOException {

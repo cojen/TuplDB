@@ -121,6 +121,11 @@ final class PosixFileIO extends AbstractFileIO {
     }
 
     @Override
+    protected final File file() {
+        return mFile;
+    }
+
+    @Override
     protected long doLength() throws IOException {
         return lseekEndFd(fd(), 0);
     }
@@ -705,16 +710,16 @@ final class PosixFileIO extends AbstractFileIO {
         return ptr;
     }
 
-    static void msyncAddr(long addr, long length) throws IOException {
-        long endAddr = addr + length;
-        addr = (addr / PAGE_SIZE) * PAGE_SIZE;
-        if (msync(addr, endAddr - addr, 4) == -1) { // flags = MS_SYNC
+    static void msyncPtr(long ptr, long length) throws IOException {
+        long endPtr = ptr + length;
+        ptr = (ptr / PAGE_SIZE) * PAGE_SIZE;
+        if (msync(ptr, endPtr - ptr, 4) == -1) { // flags = MS_SYNC
             throw lastErrorToException();
         }
     }
 
-    static void munmapAddr(long addr, long length) throws IOException {
-        if (munmap(addr, length) == -1) {
+    static void munmapPtr(long ptr, long length) throws IOException {
+        if (munmap(ptr, length) == -1) {
             throw lastErrorToException();
         }
     }

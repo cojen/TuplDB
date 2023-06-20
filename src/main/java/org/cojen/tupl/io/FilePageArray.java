@@ -155,8 +155,16 @@ public class FilePageArray extends PageArray {
     @Override
     public void sync(boolean metadata) throws IOException {
         mFio.sync(metadata);
-        // If mapped, now is a good time to remap if length has changed.
-        mFio.remap();
+        try {
+            // If mapped, now is a good time to remap if the length has changed.
+            mFio.remap();
+        } catch (IOException e) {
+            if (mFio instanceof AbstractFileIO afio) {
+                Utils.uncaught(new IOException("Remap failed: " + afio.file(), e));
+            } else {
+                throw e;
+            }
+        }
     }
 
     @Override

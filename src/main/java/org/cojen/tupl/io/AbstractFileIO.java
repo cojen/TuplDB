@@ -20,6 +20,7 @@ package org.cojen.tupl.io;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
+import java.io.File;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
@@ -830,6 +831,8 @@ abstract class AbstractFileIO extends FileIO {
             mAccessLock.releaseExclusive();
         }
     }
+
+    protected abstract File file();
 
     protected abstract long doLength() throws IOException;
 
