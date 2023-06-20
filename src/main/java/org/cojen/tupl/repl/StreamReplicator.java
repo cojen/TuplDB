@@ -120,13 +120,11 @@ public interface StreamReplicator extends Replicator {
 
             log = FileStateLog.open(base);
 
-            return Controller.open(config.mEventListener,
+            return Controller.open(config,
                                    log, groupToken1, groupToken2,
                                    new File(base.getPath() + ".group"), 
-                                   config.mSocketFactory,
-                                   localAddress, listenAddress, config.mLocalRole,
-                                   seeds, localSocket,
-                                   config.mProxyWrites, config.mChecksumSockets);
+                                   localAddress, listenAddress,
+                                   seeds, localSocket);
         } catch (Throwable e) {
             closeQuietly(localSocket);
             closeQuietly(log);

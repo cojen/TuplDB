@@ -77,7 +77,6 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private static final int SYNC_RATE_HIGH_MILLIS = 3000;
     private static final int COMMIT_CONFLICT_REPORT_MILLIS = 60000;
     private static final int CONNECTING_THRESHOLD_MILLIS = 10000;
-    private static final int LAG_TIMEOUT_MILLIS = 1000;
 
     // Smallest validation value is 1, but boost it to avoiding stalling too soon. If the local
     // member is the group leader and hasn't observed the commit position advancing over this
@@ -101,6 +100,8 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private final LatchCondition mSyncCommitCondition;
 
     private final boolean mProxyWrites;
+
+    private final long mFailoverLagTimeoutMillis;
 
     private GroupFile mGroupFile;
 
@@ -156,19 +157,17 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private int mCandidateStall;
 
     /**
-     * @param factory optional
      * @param localSocket optional; used for testing
      */
-    static Controller open(EventListener eventListener,
+    static Controller open(ReplicatorConfig config,
                            StateLog log, long groupToken1, long groupToken2, File groupFile,
-                           SocketFactory factory,
                            SocketAddress localAddress, SocketAddress listenAddress,
-                           Role localRole, Set<SocketAddress> seeds, ServerSocket localSocket,
-                           boolean proxyWrites, boolean writeCRCs)
+                           Set<SocketAddress> seeds, ServerSocket localSocket)
         throws IOException
     {
+        Role localRole = config.mLocalRole;
         boolean canCreate = seeds.isEmpty() && localRole == Role.NORMAL;
-        GroupFile gf = GroupFile.open(eventListener, groupFile, localAddress, canCreate);
+        GroupFile gf = GroupFile.open(config.mEventListener, groupFile, localAddress, canCreate);
 
         if (gf == null && seeds.isEmpty()) {
             throw new JoinException
@@ -176,8 +175,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                  Role.NORMAL + " to create the group, but configured role is: " + localRole);
         }
 
-        var con = new Controller
-            (eventListener, log, groupToken1, groupToken2, gf, factory, proxyWrites, writeCRCs);
+        var con = new Controller(config, log, groupToken1, groupToken2, gf);
 
         try {
             con.init(groupFile, localAddress, listenAddress, localRole, seeds, localSocket);
@@ -192,19 +190,20 @@ final class Controller extends Latch implements StreamReplicator, Channel {
         return con;
     }
 
-    private Controller(EventListener eventListener,
+    private Controller(ReplicatorConfig config,
                        StateLog log, long groupToken1, long groupToken2,
-                       GroupFile gf, SocketFactory factory,
-                       boolean proxyWrites, boolean writeCRCs)
+                       GroupFile gf)
     {
-        mEventListener = eventListener;
+        mEventListener = config.mEventListener;
         mStateLog = log;
         mScheduler = new Scheduler();
-        mChanMan = new ChannelManager(factory, mScheduler, groupToken1, groupToken2,
-                                      gf == null ? 0 : gf.groupId(), writeCRCs, this::uncaught);
+        mChanMan = new ChannelManager(config.mSocketFactory, mScheduler, groupToken1, groupToken2,
+                                      gf == null ? 0 : gf.groupId(), config.mChecksumSockets,
+                                      this::uncaught);
         mGroupFile = gf;
         mSyncCommitCondition = new LatchCondition();
-        mProxyWrites = proxyWrites;
+        mProxyWrites = config.mProxyWrites;
+        mFailoverLagTimeoutMillis = config.mFailoverLagTimeoutMillis;
     }
 
     private void init(File groupFile,
@@ -2277,11 +2276,11 @@ final class Controller extends Latch implements StreamReplicator, Channel {
             return;
         }
 
-        if (position > 0) {
+        if (position > 0 && mFailoverLagTimeoutMillis >= 0) {
             // Schedule a task which forces a failover if a writer isn't created in time. This
             // implies that the member is lagging behind and shouldn't be the leader.
             ReplWriter old = mLeaderReplWriter; // expected to be null
-            mScheduler.scheduleMillis(() -> doFailover(old, true), LAG_TIMEOUT_MILLIS);
+            mScheduler.scheduleMillis(() -> doFailover(old, true), mFailoverLagTimeoutMillis);
         }
 
         if (!mRemovingStaleMembers) {
