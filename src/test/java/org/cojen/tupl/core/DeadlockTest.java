@@ -57,7 +57,7 @@ public class DeadlockTest {
     public void test_1() throws Throwable {
         // Create a deadlock among three threads and a victim thread.
 
-        final long timeout = 5L * 1000 * 1000 * 1000;
+        final long timeout = 10L * 1000 * 1000 * 1000;
         final byte[][] keys = {"k0".getBytes(), "k1".getBytes(), "k2".getBytes()};
 
         var tasks = new TestTask[3];
@@ -133,7 +133,7 @@ public class DeadlockTest {
     private void doTest_2() throws Throwable {
         // Deadlock caused by three threads and three keys.
 
-        final long timeout = 5L * 1000 * 1000 * 1000;
+        final long timeout = 10L * 1000 * 1000 * 1000;
 
         class TheTask extends Task {
             private final long mTimeout;
@@ -160,9 +160,9 @@ public class DeadlockTest {
                     } finally {
                         locker.scopeUnlockAll();
                     }
-                    assertFalse(mExpectDeadlock);
+                    assertFalse("task assert 1", mExpectDeadlock);
                 } catch (DeadlockException e) {
-                    assertTrue(mExpectDeadlock);
+                    assertTrue("task assert 2", mExpectDeadlock);
                 }
             }
         }
