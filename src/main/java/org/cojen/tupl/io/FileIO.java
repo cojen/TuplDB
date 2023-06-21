@@ -57,7 +57,7 @@ public abstract class FileIO implements CauseCloseable {
     public static FileIO open(File file, EnumSet<OpenOption> options)
         throws IOException
     {
-        return open(file, options, 32);
+        return open(file, options, -4); // 4 * number of available processors
     }
 
     public static FileIO open(File file, EnumSet<OpenOption> options, int openFileCount)
