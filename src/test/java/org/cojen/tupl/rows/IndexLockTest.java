@@ -1135,7 +1135,7 @@ public class IndexLockTest {
         var table = (BaseTable<TestRow2>) tableSource.asTable(TestRow2.class);
         var nameIx = (BaseTable<TestRow2>) table.viewSecondaryIndex("name");
 
-        Index nameIxSouce = nameIx.mSource;
+        Index nameIxSource = nameIx.mSource;
 
         fill(table, 1, 3);
 
@@ -1146,113 +1146,64 @@ public class IndexLockTest {
             pk2 = c.key();
         }
 
-        byte[] expectPk2 = {
-            -128, 0, 0, 0, 0, 0, 0, 2
-        };
-
-        fastAssertArrayEquals(expectPk2, pk2);
-
         byte[] sk2;
-        try (Cursor c = nameIxSouce.newCursor(null)) {
+        try (Cursor c = nameIxSource.newCursor(null)) {
             c.first();
             c.next();
             sk2 = c.key();
         }
 
-        byte[] expectSk2 = {
-            112, 99, 111, 103, 47, 52, 1, -128, 0, 0, 0, 0, 0, 0, 2
-        };
-
-        fastAssertArrayEquals(expectSk2, sk2);
-
+        // Lock the secondary key.
         Transaction txn1 = mDatabase.newTransaction();
-        TestRow2 row = table.newRow();
-        row.id(2);
-        table.delete(txn1, row);
+        nameIxSource.lockExclusive(txn1, sk2);
 
-        Transaction txn2 = mDatabase.newTransaction();
-        txn2.lockTimeout(20, TimeUnit.SECONDS);
-
-        // Blocked on primary key lock until txn1 rolls back.
-        Waiter w2 = start(() -> {
-            long start = System.currentTimeMillis();
-            try {
-                tableSource.lockExclusive(txn2, pk2);
-            } catch (Throwable e) {
-                long end = System.currentTimeMillis();
-                throw new Exception("lock failure; actual wait: " + (end - start) + "ms", e); 
-            }
-        }, "org.cojen.tupl.core.Lock", "tryLockExclusive");
-
-        // Blocked on primary key lock until w2 releases it. Intended to prevent w3 (below)
-        // from acquiring the pk2 lock before w2.
-        Waiter barrier = start(() -> {
-            Transaction txn3 = mDatabase.newTransaction();
-            txn3.lockTimeout(-1, null);
-            tableSource.lockExclusive(txn3, pk2);
-        }, "org.cojen.tupl.core.Lock", "tryLockExclusive");
-
-        // Blocked on secondary key lock until txn1 rolls back.
-        Waiter w3 = start(() -> {
+        // Should be blocked on the secondary key lock until txn1 is reset.
+        Waiter w1 = start(() -> {
             var scanner = nameIx.newScanner(null, "name == ?", "name-2");
             fail("Obtained scanner instance: " + scanner + ", " + scanner.row());
         }, "org.cojen.tupl.core.Lock", "tryLockShared");
 
-        StackTraceElement[] w3trace1 = w3.getStackTrace();
+        assertEquals(Thread.State.TIMED_WAITING, w1.getState());
 
-        // This causes w2 to acquire the primary key lock, and now w3 should be waiting on txn2.
+        // Lock the primary key.
+        Transaction txn2 = mDatabase.newTransaction();
+        tableSource.lockExclusive(txn2, pk2);
+
+        // Release the secondary key lock, allowing w1 to proceed.
         txn1.reset();
 
-        w2.await();
-        assertEquals(LockResult.OWNED_EXCLUSIVE, txn2.lockCheck(tableSource.id(), pk2));
-
-        barrier.interrupt();
-        try {
-            barrier.await();
-            fail();
-        } catch (LockInterruptedException e) {
-            // Expected.
-        }
-
-        // Wait for w3 to be waiting on something else.
-        wait: while (true) {
-            StackTraceElement[] w3trace2 = w3.getStackTrace();
-            if (!Arrays.equals(w3trace1, w3trace2)) {
-                for (StackTraceElement e : w3trace2) {
-                    if (e.getClassName().equals(LockSupport.class.getName())
-                        && e.getMethodName().equals("parkNanos"))
-                    {
-                        break wait;
-                    }
+        // Wait for w1 to acquire the secondary key lock.
+        while (true) {
+            Transaction txn3 = mDatabase.newTransaction();
+            try {
+                if (nameIxSource.tryLockExclusive(txn3, sk2, 0) == LockResult.TIMED_OUT_LOCK) {
+                    break;
                 }
+                Thread.yield();
+            } finally {
+                txn3.reset();
             }
-
-            if (!w3.isAlive()) {
-                w3.await();
-                fail();
-            }
-
-            Thread.yield();
         }
 
-        // This should cause a deadlock with w3, indicating that it still holds sk2.
-        boolean deadlock = false;
-        txn2.lockTimeout(1, TimeUnit.SECONDS);
+        // With the primary key lock held, force a deadlock by trying to acquire the secondary
+        // key lock. This confirms the expected scanner lock acquisition order.
+        LockTimeoutException e1 = null;
         try {
-            nameIxSouce.lockExclusive(txn2, sk2);
-        } catch (DeadlockException e) {
-            deadlock = true;
+            nameIxSource.lockExclusive(txn2, sk2);
         } catch (LockTimeoutException e) {
+            e1 = e;
         }
 
+        LockTimeoutException e2 = null;
         try {
-            w3.await();
-        } catch (DeadlockException e) {
-            deadlock = true;
+            w1.await();
         } catch (LockTimeoutException e) {
+            e2 = e;
         }
 
-        assertTrue(deadlock);
+        if (!(e1 instanceof DeadlockException || e2 instanceof DeadlockException)) {
+            fail("no deadlock: " + e1 + ", " + e2);
+        }
     }
 
     private static <R extends TestRow> void fill(Table<R> table, int start, int end)
