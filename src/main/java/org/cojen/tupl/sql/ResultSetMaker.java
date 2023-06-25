@@ -25,9 +25,7 @@ import java.lang.invoke.MethodType;
 
 import java.math.BigDecimal;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -200,9 +198,9 @@ public final class ResultSetMaker {
     }
 
     /**
-     * Returns the generated class which has a no-arg constructor an an init method accepts a
-     * row object. The init method parameter type is the generated row implementation class and
-     * not the row interface.
+     * Returns the generated class which has a no-arg constructor and an init method which
+     * accepts a row object. The init method parameter type is the generated row implementation
+     * class and not the row interface.
      *
      * @see RowMaker#find
      */
@@ -450,87 +448,27 @@ public final class ResultSetMaker {
         MethodMaker mm = mClassMaker.addMethod(int.class, "findColumn", String.class).public_();
         var columnNameVar = mm.param(0);
 
-        if (mColumns.size() <= 2) {
-            int ordinal = 1;
-            for (String name : mColumns.keySet()) {
-                Label mismatch = mm.label();
-                mm.var(String.class).set(name).invoke("equals", columnNameVar).ifFalse(mismatch);
-                mm.return_(ordinal++);
-                mismatch.here();
-            }
-            mm.var(ResultSetMaker.class).invoke("notFound", columnNameVar).throw_();
-            return;
-        }
+        var cases = new String[mColumns.size()];
+        var labels = new Label[cases.length];
 
-        var hashMatches = new HashMap<Integer, Object>();
-
-        int ordinal = 1;
+        int ix = 0;
         for (String name : mColumns.keySet()) {
-            Integer hash = name.hashCode();
-            var match = new Match(name, ordinal++);
-
-            Object matches = hashMatches.get(hash);
-            if (matches == null) {
-                hashMatches.put(hash, match);
-            } else {
-                ArrayList<Object> list;
-                if (matches instanceof ArrayList) {
-                    list = (ArrayList<Object>) matches;
-                } else {
-                    list = new ArrayList<Object>();
-                    list.add(matches);
-                    hashMatches.put(hash, list);
-                }
-                list.add(match);
-            }
-        }
-
-        var hashCases = new int[hashMatches.size()];
-        var hashLabels = new Label[hashCases.length];
-
-        int i = 0;
-        for (Integer hash : hashMatches.keySet()) {
-            hashCases[i] = hash;
-            hashLabels[i++] = mm.label();
+            cases[ix] = name;
+            labels[ix] = mm.label();
+            ix++;
         }
 
         Label defaultLabel = mm.label();
 
-        columnNameVar.ifEq(null, defaultLabel);
-        columnNameVar.invoke("hashCode").switch_(defaultLabel, hashCases, hashLabels);
+        columnNameVar.switch_(defaultLabel, cases, labels);
 
-        i = 0;
-        for (Object matches : hashMatches.values()) {
-            hashLabels[i++].here();
-
-            if (!(matches instanceof ArrayList list)) {
-                ((Match) matches).addCheck(mm, columnNameVar, defaultLabel);
-            } else {
-                int end = list.size();
-                for (int j=0; j<end; j++) {
-                    var match = (Match) list.get(j);
-                    if (j >= end - 1) {
-                        match.addCheck(mm, columnNameVar, defaultLabel);
-                    } else {
-                        Label mismatch = mm.label();
-                        match.addCheck(mm, columnNameVar, mismatch);
-                        mismatch.here();
-                    }
-                }
-            }
-
-            mm.goto_(defaultLabel);
+        for (int i=0; i<labels.length; i++) {
+            labels[i].here();
+            mm.return_(i + 1);
         }
 
         defaultLabel.here();
         mm.var(ResultSetMaker.class).invoke("notFound", columnNameVar).throw_();
-    }
-
-    private static record Match(String key, Integer ordinal) {
-        void addCheck(MethodMaker mm, Variable columnNameVar, Label mismatch) {
-            mm.var(String.class).set(key).invoke("equals", columnNameVar).ifFalse(mismatch);
-            mm.return_(ordinal);
-        }
     }
 
     private void addWasNullMethod() {
