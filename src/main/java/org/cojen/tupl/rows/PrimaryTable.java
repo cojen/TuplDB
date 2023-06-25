@@ -74,10 +74,22 @@ final class PrimaryTable<R> implements Table<R> {
     }
 
     @Override
+    public Scanner<R> newScannerWith(Transaction txn, R row) throws IOException {
+        return mSource.newScannerWith(txn, row);
+    }
+
+    @Override
     public Scanner<R> newScanner(Transaction txn, String filter, Object... args)
         throws IOException
     {
         return mSource.newScannerThisTable(txn, null, filter, args);
+    }
+
+    @Override
+    public Scanner<R> newScannerWith(Transaction txn, R row, String filter, Object... args)
+        throws IOException
+    {
+        return mSource.newScannerThisTable(txn, row, filter, args);
     }
 
     @Override

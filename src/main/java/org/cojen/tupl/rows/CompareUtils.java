@@ -17,6 +17,9 @@
 
 package org.cojen.tupl.rows;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+
 import java.math.BigDecimal;
 
 import java.util.Arrays;
@@ -477,5 +480,24 @@ public class CompareUtils {
         }
 
         mm.goto_(fail);
+    }
+
+    /**
+     * Returns true if the given class or interface implements Comparable but doesn't have an
+     * implementation for the compareTo method.
+     */
+    public static boolean needsCompareTo(Class<?> clazz) {
+        return Comparable.class.isAssignableFrom(clazz)
+            && !isImplemented(clazz, "compareTo", Object.class)
+            && !isImplemented(clazz, "compareTo", clazz);
+    }
+
+    private static boolean isImplemented(Class<?> clazz, String name, Class<?>... paramTypes) {
+        try {
+            Method m = clazz.getMethod(name, paramTypes);
+            return !Modifier.isAbstract(m.getModifiers()) || m.isDefault();
+        } catch (NoSuchMethodException e) {
+            return false;
+        }
     }
 }

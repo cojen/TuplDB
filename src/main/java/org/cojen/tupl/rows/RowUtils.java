@@ -744,8 +744,13 @@ public class RowUtils extends Utils {
         return value;
     }
 
-    public static IllegalArgumentException nullColumnException(String name) {
+    public static IllegalArgumentException nullColumnException(String name) { 
         return new IllegalArgumentException("Cannot be null: " + name);
+   }
+
+    public static IllegalArgumentException tooFewArgumentsException(int required, int provided) {
+        return new IllegalArgumentException
+            ("Not enough arguments provided. Required=" + required + ", provided=" + provided);
     }
 
     /**

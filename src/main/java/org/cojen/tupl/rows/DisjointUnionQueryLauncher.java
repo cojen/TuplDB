@@ -32,14 +32,14 @@ import static java.util.Spliterator.*;
  *
  * @author Brian S O'Neill
  */
-final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
+public final class DisjointUnionQueryLauncher<R> implements QueryLauncher<R> {
     private final QueryLauncher<R>[] mLaunchers;
 
     /**
      * @param launchers at least one, and each launcher must provide a disjoint set of results;
      * each launcher must have the same projection
      */
-    DisjointUnionQueryLauncher(QueryLauncher<R>[] launchers) {
+    public DisjointUnionQueryLauncher(QueryLauncher<R>[] launchers) {
         mLaunchers = launchers;
     }
 

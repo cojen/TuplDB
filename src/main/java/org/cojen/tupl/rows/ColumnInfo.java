@@ -22,6 +22,10 @@ import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
+import java.util.Map;
+
+import org.cojen.tupl.rows.join.JoinColumnInfo;
+
 /**
  * 
  *
@@ -67,7 +71,7 @@ public class ColumnInfo implements Cloneable {
       0b...11100: big integer
       0b...11101: big decimal
       0b...11110: document
-      0b...11111: unused
+      0b...11111: object
 
       Modifiers:
 
@@ -92,7 +96,8 @@ public class ColumnInfo implements Cloneable {
         TYPE_CHAR        = 0b10100,
         TYPE_UTF8        = 0b11000,
         TYPE_BIG_INTEGER = 0b11100,
-        TYPE_BIG_DECIMAL = 0b11101;
+        TYPE_BIG_DECIMAL = 0b11101,
+        TYPE_OBJECT      = 0b11111;
 
     public static final int
         TYPE_NULL_LOW    = 0b1000_00000,
@@ -104,11 +109,15 @@ public class ColumnInfo implements Cloneable {
     public Class<?> type;
     public int typeCode;
 
-    Method accessor, mutator;
+    public Method accessor;
+    public Method mutator;
 
-    boolean hidden;
+    public boolean hidden;
 
     long autoMin, autoMax;
+
+    private String mPrefix;
+    private ColumnInfo mTail;
 
     boolean isAutomatic() {
         return autoMin != autoMax;
@@ -213,7 +222,7 @@ public class ColumnInfo implements Cloneable {
     /**
      * Return the primitive boxed type or the regular type if not primitive.
      */
-    Class<?> boxedType() {
+    public Class<?> boxedType() {
         return switch (plainTypeCode()) {
             case TYPE_BOOLEAN            -> Boolean.class;
             case TYPE_BYTE,  TYPE_UBYTE  -> Byte.class;
@@ -301,6 +310,64 @@ public class ColumnInfo implements Cloneable {
         };
     }
 
+    /**
+     * @see JoinColumnInfo
+     */
+    public boolean isScalarType() {
+        return true;
+    }
+
+    /**
+     * @return null if not found
+     * @see JoinColumnInfo
+     */
+    public ColumnInfo subColumn(String name) {
+        return null;
+    }
+
+    /**
+     * Recursively puts all the scalar columns into the given map with their fully qualified
+     * names.
+     *
+     * @see JoinColumnInfo
+     */
+    public void putScalarColumns(Map<String, ColumnInfo> dst) {
+        dst.put(name, this);
+    }
+
+    /**
+     * If the column name is a path (has a '.' in it), this method returns the first path
+     * component. Otherwise, null is returned.
+     */
+    public String prefix() {
+        String prefix = mPrefix;
+        if (prefix == null) {
+            int ix = name.indexOf('.');
+            if (ix >= 0) {
+                mPrefix = prefix = name.substring(0, ix).intern();
+            }
+        }
+        return prefix;
+    }
+
+    /**
+     * If this column name is a path (has a '.' in it), this method returns a column named by
+     * the path after the first component. Otherwise, null is returned.
+     */
+    public ColumnInfo tail() {
+        ColumnInfo tail = mTail;
+        if (tail == null) {
+            String prefix = prefix();
+            if (prefix != null) {
+                tail = copy();
+                tail.name = name.substring(prefix.length() + 1).intern();
+                tail.mPrefix = null;
+                mTail = tail;
+            }
+        }
+        return tail;
+    }
+
     public ColumnInfo copy() {
         try {
             return (ColumnInfo) clone();
@@ -325,7 +392,7 @@ public class ColumnInfo implements Cloneable {
         return info;
     }
 
-    ColumnInfo asArray(boolean nullable) {
+    public ColumnInfo asArray(boolean nullable) {
         var info = new ColumnInfo();
         info.name = name;
 

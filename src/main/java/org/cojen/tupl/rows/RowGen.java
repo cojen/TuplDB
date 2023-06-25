@@ -17,6 +17,9 @@
 
 package org.cojen.tupl.rows;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -37,8 +40,27 @@ import org.cojen.tupl.rows.codec.SchemaVersionColumnCodec;
  *
  * @author Brian S O'Neill
  */
-class RowGen {
+public class RowGen {
     private static final Object MAKER_KEY = new Object(); // must be a private hidden instance
+
+    private static volatile long cPackageNum;
+    private static final VarHandle cPackageNumHandle;
+
+    static {
+        try {
+            cPackageNumHandle = MethodHandles.lookup().findStaticVarHandle
+                (RowGen.class, "cPackageNum", long.class);
+        } catch (Throwable e) {
+            throw RowUtils.rethrow(e);
+        }
+    }
+
+    /**
+     * Returns a new sub-package name which can be used to facilitate class unloading.
+     */
+    public static String newSubPackage() {
+        return "p" + (long) cPackageNumHandle.getAndAdd(1L);
+    }
 
     final RowInfo info;
 
@@ -87,19 +109,31 @@ class RowGen {
     public static ClassMaker beginClassMaker(Class<?> who, Class<?> rowType, RowInfo info,
                                              String subPackage, String suffix)
     {
+        return beginClassMaker(who, rowType, info == null ? null : info.name, subPackage, suffix);
+    }
+
+    /**
+     * @param who the class which is making a class (can be null)
+     * @param rowType defines the ClassLoader to use (can be null)
+     * @param infoName row info name (can be null)
+     * @param subPackage optional (can be null)
+     * @param suffix appended to class name (can be null)
+     */
+    public static ClassMaker beginClassMaker(Class<?> who, Class<?> rowType, String infoName,
+                                             String subPackage, String suffix)
+    {
         final String name;
 
-        String infoName;
-        if (info == null || (infoName = info.name) == null) {
+        if (infoName == null) {
             name = null;
         } else {
             var bob = new StringBuilder();
 
             if (subPackage != null) {
-                int ix = info.name.lastIndexOf('.');
+                int ix = infoName.lastIndexOf('.');
                 if (ix > 0) {
-                    bob.append(info.name, 0, ix).append('.');
-                    infoName = info.name.substring(ix + 1);
+                    bob.append(infoName, 0, ix).append('.');
+                    infoName = infoName.substring(ix + 1);
                 }
                 bob.append(subPackage).append('.');
             }
@@ -144,7 +178,19 @@ class RowGen {
      * @param suffix appended to class name (can be null)
      */
     public ClassMaker anotherClassMaker(Class<?> who, Class<?> peer, String suffix) {
-        String name = info.name;
+        return anotherClassMaker(who, info.name, peer, suffix);
+    }
+
+    /**
+     * @param who the class which is making a class (can be null)
+     * @param infoName non-null row info name
+     * @param peer defines the package to define the new class in
+     * @param suffix appended to class name (can be null)
+     */
+    public static ClassMaker anotherClassMaker(Class<?> who, String infoName,
+                                               Class<?> peer, String suffix)
+    {
+        String name = infoName;
         int ix = name.lastIndexOf('.');
         if (ix > 0) {
             name = name.substring(ix + 1);

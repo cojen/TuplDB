@@ -70,9 +70,9 @@ public class RowCrudTest {
         assertSame(mTable, mDb.openTable(TestRow.class));
 
         TestRow row = mTable.newRow();
-        assertTrue(row.toString().endsWith("TestRow{}"));
+        assertTrue(row.toString().endsWith("{}"));
         mTable.unsetRow(row);
-        assertTrue(row.toString().endsWith("TestRow{}"));
+        assertTrue(row.toString().endsWith("{}"));
 
         try {
             row.id();
@@ -120,7 +120,7 @@ public class RowCrudTest {
         row.id(1);
         assertFalse(mTable.load(null, row));
 
-        assertTrue(row.toString().endsWith("TestRow{*id=1}"));
+        assertTrue(row.toString().endsWith("{*id=1}"));
 
         try {
             row.str1();
@@ -138,19 +138,19 @@ public class RowCrudTest {
         }
 
         assertFalse(mTable.delete(null, row));
-        assertTrue(row.toString().endsWith("TestRow{*id=1}"));
+        assertTrue(row.toString().endsWith("{*id=1}"));
 
         row.str1("hello");
         row.str2(null);
         row.num1(100);
-        assertTrue(row.toString().endsWith("TestRow{*id=1, *num1=100, *str1=hello, *str2=null}"));
+        assertTrue(row.toString().endsWith("{*id=1, *num1=100, *str1=hello, *str2=null}"));
 
         assertTrue(mTable.insert(null, row));
-        assertTrue(row.toString().endsWith("TestRow{id=1, num1=100, str1=hello, str2=null}"));
+        assertTrue(row.toString().endsWith("{id=1, num1=100, str1=hello, str2=null}"));
         assertFalse(mTable.isEmpty());
         assertTrue(mTable.exists(null, row));
         assertTrue(mTable.load(null, row));
-        assertTrue(row.toString().endsWith("TestRow{id=1, num1=100, str1=hello, str2=null}"));
+        assertTrue(row.toString().endsWith("{id=1, num1=100, str1=hello, str2=null}"));
 
         TestRow row2 = mTable.newRow();
         row2.id(1);
@@ -162,39 +162,39 @@ public class RowCrudTest {
 
         row2.str2("world");
         assertTrue(mTable.update(null, row2));
-        assertTrue(row2.toString().endsWith("TestRow{id=1, num1=100, str1=hello, str2=world}"));
+        assertTrue(row2.toString().endsWith("{id=1, num1=100, str1=hello, str2=world}"));
 
         row.str1("howdy");
         assertTrue(mTable.update(null, row));
-        assertTrue(row.toString().endsWith("TestRow{id=1, num1=100, str1=howdy, str2=null}"));
+        assertTrue(row.toString().endsWith("{id=1, num1=100, str1=howdy, str2=null}"));
         row.str1("hi");
         assertTrue(mTable.merge(null, row));
-        assertTrue(row.toString().endsWith("TestRow{id=1, num1=100, str1=hi, str2=world}"));
+        assertTrue(row.toString().endsWith("{id=1, num1=100, str1=hi, str2=world}"));
 
         row2.num1(-555);
         assertTrue(mTable.update(null, row2));
-        assertTrue(row2.toString().endsWith("TestRow{id=1, num1=-555, str1=hello, str2=world}"));
+        assertTrue(row2.toString().endsWith("{id=1, num1=-555, str1=hello, str2=world}"));
 
         mTable.unsetRow(row2);
         row2.id(1);
         row2.num1(999);
         assertTrue(mTable.update(null, row2));
-        assertTrue(row2.toString().endsWith("TestRow{id=1, num1=999}"));
+        assertTrue(row2.toString().endsWith("{id=1, num1=999}"));
 
         row2.str2("everyone");
         assertTrue(mTable.merge(null, row2));
-        assertTrue(row2.toString().endsWith("TestRow{id=1, num1=999, str1=hi, str2=everyone}"));
+        assertTrue(row2.toString().endsWith("{id=1, num1=999, str1=hi, str2=everyone}"));
 
         assertTrue(mTable.replace(null, row));
         mTable.load(null, row2);
-        assertTrue(row2.toString().endsWith("TestRow{id=1, num1=100, str1=hi, str2=world}"));
+        assertTrue(row2.toString().endsWith("{id=1, num1=100, str1=hi, str2=world}"));
 
         assertTrue(mTable.delete(null, row2));
         assertFalse(mTable.delete(null, row));
         assertTrue(mTable.isEmpty());
 
-        assertTrue(row.toString().endsWith("TestRow{id=1, num1=100, str1=hi, str2=world}"));
-        assertTrue(row2.toString().endsWith("TestRow{id=1, num1=100, str1=hi, str2=world}"));
+        assertTrue(row.toString().endsWith("{id=1, num1=100, str1=hi, str2=world}"));
+        assertTrue(row2.toString().endsWith("{id=1, num1=100, str1=hi, str2=world}"));
 
         Transaction txn = mTable.newTransaction(null);
         assertTrue(mTable.insert(txn, row));
@@ -229,7 +229,7 @@ public class RowCrudTest {
         mTable.copyRow(row, copy2);
         assertEquals(copy, copy2);
         assertFalse(mTable.load(null, row));
-        assertTrue(row.toString().contains("TestRow{*id=10}"));
+        assertTrue(row.toString().contains("{*id=10}"));
 
         assertNotEquals(row.toString(), copy.toString());
         assertEquals(0, mTable.comparator("+id+str1+str2+num1").compare(row, copy));
@@ -343,7 +343,7 @@ public class RowCrudTest {
         int count = 0;
         for (TestRow row = scanner.row(); row != null; row = scanner.step()) {
             count++;
-            assertTrue(row.toString().endsWith("TestRow{id=4, num1=1004, str1=s1-4, str2=s2-4}"));
+            assertTrue(row.toString().endsWith("{id=4, num1=1004, str1=s1-4, str2=s2-4}"));
         }
         assertEquals(1, count);
     }
@@ -477,10 +477,10 @@ public class RowCrudTest {
 
             switch (row.num1()) {
                 default -> fail();
-                case 1003 -> assertTrue(rowStr.endsWith("TestRow{id=1003, num1=1003, str1=s1-3, str2=s2-3x}"));
-                case 1004 -> assertTrue(rowStr.endsWith("TestRow{id=4, num1=1004, str1=s1-4, str2=s2-4}"));
-                case 1005 -> assertTrue(rowStr.endsWith("TestRow{id=5, num1=1005, str1=s1-5, str2=s2-5x}"));
-                case 1009 -> assertTrue(rowStr.endsWith("TestRow{id=9, num1=1009, str1=s1-9, str2=s2-9x}"));
+                case 1003 -> assertTrue(rowStr.endsWith("{id=1003, num1=1003, str1=s1-3, str2=s2-3x}"));
+                case 1004 -> assertTrue(rowStr.endsWith("{id=4, num1=1004, str1=s1-4, str2=s2-4}"));
+                case 1005 -> assertTrue(rowStr.endsWith("{id=5, num1=1005, str1=s1-5, str2=s2-5x}"));
+                case 1009 -> assertTrue(rowStr.endsWith("{id=9, num1=1009, str1=s1-9, str2=s2-9x}"));
             }
         }
 

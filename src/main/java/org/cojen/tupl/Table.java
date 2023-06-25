@@ -31,6 +31,8 @@ import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.io.Utils;
 
+import org.cojen.tupl.rows.join.JoinTableMaker;
+
 /**
  * Defines a relational collection of persistent rows. A row is defined by an interface
  * consisting of accessor/mutator methods corresponding to each column:
@@ -129,6 +131,11 @@ public interface Table<R> extends Closeable {
     public Scanner<R> newScanner(Transaction txn) throws IOException;
 
     /**
+     * @hidden
+     */
+    public Scanner<R> newScannerWith(Transaction txn, R row) throws IOException;
+
+    /**
      * Returns a new scanner for a subset of rows from this table, as specified by the query
      * expression.
      *
@@ -138,6 +145,12 @@ public interface Table<R> extends Closeable {
      * @see #scannerPlan scannerPlan
      */
     public Scanner<R> newScanner(Transaction txn, String query, Object... args)
+        throws IOException;
+
+    /**
+     * @hidden
+     */
+    public Scanner<R> newScannerWith(Transaction txn, R row, String query, Object... args)
         throws IOException;
 
     /**
@@ -211,6 +224,56 @@ public interface Table<R> extends Closeable {
         }
     }
 
+    /**
+     * Returns true if any rows exist in this table.
+     *
+     * @param txn optional transaction to use; pass null for auto-commit mode
+     * @throws IllegalStateException if transaction belongs to another database instance
+     * @see #isEmpty
+     */
+    public default boolean exists(Transaction txn) throws IOException {
+        // FIXME: Subclasses should provide an optimized implementation.
+        return exists(txn, null);
+    }
+
+    /**
+     * @hidden
+     */
+    public default boolean existsWith(Transaction txn, R row) throws IOException {
+        // FIXME: Subclasses should provide an optimized implementation.
+        Scanner<R> s = newScannerWith(txn, row);
+        boolean result = s.row() != null;
+        s.close();
+        return result;
+    }
+
+    /**
+     * Returns true if a subset of rows from this table exists, as specified by the query
+     * expression.
+     *
+     * @param txn optional transaction to use; pass null for auto-commit mode
+     * @throws IllegalStateException if transaction belongs to another database instance
+     */
+    public default boolean exists(Transaction txn, String query, Object... args)
+        throws IOException
+    {
+        // FIXME: Subclasses should provide an optimized implementation.
+        return exists(txn, null, query, args);
+    }
+
+    /**
+     * @hidden
+     */
+    public default boolean existsWith(Transaction txn, R row, String query, Object... args)
+        throws IOException
+    {
+        // FIXME: Subclasses should provide an optimized implementation.
+        Scanner<R> s = newScannerWith(txn, row, query, args);
+        boolean result = s.row() != null;
+        s.close();
+        return result;
+    }
+
     private static <R> Stream<R> newStream(Scanner<R> scanner) {
         return StreamSupport.stream(scanner, false).onClose(() -> {
             try {
@@ -230,6 +293,8 @@ public interface Table<R> extends Closeable {
     /**
      * Non-transactionally determines if the table has nothing in it. A return value of true
      * guarantees that the table is empty, but false negatives are possible.
+     *
+     * @see #exists(Transaction)
      */
     public boolean isEmpty() throws IOException;
 
@@ -316,6 +381,24 @@ public interface Table<R> extends Closeable {
      * @throws IllegalStateException if primary key isn't fully specified
      */
     public boolean delete(Transaction txn, R row) throws IOException;
+
+    /**
+     * Joins tables together into an unmodifiable view. The view doesn't have any primary key,
+     * and so operations which act upon one aren't supported. In addition, closing the view
+     * doesn't have any effect.
+     *
+     * <p>The {@code joinType} parameter is a class which resembles an ordinary row definition
+     * except that all columns must refer to other row types. Annotations for defining keys and
+     * indexes is unsupported.
+     *
+     * @param spec join specification
+     * @throws NullPointerException if any parameters are null
+     * @throws IllegalArgumentException if join type is malformed, or if the specification is
+     * malformed, or if there are any table matching issues
+     */
+    public static <J> Table<J> join(Class<J> joinType, String spec, Table<?>... tables) {
+        return JoinTableMaker.join(joinType, spec, tables);
+    }
 
     /**
      * Returns a row comparator based on the given specification, which defines the ordering

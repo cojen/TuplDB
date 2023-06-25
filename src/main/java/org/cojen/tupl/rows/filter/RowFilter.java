@@ -20,6 +20,11 @@ package org.cojen.tupl.rows.filter;
 import java.util.Map;
 import java.util.Objects;
 
+import java.util.function.Function;
+import java.util.function.IntFunction;
+import java.util.function.IntUnaryOperator;
+import java.util.function.Predicate;
+
 import org.cojen.tupl.rows.ColumnInfo;
 
 /**
@@ -172,27 +177,30 @@ public abstract class RowFilter implements Comparable<RowFilter> {
     public abstract RowFilter sort();
 
     /**
-     * Re-orders the terms of this filter such that the given columns are evaluated first.
+     * Returns this filter modified such that all arguments matched by the given function are
+     * replaced. If no arguments have changed, then the original filter instance is returned.
      */
-    public abstract RowFilter prioritize(Map<String, ColumnInfo> columns);
+    public abstract RowFilter replaceArguments(IntUnaryOperator function);
 
     /**
-     * Returns true if all the columns required by this filter can be found in the given map.
+     * Returns this filter modified such that comparisons by non-nullable columns to the given
+     * argument are compared to null. This causes the affected terms to always return true or
+     * false, depending on the comparison operator. If no terms are affected, then the original
+     * filter instance is returned.
      */
-    public abstract boolean isSufficient(Map<String, ColumnInfo> columns);
+    public abstract RowFilter argumentAsNull(int argNum);
 
     /**
      * Remove terms which refer to columns which aren't in the given set. A strict parameter
      * controls the behavior of column-to-column terms. When true, both columns must be
      * retained columns. When false, at least one column must be a retained column.
      *
-     * @param columns columns to retain (not remove)
+     * @param pred checks if column name should be retained (not removed)
      * @param strict true if returned filter must only refer to the given columns
      * @param undecided default filter to use when the resulting filter cannot be certain of a
-     * match (usually TRUE or FALSE)
+     * match (usually TrueFilter or FalseFilter)
      */
-    public abstract RowFilter retain(Map<String, ColumnInfo> columns,
-                                     boolean strict, RowFilter undecided);
+    public abstract RowFilter retain(Predicate<String> pred, boolean strict, RowFilter undecided);
 
     /**
      * Split this filter by extracting columns such that the first returned filter only
@@ -206,27 +214,40 @@ public abstract class RowFilter implements Comparable<RowFilter> {
      *
      * <p>Note: No attempt is made to reduce the returned filters.
      *
-     * @param columns columns to extract
-     * @return two filters: the first doesn't reference the extracted columns and the second does
+     * @param check function which checks a ColumnFilter subclass; return null if it cannot
+     * be extracted, return the original or a replacement filter otherwise
+     * @param split the two filters are stored here
      */
-    public RowFilter[] split(Map<String, ColumnInfo> columns) {
-        var result = new RowFilter[2];
-        if (isSufficient(columns)) {
-            result[0] = this;
-            result[1] = TrueFilter.THE;
+    public void split(Function<ColumnFilter, RowFilter> check, RowFilter[] split) {
+        RowFilter extracted = trySplit(check);
+        if (extracted != null) {
+            split[0] = extracted;
+            split[1] = TrueFilter.THE;
         } else {
-            result[0] = TrueFilter.THE;
-            result[1] = this;
+            split[0] = TrueFilter.THE;
+            split[1] = this;
         }
-        return result;
     }
+
+    /**
+     * Split variant which operates against a column map.
+     */
+    public void split(Map<String, ?> columns, RowFilter[] split) {
+        split((ColumnFilter filter) -> filter.canSplit(columns) ? filter : null, split);
+    }
+
+    protected abstract RowFilter trySplit(Function<ColumnFilter, RowFilter> check);
 
     /**
      * Combine the split result together with 'and'.
      */
-    protected void splitCombine(Map<String, ColumnInfo> columns, RowFilter[] result) {
-        int ix = isSufficient(columns) ? 0 : 1;
-        result[ix] = result[ix].and(this);
+    protected void splitCombine(Function<ColumnFilter, RowFilter> check, RowFilter[] split) {
+        RowFilter extracted = trySplit(check);
+        if (extracted != null) {
+            split[0] = split[0].and(extracted);
+        } else {
+            split[1] = split[1].and(this);
+        }
     }
 
     /**
@@ -290,7 +311,23 @@ public abstract class RowFilter implements Comparable<RowFilter> {
      * @param columns columns to extract
      * @param ranges result from calling multiRangeExtract
      */
-    public static void splitRemainders(Map<String, ColumnInfo> columns, RowFilter[]... ranges) {
+    public static void splitRemainders(Map<String, ?> columns, RowFilter[]... ranges) {
+        splitRemainders((ColumnFilter filter) -> filter.canSplit(columns) ? filter : null, ranges);
+    }
+
+    /**
+     * For each result from the {@link #multiRangeExtract} method with a remainder, {@link
+     * #split} it into the last two elements of the range array.
+     *
+     * @param check function which checks a ColumnFilter subclass; return null if it cannot
+     * be extracted, return the original or a replacement filter otherwise
+     * @param ranges result from calling multiRangeExtract
+     */
+    public static void splitRemainders(Function<ColumnFilter, RowFilter> check,
+                                       RowFilter[]... ranges)
+    {
+        RowFilter[] split = null;
+
         for (RowFilter[] range : ranges) {
             RowFilter remainder = range[2];
             if (remainder != null) {
@@ -300,7 +337,10 @@ public abstract class RowFilter implements Comparable<RowFilter> {
                 } catch (ComplexFilterException e) {
                 }
 
-                RowFilter[] split = remainder.split(columns);
+                if (split == null) {
+                    split = new RowFilter[2];
+                }
+                remainder.split(check, split);
 
                 if (split[0] == TrueFilter.THE) {
                     split[1] = reduceFromCnf(original, remainder);
@@ -362,7 +402,7 @@ public abstract class RowFilter implements Comparable<RowFilter> {
         return b.toString();
     }
 
-    abstract void appendTo(StringBuilder b);
+    public abstract void appendTo(StringBuilder b);
 
     @Override
     public int compareTo(RowFilter filter) {

@@ -20,7 +20,10 @@ package org.cojen.tupl.rows.filter;
 import java.math.BigInteger;
 
 import java.util.Arrays;
-import java.util.Map;
+
+import java.util.function.Function;
+import java.util.function.IntFunction;
+import java.util.function.IntUnaryOperator;
 
 import org.cojen.tupl.rows.ColumnInfo;
 
@@ -98,69 +101,64 @@ public abstract class GroupFilter extends RowFilter {
     }
 
     @Override
-    public RowFilter prioritize(Map<String, ColumnInfo> columns) {
+    protected RowFilter trySplit(Function<ColumnFilter, RowFilter> check) {
         RowFilter[] subFilters = mSubFilters;
-        if (subFilters.length == 0) {
-            return this;
-        }
 
-        subFilters = subFilters.clone();
         for (int i=0; i<subFilters.length; i++) {
-            subFilters[i] = subFilters[i].prioritize(columns);
-        }
-
-        Arrays.sort(subFilters,
-                    (a, b) -> Double.compare(matchStrength(b, columns), matchStrength(a, columns)));
-
-        return newInstance(subFilters);
-    }
-
-    @Override
-    public boolean isSufficient(Map<String, ColumnInfo> columns) {
-        for (RowFilter sub : mSubFilters) {
-            if (!sub.isSufficient(columns)) {
-                return false;
+            RowFilter sub = subFilters[i];
+            RowFilter extracted = sub.trySplit(check);
+            if (extracted == null) {
+                return null;
             }
-        }
-        return true;
-    }
-
-    /**
-     * Assumes that the given filter has been prioritized already.
-     *
-     * @return [0..1]
-     */
-    private static double matchStrength(RowFilter filter, Map<String, ColumnInfo> columns) {
-        if (filter instanceof ColumnToArgFilter cf) {
-            return columns.containsKey(cf.column().name) ? 1 : 0;
-        }
-
-        if (filter instanceof GroupFilter gf) {
-            double sum = 0;
-            for (RowFilter sub : gf.mSubFilters) {
-                double strength = matchStrength(sub, columns);
-                if (strength == 0) {
-                    // By assuming that filter is already prioritized, can stop early.
-                    break;
+            if (extracted != sub) {
+                if (subFilters == mSubFilters) {
+                    subFilters = subFilters.clone();
                 }
-                sum += strength;
+                subFilters[i] = extracted;
             }
-            return sum / gf.mSubFilters.length;
         }
 
-        if (filter instanceof ColumnToColumnFilter cf) {
-            double strength = columns.containsKey(cf.column().name) ? 0.5 : 0;
-            if (columns.containsKey(cf.otherColumn().name)) {
-                strength += 0.5;
-            }
-            return strength;
-        }
-
-        return 0;
+        return subFilters == mSubFilters ? this : newInstance(subFilters);
     }
 
     @Override
-    void appendTo(StringBuilder b) {
+    public RowFilter replaceArguments(IntUnaryOperator function) {
+        RowFilter[] subFilters = mSubFilters;
+
+        for (int i=0; i<subFilters.length; i++) {
+            RowFilter sub = subFilters[i];
+            RowFilter modified = sub.replaceArguments(function);
+            if (modified != sub) {
+                if (subFilters == mSubFilters) {
+                    subFilters = subFilters.clone();
+                }
+                subFilters[i] = modified;
+            }
+        }
+
+        return subFilters == mSubFilters ? this : newInstance(subFilters);
+    }
+
+    @Override
+    public RowFilter argumentAsNull(int argNum) {
+        RowFilter[] subFilters = mSubFilters;
+
+        for (int i=0; i<subFilters.length; i++) {
+            RowFilter sub = subFilters[i];
+            RowFilter modified = sub.argumentAsNull(argNum);
+            if (modified != sub) {
+                if (subFilters == mSubFilters) {
+                    subFilters = subFilters.clone();
+                }
+                subFilters[i] = modified;
+            }
+        }
+
+        return subFilters == mSubFilters ? this : newInstance(subFilters);
+    }
+
+    @Override
+    public void appendTo(StringBuilder b) {
         char opChar = opChar();
         for (int i=0; i<mSubFilters.length; i++) {
             if (i != 0) {
@@ -192,7 +190,7 @@ public abstract class GroupFilter extends RowFilter {
 
     public abstract char opChar();
 
-    RowFilter newInstance(RowFilter... subFilters) {
+    public RowFilter newInstance(RowFilter... subFilters) {
         return newInstance(subFilters, 0, subFilters.length);
     }
 

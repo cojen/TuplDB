@@ -97,7 +97,7 @@ public abstract class BaseTableIndex<R> extends BaseTable<R> {
     }
 
     @Override
-    protected Scanner<R> newScanner(Transaction txn, R row, String filter, Object... args)
+    public Scanner<R> newScannerWith(Transaction txn, R row, String filter, Object... args)
         throws IOException
     {
         return newScannerThisTable(txn, row, filter, args);

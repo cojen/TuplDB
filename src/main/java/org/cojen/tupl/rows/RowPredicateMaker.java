@@ -22,7 +22,6 @@ import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.lang.invoke.VarHandle;
 
 import java.lang.ref.WeakReference;
 
@@ -54,8 +53,6 @@ import org.cojen.tupl.rows.filter.RowFilter;
 import org.cojen.tupl.rows.filter.TrueFilter;
 import org.cojen.tupl.rows.filter.Visitor;
 
-import org.cojen.tupl.io.Utils;
-
 import static org.cojen.tupl.rows.ColumnInfo.*;
 
 /**
@@ -65,18 +62,6 @@ import static org.cojen.tupl.rows.ColumnInfo.*;
  * @author Brian S O'Neill
  */
 public class RowPredicateMaker {
-    private static volatile long cPackageNum;
-    private static final VarHandle cPackageNumHandle;
-
-    static {
-        try {
-            cPackageNumHandle = MethodHandles.lookup().findStaticVarHandle
-                (RowPredicateMaker.class, "cPackageNum", long.class);
-        } catch (Throwable e) {
-            throw Utils.rethrow(e);
-        }
-    }
-
     private final WeakReference<RowStore> mStoreRef;
     private final Class<? extends RowPredicate> mBaseClass;
     private final Class<?> mRowType;
@@ -123,10 +108,10 @@ public class RowPredicateMaker {
         mFilterStr = filterStr;
         mRanges = ranges;
 
-        // Generate a sub-package with an increasing number to facilitate unloading.
-        String packageName = "p" + (long) cPackageNumHandle.getAndAdd(1L);
+        // Generate a new sub-package to facilitate unloading.
+        String subPackage = RowGen.newSubPackage();
 
-        mClassMaker = rowGen.beginClassMaker(getClass(), rowType, packageName, "predicate")
+        mClassMaker = rowGen.beginClassMaker(getClass(), rowType, subPackage, "predicate")
             .final_().extend(baseClass).implement(RowPredicate.class);
 
         mCtorMaker = mClassMaker.addConstructor(Object[].class).varargs();
@@ -587,7 +572,8 @@ public class RowPredicateMaker {
 
     private void addKeyTestMethod() {
         // Can only check the key columns. If undecided, assume that the predicate matches.
-        RowFilter filter = mFilter.retain(mRowGen.info.keyColumns, true, TrueFilter.THE);
+        RowFilter filter = mFilter.retain(mRowGen.info.keyColumns::containsKey,
+                                          true, TrueFilter.THE);
 
         if (filter == TrueFilter.THE) {
             // Rely on the default implementation, which always returns true.

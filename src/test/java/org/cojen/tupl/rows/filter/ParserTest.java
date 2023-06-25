@@ -88,7 +88,7 @@ public class ParserTest {
         pf("a<=?999999999999999999999999999999999999", "too large");
         pf("{a, ~a}", "Cannot exclude");
         pf("{~a, -a}", "Cannot select");
-        pf("{~*}", "Not a valid character");
+        pf("{~*}", "Wildcard disallowed");
         pf("{~!a}", "Not a valid character");
         pf("{~a}", "Must include wildcard");
         pf("a<=?0", "at least one");

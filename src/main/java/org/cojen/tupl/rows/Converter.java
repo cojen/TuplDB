@@ -603,9 +603,9 @@ public class Converter {
      * @param columnName if provided, include the column name in the conversion exception message
      * @see #convertLossy
      */
-    static void convertExact(final MethodMaker mm, final String columnName,
-                             final ColumnInfo srcInfo, final Variable srcVar,
-                             final ColumnInfo dstInfo, final Variable dstVar)
+    public static void convertExact(final MethodMaker mm, final String columnName,
+                                    final ColumnInfo srcInfo, final Variable srcVar,
+                                    final ColumnInfo dstInfo, final Variable dstVar)
     {
         if (srcInfo.isCompatibleWith(dstInfo)) {
             dstVar.set(srcVar);
