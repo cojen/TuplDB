@@ -88,7 +88,7 @@ public abstract class MappedPageArray extends PageArray {
             options = EnumSet.noneOf(OpenOption.class);
         }
 
-        if (Platform.isWindows()) {
+        if (System.getProperty("os.name").startsWith("Windows")) {
             return new WindowsMappedPageArray(pageSize, pageCount, file, options);
         } else {
             return new PosixMappedPageArray(pageSize, pageCount, file, options);

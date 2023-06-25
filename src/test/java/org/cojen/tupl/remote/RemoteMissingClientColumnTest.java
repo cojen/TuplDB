@@ -59,10 +59,14 @@ public class RemoteMissingClientColumnTest {
 
     @After
     public void teardown() throws Exception {
-        mDb.close();
-        mDb = null;
-        mServerDb.close();
-        mServerDb = null;
+        if (mDb != null) {
+            mDb.close();
+            mDb = null;
+        }
+        if (mServerDb != null) {
+            mServerDb.close();
+            mServerDb = null;
+        }
     }
 
     private Database mServerDb;

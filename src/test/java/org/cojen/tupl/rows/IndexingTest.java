@@ -118,7 +118,7 @@ public class IndexingTest {
                 fail();
             } catch (UnsetColumnException e) {
             }
-            assertTrue(row.toString().contains("TestRow{id=2, path=path2}"));
+            assertTrue(row.toString().contains("{id=2, path=path2}"));
             assertTrue(alt.exists(null, row));
             try {
                 alt.store(null, row);
@@ -132,7 +132,7 @@ public class IndexingTest {
             row.name("xxx");
             row.id(2);
             assertFalse(alt.load(null, row));
-            assertTrue(row.toString().contains("TestRow{*path=pathx}"));
+            assertTrue(row.toString().contains("{*path=pathx}"));
         }
 
         {
@@ -150,7 +150,7 @@ public class IndexingTest {
                 fail();
             } catch (UnsetColumnException e) {
             }
-            assertTrue(row.toString().contains("TestRow{id=3, name=name1}"));
+            assertTrue(row.toString().contains("{id=3, name=name1}"));
             assertTrue(ix1.exists(null, row));
             try {
                 ix1.insert(null, row);
@@ -164,7 +164,7 @@ public class IndexingTest {
             row.path("xxx");
             row.id(2);
             assertFalse(ix1.load(null, row));
-            assertTrue(row.toString().contains("TestRow{*id=2, *name=namex}"));
+            assertTrue(row.toString().contains("{*id=2, *name=namex}"));
         }
 
         {
@@ -183,7 +183,7 @@ public class IndexingTest {
                 fail();
             } catch (UnsetColumnException e) {
             }
-            assertTrue(row.toString().contains("TestRow{id=2, name=name2, num=123}"));
+            assertTrue(row.toString().contains("{id=2, name=name2, num=123}"));
             assertTrue(ix2.exists(null, row));
             try {
                 ix2.delete(null, row);
@@ -198,7 +198,7 @@ public class IndexingTest {
             row.path("xxx");
             row.id(2);
             assertFalse(ix2.load(null, row));
-            assertTrue(row.toString().contains("TestRow{*id=2, *name=namex, *num=999}"));
+            assertTrue(row.toString().contains("{*id=2, *name=namex, *num=999}"));
         }
 
         try {
@@ -207,14 +207,14 @@ public class IndexingTest {
         } catch (UnmodifiableViewException e) {
         }
 
-        scanExpect(alt, "TestRow{id=1, path=path1}",
-                   "TestRow{id=2, path=path2}", "TestRow{id=3, path=path3}");
+        scanExpect(alt, "{id=1, path=path1}",
+                   "{id=2, path=path2}", "{id=3, path=path3}");
 
-        scanExpect(ix1, "TestRow{id=1, name=name1}",
-                   "TestRow{id=3, name=name1}", "TestRow{id=2, name=name2}");
+        scanExpect(ix1, "{id=1, name=name1}",
+                   "{id=3, name=name1}", "{id=2, name=name2}");
 
-        scanExpect(ix2, "TestRow{id=2, name=name2, num=123}",
-                   "TestRow{id=1, name=name1, num=123}", "TestRow{id=3, name=name1, num=987}");
+        scanExpect(ix2, "{id=2, name=name2, num=123}",
+                   "{id=1, name=name1, num=123}", "{id=3, name=name1, num=987}");
 
         {
             TestRow row = table.newRow();
@@ -222,11 +222,11 @@ public class IndexingTest {
             assertTrue(table.delete(null, row));
         }
 
-        scanExpect(alt, "TestRow{id=1, path=path1}", "TestRow{id=3, path=path3}");
+        scanExpect(alt, "{id=1, path=path1}", "{id=3, path=path3}");
 
-        scanExpect(ix1, "TestRow{id=1, name=name1}", "TestRow{id=3, name=name1}");
+        scanExpect(ix1, "{id=1, name=name1}", "{id=3, name=name1}");
 
-        scanExpect(ix2, "TestRow{id=1, name=name1, num=123}", "TestRow{id=3, name=name1, num=987}");
+        scanExpect(ix2, "{id=1, name=name1, num=123}", "{id=3, name=name1, num=987}");
 
         {
             Transaction txn = db.newTransaction();
@@ -291,11 +291,11 @@ public class IndexingTest {
             }
         }
 
-        scanExpect(alt, "TestRow{id=1, path=path1}");
+        scanExpect(alt, "{id=1, path=path1}");
 
-        scanExpect(ix1, "TestRow{id=1, name=name1}");
+        scanExpect(ix1, "{id=1, name=name1}");
 
-        scanExpect(ix2, "TestRow{id=1, name=name1, num=123}");
+        scanExpect(ix2, "{id=1, name=name1, num=123}");
 
         {
             TestRow row = table.newRow();
@@ -307,11 +307,11 @@ public class IndexingTest {
             assertTrue(oldRow.toString().contains("{id=1, name=name1, num=123, path=path1}"));
         }
 
-        scanExpect(alt, "TestRow{id=1, path=no-path}");
+        scanExpect(alt, "{id=1, path=no-path}");
 
-        scanExpect(ix1, "TestRow{id=1, name=no-name}");
+        scanExpect(ix1, "{id=1, name=no-name}");
 
-        scanExpect(ix2, "TestRow{id=1, name=no-name, num=0}");
+        scanExpect(ix2, "{id=1, name=no-name, num=0}");
 
         {
             TestRow row = table.newRow();
@@ -322,11 +322,11 @@ public class IndexingTest {
             assertTrue(table.insert(null, row));
         }
 
-        scanExpect(alt, "TestRow{id=1, path=no-path}", "TestRow{id=5, path=path5}");
+        scanExpect(alt, "{id=1, path=no-path}", "{id=5, path=path5}");
 
-        scanExpect(ix1, "TestRow{id=5, name=name5}", "TestRow{id=1, name=no-name}");
+        scanExpect(ix1, "{id=5, name=name5}", "{id=1, name=no-name}");
 
-        scanExpect(ix2, "TestRow{id=1, name=no-name, num=0}", "TestRow{id=5, name=name5, num=555}");
+        scanExpect(ix2, "{id=1, name=no-name, num=0}", "{id=5, name=name5, num=555}");
 
         {
             TestRow row = table.newRow();
@@ -346,11 +346,11 @@ public class IndexingTest {
             assertTrue(table.replace(null, row));
         }
 
-        scanExpect(alt, "TestRow{id=1, path=no-path}", "TestRow{id=5, path=path5}");
+        scanExpect(alt, "{id=1, path=no-path}", "{id=5, path=path5}");
 
-        scanExpect(ix1, "TestRow{id=5, name=!name5}", "TestRow{id=1, name=no-name}");
+        scanExpect(ix1, "{id=5, name=!name5}", "{id=1, name=no-name}");
 
-        scanExpect(ix2, "TestRow{id=5, name=!name5, num=-5}", "TestRow{id=1, name=no-name, num=0}");
+        scanExpect(ix2, "{id=5, name=!name5, num=-5}", "{id=1, name=no-name, num=0}");
 
         {
             TestRow row = table.newRow();
@@ -361,12 +361,12 @@ public class IndexingTest {
             assertTrue(table.update(null, row));
         }
 
-        scanExpect(alt, "TestRow{id=5, path=!path5}", "TestRow{id=1, path=no-path}");
+        scanExpect(alt, "{id=5, path=!path5}", "{id=1, path=no-path}");
 
-        scanExpect(ix1, "TestRow{id=5, name=!name55}", "TestRow{id=1, name=no-name}");
+        scanExpect(ix1, "{id=5, name=!name55}", "{id=1, name=no-name}");
 
-        scanExpect(ix2, "TestRow{id=1, name=no-name, num=0}",
-                   "TestRow{id=5, name=!name55, num=55}");
+        scanExpect(ix2, "{id=1, name=no-name, num=0}",
+                   "{id=5, name=!name55, num=55}");
 
         {
             TestRow row = table.newRow();
@@ -375,25 +375,25 @@ public class IndexingTest {
             assertTrue(table.update(null, row));
         }
 
-        scanExpect(alt, "TestRow{id=5, path=!path5}", "TestRow{id=1, path=no-path}");
+        scanExpect(alt, "{id=5, path=!path5}", "{id=1, path=no-path}");
 
-        scanExpect(ix1, "TestRow{id=5, name=!name55}", "TestRow{id=1, name=name1}");
+        scanExpect(ix1, "{id=5, name=!name55}", "{id=1, name=name1}");
 
-        scanExpect(ix2, "TestRow{id=1, name=name1, num=0}", "TestRow{id=5, name=!name55, num=55}");
+        scanExpect(ix2, "{id=1, name=name1, num=0}", "{id=5, name=!name55, num=55}");
 
         {
             TestRow row = table.newRow();
             row.id(5);
             row.name("name5");
             assertTrue(table.merge(null, row));
-            assertTrue(row.toString().contains("TestRow{id=5, name=name5, num=55, path=!path5}"));
+            assertTrue(row.toString().contains("{id=5, name=name5, num=55, path=!path5}"));
         }
 
-        scanExpect(alt, "TestRow{id=5, path=!path5}", "TestRow{id=1, path=no-path}");
+        scanExpect(alt, "{id=5, path=!path5}", "{id=1, path=no-path}");
 
-        scanExpect(ix1, "TestRow{id=1, name=name1}", "TestRow{id=5, name=name5}");
+        scanExpect(ix1, "{id=1, name=name1}", "{id=5, name=name5}");
 
-        scanExpect(ix2, "TestRow{id=1, name=name1, num=0}", "TestRow{id=5, name=name5, num=55}");
+        scanExpect(ix2, "{id=1, name=name1, num=0}", "{id=5, name=name5, num=55}");
 
         {
             // Lock all the index entries that shouldn't be updated.
@@ -413,11 +413,11 @@ public class IndexingTest {
             txn.exit();
         }
 
-        scanExpect(alt, "TestRow{id=5, path=!path5}", "TestRow{id=1, path=path-1}");
+        scanExpect(alt, "{id=5, path=!path5}", "{id=1, path=path-1}");
 
-        scanExpect(ix1, "TestRow{id=1, name=name1}", "TestRow{id=5, name=name5}");
+        scanExpect(ix1, "{id=1, name=name1}", "{id=5, name=name5}");
 
-        scanExpect(ix2, "TestRow{id=1, name=name1, num=0}", "TestRow{id=5, name=name5, num=55}");
+        scanExpect(ix2, "{id=1, name=name1, num=0}", "{id=5, name=name5, num=55}");
     }
 
     @Test
@@ -1394,7 +1394,7 @@ public class IndexingTest {
                 row.id(999); // should be ignored
                 TestRow copy = alt.cloneRow(row);
                 assertFalse(alt.load(txn, row));
-                assertTrue(row.toString().contains("TestRow{*path=path-x}"));
+                assertTrue(row.toString().contains("{*path=path-x}"));
                 // Fields must remain unchanged.
                 assertEquals(0, alt.comparator("+path+id").compare(row, copy));
             }
@@ -1408,7 +1408,7 @@ public class IndexingTest {
                 row.name("name-x");
                 row.id(2);
                 assertFalse(ix1.load(txn, row));
-                assertTrue(row.toString().contains("TestRow{*id=2, *name=name-x}"));
+                assertTrue(row.toString().contains("{*id=2, *name=name-x}"));
             }
 
             if (i == 1) {
@@ -1421,7 +1421,7 @@ public class IndexingTest {
                 row.name("name-x");
                 row.id(2);
                 assertFalse(ix2.load(txn, row));
-                assertTrue(row.toString().contains("TestRow{*id=2, *name=name-x, *num=2}"));
+                assertTrue(row.toString().contains("{*id=2, *name=name-x, *num=2}"));
             }
 
             if (i == 1) {
@@ -1482,7 +1482,7 @@ public class IndexingTest {
                 row.id(999); // should be ignored
                 TestRow copy = alt.cloneRow(row);
                 assertFalse(alt.load(null, row));
-                assertTrue(row.toString().contains("TestRow{*path=path}"));
+                assertTrue(row.toString().contains("{*path=path}"));
                 // Fields must remain unchanged.
                 assertEquals(0, alt.comparator("+path+id").compare(row, copy));
             } catch (Throwable e) {

@@ -20,7 +20,6 @@ package org.cojen.tupl.io;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.InterruptedIOException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
@@ -31,8 +30,9 @@ import java.nio.channels.ClosedByInterruptException;
 
 import java.util.EnumSet;
 
-import org.cojen.tupl.util.Latch;
-import org.cojen.tupl.util.LatchCondition;
+import java.util.function.Consumer;
+
+import org.cojen.tupl.util.LocalPool;
 
 import static org.cojen.tupl.io.Utils.*;
 
@@ -42,15 +42,11 @@ import static org.cojen.tupl.io.Utils.*;
  *
  * @author Brian S O'Neill
  */
-final class JavaFileIO extends AbstractFileIO {
-    private final File mFile;
+class JavaFileIO extends AbstractFileIO {
+    protected final File mFile;
     private final String mMode;
 
-    // Access these file pool fields using this latch.
-    private final Latch mFilePoolLatch;
-    private final LatchCondition mFilePoolCondition;
-    private final FileAccess[] mFilePool;
-    private int mFilePoolTop;
+    private LocalPool<FileAccess> mFilePool;
 
     JavaFileIO(File file, EnumSet<OpenOption> options, int openFileCount) throws IOException {
         this(file, options, openFileCount, true);
@@ -87,22 +83,16 @@ final class JavaFileIO extends AbstractFileIO {
             openFileCount = 1;
         }
 
-        mFilePoolLatch = new Latch();
-        mFilePoolCondition = new LatchCondition();
-        mFilePool = new FileAccess[openFileCount];
-
-        try {
-            mFilePoolLatch.acquireExclusive();
+        mFilePool = new LocalPool<>(() -> {
             try {
-                for (int i=0; i<openFileCount; i++) {
-                    mFilePool[i] = openRaf();
-                }
-            } finally {
-                mFilePoolLatch.releaseExclusive();
+                return openRaf();
+            } catch (IOException e) {
+                throw Utils.rethrow(e);
             }
-        } catch (Throwable e) {
-            throw closeOnFailure(this, e);
-        }
+        }, openFileCount);
+
+        // Check that the file can actually be opened.
+        testPool();
 
         if (allowMap && options.contains(OpenOption.MAPPED)) {
             map();
@@ -114,39 +104,45 @@ final class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    public boolean isDirectIO() {
+    public final boolean isDirectIO() {
         return false;
     }
 
     @Override
-    protected long doLength() throws IOException {
-        FileAccess file = accessFile();
+    protected final File file() {
+        return mFile;
+    }
+
+    @Override
+    protected final long doLength() throws IOException {
+        LocalPool.Entry<FileAccess> e = accessFile();
         try {
-            return file.length();
+            return e.get().length();
         } finally {
-            yieldFile(file);
+            e.release();
         }
     }
 
     @Override
-    protected void doSetLength(long length) throws IOException {
-        FileAccess file = accessFile();
+    protected final void doSetLength(long length) throws IOException {
+        LocalPool.Entry<FileAccess> entry = accessFile();
         try {
-            file.setLength(length);
+            entry.get().setLength(length);
         } finally {
-            yieldFile(file);
+            entry.release();
         }
     }
 
     @Override
-    protected void doRead(long pos, byte[] buf, int offset, int length) throws IOException {
+    protected final void doRead(long pos, byte[] buf, int offset, int length) throws IOException {
         try {
-            FileAccess file = accessFile();
+            LocalPool.Entry<FileAccess> entry = accessFile();
             try {
+                FileAccess file = entry.get();
                 file.seek(pos);
                 file.readFully(buf, offset, length);
             } finally {
-                yieldFile(file);
+                entry.release();
             }
         } catch (EOFException e) {
             throw new EOFException("Attempt to read past end of file: " + pos);
@@ -154,18 +150,19 @@ final class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected void doRead(long pos, byte[] buf, int offset, int length, ByteBuffer tail)
+    protected final void doRead(long pos, byte[] buf, int offset, int length, ByteBuffer tail)
         throws IOException
     {
         doRead(pos, ByteBuffer.wrap(buf, offset, length), tail);
     }
 
     @Override
-    protected void doRead(long pos, ByteBuffer bb) throws IOException {
+    protected final void doRead(long pos, ByteBuffer bb) throws IOException {
         boolean interrupted = false;
 
-        FileAccess file = accessFile();
+        LocalPool.Entry<FileAccess> entry = accessFile();
         try {
+            FileAccess file = entry.get();
             while (true) try {
                 FileChannel channel = file.getChannel();
                 while (bb.hasRemaining()) {
@@ -178,12 +175,10 @@ final class JavaFileIO extends AbstractFileIO {
                 break;
             } catch (ClosedByInterruptException e) {
                 interrupted = true;
-                // Clear the status to allow retry to succeed.
-                Thread.interrupted();
-                file = openRaf();
+                file = replaceClosedRaf(entry);
             }
         } finally {
-            yieldFile(file);
+            entry.release();
         }
 
         if (interrupted) {
@@ -193,11 +188,12 @@ final class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected void doRead(long pos, ByteBuffer bb, ByteBuffer tail) throws IOException {
+    protected final void doRead(long pos, ByteBuffer bb, ByteBuffer tail) throws IOException {
         boolean interrupted = false;
 
-        FileAccess file = accessFile();
+        LocalPool.Entry<FileAccess> entry = accessFile();
         try {
+            FileAccess file = entry.get();
             while (true) try {
                 FileChannel channel = file.positionChannel(pos);
                 while (bb.hasRemaining()) {
@@ -219,12 +215,10 @@ final class JavaFileIO extends AbstractFileIO {
                 break;
             } catch (ClosedByInterruptException e) {
                 interrupted = true;
-                // Clear the status to allow retry to succeed.
-                Thread.interrupted();
-                file = openRaf();
+                file = replaceClosedRaf(entry);
             }
         } finally {
-            yieldFile(file);
+            entry.release();
         }
 
         if (interrupted) {
@@ -234,29 +228,31 @@ final class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected void doWrite(long pos, byte[] buf, int offset, int length) throws IOException {
-        FileAccess file = accessFile();
+    protected final void doWrite(long pos, byte[] buf, int offset, int length) throws IOException {
+        LocalPool.Entry<FileAccess> entry = accessFile();
         try {
+            FileAccess file = entry.get();
             file.seek(pos);
             file.write(buf, offset, length);
         } finally {
-            yieldFile(file);
+            entry.release();
         }
     }
 
     @Override
-    protected void doWrite(long pos, byte[] buf, int offset, int length, ByteBuffer tail)
+    protected final void doWrite(long pos, byte[] buf, int offset, int length, ByteBuffer tail)
         throws IOException
     {
         doWrite(pos, ByteBuffer.wrap(buf, offset, length), tail);
     }
 
     @Override
-    protected void doWrite(long pos, ByteBuffer bb) throws IOException {
+    protected final void doWrite(long pos, ByteBuffer bb) throws IOException {
         boolean interrupted = false;
 
-        FileAccess file = accessFile();
+        LocalPool.Entry<FileAccess> entry = accessFile();
         try {
+            FileAccess file = entry.get();
             while (true) try {
                 FileChannel channel = file.getChannel();
                 while (bb.hasRemaining()) {
@@ -265,12 +261,10 @@ final class JavaFileIO extends AbstractFileIO {
                 break;
             } catch (ClosedByInterruptException e) {
                 interrupted = true;
-                // Clear the status to allow retry to succeed.
-                Thread.interrupted();
-                file = openRaf();
+                file = replaceClosedRaf(entry);
             }
         } finally {
-            yieldFile(file);
+            entry.release();
         }
 
         if (interrupted) {
@@ -280,11 +274,12 @@ final class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected void doWrite(long pos, ByteBuffer bb, ByteBuffer tail) throws IOException {
+    protected final void doWrite(long pos, ByteBuffer bb, ByteBuffer tail) throws IOException {
         boolean interrupted = false;
 
-        FileAccess file = accessFile();
+        LocalPool.Entry<FileAccess> entry = accessFile();
         try {
+            FileAccess file = entry.get();
             while (true) try {
                 FileChannel channel = file.positionChannel(pos);
                 while (bb.hasRemaining()) {
@@ -296,12 +291,10 @@ final class JavaFileIO extends AbstractFileIO {
                 break;
             } catch (ClosedByInterruptException e) {
                 interrupted = true;
-                // Clear the status to allow retry to succeed.
-                Thread.interrupted();
-                file = openRaf();
+                file = replaceClosedRaf(entry);
             }
         } finally {
-            yieldFile(file);
+            entry.release();
         }
 
         if (interrupted) {
@@ -312,58 +305,34 @@ final class JavaFileIO extends AbstractFileIO {
 
     @Override
     protected Mapping openMapping(boolean readOnly, long pos, int size) throws IOException {
-        return Mapping.open(mFile, readOnly, pos, size);
+        return new NioMapping(mFile, readOnly, pos, size);
     }
 
     @Override
-    protected void reopen() throws IOException {
-        // Caller should hold mAccessLock exclusively.
-
-        IOException ex = null;
-
-        mFilePoolLatch.acquireExclusive();
-        try {
-            try {
-                closePool();
-            } catch (IOException e) {
-                ex = e;
-            }
-
-            for (int i=0; i<mFilePool.length; i++) {
-                try {
-                    mFilePool[i] = openRaf();
-                } catch (IOException e) {
-                    if (ex == null) {
-                        ex = e;
-                    }
-                }
-            }
-        } finally {
-            mFilePoolLatch.releaseExclusive();
-        }
-
-        if (ex != null) {
-            throw ex;
+    protected final void reopen() throws IOException {
+        LocalPool<FileAccess> pool = mFilePool;
+        if (pool != null) {
+            clearPool(pool);
+            testPool();
         }
     }
 
     @Override
-    protected void doSync(boolean metadata) throws IOException {
+    protected final void doSync(boolean metadata) throws IOException {
         boolean interrupted = false;
 
-        FileAccess file = accessFile();
+        LocalPool.Entry<FileAccess> entry = accessFile();
         try {
+            FileAccess file = entry.get();
             while (true) try {
                 file.getChannel().force(metadata);
                 break;
             } catch (ClosedByInterruptException e) {
                 interrupted = true;
-                // Clear the status to allow retry to succeed.
-                Thread.interrupted();
-                file = openRaf();
+                file = replaceClosedRaf(entry);
             }
         } finally {
-            yieldFile(file);
+            entry.release();
         }
 
         if (interrupted) {
@@ -373,7 +342,7 @@ final class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    public void close(Throwable cause) throws IOException {
+    public final void close(Throwable cause) throws IOException {
         IOException ex = null;
 
         mAccessLock.acquireExclusive();
@@ -382,13 +351,14 @@ final class JavaFileIO extends AbstractFileIO {
                 mCause = cause;
             }
 
-            mFilePoolLatch.acquireExclusive();
-            try {
-                closePool();
-            } catch (IOException e) {
-                ex = e;
-            } finally {
-                mFilePoolLatch.releaseExclusive();
+            LocalPool<FileAccess> pool = mFilePool;
+            if (pool != null) {
+                mFilePool = null;
+                try {
+                    clearPool(pool);
+                } catch (IOException e) {
+                    ex = e;
+                }
             }
         } finally {
             mAccessLock.releaseExclusive();
@@ -407,16 +377,32 @@ final class JavaFileIO extends AbstractFileIO {
         }
     }
 
-    // Caller must hold mAccessLock exclusively and also synchronize on mFilePool.
-    private void closePool() throws IOException {
-        if (mFilePoolTop != 0) {
-            throw new AssertionError();
+    private LocalPool.Entry<FileAccess> accessFile() throws IOException {
+        LocalPool<FileAccess> pool = mFilePool;
+        if (pool == null) {
+            throw new IOException("Closed");
         }
+        return pool.access();
+    }
 
-        IOException ex = null;
+    private void testPool() throws IOException {
+        accessFile().release();
+    }
 
-        for (FileAccess file : mFilePool) {
-            if (file != null) {
+    private FileAccess replaceClosedRaf(LocalPool.Entry<FileAccess> entry) throws IOException {
+        // Clear the status to allow retry to succeed.
+        Thread.interrupted();
+        FileAccess file = openRaf();
+        entry.replace(file);
+        return file;
+    }
+
+    private static void clearPool(LocalPool<FileAccess> pool) throws IOException {
+        var consumer = new Consumer<FileAccess>() {
+            IOException ex;
+                
+            @Override
+            public void accept(FileAccess file) {
                 try {
                     file.close();
                 } catch (IOException e) {
@@ -425,41 +411,12 @@ final class JavaFileIO extends AbstractFileIO {
                     }
                 }
             }
-        }
+        };
 
-        if (ex != null) {
-            throw ex;
-        }
-    }
+        pool.clear(consumer);
 
-    private FileAccess accessFile() throws InterruptedIOException {
-        FileAccess[] pool = mFilePool;
-        Latch latch = mFilePoolLatch;
-        latch.acquireExclusive();
-        try {
-            int top;
-            while ((top = mFilePoolTop) == pool.length) {
-                if (mFilePoolCondition.await(latch) < 1) {
-                    throw new InterruptedIOException();
-                }
-            }
-            FileAccess file = pool[top];
-            mFilePoolTop = top + 1;
-            return file;
-        } finally {
-            latch.releaseExclusive();
-        }
-    }
-
-    private void yieldFile(FileAccess file) {
-        FileAccess[] pool = mFilePool;
-        Latch latch = mFilePoolLatch;
-        latch.acquireExclusive();
-        try {
-            pool[--mFilePoolTop] = file;
-            mFilePoolCondition.signal(latch);
-        } finally {
-            latch.releaseExclusive();
+        if (consumer.ex != null) {
+            throw consumer.ex;
         }
     }
 
@@ -508,7 +465,7 @@ final class JavaFileIO extends AbstractFileIO {
         }
     }
 
-    static class FileAccess extends RandomAccessFile {
+    private static final class FileAccess extends RandomAccessFile {
         private long mPosition;
 
         FileAccess(File file, String mode) throws IOException {

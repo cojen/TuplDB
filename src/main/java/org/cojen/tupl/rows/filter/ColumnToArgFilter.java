@@ -21,7 +21,12 @@ import java.math.BigDecimal;
 
 import java.util.Map;
 
+import java.util.function.IntFunction;
+import java.util.function.IntUnaryOperator;
+import java.util.function.Predicate;
+
 import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.ConvertUtils;
 
 /**
  * 
@@ -31,7 +36,7 @@ import org.cojen.tupl.rows.ColumnInfo;
 public class ColumnToArgFilter extends ColumnFilter {
     final int mArgNum;
 
-    ColumnToArgFilter(ColumnInfo column, int op, int arg) {
+    public ColumnToArgFilter(ColumnInfo column, int op, int arg) {
         super(hash(column, op, arg), column, op);
         mArgNum = arg;
     }
@@ -78,13 +83,42 @@ public class ColumnToArgFilter extends ColumnFilter {
     }
 
     @Override
-    public boolean isSufficient(Map<String, ColumnInfo> columns) {
-        return columns.containsKey(mColumn.name);
+    public RowFilter replaceArguments(IntUnaryOperator function) {
+        int argNum = mArgNum;
+        int newArgNum = function.applyAsInt(argNum);
+        if (newArgNum == argNum) {
+            return this;
+        } else {
+            return new ColumnToArgFilter(mColumn, mOperator, newArgNum);
+        }
     }
 
     @Override
-    public RowFilter retain(Map<String, ColumnInfo> columns, boolean strict, RowFilter undecided) {
-        return columns.containsKey(mColumn.name) ? this : undecided;
+    public RowFilter argumentAsNull(int argNum) {
+        if (mArgNum == argNum && !mColumn.isNullable()) {
+            switch (mOperator) {
+            case OP_EQ:
+                return FalseFilter.THE;
+            case OP_NE:
+                return TrueFilter.THE;
+            case OP_GT: case OP_GE:
+                return mColumn.isNullLow() ? TrueFilter.THE : FalseFilter.THE;
+            case OP_LT: case OP_LE:
+                return mColumn.isNullLow() ? FalseFilter.THE : TrueFilter.THE;
+            }
+        }
+
+        return this;
+    }
+
+    @Override
+    public RowFilter retain(Predicate<String> pred, boolean strict, RowFilter undecided) {
+        return pred.test(mColumn.name) ? this : undecided;
+    }
+
+    @Override
+    protected boolean canSplit(Map<String, ?> columns) {
+        return columns.containsKey(mColumn.name);
     }
 
     @Override
@@ -195,8 +229,12 @@ public class ColumnToArgFilter extends ColumnFilter {
         return new ColumnToArgFilter(mColumn, op, mArgNum);
     }
 
+    public ColumnToArgFilter withColumn(ColumnInfo column) {
+        return new ColumnToArgFilter(column, mOperator, mArgNum);
+    }
+
     @Override
-    void appendTo(StringBuilder b) {
+    public void appendTo(StringBuilder b) {
         super.appendTo(b);
         b.append('?').append(mArgNum);
     }

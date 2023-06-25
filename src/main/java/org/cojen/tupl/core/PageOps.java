@@ -19,8 +19,6 @@ package org.cojen.tupl.core;
 
 import java.io.IOException;
 
-import java.nio.ByteBuffer;
-
 import java.util.zip.CRC32;
 
 import org.cojen.tupl.ClosedIndexException;
@@ -331,14 +329,6 @@ final class PageOps {
                               byte[] dst, int dstStart, int len)
     {
         System.arraycopy(srcPage, srcStart, dst, dstStart, len);
-    }
-
-    static void p_copyFromBB(ByteBuffer src, byte[] dstPage, int dstStart, int len) {
-        src.get(dstPage, dstStart, len);
-    }
-
-    static void p_copyToBB(byte[] srcPage, int srcStart, ByteBuffer dst, int len) {
-        dst.put(srcPage, srcStart, len);
     }
 
     static void p_copy(byte[] srcPage, int srcStart,

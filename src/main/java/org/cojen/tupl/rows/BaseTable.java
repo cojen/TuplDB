@@ -149,10 +149,11 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
 
     @Override
     public final Scanner<R> newScanner(Transaction txn) throws IOException {
-        return newScanner(txn, (R) null);
+        return newScannerWith(txn, (R) null);
     }
 
-    final Scanner<R> newScanner(Transaction txn, R row) throws IOException {
+    @Override
+    public final Scanner<R> newScannerWith(Transaction txn, R row) throws IOException {
         return newScanner(txn, row, unfiltered());
     }
 
@@ -160,10 +161,11 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     public final Scanner<R> newScanner(Transaction txn, String queryStr, Object... args)
         throws IOException
     {
-        return newScanner(txn, (R) null, queryStr, args);
+        return newScannerWith(txn, (R) null, queryStr, args);
     }
 
-    protected Scanner<R> newScanner(Transaction txn, R row, String queryStr, Object... args)
+    @Override
+    public Scanner<R> newScannerWith(Transaction txn, R row, String queryStr, Object... args)
         throws IOException
     {
         QueryLauncher<R> launcher = scannerQueryLauncher(txn, queryStr);
@@ -472,7 +474,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         var writer = new RowWriter<R>(out);
 
         // Pass the writer as if it's a row, but it's actually a RowConsumer.
-        Scanner<R> scanner = newScanner(txn, (R) writer);
+        Scanner<R> scanner = newScannerWith(txn, (R) writer);
         try {
             while (scanner.step((R) writer) != null);
         } catch (Throwable e) {
@@ -835,7 +837,7 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
             // terms such that ones most likely to have any effect come first.
             RowFilter remainder = and(and(and(r[3], r[2]), r[0]), r[1]);
             // Remove terms that only check the primary key, because they won't change with a join.
-            remainder = remainder.retain(rowInfo.valueColumns, false, TrueFilter.THE);
+            remainder = remainder.retain(rowInfo.valueColumns::containsKey, false, TrueFilter.THE);
             r[3] = remainder.reduceMore();
         }
     }

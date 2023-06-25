@@ -363,7 +363,7 @@ public class RowMaker {
         var bob = mm.new_(StringBuilder.class);
 
         var initSize = bob
-            .invoke("append", mm.var(Class.class).set(rowType).invoke("getName"))
+            //.invoke("append", mm.var(Class.class).set(rowType).invoke("getName"))
             .invoke("append", '{').invoke("length");
 
         int num = 0;
@@ -452,9 +452,7 @@ public class RowMaker {
     }
 
     private void addCompareTo() {
-        if (!Comparable.class.isAssignableFrom(mRowType) ||
-            isDefaultMethod("compareTo", Object.class) || isDefaultMethod("compareTo", mRowType))
-        {
+        if (!CompareUtils.needsCompareTo(mRowType)) {
             return;
         }
 
@@ -486,13 +484,5 @@ public class RowMaker {
     private MethodMaker addMethod(Method m) {
         return mClassMaker.addMethod(m.getReturnType(), m.getName(),
                                      (Object[]) m.getParameterTypes());
-    }
-
-    private boolean isDefaultMethod(String name, Class<?>... paramTypes) {
-        try {
-            return mRowType.getMethod(name, paramTypes).isDefault();
-        } catch (NoSuchMethodException e) {
-            return false;
-        }
     }
 }

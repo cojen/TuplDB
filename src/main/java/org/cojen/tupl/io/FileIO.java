@@ -28,7 +28,6 @@ import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 
 import com.sun.jna.Native;
-import com.sun.jna.Platform;
 
 /**
  * Lowest I/O interface to a file or device.
@@ -37,34 +36,28 @@ import com.sun.jna.Platform;
  */
 public abstract class FileIO implements CauseCloseable {
     private static final String USE_JNA = FileIO.class.getName() + ".useJNA";
-    private static final int IO_TYPE; // 0: platform independent, 1: POSIX
+    private static final int IO_TYPE; // 0: platform independent, 1: POSIX, 2: Windows
     private static final boolean NEEDS_DIR_SYNC;
 
     static {
+        boolean isWindows = System.getProperty("os.name").startsWith("Windows");
+
         int type = 0;
 
         String jnaProp = System.getProperty(USE_JNA, null);
-        if (jnaProp == null || Boolean.parseBoolean(jnaProp)) {
-            try {
-                if (Native.SIZE_T_SIZE >= 8 && !Platform.isWindows()) {
-                    type = 1;
-                }
-            } catch (Throwable e) {
-                if (jnaProp != null) {
-                    throw e;
-                }
-            }
+        if ((jnaProp == null || Boolean.parseBoolean(jnaProp)) && Native.SIZE_T_SIZE >= 8) {
+            type = isWindows ? 2 : 1;
         }
 
         IO_TYPE = type;
 
-        NEEDS_DIR_SYNC = !System.getProperty("os.name").startsWith("Windows");
+        NEEDS_DIR_SYNC = !isWindows;
     }
 
     public static FileIO open(File file, EnumSet<OpenOption> options)
         throws IOException
     {
-        return open(file, options, 32);
+        return open(file, options, -4); // 4 * number of available processors
     }
 
     public static FileIO open(File file, EnumSet<OpenOption> options, int openFileCount)
@@ -73,10 +66,16 @@ public abstract class FileIO implements CauseCloseable {
         if (options == null) {
             options = EnumSet.noneOf(OpenOption.class);
         }
-        if (IO_TYPE == 1 && (!options.contains(OpenOption.MAPPED) || DirectAccess.isSupported())) {
-            return new PosixFileIO(file, options);
+        if (!options.contains(OpenOption.MAPPED) || DirectAccess.isSupported()) {
+            switch (IO_TYPE) {
+            case 1: return new PosixFileIO(file, options);
+            case 2: return new WindowsFileIO(file, options, openFileCount);
+            }
         }
         return new JavaFileIO(file, options, openFileCount);
+    }
+
+    FileIO() {
     }
 
     public abstract boolean isDirectIO();

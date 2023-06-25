@@ -19,6 +19,10 @@ package org.cojen.tupl.rows.filter;
 
 import java.util.Map;
 
+import java.util.function.IntFunction;
+import java.util.function.IntUnaryOperator;
+import java.util.function.Predicate;
+
 import org.cojen.tupl.rows.ColumnInfo;
 
 /**
@@ -81,22 +85,35 @@ public final class ColumnToColumnFilter extends ColumnFilter {
     }
 
     @Override
-    public boolean isSufficient(Map<String, ColumnInfo> columns) {
-        return columns.containsKey(mColumn.name) && columns.containsKey(mOtherColumn.name);
+    public RowFilter replaceArguments(IntUnaryOperator function) {
+        return this;
     }
 
     @Override
-    public RowFilter retain(Map<String, ColumnInfo> columns, boolean strict, RowFilter undecided) {
-        if (columns.containsKey(mColumn.name)) {
-            if (strict && !columns.containsKey(mOtherColumn.name)) {
+    public RowFilter argumentAsNull(int argNum) {
+        return this;
+    }
+
+    @Override
+    public RowFilter retain(Predicate<String> pred, boolean strict, RowFilter undecided) {
+        // If strict is true, then the predicate must return true for both columns in order for
+        // this filter to be retained. If strict is false, then the predicate must return true
+        // for at least one of the columns on order for this filter to be retained.
+        if (pred.test(mColumn.name)) { 
+            if (strict && !pred.test(mOtherColumn.name)) {
                 return undecided;
             }
         } else {
-            if (strict || !columns.containsKey(mOtherColumn.name)) {
+            if (strict || !pred.test(mOtherColumn.name)) {
                 return undecided;
             }
         }
         return this;
+    }
+
+    @Override
+    protected boolean canSplit(Map<String, ?> columns) {
+        return columns.containsKey(mColumn.name) && columns.containsKey(mOtherColumn.name);
     }
 
     @Override
@@ -149,7 +166,7 @@ public final class ColumnToColumnFilter extends ColumnFilter {
     }
 
     @Override
-    void appendTo(StringBuilder b) {
+    public void appendTo(StringBuilder b) {
         super.appendTo(b);
         b.append(mOtherColumn.name);
     }

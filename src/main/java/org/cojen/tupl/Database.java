@@ -43,6 +43,8 @@ import org.cojen.tupl.io.CauseCloseable;
 
 import org.cojen.tupl.remote.ClientDatabase;
 
+import org.cojen.tupl.rows.join.JoinTableMaker;
+
 import static org.cojen.tupl.core.Utils.*;
 
 /**
@@ -193,7 +195,19 @@ public interface Database extends CauseCloseable, Flushable {
         Index ix = findIndex(type.getName());
         return ix == null ? null : ix.asTable(type);
     }
-    
+
+    /**
+     * Convenience method which joins tables together, opening them if necessary.
+     *
+     * @param spec join specification
+     * @throws NullPointerException if any parameters are null
+     * @throws IllegalArgumentException if join type or specification is malformed
+     * @see Table#join
+     */
+    public default <J> Table<J> openJoinTable(Class<J> joinType, String spec) throws IOException {
+        return JoinTableMaker.join(joinType, spec, this);
+    }
+
     /**
      * Renames the given index to the one given.
      *

@@ -96,14 +96,23 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
         return version;
     }
 
+    private VersionLock selectNewestVersion() {
+        while (true) {
+            VersionLock version = mNewestVersion.select(this);
+            if (version.validate()) {
+                return version;
+            }
+        }
+    }
+
     @Override
     public Closer openAcquire(Transaction txn, R row) throws IOException {
         if (txn.lockMode() == LockMode.UNSAFE) {
             return NonCloser.THE;
         }
 
+        VersionLock version = selectNewestVersion();
         var local = (LocalTransaction) txn;
-        VersionLock version = mNewestVersion.select(this);
 
         if (version.acquireNoPush(local)) {
             local.push(version);
@@ -130,8 +139,8 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
             return NonCloser.THE;
         }
 
+        VersionLock version = selectNewestVersion();
         var local = (LocalTransaction) txn;
-        VersionLock version = mNewestVersion.select(this);
 
         if (version.acquireNoPush(local)) {
             local.push(version);
@@ -158,8 +167,8 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
             return NonCloser.THE;
         }
 
+        VersionLock version = selectNewestVersion();
         var local = (LocalTransaction) txn;
-        VersionLock version = mNewestVersion.select(this);
 
         Closer closer;
         if (version.acquireNoPush(local)) {
@@ -205,12 +214,11 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
     {
         // Assume this method is called by ReplEngine, in which case txn is never UNSAFE.
 
+        VersionLock version = selectNewestVersion();
         var local = (LocalTransaction) txn;
 
         Object locks = null;
         int numLocks = 0;
-
-        VersionLock version = mNewestVersion.select(this);
 
         if (version.acquireNoPush(local)) {
             locks = version;
@@ -437,7 +445,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
 
             // Holding the version lock blocks addPredicate calls once they call version.await.
             // They won't acquire the exclusive evaluator lock until this step completes.
-            final VersionLock version = mNewestVersion.select(this);
+            final VersionLock version = selectNewestVersion();
 
             if (version.acquireNoPush(local)) {
                 local.push(version);
@@ -551,13 +559,13 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
         }
 
         /**
-         * Select a VersionLock lock, latched exclusively.
+         * Select a VersionLock lock, latched exclusively. Must call validate.
          */
         VersionLock select(RowPredicateLockImpl<?> parent) {
             VersionLock lock;
             int which;
             {
-                var stripes = (VersionLock[]) cStripesHandle.getOpaque(this);
+                var stripes = (VersionLock[]) cStripesHandle.getAcquire(this);
                 if (stripes == null) {
                     if (mBucket.tryAcquireExclusive()) {
                         return this;
@@ -588,7 +596,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
                 obtainLock: try {
                     if (stripes == null) {
                         stripes = new VersionLock[cNumStripes];
-                        cStripesHandle.setOpaque(this, stripes);
+                        cStripesHandle.setRelease(this, stripes);
                     } else {
                         lock = stripes[which];
                         if (lock != null) {
@@ -627,7 +635,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
             throws LockFailureException
         {
             boolean result = true;
-            var stripes = (VersionLock[]) cStripesHandle.getOpaque(this);
+            var stripes = (VersionLock[]) cStripesHandle.getAcquire(this);
 
             if (stripes != null) {
                 for (int i=0; i<stripes.length; i++) {
@@ -660,8 +668,22 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
         }
 
         /**
+         * Caller must hold exclusive bucket latch.
+         */
+        final boolean validate() {
+            // If mLockCount is 0, then the call to doAwait returned true, which means that
+            // this version was discarded.
+            if (mLockCount != 0) {
+                return true;
+            } else {
+                mBucket.releaseExclusive();
+                return false;
+            }
+        }
+
+        /**
          * Similar to acquireShared except it doesn't block if a queue exists. Caller must
-         * acquire exclusive bucket latch.
+         * hold exclusive bucket latch.
          *
          * @return true if just acquired
          * @throws IllegalStateException if an exclusive lock is held
@@ -716,18 +738,14 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
         final boolean doAwait(long indexId, Evaluator<?> evaluator, LocalTransaction txn)
             throws LockFailureException
         {
-            if (((int) cLockCountHandle.getAcquire(this)) == 0x80000000) {
-                // No shared owners, so return immediately.
-                return true;
-            }
-
             final LockManager.Bucket bucket = mBucket;
-            final boolean owner;
 
             bucket.acquireExclusive();
             try {
-                if (mLockCount == 0x80000000) {
-                    // No shared owners, so return immediately.
+                if ((mLockCount & 0x7fffffff) == 0) {
+                    // No shared owners, so return immediately. Set the lock count to zero to
+                    // indicate that this version was discarded.
+                    mLockCount = 0;
                     bucket.releaseExclusive();
                     return true;
                 }
@@ -758,7 +776,9 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
 
                 if (((long) cIndexIdHandle.getVolatile(this)) != 0L) {
                     var w = queue.await(bucket, txn.mLockTimeoutNanos);
-                    if (mLockCount == 0x80000000) {
+                    if ((mLockCount & 0x7fffffff) == 0) {
+                        // No shared owners anymore.
+                        mLockCount = 0;
                         bucket.releaseExclusive();
                         return true;
                     }
@@ -805,9 +825,10 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
                                 // Must wait.
                                 break waitCheck;
                             }
-                            if (((int) cLockCountHandle.getAcquire(this)) == 0x80000000) {
-                                // No shared owners anymore.
-                                return true;
+                            if ((((int) cLockCountHandle.getAcquire(this)) & 0x7fffffff) == 0) {
+                                // No shared owners anymore, but need to double check with a
+                                // latch before this version can be safely discarded.
+                                break waitCheck;
                             }
                         }
                     }
@@ -817,16 +838,17 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
                 return false;
             }
 
-            if (((int) cLockCountHandle.getAcquire(this)) == 0x80000000) {
-                // No shared owners anymore.
-                return true;
-            }
-
             int w;
             DeadlockInfo deadlock;
 
             bucket.acquireExclusive();
             doWait: try {
+                if ((mLockCount & 0x7fffffff) == 0) {
+                    // No shared owners anymore.
+                    mLockCount = 0;
+                    return true;
+                }
+
                 LatchCondition queueSX = mQueueSX;
 
                 if (queueSX == null) {
@@ -840,12 +862,13 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
                     // Attempt to claim ownership. Otherwise, the shared count would never go
                     // to zero, and so we'd never be signaled.
                     if (claimOwnership(txn) > 0) {
-                        // No shared owners anymore or txn is the sole shared lock owner.
-                        return true;
+                        // No shared owners anymore, or txn is the sole shared lock owner.
+                        return (mLockCount &= 0x7fffffff) == 0;
                     }
                 } else {
-                    if (mLockCount == 0x80000000) {
+                    if ((mLockCount & 0x7fffffff) == 0) {
                         // No shared owners anymore.
+                        mLockCount = 0;
                         return true;
                     }
 
@@ -884,7 +907,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
                     txn.mWaitingFor = null;
                     // Wake up all waiting threads.
                     queueSX.signalAll(bucket);
-                    return true;
+                    return (mLockCount &= 0x7fffffff) == 0;
                 }
 
                 deadlock = null;

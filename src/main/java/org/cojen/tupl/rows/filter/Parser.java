@@ -21,9 +21,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 import org.cojen.tupl.rows.ColumnInfo;
 import org.cojen.tupl.rows.ConvertUtils;
@@ -36,7 +34,7 @@ import org.cojen.tupl.rows.SimpleParser;
  * @author Brian S O'Neill
  */
 public final class Parser extends SimpleParser {
-    private final Map<String, ColumnInfo> mAllColumns;
+    private final Map<String, ? extends ColumnInfo> mAllColumns;
 
     private int mNextArg;
     private Map<Integer, Boolean> mInArgs;
@@ -45,7 +43,7 @@ public final class Parser extends SimpleParser {
     private LinkedHashMap<String, ColumnInfo> mProjection;
     private OrderBy mOrderBy;
 
-    public Parser(Map<String, ColumnInfo> allColumns, String filter) {
+    public Parser(Map<String, ? extends ColumnInfo> allColumns, String filter) {
         super(filter);
         mAllColumns = allColumns;
     }
@@ -55,7 +53,7 @@ public final class Parser extends SimpleParser {
      *
      * @param availableColumns can pass null if same as all columns
      */
-    public Query parseQuery(Map<String, ColumnInfo> availableColumns) {
+    public Query parseQuery(Map<String, ? extends ColumnInfo> availableColumns) {
         parseProjection(availableColumns);
         return new Query(mProjection, mOrderBy, parseFilter());
     }
@@ -72,7 +70,7 @@ public final class Parser extends SimpleParser {
      *
      * @param availableColumns can pass null if same as all columns
      */
-    private void parseProjection(Map<String, ColumnInfo> availableColumns) {
+    private void parseProjection(Map<String, ? extends ColumnInfo> availableColumns) {
         if (availableColumns == null) {
             availableColumns = mAllColumns;
         }
@@ -87,7 +85,7 @@ public final class Parser extends SimpleParser {
 
         var projection = new LinkedHashMap<String, ColumnInfo>();
         OrderBy orderBy = null;
-        Set<String> excluded = null;
+        Map<String, ColumnInfo> excluded = null;
         boolean wildcard = false;
 
         if ((c = nextCharIgnoreWhitespace()) != '}') {
@@ -130,19 +128,28 @@ public final class Parser extends SimpleParser {
                     // error when attempting to remove a column that isn't available anyhow.
                     ColumnInfo column = parseColumn(prefix < 0 ? null : availableColumns);
 
+                    if (mText.charAt(mPos) == '*') {
+                        // Skip the implicit wildcard suffix if allowed.
+                        if (column.isScalarType()) {
+                            mPos = colStart;
+                            throw error("Wildcard disallowed for scalar column");
+                        }
+                        mPos++;
+                    }
+
                     String name = column.name;
 
                     if (prefix < 0) {
-                        if (excluded == null) {
-                            excluded = new HashSet<>();
-                        }
                         if (projection.containsKey(name)) {
                             mPos = colStart;
                             throw error("Cannot exclude a column which is explicitly selected");
                         }
-                        excluded.add(name);
+                        if (excluded == null) {
+                            excluded = new HashMap<>();
+                        }
+                        column.putScalarColumns(excluded);
                     } else {
-                        if (excluded != null && excluded.contains(name)) {
+                        if (excluded != null && excluded.containsKey(name)) {
                             mPos = colStart;
                             throw error("Cannot select a column which is also excluded");
                         }
@@ -187,20 +194,24 @@ public final class Parser extends SimpleParser {
         }
 
         if (wildcard) {
-            for (var e : availableColumns.entrySet()) {
-                projection.putIfAbsent(e.getKey(), e.getValue());
+            if (excluded == null) {
+                // A null projection means all columns.
+                projection = null;
+            } else {
+                for (ColumnInfo info : availableColumns.values()) {
+                    info.putScalarColumns(projection);
+                }
+                if (!projection.keySet().removeAll(excluded.keySet())) {
+                    // Nothing was actually excluded, and so all columns are projected.
+                    projection = null;
+                }
             }
+        } else if (excluded != null) {
+            mPos = start;
+            throw error("Must include wildcard if any columns are excluded");
         }
 
-        if (excluded != null) {
-            if (!wildcard) {
-                mPos = start;
-                throw error("Must include wildcard if any columns are excluded");
-            }
-            projection.keySet().removeAll(excluded);
-        }
-
-        mProjection = projection.size() == availableColumns.size() ? null : projection;
+        mProjection = projection;
         mOrderBy = orderBy;
     }
 
@@ -408,6 +419,10 @@ public final class Parser extends SimpleParser {
                 mPos--;
                 throw error("Relational operator missing");
             }
+            case '*' -> {
+                mPos--;
+                throw error("Wildcard disallowed here");
+            }
             case -1 -> throw error("Relational operator expected");
             default -> {
                 mPos--;
@@ -500,39 +515,66 @@ public final class Parser extends SimpleParser {
     /**
      * @param availableColumns can pass null if same as all columns
      */
-    private ColumnInfo parseColumn(Map<String, ColumnInfo> availableColumns) {
+    private ColumnInfo parseColumn(Map<String, ? extends ColumnInfo> availableColumns) {
         int start = mPos;
-        int c = nextChar();
+        String name = parseColumnName(start);
+
+        ColumnInfo column = mAllColumns.get(name);
+
+        while (true) {
+            if (column == null) {
+                mPos = start;
+                throw error("Unknown column: " + name);
+            }
+            if (nextCharIgnoreWhitespace() != '.') {
+                mPos--;
+                break;
+            }
+            boolean wildcard = nextCharIgnoreWhitespace() == '*';
+            mPos--;
+            if (wildcard) {
+                break;
+            }
+            String subName = parseColumnName(mPos);
+            name = name + '.' + subName;
+            column = column.subColumn(subName);
+        }
+
+        if (availableColumns == null || availableColumns == mAllColumns) {
+            // All columns are available.
+            if (!name.equals(column.name)) {
+                // Assign the full path name.
+                column = column.copy();
+                column.name = name;
+            }
+        } else {
+            column = availableColumns.get(name);
+            if (column == null) {
+                mPos = start;
+                throw error("Column is unavailable for selection: " + name);
+            }
+        }
+
+        return column;
+    }
+
+    private String parseColumnName(int start) {
+        int c = nextCharIgnoreWhitespace();
         if (c < 0) {
             throw error("Column name expected");
         }
         if (!Character.isJavaIdentifierStart(c)) {
             mPos--;
+            if (c == '*') {
+                throw error("Wildcard disallowed here");
+            }
             throw error("Not a valid character for start of column name: '" + (char) c + '\'');
         }
         do {
             c = nextChar();
         } while (Character.isJavaIdentifierPart(c));
 
-        String name = mText.substring(start, --mPos);
-
-        if (availableColumns == null) {
-            availableColumns = mAllColumns;
-        }
-        ColumnInfo column = availableColumns.get(name);
-
-        if (column == null) {
-            mPos = start;
-            String prefix;
-            if (availableColumns == mAllColumns || !mAllColumns.containsKey(name)) {
-                prefix = "Unknown column";
-            } else {
-                prefix = "Column is unavailable for selection";
-            }
-            throw error(prefix + ": " + name);
-        }
-
-        return column;
+        return mText.substring(start, --mPos);
     }
 
     /**

@@ -17,10 +17,6 @@
 
 package org.cojen.tupl.rows;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
-
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 
@@ -35,42 +31,6 @@ import org.cojen.tupl.util.Latch;
  * @author Brian S O'Neill
  */
 abstract class RefCache<K, V, H> extends ReferenceQueue<Object> {
-    private static final MethodHandle START_VIRTUAL_THREAD;
-
-    static {
-        MethodHandle mh;
-        if (Runtime.version().feature() < 21) {
-            mh = null;
-        } else {
-            try {
-                var mt = MethodType.methodType(Thread.class, Runnable.class);
-                mh = MethodHandles.lookup().findStatic(Thread.class, "startVirtualThread", mt);
-            } catch (Throwable e) {
-                throw new ExceptionInInitializerError(e);
-            }
-        }
-
-        START_VIRTUAL_THREAD = mh;
-    }
-
-    public RefCache() {
-        if (START_VIRTUAL_THREAD != null) {
-            try {
-                var t = (Thread) START_VIRTUAL_THREAD.invokeExact((Runnable) () -> {
-                    try {
-                        while (true) {
-                            Object ref = remove();
-                            synchronized (RefCache.this) {
-                                cleanup(ref);
-                            }
-                        }
-                    } catch (InterruptedException e) {
-                    }
-                });
-            } catch (Throwable e) {
-            }
-        }
-    }
 
     public abstract void clear();
 

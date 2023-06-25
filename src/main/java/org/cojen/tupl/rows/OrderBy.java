@@ -18,8 +18,11 @@
 package org.cojen.tupl.rows;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
+
+import org.cojen.tupl.rows.join.JoinColumnInfo;
 
 import static org.cojen.tupl.rows.ColumnInfo.*;
 
@@ -29,17 +32,25 @@ import static org.cojen.tupl.rows.ColumnInfo.*;
  * @author Brian S O'Neill
  */
 public final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
-    static OrderBy forPrimaryKey(RowInfo rowInfo) {
-        var orderBy = new OrderBy(rowInfo.keyColumns.size());
-        for (ColumnInfo column : rowInfo.keyColumns.values()) {
+    public static OrderBy forPrimaryKey(RowInfo rowInfo) {
+        return forColumns(rowInfo.keyColumns.values());
+    }
+
+    public static OrderBy forColumns(Collection<? extends ColumnInfo> columns) {
+        var orderBy = new OrderBy(columns.size());
+        for (ColumnInfo column : columns) {
             orderBy.put(column.name, new Rule(column, column.typeCode));
         }
         return orderBy;
     }
 
-    static OrderBy forSpec(RowInfo rowInfo, String spec) {
+    public static OrderBy forSpec(RowInfo rowInfo, String spec) {
+        return forSpec(rowInfo.allColumns, spec);
+    }
+
+    public static OrderBy forSpec(Map<String, ? extends ColumnInfo> columns, String spec) {
         try {
-            OrderBy orderBy = parseSpec(rowInfo.allColumns, spec);
+            OrderBy orderBy = parseSpec(columns, spec);
             if (!orderBy.isEmpty()) {
                 return orderBy;
             }
@@ -89,7 +100,7 @@ public final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
         return ob;
     }
 
-    String spec() {
+    public String spec() {
         var b = new StringBuilder();
         for (OrderBy.Rule rule : values()) {
             rule.appendTo(b);
@@ -159,7 +170,7 @@ public final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
         }
     }
 
-    private static OrderBy parseSpec(Map<String, ColumnInfo> columns, String spec) {
+    private static OrderBy parseSpec(Map<String, ? extends ColumnInfo> columns, String spec) {
         var orderBy = new OrderBy();
 
         int length = spec.length();
@@ -193,22 +204,39 @@ public final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
 
             String name = spec.substring(pos, end);
             ColumnInfo column = columns.get(name);
-            if (column == null) {
+
+            if (column != null) {
+                if (column.isPrimitive()) {
+                    // Can't be null.
+                    type &= ~TYPE_NULL_LOW;
+                }
+            } else subColumn: {
+                int ix = name.indexOf('.');
+                if (ix > 0) {
+                    ColumnInfo base = columns.get(name.substring(0, ix));
+                    if (base != null) {
+                        column = base.subColumn(name.substring(ix + 1));
+                        if (column != null) {
+                            var joinColumn = new JoinColumnInfo();
+                            joinColumn.name = name;
+                            joinColumn.type = column.type;
+                            joinColumn.typeCode = column.typeCode;
+                            column = joinColumn;
+                            break subColumn;
+                        }
+                    }
+                }
+
                 throw new IllegalStateException
                     ("Unknown column \"" + name + "\" in ordering specification: " + spec);
-            }
-
-            pos = end;
-
-            if (column.isPrimitive()) {
-                // Can't be null.
-                type &= ~TYPE_NULL_LOW;
             }
 
             if (!orderBy.containsKey(name)) {
                 type |= column.typeCode & ~(TYPE_NULL_LOW | TYPE_DESCENDING);
                 orderBy.put(name, new Rule(column, type));
             }
+
+            pos = end;
         }
 
         return orderBy;

@@ -29,10 +29,6 @@ import java.nio.ByteBuffer;
  * @author Brian S O'Neill
  */
 abstract class Mapping implements Closeable {
-    static Mapping open(File file, boolean readOnly, long position, int size) throws IOException {
-        return new NioMapping(file, readOnly, position, size);
-    }
-
     abstract int size();
 
     abstract void read(int start, byte[] b, int off, int len);

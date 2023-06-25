@@ -30,13 +30,15 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.Table;
+
 import org.cojen.tupl.core.Pair;
 
 /**
  * @see Table#comparator
  * @author Brian S O'Neill
  */
-final class ComparatorMaker<R> {
+public final class ComparatorMaker<R> {
     private static final WeakCache<Pair<Class<?>, String>, Comparator<?>, Object> cCache;
 
     static {
@@ -46,11 +48,11 @@ final class ComparatorMaker<R> {
                 Class<?> rowType = key.a();
                 String spec = key.b();
                 var maker = new ComparatorMaker<>(rowType, spec);
-                String clean = maker.cleanSpec();
-                if (spec.equals(clean)) {
+                String canonical = maker.canonicalSpec();
+                if (spec.equals(canonical)) {
                     return maker.finish();
                 } else {
-                    return obtain(new Pair<>(rowType, clean), null);
+                    return obtain(new Pair<>(rowType, canonical), null);
                 }
             }
         };
@@ -83,7 +85,7 @@ final class ComparatorMaker<R> {
         mOrderBy = OrderBy.forSpec(mRowInfo, spec);
     }
 
-    String cleanSpec() {
+    String canonicalSpec() {
         return mOrderBy.spec();
     }
 
@@ -121,51 +123,82 @@ final class ComparatorMaker<R> {
     }
 
     void makeCompare(MethodMaker mm) {
+        makeCompare(mm, mOrderBy);
+    }
+
+    public static void makeCompare(MethodMaker mm, OrderBy orderBy) {
         var row0 = mm.param(0);
         var row1 = mm.param(1);
 
-        Iterator<OrderBy.Rule> it = mOrderBy.values().iterator();
+        Iterator<OrderBy.Rule> it = orderBy.values().iterator();
         while (it.hasNext()) {
             OrderBy.Rule rule = it.next();
-            ColumnInfo column = rule.column();
-
-            Variable field0 = row0.field(column.name);
-            Variable field1 = row1.field(column.name);
-
-            if (rule.isDescending()) {
-                var temp = field0;
-                field0 = field1;
-                field1 = temp;
-            }
-
             Label nextLabel = mm.label();
 
+            Variable col0, col1;
+
+            {
+                Label isNull = mm.label();
+                col0 = columnValue(rule, row0, isNull);
+                Label ready = mm.label().goto_();
+                isNull.here();
+                // Goto nextLabel if col1 is also null (they're equal).
+                columnValue(rule, row1, nextLabel);
+                mm.return_((rule.isDescending() ^ rule.isNullLow()) ? -1 : 1);
+                ready.here();
+            }
+
+            {
+                Label isNull = mm.label();
+                col1 = columnValue(rule, row1, isNull);
+                Label ready = mm.label().goto_();
+                isNull.here();
+                mm.return_((rule.isDescending() ^ rule.isNullLow()) ? 1 : -1);
+                ready.here();
+            }
+
+            if (rule.isDescending()) {
+                var temp = col0;
+                col0 = col1;
+                col1 = temp;
+            }
+
+            ColumnInfo column = rule.column();
             Variable resultVar;
 
             if (column.isPrimitive()) {
                 String compareName = column.isUnsignedInteger() ? "compareUnsigned" : "compare";
-                resultVar = field0.invoke(compareName, field0, field1);
+                resultVar = col0.invoke(compareName, col0, col1);
             } else {
-                field0 = field0.get();
-                field1 = field1.get();
+                col0 = col0.get();
+                col1 = col1.get();
 
                 // Compare against nulls. Even though the column type might not support nulls,
                 // be lenient. The row being compared might not be fully initialized.
                 Label cont = mm.label();
-                field0.ifNe(null, cont);
-                field1.ifEq(null, nextLabel);
+                col0.ifNe(null, cont);
+                col1.ifEq(null, nextLabel);
                 mm.return_(rule.isNullLow() ? -1 : 1);
                 cont.here();
                 cont = mm.label();
-                field1.ifNe(null, cont);
+                col1.ifNe(null, cont);
                 mm.return_(rule.isNullLow() ? 1 : -1);
                 cont.here();
 
                 if (column.isArray()) {
                     String compareName = column.isUnsignedInteger() ? "compareUnsigned" : "compare";
-                    resultVar = mm.var(Arrays.class).invoke(compareName, field0, field1);
+                    resultVar = mm.var(Arrays.class).invoke(compareName, col0, col1);
                 } else {
-                    resultVar = field0.invoke("compareTo", field1);
+                    Class<?> colType = col0.classType();
+                    if (Comparable.class.isAssignableFrom(colType)) {
+                        resultVar = col0.invoke("compareTo", col1);
+                    } else {
+                        // Assume this is a join row, and so the column being compared is
+                        // actually an ordinary row which doesn't implement Comparable.
+                        String spec = OrderBy.forPrimaryKey(RowInfo.find(colType)).spec();
+                        var cmpVar = mm.var(Comparator.class).setExact(comparator(colType, spec));
+                        resultVar = cmpVar.invoke("compare", col0, col1);
+                    }
                 }
             }
 
@@ -179,5 +212,28 @@ final class ComparatorMaker<R> {
         }
 
         mm.return_(0);
+    }
+
+    /**
+     * Generates code which follows a path to obtain a column value.
+     *
+     * @param isNull branch here if any path component is null.
+     */
+    private static Variable columnValue(OrderBy.Rule rule, Variable rowVar, Label isNull) {
+        ColumnInfo ci = rule.column();
+        if (ci.isScalarType()) {
+            // Prefer accessing the field because the method can throw UnsetColumnException.
+            return rowVar.field(ci.name);
+        }
+
+        while (true) {
+            String prefix = ci.prefix();
+            if (prefix == null) {
+                return rowVar.invoke(ci.name);
+            }
+            rowVar = rowVar.invoke(prefix);
+            rowVar.ifEq(null, isNull);
+            ci = ci.tail();
+        }
     }
 }

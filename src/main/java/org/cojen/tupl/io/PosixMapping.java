@@ -19,58 +19,29 @@ package org.cojen.tupl.io;
 
 import java.io.IOException;
 
-import java.nio.ByteBuffer;
-
 /**
  * 
  *
  * @author Brian S O'Neill
  */
-final class PosixMapping extends Mapping {
-    private final DirectAccess mDirectAccess;
-    private final long mAddr;
-    private final int mSize;
-
+final class PosixMapping extends DirectMapping {
     PosixMapping(int fd, boolean readOnly, long position, int size) throws IOException {
-        mDirectAccess = new DirectAccess();
+        super(open(fd, readOnly, position, size), size);
+    }
+
+    private static long open(int fd, boolean readOnly, long position, int size) throws IOException {
         int prot = readOnly ? 1 : (1 | 2); // PROT_READ | PROT_WRITE
         int flags = 1; // MAP_SHARED
-        mAddr = PosixFileIO.mmapFd(size, prot, flags, fd, position);
-        mSize = size;
-    }
-
-    @Override
-    int size() {
-        return mSize;
-    }
-
-    @Override
-    void read(int start, byte[] b, int off, int len) {
-        UnsafeAccess.copy(mAddr + start, b, off, len);
-    }
-
-    @Override
-    void read(int start, ByteBuffer dst) {
-        dst.put(mDirectAccess.prepare(mAddr + start, dst.remaining()));
-    }
-
-    @Override
-    void write(int start, byte[] b, int off, int len) {
-        UnsafeAccess.copy(b, off, mAddr + start, len);
-    }
-
-    @Override
-    void write(int start, ByteBuffer src) {
-        mDirectAccess.prepare(mAddr + start, src.remaining()).put(src);
+        return PosixFileIO.mmapFd(size, prot, flags, fd, position);
     }
 
     @Override
     void sync(boolean metadata) throws IOException {
-        PosixFileIO.msyncAddr(mAddr, mSize);
+        PosixFileIO.msyncPtr(mPtr, mSize);
     }
 
     @Override
     public void close() throws IOException {
-        PosixFileIO.munmapAddr(mAddr, mSize);
+        PosixFileIO.munmapPtr(mPtr, mSize);
     }
 }

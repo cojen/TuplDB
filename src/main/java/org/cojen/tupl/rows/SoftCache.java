@@ -31,7 +31,7 @@ import java.lang.ref.SoftReference;
  * @author Brian S O'Neill
  * @see WeakCache
  */
-class SoftCache<K, V, H> extends RefCache<K, V, H> {
+public class SoftCache<K, V, H> extends RefCache<K, V, H> {
     private Entry<K, V>[] mEntries;
     private int mSize;
 

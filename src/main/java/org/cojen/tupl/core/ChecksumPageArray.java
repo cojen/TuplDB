@@ -31,6 +31,8 @@ import org.cojen.tupl.io.PageArray;
 import org.cojen.tupl.io.UnsafeAccess;
 import org.cojen.tupl.io.Utils;
 
+import org.cojen.tupl.util.LocalPool;
+
 /**
  * A {@link PageArray} implementation which applies a 32-bit checksum to each page, stored in
  * the last 4 bytes of the page. If the source PageArray reports a page size of 4096 bytes, the
@@ -113,11 +115,15 @@ abstract class ChecksumPageArray extends TransformedPageArray {
     }
 
     private static class Standard extends ChecksumPageArray {
-        private final ThreadLocal<BufRef> mBufRef;
+        private final LocalPool<BufRef> mBufRefPool;
 
         Standard(PageArray source, Supplier<Checksum> supplier) {
             super(source, supplier);
-            mBufRef = new ThreadLocal<>();
+            mBufRefPool = new LocalPool<>(() -> {
+                ByteBuffer bb = ByteBuffer.allocateDirect(4);
+                bb.order(ByteOrder.LITTLE_ENDIAN);
+                return new BufRef(bb, mSupplier.get());
+            }, -4);
         }
 
         @Override
@@ -128,15 +134,20 @@ abstract class ChecksumPageArray extends TransformedPageArray {
                 readPage(index, page);
                 System.arraycopy(page, 0, dst, offset, length);
             } else {
-                BufRef ref = bufRef();
-                ByteBuffer tail = ref.mBuffer;
-                tail.position(0);
-                mSource.readPage(index, dst, offset, length, tail);
-                int actualChecksum = tail.getInt(0);
-                Checksum checksum = ref.mChecksum;
-                checksum.reset();
-                checksum.update(dst, offset, length);
-                check(index, actualChecksum, checksum);
+                LocalPool.Entry<BufRef> e = mBufRefPool.access();
+                try {
+                    BufRef ref = e.get();
+                    ByteBuffer tail = ref.mBuffer;
+                    tail.position(0);
+                    mSource.readPage(index, dst, offset, length, tail);
+                    int actualChecksum = tail.getInt(0);
+                    Checksum checksum = ref.mChecksum;
+                    checksum.reset();
+                    checksum.update(dst, offset, length);
+                    check(index, actualChecksum, checksum);
+                } finally {
+                    e.release();
+                }
             }
         }
 
@@ -152,52 +163,61 @@ abstract class ChecksumPageArray extends TransformedPageArray {
                     UnsafeAccess.free(page);
                 }
             } else {
-                BufRef ref = bufRef();
-                ByteBuffer tail = ref.mBuffer;
-                tail.position(0);
-                mSource.readPage(index, dstPtr, offset, length, tail);
-                int actualChecksum = tail.getInt(0);
-                Checksum checksum = ref.mChecksum;
-                checksum.reset();
-                checksum.update(DirectAccess.ref(dstPtr + offset, length));
-                check(index, actualChecksum, checksum);
+                LocalPool.Entry<BufRef> e = mBufRefPool.access();
+                try {
+                    BufRef ref = e.get();
+                    ByteBuffer tail = ref.mBuffer;
+                    tail.position(0);
+                    mSource.readPage(index, dstPtr, offset, length, tail);
+                    int actualChecksum = tail.getInt(0);
+                    Checksum checksum = ref.mChecksum;
+                    checksum.reset();
+                    checksum.update(DirectAccess.ref(dstPtr + offset, length));
+                    check(index, actualChecksum, checksum);
+                } finally {
+                    e.release();
+                }
             }
         }
 
         @Override
         public void writePage(long index, byte[] src, int offset) throws IOException {
-            BufRef ref = bufRef();
-            Checksum checksum = ref.mChecksum;
-            checksum.reset();
-            checksum.update(src, offset, pageSize());
-            ByteBuffer tail = ref.mBuffer;
-            tail.position(0);
-            tail.putInt(0, (int) checksum.getValue());
-            mSource.writePage(index, src, offset, tail);
+            LocalPool.Entry<BufRef> e = mBufRefPool.access();
+            try {
+                BufRef ref = e.get();
+                Checksum checksum = ref.mChecksum;
+                checksum.reset();
+                checksum.update(src, offset, pageSize());
+                ByteBuffer tail = ref.mBuffer;
+                tail.position(0);
+                tail.putInt(0, (int) checksum.getValue());
+                mSource.writePage(index, src, offset, tail);
+            } finally {
+                e.release();
+            }
         }
 
         @Override
         public void writePage(long index, long srcPtr, int offset) throws IOException {
-            BufRef ref = bufRef();
-            Checksum checksum = ref.mChecksum;
-            checksum.reset();
-            checksum.update(DirectAccess.ref(srcPtr + offset, pageSize()));
-            ByteBuffer tail = ref.mBuffer;
-            tail.position(0);
-            tail.putInt(0, (int) checksum.getValue());
-            mSource.writePage(index, srcPtr, offset, tail);
+            LocalPool.Entry<BufRef> e = mBufRefPool.access();
+            try {
+                BufRef ref = e.get();
+                Checksum checksum = ref.mChecksum;
+                checksum.reset();
+                checksum.update(DirectAccess.ref(srcPtr + offset, pageSize()));
+                ByteBuffer tail = ref.mBuffer;
+                tail.position(0);
+                tail.putInt(0, (int) checksum.getValue());
+                mSource.writePage(index, srcPtr, offset, tail);
+            } finally {
+                e.release();
+            }
         }
 
-        private BufRef bufRef() {
-            BufRef ref = mBufRef.get();
-            if (ref == null) {
-                ByteBuffer bb = ByteBuffer.allocateDirect(4);
-                bb.order(ByteOrder.LITTLE_ENDIAN);
-                Checksum checksum = mSupplier.get();
-                ref = new BufRef(bb, checksum);
-                mBufRef.set(ref);
-            }
-            return ref;
+        @Override
+        public void close(Throwable cause) throws IOException {
+            super.close(cause);
+            mBufRefPool.clear(ref -> Utils.delete(ref.mBuffer));
         }
 
         static class BufRef {

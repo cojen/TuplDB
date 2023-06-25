@@ -19,6 +19,8 @@ package org.cojen.tupl.rows.filter;
 
 import java.util.Map;
 
+import java.util.function.Function;
+
 import org.cojen.tupl.rows.ColumnInfo;
 
 import static java.lang.Integer.MIN_VALUE;
@@ -55,11 +57,11 @@ public abstract class ColumnFilter extends RowFilter {
         };
     }
 
-    public static boolean hasEqualComponent(int op) {
+    static boolean hasEqualComponent(int op) {
         return (op & 1) == 0;
     }
 
-    public static int removeEqualComponent(int op) {
+    static int removeEqualComponent(int op) {
         return switch (op) {
             case OP_EQ -> OP_NE;
             case OP_GE -> OP_GT;
@@ -155,9 +157,11 @@ public abstract class ColumnFilter extends RowFilter {
     }
 
     @Override
-    public RowFilter prioritize(Map<String, ColumnInfo> columns) {
-        return this;
+    protected RowFilter trySplit(Function<ColumnFilter, RowFilter> check) {
+        return check.apply(this);
     }
+
+    protected abstract boolean canSplit(Map<String, ?> columns);
 
     public ColumnInfo column() {
         return mColumn;
@@ -286,7 +290,7 @@ public abstract class ColumnFilter extends RowFilter {
     abstract ColumnFilter withOperator(int op);
 
     @Override
-    void appendTo(StringBuilder b) {
+    public void appendTo(StringBuilder b) {
         b.append(mColumn.name).append(' ').append(operatorString()).append(' ');
     }
 }

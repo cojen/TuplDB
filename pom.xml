@@ -103,6 +103,12 @@
       <version>1.0-1</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.hsqldb</groupId>
+      <artifactId>hsqldb</artifactId>
+      <version>2.7.2</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
 
@@ -212,7 +218,7 @@
         <configuration>
           <detectJavaApiLink>true</detectJavaApiLink>
           <links>
-            <link>https://docs.oracle.com/en/java/javase/19/docs/api</link>
+            <link>https://docs.oracle.com/en/java/javase/20/docs/api</link>
           </links>
           <author>false</author>
           <nodeprecatedlist>true</nodeprecatedlist>
@@ -220,7 +226,7 @@
           <splitindex>true</splitindex>
           <reportOutputDirectory>${basedir}/docs</reportOutputDirectory>
           <destDir>javadoc</destDir>
-          <excludePackageNames>org.cojen.tupl.core:org.cojen.tupl.ev:org.cojen.tupl.jmx:org.cojen.tupl.views:org.cojen.tupl.rows:org.cojen.tupl.rows.filter:org.cojen.tupl.remote</excludePackageNames>
+          <excludePackageNames>org.cojen.tupl.core:org.cojen.tupl.ev:org.cojen.tupl.jmx:org.cojen.tupl.views:org.cojen.tupl.rows:org.cojen.tupl.rows.filter:org.cojen.tupl.remote:org.cojen.tupl.sql</excludePackageNames>
           <!-- <additionalOptions>-Xdoclint:none</additionalOptions> -->
         </configuration>
         <executions>

@@ -131,6 +131,16 @@ final class ServerTable<R> implements RemoteTable {
     }
 
     @Override
+    public boolean exists(RemoteTransaction txn) throws IOException {
+        return mTable.exists(ServerTransaction.txn(txn));
+    }
+
+    @Override
+    public boolean exists(RemoteTransaction txn, String query, Object... args) throws IOException {
+        return mTable.exists(ServerTransaction.txn(txn), query, args);
+    }
+
+    @Override
     public RemoteTransaction newTransaction(DurabilityMode dm) {
         return new ServerTransaction(mTable.newTransaction(dm));
     }

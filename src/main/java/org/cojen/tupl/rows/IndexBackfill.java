@@ -295,7 +295,10 @@ public abstract class IndexBackfill<R> extends Worker.Task implements RedoListen
     /**
      * Runs the given callback with the trigger lock held exclusively.
      */
-    private void withTriggerLock(Runnable r) {
+    private synchronized void withTriggerLock(Runnable r) {
+        // Note that this method is synchronized. This ensures that the mTriggers set doesn't
+        // change at all.
+
         for (Trigger<R> trigger : mTriggers) {
             trigger.acquireExclusive();
         }

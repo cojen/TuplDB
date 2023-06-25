@@ -99,14 +99,15 @@ public class DatabaseReplicatorTest {
      * @return first is the leader
      */
     private Database[] startGroup(int members) throws Exception {
-        return startGroup(members, Role.NORMAL, null);
+        return startGroup(members, Role.NORMAL, null, false);
     }
 
     /**
      * @return first is the leader
      */
     private Database[] startGroup(int members, Role replicaRole,
-                                  Supplier<PrepareHandler> handlerSupplier)
+                                  Supplier<PrepareHandler> handlerSupplier,
+                                  boolean debug)
         throws Exception
     {
         if (members < 1) {
@@ -128,13 +129,14 @@ public class DatabaseReplicatorTest {
         for (int i=0; i<members; i++) {
             mReplBaseFiles[i] = TestUtils.newTempBaseFile(getClass()); 
 
-            EventListener listener = false ? EventListener.printTo(System.out) : null;
+            EventListener listener = debug ? EventListener.printTo(System.out) : null;
 
             mReplConfigs[i] = new ReplicatorConfig()
                 .groupToken(1)
                 .localSocket(mSockets[i])
                 .baseFile(mReplBaseFiles[i])
-                .eventListener(listener);
+                .eventListener(listener)
+                .failoverLagTimeoutMillis(-1);
 
             if (i > 0) {
                 mReplConfigs[i].addSeed(mSockets[0].getLocalSocketAddress());
@@ -307,7 +309,7 @@ public class DatabaseReplicatorTest {
         };
 
         final int memberCount = 3;
-        Database[] dbs = startGroup(memberCount, Role.NORMAL, supplier);
+        Database[] dbs = startGroup(memberCount, Role.NORMAL, supplier, false);
 
         Index ix0 = dbs[0].openIndex("test");
 
@@ -405,7 +407,7 @@ public class DatabaseReplicatorTest {
         // Verifies that a checkpoint in the middle of a value write on the replica can still
         // properly recover the registered cursor.
 
-        Database[] dbs = startGroup(2, Role.OBSERVER, null);
+        Database[] dbs = startGroup(2, Role.OBSERVER, null, false);
         Database leaderDb = dbs[0];
         Database replicaDb = dbs[1];
 
@@ -457,7 +459,7 @@ public class DatabaseReplicatorTest {
     public void standbyLeader() throws Exception {
         // Test that a standby member can become an interim leader and prevent data loss.
 
-        Database[] dbs = startGroup(2, Role.STANDBY, null);
+        Database[] dbs = startGroup(2, Role.STANDBY, null, false);
         Database leaderDb = dbs[0];
         Database replicaDb = dbs[1];
 
@@ -629,7 +631,7 @@ public class DatabaseReplicatorTest {
             }
         };
 
-        Database[] dbs = startGroup(2, Role.NORMAL, supplier);
+        Database[] dbs = startGroup(2, Role.NORMAL, supplier, false);
         Database leaderDb = dbs[0];
         Database replicaDb = dbs[1];
 
@@ -741,7 +743,7 @@ public class DatabaseReplicatorTest {
             }
         };
 
-        Database[] dbs = startGroup(2, Role.NORMAL, supplier);
+        Database[] dbs = startGroup(2, Role.NORMAL, supplier, false);
         Database leaderDb = dbs[0];
         Database replicaDb = dbs[1];
 
@@ -886,7 +888,7 @@ public class DatabaseReplicatorTest {
             }
         };
 
-        Database[] dbs = startGroup(2, Role.NORMAL, supplier);
+        Database[] dbs = startGroup(2, Role.NORMAL, supplier, false);
         Database leaderDb = dbs[0];
         Database replicaDb = dbs[1];
 

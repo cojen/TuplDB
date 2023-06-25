@@ -523,6 +523,14 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
         Index ix = getIndex(indexId);
 
         if (ix != null) {
+            // Cleanup after a transaction which was partially committed and recovered from the
+            // undo log. Failing to do this early causes the rename to deadlock because the
+            // necessary locks won't have been released.
+            TxnEntry te = removeTxnEntry(txnId);
+            if (te != null) {
+                te.mTxn.reset();
+            }
+
             try {
                 mDatabase.renameIndex(ix, newName, txnId);
             } catch (RuntimeException e) {
@@ -775,7 +783,6 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     {
         TxnEntry te = getTxnEntry(txnId);
         LocalTransaction txn = te.mTxn;
-
 
         if (te.mPredicateMode) {
             te.mPredicateMode = false;

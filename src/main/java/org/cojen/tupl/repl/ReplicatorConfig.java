@@ -56,6 +56,7 @@ public class ReplicatorConfig implements Cloneable {
     EventListener mEventListener;
     SocketFactory mSocketFactory;
     ServerSocketFactory mServerSocketFactory;
+    long mFailoverLagTimeoutMillis = 1000;
 
     public ReplicatorConfig() {
         createFilePath(true);
@@ -293,6 +294,15 @@ public class ReplicatorConfig implements Cloneable {
      */
     public ReplicatorConfig serverSocketFactory(ServerSocketFactory factory) {
         mServerSocketFactory = factory;
+        return this;
+    }
+
+    /**
+     * Set a timeout for a newly elected leader to be caught up, or else a new election is run.
+     * Default is 1000 milliseconds, and a negative timeout disables the check.
+     */
+    public ReplicatorConfig failoverLagTimeoutMillis(long timeout) {
+        mFailoverLagTimeoutMillis = timeout;
         return this;
     }
 

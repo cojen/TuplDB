@@ -31,7 +31,7 @@ import org.cojen.tupl.diag.QueryPlan;
  *
  * @author Brian S O'Neill
  */
-interface QueryLauncher<R> extends Closeable {
+public interface QueryLauncher<R> extends Closeable {
     /**
      * @param row initial row; can be null
      */

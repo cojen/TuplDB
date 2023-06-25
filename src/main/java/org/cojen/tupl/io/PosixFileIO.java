@@ -25,14 +25,19 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 import java.nio.channels.ClosedChannelException;
+
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
+
+import java.util.function.Supplier;
 
 import com.sun.jna.Native;
 import com.sun.jna.Platform;
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
+
+import org.cojen.tupl.util.LocalPool;
 
 /**
  * 
@@ -53,13 +58,14 @@ final class PosixFileIO extends AbstractFileIO {
 
     private static final int REOPEN_NON_DURABLE = 1, REOPEN_SYNC_IO = 2, REOPEN_DIRECT_IO = 4;
 
+    private static final int MAX_POOL_SIZE = -4; // 4 * number of available processors
+
     private final File mFile;
     private final int mReopenOptions;
 
-    // TODO: Design a better pooling mechanism. This creates a "leak" of buffers.
-    private final ThreadLocal<BufRef> mBufRef;
-    private final ThreadLocal<BufRef> mBufRefAlt;
-    private final ThreadLocal<BufRef> mIovecRef;
+    private final LocalPool<BufRef> mBufRefPool;
+    private final LocalPool<BufRef> mBufRefAltPool;
+    private final LocalPool<BufRef> mIovecRefPool;
 
     private final boolean mReadahead;
     private final boolean mCloseDontNeed;
@@ -96,9 +102,9 @@ final class PosixFileIO extends AbstractFileIO {
             mAccessLock.releaseExclusive();
         }
 
-        mBufRef = new ThreadLocal<>();
-        mBufRefAlt = new ThreadLocal<>();
-        mIovecRef = new ThreadLocal<>();
+        mBufRefPool = new LocalPool<>(null, MAX_POOL_SIZE);
+        mBufRefAltPool = new LocalPool<>(null, MAX_POOL_SIZE);
+        mIovecRefPool = new LocalPool<>(new BufRefAllocator(32), MAX_POOL_SIZE);
 
         if (options.contains(OpenOption.MAPPED)) {
             map();
@@ -115,6 +121,11 @@ final class PosixFileIO extends AbstractFileIO {
     }
 
     @Override
+    protected final File file() {
+        return mFile;
+    }
+
+    @Override
     protected long doLength() throws IOException {
         return lseekEndFd(fd(), 0);
     }
@@ -126,33 +137,48 @@ final class PosixFileIO extends AbstractFileIO {
 
     @Override
     protected void doRead(long pos, byte[] buf, int offset, int length) throws IOException {
-        BufRef ref = bufRef(length);
-        preadFd(fd(), ref.mPointer, length, pos);
-        ByteBuffer bb = ref.mBuffer;
-        bb.position(0);
-        bb.get(buf, offset, length);
+        LocalPool.Entry<BufRef> e = bufRefEntry(length);
+        try {
+            BufRef ref = e.get();
+            preadFd(fd(), ref.mPointer, length, pos);
+            ByteBuffer bb = ref.mBuffer;
+            bb.position(0);
+            bb.get(buf, offset, length);
+        } finally {
+            e.release();
+        }
     }
 
     @Override
     protected void doRead(long pos, byte[] buf, int offset, int length, ByteBuffer tail)
         throws IOException
     {
-        ByteBuffer bb = bufRef(length).mBuffer;
-        bb.position(0);
-        doRead(pos, bb, tail);
-        bb.position(0);
-        bb.get(buf, offset, length);
+        LocalPool.Entry<BufRef> e = bufRefEntry(length);
+        try {
+            ByteBuffer bb = e.get().mBuffer;
+            bb.position(0);
+            doRead(pos, bb, tail);
+            bb.position(0);
+            bb.get(buf, offset, length);
+        } finally {
+            e.release();
+        }
     }
 
     private void doRead(long pos, ByteBuffer bb1, byte[] buf2, int offset2, int length2)
         throws IOException
     {
-        // Use alternate buffer, to prevent clobbering the primary one.
-        ByteBuffer bb2 = bufRefAlt(length2).mBuffer;
-        bb2.position(0);
-        doRead(pos, bb1, bb2);
-        bb2.position(0);
-        bb2.get(buf2, offset2, length2);
+        // Use an alternate buffer, to prevent clobbering the primary one.
+        LocalPool.Entry<BufRef> e = bufRefEntryAlt(length2);
+        try {
+            ByteBuffer bb2 = e.get().mBuffer;
+            bb2.position(0);
+            doRead(pos, bb1, bb2);
+            bb2.position(0);
+            bb2.get(buf2, offset2, length2);
+        } finally {
+            e.release();
+        }
     }
 
     @Override
@@ -185,83 +211,102 @@ final class PosixFileIO extends AbstractFileIO {
             return;
         }
 
-        BufRef iovecRef = iovecRef();
-        ByteBuffer iovecBuf = iovecRef.mBuffer;
+        LocalPool.Entry<BufRef> e = mIovecRefPool.access();
+        try {
+            BufRef iovecRef = e.get();
+            ByteBuffer iovecBuf = iovecRef.mBuffer;
 
-        iovecBuf.putLong(0,  DirectAccess.getAddress(bb) + bbPos);
-        iovecBuf.putLong(8,  bbLen);
-        iovecBuf.putLong(16, DirectAccess.getAddress(tail) + tailPos);
-        iovecBuf.putLong(24, tailLen);
+            iovecBuf.putLong(0,  DirectAccess.getAddress(bb) + bbPos);
+            iovecBuf.putLong(8,  bbLen);
+            iovecBuf.putLong(16, DirectAccess.getAddress(tail) + tailPos);
+            iovecBuf.putLong(24, tailLen);
 
-        int fd = fd();
+            int fd = fd();
 
-        while (true) {
-            int amt = preadv(fd, iovecRef.mPointer, 2, pos);
+            while (true) {
+                int amt = preadv(fd, iovecRef.mPointer, 2, pos);
 
-            if (amt <= 0) {
-                if (amt < 0) {
-                    throw lastErrorToException();
+                if (amt <= 0) {
+                    if (amt < 0) {
+                        throw lastErrorToException();
+                    }
+                    if (bbLen > 0) {
+                        throw new EOFException("Attempt to read past end of file: " + pos);
+                    }
+                    return;
                 }
-                if (bbLen > 0) {
-                    throw new EOFException("Attempt to read past end of file: " + pos);
+
+                pos += amt;
+
+                if (amt >= bbLen) {
+                    bb.position(bb.limit());
+                    int tailAmt = amt - bbLen;
+                    tailPos += tailAmt;
+                    tailLen -= tailAmt;
+                    tail.position(tailPos);
+                    if (tailLen > 0) {
+                        preadFd(fd, DirectAccess.getAddress(tail) + tailPos, tailLen, pos);
+                        tail.position(tail.limit());
+                    }
+                    return;
                 }
-                return;
+
+                bbPos += amt;
+                bbLen -= amt;
+                bb.position(bbPos);
+                iovecBuf.putLong(0, DirectAccess.getAddress(bb) + bbPos);
+                iovecBuf.putLong(8, bbLen);
             }
-
-            pos += amt;
-
-            if (amt >= bbLen) {
-                bb.position(bb.limit());
-                int tailAmt = amt - bbLen;
-                tailPos += tailAmt;
-                tailLen -= tailAmt;
-                tail.position(tailPos);
-                if (tailLen > 0) {
-                    preadFd(fd, DirectAccess.getAddress(tail) + tailPos, tailLen, pos);
-                    tail.position(tail.limit());
-                }
-                return;
-            }
-
-            bbPos += amt;
-            bbLen -= amt;
-            bb.position(bbPos);
-            iovecBuf.putLong(0, DirectAccess.getAddress(bb) + bbPos);
-            iovecBuf.putLong(8, bbLen);
+        } finally {
+            e.release();
         }
     }
 
     @Override
     protected void doWrite(long pos, byte[] buf, int offset, int length) throws IOException {
-        BufRef ref = bufRef(length);
-        ByteBuffer bb = ref.mBuffer;
-        bb.position(0);
-        bb.put(buf, offset, length);
-        pwriteFd(fd(), ref.mPointer, length, pos);
+        LocalPool.Entry<BufRef> e = bufRefEntry(length);
+        try {
+            BufRef ref = e.get();
+            ByteBuffer bb = ref.mBuffer;
+            bb.position(0);
+            bb.put(buf, offset, length);
+            pwriteFd(fd(), ref.mPointer, length, pos);
+        } finally {
+            e.release();
+        }
     }
 
     @Override
     protected void doWrite(long pos, byte[] buf, int offset, int length, ByteBuffer tail)
         throws IOException
     {
-        BufRef ref = bufRef(length);
-        ByteBuffer bb = ref.mBuffer;
-        bb.position(0);
-        bb.put(buf, offset, length);
-        bb.flip();
-        doWrite(pos, bb, tail);
+        LocalPool.Entry<BufRef> e = bufRefEntry(length);
+        try {
+            BufRef ref = e.get();
+            ByteBuffer bb = ref.mBuffer;
+            bb.position(0);
+            bb.put(buf, offset, length);
+            bb.flip();
+            doWrite(pos, bb, tail);
+        } finally {
+            e.release();
+        }
     }
 
     private void doWrite(long pos, ByteBuffer bb1, byte[] buf2, int offset2, int length2)
         throws IOException
     {
-        // Use alternate buffer, to prevent clobbering the primary one.
-        BufRef ref2 = bufRefAlt(length2);
-        ByteBuffer bb2 = ref2.mBuffer;
-        bb2.position(0);
-        bb2.put(buf2, offset2, length2);
-        bb2.flip();
-        doWrite(pos, bb1, bb2);
+        // Use an alternate buffer, to prevent clobbering the primary one.
+        LocalPool.Entry<BufRef> e = bufRefEntryAlt(length2);
+        try {
+            ByteBuffer bb2 = e.get().mBuffer;
+            bb2.position(0);
+            bb2.put(buf2, offset2, length2);
+            bb2.flip();
+            doWrite(pos, bb1, bb2);
+        } finally {
+            e.release();
+        }
     }
 
     @Override
@@ -294,43 +339,48 @@ final class PosixFileIO extends AbstractFileIO {
             return;
         }
 
-        BufRef iovecRef = iovecRef();
-        ByteBuffer iovecBuf = iovecRef.mBuffer;
+        LocalPool.Entry<BufRef> e = mIovecRefPool.access();
+        try {
+            BufRef iovecRef = e.get();
+            ByteBuffer iovecBuf = iovecRef.mBuffer;
 
-        iovecBuf.putLong(0,  DirectAccess.getAddress(bb) + bbPos);
-        iovecBuf.putLong(8,  bbLen);
-        iovecBuf.putLong(16, DirectAccess.getAddress(tail) + tailPos);
-        iovecBuf.putLong(24, tailLen);
+            iovecBuf.putLong(0,  DirectAccess.getAddress(bb) + bbPos);
+            iovecBuf.putLong(8,  bbLen);
+            iovecBuf.putLong(16, DirectAccess.getAddress(tail) + tailPos);
+            iovecBuf.putLong(24, tailLen);
 
-        int fd = fd();
+            int fd = fd();
 
-        while (true) {
-            int amt = pwritev(fd, iovecRef.mPointer, 2, pos);
+            while (true) {
+                int amt = pwritev(fd, iovecRef.mPointer, 2, pos);
 
-            if (amt < 0) {
-                throw lastErrorToException();
-            }
-
-            pos += amt;
-
-            if (amt >= bbLen) {
-                bb.position(bb.limit());
-                int tailAmt = amt - bbLen;
-                tailPos += tailAmt;
-                tailLen -= tailAmt;
-                tail.position(tailPos);
-                if (tailLen > 0) {
-                    pwriteFd(fd, DirectAccess.getAddress(tail) + tailPos, tailLen, pos);
-                    tail.position(tail.limit());
+                if (amt < 0) {
+                    throw lastErrorToException();
                 }
-                return;
-            }
 
-            bbPos += amt;
-            bbLen -= amt;
-            bb.position(bbPos);
-            iovecBuf.putLong(0, DirectAccess.getAddress(bb) + bbPos);
-            iovecBuf.putLong(8, bbLen);
+                pos += amt;
+
+                if (amt >= bbLen) {
+                    bb.position(bb.limit());
+                    int tailAmt = amt - bbLen;
+                    tailPos += tailAmt;
+                    tailLen -= tailAmt;
+                    tail.position(tailPos);
+                    if (tailLen > 0) {
+                        pwriteFd(fd, DirectAccess.getAddress(tail) + tailPos, tailLen, pos);
+                        tail.position(tail.limit());
+                    }
+                    return;
+                }
+
+                bbPos += amt;
+                bbLen -= amt;
+                bb.position(bbPos);
+                iovecBuf.putLong(0, DirectAccess.getAddress(bb) + bbPos);
+                iovecBuf.putLong(8, bbLen);
+            }
+        } finally {
+            e.release();
         }
     }
 
@@ -413,37 +463,58 @@ final class PosixFileIO extends AbstractFileIO {
             Utils.suppress(e, ex);
             throw e;
         }
+
+        clearBufRefPool(mBufRefPool);
+        clearBufRefPool(mBufRefAltPool);
+        clearBufRefPool(mIovecRefPool);
     }
 
-    private BufRef bufRef(int size) {
-        BufRef ref = mBufRef.get();
-        if (ref == null || ref.mBuffer.capacity() < size) {
-            ref = new BufRef(ByteBuffer.allocateDirect(size));
-            mBufRef.set(ref);
-        }
-        ref.mBuffer.limit(size);
-        return ref;
+    private LocalPool.Entry<BufRef> bufRefEntry(int size) {
+        return bufRefEntry(mBufRefPool, size);
     }
 
-    private BufRef bufRefAlt(int size) {
-        BufRef ref = mBufRefAlt.get();
-        if (ref == null || ref.mBuffer.capacity() < size) {
-            ref = new BufRef(ByteBuffer.allocateDirect(size));
-            mBufRefAlt.set(ref);
-        }
-        ref.mBuffer.limit(size);
-        return ref;
+    private LocalPool.Entry<BufRef> bufRefEntryAlt(int size) {
+        return bufRefEntry(mBufRefAltPool, size);
     }
 
-    private BufRef iovecRef() {
-        BufRef ref = mIovecRef.get();
-        if (ref == null) {
-            ByteBuffer bb = ByteBuffer.allocateDirect(32);
-            bb.order(ByteOrder.LITTLE_ENDIAN);
-            ref = new BufRef(bb);
-            mIovecRef.set(ref);
+    private static LocalPool.Entry<BufRef> bufRefEntry(LocalPool<BufRef> pool, int size) {
+        LocalPool.Entry<BufRef> e = pool.access();
+
+        try {
+            ByteBuffer bb;
+
+            obtain: {
+                ByteBuffer original;
+
+                BufRef ref = e.get();
+                if (ref == null) {
+                    original = null;
+                } else {
+                    if ((bb = ref.mBuffer).capacity() >= size) {
+                        break obtain;
+                    }
+                    original = bb;
+                }
+
+                bb = ByteBuffer.allocateDirect(size);
+                e.replace(new BufRef(bb));
+
+                if (original != null) {
+                    Utils.delete(original);
+                }
+            }
+
+            bb.limit(size);
+
+            return e;
+        } catch (Throwable ex) {
+            e.release();
+            throw ex;
         }
-        return ref;
+    }
+
+    private static void clearBufRefPool(LocalPool<BufRef> pool) {
+        pool.clear(ref -> Utils.delete(ref.mBuffer));
     }
 
     static class BufRef {
@@ -453,6 +524,21 @@ final class PosixFileIO extends AbstractFileIO {
         BufRef(ByteBuffer buffer) {
             mBuffer = buffer;
             mPointer = Pointer.nativeValue(Native.getDirectBufferPointer(buffer));
+        }
+    }
+
+    private static class BufRefAllocator implements Supplier<BufRef> {
+        private final int mSize;
+
+        BufRefAllocator(int size) {
+            mSize = size;
+        }
+
+        @Override
+        public BufRef get() {
+            ByteBuffer bb = ByteBuffer.allocateDirect(mSize);
+            bb.order(ByteOrder.LITTLE_ENDIAN);
+            return new BufRef(bb);
         }
     }
 
@@ -624,16 +710,16 @@ final class PosixFileIO extends AbstractFileIO {
         return ptr;
     }
 
-    static void msyncAddr(long addr, long length) throws IOException {
-        long endAddr = addr + length;
-        addr = (addr / PAGE_SIZE) * PAGE_SIZE;
-        if (msync(addr, endAddr - addr, 4) == -1) { // flags = MS_SYNC
+    static void msyncPtr(long ptr, long length) throws IOException {
+        long endPtr = ptr + length;
+        ptr = (ptr / PAGE_SIZE) * PAGE_SIZE;
+        if (msync(ptr, endPtr - ptr, 4) == -1) { // flags = MS_SYNC
             throw lastErrorToException();
         }
     }
 
-    static void munmapAddr(long addr, long length) throws IOException {
-        if (munmap(addr, length) == -1) {
+    static void munmapPtr(long ptr, long length) throws IOException {
+        if (munmap(ptr, length) == -1) {
             throw lastErrorToException();
         }
     }

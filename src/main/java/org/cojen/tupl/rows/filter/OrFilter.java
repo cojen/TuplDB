@@ -18,7 +18,8 @@
 package org.cojen.tupl.rows.filter;
 
 import java.util.Arrays;
-import java.util.Map;
+
+import java.util.function.Predicate;
 
 import org.cojen.tupl.rows.ColumnInfo;
 
@@ -90,7 +91,7 @@ public class OrFilter extends GroupFilter {
     }
 
     @Override
-    void appendTo(StringBuilder b) {
+    public void appendTo(StringBuilder b) {
         if (mSubFilters.length == 0) {
             b.append('F');
         } else {
@@ -160,7 +161,7 @@ public class OrFilter extends GroupFilter {
     }
 
     @Override
-    public RowFilter retain(Map<String, ColumnInfo> columns, boolean strict, RowFilter undecided) {
+    public RowFilter retain(Predicate<String> pred, boolean strict, RowFilter undecided) {
         RowFilter[] subFilters = mSubFilters;
         if (subFilters.length == 0) {
             return this;
@@ -170,7 +171,7 @@ public class OrFilter extends GroupFilter {
 
         int len = 0;
         for (int i=0; i<subFilters.length; i++) {
-            RowFilter sub = subFilters[i].retain(columns, strict, undecided);
+            RowFilter sub = subFilters[i].retain(pred, strict, undecided);
             if (sub == TrueFilter.THE) {
                 return sub;
             }

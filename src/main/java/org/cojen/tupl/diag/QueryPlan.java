@@ -22,6 +22,7 @@ import java.io.PrintStream;
 import java.io.Serializable;
 
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -353,6 +354,43 @@ public abstract sealed class QueryPlan implements Serializable {
     }
 
     /**
+     * Query plan node which only checks for the existance of at least one row.
+     */
+    public static final class Exists extends QueryPlan {
+        private static final long serialVersionUID = 1L;
+
+        public final QueryPlan source;
+
+        /**
+         * @param source child plan node
+         */
+        public Exists(QueryPlan source) {
+            this.source = source;
+        }
+
+        @Override
+        void appendTo(Appendable a, String in1, String in2) throws IOException {
+            a.append(in1).append("exists").append('\n');
+            appendSub(a, in2, null, source);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof Exists exists && matches(exists);
+        }
+
+        boolean matches(Exists other) {
+            return Objects.equals(source, other.source);
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = Objects.hashCode(source);
+            return hash ^ -343981398;
+        }
+    }
+
+    /**
      * Query plan node which sorts the rows.
      */
     public static sealed class Sort extends QueryPlan {
@@ -655,6 +693,94 @@ public abstract sealed class QueryPlan implements Serializable {
         @Override
         public int hashCode() {
             return super.hashCode() ^ -1637108271;
+        }
+    }
+
+    /**
+     * Query plan node which represents a nested loop join.
+     */
+    public static final class NestedLoopsJoin extends Set {
+        private static final long serialVersionUID = 1L;
+
+        /**
+         * @param levels ordered by outermost level to innermost level
+         */
+        public NestedLoopsJoin(Level... levels) {
+            super(levels);
+        }
+
+        public static final class Level extends QueryPlan {
+            public final String type;
+            public final QueryPlan source;
+            public final Map<Integer, String> assignments;
+
+            /**
+             * @param type join type from the previous level
+             * @param source optional child plan node
+             * @param assignments optional map of arguments assigned by this level for use by the
+             * next and remaining levels
+             */
+            public Level(String type, QueryPlan source, Map<Integer, String> assignments) {
+                this.type = type;
+                this.source = source;
+                this.assignments = assignments;
+            }
+
+            @Override
+            void appendTo(Appendable a, String in1, String in2) throws IOException {
+                a.append(in1).append(type).append('\n');
+
+                if (source != null) {
+                    appendSub(a, in2, null, source);
+                }
+
+                if (assignments != null && !assignments.isEmpty()) {
+                    a.append(in2).append("assignments").append(": ");
+                    int i = 0;
+                    for (Map.Entry<Integer, String> e : assignments.entrySet()) {
+                        if (i++ > 0) {
+                            a.append(", ");
+                        }
+                        a.append('?').append(String.valueOf(e.getKey())).append(" = ")
+                            .append(String.valueOf(e.getValue()));
+                    }
+                    a.append('\n');
+                }
+            }
+
+            @Override
+            public boolean equals(Object obj) {
+                return obj instanceof Level level && matches(level);
+            }
+
+            boolean matches(Level other) {
+                return Objects.equals(type, other.type) &&
+                    Objects.equals(source, other.source) &&
+                    Objects.equals(assignments, other.assignments);
+            }
+
+            @Override
+            public int hashCode() {
+                int hash = Objects.hashCode(type);
+                hash = hash * 31 + Objects.hashCode(source);
+                hash = hash * 31 + Objects.hashCode(assignments);
+                return hash ^ 1463224650;
+            }
+        }
+
+        @Override
+        void appendTo(Appendable a, String in1, String in2) throws IOException {
+            super.appendTo(a, in1, in2, "nested loops join");
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof NestedLoopsJoin join && matches(join);
+        }
+
+        @Override
+        public int hashCode() {
+            return super.hashCode() ^ 533558266;
         }
     }
 }

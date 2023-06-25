@@ -84,10 +84,10 @@ public final class ResultSetMaker {
         var columns = new LinkedHashMap<String, ColumnInfo>();
 
         if (projection == null) {
-            putAllNonHidden(columns, info.keyColumns());
-            putAllNonHidden(columns, info.valueColumns());
+            putAllNonHidden(columns, info.keyColumns);
+            putAllNonHidden(columns, info.valueColumns);
         } else {
-            Map<String, ColumnInfo> all = info.allColumns();
+            Map<String, ColumnInfo> all = info.allColumns;
 
             for (Map.Entry<String, String> e : projection.entrySet()) {
                 String originalName = e.getKey();
@@ -188,7 +188,7 @@ public final class ResultSetMaker {
         mRowType = rowType;
         mRowClass = rowClass;
 
-        Map<String, ColumnInfo> allColumns = RowInfo.find(rowType).allColumns();
+        Map<String, ColumnInfo> allColumns = RowInfo.find(rowType).allColumns;
         mColumns = new LinkedHashMap<>();
 
         for (int i = 0; i < columnPairs.length; i += 2) {

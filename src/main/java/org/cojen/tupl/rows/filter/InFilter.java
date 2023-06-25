@@ -39,7 +39,7 @@ public final class InFilter extends ColumnToArgFilter {
     }
 
     @Override
-    void appendTo(StringBuilder b) {
+    public void appendTo(StringBuilder b) {
         if (mOperator == OP_NOT_IN) {
             b.append('!').append('(');
         }

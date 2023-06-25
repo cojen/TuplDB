@@ -177,7 +177,7 @@ public final class LocalPool<B> {
     /**
      * Entry within a {@link LocalPool}.
      */
-    public static interface Entry<B> {
+    public static sealed interface Entry<B> {
         /**
          * Return the pooled object, which is locked exclusively.
          */
@@ -195,7 +195,7 @@ public final class LocalPool<B> {
         public void release();
     }
 
-    private static class TheEntry<B> extends Latch implements Entry<B> {
+    private static final class TheEntry<B> extends Latch implements Entry<B> {
         private B mInstance;
 
         private TheEntry(B instance) {
