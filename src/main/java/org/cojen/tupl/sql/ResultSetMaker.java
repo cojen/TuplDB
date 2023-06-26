@@ -770,7 +770,7 @@ public final class ResultSetMaker {
 
     // Called by generated code. Returns a string for trying to find the column again.
     public static String notFound(String columnName) throws SQLException {
-        String lowercase = columnName.toLowerCase();
+        String lowercase = columnName.toLowerCase(Locale.ROOT);
         if (lowercase.equals(columnName)) {
             throw new SQLNonTransientException
                 ("Column \"" + columnName + "\" doesn't exist in the ResultSet");
