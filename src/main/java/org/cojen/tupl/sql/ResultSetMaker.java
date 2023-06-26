@@ -25,15 +25,17 @@ import java.lang.invoke.MethodType;
 
 import java.math.BigDecimal;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 
 import java.util.function.BiFunction;
 
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
-import java.sql.SQLDataException;
 import java.sql.SQLException;
 import java.sql.SQLNonTransientException;
 import java.sql.Types;
@@ -72,10 +74,10 @@ public final class ResultSetMaker {
      * @param rowType interface consisting of column methods
      * @param projection maps original column names to target names; the order of the elements
      * determines the ResultSet column numbers; pass null to project all non-hidden columns
-     * @throws SQLDataException if a requested column doesn't exist
+     * @throws SQLNonTransientException if a requested column doesn't exist
      */
     static Class<?> find(Class<?> rowType, LinkedHashMap<String, String> projection)
-        throws SQLDataException
+        throws SQLNonTransientException
     {
         RowInfo info = RowInfo.find(rowType);
 
@@ -92,7 +94,7 @@ public final class ResultSetMaker {
 
                 ColumnInfo colInfo = all.get(originalName);
                 if (colInfo == null) {
-                    throw new SQLDataException
+                    throw new SQLNonTransientException
                         ("Column \"" + originalName + "\" doesn't exist in \"" +
                          rowType.getSimpleName() + '"');
                 }
@@ -448,27 +450,47 @@ public final class ResultSetMaker {
         MethodMaker mm = mClassMaker.addMethod(int.class, "findColumn", String.class).public_();
         var columnNameVar = mm.param(0);
 
-        var cases = new String[mColumns.size()];
+        var rsMakerVar = mm.var(ResultSetMaker.class);
+        rsMakerVar.invoke("nullCheck", columnNameVar);
+
+        var caseMap = new HashMap<String, Label>(mColumns.size() * 3);
+        var uniqueLabels = new ArrayList<Label>(caseMap.size());
+
+        for (String name : mColumns.keySet()) {
+            Label label = mm.label();
+            uniqueLabels.add(label);
+            caseMap.put(name, label);
+            caseMap.put(name.toLowerCase(Locale.ROOT), label);
+            caseMap.put(name.toUpperCase(Locale.ROOT), label);
+        }
+
+        var cases = new String[caseMap.size()];
         var labels = new Label[cases.length];
 
-        int ix = 0;
-        for (String name : mColumns.keySet()) {
-            cases[ix] = name;
-            labels[ix] = mm.label();
-            ix++;
+        {
+            int i = 0;
+            for (Map.Entry<String, Label> e : caseMap.entrySet()) {
+                cases[i] = e.getKey();
+                labels[i] = e.getValue();
+                i++;
+            }
         }
 
         Label defaultLabel = mm.label();
 
+        Label start = mm.label().here();
+
         columnNameVar.switch_(defaultLabel, cases, labels);
 
-        for (int i=0; i<labels.length; i++) {
-            labels[i].here();
+        for (int i=0; i<uniqueLabels.size(); i++) {
+            uniqueLabels.get(i).here();
             mm.return_(i + 1);
         }
 
         defaultLabel.here();
-        mm.var(ResultSetMaker.class).invoke("notFound", columnNameVar).throw_();
+
+        columnNameVar.set(rsMakerVar.invoke("notFound", columnNameVar));
+        start.goto_();
     }
 
     private void addWasNullMethod() {
@@ -741,36 +763,48 @@ public final class ResultSetMaker {
     }
 
     // Called by generated code.
-    public static SQLDataException notFound(int columnIndex) {
-        return new SQLDataException
+    public static SQLNonTransientException notFound(int columnIndex) {
+        return new SQLNonTransientException
             ("Column index " + columnIndex + " doesn't exist in the ResultSet");
     }
 
-    // Called by generated code.
-    public static SQLDataException notFound(String columnName) {
-        return new SQLDataException
-            ("Column \"" + columnName + "\" doesn't exist in the ResultSet");
+    // Called by generated code. Returns a string for trying to find the column again.
+    public static String notFound(String columnName) throws SQLException {
+        String lowercase = columnName.toLowerCase();
+        if (lowercase.equals(columnName)) {
+            throw new SQLNonTransientException
+                ("Column \"" + columnName + "\" doesn't exist in the ResultSet");
+        } else {
+            return lowercase;
+        }
     }
 
     // Called by generated code.
-    public static SQLDataException notNull(String columnName) {
-        return new SQLDataException
+    public static void nullCheck(String columnName) throws SQLException {
+        if (columnName == null) {
+            throw new SQLNonTransientException("Null column name");
+        }
+    }
+
+    // Called by generated code.
+    public static SQLNonTransientException notNull(String columnName) {
+        return new SQLNonTransientException
             ("Column \"" + columnName + "\" cannot be set to null");
     }
 
     // Called by generated code.
-    public static SQLDataException failed(ConversionException ex) {
-        return new SQLDataException
+    public static SQLNonTransientException failed(ConversionException ex) {
+        return new SQLNonTransientException
             ("Column conversion failed: " + ex.getMessage());
     }
 
     // Called by generated code.
-    public static SQLDataException failed(String columnName, RuntimeException ex) {
+    public static SQLNonTransientException failed(String columnName, RuntimeException ex) {
         String message = ex.getMessage();
         if (message == null || message.isEmpty()) {
             message = ex.toString();
         }
-        return new SQLDataException
+        return new SQLNonTransientException
             ("Column conversion failed for column \"" + columnName + "\": " + message);
     }
 }

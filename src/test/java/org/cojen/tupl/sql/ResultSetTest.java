@@ -19,7 +19,6 @@ package org.cojen.tupl.sql;
 
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
-import java.sql.SQLDataException;
 import java.sql.SQLNonTransientException;
 import java.sql.Types;
 
@@ -62,7 +61,7 @@ public class ResultSetTest {
             try {
                 rs.findColumn("xxx");
                 fail();
-            } catch (SQLDataException e) {
+            } catch (SQLNonTransientException e) {
                 assertTrue(e.getMessage().contains("doesn't exist"));
             }
             assertFalse(rs.next());
@@ -72,6 +71,11 @@ public class ResultSetTest {
                 fail();
             } catch (SQLNonTransientException e) {
                 assertTrue(e.getMessage().contains("closed"));
+            }
+            try {
+                rs.getString(null);
+            } catch (SQLNonTransientException e) {
+                assertTrue(e.getMessage().toLowerCase().contains("null"));
             }
         }
 
@@ -95,6 +99,9 @@ public class ResultSetTest {
             assertFalse(rs.wasNull());
             assertEquals(123L, rs.getLong("id"));
             assertFalse(rs.wasNull());
+            assertEquals(123L, rs.getLong("ID"));
+            assertEquals(123L, rs.getLong("Id"));
+            assertEquals(123L, rs.getLong("iD"));
             assertNull(rs.getObject("value"));
             assertTrue(rs.wasNull());
             assertEquals(0, rs.getInt("value"));
@@ -167,7 +174,7 @@ public class ResultSetTest {
         try {
             md.getColumnName(3);
             fail();
-        } catch (SQLDataException e) {
+        } catch (SQLNonTransientException e) {
             assertTrue(e.getMessage().contains("doesn't exist"));
         }
 
@@ -175,7 +182,7 @@ public class ResultSetTest {
         try {
             rs.updateNull("message");
             fail();
-        } catch (SQLDataException e) {
+        } catch (SQLNonTransientException e) {
             assertTrue(e.getMessage().contains("cannot be set to null"));
         }
 
