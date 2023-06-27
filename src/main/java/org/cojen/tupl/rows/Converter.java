@@ -613,24 +613,25 @@ public class Converter {
         }
 
         Label tryStart = mm.label().here();
-        doConvertExact(mm, columnName, srcInfo, srcVar, dstInfo, dstVar);
-        Label tryEnd = mm.label().here();
-        Label done = mm.label().goto_();
+        boolean canThrow = doConvertExact(mm, columnName, srcInfo, srcVar, dstInfo, dstVar);
 
-        mm.catch_(tryStart, tryEnd, ConversionException.class).throw_();
-
-        var exVar = mm.catch_(tryStart, tryEnd, RuntimeException.class);
-        var messageVar = mm.var(Converter.class).invoke("exceptionMessage", exVar);
-        mm.new_(ConversionException.class, messageVar, columnName).throw_();
-
-        done.here();
+        if (canThrow) {
+            Label tryEnd = mm.label().here();
+            Label done = mm.label().goto_();
+            var exVar = mm.catch_(tryStart, tryEnd, RuntimeException.class);
+            mm.var(Converter.class).invoke("failed", columnName, exVar).throw_();
+            done.here();
+        }
     }
 
-    private static void doConvertExact(final MethodMaker mm, final String columnName,
-                                       final ColumnInfo srcInfo, final Variable srcVar,
-                                       final ColumnInfo dstInfo, final Variable dstVar)
+    /**
+     * @return true if a runtime exception is possible which isn't already a
+     * ConversionException
+     */
+    private static boolean doConvertExact(final MethodMaker mm, final String columnName,
+                                          final ColumnInfo srcInfo, final Variable srcVar,
+                                          final ColumnInfo dstInfo, final Variable dstVar)
     {
-
         Label end = mm.label();
 
         if (srcInfo.isNullable()) {
@@ -664,20 +665,21 @@ public class Converter {
                                return dstElementVar;
                            }));
 
+                end.here();
+                return true; // could be smarter, but this is safe
             } else {
                 // Non-array to array conversion.
                 throwConvertFailException(mm, columnName, srcInfo, dstInfo);
+                end.here();
+                return false;
             }
-
-            end.here();
-            return;
         }
 
         if (srcInfo.isArray()) {
             // Array to non-array conversion.
             throwConvertFailException(mm, columnName, srcInfo, dstInfo);
             end.here();
-            return;
+            return false;
         }
 
         int srcPlainTypeCode = srcInfo.plainTypeCode();
@@ -685,11 +687,12 @@ public class Converter {
         if (dstInfo.isAssignableFrom(srcPlainTypeCode)) {
             dstVar.set(srcVar);
             end.here();
-            return;
+            return false;
         }
 
         int dstPlainTypeCode = dstInfo.plainTypeCode();
 
+        boolean canThrow = true;
         boolean handled = true;
 
         switch (dstPlainTypeCode) {
@@ -724,7 +727,10 @@ public class Converter {
             switch (srcPlainTypeCode) {
                 case TYPE_INT -> convert("intToShortExact", srcVar, dstVar);
                 case TYPE_LONG -> convert("longToShortExact", srcVar, dstVar);
-                case TYPE_UBYTE -> dstVar.set(srcVar.cast(int.class).and(0xff).cast(short.class));
+                case TYPE_UBYTE -> {
+                    canThrow = false;
+                    dstVar.set(srcVar.cast(int.class).and(0xff).cast(short.class));
+                }
                 case TYPE_USHORT ->
                     convert("unsignedIntToShortExact", srcVar.cast(int.class).and(0xffff), dstVar);
                 case TYPE_UINT -> convert("unsignedIntToShortExact", srcVar, dstVar);
@@ -741,8 +747,14 @@ public class Converter {
         case TYPE_INT:
             switch (srcPlainTypeCode) {
                 case TYPE_LONG -> dstVar.set(mm.var(Math.class).invoke("toIntExact", srcVar));
-                case TYPE_UBYTE -> dstVar.set(srcVar.cast(int.class).and(0xff));
-                case TYPE_USHORT -> dstVar.set(srcVar.cast(int.class).and(0xffff));
+                case TYPE_UBYTE -> {
+                    canThrow = false;
+                    dstVar.set(srcVar.cast(int.class).and(0xff));
+                }
+                case TYPE_USHORT -> {
+                    canThrow = false;
+                    dstVar.set(srcVar.cast(int.class).and(0xffff));
+                }
                 case TYPE_UINT -> convert("unsignedIntToIntExact", srcVar, dstVar);
                 case TYPE_ULONG -> convert("unsignedLongToIntExact", srcVar, dstVar);
                 case TYPE_FLOAT -> convert("floatToIntExact", srcVar, dstVar);
@@ -756,9 +768,18 @@ public class Converter {
 
         case TYPE_LONG:
             switch (srcPlainTypeCode) {
-                case TYPE_UBYTE -> dstVar.set(srcVar.cast(long.class).and(0xffL));
-                case TYPE_USHORT-> dstVar.set(srcVar.cast(long.class).and(0xffffL));
-                case TYPE_UINT -> dstVar.set(srcVar.cast(long.class).and(0xffff_ffffL));
+                case TYPE_UBYTE -> {
+                    canThrow = false;
+                    dstVar.set(srcVar.cast(long.class).and(0xffL));
+                }
+                case TYPE_USHORT-> {
+                    canThrow = false;
+                    dstVar.set(srcVar.cast(long.class).and(0xffffL));
+                }
+                case TYPE_UINT -> {
+                    canThrow = false;
+                    dstVar.set(srcVar.cast(long.class).and(0xffff_ffffL));
+                }
                 case TYPE_ULONG -> convert("unsignedLongToLongExact", srcVar, dstVar);
                 case TYPE_FLOAT -> convert("floatToLongExact", srcVar, dstVar);
                 case TYPE_DOUBLE -> convert("doubleToLongExact", srcVar, dstVar);
@@ -796,7 +817,10 @@ public class Converter {
                 case TYPE_BYTE, TYPE_SHORT, TYPE_INT ->
                     convert("intToUnsignedShortExact", srcVar, dstVar);
                 case TYPE_LONG -> convert("longToUnsignedShortExact", srcVar, dstVar);
-                case TYPE_UBYTE -> dstVar.set(srcVar.cast(int.class).and(0xff).cast(short.class));
+                case TYPE_UBYTE -> {
+                    canThrow = false;
+                    dstVar.set(srcVar.cast(int.class).and(0xff).cast(short.class));
+                }
                 case TYPE_UINT -> convert("unsignedIntToUnsignedShortExact", srcVar, dstVar);
                 case TYPE_ULONG -> convert("unsignedLongToUnsignedShortExact", srcVar, dstVar);
                 case TYPE_FLOAT -> convert("floatToUnsignedShortExact", srcVar, dstVar);
@@ -816,8 +840,14 @@ public class Converter {
                 case TYPE_BYTE, TYPE_SHORT, TYPE_INT ->
                     convert("intToUnsignedIntExact", srcVar, dstVar);
                 case TYPE_LONG -> convert("longToUnsignedIntExact", srcVar, dstVar);
-                case TYPE_UBYTE -> dstVar.set(srcVar.cast(int.class).and(0xff));
-                case TYPE_USHORT -> dstVar.set(srcVar.cast(int.class).and(0xffff));
+                case TYPE_UBYTE -> {
+                    canThrow = false;
+                    dstVar.set(srcVar.cast(int.class).and(0xff));
+                }
+                case TYPE_USHORT -> {
+                    canThrow = false;
+                    dstVar.set(srcVar.cast(int.class).and(0xffff));
+                }
                 case TYPE_ULONG -> convert("unsignedLongToUnsignedIntExact", srcVar, dstVar);
                 case TYPE_FLOAT -> convert("floatToUnsignedIntExact", srcVar, dstVar);
                 case TYPE_DOUBLE -> convert("doubleToUnsignedIntExact", srcVar, dstVar);
@@ -834,9 +864,18 @@ public class Converter {
                 case TYPE_BYTE, TYPE_SHORT, TYPE_INT ->
                     convert("intToUnsignedLongExact", srcVar, dstVar);
                 case TYPE_LONG -> convert("longToUnsignedLongExact", srcVar, dstVar);
-                case TYPE_UBYTE -> dstVar.set(srcVar.cast(long.class).and(0xff));
-                case TYPE_USHORT-> dstVar.set(srcVar.cast(long.class).and(0xffff));
-                case TYPE_UINT -> dstVar.set(srcVar.cast(long.class).and(0xffff_ffffL));
+                case TYPE_UBYTE -> {
+                    canThrow = false;
+                    dstVar.set(srcVar.cast(long.class).and(0xff));
+                }
+                case TYPE_USHORT-> {
+                    canThrow = false;
+                    dstVar.set(srcVar.cast(long.class).and(0xffff));
+                }
+                case TYPE_UINT -> {
+                    canThrow = false;
+                    dstVar.set(srcVar.cast(long.class).and(0xffff_ffffL));
+                }
                 case TYPE_FLOAT -> convert("floatToUnsignedLongExact", srcVar, dstVar);
                 case TYPE_DOUBLE -> convert("doubleToUnsignedLongExact", srcVar, dstVar);
                 case TYPE_BIG_INTEGER -> convert("biToUnsignedLongExact", srcVar, dstVar);
@@ -853,8 +892,10 @@ public class Converter {
                 case TYPE_LONG -> convert("longToFloatExact", srcVar, dstVar);
                 case TYPE_DOUBLE -> convert("doubleToFloatExact", srcVar, dstVar);
                 case TYPE_UBYTE -> dstVar.set(srcVar.cast(int.class).and(0xff).cast(dstVar));
-                case TYPE_USHORT ->
+                case TYPE_USHORT -> {
+                    canThrow = false;
                     dstVar.set(srcVar.cast(int.class).and(0xffff).cast(dstVar));
+                }
                 case TYPE_UINT ->
                     convert("longToFloatExact", srcVar.cast(long.class).and(0xffff_ffffL), dstVar);
                 case TYPE_ULONG -> convert("unsignedLongToFloatExact", srcVar, dstVar);
@@ -868,10 +909,18 @@ public class Converter {
         case TYPE_DOUBLE:
             switch (srcPlainTypeCode) {
                 case TYPE_LONG -> convert("longToDoubleExact", srcVar, dstVar);
-                case TYPE_UBYTE -> dstVar.set(srcVar.cast(int.class).and(0xff).cast(dstVar));
-                case TYPE_USHORT -> dstVar.set(srcVar.cast(int.class).and(0xffff).cast(dstVar));
-                case TYPE_UINT ->
+                case TYPE_UBYTE -> {
+                    canThrow = false;
+                    dstVar.set(srcVar.cast(int.class).and(0xff).cast(dstVar));
+                }
+                case TYPE_USHORT -> {
+                    canThrow = false;
+                    dstVar.set(srcVar.cast(int.class).and(0xffff).cast(dstVar));
+                }
+                case TYPE_UINT -> {
+                    canThrow = false;
                     dstVar.set(srcVar.cast(long.class).and(0xffff_ffffL).cast(dstVar));
+                }
                 case TYPE_ULONG -> convert("unsignedLongToDoubleExact", srcVar, dstVar);
                 case TYPE_BIG_INTEGER -> convert("biToDoubleExact", srcVar, dstVar);
                 case TYPE_BIG_DECIMAL -> convert("bdToDoubleExact", srcVar, dstVar);
@@ -888,6 +937,7 @@ public class Converter {
             break;
 
         case TYPE_UTF8:
+            canThrow = false;
             switch (srcPlainTypeCode) {
                 case TYPE_UBYTE ->
                     dstVar.set(mm.var(Integer.class).invoke
@@ -903,15 +953,26 @@ public class Converter {
         case TYPE_BIG_INTEGER:
             var bi = mm.var(BigInteger.class);
             switch (srcPlainTypeCode) {
-                case TYPE_BYTE, TYPE_SHORT, TYPE_INT, TYPE_LONG ->
+                case TYPE_BYTE, TYPE_SHORT, TYPE_INT, TYPE_LONG -> {
+                    canThrow = false;
                     dstVar.set(bi.invoke("valueOf", srcVar));
-                case TYPE_UBYTE ->
+                }
+                case TYPE_UBYTE -> {
+                    canThrow = false;
                     dstVar.set(bi.invoke("valueOf", srcVar.cast(long.class).and(0xffL)));
-                case TYPE_USHORT ->
+                }
+                case TYPE_USHORT -> {
+                    canThrow = false;
                     dstVar.set(bi.invoke("valueOf", srcVar.cast(long.class).and(0xffffL)));
-                case TYPE_UINT ->
+                }
+                case TYPE_UINT -> {
+                    canThrow = false;
                     dstVar.set(bi.invoke("valueOf", srcVar.cast(long.class).and(0xffff_ffffL)));
-                case TYPE_ULONG -> convert("unsignedLongToBigIntegerExact", srcVar, dstVar);
+                }
+                case TYPE_ULONG -> {
+                    canThrow = false;
+                    convert("unsignedLongToBigIntegerExact", srcVar, dstVar);
+                }
                 case TYPE_BIG_DECIMAL -> dstVar.set(srcVar.invoke("toBigIntegerExact"));
                 case TYPE_FLOAT ->
                     dstVar.set(mm.var(BigDecimalUtils.class).invoke("valueOf", srcVar)
@@ -925,6 +986,7 @@ public class Converter {
             break;
 
         case TYPE_BIG_DECIMAL:
+            canThrow = false;
             var bd = mm.var(BigDecimal.class);
             switch (srcPlainTypeCode) {
                 case TYPE_BYTE, TYPE_SHORT, TYPE_INT, TYPE_LONG ->
@@ -938,7 +1000,11 @@ public class Converter {
                 case TYPE_UINT ->
                     dstVar.set(bd.invoke("valueOf", srcVar.cast(long.class).and(0xffff_ffffL)));
                 case TYPE_ULONG -> convert("unsignedLongToBigDecimalExact", srcVar, dstVar);
-                case TYPE_BIG_INTEGER, TYPE_UTF8 -> dstVar.set(mm.new_(bd, srcVar));
+                case TYPE_BIG_INTEGER -> dstVar.set(mm.new_(bd, srcVar));
+                case TYPE_UTF8 -> {
+                    canThrow = true;
+                    dstVar.set(mm.new_(bd, srcVar));
+                }
                 default -> handled = false;
             }
             break;
@@ -952,6 +1018,8 @@ public class Converter {
         }
 
         end.here();
+
+        return canThrow;
     }
 
     /**
@@ -1395,11 +1463,14 @@ public class Converter {
     }
 
     // Called by generated code.
-    public static String exceptionMessage(Throwable e) {
-        String message = e.getMessage();
-        if (message == null) {
-            message = e.toString();
+    public static ConversionException failed(String columnName, RuntimeException re) {
+        if (re instanceof ConversionException ce) {
+            return ce;
         }
-        return message;
+        String message = re.getMessage();
+        if (message == null || message.isEmpty()) {
+            message = re.toString();
+        }
+        return new ConversionException(message, columnName);
     }
 }
