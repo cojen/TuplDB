@@ -209,21 +209,16 @@ public final class ResultSetMaker {
     private Class<?> finish() {
         // Note that the generated mRowClass is used as the peer in order to be accessible.
         mClassMaker = CodeUtils.beginClassMaker(ResultSetMaker.class, mRowClass, null, "rs");
-        mClassMaker.public_().implement(BaseResultSet.class);
+        mClassMaker.public_().extend(BaseResultSet.class);
 
         mClassMaker.addConstructor().public_();
 
         mClassMaker.addField(mRowClass, "row").private_();
 
-        // 0: not ready, 1: ready, 2: closed
-        mClassMaker.addField(int.class, "state").private_();
-
         addInitMethod();
         addRowMethod();
-        addFirstMethod();
         addToStringMethod();
         addCloseMethod();
-        addIsClosedMethod();
         addMetaDataMethod();
         addFindColumnMethod();
         addWasNullMethod();
@@ -275,11 +270,6 @@ public final class ResultSetMaker {
         mm.return_(rowVar);
     }
 
-    private void addFirstMethod() {
-        MethodMaker mm = mClassMaker.addMethod(boolean.class, "first").public_();
-        mm.return_(mm.var(ResultSetMaker.class).invoke("first", mm.this_(), mm.field("state")));
-    }
-
     private void addToStringMethod() {
         // TODO: Should show the projected column names, not the actual column names.
         MethodMaker mm = mClassMaker.addMethod(String.class, "toString").public_();
@@ -293,11 +283,6 @@ public final class ResultSetMaker {
         mm.field("row").set(null);
     }
 
-    private void addIsClosedMethod() {
-        MethodMaker mm = mClassMaker.addMethod(boolean.class, "isClosed").public_();
-        mm.return_(mm.field("state").ge(2));
-    }
-
     private void addMetaDataMethod() {
         MethodMaker mm = mClassMaker.addMethod(ResultSetMetaData.class, "getMetaData").public_();
         var bootstrap = mm.var(ResultSetMaker.class).condy("condyMD", mRowType, mColumnPairs);
@@ -307,7 +292,7 @@ public final class ResultSetMaker {
     public static ResultSetMetaData condyMD(MethodHandles.Lookup lookup, String name, Class<?> type,
                                             Class<?> rowType, String[] columnPairs)
     {
-        ClassMaker cm = ClassMaker.begin(null, lookup).implement(BaseResultSetMetaData.class);
+        ClassMaker cm = ClassMaker.begin(null, lookup).extend(BaseResultSetMetaData.class).final_();
         cm.addConstructor().private_();
 
         var maker = new ResultSetMaker(rowType, null, columnPairs, false);
@@ -760,15 +745,6 @@ public final class ResultSetMaker {
         String message = state == 0 ? "ResultSet isn't positioned; call next() or first()"
             : "ResultSet is closed";
         return new SQLNonTransientException(message);
-    }
-
-    // Called by generated code.
-    public static boolean first(BaseResultSet rs, int state) throws SQLException {
-        if (state == 0) {
-            return rs.next();
-        }
-        String message = state == 1 ? "ResultSet is already positioned" : "ResultSet is closed";
-        throw new SQLNonTransientException(message);
     }
 
     // Called by generated code.

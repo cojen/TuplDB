@@ -27,7 +27,7 @@ import java.sql.SQLFeatureNotSupportedException;
  *
  * @author Brian S O'Neill
  */
-public interface BaseResultSetMetaData extends ResultSetMetaData {
+public abstract class BaseResultSetMetaData implements ResultSetMetaData {
     /*
     @Override
     public int getColumnCount() throws SQLException {
@@ -37,17 +37,17 @@ public interface BaseResultSetMetaData extends ResultSetMetaData {
     */
 
     @Override
-    public default boolean isCaseSensitive(int column) throws SQLException {
+    public boolean isCaseSensitive(int column) throws SQLException {
         return true;
     }
 
     @Override
-    public default boolean isSearchable(int column) throws SQLException {
+    public boolean isSearchable(int column) throws SQLException {
         return true;
     }
 
     @Override
-    public default boolean isCurrency(int column) throws SQLException {
+    public boolean isCurrency(int column) throws SQLException {
         return false;
     }
 
@@ -63,7 +63,7 @@ public interface BaseResultSetMetaData extends ResultSetMetaData {
     */
 
     @Override
-    public default String getColumnLabel(int column) throws SQLException {
+    public String getColumnLabel(int column) throws SQLException {
         return getColumnName(column);
     }
 
@@ -73,7 +73,7 @@ public interface BaseResultSetMetaData extends ResultSetMetaData {
     */
 
     @Override
-    public default String getSchemaName(int column) throws SQLException {
+    public String getSchemaName(int column) throws SQLException {
         return "";
     }
 
@@ -86,12 +86,12 @@ public interface BaseResultSetMetaData extends ResultSetMetaData {
     */
 
     @Override
-    public default String getTableName(int column) throws SQLException {
+    public String getTableName(int column) throws SQLException {
         return "";
     }
 
     @Override
-    public default String getCatalogName(int column) throws SQLException {
+    public String getCatalogName(int column) throws SQLException {
         return "";
     }
 
@@ -101,39 +101,39 @@ public interface BaseResultSetMetaData extends ResultSetMetaData {
     */
 
     @Override
-    public default String getColumnTypeName(int column) throws SQLException {
+    public String getColumnTypeName(int column) throws SQLException {
         return getColumnClass(column).getSimpleName();
     }
 
     @Override
-    public default boolean isReadOnly(int column) throws SQLException {
+    public boolean isReadOnly(int column) throws SQLException {
         return false;
     }
 
     @Override
-    public default boolean isWritable(int column) throws SQLException {
+    public boolean isWritable(int column) throws SQLException {
         return true;
     }
 
     @Override
-    public default boolean isDefinitelyWritable(int column) throws SQLException {
+    public boolean isDefinitelyWritable(int column) throws SQLException {
         return true;
     }
 
     @Override
-    public default String getColumnClassName(int column) throws SQLException {
+    public String getColumnClassName(int column) throws SQLException {
         return getColumnClass(column).getCanonicalName();
     }
 
-    public Class<?> getColumnClass(int column) throws SQLException;
+    public abstract Class<?> getColumnClass(int column) throws SQLException;
 
     @Override
-    public default <T> T unwrap(Class<T> iface) throws SQLException {
+    public <T> T unwrap(Class<T> iface) throws SQLException {
         throw new SQLFeatureNotSupportedException();
     }
 
     @Override
-    public default boolean isWrapperFor(Class<?> iface) throws SQLException {
+    public boolean isWrapperFor(Class<?> iface) throws SQLException {
         return false;
     }
 }
