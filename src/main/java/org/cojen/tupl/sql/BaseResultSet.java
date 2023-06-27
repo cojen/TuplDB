@@ -61,7 +61,7 @@ public abstract class BaseResultSet implements ResultSet {
     */
 
     @Override
-    public boolean isClosed() throws SQLException {
+    public final boolean isClosed() throws SQLException {
         return state == 2;
     }
 
@@ -127,7 +127,7 @@ public abstract class BaseResultSet implements ResultSet {
     }
 
     @Override
-    public boolean first() throws SQLException {
+    public final boolean first() throws SQLException {
         int state = this.state;
         if (state == 0) {
             return next();

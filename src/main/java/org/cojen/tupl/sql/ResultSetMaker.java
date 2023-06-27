@@ -143,8 +143,8 @@ public final class ResultSetMaker {
         }
     }
 
-    private static final WeakCache<Key, Class<?>, ResultSetMaker> cCache = new WeakCache<>() {
-        protected Class<?> newValue(Key key, ResultSetMaker maker) {
+    private static final WeakCache<Object, Class<?>, ResultSetMaker> cCache = new WeakCache<>() {
+        protected Class<?> newValue(Object key, ResultSetMaker maker) {
             return maker.finish();
         }
     };
@@ -155,8 +155,7 @@ public final class ResultSetMaker {
     private final Class<?> mRowClass;
     private final LinkedHashMap<String, ColumnInfo> mColumns;
     private final String[] mColumnPairs;
-
-    private boolean mHasLastGet;
+    private final boolean mHasNullableColumns;
 
     private ClassMaker mClassMaker;
 
@@ -170,20 +169,28 @@ public final class ResultSetMaker {
         mRowClass = RowMaker.find(rowType);
         mColumns = columns;
 
+        boolean hasNullableColumns = false;
+
         var pairs = new String[mColumns.size() << 1];
         int i = 0;
         for (Map.Entry<String, ColumnInfo> entry : mColumns.entrySet()) {
             pairs[i++] = entry.getKey().intern();
-            pairs[i++] = entry.getValue().name.intern();
+            ColumnInfo ci = entry.getValue();
+            pairs[i++] = ci.name.intern();
+            hasNullableColumns |= ci.isNullable();
         }
         mColumnPairs = pairs;
+
+        mHasNullableColumns = hasNullableColumns;
     }
 
     /**
+     * Constructor used by indy and condy methods.
+     *
      * @param columnPairs maps target names to the original columns
      */
     private ResultSetMaker(Class<?> rowType, Class<?> rowClass, String[] columnPairs,
-                           boolean hasLastGet)
+                           boolean hasNullableColumns)
     {
         mRowType = rowType;
         mRowClass = rowClass;
@@ -196,7 +203,19 @@ public final class ResultSetMaker {
         }
 
         mColumnPairs = columnPairs;
-        mHasLastGet = hasLastGet;
+        mHasNullableColumns = hasNullableColumns;
+    }
+
+    /**
+     * Copy constructor which can only make the abstract parent class. It only defines methods
+     * which don't depend on columns.
+     */
+    private ResultSetMaker(ResultSetMaker maker) {
+        mRowType = maker.mRowType;
+        mRowClass = maker.mRowClass;
+        mColumns = maker.mColumns;
+        mColumnPairs = null; // parent class indicator
+        mHasNullableColumns = maker.mHasNullableColumns;
     }
 
     /**
@@ -209,19 +228,35 @@ public final class ResultSetMaker {
     private Class<?> finish() {
         // Note that the generated mRowClass is used as the peer in order to be accessible.
         mClassMaker = CodeUtils.beginClassMaker(ResultSetMaker.class, mRowClass, null, "rs");
-        mClassMaker.public_().extend(BaseResultSet.class);
+        mClassMaker.public_();
+
+        if (mColumnPairs == null) {
+            // This is the parent abstract class.
+            mClassMaker.extend(BaseResultSet.class).abstract_();
+        } else {
+            mClassMaker.extend(cCache.obtain(mRowType, new ResultSetMaker(this)));
+        }
 
         mClassMaker.addConstructor().public_();
 
-        mClassMaker.addField(mRowClass, "row").private_();
+        if (mColumnPairs == null) {
+            // This is the parent abstract class.
 
-        addInitMethod();
-        addRowMethod();
+            mClassMaker.addField(mRowClass, "row").protected_();
+
+            addInitMethod();
+            addRowMethod();
+            addCloseMethod();
+
+            return mClassMaker.finish();
+        }
+
+        // The remaining methods depend on columns.
+
+        addWasNullMethod();
         addToStringMethod();
-        addCloseMethod();
         addMetaDataMethod();
         addFindColumnMethod();
-        addWasNullMethod();
 
         // Get methods...
 
@@ -255,13 +290,13 @@ public final class ResultSetMaker {
     }
 
     private void addInitMethod() {
-        MethodMaker mm = mClassMaker.addMethod(null, "init", mRowClass).public_();
+        MethodMaker mm = mClassMaker.addMethod(null, "init", mRowClass).public_().final_();
         mm.field("row").set(mm.param(0));
         mm.field("state").set(1);
     }
 
     private void addRowMethod() {
-        MethodMaker mm = mClassMaker.addMethod(mRowClass, "row").private_();
+        MethodMaker mm = mClassMaker.addMethod(mRowClass, "row").protected_().final_();
         var rowVar = mm.field("row").get();
         Label ready = mm.label();
         rowVar.ifNe(null, ready);
@@ -272,19 +307,20 @@ public final class ResultSetMaker {
 
     private void addToStringMethod() {
         // TODO: Should show the projected column names, not the actual column names.
-        MethodMaker mm = mClassMaker.addMethod(String.class, "toString").public_();
+        MethodMaker mm = mClassMaker.addMethod(String.class, "toString").public_().final_();
         mm.return_(mm.var(ResultSetMaker.class)
                    .invoke("toString", mm.this_(), mm.field("row")));
     }
 
     private void addCloseMethod() {
-        MethodMaker mm = mClassMaker.addMethod(null, "close").public_();
+        MethodMaker mm = mClassMaker.addMethod(null, "close").public_().final_();
         mm.field("state").set(2); // closed state
         mm.field("row").set(null);
     }
 
     private void addMetaDataMethod() {
-        MethodMaker mm = mClassMaker.addMethod(ResultSetMetaData.class, "getMetaData").public_();
+        MethodMaker mm = mClassMaker.addMethod(ResultSetMetaData.class, "getMetaData");
+        mm.public_().final_();
         var bootstrap = mm.var(ResultSetMaker.class).condy("condyMD", mRowType, mColumnPairs);
         mm.return_(bootstrap.invoke(ResultSetMetaData.class, "_"));
     }
@@ -432,7 +468,8 @@ public final class ResultSetMaker {
 
     @SuppressWarnings("unchecked")
     private void addFindColumnMethod() {
-        MethodMaker mm = mClassMaker.addMethod(int.class, "findColumn", String.class).public_();
+        MethodMaker mm = mClassMaker.addMethod(int.class, "findColumn", String.class);
+        mm.public_().final_();
         var columnNameVar = mm.param(0);
 
         var rsMakerVar = mm.var(ResultSetMaker.class);
@@ -479,24 +516,19 @@ public final class ResultSetMaker {
     }
 
     private void addWasNullMethod() {
-        MethodMaker mm = mClassMaker.addMethod(boolean.class, "wasNull").public_();
-
-        for (ColumnInfo ci : mColumns.values()) {
-            if (ci.isNullable()) {
-                mClassMaker.addField(Object.class, "lastGet").private_();
-                mm.return_(mm.field("lastGet").eq(null));
-                mHasLastGet = true;
-                return;
-            }
+        MethodMaker mm = mClassMaker.addMethod(boolean.class, "wasNull").public_().final_();
+        if (mHasNullableColumns) {
+            mClassMaker.addField(Object.class, "lastGet").private_();
+            mm.return_(mm.field("lastGet").eq(null));
+        } else {
+            mm.return_(false);
         }
-
-        mm.return_(false);
     }
 
     private void addGetMethod(Class<?> returnType, int returnTypeCode, String name) {
-        MethodMaker mm = mClassMaker.addMethod(returnType, name, int.class).public_();
+        MethodMaker mm = mClassMaker.addMethod(returnType, name, int.class).public_().final_();
 
-        if (mHasLastGet) {
+        if (mHasNullableColumns) {
             returnTypeCode |= (1 << 31);
         }
 
@@ -507,7 +539,7 @@ public final class ResultSetMaker {
     }
 
     /**
-     * @param returnTypeCode bit 31 set indicates that a lastGet field exists
+     * @param returnTypeCode bit 31 set indicates that nullable columns exist
      */
     public static CallSite indyGet(MethodHandles.Lookup lookup, String name, MethodType mt,
                                    Class<?> rowType, Class<?> rowClass,
@@ -631,7 +663,7 @@ public final class ResultSetMaker {
     }
 
     private void addUpdateMethod(String name, Class<?> paramType, int paramTypeCode) {
-        MethodMaker mm = mClassMaker.addMethod(null, name, int.class, paramType).public_();
+        MethodMaker mm = mClassMaker.addMethod(null, name, int.class, paramType).public_().final_();
 
         var bootstrap = mm.var(ResultSetMaker.class)
             .indy("indyUpdate", mRowType, mRowClass, mColumnPairs, paramTypeCode);
@@ -650,7 +682,7 @@ public final class ResultSetMaker {
         var paramVar = mm.param(2);
         var rowVar = rsVar.invoke("row");
 
-        var maker = new ResultSetMaker(rowType, rowClass, columnPairs, false); // not needed
+        var maker = new ResultSetMaker(rowType, rowClass, columnPairs, false);
         maker.makeUpdateMethod(mm, paramTypeCode, rowVar, indexVar, paramVar);
 
         return new ConstantCallSite(mm.finish());
