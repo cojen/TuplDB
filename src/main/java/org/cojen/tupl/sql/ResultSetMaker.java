@@ -156,7 +156,7 @@ public final class ResultSetMaker {
     private final LinkedHashMap<String, ColumnInfo> mColumns;
     private final String[] mColumnPairs;
 
-    private boolean mHasWasNull;
+    private boolean mHasLastGet;
 
     private ClassMaker mClassMaker;
 
@@ -183,7 +183,7 @@ public final class ResultSetMaker {
      * @param columnPairs maps target names to the original columns
      */
     private ResultSetMaker(Class<?> rowType, Class<?> rowClass, String[] columnPairs,
-                           boolean hasWasNull)
+                           boolean hasLastGet)
     {
         mRowType = rowType;
         mRowClass = rowClass;
@@ -196,7 +196,7 @@ public final class ResultSetMaker {
         }
 
         mColumnPairs = columnPairs;
-        mHasWasNull = hasWasNull;
+        mHasLastGet = hasLastGet;
     }
 
     /**
@@ -498,9 +498,9 @@ public final class ResultSetMaker {
 
         for (ColumnInfo ci : mColumns.values()) {
             if (ci.isNullable()) {
-                mClassMaker.addField(boolean.class, "wasNull").private_();
-                mm.return_(mm.field("wasNull"));
-                mHasWasNull = true;
+                mClassMaker.addField(Object.class, "lastGet").private_();
+                mm.return_(mm.field("lastGet").eq(null));
+                mHasLastGet = true;
                 return;
             }
         }
@@ -511,7 +511,7 @@ public final class ResultSetMaker {
     private void addGetMethod(Class<?> returnType, int returnTypeCode, String name) {
         MethodMaker mm = mClassMaker.addMethod(returnType, name, int.class).public_();
 
-        if (mHasWasNull) {
+        if (mHasLastGet) {
             returnTypeCode |= (1 << 31);
         }
 
@@ -522,7 +522,7 @@ public final class ResultSetMaker {
     }
 
     /**
-     * @param returnTypeCode bit 31 set indicates that a wasNull field exists
+     * @param returnTypeCode bit 31 set indicates that a lastGet field exists
      */
     public static CallSite indyGet(MethodHandles.Lookup lookup, String name, MethodType mt,
                                    Class<?> rowType, Class<?> rowClass,
@@ -534,22 +534,22 @@ public final class ResultSetMaker {
         var indexVar = mm.param(1);
         var rowVar = rsVar.invoke("row");
 
-        Field wasNullField = null;
+        Field lastGetField = null;
         if (returnTypeCode < 0) {
             returnTypeCode &= Integer.MAX_VALUE;
-            wasNullField = rsVar.field("wasNull");
+            lastGetField = rsVar.field("lastGet");
         }
 
-        var maker = new ResultSetMaker(rowType, rowClass, columnPairs, wasNullField != null);
-        maker.makeGetMethod(mm, wasNullField, returnTypeCode, rowVar, indexVar);
+        var maker = new ResultSetMaker(rowType, rowClass, columnPairs, lastGetField != null);
+        maker.makeGetMethod(mm, lastGetField, returnTypeCode, rowVar, indexVar);
 
         return new ConstantCallSite(mm.finish());
     }
 
     /**
-     * @param wasNullField is null if not defined
+     * @param lastGetField is null if not defined
      */
-    private void makeGetMethod(MethodMaker mm, Field wasNullField, int returnTypeCode,
+    private void makeGetMethod(MethodMaker mm, Field lastGetField, int returnTypeCode,
                                Variable rowVar, Variable indexVar)
     {
         var returnInfo = new ColumnInfo();
@@ -578,12 +578,12 @@ public final class ResultSetMaker {
             ColumnInfo colInfo = entry.getValue();
             Variable columnVar = rowVar.field(colInfo.name);
 
-            if (wasNullField != null && colInfo.isNullable() && !returnInfo.isNullable()) {
+            if (lastGetField != null && colInfo.isNullable() && !returnInfo.isNullable()) {
                 // Copy to a local variable because it will be accessed twice.
                 columnVar = columnVar.get();
                 Label notNull = mm.label();
                 columnVar.ifNe(null, notNull);
-                wasNullField.set(true);
+                lastGetField.set(null);
                 returnVar.clear();
                 mm.return_(returnVar);
                 notNull.here();
@@ -616,11 +616,11 @@ public final class ResultSetMaker {
                 }
             }
 
-            if (wasNullField != null) {
+            if (lastGetField != null) {
                 if (returnInfo.isNullable()) {
-                    wasNullField.set(returnVar.eq(null));
+                    lastGetField.set(returnVar);
                 } else {
-                    wasNullField.set(false);
+                    lastGetField.set(Boolean.TRUE);
                 }
             }
 
@@ -648,9 +648,6 @@ public final class ResultSetMaker {
         bootstrap.invoke(null, "_", null, mm.this_(), mm.param(0), mm.param(1));
     }
 
-    /**
-     * @param returnTypeCode bit 31 set indicates that a wasNull field exists
-     */
     public static CallSite indyUpdate(MethodHandles.Lookup lookup, String name, MethodType mt,
                                       Class<?> rowType, Class<?> rowClass,
                                       String[] columnPairs, int paramTypeCode)
