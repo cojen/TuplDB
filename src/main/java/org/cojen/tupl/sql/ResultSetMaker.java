@@ -587,6 +587,12 @@ public final class ResultSetMaker {
                 returnVar.clear();
                 mm.return_(returnVar);
                 notNull.here();
+
+                if (returnTypeCode != TYPE_OBJECT) {
+                    // The converter doesn't need to check null again.
+                    colInfo = colInfo.copy();
+                    colInfo.typeCode &= ~TYPE_NULLABLE;
+                }
             }
 
             if (returnTypeCode != TYPE_OBJECT) {
@@ -698,6 +704,12 @@ public final class ResultSetMaker {
                 paramVar.ifNe(null, notNull);
                 rsmVar.invoke("notNull", entry.getKey()).throw_();
                 notNull.here();
+
+                if (paramTypeCode != TYPE_OBJECT) {
+                    // The converter doesn't need to check null again.
+                    paramInfo = paramInfo.copy();
+                    paramInfo.typeCode &= ~TYPE_NULLABLE;
+                }
             }
 
             if (paramTypeCode != TYPE_OBJECT) {
@@ -744,7 +756,7 @@ public final class ResultSetMaker {
     }
 
     // Called by generated code.
-    public static SQLNonTransientException notReady(int state) {
+    public static Exception notReady(int state) {
         String message = state == 0 ? "ResultSet isn't positioned; call next() or first()"
             : "ResultSet is closed";
         return new SQLNonTransientException(message);
@@ -760,7 +772,7 @@ public final class ResultSetMaker {
     }
 
     // Called by generated code.
-    public static SQLNonTransientException notFound(int columnIndex) {
+    public static Exception notFound(int columnIndex) {
         return new SQLNonTransientException
             ("Column index " + columnIndex + " doesn't exist in the ResultSet");
     }
@@ -784,19 +796,19 @@ public final class ResultSetMaker {
     }
 
     // Called by generated code.
-    public static SQLNonTransientException notNull(String columnName) {
+    public static Exception notNull(String columnName) {
         return new SQLNonTransientException
             ("Column \"" + columnName + "\" cannot be set to null");
     }
 
     // Called by generated code.
-    public static SQLNonTransientException failed(ConversionException ex) {
+    public static Exception failed(ConversionException ex) {
         return new SQLNonTransientException
             ("Column conversion failed: " + ex.getMessage());
     }
 
     // Called by generated code.
-    public static SQLNonTransientException failed(String columnName, RuntimeException ex) {
+    public static Exception failed(String columnName, RuntimeException ex) {
         String message = ex.getMessage();
         if (message == null || message.isEmpty()) {
             message = ex.toString();
