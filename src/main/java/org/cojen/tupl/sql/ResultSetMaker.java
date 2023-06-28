@@ -189,11 +189,9 @@ public final class ResultSetMaker {
      *
      * @param columnPairs maps target names to the original columns
      */
-    private ResultSetMaker(Class<?> rowType, Class<?> rowClass, String[] columnPairs,
-                           boolean hasNullableColumns)
-    {
+    private ResultSetMaker(Class<?> rowType, String[] columnPairs, boolean hasNullableColumns) {
         mRowType = rowType;
-        mRowClass = rowClass;
+        mRowClass = null; // not needed
 
         Map<String, ColumnInfo> allColumns = RowInfo.find(rowType).allColumns;
         mColumns = new LinkedHashMap<>();
@@ -331,7 +329,7 @@ public final class ResultSetMaker {
         ClassMaker cm = ClassMaker.begin(null, lookup).extend(BaseResultSetMetaData.class).final_();
         cm.addConstructor().private_();
 
-        var maker = new ResultSetMaker(rowType, null, columnPairs, false);
+        var maker = new ResultSetMaker(rowType, columnPairs, false);
         maker.mClassMaker = cm;
 
         cm.addMethod(int.class, "getColumnCount").public_().return_(maker.mColumns.size());
@@ -533,7 +531,7 @@ public final class ResultSetMaker {
         }
 
         var bootstrap = mm.var(ResultSetMaker.class)
-            .indy("indyGet", mRowType, mRowClass, mColumnPairs, returnTypeCode);
+            .indy("indyGet", mRowType, mColumnPairs, returnTypeCode);
 
         mm.return_(bootstrap.invoke(returnType, "_", null, mm.this_(), mm.param(0)));
     }
@@ -542,8 +540,7 @@ public final class ResultSetMaker {
      * @param returnTypeCode bit 31 set indicates that nullable columns exist
      */
     public static CallSite indyGet(MethodHandles.Lookup lookup, String name, MethodType mt,
-                                   Class<?> rowType, Class<?> rowClass,
-                                   String[] columnPairs, int returnTypeCode)
+                                   Class<?> rowType, String[] columnPairs, int returnTypeCode)
     {
         MethodMaker mm = MethodMaker.begin(lookup, name, mt);
 
@@ -557,7 +554,7 @@ public final class ResultSetMaker {
             lastGetField = rsVar.field("lastGet");
         }
 
-        var maker = new ResultSetMaker(rowType, rowClass, columnPairs, lastGetField != null);
+        var maker = new ResultSetMaker(rowType, columnPairs, lastGetField != null);
         maker.makeGetMethod(mm, lastGetField, returnTypeCode, rowVar, indexVar);
 
         return new ConstantCallSite(mm.finish());
@@ -666,14 +663,13 @@ public final class ResultSetMaker {
         MethodMaker mm = mClassMaker.addMethod(null, name, int.class, paramType).public_().final_();
 
         var bootstrap = mm.var(ResultSetMaker.class)
-            .indy("indyUpdate", mRowType, mRowClass, mColumnPairs, paramTypeCode);
+            .indy("indyUpdate", mRowType, mColumnPairs, paramTypeCode);
 
         bootstrap.invoke(null, "_", null, mm.this_(), mm.param(0), mm.param(1));
     }
 
     public static CallSite indyUpdate(MethodHandles.Lookup lookup, String name, MethodType mt,
-                                      Class<?> rowType, Class<?> rowClass,
-                                      String[] columnPairs, int paramTypeCode)
+                                      Class<?> rowType, String[] columnPairs, int paramTypeCode)
     {
         MethodMaker mm = MethodMaker.begin(lookup, name, mt);
 
@@ -682,7 +678,7 @@ public final class ResultSetMaker {
         var paramVar = mm.param(2);
         var rowVar = rsVar.invoke("row");
 
-        var maker = new ResultSetMaker(rowType, rowClass, columnPairs, false);
+        var maker = new ResultSetMaker(rowType, columnPairs, false);
         maker.makeUpdateMethod(mm, paramTypeCode, rowVar, indexVar, paramVar);
 
         return new ConstantCallSite(mm.finish());
