@@ -86,14 +86,14 @@ public class ResultSetTest {
             rsClass.getMethod("init", rowClass).invoke(rs, row);
 
             assertTrue(rs.toString().contains("ResultSet"));
-            assertTrue(rs.toString().endsWith("{}"));
+            assertTrue(rs.toString().endsWith("{id=0, number=0, text=null, value=null}"));
 
             rs.updateString("id", "123");
             rs.updateNull("value");
             rs.updateInt("number", 9);
             rs.updateObject("text", "hello");
 
-            assertTrue(rs.toString().endsWith("{*id=123, *number=9, *value=null, *text=hello}"));
+            assertTrue(rs.toString().endsWith("{id=123, number=9, text=hello, value=null}"));
 
             assertEquals(123L, rs.getInt(1));
             assertFalse(rs.wasNull());
@@ -193,6 +193,8 @@ public class ResultSetTest {
         rs.updateString("message", "hello");
         assertEquals("hello", rs.getString(2));
         assertEquals("hello", rs.getString("message"));
+
+        assertTrue(rs.toString().endsWith("{idx=123, message=hello}"));
     }
 
     @PrimaryKey("id")

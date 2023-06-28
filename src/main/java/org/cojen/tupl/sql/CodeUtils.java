@@ -24,7 +24,7 @@ import org.cojen.maker.ClassMaker;
  *
  * @author Brian S O'Neill
  */
-class CodeUtils {
+class CodeUtils extends org.cojen.tupl.rows.CodeUtils {
     private static final Object MAKER_KEY = new Object();
 
     /**

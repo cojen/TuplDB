@@ -304,10 +304,48 @@ public final class ResultSetMaker {
     }
 
     private void addToStringMethod() {
-        // TODO: Should show the projected column names, not the actual column names.
         MethodMaker mm = mClassMaker.addMethod(String.class, "toString").public_().final_();
-        mm.return_(mm.var(ResultSetMaker.class)
-                   .invoke("toString", mm.this_(), mm.field("row")));
+        var bootstrap = mm.var(ResultSetMaker.class).indy("indyToString", mRowType, mColumnPairs);
+        mm.return_(bootstrap.invoke(String.class, "toString", null, mm.this_()));
+    }
+
+    public static CallSite indyToString(MethodHandles.Lookup lookup, String name, MethodType mt,
+                                        Class<?> rowType, String[] columnPairs)
+    {
+        MethodMaker mm = MethodMaker.begin(lookup, name, mt);
+        var rsVar = mm.param(0);
+        var rowVar = rsVar.field("row").get();
+
+        var maker = new ResultSetMaker(rowType, columnPairs, false);
+        maker.makeToStringMethod(mm, rsVar, rowVar);
+
+        return new ConstantCallSite(mm.finish());
+    }
+
+    private void makeToStringMethod(MethodMaker mm, Variable rsVar, Variable rowVar) {
+        var bob = mm.var(ResultSetMaker.class).invoke("beginToString", rsVar);
+
+        Label done = mm.label();
+        rowVar.ifEq(null, done);
+
+        var initSize = bob.invoke("append", '{').invoke("length");
+
+        for (Map.Entry<String, ColumnInfo> e : mColumns.entrySet()) {
+            ColumnInfo info = e.getValue();
+            if (!info.isHidden()) {
+                Label sep = mm.label();
+                bob.invoke("length").ifEq(initSize, sep);
+                bob.invoke("append", ", ");
+                sep.here();
+                bob.invoke("append", e.getKey()).invoke("append", '=');
+                CodeUtils.appendValue(bob, info, rowVar.field(info.name));
+            }
+        }
+
+        bob.invoke("append", '}');
+
+        done.here();
+        mm.return_(bob.invoke("toString"));
     }
 
     private void addCloseMethod() {
@@ -753,19 +791,9 @@ public final class ResultSetMaker {
     }
 
     // Called by generated code.
-    public static String toString(Object rs, Object row) {
-        var bob = new StringBuilder(ResultSet.class.getName()).append('@')
+    public static StringBuilder beginToString(Object rs) {
+        return new StringBuilder(ResultSet.class.getName()).append('@')
             .append(Integer.toHexString(System.identityHashCode(rs)));
-
-        if (row != null) {
-            String rowStr = row.toString();
-            int ix = rowStr.indexOf('{');
-            if (ix >= 0) {
-                bob.append(rowStr.substring(ix));
-            }
-        }
-
-        return bob.toString();
     }
 
     // Called by generated code.
