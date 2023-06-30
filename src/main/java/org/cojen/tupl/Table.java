@@ -167,7 +167,9 @@ public interface Table<R> extends Closeable {
      * @throws IllegalStateException if transaction belongs to another database instance
      * @see #updaterPlan updaterPlan
      */
-    public Updater<R> newUpdater(Transaction txn) throws IOException;
+    public default Updater<R> newUpdater(Transaction txn) throws IOException {
+        throw new UnmodifiableViewException();
+    }
 
     /**
      * Returns a new updater for a subset of rows from this table, as specified by the query
@@ -184,8 +186,11 @@ public interface Table<R> extends Closeable {
      * @throws IllegalStateException if transaction belongs to another database instance
      * @see #updaterPlan updaterPlan
      */
-    public Updater<R> newUpdater(Transaction txn, String query, Object... args)
-        throws IOException;
+    public default Updater<R> newUpdater(Transaction txn, String query, Object... args)
+        throws IOException
+    {
+        throw new UnmodifiableViewException();
+    }
 
     /**
      * Returns a new stream for all rows of this table. The stream must be explicitly closed
@@ -258,7 +263,7 @@ public interface Table<R> extends Closeable {
         throws IOException
     {
         // FIXME: Subclasses should provide an optimized implementation.
-        return exists(txn, null, query, args);
+        return existsWith(txn, null, query, args);
     }
 
     /**
@@ -324,7 +329,9 @@ public interface Table<R> extends Closeable {
      * @throws IllegalStateException if any required columns aren't set
      * @throws UniqueConstraintException if a conflicting alternate key exists
      */
-    public void store(Transaction txn, R row) throws IOException;
+    public default void store(Transaction txn, R row) throws IOException {
+        throw new UnmodifiableViewException();
+    }
 
     /**
      * Unconditionally stores the given row, potentially replacing a corresponding row which
@@ -334,7 +341,9 @@ public interface Table<R> extends Closeable {
      * @throws IllegalStateException if any required columns aren't set
      * @throws UniqueConstraintException if a conflicting alternate key exists
      */
-    public R exchange(Transaction txn, R row) throws IOException;
+    public default R exchange(Transaction txn, R row) throws IOException {
+        throw new UnmodifiableViewException();
+    }
 
     /**
      * Stores the given row when a corresponding row doesn't exist.
@@ -343,7 +352,9 @@ public interface Table<R> extends Closeable {
      * @throws IllegalStateException if any required columns aren't set
      * @throws UniqueConstraintException if a conflicting alternate key exists
      */
-    public boolean insert(Transaction txn, R row) throws IOException;
+    public default boolean insert(Transaction txn, R row) throws IOException {
+        throw new UnmodifiableViewException();
+    }
 
     /**
      * Stores the given row when a corresponding row already exists.
@@ -352,7 +363,9 @@ public interface Table<R> extends Closeable {
      * @throws IllegalStateException if any required columns aren't set
      * @throws UniqueConstraintException if a conflicting alternate key exists
      */
-    public boolean replace(Transaction txn, R row) throws IOException;
+    public default boolean replace(Transaction txn, R row) throws IOException {
+        throw new UnmodifiableViewException();
+    }
 
     /**
      * Updates an existing row with the modified columns of the given row, but the resulting
@@ -362,7 +375,9 @@ public interface Table<R> extends Closeable {
      * @throws IllegalStateException if primary key isn't fully specified
      * @throws UniqueConstraintException if a conflicting alternate key exists
      */
-    public boolean update(Transaction txn, R row) throws IOException;
+    public default boolean update(Transaction txn, R row) throws IOException {
+        throw new UnmodifiableViewException();
+    }
 
     /**
      * Updates an existing row with the modified columns of the given row, and then loads the
@@ -372,7 +387,9 @@ public interface Table<R> extends Closeable {
      * @throws IllegalStateException if primary key isn't fully specified
      * @throws UniqueConstraintException if a conflicting alternate key exists
      */
-    public boolean merge(Transaction txn, R row) throws IOException;
+    public default boolean merge(Transaction txn, R row) throws IOException {
+        throw new UnmodifiableViewException();
+    }
 
     /**
      * Unconditionally removes an existing row by primary key.
@@ -380,7 +397,9 @@ public interface Table<R> extends Closeable {
      * @return false if a corresponding row doesn't exist
      * @throws IllegalStateException if primary key isn't fully specified
      */
-    public boolean delete(Transaction txn, R row) throws IOException;
+    public default boolean delete(Transaction txn, R row) throws IOException {
+        throw new UnmodifiableViewException();
+    }
 
     /**
      * Joins tables together into an unmodifiable view. The view doesn't have any primary key,
@@ -435,7 +454,11 @@ public interface Table<R> extends Closeable {
      * @param query optional query expression
      * @param args optional query arguments
      */
-    public QueryPlan updaterPlan(Transaction txn, String query, Object... args) throws IOException;
+    public default QueryPlan updaterPlan(Transaction txn, String query, Object... args)
+        throws IOException
+    {
+        throw new UnmodifiableViewException();
+    }
 
     /**
      * Returns a query plan used by {@link #newStream(Transaction, String, Object...)

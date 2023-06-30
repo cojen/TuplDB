@@ -32,8 +32,6 @@ import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
-import org.cojen.tupl.UnmodifiableViewException;
-import org.cojen.tupl.Updater;
 
 import org.cojen.tupl.diag.QueryPlan;
 
@@ -98,18 +96,6 @@ public abstract class JoinTable<J> implements Table<J> {
     }
 
     @Override
-    public Updater<J> newUpdater(Transaction txn) throws IOException {
-        throw new UnmodifiableViewException();
-    }
-
-    @Override
-    public Updater<J> newUpdater(Transaction txn, String query, Object... args)
-        throws IOException
-    {
-        throw new UnmodifiableViewException();
-    }
-
-    @Override
     public Transaction newTransaction(DurabilityMode durabilityMode) {
         return mTables[0].newTransaction(durabilityMode);
     }
@@ -135,41 +121,6 @@ public abstract class JoinTable<J> implements Table<J> {
     }
 
     @Override
-    public void store(Transaction txn, J row) throws IOException {
-        throw new UnmodifiableViewException();
-    }
-
-    @Override
-    public J exchange(Transaction txn, J row) throws IOException {
-        throw new UnmodifiableViewException();
-    }
-
-    @Override
-    public boolean insert(Transaction txn, J row) throws IOException {
-        throw new UnmodifiableViewException();
-    }
-
-    @Override
-    public boolean replace(Transaction txn, J row) throws IOException {
-        throw new UnmodifiableViewException();
-    }
-
-    @Override
-    public boolean update(Transaction txn, J row) throws IOException {
-        throw new UnmodifiableViewException();
-    }
-
-    @Override
-    public boolean merge(Transaction txn, J row) throws IOException {
-        throw new UnmodifiableViewException();
-    }
-
-    @Override
-    public boolean delete(Transaction txn, J row) throws IOException {
-        throw new UnmodifiableViewException();
-    }
-
-    @Override
     public Predicate<J> predicate(String query, Object... args) {
         return JoinPredicateMaker.newInstance(rowType(), query, args);
     }
@@ -180,11 +131,6 @@ public abstract class JoinTable<J> implements Table<J> {
             query = "{*}";
         }
         return scannerQueryLauncher(query).scannerPlan(txn, args);
-    }
-
-    @Override
-    public QueryPlan updaterPlan(Transaction txn, String query, Object... args) throws IOException {
-        throw new UnmodifiableViewException();
     }
 
     @Override

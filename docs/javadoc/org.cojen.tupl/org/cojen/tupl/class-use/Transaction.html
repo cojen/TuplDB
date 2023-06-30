@@ -121,7 +121,7 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color"><code>boolean</code></div>
+<div class="col-first even-row-color"><code>default boolean</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#delete(org.cojen.tupl.Transaction,R)" class="member-name-link">delete</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="../Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
 <div class="col-last even-row-color">
@@ -142,7 +142,7 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color">
 <div class="block">Select a few entries, and delete them from the index.</div>
 </div>
-<div class="col-first odd-row-color"><code><a href="../Table.html" title="type parameter in Table">R</a></code></div>
+<div class="col-first odd-row-color"><code>default <a href="../Table.html" title="type parameter in Table">R</a></code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#exchange(org.cojen.tupl.Transaction,R)" class="member-name-link">exchange</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="../Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
 <div class="col-last odd-row-color">
@@ -181,7 +181,7 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color">
 <div class="block">Checks if an entry for the given key exists.</div>
 </div>
-<div class="col-first odd-row-color"><code>boolean</code></div>
+<div class="col-first odd-row-color"><code>default boolean</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#insert(org.cojen.tupl.Transaction,R)" class="member-name-link">insert</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="../Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
 <div class="col-last odd-row-color">
@@ -265,7 +265,7 @@ loadScripts(document, 'script');</script>
 <div class="block">Explicitly acquire an upgradable lock for the given key, denying exclusive and
  additional upgradable locks.</div>
 </div>
-<div class="col-first odd-row-color"><code>boolean</code></div>
+<div class="col-first odd-row-color"><code>default boolean</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#merge(org.cojen.tupl.Transaction,R)" class="member-name-link">merge</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="../Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
 <div class="col-last odd-row-color">
@@ -310,12 +310,12 @@ loadScripts(document, 'script');</script>
 <div class="block">Returns a new stream for a subset of rows from this table, as specified by the query
  expression.</div>
 </div>
-<div class="col-first even-row-color"><code><a href="../Updater.html" title="interface in org.cojen.tupl">Updater</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-first even-row-color"><code>default <a href="../Updater.html" title="interface in org.cojen.tupl">Updater</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#newUpdater(org.cojen.tupl.Transaction)" class="member-name-link">newUpdater</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Returns a new updater for all rows of this table.</div>
 </div>
-<div class="col-first odd-row-color"><code><a href="../Updater.html" title="interface in org.cojen.tupl">Updater</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-first odd-row-color"><code>default <a href="../Updater.html" title="interface in org.cojen.tupl">Updater</a>&lt;<a href="../Table.html" title="type parameter in Table">R</a>&gt;</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#newUpdater(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">newUpdater</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
  <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
@@ -331,7 +331,7 @@ loadScripts(document, 'script');</script>
 <div class="block">Removes the entry associated with the given key, but only if the given value
  matches.</div>
 </div>
-<div class="col-first odd-row-color"><code>boolean</code></div>
+<div class="col-first odd-row-color"><code>default boolean</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#replace(org.cojen.tupl.Transaction,R)" class="member-name-link">replace</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="../Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
 <div class="col-last odd-row-color">
@@ -351,7 +351,7 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color">
 <div class="block">Returns a query plan used by <a href="../Table.html#newScanner(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>newScanner</code></a>.</div>
 </div>
-<div class="col-first even-row-color"><code>void</code></div>
+<div class="col-first even-row-color"><code>default void</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#store(org.cojen.tupl.Transaction,R)" class="member-name-link">store</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="../Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
 <div class="col-last even-row-color">
@@ -402,7 +402,7 @@ loadScripts(document, 'script');</script>
 <div class="block">Explicitly acquire an upgradable lock for the given key, denying exclusive and
  additional upgradable locks.</div>
 </div>
-<div class="col-first odd-row-color"><code>boolean</code></div>
+<div class="col-first odd-row-color"><code>default boolean</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#update(org.cojen.tupl.Transaction,R)" class="member-name-link">update</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="../Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
 <div class="col-last odd-row-color">
@@ -426,7 +426,7 @@ loadScripts(document, 'script');</script>
 <div class="block">Associates a value with the given key, but only if the given old value matches the
  existing value.</div>
 </div>
-<div class="col-first even-row-color"><code><a href="../diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></code></div>
+<div class="col-first even-row-color"><code>default <a href="../diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></code></div>
 <div class="col-second even-row-color"><span class="type-name-label">Table.</span><code><a href="../Table.html#updaterPlan(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">updaterPlan</a><wbr>(<a href="../Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
  <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
