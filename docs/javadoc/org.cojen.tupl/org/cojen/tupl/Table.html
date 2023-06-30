@@ -194,16 +194,16 @@ public interface MyRow {
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Copies all columns and states from one row to another.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#delete(org.cojen.tupl.Transaction,R)" class="member-name-link">delete</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#delete(org.cojen.tupl.Transaction,R)" class="member-name-link">delete</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Unconditionally removes an existing row by primary key.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Table.html" title="type parameter in Table">R</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#exchange(org.cojen.tupl.Transaction,R)" class="member-name-link">exchange</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="Table.html" title="type parameter in Table">R</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#exchange(org.cojen.tupl.Transaction,R)" class="member-name-link">exchange</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Unconditionally stores the given row, potentially replacing a corresponding row which
  already exists.</div>
 </div>
@@ -226,10 +226,10 @@ public interface MyRow {
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Checks if a row exists by searching against the primary key.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#insert(org.cojen.tupl.Transaction,R)" class="member-name-link">insert</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#insert(org.cojen.tupl.Transaction,R)" class="member-name-link">insert</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Stores the given row when a corresponding row doesn't exist.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
@@ -253,10 +253,10 @@ public interface MyRow {
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Fully loads the row by primary key.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#merge(org.cojen.tupl.Transaction,R)" class="member-name-link">merge</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#merge(org.cojen.tupl.Transaction,R)" class="member-name-link">merge</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Updates an existing row with the modified columns of the given row, and then loads the
  result back into the given row.</div>
 </div>
@@ -296,16 +296,16 @@ public interface MyRow {
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Returns a new transaction which is compatible with this table.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Updater.html" title="interface in org.cojen.tupl">Updater</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#newUpdater(org.cojen.tupl.Transaction)" class="member-name-link">newUpdater</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="Updater.html" title="interface in org.cojen.tupl">Updater</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#newUpdater(org.cojen.tupl.Transaction)" class="member-name-link">newUpdater</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a new updater for all rows of this table.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Updater.html" title="interface in org.cojen.tupl">Updater</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#newUpdater(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">newUpdater</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="Updater.html" title="interface in org.cojen.tupl">Updater</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#newUpdater(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">newUpdater</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
  <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a new updater for a subset of rows from this table, as specified by the query
  expression.</div>
 </div>
@@ -315,10 +315,10 @@ public interface MyRow {
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Returns a row predicate for the given query expression and arguments.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#replace(org.cojen.tupl.Transaction,R)" class="member-name-link">replace</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#replace(org.cojen.tupl.Transaction,R)" class="member-name-link">replace</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Stores the given row when a corresponding row already exists.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</code></div>
@@ -333,10 +333,10 @@ public interface MyRow {
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Returns a query plan used by <a href="#newScanner(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>newScanner</code></a>.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#store(org.cojen.tupl.Transaction,R)" class="member-name-link">store</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#store(org.cojen.tupl.Transaction,R)" class="member-name-link">store</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Unconditionally stores the given row, potentially replacing a corresponding row which
  already exists.</div>
 </div>
@@ -352,18 +352,18 @@ public interface MyRow {
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Resets the state of the given row such that all columns are unset.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#update(org.cojen.tupl.Transaction,R)" class="member-name-link">update</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#update(org.cojen.tupl.Transaction,R)" class="member-name-link">update</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Updates an existing row with the modified columns of the given row, but the resulting
  row isn't loaded back.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#updaterPlan(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">updaterPlan</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#updaterPlan(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)" class="member-name-link">updaterPlan</a><wbr>(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
  <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a query plan used by <a href="#newUpdater(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>newUpdater</code></a>.</div>
 </div>
 </div>
@@ -468,8 +468,8 @@ public interface MyRow {
 <li>
 <section class="detail" id="newUpdater(org.cojen.tupl.Transaction)">
 <h3>newUpdater</h3>
-<div class="member-signature"><span class="return-type"><a href="Updater.html" title="interface in org.cojen.tupl">Updater</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">newUpdater</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</span>
-               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="Updater.html" title="interface in org.cojen.tupl">Updater</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">newUpdater</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn)</span>
+                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Returns a new updater for all rows of this table.
 
  <p>When providing a transaction which acquires locks (or the transaction is null),
@@ -497,10 +497,10 @@ public interface MyRow {
 <li>
 <section class="detail" id="newUpdater(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)">
 <h3>newUpdater</h3>
-<div class="member-signature"><span class="return-type"><a href="Updater.html" title="interface in org.cojen.tupl">Updater</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">newUpdater</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="Updater.html" title="interface in org.cojen.tupl">Updater</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>&gt;</span>&nbsp;<span class="element-name">newUpdater</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
  <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</span>
-               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Returns a new updater for a subset of rows from this table, as specified by the query
  expression.
 
@@ -679,9 +679,9 @@ public interface MyRow {
 <li>
 <section class="detail" id="store(org.cojen.tupl.Transaction,R)">
 <h3 id="store(org.cojen.tupl.Transaction,java.lang.Object)">store</h3>
-<div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">store</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">store</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</span>
-    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Unconditionally stores the given row, potentially replacing a corresponding row which
  already exists.</div>
 <dl class="notes">
@@ -695,9 +695,9 @@ public interface MyRow {
 <li>
 <section class="detail" id="exchange(org.cojen.tupl.Transaction,R)">
 <h3 id="exchange(org.cojen.tupl.Transaction,java.lang.Object)">exchange</h3>
-<div class="member-signature"><span class="return-type"><a href="Table.html" title="type parameter in Table">R</a></span>&nbsp;<span class="element-name">exchange</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="Table.html" title="type parameter in Table">R</a></span>&nbsp;<span class="element-name">exchange</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</span>
-    throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+            throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Unconditionally stores the given row, potentially replacing a corresponding row which
  already exists.</div>
 <dl class="notes">
@@ -713,9 +713,9 @@ public interface MyRow {
 <li>
 <section class="detail" id="insert(org.cojen.tupl.Transaction,R)">
 <h3 id="insert(org.cojen.tupl.Transaction,java.lang.Object)">insert</h3>
-<div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">insert</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">insert</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</span>
-        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Stores the given row when a corresponding row doesn't exist.</div>
 <dl class="notes">
 <dt>Returns:</dt>
@@ -730,9 +730,9 @@ public interface MyRow {
 <li>
 <section class="detail" id="replace(org.cojen.tupl.Transaction,R)">
 <h3 id="replace(org.cojen.tupl.Transaction,java.lang.Object)">replace</h3>
-<div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">replace</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">replace</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</span>
-         throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+                 throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Stores the given row when a corresponding row already exists.</div>
 <dl class="notes">
 <dt>Returns:</dt>
@@ -747,9 +747,9 @@ public interface MyRow {
 <li>
 <section class="detail" id="update(org.cojen.tupl.Transaction,R)">
 <h3 id="update(org.cojen.tupl.Transaction,java.lang.Object)">update</h3>
-<div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">update</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">update</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</span>
-        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Updates an existing row with the modified columns of the given row, but the resulting
  row isn't loaded back.</div>
 <dl class="notes">
@@ -765,9 +765,9 @@ public interface MyRow {
 <li>
 <section class="detail" id="merge(org.cojen.tupl.Transaction,R)">
 <h3 id="merge(org.cojen.tupl.Transaction,java.lang.Object)">merge</h3>
-<div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">merge</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">merge</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</span>
-       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Updates an existing row with the modified columns of the given row, and then loads the
  result back into the given row.</div>
 <dl class="notes">
@@ -783,9 +783,9 @@ public interface MyRow {
 <li>
 <section class="detail" id="delete(org.cojen.tupl.Transaction,R)">
 <h3 id="delete(org.cojen.tupl.Transaction,java.lang.Object)">delete</h3>
-<div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">delete</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">delete</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="Table.html" title="type parameter in Table">R</a>&nbsp;row)</span>
-        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+                throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Unconditionally removes an existing row by primary key.</div>
 <dl class="notes">
 <dt>Returns:</dt>
@@ -864,10 +864,10 @@ public interface MyRow {
 <li>
 <section class="detail" id="updaterPlan(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)">
 <h3>updaterPlan</h3>
-<div class="member-signature"><span class="return-type"><a href="diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></span>&nbsp;<span class="element-name">updaterPlan</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
+<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></span>&nbsp;<span class="element-name">updaterPlan</span><wbr><span class="parameters">(<a href="Transaction.html" title="interface in org.cojen.tupl">Transaction</a>&nbsp;txn,
  <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query,
  <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</span>
-               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
+                       throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
 <div class="block">Returns a query plan used by <a href="#newUpdater(org.cojen.tupl.Transaction,java.lang.String,java.lang.Object...)"><code>newUpdater</code></a>.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
