@@ -33,7 +33,6 @@ import java.net.SocketAddress;
 
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -181,7 +180,7 @@ final class ChannelManager {
         mPeerSet = new TreeSet<>(cmp);
         mChannels = ConcurrentHashMap.newKeySet();
         mPeerServerChannels = new TreeMap<>(cmp);
-        mFreshSockets = new HashSet<>();
+        mFreshSockets = ConcurrentHashMap.newKeySet();
         setGroupId(groupId);
     }
 
@@ -330,25 +329,26 @@ final class ChannelManager {
      * Stop accepting incoming channels, close all existing channels, and disconnect all remote
      * members.
      */
-    synchronized void stop() {
-        if (!mKeepServerSocket) {
-            closeQuietly(mServerSocket);
+    void stop() {
+        synchronized (this) {
+            if (!mKeepServerSocket) {
+                closeQuietly(mServerSocket);
+            }
+            mServerSocket = null;
+            mLocalServer = null;
+            mPeerServerChannels.clear();
         }
-
-        mServerSocket = null;
-
-        mLocalServer = null;
 
         for (SocketChannel channel : mChannels) {
             channel.disconnect();
         }
 
+        mChannels.clear();
+
         for (Socket s : mFreshSockets) {
             closeQuietly(s);
         }
 
-        mChannels.clear();
-        mPeerServerChannels.clear();
         mFreshSockets.clear();
     }
 
@@ -539,25 +539,27 @@ final class ChannelManager {
      * Iterates over all the channels and passes the remote member id to the given tester to
      * decide if the member should be disconnected.
      */
-    synchronized void disconnect(LongPredicate tester) {
+    void disconnect(LongPredicate tester) {
         Iterator<SocketChannel> it = mChannels.iterator();
         while (it.hasNext()) {
             SocketChannel channel = it.next();
             long memberId = channel.mPeer.mMemberId;
             if (tester.test(memberId)) {
                 it.remove();
-                removeIfServerChannel(channel);
-                channel.disconnect();
-                Peer peer = mPeerSet.ceiling(new Peer(memberId)); // findGe
-                if (peer != null && peer.mMemberId == memberId) {
-                    mPeerSet.remove(peer);
-                    mPeerMap.remove(peer.mAddress);
+                synchronized (this) {
+                    removeIfServerChannel(channel);
+                    Peer peer = mPeerSet.ceiling(new Peer(memberId)); // findGe
+                    if (peer != null && peer.mMemberId == memberId) {
+                        mPeerSet.remove(peer);
+                        mPeerMap.remove(peer.mAddress);
+                    }
                 }
+                channel.disconnect();
             }
         }
     }
 
-    synchronized void unregister(SocketChannel channel) {
+    private synchronized void unregister(SocketChannel channel) {
         mChannels.remove(channel);
         removeIfServerChannel(channel);
     }
@@ -650,12 +652,13 @@ final class ChannelManager {
             }
 
             ServerChannel existing = null;
+            boolean doClose = false;
 
-            synchronized (this) {
+            prepare: synchronized (this) {
                 if (mServerSocket == null) {
                     // Stopped.
-                    closeQuietly(s);
-                    return;
+                    doClose = true;
+                    break prepare;
                 }
 
                 Peer peer;
@@ -666,16 +669,16 @@ final class ChannelManager {
                     peer = mPeerSet.ceiling(new Peer(remoteMemberId)); // findGe
                     if (peer == null || peer.mMemberId != remoteMemberId) {
                         // Unknown member.
-                        closeQuietly(s);
-                        return;
+                        doClose = true;
+                        break prepare;
                     }
                 }
 
                 if (connectionType == TYPE_CONTROL) {
                     if (peer == null) {
                         // Reject anonymous member control connection.
-                        closeQuietly(s);
-                        return;
+                        doClose = true;
+                        break prepare;
                     }
                     server = new ServerChannel(peer, localServer);
                     mChannels.add(server);
@@ -696,6 +699,11 @@ final class ChannelManager {
                 mFreshSockets.add(s);
             }
 
+            if (doClose) {
+                closeQuietly(s);
+                return;
+            }
+
             final var fserver = server;
 
             if (acceptor == null) {
@@ -706,9 +714,7 @@ final class ChannelManager {
 
             Runnable replyTask = () -> {
                 try {
-                    synchronized (ChannelManager.this) {
-                        mFreshSockets.remove(s);
-                    }
+                    mFreshSockets.remove(s);
                     s.getOutputStream().write(header);
                     facceptor.accept(s);
                     return;
@@ -807,8 +813,8 @@ final class ChannelManager {
         return header;
     }
 
-    private synchronized void checkWrites() {
-        if (mServerSocket == null) {
+    private void checkWrites() {
+        if (isStopped()) {
             return;
         }
 
@@ -992,40 +998,44 @@ final class ChannelManager {
             connected(s, checkCRCs);
         }
 
-        private synchronized boolean connected(Socket s, boolean checkCRCs) {
-            if (mPartitioned) {
-                closeQuietly(s);
-                return false;
+        private void connected(Socket s, boolean checkCRCs) {
+            Closeable toClose;
+
+            apply: synchronized (this) {
+                if (mPartitioned) {
+                    toClose = s;
+                    break apply;
+                }
+
+                OutputStream out;
+                ChannelInputStream in;
+                try {
+                    out = s.getOutputStream();
+                    // Initial buffer is probably too small, but start with something.
+                    in = new ChannelInputStream(s.getInputStream(), 128, checkCRCs);
+                } catch (Throwable e) {
+                    toClose = s;
+                    break apply;
+                }
+
+                incrementControlVersion();
+                toClose = mSocket;
+
+                acquireExclusive();
+                mSocket = s;
+                mOut = out;
+                mIn = in;
+                mReconnectDelay = 0;
+                mConnectAttemptStartedAt = Long.MAX_VALUE;
+                mJoinFailure = false;
+                releaseExclusive();
+                
+                execute(this::inputLoop);
+
+                notifyAll();
             }
 
-            OutputStream out;
-            ChannelInputStream in;
-            try {
-                out = s.getOutputStream();
-                // Initial buffer is probably too small, but start with something.
-                in = new ChannelInputStream(s.getInputStream(), 128, checkCRCs);
-            } catch (Throwable e) {
-                closeQuietly(s);
-                return false;
-            }
-
-            incrementControlVersion();
-            closeQuietly(mSocket);
-
-            acquireExclusive();
-            mSocket = s;
-            mOut = out;
-            mIn = in;
-            mReconnectDelay = 0;
-            mConnectAttemptStartedAt = Long.MAX_VALUE;
-            mJoinFailure = false;
-            releaseExclusive();
-
-            execute(this::inputLoop);
-
-            notifyAll();
-
-            return true;
+            closeQuietly(toClose);
         }
 
         private void inputLoop() {
