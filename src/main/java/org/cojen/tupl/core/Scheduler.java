@@ -23,12 +23,17 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 
+import org.cojen.tupl.util.Latch;
+import org.cojen.tupl.util.LatchCondition;
+
 /**
  * Simple task scheduler that doesn't hoard waiting threads, unlike ScheduledThreadPoolExecutor.
  *
  * @author Brian S O'Neill
  */
 public final class Scheduler {
+    private final Latch mLatch;
+    private final LatchCondition mCondition;
     private final ExecutorService mExecutor;
     private final PriorityQueue<Delayed> mDelayed;
 
@@ -56,15 +61,20 @@ public final class Scheduler {
         if (executor == null) {
             throw new IllegalArgumentException();
         }
+        mLatch = new Latch();
+        mCondition = new LatchCondition();
         mExecutor = executor;
         mDelayed = new PriorityQueue<>();
     }
 
     public void shutdown() {
         mExecutor.shutdown();
-        synchronized (this) {
+        mLatch.acquireExclusive();
+        try {
             mDelayed.clear();
-            notify();
+            mCondition.signal(mLatch);
+        } finally {
+            mLatch.releaseExclusive();
         }
     }
 
@@ -104,19 +114,24 @@ public final class Scheduler {
     /**
      * @return false if shutdown
      */
-    public synchronized boolean scheduleNanos(Delayed delayed) {
-        mDelayed.add(delayed);
+    public boolean scheduleNanos(Delayed delayed) {
+        mLatch.acquireExclusive();
+        try {
+            mDelayed.add(delayed);
 
-        if (!mRunning) {
-            if (!doExecute(this::runDelayedTasks)) {
-                return false;
+            if (!mRunning) {
+                if (!doExecute(this::runDelayedTasks)) {
+                    return false;
+                }
+                mRunning = true;
+            } else if (mDelayed.peek() == delayed) {
+                mCondition.signal(mLatch);
             }
-            mRunning = true;
-        } else if (mDelayed.peek() == delayed) {
-            notify();
-        }
 
-        return true;
+            return true;
+        } finally {
+            mLatch.releaseExclusive();
+        }
     }
 
     /**
@@ -143,7 +158,9 @@ public final class Scheduler {
     private void runDelayedTasks() {
         while (true) {
             Delayed delayed;
-            synchronized (this) {
+
+            mLatch.acquireExclusive();
+            try {
                 while (true) {
                     delayed = mDelayed.peek();
                     if (delayed == null) {
@@ -154,13 +171,9 @@ public final class Scheduler {
                     if (delayNanos <= 0) {
                         break;
                     }
-                    try {
-                        wait((delayNanos + 999_999) / 1_000_000);
-                    } catch (InterruptedException e) {
-                        if (isShutdown()) {
-                            mRunning = false;
-                            return;
-                        }
+                    if (mCondition.await(mLatch, delayNanos) < 0 && isShutdown()) {
+                        mRunning = false;
+                        return;
                     }
                 }
 
@@ -168,14 +181,16 @@ public final class Scheduler {
                     mRunning = false;
                     throw new AssertionError();
                 }
+            } finally {
+                mLatch.releaseExclusive();
             }
 
             try {
                 doExecute(delayed);
             } catch (Throwable e) {
-                synchronized (this) {
-                    mRunning = false;
-                }
+                mLatch.acquireExclusive();
+                mRunning = false;
+                mLatch.releaseExclusive();
                 throw e;
             }
         }
