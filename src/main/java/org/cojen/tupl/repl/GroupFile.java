@@ -543,7 +543,7 @@ final class GroupFile extends Latch {
                     throw new IOException("Checksum mismatch: " + expect + " != " + actual);
                 }
 
-                out.getFD().sync();
+                out.getChannel().force(true);
             } catch (Throwable e) {
                 newFile.delete();
                 throw e;
@@ -1159,7 +1159,7 @@ final class GroupFile extends Latch {
             }
 
             w.flush();
-            out.getFD().sync();
+            out.getChannel().force(true);
         }
 
         swapFiles(oldFile, newFile);
