@@ -121,31 +121,14 @@ public abstract class FileIO implements CauseCloseable {
      * @param tail receives additional data
      * @throws IllegalArgumentException
      */
-    public abstract void read(long pos, byte[] buf, int offset, int length, ByteBuffer tail)
+    abstract void read(long pos, byte[] buf, int offset, int length, ByteBuffer tail)
         throws IOException;
-
-    /**
-     * @param pos zero-based position in file
-     * @param bb receives read data
-     * @throws IllegalArgumentException
-     */
-    public abstract void read(long pos, ByteBuffer bb) throws IOException;
-
-    /**
-     * @param pos zero-based position in file
-     * @param bb receives read data
-     * @param tail receives additional data
-     * @throws IllegalArgumentException
-     */
-    public abstract void read(long pos, ByteBuffer bb, ByteBuffer tail) throws IOException;
 
     public void read(long pos, long ptr, int offset, int length) throws IOException {
         throw new UnsupportedOperationException();
     }
 
-    public void read(long pos, long ptr, int offset, int length, ByteBuffer tail)
-        throws IOException
-    {
+    void read(long pos, long ptr, int offset, int length, ByteBuffer tail) throws IOException {
         throw new UnsupportedOperationException();
     }
 
@@ -166,31 +149,14 @@ public abstract class FileIO implements CauseCloseable {
      * @param tail additional data to write
      * @throws IllegalArgumentException
      */
-    public abstract void write(long pos, byte[] buf, int offset, int length, ByteBuffer tail)
+    abstract void write(long pos, byte[] buf, int offset, int length, ByteBuffer tail)
         throws IOException;
-
-    /**
-     * @param pos zero-based position in file
-     * @param bb data to write
-     * @throws IllegalArgumentException
-     */
-    public abstract void write(long pos, ByteBuffer bb) throws IOException;
-
-    /**
-     * @param pos zero-based position in file
-     * @param bb data to write
-     * @param tail additional data to write
-     * @throws IllegalArgumentException
-     */
-    public abstract void write(long pos, ByteBuffer bb, ByteBuffer tail) throws IOException;
 
     public void write(long pos, long ptr, int offset, int length) throws IOException {
         throw new UnsupportedOperationException();
     }
 
-    public void write(long pos, long ptr, int offset, int length, ByteBuffer tail)
-        throws IOException
-    {
+    void write(long pos, long ptr, int offset, int length, ByteBuffer tail) throws IOException {
         throw new UnsupportedOperationException();
     }
 

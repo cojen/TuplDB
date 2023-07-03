@@ -184,11 +184,6 @@ abstract class AbstractFileIO extends FileIO {
     }
 
     @Override
-    public final void read(long pos, ByteBuffer bb) throws IOException {
-        access(true, pos, bb);
-    }
-
-    @Override
     public final void read(long pos, long ptr, int offset, int length) throws IOException {
         access(true, pos, ptr + offset, length);
     }
@@ -196,11 +191,6 @@ abstract class AbstractFileIO extends FileIO {
     @Override
     public final void write(long pos, byte[] buf, int offset, int length) throws IOException {
         access(false, pos, buf, offset, length);
-    }
-
-    @Override
-    public final void write(long pos, ByteBuffer bb) throws IOException {
-        access(false, pos, bb);
     }
 
     @Override
@@ -343,40 +333,22 @@ abstract class AbstractFileIO extends FileIO {
     }
 
     @Override
-    public void read(long pos, byte[] buf, int offset, int length, ByteBuffer tail)
-        throws IOException
-    {
+    void read(long pos, byte[] buf, int offset, int length, ByteBuffer tail) throws IOException {
         accessv(true, pos, buf, offset, length, tail);
     }
 
     @Override
-    public void read(long pos, ByteBuffer bb, ByteBuffer tail) throws IOException {
-        accessv(true, pos, bb, tail);
-    }
-
-    @Override
-    public void read(long pos, long ptr, int offset, int length, ByteBuffer tail)
-        throws IOException
-    {
+    void read(long pos, long ptr, int offset, int length, ByteBuffer tail) throws IOException {
         accessv(true, pos, ptr + offset, length, tail);
     }
 
     @Override
-    public void write(long pos, byte[] buf, int offset, int length, ByteBuffer tail)
-        throws IOException
-    {
+    void write(long pos, byte[] buf, int offset, int length, ByteBuffer tail) throws IOException {
         accessv(false, pos, buf, offset, length, tail);
     }
 
     @Override
-    public void write(long pos, ByteBuffer bb, ByteBuffer tail) throws IOException {
-        accessv(false, pos, bb, tail);
-    }
-
-    @Override
-    public void write(long pos, long ptr, int offset, int length, ByteBuffer tail)
-        throws IOException
-    {
+    void write(long pos, long ptr, int offset, int length, ByteBuffer tail) throws IOException {
         accessv(false, pos, ptr + offset, length, tail);
     }
 
