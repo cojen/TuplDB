@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.io;
 
+import java.lang.foreign.MemorySegment;
+
 import java.nio.ByteBuffer;
 
 import net.jpountz.lz4.LZ4Factory;
@@ -33,8 +35,6 @@ class LZ4Compressor implements PageCompressor {
     private final LZ4FastDecompressor mDecompressor;
 
     private byte[] mCompressedBytes;
-
-    private ByteBuffer mDirectBuffer;
 
     LZ4Compressor() {
         var factory = LZ4Factory.fastestInstance();
@@ -65,13 +65,9 @@ class LZ4Compressor implements PageCompressor {
             mCompressedBytes = dst = new byte[srcLen / 16];
         }
 
-        ByteBuffer bb = mDirectBuffer;
-        if (bb == null) {
-            mDirectBuffer = bb = DirectAccess.allocDirect();
-        }
-
         while (true) {
-            DirectAccess.ref(bb, srcPtr + srcOff, srcLen);
+            ByteBuffer bb = MemorySegment.ofAddress
+                (srcPtr + srcOff).reinterpret(srcLen).asByteBuffer();
             ByteBuffer wrapped = ByteBuffer.wrap(dst, 0, dst.length);
             try {
                 mCompressor.compress(bb, wrapped);
@@ -102,11 +98,7 @@ class LZ4Compressor implements PageCompressor {
     public void decompress(byte[] src, int srcOff, int srcLen,
                            long dstPtr, int dstOff, int dstLen)
     {
-        ByteBuffer bb = mDirectBuffer;
-        if (bb == null) {
-            mDirectBuffer = bb = DirectAccess.allocDirect();
-        }
-        DirectAccess.ref(bb, dstPtr + dstOff, dstLen);
+        ByteBuffer bb = MemorySegment.ofAddress(dstPtr + dstOff).reinterpret(dstLen).asByteBuffer();
 
         mDecompressor.decompress(ByteBuffer.wrap(src, srcOff, srcLen), bb);
     }

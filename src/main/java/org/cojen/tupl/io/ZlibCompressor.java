@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.io;
 
+import java.lang.foreign.MemorySegment;
+
 import java.nio.ByteBuffer;
 
 import java.util.zip.DataFormatException;
@@ -33,8 +35,6 @@ class ZlibCompressor implements PageCompressor {
     private final Inflater mInflater;
 
     private byte[] mCompressedBytes;
-
-    private ByteBuffer mDirectBuffer;
 
     ZlibCompressor() {
         this(Deflater.DEFAULT_COMPRESSION);
@@ -74,16 +74,12 @@ class ZlibCompressor implements PageCompressor {
 
     @Override
     public int compress(long srcPtr, int srcOff, int srcLen) {
-        ByteBuffer bb = mDirectBuffer;
-        if (bb == null) {
-            mDirectBuffer = bb = DirectAccess.allocDirect();
-        }
-        DirectAccess.ref(bb, srcPtr + srcOff, srcLen);
-
         byte[] dst = mCompressedBytes;
         if (dst == null) {
             mCompressedBytes = dst = new byte[srcLen / 16];
         }
+
+        ByteBuffer bb = MemorySegment.ofAddress(srcPtr + srcOff).reinterpret(srcLen).asByteBuffer();
 
         try {
             mDeflater.setInput(bb);
@@ -126,11 +122,7 @@ class ZlibCompressor implements PageCompressor {
     public void decompress(byte[] src, int srcOff, int srcLen,
                            long dstPtr, int dstOff, int dstLen)
     {
-        ByteBuffer bb = mDirectBuffer;
-        if (bb == null) {
-            mDirectBuffer = bb = DirectAccess.allocDirect();
-        }
-        DirectAccess.ref(bb, dstPtr + dstOff, dstLen);
+        ByteBuffer bb = MemorySegment.ofAddress(dstPtr + dstOff).reinterpret(dstLen).asByteBuffer();
 
         try {
             mInflater.setInput(src, srcOff, srcLen);

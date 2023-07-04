@@ -19,6 +19,8 @@ package org.cojen.tupl.core;
 
 import java.io.IOException;
 
+import java.lang.foreign.MemorySegment;
+
 import java.util.Arrays;
 
 import java.util.zip.CRC32;
@@ -26,7 +28,6 @@ import java.util.zip.CRC32;
 import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.DeletedIndexException;
 
-import org.cojen.tupl.io.DirectAccess;
 import org.cojen.tupl.io.MappedPageArray;
 import org.cojen.tupl.io.UnsafeAccess;
 
@@ -852,7 +853,7 @@ public final class DirectPageOps {
 
     static int p_crc32(long srcPage, int srcStart, int len) {
         var crc = new CRC32();
-        crc.update(DirectAccess.ref(srcPage + srcStart, len));
+        crc.update(MemorySegment.ofAddress(srcPage + srcStart).reinterpret(len).asByteBuffer());
         return (int) crc.getValue();
     }
 }

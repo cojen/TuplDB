@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.io;
 
+import java.lang.foreign.MemorySegment;
+
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
@@ -318,7 +320,7 @@ abstract class AbstractFileIO extends FileIO {
 
     private void access(boolean read, long pos, long ptr, int length) throws IOException {
         if (length > 0) {
-            access(read, pos, DirectAccess.ref(ptr, length));
+            access(read, pos, MemorySegment.ofAddress(ptr).reinterpret(length).asByteBuffer());
         }
     }
 

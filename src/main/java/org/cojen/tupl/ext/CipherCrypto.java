@@ -22,6 +22,10 @@ import java.io.InputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+
 import java.security.GeneralSecurityException;
 
 import java.util.Objects;
@@ -35,10 +39,7 @@ import javax.crypto.ShortBufferException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-import org.cojen.tupl.core.DirectPageOps;
 import org.cojen.tupl.core.Utils;
-
-import org.cojen.tupl.io.DirectAccess;
 
 /**
  * Crypto implementation which uses {@link Cipher} and defaults to the AES algorithm. An
@@ -194,10 +195,12 @@ public class CipherCrypto implements Crypto {
             cipher = headerPageCipher();
             initCipher(cipher, Cipher.ENCRYPT_MODE, mRootKey);
 
-            long srcCopy = DirectPageOps.p_alloc(pageSize);
-            try {
-                DirectPageOps.p_copy(srcPtr, srcOffset, srcCopy, 0, pageSize);
-                srcPtr = srcCopy;
+            try (Arena a = Arena.ofConfined()) {
+                MemorySegment srcCopy = a.allocate(pageSize);
+                MemorySegment.copy
+                    (MemorySegment.ofAddress(srcPtr + srcOffset).reinterpret(pageSize), 0,
+                     srcCopy, 0, pageSize);
+                srcPtr = srcCopy.address();
                 srcOffset = 0;
                 int offset = pageSize;
 
@@ -216,8 +219,6 @@ public class CipherCrypto implements Crypto {
                 {
                     throw new GeneralSecurityException("Encrypted length does not match");
                 }
-            } finally {
-                DirectPageOps.p_delete(srcCopy);
             }
         } else {
             cipher = dataPageCipher();
@@ -493,8 +494,10 @@ public class CipherCrypto implements Crypto {
     }
 
     private static int encodeBlock(long dstPtr, int offset, byte[] value) {
-        DirectPageOps.p_bytePut(dstPtr, --offset, value.length - 1);
-        DirectPageOps.p_copyFromArray(value, 0, dstPtr, offset -= value.length, value.length);
+        MemorySegment dst = MemorySegment.ofAddress(dstPtr).reinterpret(offset);
+        int length = value.length;
+        dst.set(ValueLayout.JAVA_BYTE, --offset, (byte) (length - 1));
+        MemorySegment.copy(value, 0, dst, ValueLayout.JAVA_BYTE, offset -= length, length);
         return offset;
     }
 
@@ -505,8 +508,10 @@ public class CipherCrypto implements Crypto {
     }
 
     private static byte[] decodeBlock(long srcPtr, int offset) {
-        var value = new byte[DirectPageOps.p_ubyteGet(srcPtr, --offset) + 1];
-        DirectPageOps.p_copyToArray(srcPtr, offset - value.length, value, 0, value.length);
+        MemorySegment src = MemorySegment.ofAddress(srcPtr).reinterpret(offset);
+        int length = (src.get(ValueLayout.JAVA_BYTE, --offset) & 0xff) + 1;
+        var value = new byte[length];
+        MemorySegment.copy(src, ValueLayout.JAVA_BYTE, offset - length, value, 0, length);
         return value;
     }
 
@@ -515,8 +520,9 @@ public class CipherCrypto implements Crypto {
                                      long dstPage, int dstStart)
         throws GeneralSecurityException
     {
-        return cipher.doFinal(DirectAccess.ref(srcPage + srcStart, srcLen),
-                              DirectAccess.ref2(dstPage + dstStart, srcLen));
+        return cipher.doFinal
+            (MemorySegment.ofAddress(srcPage + srcStart).reinterpret(srcLen).asByteBuffer(),
+             MemorySegment.ofAddress(dstPage + dstStart).reinterpret(srcLen).asByteBuffer());
     }
 
     /**
