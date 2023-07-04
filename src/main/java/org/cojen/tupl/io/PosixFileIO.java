@@ -426,7 +426,7 @@ final class PosixFileIO extends AbstractFileIO {
 
         MsRef(int size) {
             mArena = Arena.ofShared();
-            mMemorySegment = mArena.allocate(size);
+            mMemorySegment = mArena.allocate(size, OS_PAGE_SIZE);
         }
     }
 
@@ -690,7 +690,7 @@ final class PosixFileIO extends AbstractFileIO {
 
     static void msyncPtr(long ptr, long length) throws IOException {
         long endPtr = ptr + length;
-        ptr = (ptr / PAGE_SIZE) * PAGE_SIZE;
+        ptr = (ptr / OS_PAGE_SIZE) * OS_PAGE_SIZE;
         int result;
         try {
             result = (int) msync.invokeExact(ptr, endPtr - ptr, 4); // flags = MS_SYNC

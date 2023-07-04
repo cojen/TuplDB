@@ -38,8 +38,6 @@ import static org.cojen.tupl.io.Utils.rethrow;
  * @author Brian S O'Neill
  */
 abstract class AbstractFileIO extends FileIO {
-    static final int PAGE_SIZE;
-
     private static final int MAPPING_SHIFT = 30;
     private static final int MAPPING_SIZE = 1 << MAPPING_SHIFT;
 
@@ -52,14 +50,6 @@ abstract class AbstractFileIO extends FileIO {
     private static final VarHandle cSyncStartNanosHandle;
 
     static {
-        int pageSize = 4096;
-        try {
-            pageSize = UnsafeAccess.tryObtain().pageSize();
-        } catch (Throwable e) {
-            // Ignore. Use default value.
-        }
-        PAGE_SIZE = pageSize;
-
         try {
             cSyncStartNanosHandle = MethodHandles.lookup().findVarHandle
                 (AbstractFileIO.class, "mSyncStartNanos", long.class);
@@ -582,7 +572,7 @@ abstract class AbstractFileIO extends FileIO {
             // size then this will not touch all the necessary blocks.
             final long currLength = doLength();
             var buf = new byte[1];
-            for (long endPos = pos + length; pos < endPos; pos += PAGE_SIZE) {
+            for (long endPos = pos + length; pos < endPos; pos += OS_PAGE_SIZE) {
                 if (mAccessLock.hasQueuedThreads()) {
                     // Let other accesses in. The length won't change concurrently because the
                     // caller should be holding mRemapLatch exclusively.
