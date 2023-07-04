@@ -64,7 +64,6 @@ final class PosixFileIO extends AbstractFileIO {
     private final int mReopenOptions;
 
     private final LocalPool<BufRef> mBufRefPool;
-    private final LocalPool<BufRef> mIovecRefPool;
 
     private final boolean mReadahead;
     private final boolean mCloseDontNeed;
@@ -102,7 +101,6 @@ final class PosixFileIO extends AbstractFileIO {
         }
 
         mBufRefPool = new LocalPool<>(null, MAX_POOL_SIZE);
-        mIovecRefPool = new LocalPool<>(new BufRefAllocator(32), MAX_POOL_SIZE);
 
         if (options.contains(OpenOption.MAPPED)) {
             map();
@@ -266,7 +264,6 @@ final class PosixFileIO extends AbstractFileIO {
         }
 
         clearBufRefPool(mBufRefPool);
-        clearBufRefPool(mIovecRefPool);
     }
 
     private LocalPool.Entry<BufRef> bufRefEntry(int size) {
