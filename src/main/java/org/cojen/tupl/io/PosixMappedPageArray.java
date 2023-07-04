@@ -22,8 +22,6 @@ import java.io.IOException;
 
 import java.util.EnumSet;
 
-import com.sun.jna.Platform;
-
 /**
  * 
  *
@@ -54,7 +52,7 @@ class PosixMappedPageArray extends MappedPageArray {
         int flags = 1; // MAP_SHARED
 
         if (file == null) {
-            flags |= Platform.isMac() ? 0x1000 : 0x20; // MAP_ANONYMOUS
+            flags |= PosixFileIO.OSX ? 0x1000 : 0x20; // MAP_ANONYMOUS
 
             setMappingPtr(PosixFileIO.mmapFd(pageSize * pageCount, prot, flags, -1, 0));
 
@@ -162,7 +160,7 @@ class PosixMappedPageArray extends MappedPageArray {
     }
 
     void doClose(long mappingPtr) throws IOException {
-        PosixFileIO.munmap(mappingPtr, super.pageCount() * pageSize());
+        PosixFileIO.munmapPtr(mappingPtr, super.pageCount() * pageSize());
         if (mFileDescriptor != -1) {
             PosixFileIO.closeFd(mFileDescriptor);
         }

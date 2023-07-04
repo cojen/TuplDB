@@ -17,12 +17,16 @@
 
 package org.cojen.tupl.io;
 
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
+import java.lang.foreign.SymbolLookup;
+import java.lang.foreign.ValueLayout;
+
+import java.lang.invoke.MethodHandle;
+
 import java.lang.reflect.Field;
 
 import java.nio.ByteOrder;
-
-import com.sun.jna.Native;
-import com.sun.jna.Platform;
 
 /**
  * Utility for accessing the unsupported Unsafe class.
@@ -85,7 +89,7 @@ public class UnsafeAccess {
      * Allocate native memory.
      */
     public static long alloc(int size, boolean aligned) {
-        return aligned ? JNA.valloc(size) : UNSAFE.allocateMemory(size);
+        return aligned ? Foreign.valloc(size) : UNSAFE.allocateMemory(size);
     }
 
     /**
@@ -132,13 +136,26 @@ public class UnsafeAccess {
         UNSAFE.freeMemory(addr);
     }
 
-    static class JNA {
+    static class Foreign {
+        private static final MethodHandle valloc;
+
         static {
-            Native.register(Platform.C_LIBRARY_NAME);
+            Linker linker = Linker.nativeLinker();
+            SymbolLookup lookup = linker.defaultLookup();
+
+            valloc = linker.downcallHandle
+                (lookup.find("valloc").get(),
+                 FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG));
         }
 
         // TODO: Define a variant that works on Windows. Call WindowsFileIO.valloc, but must
         // also call WindowsFileIO.vfree.
-        static native long valloc(int size);
+        static long valloc(long size) {
+            try {
+                return (long) valloc.invokeExact(size);
+            } catch (Throwable e) {
+                throw Utils.rethrow(e);
+            }
+        }
     }
 }

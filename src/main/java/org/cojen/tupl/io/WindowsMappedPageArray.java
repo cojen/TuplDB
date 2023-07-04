@@ -22,8 +22,6 @@ import java.io.IOException;
 
 import java.util.EnumSet;
 
-import com.sun.jna.platform.win32.WinNT;
-
 /**
  * 
  *
@@ -33,8 +31,8 @@ class WindowsMappedPageArray extends MappedPageArray {
     private final File mFile;
     private final EnumSet<OpenOption> mOptions;
 
-    private final WinNT.HANDLE mFileHandle;
-    private final WinNT.HANDLE mMappingHandle;
+    private final int mFileHandle;
+    private final int mMappingHandle;
 
     private final boolean mNonDurable;
 
@@ -52,8 +50,8 @@ class WindowsMappedPageArray extends MappedPageArray {
         if (file == null) {
             setMappingPtr(WindowsFileIO.valloc(pageSize * pageCount));
 
-            mFileHandle = null;
-            mMappingHandle = null;
+            mFileHandle = WindowsFileIO.INVALID_HANDLE_VALUE;
+            mMappingHandle = WindowsFileIO.INVALID_HANDLE_VALUE;
             mNonDurable = true;
             mEmpty = true;
 

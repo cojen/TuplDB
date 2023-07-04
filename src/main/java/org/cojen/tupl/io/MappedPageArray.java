@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.io;
 
+import java.lang.foreign.ValueLayout;
+
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
@@ -26,9 +28,6 @@ import java.io.IOException;
 import java.nio.channels.ClosedChannelException;
 
 import java.util.EnumSet;
-
-import com.sun.jna.Native;
-import com.sun.jna.Platform;
 
 import org.cojen.tupl.DatabaseFullException;
 
@@ -63,7 +62,7 @@ public abstract class MappedPageArray extends PageArray {
     private volatile Throwable mCause;
 
     public static boolean isSupported() {
-        return Native.SIZE_T_SIZE >= 8;
+        return ValueLayout.ADDRESS.byteSize() >= 8;
     }
 
     /**

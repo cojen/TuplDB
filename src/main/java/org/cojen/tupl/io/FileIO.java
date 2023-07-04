@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.io;
 
+import java.lang.foreign.ValueLayout;
+
 import java.io.File;
 import java.io.IOException;
 
@@ -25,30 +27,18 @@ import java.util.EnumSet;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 
-import com.sun.jna.Native;
-
 /**
  * Lowest I/O interface to a file or device.
  *
  * @author Brian S O'Neill
  */
 public abstract class FileIO implements CauseCloseable {
-    private static final String USE_JNA = FileIO.class.getName() + ".useJNA";
     private static final int IO_TYPE; // 0: platform independent, 1: POSIX, 2: Windows
     private static final boolean NEEDS_DIR_SYNC;
 
     static {
         boolean isWindows = System.getProperty("os.name").startsWith("Windows");
-
-        int type = 0;
-
-        String jnaProp = System.getProperty(USE_JNA, null);
-        if ((jnaProp == null || Boolean.parseBoolean(jnaProp)) && Native.SIZE_T_SIZE >= 8) {
-            type = isWindows ? 2 : 1;
-        }
-
-        IO_TYPE = type;
-
+        IO_TYPE = ValueLayout.ADDRESS.byteSize() < 8 ? 0 : (isWindows ? 2 : 1);
         NEEDS_DIR_SYNC = !isWindows;
     }
 
