@@ -20,8 +20,6 @@ package org.cojen.tupl.core;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import java.nio.ByteBuffer;
-
 import java.util.Arrays;
 
 import java.util.function.Supplier;
@@ -193,12 +191,6 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
                 entry.release();
             }
         }
-    }
-
-    @Override
-    public void writePage(long index, byte[] src, int offset, ByteBuffer tail) throws IOException {
-        // Only required by lower layers, and used by CheckedPageArray.
-        throw new UnsupportedOperationException();
     }
 
     @Override

@@ -20,8 +20,6 @@ package org.cojen.tupl.io;
 import java.io.File;
 import java.io.IOException;
 
-import java.nio.ByteBuffer;
-
 import java.util.EnumSet;
 
 import java.nio.channels.FileChannel;
@@ -113,22 +111,7 @@ public abstract class FileIO implements CauseCloseable {
      */
     public abstract void read(long pos, byte[] buf, int offset, int length) throws IOException;
 
-    /**
-     * @param pos zero-based position in file
-     * @param buf receives read data
-     * @param offset offset into data buffer
-     * @param length amount of data to read
-     * @param tail receives additional data
-     * @throws IllegalArgumentException
-     */
-    abstract void read(long pos, byte[] buf, int offset, int length, ByteBuffer tail)
-        throws IOException;
-
     public void read(long pos, long ptr, int offset, int length) throws IOException {
-        throw new UnsupportedOperationException();
-    }
-
-    void read(long pos, long ptr, int offset, int length, ByteBuffer tail) throws IOException {
         throw new UnsupportedOperationException();
     }
 
@@ -141,22 +124,7 @@ public abstract class FileIO implements CauseCloseable {
      */
     public abstract void write(long pos, byte[] buf, int offset, int length) throws IOException;
 
-    /**
-     * @param pos zero-based position in file
-     * @param buf data to write
-     * @param offset offset into data buffer
-     * @param length amount of data
-     * @param tail additional data to write
-     * @throws IllegalArgumentException
-     */
-    abstract void write(long pos, byte[] buf, int offset, int length, ByteBuffer tail)
-        throws IOException;
-
     public void write(long pos, long ptr, int offset, int length) throws IOException {
-        throw new UnsupportedOperationException();
-    }
-
-    void write(long pos, long ptr, int offset, int length, ByteBuffer tail) throws IOException {
         throw new UnsupportedOperationException();
     }
 

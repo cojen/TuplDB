@@ -19,8 +19,6 @@ package org.cojen.tupl.core;
 
 import java.io.IOException;
 
-import java.nio.ByteBuffer;
-
 import java.security.GeneralSecurityException;
 
 import org.cojen.tupl.DatabaseException;
@@ -147,12 +145,6 @@ final class CryptoPageArray extends TransformedPageArray {
         } catch (GeneralSecurityException e) {
             throw new DatabaseException(e);
         }
-    }
-
-    @Override
-    public void writePage(long index, byte[] src, int offset, ByteBuffer tail) throws IOException {
-        // Only required by lower layers, and used by CheckedPageArray.
-        throw new UnsupportedOperationException();
     }
 
     @Override

@@ -150,13 +150,6 @@ class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected final void doRead(long pos, byte[] buf, int offset, int length, ByteBuffer tail)
-        throws IOException
-    {
-        doRead(pos, ByteBuffer.wrap(buf, offset, length), tail);
-    }
-
-    @Override
     protected final void doRead(long pos, ByteBuffer bb) throws IOException {
         boolean interrupted = false;
 
@@ -188,46 +181,6 @@ class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected final void doRead(long pos, ByteBuffer bb, ByteBuffer tail) throws IOException {
-        boolean interrupted = false;
-
-        LocalPool.Entry<FileAccess> entry = accessFile();
-        try {
-            FileAccess file = entry.get();
-            while (true) try {
-                FileChannel channel = file.positionChannel(pos);
-                while (bb.hasRemaining()) {
-                    long amt = channel.read(new ByteBuffer[] {bb, tail});
-                    if (amt < 0) {
-                        throw new EOFException
-                            ("Attempt to read past end of file: " + channel.position());
-                    }
-                    pos += amt;
-                }
-                while (tail.hasRemaining()) {
-                    int amt = channel.read(tail);
-                    if (amt < 0) {
-                        throw new EOFException
-                            ("Attempt to read past end of file: " + channel.position());
-                    }
-                    pos += amt;
-                }
-                break;
-            } catch (ClosedByInterruptException e) {
-                interrupted = true;
-                file = replaceClosedRaf(entry);
-            }
-        } finally {
-            entry.release();
-        }
-
-        if (interrupted) {
-            // Restore the interrupt status.
-            Thread.currentThread().interrupt();
-        }
-    }
-
-    @Override
     protected final void doWrite(long pos, byte[] buf, int offset, int length) throws IOException {
         LocalPool.Entry<FileAccess> entry = accessFile();
         try {
@@ -237,13 +190,6 @@ class JavaFileIO extends AbstractFileIO {
         } finally {
             entry.release();
         }
-    }
-
-    @Override
-    protected final void doWrite(long pos, byte[] buf, int offset, int length, ByteBuffer tail)
-        throws IOException
-    {
-        doWrite(pos, ByteBuffer.wrap(buf, offset, length), tail);
     }
 
     @Override
@@ -257,36 +203,6 @@ class JavaFileIO extends AbstractFileIO {
                 FileChannel channel = file.getChannel();
                 while (bb.hasRemaining()) {
                     pos += channel.write(bb, pos);
-                }
-                break;
-            } catch (ClosedByInterruptException e) {
-                interrupted = true;
-                file = replaceClosedRaf(entry);
-            }
-        } finally {
-            entry.release();
-        }
-
-        if (interrupted) {
-            // Restore the interrupt status.
-            Thread.currentThread().interrupt();
-        }
-    }
-
-    @Override
-    protected final void doWrite(long pos, ByteBuffer bb, ByteBuffer tail) throws IOException {
-        boolean interrupted = false;
-
-        LocalPool.Entry<FileAccess> entry = accessFile();
-        try {
-            FileAccess file = entry.get();
-            while (true) try {
-                FileChannel channel = file.positionChannel(pos);
-                while (bb.hasRemaining()) {
-                    pos += channel.write(new ByteBuffer[] {bb, tail});
-                }
-                while (tail.hasRemaining()) {
-                    pos += channel.write(tail);
                 }
                 break;
             } catch (ClosedByInterruptException e) {

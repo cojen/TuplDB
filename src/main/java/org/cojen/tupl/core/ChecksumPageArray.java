@@ -78,14 +78,6 @@ abstract class ChecksumPageArray extends TransformedPageArray {
     }
 
     @Override
-    public void writePage(long index, byte[] src, int offset, ByteBuffer tail)
-        throws IOException
-    {
-        // No need to support this unless double checksumming, which makes no sense.
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public void sync(boolean metadata) throws IOException {
         mSource.sync(metadata);
     }
@@ -120,7 +112,7 @@ abstract class ChecksumPageArray extends TransformedPageArray {
         Standard(PageArray source, Supplier<Checksum> supplier) {
             super(source, supplier);
             mBufRefPool = new LocalPool<>(() -> {
-                ByteBuffer bb = ByteBuffer.allocateDirect(4);
+                ByteBuffer bb = ByteBuffer.allocateDirect(pageSize() + 4);
                 bb.order(ByteOrder.LITTLE_ENDIAN);
                 return new BufRef(bb, mSupplier.get());
             }, -4);
@@ -136,15 +128,8 @@ abstract class ChecksumPageArray extends TransformedPageArray {
             } else {
                 LocalPool.Entry<BufRef> e = mBufRefPool.access();
                 try {
-                    BufRef ref = e.get();
-                    ByteBuffer tail = ref.mBuffer;
-                    tail.position(0);
-                    mSource.readPage(index, dst, offset, length, tail);
-                    int actualChecksum = tail.getInt(0);
-                    Checksum checksum = ref.mChecksum;
-                    checksum.reset();
-                    checksum.update(dst, offset, length);
-                    check(index, actualChecksum, checksum);
+                    long addr = readPageAndChecksum(e.get(), index, length);
+                    UnsafeAccess.copy(addr, dst, offset, length);
                 } finally {
                     e.release();
                 }
@@ -165,19 +150,28 @@ abstract class ChecksumPageArray extends TransformedPageArray {
             } else {
                 LocalPool.Entry<BufRef> e = mBufRefPool.access();
                 try {
-                    BufRef ref = e.get();
-                    ByteBuffer tail = ref.mBuffer;
-                    tail.position(0);
-                    mSource.readPage(index, dstPtr, offset, length, tail);
-                    int actualChecksum = tail.getInt(0);
-                    Checksum checksum = ref.mChecksum;
-                    checksum.reset();
-                    checksum.update(DirectAccess.ref(dstPtr + offset, length));
-                    check(index, actualChecksum, checksum);
+                    long addr = readPageAndChecksum(e.get(), index, length);
+                    UnsafeAccess.copy(addr, dstPtr, length);
                 } finally {
                     e.release();
                 }
             }
+        }
+
+        /**
+         * @param length must be equal to pageSize
+         */
+        private long readPageAndChecksum(BufRef ref, long index, int length) throws IOException {
+            ByteBuffer buf = ref.mBuffer;
+            long addr = ref.mAddress;
+            mSource.readPage(index, addr);
+            buf.position(0).limit(length);
+            Checksum checksum = ref.mChecksum;
+            checksum.reset();
+            checksum.update(buf);
+            buf.limit(buf.capacity());
+            check(index, buf.getInt(), checksum);
+            return addr;
         }
 
         @Override
@@ -187,11 +181,13 @@ abstract class ChecksumPageArray extends TransformedPageArray {
                 BufRef ref = e.get();
                 Checksum checksum = ref.mChecksum;
                 checksum.reset();
-                checksum.update(src, offset, pageSize());
-                ByteBuffer tail = ref.mBuffer;
-                tail.position(0);
-                tail.putInt(0, (int) checksum.getValue());
-                mSource.writePage(index, src, offset, tail);
+                int length = pageSize();
+                checksum.update(src, offset, length);
+                ByteBuffer buf = ref.mBuffer;
+                buf.position(0).limit(buf.capacity());
+                buf.put(src, offset, length);
+                buf.putInt((int) checksum.getValue());
+                mSource.writePage(index, ref.mAddress);
             } finally {
                 e.release();
             }
@@ -204,11 +200,13 @@ abstract class ChecksumPageArray extends TransformedPageArray {
                 BufRef ref = e.get();
                 Checksum checksum = ref.mChecksum;
                 checksum.reset();
-                checksum.update(DirectAccess.ref(srcPtr + offset, pageSize()));
-                ByteBuffer tail = ref.mBuffer;
-                tail.position(0);
-                tail.putInt(0, (int) checksum.getValue());
-                mSource.writePage(index, srcPtr, offset, tail);
+                int length = pageSize();
+                checksum.update(DirectAccess.ref(srcPtr + offset, length));
+                ByteBuffer buf = ref.mBuffer;
+                buf.limit(buf.capacity());
+                UnsafeAccess.copy(srcPtr, ref.mAddress, length);
+                buf.putInt(length, (int) checksum.getValue());
+                mSource.writePage(index, ref.mAddress);
             } finally {
                 e.release();
             }
@@ -222,10 +220,12 @@ abstract class ChecksumPageArray extends TransformedPageArray {
 
         static class BufRef {
             final ByteBuffer mBuffer;
+            final long mAddress;
             final Checksum mChecksum;
 
             BufRef(ByteBuffer buffer, Checksum checksum) {
                 mBuffer = buffer;
+                mAddress = DirectAccess.getAddress(buffer);
                 mChecksum = checksum;
             }
         }
