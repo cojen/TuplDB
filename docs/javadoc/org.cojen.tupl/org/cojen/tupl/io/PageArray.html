@@ -223,28 +223,14 @@ implements <a href="CauseCloseable.html" title="interface in org.cojen.tupl.io">
  int&nbsp;length)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#readPage(long,byte%5B%5D,int,int,java.nio.ByteBuffer)" class="member-name-link">readPage</a><wbr>(long&nbsp;index,
- byte[]&nbsp;dst,
- int&nbsp;offset,
- int&nbsp;length,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#readPage(long,long)" class="member-name-link">readPage</a><wbr>(long&nbsp;index,
+ long&nbsp;dstPtr)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#readPage(long,long)" class="member-name-link">readPage</a><wbr>(long&nbsp;index,
- long&nbsp;dstPtr)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#readPage(long,long,int,int)" class="member-name-link">readPage</a><wbr>(long&nbsp;index,
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#readPage(long,long,int,int)" class="member-name-link">readPage</a><wbr>(long&nbsp;index,
  long&nbsp;dstPtr,
  int&nbsp;offset,
  int&nbsp;length)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#readPage(long,long,int,int,java.nio.ByteBuffer)" class="member-name-link">readPage</a><wbr>(long&nbsp;index,
- long&nbsp;dstPtr,
- int&nbsp;offset,
- int&nbsp;length,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>abstract void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#sync(boolean)" class="member-name-link">sync</a><wbr>(boolean&nbsp;metadata)</code></div>
@@ -274,31 +260,19 @@ implements <a href="CauseCloseable.html" title="interface in org.cojen.tupl.io">
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Writes a page, which is lazily flushed.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>abstract void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#writePage(long,byte%5B%5D,int,java.nio.ByteBuffer)" class="member-name-link">writePage</a><wbr>(long&nbsp;index,
- byte[]&nbsp;src,
- int&nbsp;offset,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">&nbsp;</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writePage(long,long)" class="member-name-link">writePage</a><wbr>(long&nbsp;index,
- long&nbsp;srcPtr)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Writes a page, which is lazily flushed.</div>
-</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writePage(long,long,int)" class="member-name-link">writePage</a><wbr>(long&nbsp;index,
- long&nbsp;srcPtr,
- int&nbsp;offset)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writePage(long,long)" class="member-name-link">writePage</a><wbr>(long&nbsp;index,
+ long&nbsp;srcPtr)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Writes a page, which is lazily flushed.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writePage(long,long,int,java.nio.ByteBuffer)" class="member-name-link">writePage</a><wbr>(long&nbsp;index,
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#writePage(long,long,int)" class="member-name-link">writePage</a><wbr>(long&nbsp;index,
  long&nbsp;srcPtr,
- int&nbsp;offset,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+ int&nbsp;offset)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Writes a page, which is lazily flushed.</div>
+</div>
 </div>
 </div>
 </div>
@@ -462,21 +436,6 @@ implements <a href="CauseCloseable.html" title="interface in org.cojen.tupl.io">
 </section>
 </li>
 <li>
-<section class="detail" id="readPage(long,byte[],int,int,java.nio.ByteBuffer)">
-<h3>readPage</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">readPage</span><wbr><span class="parameters">(long&nbsp;index,
- byte[]&nbsp;dst,
- int&nbsp;offset,
- int&nbsp;length,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</span>
-              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<dl class="notes">
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
-</dl>
-</section>
-</li>
-<li>
 <section class="detail" id="readPage(long,long)">
 <h3>readPage</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">readPage</span><wbr><span class="parameters">(long&nbsp;index,
@@ -508,21 +467,6 @@ implements <a href="CauseCloseable.html" title="interface in org.cojen.tupl.io">
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IndexOutOfBoundsException.html" title="class or interface in java.lang" class="external-link">IndexOutOfBoundsException</a></code> - if index is negative</dd>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code> - if index is greater than or equal to page count</dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="readPage(long,long,int,int,java.nio.ByteBuffer)">
-<h3>readPage</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">readPage</span><wbr><span class="parameters">(long&nbsp;index,
- long&nbsp;dstPtr,
- int&nbsp;offset,
- int&nbsp;length,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</span>
-              throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<dl class="notes">
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
 </li>
@@ -567,20 +511,6 @@ implements <a href="CauseCloseable.html" title="interface in org.cojen.tupl.io">
 </section>
 </li>
 <li>
-<section class="detail" id="writePage(long,byte[],int,java.nio.ByteBuffer)">
-<h3>writePage</h3>
-<div class="member-signature"><span class="modifiers">public abstract</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writePage</span><wbr><span class="parameters">(long&nbsp;index,
- byte[]&nbsp;src,
- int&nbsp;offset,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</span>
-                        throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<dl class="notes">
-<dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
-</dl>
-</section>
-</li>
-<li>
 <section class="detail" id="writePage(long,long)">
 <h3>writePage</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writePage</span><wbr><span class="parameters">(long&nbsp;index,
@@ -616,20 +546,6 @@ implements <a href="CauseCloseable.html" title="interface in org.cojen.tupl.io">
 <dd><code>offset</code> - offset into data buffer</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IndexOutOfBoundsException.html" title="class or interface in java.lang" class="external-link">IndexOutOfBoundsException</a></code> - if index is negative</dd>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="writePage(long,long,int,java.nio.ByteBuffer)">
-<h3>writePage</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">writePage</span><wbr><span class="parameters">(long&nbsp;index,
- long&nbsp;srcPtr,
- int&nbsp;offset,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;tail)</span>
-               throws <span class="exceptions"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></span></div>
-<dl class="notes">
-<dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
 </dl>
 </section>
