@@ -32,10 +32,10 @@ import static org.junit.Assert.*;
 
 import org.cojen.tupl.TestUtils;
 
-import org.cojen.tupl.io.FileIO;
 import org.cojen.tupl.io.FilePageArray;
 import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
+import org.cojen.tupl.io.SysInfo;
 import org.cojen.tupl.io.Utils;
 
 /**
@@ -159,7 +159,7 @@ public class ChecksumPageArrayTest {
         try (Arena a = Arena.ofConfined()) {
             int writeOffset = directIO ? 0 : 15;
             MemorySegment writePage = a.allocate
-                (writeOffset + physicalPageSize, FileIO.osPageSize());
+                (writeOffset + physicalPageSize, SysInfo.pageSize());
             for (int i=0; i<writePage.byteSize(); i++) {
                 writePage.set(ValueLayout.JAVA_BYTE, i, (byte) i);
             }
@@ -168,7 +168,7 @@ public class ChecksumPageArrayTest {
 
             int readOffset = 25;
             MemorySegment readPage = a.allocate
-                (readOffset + physicalPageSize, FileIO.osPageSize());
+                (readOffset + physicalPageSize, SysInfo.pageSize());
             pa.readPage(2, readPage.address(), readOffset, physicalPageSize);
 
             for (int i=0; i<pageSize; i++) {

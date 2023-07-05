@@ -562,7 +562,7 @@ abstract class AbstractFileIO extends FileIO {
             // size then this will not touch all the necessary blocks.
             final long currLength = doLength();
             var buf = new byte[1];
-            for (long endPos = pos + length; pos < endPos; pos += OS_PAGE_SIZE) {
+            for (long endPos = pos + length; pos < endPos; pos += SysInfo.pageSize()) {
                 if (mAccessLock.hasQueuedThreads()) {
                     // Let other accesses in. The length won't change concurrently because the
                     // caller should be holding mRemapLatch exclusively.

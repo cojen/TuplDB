@@ -29,6 +29,7 @@ import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.DeletedIndexException;
 
 import org.cojen.tupl.io.MappedPageArray;
+import org.cojen.tupl.io.SysInfo;
 import org.cojen.tupl.io.UnsafeAccess;
 
 import org.cojen.tupl.util.Latch;
@@ -174,7 +175,7 @@ public final class DirectPageOps {
 
                 final int numThreads = Runtime.getRuntime().availableProcessors();
                 final var latch = new Latch(numThreads);
-                final int osPageSize = UNSAFE.pageSize();
+                final int osPageSize = SysInfo.pageSize();
                 final long osPageCount = (mEndPtr - mStartPtr) / osPageSize;
 
                 long startPtr = mStartPtr;

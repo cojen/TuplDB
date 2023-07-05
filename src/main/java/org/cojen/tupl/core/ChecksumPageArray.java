@@ -30,8 +30,8 @@ import java.util.function.Supplier;
 
 import java.util.zip.Checksum;
 
-import org.cojen.tupl.io.FileIO;
 import org.cojen.tupl.io.PageArray;
+import org.cojen.tupl.io.SysInfo;
 import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.util.LocalPool;
@@ -278,7 +278,7 @@ abstract class ChecksumPageArray extends TransformedPageArray {
         public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
             if (offset != 0 || length != pageSize()) {
                 try (Arena a = Arena.ofConfined()) {
-                    MemorySegment ms = a.allocate(mAbsPageSize, FileIO.osPageSize());
+                    MemorySegment ms = a.allocate(mAbsPageSize, SysInfo.pageSize());
                     readPage(index, ms.address());
                     MemorySegment.copy
                         (ms, 0,
