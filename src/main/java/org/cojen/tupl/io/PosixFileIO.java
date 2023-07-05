@@ -30,15 +30,11 @@ import java.lang.foreign.ValueLayout;
 
 import java.lang.invoke.MethodHandle;
 
-import java.nio.ByteBuffer;
-
 import java.nio.channels.ClosedChannelException;
 
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
-
-import java.util.function.Supplier;
 
 import org.cojen.tupl.util.LocalPool;
 
@@ -274,15 +270,8 @@ final class PosixFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected void doRead(long pos, ByteBuffer bb) throws IOException {
-        int bufPos = bb.position();
-        int bufLen = bb.limit() - bufPos;
-        if (bb.isDirect()) {
-            preadFd(fd(), DirectAccess.getAddress(bb) + bufPos, bufLen, pos);
-        } else {
-            doRead(pos, bb.array(), bb.arrayOffset() + bufPos, bufLen);
-        }
-        bb.position(bb.limit());
+    protected void doRead(long pos, long ptr, int length) throws IOException {
+        preadFd(fd(), ptr, length, pos);
     }
 
     @Override
@@ -298,15 +287,8 @@ final class PosixFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected void doWrite(long pos, ByteBuffer bb) throws IOException {
-        int bufPos = bb.position();
-        int bufLen = bb.limit() - bufPos;
-        if (bb.isDirect()) {
-            pwriteFd(fd(), DirectAccess.getAddress(bb) + bufPos, bufLen, pos);
-        } else {
-            doWrite(pos, bb.array(), bb.arrayOffset() + bufPos, bufLen);
-        }
-        bb.position(bb.limit());
+    protected void doWrite(long pos, long ptr, int length) throws IOException {
+        pwriteFd(fd(), ptr, length, pos);
     }
 
     @Override
@@ -427,19 +409,6 @@ final class PosixFileIO extends AbstractFileIO {
         MsRef(int size) {
             mArena = Arena.ofShared();
             mMemorySegment = mArena.allocate(size, OS_PAGE_SIZE);
-        }
-    }
-
-    private static class MsRefAllocator implements Supplier<MsRef> {
-        private final int mSize;
-
-        MsRefAllocator(int size) {
-            mSize = size;
-        }
-
-        @Override
-        public MsRef get() {
-            return new MsRef(mSize);
         }
     }
 

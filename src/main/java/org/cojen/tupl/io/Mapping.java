@@ -21,8 +21,6 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 
-import java.nio.ByteBuffer;
-
 /**
  * 
  *
@@ -33,31 +31,11 @@ abstract class Mapping implements Closeable {
 
     abstract void read(int start, byte[] b, int off, int len);
 
-    abstract void read(int start, ByteBuffer bb);
-
-    void read(int start, ByteBuffer bb, int len) {
-        int limit = bb.limit();
-        bb.limit(bb.position() + len);
-        try {
-            read(start, bb);
-        } finally {
-            bb.limit(limit);
-        }
-    }
+    abstract void read(int start, long ptr, int length);
 
     abstract void write(int start, byte[] b, int off, int len);
 
-    abstract void write(int start, ByteBuffer bb);
-
-    void write(int start, ByteBuffer bb, int len) {
-        int limit = bb.limit();
-        bb.limit(bb.position() + len);
-        try {
-            write(start, bb);
-        } finally {
-            bb.limit(limit);
-        }
-    }
+    abstract void write(int start, long ptr, int length);
 
     abstract void sync(boolean metadata) throws IOException;
 }

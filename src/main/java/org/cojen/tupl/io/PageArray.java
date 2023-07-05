@@ -127,9 +127,7 @@ public abstract class PageArray implements CauseCloseable {
      * @throws IndexOutOfBoundsException if index is negative
      * @throws IOException if index is greater than or equal to page count
      */
-    public void readPage(long index, long dstPtr, int offset, int length)
-        throws IOException
-    {
+    public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
         throw new UnsupportedOperationException();
     }
 

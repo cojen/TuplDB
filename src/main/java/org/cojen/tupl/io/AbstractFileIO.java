@@ -17,8 +17,6 @@
 
 package org.cojen.tupl.io;
 
-import java.lang.foreign.MemorySegment;
-
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
@@ -26,7 +24,6 @@ import java.io.File;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
-import java.nio.ByteBuffer;
 import java.util.EnumSet;
 
 import org.cojen.tupl.util.Clutch;
@@ -253,11 +250,7 @@ abstract class AbstractFileIO extends FileIO {
         }
     }
 
-    private void access(boolean read, long pos, ByteBuffer bb) throws IOException {
-        if (bb.remaining() <= 0) {
-            return;
-        }
-
+    private void access(boolean read, long pos, long ptr, int length) throws IOException {
         syncWait();
 
         try {
@@ -285,42 +278,37 @@ abstract class AbstractFileIO extends FileIO {
                             mavail = MAPPING_SIZE - mpos;
                         }
 
-                        if (mavail >= bb.remaining()) {
+                        if (mavail >= length) {
                             if (read) {
-                                mapping.read(mpos, bb);
+                                mapping.read(mpos, ptr, length);
                             } else {
-                                mapping.write(mpos, bb);
+                                mapping.write(mpos, ptr, length);
                             }
                             return;
                         }
 
                         if (read) {
-                            mapping.read(mpos, bb, mavail);
+                            mapping.read(mpos, ptr, mavail);
                         } else {
-                            mapping.write(mpos, bb, mavail);
+                            mapping.write(mpos, ptr, mavail);
                         }
 
                         pos += mavail;
+                        ptr += mavail;
+                        length -= mavail;
                     }
                 }
 
                 if (read) {
-                    doRead(pos, bb);
+                    doRead(pos, ptr, length);
                 } else {
-                    doWrite(pos, bb);
+                    doWrite(pos, ptr, length);
                 }
             } finally {
                 mAccessLock.releaseShared();
             }
-
         } catch (IOException e) {
             throw rethrow(e, mCause);
-        }
-    }
-
-    private void access(boolean read, long pos, long ptr, int length) throws IOException {
-        if (length > 0) {
-            access(read, pos, MemorySegment.ofAddress(ptr).reinterpret(length).asByteBuffer());
         }
     }
 
@@ -614,13 +602,13 @@ abstract class AbstractFileIO extends FileIO {
     protected abstract void doRead(long pos, byte[] buf, int offset, int length)
         throws IOException;
 
-    protected abstract void doRead(long pos, ByteBuffer bb)
+    protected abstract void doRead(long pos, long ptr, int length)
         throws IOException;
 
     protected abstract void doWrite(long pos, byte[] buf, int offset, int length)
         throws IOException;
 
-    protected abstract void doWrite(long pos, ByteBuffer bb)
+    protected abstract void doWrite(long pos, long ptr, int length)
         throws IOException;
 
     protected abstract Mapping openMapping(boolean readOnly, long pos, int size)

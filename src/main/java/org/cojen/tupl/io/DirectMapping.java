@@ -19,8 +19,6 @@ package org.cojen.tupl.io;
 
 import java.io.IOException;
 
-import java.nio.ByteBuffer;
-
 /**
  * 
  *
@@ -48,8 +46,8 @@ abstract class DirectMapping extends Mapping {
     }
 
     @Override
-    final void read(int start, ByteBuffer dst) {
-        dst.put(mDirectAccess.prepare(mPtr + start, dst.remaining()));
+    final void read(int start, long ptr, int len) {
+        UnsafeAccess.copy(mPtr + start, ptr, len);
     }
 
     @Override
@@ -58,7 +56,7 @@ abstract class DirectMapping extends Mapping {
     }
 
     @Override
-    final void write(int start, ByteBuffer src) {
-        mDirectAccess.prepare(mPtr + start, src.remaining()).put(src);
+    final void write(int start, long ptr, int len) {
+        UnsafeAccess.copy(ptr, mPtr + start, len);
     }
 }
