@@ -19,6 +19,9 @@ package org.cojen.tupl.io;
 
 import java.io.IOException;
 
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+
 /**
  * 
  *
@@ -40,21 +43,25 @@ abstract class DirectMapping extends Mapping {
 
     @Override
     final void read(int start, byte[] b, int off, int len) {
-        UnsafeAccess.copy(mPtr + start, b, off, len);
+        MemorySegment.copy(MemorySegment.ofAddress(mPtr + start).reinterpret(len),
+                           ValueLayout.JAVA_BYTE, 0, b, off, len);
     }
 
     @Override
     final void read(int start, long ptr, int len) {
-        UnsafeAccess.copy(mPtr + start, ptr, len);
+        MemorySegment.copy(MemorySegment.ofAddress(mPtr + start).reinterpret(len), 0,
+                           MemorySegment.ofAddress(ptr).reinterpret(len), 0, len);
     }
 
     @Override
     final void write(int start, byte[] b, int off, int len) {
-        UnsafeAccess.copy(b, off, mPtr + start, len);
+        MemorySegment.copy(b, off, MemorySegment.ofAddress(mPtr + start).reinterpret(len),
+                           ValueLayout.JAVA_BYTE, 0, len);
     }
 
     @Override
     final void write(int start, long ptr, int len) {
-        UnsafeAccess.copy(ptr, mPtr + start, len);
+        MemorySegment.copy(MemorySegment.ofAddress(ptr).reinterpret(len), 0,
+                           MemorySegment.ofAddress(mPtr + start).reinterpret(len), 0, len);
     }
 }

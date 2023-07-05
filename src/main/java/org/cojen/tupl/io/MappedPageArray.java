@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.io;
 
+import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 
 import java.lang.invoke.MethodHandles;
@@ -136,7 +137,9 @@ public abstract class MappedPageArray extends PageArray {
         throws IOException
     {
         readCheck(index);
-        UnsafeAccess.copy(mappingPtr() + index * mPageSize, dst, offset, length);
+        long srcPtr = mappingPtr() + index * mPageSize;
+        MemorySegment.copy(MemorySegment.ofAddress(srcPtr).reinterpret(length),
+                           ValueLayout.JAVA_BYTE, 0, dst, offset, length);
     }
 
     @Override
@@ -147,7 +150,8 @@ public abstract class MappedPageArray extends PageArray {
         dstPtr += offset;
         long srcPtr = mappingPtr() + index * mPageSize;
         if (srcPtr != dstPtr) {
-            UnsafeAccess.copy(srcPtr, dstPtr, length);
+            MemorySegment.copy(MemorySegment.ofAddress(srcPtr).reinterpret(length), 0,
+                               MemorySegment.ofAddress(dstPtr).reinterpret(length), 0, length);
         }
     }
 
@@ -155,7 +159,9 @@ public abstract class MappedPageArray extends PageArray {
     public void writePage(long index, byte[] src, int offset) throws IOException {
         writeCheck(index);
         int pageSize = mPageSize;
-        UnsafeAccess.copy(src, offset, mappingPtr() + index * pageSize, pageSize);
+        long dstPtr = mappingPtr() + index * pageSize;
+        MemorySegment.copy(src, offset, MemorySegment.ofAddress(dstPtr).reinterpret(pageSize),
+                           ValueLayout.JAVA_BYTE, 0, pageSize);
     }
 
     @Override
@@ -165,7 +171,8 @@ public abstract class MappedPageArray extends PageArray {
         int pageSize = mPageSize;
         long dstPtr = mappingPtr() + index * pageSize;
         if (dstPtr != srcPtr) {
-            UnsafeAccess.copy(srcPtr, dstPtr, pageSize);
+            MemorySegment.copy(MemorySegment.ofAddress(srcPtr).reinterpret(pageSize), 0,
+                               MemorySegment.ofAddress(dstPtr).reinterpret(pageSize), 0, pageSize);
         }
     }
 
@@ -183,7 +190,9 @@ public abstract class MappedPageArray extends PageArray {
         int pageSize = mPageSize;
         long ptr = mappingPtr();
         long dstPtr = ptr + dstIndex * pageSize;
-        UnsafeAccess.copy(ptr + srcIndex * pageSize, dstPtr, pageSize);
+        MemorySegment.copy
+            (MemorySegment.ofAddress(ptr + srcIndex * pageSize).reinterpret(pageSize), 0,
+             MemorySegment.ofAddress(dstPtr).reinterpret(pageSize), 0, pageSize);
 
         return dstPtr;
     }
@@ -194,7 +203,8 @@ public abstract class MappedPageArray extends PageArray {
 
         int pageSize = mPageSize;
         long dstPtr = mappingPtr() + dstIndex * pageSize;
-        UnsafeAccess.copy(srcPointer, dstPtr, pageSize);
+        MemorySegment.copy(MemorySegment.ofAddress(srcPointer).reinterpret(pageSize), 0,
+                           MemorySegment.ofAddress(dstPtr).reinterpret(pageSize), 0, pageSize);
 
         return dstPtr;
     }
