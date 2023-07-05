@@ -146,15 +146,8 @@ final class PosixFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected void doRead(long pos, ByteBuffer bb) throws IOException {
-        int bufPos = bb.position();
-        int bufLen = bb.limit() - bufPos;
-        if (bb.isDirect()) {
-            preadFd(fd(), DirectAccess.getAddress(bb) + bufPos, bufLen, pos);
-        } else {
-            doRead(pos, bb.array(), bb.arrayOffset() + bufPos, bufLen);
-        }
-        bb.position(bb.limit());
+    protected void doRead(long pos, long ptr, int length) throws IOException {
+        preadFd(fd(), ptr, length, pos);
     }
 
     @Override
@@ -172,15 +165,8 @@ final class PosixFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected void doWrite(long pos, ByteBuffer bb) throws IOException {
-        int bufPos = bb.position();
-        int bufLen = bb.limit() - bufPos;
-        if (bb.isDirect()) {
-            pwriteFd(fd(), DirectAccess.getAddress(bb) + bufPos, bufLen, pos);
-        } else {
-            doWrite(pos, bb.array(), bb.arrayOffset() + bufPos, bufLen);
-        }
-        bb.position(bb.limit());
+    protected void doWrite(long pos, long ptr, int length) throws IOException {
+        pwriteFd(fd(), ptr, length, pos);
     }
 
     @Override
@@ -317,21 +303,6 @@ final class PosixFileIO extends AbstractFileIO {
         BufRef(ByteBuffer buffer) {
             mBuffer = buffer;
             mPointer = Pointer.nativeValue(Native.getDirectBufferPointer(buffer));
-        }
-    }
-
-    private static class BufRefAllocator implements Supplier<BufRef> {
-        private final int mSize;
-
-        BufRefAllocator(int size) {
-            mSize = size;
-        }
-
-        @Override
-        public BufRef get() {
-            ByteBuffer bb = ByteBuffer.allocateDirect(mSize);
-            bb.order(ByteOrder.LITTLE_ENDIAN);
-            return new BufRef(bb);
         }
     }
 

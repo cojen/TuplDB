@@ -150,7 +150,9 @@ class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected final void doRead(long pos, ByteBuffer bb) throws IOException {
+    protected final void doRead(long pos, long ptr, int length) throws IOException {
+        ByteBuffer bb = DirectAccess.ref(ptr, length);
+
         boolean interrupted = false;
 
         LocalPool.Entry<FileAccess> entry = accessFile();
@@ -193,7 +195,9 @@ class JavaFileIO extends AbstractFileIO {
     }
 
     @Override
-    protected final void doWrite(long pos, ByteBuffer bb) throws IOException {
+    protected final void doWrite(long pos, long ptr, int length) throws IOException {
+        ByteBuffer bb = DirectAccess.ref(ptr, length);
+
         boolean interrupted = false;
 
         LocalPool.Entry<FileAccess> entry = accessFile();
