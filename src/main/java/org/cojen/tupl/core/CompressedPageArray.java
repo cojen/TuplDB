@@ -20,6 +20,9 @@ package org.cojen.tupl.core;
 import java.io.IOException;
 import java.io.OutputStream;
 
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+
 import java.util.Arrays;
 
 import java.util.function.Supplier;
@@ -31,7 +34,6 @@ import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.io.PageArray;
 import org.cojen.tupl.io.PageCompressor;
-import org.cojen.tupl.io.UnsafeAccess;
 
 import org.cojen.tupl.util.LocalPool;
 
@@ -152,7 +154,7 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
     private void readPage(long index, long dstPtr, int offset) throws IOException {
         byte[] value = mPages.load(Transaction.BOGUS, keyFor(index));
         if (value == null) {
-            UnsafeAccess.fill(dstPtr + offset, pageSize(), (byte) 0);
+            MemorySegment.ofAddress(dstPtr + offset).reinterpret(pageSize()).fill((byte) 0);
         } else {
             var entry = mCompressors.access();
             try {
@@ -169,12 +171,12 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
         if (length == pageSize) {
             readPage(index, dstPtr, offset);
         } else {
-            long page = UnsafeAccess.alloc(pageSize);
-            try {
-                readPage(index, page, 0);
-                UnsafeAccess.copy(page, dstPtr + offset, length);
-            } finally {
-                UnsafeAccess.free(page);
+            try (Arena a = Arena.ofConfined()) {
+                MemorySegment page = a.allocate(pageSize);
+                readPage(index, page.address(), 0);
+                MemorySegment.copy(page, 0,
+                                   MemorySegment.ofAddress(dstPtr + offset).reinterpret(length),
+                                   0, length);
             }
         }
     }

@@ -24,7 +24,6 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 
 import java.util.function.Supplier;
 
@@ -36,6 +35,8 @@ import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.util.LocalPool;
 
+import static org.cojen.tupl.core.DirectPageOps.INT_LE;
+
 /**
  * A {@link PageArray} implementation which applies a 32-bit checksum to each page, stored in
  * the last 4 bytes of the page. If the source PageArray reports a page size of 4096 bytes, the
@@ -44,9 +45,6 @@ import org.cojen.tupl.util.LocalPool;
  * @author Brian S O'Neill
  */
 abstract class ChecksumPageArray extends TransformedPageArray {
-    private static final ValueLayout.OfInt CRC_LAYOUT =
-        ValueLayout.JAVA_INT.withOrder(ByteOrder.LITTLE_ENDIAN);
-
     static ChecksumPageArray open(PageArray source, Supplier<Checksum> supplier) {
         return source.isDirectIO() ? new Direct(source, supplier) : new Standard(source, supplier);
     }
@@ -178,7 +176,7 @@ abstract class ChecksumPageArray extends TransformedPageArray {
             Checksum checksum = ref.mChecksum;
             checksum.reset();
             checksum.update(ref.mBuffer.position(0).limit(length));
-            check(index, ms.get(CRC_LAYOUT, length), checksum);
+            check(index, ms.get(INT_LE, length), checksum);
             return ms;
         }
 
@@ -218,7 +216,7 @@ abstract class ChecksumPageArray extends TransformedPageArray {
             checksum.reset();
             checksum.update(ref.mBuffer.position(0).limit(length));
             MemorySegment ms = ref.mPagePlusCRC;
-            ms.set(CRC_LAYOUT, length, (int) checksum.getValue());
+            ms.set(INT_LE, length, (int) checksum.getValue());
             mSource.writePage(index, ms.address());
         }
 
@@ -289,7 +287,7 @@ abstract class ChecksumPageArray extends TransformedPageArray {
                 int pageSize = mAbsPageSize;
                 mSource.readPage(index, dstPtr, offset, pageSize);
                 MemorySegment ms = MemorySegment.ofAddress(dstPtr + offset).reinterpret(pageSize);
-                int actualChecksum = ms.get(CRC_LAYOUT, length);
+                int actualChecksum = ms.get(INT_LE, length);
                 Checksum checksum = checksum();
                 checksum.reset();
                 checksum.update(ms.asByteBuffer().limit(length));
@@ -323,7 +321,7 @@ abstract class ChecksumPageArray extends TransformedPageArray {
             MemorySegment ms = MemorySegment.ofAddress(srcPtr + offset).reinterpret(pageSize);
             pageSize -= 4;
             checksum.update(ms.asByteBuffer().limit(pageSize));
-            ms.set(CRC_LAYOUT, pageSize, (int) checksum.getValue());
+            ms.set(INT_LE, pageSize, (int) checksum.getValue());
             mSource.writePage(index, srcPtr, offset);
         }
 

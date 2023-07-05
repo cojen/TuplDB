@@ -102,34 +102,6 @@ public class UnsafeAccess {
     }
 
     /**
-     * Fill a range of native memory.
-     */
-    public static void fill(long addr, long len, byte value) {
-        UNSAFE.setMemory(addr, len, value);
-    }
-
-    /**
-     * Copy native memory.
-     */
-    public static void copy(long srcPtr, long dstPtr, long len) {
-        UNSAFE.copyMemory(srcPtr, dstPtr, len);
-    }
-
-    /**
-     * Copy to native memory.
-     */
-    public static void copy(byte[] src, int srcOffset, long dstPtr, long len) {
-        UNSAFE.copyMemory(src, ARRAY_OFFSET + srcOffset, null, dstPtr, len);
-    }
-
-    /**
-     * Copy from native memory.
-     */
-    public static void copy(long srcPtr, byte[] dst, int dstOffset, long len) {
-        UNSAFE.copyMemory(null, srcPtr, dst, ARRAY_OFFSET + dstOffset, len);
-    }
-
-    /**
      * Free allocated native memory.
      */
     public static void free(long addr) {
