@@ -25,12 +25,10 @@ import java.io.IOException;
  * @author Brian S O'Neill
  */
 abstract class DirectMapping extends Mapping {
-    protected final DirectAccess mDirectAccess;
     protected final long mPtr;
     protected final int mSize;
 
     DirectMapping(long addr, int size) {
-        mDirectAccess = new DirectAccess();
         mPtr = addr;
         mSize = size;
     }

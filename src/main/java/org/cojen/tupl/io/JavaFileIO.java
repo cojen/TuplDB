@@ -23,6 +23,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
+import java.lang.foreign.MemorySegment;
+
 import java.nio.ByteBuffer;
 
 import java.nio.channels.FileChannel;
@@ -151,7 +153,7 @@ class JavaFileIO extends AbstractFileIO {
 
     @Override
     protected final void doRead(long pos, long ptr, int length) throws IOException {
-        ByteBuffer bb = DirectAccess.ref(ptr, length);
+        ByteBuffer bb = MemorySegment.ofAddress(ptr).reinterpret(length).asByteBuffer();
 
         boolean interrupted = false;
 
@@ -196,7 +198,7 @@ class JavaFileIO extends AbstractFileIO {
 
     @Override
     protected final void doWrite(long pos, long ptr, int length) throws IOException {
-        ByteBuffer bb = DirectAccess.ref(ptr, length);
+        ByteBuffer bb = MemorySegment.ofAddress(ptr).reinterpret(length).asByteBuffer();
 
         boolean interrupted = false;
 

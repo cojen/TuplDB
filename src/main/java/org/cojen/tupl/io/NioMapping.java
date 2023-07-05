@@ -22,6 +22,8 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.io.UncheckedIOException;
 
+import java.lang.foreign.MemorySegment;
+
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 
@@ -61,7 +63,7 @@ final class NioMapping extends Mapping {
         ByteBuffer src = mBuffer.slice();
         src.limit(start + len);
         src.position(start);
-        DirectAccess.ref(ptr, len).put(src);
+        MemorySegment.ofAddress(ptr).reinterpret(len).asByteBuffer().put(src);
     }
 
     @Override
@@ -75,7 +77,7 @@ final class NioMapping extends Mapping {
     void write(int start, long ptr, int len) {
         ByteBuffer dst = mBuffer.slice();
         dst.position(start);
-        dst.put(DirectAccess.ref(ptr, len));
+        dst.put(MemorySegment.ofAddress(ptr).reinterpret(len).asByteBuffer());
     }
 
     @Override

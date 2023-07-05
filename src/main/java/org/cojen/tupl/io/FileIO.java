@@ -36,7 +36,6 @@ public abstract class FileIO implements CauseCloseable {
     static final int OS_PAGE_SIZE;
 
     private static final int IO_TYPE; // 0: platform independent, 1: POSIX, 2: Windows
-    private static final boolean NEEDS_DIR_SYNC;
 
     static {
         int pageSize = 4096;
@@ -49,7 +48,6 @@ public abstract class FileIO implements CauseCloseable {
 
         boolean isWindows = System.getProperty("os.name").startsWith("Windows");
         IO_TYPE = ValueLayout.ADDRESS.byteSize() < 8 ? 0 : (isWindows ? 2 : 1);
-        NEEDS_DIR_SYNC = !isWindows;
     }
 
     public static FileIO open(File file, EnumSet<OpenOption> options)
@@ -64,13 +62,11 @@ public abstract class FileIO implements CauseCloseable {
         if (options == null) {
             options = EnumSet.noneOf(OpenOption.class);
         }
-        if (!options.contains(OpenOption.MAPPED) || DirectAccess.isSupported()) {
-            switch (IO_TYPE) {
-            case 1: return new PosixFileIO(file, options);
-            case 2: return new WindowsFileIO(file, options, openFileCount);
-            }
-        }
-        return new JavaFileIO(file, options, openFileCount);
+        return switch (IO_TYPE) {
+            default -> new JavaFileIO(file, options, openFileCount);
+            case 1 -> new PosixFileIO(file, options);
+            case 2 -> new WindowsFileIO(file, options, openFileCount);
+        };
     }
 
     FileIO() {
@@ -169,7 +165,7 @@ public abstract class FileIO implements CauseCloseable {
      * the parent directory is flushed.
      */
     public static void dirSync(File file) throws IOException {
-        if (!NEEDS_DIR_SYNC) {
+        if (IO_TYPE == 2) { // Windows
             return;
         }
 
