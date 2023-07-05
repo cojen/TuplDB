@@ -51,7 +51,7 @@ public final class DirectPageOps {
 
     // References the entire address space.
     static final MemorySegment MEM;
-    static final ValueLayout.OfShort SHORT_LE;
+    static final ValueLayout.OfChar CHAR_LE;
     static final ValueLayout.OfInt INT_LE;
     static final ValueLayout.OfLong LONG_LE, LONG_BE;
 
@@ -62,7 +62,7 @@ public final class DirectPageOps {
 
     static {
         MEM = MemorySegment.NULL.reinterpret(Long.MAX_VALUE);
-        SHORT_LE = ValueLayout.JAVA_SHORT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
+        CHAR_LE = ValueLayout.JAVA_CHAR_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
         INT_LE = ValueLayout.JAVA_INT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
         LONG_LE = ValueLayout.JAVA_LONG_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
         LONG_BE = ValueLayout.JAVA_LONG_UNALIGNED.withOrder(ByteOrder.BIG_ENDIAN);
@@ -405,14 +405,14 @@ public final class DirectPageOps {
         if (CHECK_BOUNDS && (index < 0 || index + 2 > CHECKED_PAGE_SIZE)) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
-        return MEM.get(SHORT_LE, page + index) & 0xffff;
+        return MEM.get(CHAR_LE, page + index);
     }
 
     static void p_shortPutLE(final long page, int index, int v) {
         if (CHECK_BOUNDS && (index < 0 || index + 2 > CHECKED_PAGE_SIZE)) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
-        MEM.set(SHORT_LE, page + index, (short) v);
+        MEM.set(CHAR_LE, page + index, (char) v);
     }
 
     static int p_intGetLE(final long page, int index) {
