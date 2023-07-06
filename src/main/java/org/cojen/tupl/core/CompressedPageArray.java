@@ -174,9 +174,7 @@ final class CompressedPageArray extends PageArray implements Supplier<PageCompre
             try (Arena a = Arena.ofConfined()) {
                 MemorySegment page = a.allocate(pageSize);
                 readPage(index, page.address(), 0);
-                MemorySegment.copy(page, 0,
-                                   MemorySegment.ofAddress(dstPtr + offset).reinterpret(length),
-                                   0, length);
+                MemorySegment.copy(page, 0, DirectPageOps.ALL, dstPtr + offset, length);
             }
         }
     }

@@ -147,17 +147,13 @@ abstract class ChecksumPageArray extends TransformedPageArray {
                 try (Arena a = Arena.ofConfined()) {
                     MemorySegment page = a.allocate(pageSize);
                     readPage(index, page.address());
-                    MemorySegment.copy
-                        (page, 0,
-                         MemorySegment.ofAddress(dstPtr + offset).reinterpret(length), 0, length);
+                    MemorySegment.copy(page, 0, DirectPageOps.ALL, dstPtr + offset, length);
                 }
             } else {
                 LocalPool.Entry<BufRef> e = mBufRefPool.access();
                 try {
                     MemorySegment page = readPageAndChecksum(e.get(), index, length);
-                    MemorySegment.copy
-                        (page, 0,
-                         MemorySegment.ofAddress(dstPtr + offset).reinterpret(length), 0, length);
+                    MemorySegment.copy(page, 0, DirectPageOps.ALL, dstPtr + offset, length);
                 } finally {
                     e.release();
                 }
@@ -200,8 +196,7 @@ abstract class ChecksumPageArray extends TransformedPageArray {
             try {
                 BufRef ref = e.get();
                 int length = pageSize();
-                MemorySegment.copy(MemorySegment.ofAddress(srcPtr + offset).reinterpret(length), 0,
-                                   ref.mPagePlusCRC, 0, length);
+                MemorySegment.copy(DirectPageOps.ALL, srcPtr + offset, ref.mPagePlusCRC, 0, length);
                 writePageAndChecksum(ref, index, length);
             } finally {
                 e.release();
@@ -278,9 +273,7 @@ abstract class ChecksumPageArray extends TransformedPageArray {
                 try (Arena a = Arena.ofConfined()) {
                     MemorySegment ms = a.allocate(mAbsPageSize, SysInfo.pageSize());
                     readPage(index, ms.address());
-                    MemorySegment.copy
-                        (ms, 0,
-                         MemorySegment.ofAddress(dstPtr + offset).reinterpret(length), 0, length);
+                    MemorySegment.copy(ms, 0, DirectPageOps.ALL, dstPtr + offset, length);
                 }
             } else {
                 // Assume that the caller has provided a buffer sized to match the direct page.

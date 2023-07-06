@@ -28,6 +28,9 @@ import java.lang.foreign.ValueLayout;
  * @author Brian S O'Neill
  */
 abstract class DirectMapping extends Mapping {
+    // References the entire address space.
+    static final MemorySegment ALL = MemorySegment.NULL.reinterpret(Long.MAX_VALUE);
+
     protected final long mPtr;
     protected final int mSize;
 
@@ -43,25 +46,21 @@ abstract class DirectMapping extends Mapping {
 
     @Override
     final void read(int start, byte[] b, int off, int len) {
-        MemorySegment.copy(MemorySegment.ofAddress(mPtr + start).reinterpret(len),
-                           ValueLayout.JAVA_BYTE, 0, b, off, len);
+        MemorySegment.copy(ALL, ValueLayout.JAVA_BYTE, mPtr + start, b, off, len);
     }
 
     @Override
     final void read(int start, long ptr, int len) {
-        MemorySegment.copy(MemorySegment.ofAddress(mPtr + start).reinterpret(len), 0,
-                           MemorySegment.ofAddress(ptr).reinterpret(len), 0, len);
+        MemorySegment.copy(ALL, mPtr + start, ALL, ptr, len);
     }
 
     @Override
     final void write(int start, byte[] b, int off, int len) {
-        MemorySegment.copy(b, off, MemorySegment.ofAddress(mPtr + start).reinterpret(len),
-                           ValueLayout.JAVA_BYTE, 0, len);
+        MemorySegment.copy(b, off, ALL, ValueLayout.JAVA_BYTE, mPtr + start, len);
     }
 
     @Override
     final void write(int start, long ptr, int len) {
-        MemorySegment.copy(MemorySegment.ofAddress(ptr).reinterpret(len), 0,
-                           MemorySegment.ofAddress(mPtr + start).reinterpret(len), 0, len);
+        MemorySegment.copy(ALL, ptr, ALL, mPtr + start, len);
     }
 }

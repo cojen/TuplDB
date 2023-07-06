@@ -138,8 +138,7 @@ public abstract class MappedPageArray extends PageArray {
     {
         readCheck(index);
         long srcPtr = mappingPtr() + index * mPageSize;
-        MemorySegment.copy(MemorySegment.ofAddress(srcPtr).reinterpret(length),
-                           ValueLayout.JAVA_BYTE, 0, dst, offset, length);
+        MemorySegment.copy(DirectMapping.ALL, ValueLayout.JAVA_BYTE, srcPtr, dst, offset, length);
     }
 
     @Override
@@ -150,8 +149,7 @@ public abstract class MappedPageArray extends PageArray {
         dstPtr += offset;
         long srcPtr = mappingPtr() + index * mPageSize;
         if (srcPtr != dstPtr) {
-            MemorySegment.copy(MemorySegment.ofAddress(srcPtr).reinterpret(length), 0,
-                               MemorySegment.ofAddress(dstPtr).reinterpret(length), 0, length);
+            MemorySegment.copy(DirectMapping.ALL, srcPtr, DirectMapping.ALL, dstPtr, length);
         }
     }
 
@@ -160,8 +158,7 @@ public abstract class MappedPageArray extends PageArray {
         writeCheck(index);
         int pageSize = mPageSize;
         long dstPtr = mappingPtr() + index * pageSize;
-        MemorySegment.copy(src, offset, MemorySegment.ofAddress(dstPtr).reinterpret(pageSize),
-                           ValueLayout.JAVA_BYTE, 0, pageSize);
+        MemorySegment.copy(src, offset, DirectMapping.ALL, ValueLayout.JAVA_BYTE, dstPtr, pageSize);
     }
 
     @Override
@@ -171,8 +168,7 @@ public abstract class MappedPageArray extends PageArray {
         int pageSize = mPageSize;
         long dstPtr = mappingPtr() + index * pageSize;
         if (dstPtr != srcPtr) {
-            MemorySegment.copy(MemorySegment.ofAddress(srcPtr).reinterpret(pageSize), 0,
-                               MemorySegment.ofAddress(dstPtr).reinterpret(pageSize), 0, pageSize);
+            MemorySegment.copy(DirectMapping.ALL, srcPtr, DirectMapping.ALL, dstPtr, pageSize);
         }
     }
 
@@ -190,9 +186,8 @@ public abstract class MappedPageArray extends PageArray {
         int pageSize = mPageSize;
         long ptr = mappingPtr();
         long dstPtr = ptr + dstIndex * pageSize;
-        MemorySegment.copy
-            (MemorySegment.ofAddress(ptr + srcIndex * pageSize).reinterpret(pageSize), 0,
-             MemorySegment.ofAddress(dstPtr).reinterpret(pageSize), 0, pageSize);
+        MemorySegment.copy(DirectMapping.ALL, ptr + srcIndex * pageSize,
+                           DirectMapping.ALL, dstPtr, pageSize);
 
         return dstPtr;
     }
@@ -203,8 +198,7 @@ public abstract class MappedPageArray extends PageArray {
 
         int pageSize = mPageSize;
         long dstPtr = mappingPtr() + dstIndex * pageSize;
-        MemorySegment.copy(MemorySegment.ofAddress(srcPointer).reinterpret(pageSize), 0,
-                           MemorySegment.ofAddress(dstPtr).reinterpret(pageSize), 0, pageSize);
+        MemorySegment.copy(DirectMapping.ALL, srcPointer, DirectMapping.ALL, dstPtr, pageSize);
 
         return dstPtr;
     }
