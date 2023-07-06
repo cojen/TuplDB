@@ -29,12 +29,6 @@ import java.lang.invoke.VarHandle;
 
 import java.nio.ByteOrder;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-
-import java.nio.Buffer;
-import java.nio.ByteBuffer;
-
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -361,50 +355,6 @@ public class Utils {
                 break;
             }
             off += amt;
-        }
-    }
-
-    private static volatile int cDeleteSupport;
-
-    /**
-     * Attempt to delete the given direct or mapped byte buffer.
-     */
-    public static boolean delete(Buffer b) {
-        return b instanceof ByteBuffer bb && delete(bb);
-    }
-
-    /**
-     * Attempt to delete the given direct or mapped byte buffer.
-     */
-    public static boolean delete(ByteBuffer bb) {
-        if (!bb.isDirect()) {
-            return false;
-        }
-
-        // https://bugs.openjdk.org/browse/JDK-4724038
-
-        int deleteSupport = cDeleteSupport;
-
-        if (deleteSupport < 0) {
-            return false;
-        }
-
-        try {
-            var u = UnsafeAccess.obtain();
-            Method m = u.getClass().getMethod("invokeCleaner", ByteBuffer.class);
-            m.invoke(u, bb);
-            return true;
-        } catch (InvocationTargetException e) {
-            Throwable cause = e.getCause();
-            if (cause instanceof IllegalArgumentException) {
-                // Duplicate or slice.
-                return false;
-            }
-            throw rethrow(cause);
-        } catch (Throwable e) {
-            // Unsupported.
-            cDeleteSupport = -1;
-            return false;
         }
     }
 

@@ -92,7 +92,6 @@ final class NioMapping extends Mapping {
 
     @Override
     public void close() throws IOException {
-        Utils.delete(mBuffer);
         mRaf.close();
     }
 }

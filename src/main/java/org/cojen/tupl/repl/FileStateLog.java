@@ -1118,7 +1118,7 @@ final class FileStateLog extends Latch implements StateLog {
 
                 mMetadataLock.close();
                 mMetadataFile.close();
-                Utils.delete(mMetadataBuffer);
+                // FIXME: Close mMetadataBuffer.
 
                 for (Object key : mTermLogs) {
                     ((TermLog) key).close();
