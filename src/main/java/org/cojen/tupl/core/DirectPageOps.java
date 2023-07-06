@@ -33,11 +33,11 @@ import org.cojen.tupl.DeletedIndexException;
 
 import org.cojen.tupl.io.MappedPageArray;
 import org.cojen.tupl.io.SysInfo;
-import org.cojen.tupl.io.UnsafeAccess;
 
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.Runner;
 
+import static org.cojen.tupl.core.DirectMemory.*;
 import static org.cojen.tupl.core.Node.*;
 
 /**
@@ -49,8 +49,6 @@ import static org.cojen.tupl.core.Node.*;
 public final class DirectPageOps {
     static final int NODE_OVERHEAD = 100 - 24; // 6 fewer fields
 
-    // References the entire address space.
-    static final MemorySegment ALL;
     static final ValueLayout.OfChar CHAR_LE;
     static final ValueLayout.OfInt INT_LE;
     static final ValueLayout.OfLong LONG_LE, LONG_BE;
@@ -61,7 +59,6 @@ public final class DirectPageOps {
     private static final long EMPTY_TREE_LEAF, CLOSED_TREE_PAGE, DELETED_TREE_PAGE, STUB_TREE_PAGE;
 
     static {
-        ALL = MemorySegment.NULL.reinterpret(Long.MAX_VALUE);
         CHAR_LE = ValueLayout.JAVA_CHAR_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
         INT_LE = ValueLayout.JAVA_INT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
         LONG_LE = ValueLayout.JAVA_LONG_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
@@ -145,15 +142,15 @@ public final class DirectPageOps {
     }
 
     public static long p_alloc(int size) {
-        return UnsafeAccess.alloc(size);
+        return malloc(size);
     }
 
     static long p_allocPage(int size) {
-        return UnsafeAccess.alloc(Math.abs(size), size < 0); // aligned if negative
+        return malloc(Math.abs(size), size < 0); // aligned if negative
     }
 
     static long p_callocPage(int size) {
-        return UnsafeAccess.calloc(Math.abs(size), size < 0); // aligned if negative
+        return calloc(Math.abs(size), size < 0); // aligned if negative
     }
 
     static long[] p_allocArray(int size) {
@@ -163,7 +160,7 @@ public final class DirectPageOps {
     public static void p_delete(final long page) {
         // Only delete pages that were allocated from the Unsafe class and aren't globals.
         if (page != CLOSED_TREE_PAGE && page != EMPTY_TREE_LEAF && !inArena(page)) {
-            UnsafeAccess.free(page);
+            free(page);
         }
     }
 

@@ -17,13 +17,6 @@
 
 package org.cojen.tupl.io;
 
-import java.lang.foreign.FunctionDescriptor;
-import java.lang.foreign.Linker;
-import java.lang.foreign.SymbolLookup;
-import java.lang.foreign.ValueLayout;
-
-import java.lang.invoke.MethodHandle;
-
 import java.lang.reflect.Field;
 
 import java.nio.ByteOrder;
@@ -37,7 +30,6 @@ import java.nio.ByteOrder;
 public class UnsafeAccess {
     private static final sun.misc.Unsafe UNSAFE;
     private static final Throwable UNSUPPORTED;
-    private static final long ARRAY_OFFSET;
 
     static {
         sun.misc.Unsafe unsafe = null;
@@ -55,17 +47,9 @@ public class UnsafeAccess {
 
         UNSAFE = unsafe;
         UNSUPPORTED = unsupported;
-        ARRAY_OFFSET = unsafe == null ? 0 : unsafe.arrayBaseOffset(byte[].class);
     }
 
     private UnsafeAccess() {
-    }
-
-    /**
-     * @return null if not supported
-     */
-    public static sun.misc.Unsafe tryObtain() {
-        return UNSAFE;
     }
 
     /**
@@ -76,58 +60,5 @@ public class UnsafeAccess {
             throw new UnsupportedOperationException(UNSUPPORTED);
         }
         return UNSAFE;
-    }
-
-    /**
-     * Allocate native memory.
-     */
-    public static long alloc(int size) {
-        return UNSAFE.allocateMemory(size);
-    }
-
-    /**
-     * Allocate native memory.
-     */
-    public static long alloc(int size, boolean aligned) {
-        return aligned ? Foreign.valloc(size) : UNSAFE.allocateMemory(size);
-    }
-
-    /**
-     * Allocate native memory, zero filled.
-     */
-    public static long calloc(int size, boolean aligned) {
-        long addr = alloc(size, aligned);
-        UNSAFE.setMemory(addr, size, (byte) 0);
-        return addr;
-    }
-
-    /**
-     * Free allocated native memory.
-     */
-    public static void free(long addr) {
-        UNSAFE.freeMemory(addr);
-    }
-
-    static class Foreign {
-        private static final MethodHandle valloc;
-
-        static {
-            Linker linker = Linker.nativeLinker();
-            SymbolLookup lookup = linker.defaultLookup();
-
-            valloc = linker.downcallHandle
-                (lookup.find("valloc").get(),
-                 FunctionDescriptor.of(ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG));
-        }
-
-        // TODO: Define a variant that works on Windows. Call WindowsFileIO.valloc, but must
-        // also call WindowsFileIO.vfree.
-        static long valloc(long size) {
-            try {
-                return (long) valloc.invokeExact(size);
-            } catch (Throwable e) {
-                throw Utils.rethrow(e);
-            }
-        }
     }
 }
