@@ -19,10 +19,9 @@ package org.cojen.tupl.repl;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.MappedByteBuffer;
 
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
@@ -108,7 +107,7 @@ final class FileStateLog extends Latch implements StateLog {
 
     private final FileChannel mMetadataFile;
     private final FileLock mMetadataLock;
-    private final MappedByteBuffer mMetadataBuffer;
+    private final ByteBuffer mMetadataBuffer;
     private final Checksum mMetadataCrc;
     private final LogInfo mMetadataInfo;
     private final Latch mMetadataLatch;
@@ -143,8 +142,7 @@ final class FileStateLog extends Latch implements StateLog {
             (base.toPath(),
              StandardOpenOption.READ,
              StandardOpenOption.WRITE,
-             StandardOpenOption.CREATE,
-             StandardOpenOption.DSYNC);
+             StandardOpenOption.CREATE);
 
         try {
             mMetadataLock = mMetadataFile.tryLock();
@@ -160,23 +158,17 @@ final class FileStateLog extends Latch implements StateLog {
 
         boolean mdFileExists = mMetadataFile.size() != 0;
 
-        // FIXME: Don't use NIO mapped buffer. It's buggy.
-        mMetadataBuffer = mMetadataFile.map(FileChannel.MapMode.READ_WRITE, 0, METADATA_FILE_SIZE);
-        mMetadataBuffer.order(ByteOrder.LITTLE_ENDIAN);
+        mMetadataBuffer = ByteBuffer.allocate(METADATA_SIZE).order(ByteOrder.LITTLE_ENDIAN);
 
         mMetadataCrc = new CRC32C();
 
-        if (!mdFileExists) {
+        if (mdFileExists) {
+            // Ensure existing contents are durable following a process restart.
+            mMetadataFile.force(true);
+        } else {
             // Prepare a new metadata file.
             cleanMetadata(0, 0);
             cleanMetadata(SECTION_SIZE, 1);
-        }
-
-        // Ensure existing contents are durable following a process restart.
-        try {
-            mMetadataBuffer.force();
-        } catch (UncheckedIOException e) {
-            throw e.getCause();
         }
 
         long counter0 = verifyMetadata(0);
@@ -207,14 +199,13 @@ final class FileStateLog extends Latch implements StateLog {
 
         mMetadataCounter = counter;
 
-        mMetadataBuffer.clear();
-        mMetadataBuffer.position(offset + CURRENT_TERM_OFFSET);
-        long currentTerm = mMetadataBuffer.getLong();
-        long votedForId = mMetadataBuffer.getLong();
-        long highestPrevTerm = mMetadataBuffer.getLong();
-        long highestTerm = mMetadataBuffer.getLong();
-        long highestPosition = mMetadataBuffer.getLong();
-        long durablePosition = mMetadataBuffer.getLong();
+        ByteBuffer bb = readMetadata(offset).position(CURRENT_TERM_OFFSET);
+        long currentTerm = bb.getLong();
+        long votedForId = bb.getLong();
+        long highestPrevTerm = bb.getLong();
+        long highestTerm = bb.getLong();
+        long highestPosition = bb.getLong();
+        long durablePosition = bb.getLong();
 
         if (currentTerm < highestTerm) {
             throw new IOException("Current term is lower than highest term: " +
@@ -314,12 +305,34 @@ final class FileStateLog extends Latch implements StateLog {
         }
     }
 
-    private void cleanMetadata(int offset, int counter) {
-        MappedByteBuffer bb = mMetadataBuffer;
+    private ByteBuffer readMetadata(int offset) throws IOException {
+        ByteBuffer bb = mMetadataBuffer.clear();
+        if (mMetadataFile.position(offset).read(bb) != METADATA_SIZE) {
+            throw new IOException("Truncated metadata file");
+        }
+        return bb;
+    }
 
-        bb.clear();
-        bb.position(offset);
-        bb.limit(offset + METADATA_SIZE);
+    private void writeMetadata(int offset, ByteBuffer bb) throws IOException {
+        mMetadataCrc.reset();
+        mMetadataCrc.update(bb.position(0).limit(CRC_OFFSET));
+        
+        if (bb.position() != CRC_OFFSET) {
+            throw new AssertionError();
+        }
+
+        bb.limit(METADATA_SIZE).putInt((int) mMetadataCrc.getValue());
+        bb.position(0);
+
+        if (mMetadataFile.position(offset).write(bb) != METADATA_SIZE) {
+            throw new IOException("Truncated metadata file");
+        }
+
+        mMetadataFile.force(true);
+    }
+
+    private void cleanMetadata(int offset, int counter) throws IOException {
+        ByteBuffer bb = mMetadataBuffer.position(0).limit(CRC_OFFSET);
 
         bb.putLong(MAGIC_NUMBER);
         bb.putInt(ENCODING_VERSION);
@@ -327,25 +340,18 @@ final class FileStateLog extends Latch implements StateLog {
 
         // Initialize current term, voted for, highest prev log term, highest log term, highest
         // contiguous log position, and durable commit log position.
-        if (bb.position() != (offset + CURRENT_TERM_OFFSET)) {
+        if (bb.position() != CURRENT_TERM_OFFSET) {
             throw new AssertionError();
         }
         for (int i=0; i<6; i++) {
             bb.putLong(0);
         }
 
-        if (bb.position() != (offset + CRC_OFFSET)) {
+        if (bb.position() != CRC_OFFSET) {
             throw new AssertionError();
         }
 
-        bb.limit(bb.position());
-        bb.position(offset);
-
-        mMetadataCrc.reset();
-        mMetadataCrc.update(bb);
-
-        bb.limit(offset + METADATA_SIZE);
-        bb.putInt((int) mMetadataCrc.getValue());
+        writeMetadata(offset, bb);
     }
 
     /**
@@ -353,31 +359,23 @@ final class FileStateLog extends Latch implements StateLog {
      * @throws IOException if wrong magic number or encoding version
      */
     private long verifyMetadata(int offset) throws IOException {
-        MappedByteBuffer bb = mMetadataBuffer;
-
-        bb.clear();
-        bb.position(offset);
-        bb.limit(offset + CRC_OFFSET);
+        ByteBuffer bb = readMetadata(offset).clear().limit(CRC_OFFSET);
 
         if (bb.getLong() != MAGIC_NUMBER) {
             return -1;
         }
 
-        bb.position(offset);
-
         mMetadataCrc.reset();
-        mMetadataCrc.update(bb);
+        mMetadataCrc.update(bb.position(0));
 
-        bb.limit(offset + METADATA_SIZE);
+        bb.limit(METADATA_SIZE);
         int actual = bb.getInt();
 
         if (actual != (int) mMetadataCrc.getValue()) {
             return -2;
         }
 
-        bb.clear();
-        bb.position(offset + 8);
-        bb.limit(offset + CRC_OFFSET);
+        bb.position(8).limit(CRC_OFFSET);
 
         int encoding = bb.getInt();
         if (encoding != ENCODING_VERSION) {
@@ -1048,14 +1046,14 @@ final class FileStateLog extends Latch implements StateLog {
                  mMetadataInfo.mHighestPosition + " < " + durablePosition);
         }
 
-        MappedByteBuffer bb = mMetadataBuffer;
+        ByteBuffer bb = mMetadataBuffer;
         int counter = mMetadataCounter;
 
         long highestPrevTerm, highestTerm, highestPosition;
 
         if (durableOnly) {
             // Leave the existing highest log field values alone, since no data was sync'd.
-            bb.position(((counter & 1) << SECTION_POW) + HIGHEST_PREV_TERM_OFFSET);
+            bb.position(HIGHEST_PREV_TERM_OFFSET).limit(METADATA_SIZE);
             highestPrevTerm = bb.getLong();
             highestTerm = bb.getLong();
             highestPosition = bb.getLong();
@@ -1067,11 +1065,8 @@ final class FileStateLog extends Latch implements StateLog {
         }
 
         counter += 1;
-        int offset = (counter & 1) << SECTION_POW;
 
-        bb.clear();
-        bb.position(offset + COUNTER_OFFSET);
-        bb.limit(offset + CRC_OFFSET);
+        bb.position(COUNTER_OFFSET).limit(CRC_OFFSET);
 
         bb.putInt(counter);
         bb.putLong(mCurrentTerm);
@@ -1081,18 +1076,11 @@ final class FileStateLog extends Latch implements StateLog {
         bb.putLong(highestPosition);
         bb.putLong(durablePosition);
 
-        bb.position(offset);
-        mMetadataCrc.reset();
-        mMetadataCrc.update(bb);
-
-        bb.limit(offset + METADATA_SIZE);
-        bb.putInt((int) mMetadataCrc.getValue());
-
-        try {
-            bb.force();
-        } catch (UncheckedIOException e) {
-            throw e.getCause();
+        if (bb.position() != CRC_OFFSET) {
+            throw new AssertionError();
         }
+
+        writeMetadata((counter & 1) << SECTION_POW, bb);
 
         // Update field values only after successful file I/O.
         mMetadataCounter = counter;
@@ -1118,7 +1106,6 @@ final class FileStateLog extends Latch implements StateLog {
 
                 mMetadataLock.close();
                 mMetadataFile.close();
-                // FIXME: Close mMetadataBuffer.
 
                 for (Object key : mTermLogs) {
                     ((TermLog) key).close();
