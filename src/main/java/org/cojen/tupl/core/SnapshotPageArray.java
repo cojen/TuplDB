@@ -25,8 +25,6 @@ import java.io.InterruptedIOException;
 import java.io.IOException;
 import java.io.OutputStream;
 
-import java.nio.ByteBuffer;
-
 import java.util.concurrent.Future;
 
 import static java.lang.System.arraycopy;
@@ -121,12 +119,6 @@ final class SnapshotPageArray extends PageArray {
     public void writePage(long index, byte[] src, int offset) throws IOException {
         preWritePage(index);
         mSource.writePage(index, src, offset);
-    }
-
-    @Override
-    public void writePage(long index, byte[] src, int offset, ByteBuffer tail) throws IOException {
-        // Only required by lower layers, and used by CheckedPageArray.
-        throw new UnsupportedOperationException();
     }
 
     @Override

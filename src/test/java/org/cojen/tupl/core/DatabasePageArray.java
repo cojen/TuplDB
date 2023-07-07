@@ -19,8 +19,6 @@ package org.cojen.tupl.core;
 
 import java.io.IOException;
 
-import java.nio.ByteBuffer;
-
 import java.util.function.BooleanSupplier;
 
 import org.cojen.tupl.*;
@@ -99,11 +97,6 @@ class DatabasePageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, byte[] dst, int offset, int length, ByteBuffer tail) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public void writePage(long index, byte[] buf, int offset) throws IOException {
         BooleanSupplier checker = mFailureChecker;
         if (checker != null && checker.getAsBoolean()) {
@@ -113,11 +106,6 @@ class DatabasePageArray extends PageArray {
         try (ValueAccessor accessor = mPages.newAccessor(Transaction.BOGUS, keyFor(index))) {
             accessor.valueWrite(0, buf, offset, pageSize());
         }
-    }
-
-    @Override
-    public void writePage(long index, byte[] buf, int offset, ByteBuffer tail) {
-        throw new UnsupportedOperationException();
     }
 
     @Override

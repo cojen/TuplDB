@@ -422,7 +422,6 @@ public class TestUtils {
             throw new IllegalStateException("Not a directory: " + dir);
         }
 
-
         while (true) {
             File parent = dir.getParentFile();
             if (parent == null) {
@@ -441,10 +440,6 @@ public class TestUtils {
     }
 
     public static File findSourceDirectory(Set<File> visited, File dir, int matchDepth) {
-        if (!visited.add(dir)) {
-            return null;
-        }
-
         String match;
         boolean tail = false;
 
@@ -461,6 +456,10 @@ public class TestUtils {
         }
 
         var file = new File(dir, match);
+
+        if (!visited.add(file)) {
+            return null;
+        }
 
         if (file.exists()) {
             if (!file.isDirectory()) {

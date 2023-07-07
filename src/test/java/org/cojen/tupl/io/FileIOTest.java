@@ -29,7 +29,7 @@ import java.util.EnumSet;
 
 import org.junit.*;
 
-import com.sun.jna.Platform;
+//import com.sun.jna.Platform;
 
 public class FileIOTest {
     public static void main(String[] args) throws Exception {
@@ -55,6 +55,7 @@ public class FileIOTest {
     // writing to the temp directory fail with "No space left on device".
     //@Ignore
     //@Test
+    /*
     public void preallocateTooLarge() throws Exception {
         assumeTrue(Platform.isLinux());
         try (FileIO fio = FileIO.open(file, EnumSet.of(OpenOption.CREATE, OpenOption.MAPPED))) {
@@ -68,6 +69,7 @@ public class FileIOTest {
             assertEquals(0, fio.length());
         }
     }
+    */
 
     @Test
     public void preallocateGrowShrink() throws Exception {
@@ -85,6 +87,7 @@ public class FileIOTest {
 
     //@Ignore
     //@Test
+    /*
     public void preallocate() throws Exception {
         try {
             doPreallocate();
@@ -112,9 +115,11 @@ public class FileIOTest {
             assertTrue(alloc > (len >> 1));
         }
     }
+    */
 
     //@Ignore
     //@Test
+    /*
     public void crash() throws Exception {
         // Reproduces SIGBUS crash. Requires writing direct buffers
         // to a mapped file when there is not enough space left. To avoid having
@@ -142,4 +147,5 @@ public class FileIOTest {
 
         fio.close();
     }
+    */
 }

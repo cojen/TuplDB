@@ -20,8 +20,6 @@ package org.cojen.tupl.io;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
-import java.nio.ByteBuffer;
-
 import java.util.concurrent.Future;
 
 import org.cojen.tupl.util.Runner;
@@ -146,22 +144,8 @@ public class JoinedPageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, byte[] dst, int off, int len, ByteBuffer tail)
-        throws IOException
-    {
-        action(index, (pa, ix) -> pa.readPage(ix, dst, off, len, tail));
-    }
-
-    @Override
     public void readPage(long index, long dstPtr, int offset, int length) throws IOException {
         action(index, (pa, ix) -> pa.readPage(ix, dstPtr, offset, length));
-    }
-
-    @Override
-    public void readPage(long index, long dstPtr, int off, int len, ByteBuffer tail)
-        throws IOException
-    {
-        action(index, (pa, ix) -> pa.readPage(ix, dstPtr, off, len, tail));
     }
 
     @Override
@@ -170,18 +154,8 @@ public class JoinedPageArray extends PageArray {
     }
 
     @Override
-    public void writePage(long index, byte[] src, int off, ByteBuffer tail) throws IOException {
-        action(index, (pa, ix) -> pa.writePage(ix, src, off, tail));
-    }
-
-    @Override
     public void writePage(long index, long srcPtr, int offset) throws IOException {
         action(index, (pa, ix) -> pa.writePage(ix, srcPtr, offset));
-    }
-
-    @Override
-    public void writePage(long index, long srcPtr, int off, ByteBuffer tail) throws IOException {
-        action(index, (pa, ix) -> pa.writePage(ix, srcPtr, off, tail));
     }
 
     @Override

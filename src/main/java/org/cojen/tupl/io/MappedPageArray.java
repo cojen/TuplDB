@@ -20,8 +20,6 @@ package org.cojen.tupl.io;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
-import java.nio.ByteBuffer;
-
 import java.io.File;
 import java.io.IOException;
 
@@ -143,16 +141,6 @@ public abstract class MappedPageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, byte[] dst, int offset, int length, ByteBuffer tail)
-        throws IOException
-    {
-        readCheck(index);
-        long srcPtr = mappingPtr() + index * mPageSize;
-        UnsafeAccess.copy(srcPtr, dst, offset, length);
-        readTail(srcPtr + length, tail);
-    }
-
-    @Override
     public void readPage(long index, long dstPtr, int offset, int length)
         throws IOException
     {
@@ -165,46 +153,10 @@ public abstract class MappedPageArray extends PageArray {
     }
 
     @Override
-    public void readPage(long index, long dstPtr, int offset, int length, ByteBuffer tail)
-        throws IOException
-    {
-        readCheck(index);
-        dstPtr += offset;
-        long srcPtr = mappingPtr() + index * mPageSize;
-        if (srcPtr != dstPtr) {
-            UnsafeAccess.copy(srcPtr, dstPtr, length);
-        }
-        readTail(srcPtr + length, tail);
-    }
-
-    private static void readTail(long srcPtr, ByteBuffer tail) {
-        int rem = tail.remaining();
-        int pos = tail.position();
-        if (tail.isDirect()) {
-            UnsafeAccess.copy(srcPtr, DirectAccess.getAddress(tail) + pos, rem);
-        } else {
-            UnsafeAccess.copy(srcPtr, tail.array(), tail.arrayOffset() + pos, rem);
-        }
-        tail.position(pos + rem);
-    }
-
-    @Override
     public void writePage(long index, byte[] src, int offset) throws IOException {
         writeCheck(index);
         int pageSize = mPageSize;
         UnsafeAccess.copy(src, offset, mappingPtr() + index * pageSize, pageSize);
-    }
-
-    @Override
-    public void writePage(long index, byte[] src, int offset, ByteBuffer tail)
-        throws IOException
-    {
-        writeCheck(index);
-        int pageSize = mPageSize;
-        long dstPtr = mappingPtr() + index * pageSize;
-        int length = pageSize - tail.remaining();
-        UnsafeAccess.copy(src, offset, dstPtr, length);
-        writeTail(dstPtr + length, tail);
     }
 
     @Override
@@ -216,32 +168,6 @@ public abstract class MappedPageArray extends PageArray {
         if (dstPtr != srcPtr) {
             UnsafeAccess.copy(srcPtr, dstPtr, pageSize);
         }
-    }
-
-    @Override
-    public void writePage(long index, long srcPtr, int offset, ByteBuffer tail)
-        throws IOException
-    {
-        writeCheck(index);
-        srcPtr += offset;
-        int pageSize = mPageSize;
-        long dstPtr = mappingPtr() + index * pageSize;
-        int length = pageSize - tail.remaining();
-        if (dstPtr != srcPtr) {
-            UnsafeAccess.copy(srcPtr, dstPtr, length);
-        }
-        writeTail(dstPtr + length, tail);
-    }
-
-    private static void writeTail(long dstPtr, ByteBuffer tail) {
-        int rem = tail.remaining();
-        int pos = tail.position();
-        if (tail.isDirect()) {
-            UnsafeAccess.copy(DirectAccess.getAddress(tail) + pos, dstPtr, rem);
-        } else {
-            UnsafeAccess.copy(tail.array(), tail.arrayOffset() + pos, dstPtr, rem);
-        }
-        tail.position(pos + rem);
     }
 
     @Override

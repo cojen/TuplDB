@@ -19,6 +19,8 @@ package org.cojen.tupl.io;
 
 import java.lang.reflect.Field;
 
+import java.nio.ByteOrder;
+
 import com.sun.jna.Native;
 import com.sun.jna.Platform;
 
@@ -37,12 +39,14 @@ public class UnsafeAccess {
         sun.misc.Unsafe unsafe = null;
         Throwable unsupported = null;
 
-        try {
-            Field theUnsafe = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafe.setAccessible(true);
-            unsafe = (sun.misc.Unsafe) theUnsafe.get(null);
-        } catch (Throwable e) {
-            unsupported = e;
+        if (ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN) {
+            try {
+                Field theUnsafe = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
+                theUnsafe.setAccessible(true);
+                unsafe = (sun.misc.Unsafe) theUnsafe.get(null);
+            } catch (Throwable e) {
+                unsupported = e;
+            }
         }
 
         UNSAFE = unsafe;

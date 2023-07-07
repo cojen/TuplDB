@@ -57,11 +57,11 @@ final class NioMapping extends Mapping {
     }
 
     @Override
-    void read(int start, ByteBuffer dst) {
+    void read(int start, long ptr, int len) {
         ByteBuffer src = mBuffer.slice();
-        src.limit(start + dst.remaining());
+        src.limit(start + len);
         src.position(start);
-        dst.put(src);
+        DirectAccess.ref(ptr, len).put(src);
     }
 
     @Override
@@ -72,10 +72,10 @@ final class NioMapping extends Mapping {
     }
 
     @Override
-    void write(int start, ByteBuffer src) {
+    void write(int start, long ptr, int len) {
         ByteBuffer dst = mBuffer.slice();
         dst.position(start);
-        dst.put(src);
+        dst.put(DirectAccess.ref(ptr, len));
     }
 
     @Override

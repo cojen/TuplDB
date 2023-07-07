@@ -19,8 +19,6 @@ package org.cojen.tupl.core;
 
 import java.io.IOException;
 
-import java.nio.ByteBuffer;
-
 import org.cojen.tupl.Snapshot;
 
 import org.cojen.tupl.io.PageArray;
@@ -89,13 +87,6 @@ interface ReadableSnapshot extends Snapshot {
 
             @Override
             public void writePage(long index, byte[] src, int offset) throws IOException {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public void writePage(long index, byte[] src, int offset, ByteBuffer tail)
-                throws IOException
-            {
                 throw new UnsupportedOperationException();
             }
 

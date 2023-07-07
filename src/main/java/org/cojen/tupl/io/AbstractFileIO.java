@@ -24,7 +24,6 @@ import java.io.File;
 import java.io.InterruptedIOException;
 import java.io.IOException;
 
-import java.nio.ByteBuffer;
 import java.util.EnumSet;
 
 import org.cojen.tupl.util.Clutch;
@@ -184,11 +183,6 @@ abstract class AbstractFileIO extends FileIO {
     }
 
     @Override
-    public final void read(long pos, ByteBuffer bb) throws IOException {
-        access(true, pos, bb);
-    }
-
-    @Override
     public final void read(long pos, long ptr, int offset, int length) throws IOException {
         access(true, pos, ptr + offset, length);
     }
@@ -196,11 +190,6 @@ abstract class AbstractFileIO extends FileIO {
     @Override
     public final void write(long pos, byte[] buf, int offset, int length) throws IOException {
         access(false, pos, buf, offset, length);
-    }
-
-    @Override
-    public final void write(long pos, ByteBuffer bb) throws IOException {
-        access(false, pos, bb);
     }
 
     @Override
@@ -271,11 +260,7 @@ abstract class AbstractFileIO extends FileIO {
         }
     }
 
-    private void access(boolean read, long pos, ByteBuffer bb) throws IOException {
-        if (bb.remaining() <= 0) {
-            return;
-        }
-
+    private void access(boolean read, long pos, long ptr, int length) throws IOException {
         syncWait();
 
         try {
@@ -303,251 +288,37 @@ abstract class AbstractFileIO extends FileIO {
                             mavail = MAPPING_SIZE - mpos;
                         }
 
-                        if (mavail >= bb.remaining()) {
+                        if (mavail >= length) {
                             if (read) {
-                                mapping.read(mpos, bb);
+                                mapping.read(mpos, ptr, length);
                             } else {
-                                mapping.write(mpos, bb);
+                                mapping.write(mpos, ptr, length);
                             }
                             return;
                         }
 
                         if (read) {
-                            mapping.read(mpos, bb, mavail);
+                            mapping.read(mpos, ptr, mavail);
                         } else {
-                            mapping.write(mpos, bb, mavail);
+                            mapping.write(mpos, ptr, mavail);
                         }
 
                         pos += mavail;
+                        ptr += mavail;
+                        length -= mavail;
                     }
                 }
 
                 if (read) {
-                    doRead(pos, bb);
+                    doRead(pos, ptr, length);
                 } else {
-                    doWrite(pos, bb);
-                }
-            } finally {
-                mAccessLock.releaseShared();
-            }
-
-        } catch (IOException e) {
-            throw rethrow(e, mCause);
-        }
-    }
-
-    private void access(boolean read, long pos, long ptr, int length) throws IOException {
-        if (length > 0) {
-            access(read, pos, DirectAccess.ref(ptr, length));
-        }
-    }
-
-    @Override
-    public void read(long pos, byte[] buf, int offset, int length, ByteBuffer tail)
-        throws IOException
-    {
-        accessv(true, pos, buf, offset, length, tail);
-    }
-
-    @Override
-    public void read(long pos, ByteBuffer bb, ByteBuffer tail) throws IOException {
-        accessv(true, pos, bb, tail);
-    }
-
-    @Override
-    public void read(long pos, long ptr, int offset, int length, ByteBuffer tail)
-        throws IOException
-    {
-        accessv(true, pos, ptr + offset, length, tail);
-    }
-
-    @Override
-    public void write(long pos, byte[] buf, int offset, int length, ByteBuffer tail)
-        throws IOException
-    {
-        accessv(false, pos, buf, offset, length, tail);
-    }
-
-    @Override
-    public void write(long pos, ByteBuffer bb, ByteBuffer tail) throws IOException {
-        accessv(false, pos, bb, tail);
-    }
-
-    @Override
-    public void write(long pos, long ptr, int offset, int length, ByteBuffer tail)
-        throws IOException
-    {
-        accessv(false, pos, ptr + offset, length, tail);
-    }
-
-    private void accessv(boolean read, long pos,
-                         byte[] buf, int offset, int length, ByteBuffer tail)
-        throws IOException
-    {
-        if (tail.remaining() <= 0) {
-            access(read, pos, buf, offset, length);
-            return;
-        }
-
-        syncWait();
-
-        try {
-            mAccessLock.acquireShared();
-            try {
-                Mapping[] mappings = mMappings;
-                if (mappings != null) {
-                    while (true) {
-                        int mi = (int) (pos >> MAPPING_SHIFT);
-                        int mlen = mappings.length;
-                        if (mi >= mlen) {
-                            break;
-                        }
-
-                        Mapping mapping = mappings[mi];
-                        int mpos = (int) (pos & (MAPPING_SIZE - 1));
-                        int mavail;
-
-                        if (mi == (mlen - 1)) {
-                            mavail = mLastMappingSize - mpos;
-                            if (mavail <= 0) {
-                                break;
-                            }
-                        } else {
-                            mavail = MAPPING_SIZE - mpos;
-                        }
-
-                        if (length <= 0) {
-                            if (mavail >= tail.remaining()) {
-                                if (read) {
-                                    mapping.read(mpos, tail);
-                                } else {
-                                    mapping.write(mpos, tail);
-                                }
-                                return;
-                            }
-                            if (read) {
-                                mapping.read(mpos, tail, mavail);
-                            } else {
-                                mapping.write(mpos, tail, mavail);
-                            }
-                        } else {
-                            if (mavail > length) {
-                                mavail = length;
-                            }
-                            if (read) {
-                                mapping.read(mpos, buf, offset, mavail);
-                            } else {
-                                mapping.write(mpos, buf, offset, mavail);
-                            }
-                            length -= mavail;
-                        }
-                        pos += mavail;
-                    }
-                }
-
-                if (read) {
-                    doRead(pos, buf, offset, length, tail);
-                } else {
-                    doWrite(pos, buf, offset, length, tail);
+                    doWrite(pos, ptr, length);
                 }
             } finally {
                 mAccessLock.releaseShared();
             }
         } catch (IOException e) {
             throw rethrow(e, mCause);
-        }
-    }
-
-    private void accessv(boolean read, long pos, ByteBuffer bb, ByteBuffer tail)
-        throws IOException
-    {
-        if (tail.remaining() <= 0) {
-            access(read, pos, bb);
-            return;
-        }
-
-        syncWait();
-
-        try {
-            mAccessLock.acquireShared();
-            try {
-                Mapping[] mappings = mMappings;
-                if (mappings != null) {
-                    while (true) {
-                        int mi = (int) (pos >> MAPPING_SHIFT);
-                        int mlen = mappings.length;
-                        if (mi >= mlen) {
-                            break;
-                        }
-
-                        Mapping mapping = mappings[mi];
-                        int mpos = (int) (pos & (MAPPING_SIZE - 1));
-                        int mavail;
-
-                        if (mi == (mlen - 1)) {
-                            mavail = mLastMappingSize - mpos;
-                            if (mavail <= 0) {
-                                break;
-                            }
-                        } else {
-                            mavail = MAPPING_SIZE - mpos;
-                        }
-
-                        final int bbLen = bb.remaining();
-
-                        if (bbLen <= 0) {
-                            if (mavail >= tail.remaining()) {
-                                if (read) {
-                                    mapping.read(mpos, tail);
-                                } else {
-                                    mapping.write(mpos, tail);
-                                }
-                                return;
-                            }
-                            if (read) {
-                                mapping.read(mpos, tail, mavail);
-                            } else {
-                                mapping.write(mpos, tail, mavail);
-                            }
-                            pos += mavail;
-                        } else if (mavail >= bbLen) {
-                            if (read) {
-                                mapping.read(mpos, bb);
-                            } else {
-                                mapping.write(mpos, bb);
-                            }
-                            pos += bbLen;
-                        } else {
-                            if (read) {
-                                mapping.read(mpos, bb, mavail);
-                            } else {
-                                mapping.write(mpos, bb, mavail);
-                            }
-                            pos += mavail;
-                        }
-                    }
-                }
-
-                if (read) {
-                    doRead(pos, bb, tail);
-                } else {
-                    doWrite(pos, bb, tail);
-                }
-            } finally {
-                mAccessLock.releaseShared();
-            }
-        } catch (IOException e) {
-            throw rethrow(e, mCause);
-        }
-    }
-
-    private void accessv(boolean read, long pos, long ptr, int length, ByteBuffer tail)
-        throws IOException
-    {
-        if (length > 0) {
-            accessv(read, pos, DirectAccess.ref(ptr, length), tail);
-        } else {
-            access(read, pos, tail);
         }
     }
 
@@ -841,25 +612,13 @@ abstract class AbstractFileIO extends FileIO {
     protected abstract void doRead(long pos, byte[] buf, int offset, int length)
         throws IOException;
 
-    protected abstract void doRead(long pos, byte[] buf, int offset, int length, ByteBuffer tail)
-        throws IOException;
-
-    protected abstract void doRead(long pos, ByteBuffer bb)
-        throws IOException;
-
-    protected abstract void doRead(long pos, ByteBuffer bb, ByteBuffer tail)
+    protected abstract void doRead(long pos, long ptr, int length)
         throws IOException;
 
     protected abstract void doWrite(long pos, byte[] buf, int offset, int length)
         throws IOException;
 
-    protected abstract void doWrite(long pos, byte[] buf, int offset, int length, ByteBuffer tail)
-        throws IOException;
-
-    protected abstract void doWrite(long pos, ByteBuffer bb)
-        throws IOException;
-
-    protected abstract void doWrite(long pos, ByteBuffer bb, ByteBuffer tail)
+    protected abstract void doWrite(long pos, long ptr, int length)
         throws IOException;
 
     protected abstract Mapping openMapping(boolean readOnly, long pos, int size)
