@@ -31,6 +31,8 @@ import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.diag.QueryPlan;
 
+import org.cojen.tupl.util.Canonicalizer;
+
 import static java.util.Spliterator.*;
 
 /**
@@ -39,6 +41,30 @@ import static java.util.Spliterator.*;
  * @author Brian S O'Neill
  */
 final class SortedQueryLauncher<R> implements QueryLauncher<R> {
+    private static volatile Canonicalizer cProjectionCache;
+
+    /**
+     * Returns a cached instance, to reduce the memory footprint of SortedQueryLauncher
+     * instances, which can be long lived.
+     */
+    private static Set<String> canonicalize(Set<String> projection) {
+        if (projection == null) {
+            return null;
+        }
+
+        Canonicalizer c = cProjectionCache;
+
+        if (c == null) {
+            synchronized (SortedQueryLauncher.class) {
+                if ((c = cProjectionCache) == null) {
+                    cProjectionCache = c = new Canonicalizer();
+                }
+            }
+        }
+
+        return c.apply(Set.of(projection.toArray(String[]::new)));
+    }
+
     final BaseTable<R> mTable;
     final QueryLauncher<R> mSource;
     final Set<String> mProjection;
@@ -50,12 +76,15 @@ final class SortedQueryLauncher<R> implements QueryLauncher<R> {
     RowDecoder<R> mDecoder;
     MethodHandle mWriteRow;
 
+    /**
+     * @param projection can be null to indicate all columns
+     */
     SortedQueryLauncher(BaseTable<R> table, QueryLauncher<R> source,
                         Set<String> projection, OrderBy orderBy)
     {
         mTable = table;
         mSource = source;
-        mProjection = projection;
+        mProjection = canonicalize(projection);
         mSpec = orderBy.spec();
         mComparator = table.comparator(mSpec);
     }
