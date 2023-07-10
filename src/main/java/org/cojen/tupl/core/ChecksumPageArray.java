@@ -26,10 +26,11 @@ import java.util.function.Supplier;
 
 import java.util.zip.Checksum;
 
-import org.cojen.tupl.io.DirectAccess;
 import org.cojen.tupl.io.PageArray;
-import org.cojen.tupl.io.UnsafeAccess;
 import org.cojen.tupl.io.Utils;
+
+import org.cojen.tupl.unsafe.DirectAccess;
+import org.cojen.tupl.unsafe.UnsafeAccess;
 
 import org.cojen.tupl.util.LocalPool;
 

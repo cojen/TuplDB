@@ -17,7 +17,8 @@
 
 package org.cojen.tupl.io;
 
-import java.io.IOException;
+import org.cojen.tupl.unsafe.DirectAccess;
+import org.cojen.tupl.unsafe.UnsafeAccess;
 
 /**
  * 

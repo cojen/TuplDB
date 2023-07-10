@@ -23,6 +23,8 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
+import org.cojen.tupl.unsafe.DirectAccess;
+
 /**
  * 
  *

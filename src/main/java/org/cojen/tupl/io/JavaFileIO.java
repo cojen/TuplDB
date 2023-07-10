@@ -32,9 +32,9 @@ import java.util.EnumSet;
 
 import java.util.function.Consumer;
 
-import org.cojen.tupl.util.LocalPool;
+import org.cojen.tupl.unsafe.DirectAccess;
 
-import static org.cojen.tupl.io.Utils.*;
+import org.cojen.tupl.util.LocalPool;
 
 /**
  * Basic FileIO implementation which uses the Java RandomAccessFile class,

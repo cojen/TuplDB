@@ -26,6 +26,9 @@ import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 
 import java.nio.channels.FileChannel;
+
+import org.cojen.tupl.unsafe.DirectAccess;
+
 import static java.nio.channels.FileChannel.MapMode.*;
 
 /**

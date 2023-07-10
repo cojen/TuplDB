@@ -28,9 +28,10 @@ import java.nio.channels.ClosedChannelException;
 import java.util.EnumSet;
 
 import com.sun.jna.Native;
-import com.sun.jna.Platform;
 
 import org.cojen.tupl.DatabaseFullException;
+
+import org.cojen.tupl.unsafe.UnsafeAccess;
 
 import static org.cojen.tupl.io.Utils.rethrow;
 
