@@ -36,8 +36,6 @@ import java.util.function.Consumer;
 
 import org.cojen.tupl.util.LocalPool;
 
-import static org.cojen.tupl.io.Utils.*;
-
 /**
  * Basic FileIO implementation which uses the Java RandomAccessFile class,
  * unless a more suitable implementation is available.

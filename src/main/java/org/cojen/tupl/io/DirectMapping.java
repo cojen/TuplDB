@@ -17,8 +17,6 @@
 
 package org.cojen.tupl.io;
 
-import java.io.IOException;
-
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 
