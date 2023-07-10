@@ -26,6 +26,8 @@ import java.io.IOException;
 
 import java.util.EnumSet;
 
+import org.cojen.tupl.unsafe.UnsafeAccess;
+
 import org.cojen.tupl.util.Clutch;
 import org.cojen.tupl.util.Latch;
 

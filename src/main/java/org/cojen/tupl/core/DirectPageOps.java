@@ -26,9 +26,10 @@ import java.util.zip.CRC32;
 import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.DeletedIndexException;
 
-import org.cojen.tupl.io.DirectAccess;
 import org.cojen.tupl.io.MappedPageArray;
-import org.cojen.tupl.io.UnsafeAccess;
+
+import org.cojen.tupl.unsafe.DirectAccess;
+import org.cojen.tupl.unsafe.UnsafeAccess;
 
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.Runner;

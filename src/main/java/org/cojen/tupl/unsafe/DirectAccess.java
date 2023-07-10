@@ -15,10 +15,12 @@
  *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.io;
+package org.cojen.tupl.unsafe;
 
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
+
+import org.cojen.tupl.unsafe.UnsafeAccess;
 
 /**
  * Backdoor access to DirectByteBuffer.
@@ -147,7 +149,7 @@ public class DirectAccess {
         }
     }
 
-    static ByteBuffer allocDirect() {
+    public static ByteBuffer allocDirect() {
         try {
             var bb = (ByteBuffer) UNSAFE.allocateInstance(cDirectByteBufferClass);
             bb.clear();
@@ -157,7 +159,7 @@ public class DirectAccess {
         }
     }
 
-    static void ref(ByteBuffer bb, long ptr, int length) {
+    public static void ref(ByteBuffer bb, long ptr, int length) {
         UNSAFE.putLong(bb, cDirectAddressOffset, ptr);
         UNSAFE.putInt(bb, cDirectCapacityOffset, length);
         bb.position(0).limit(length);

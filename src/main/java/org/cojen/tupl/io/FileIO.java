@@ -27,6 +27,8 @@ import java.nio.file.StandardOpenOption;
 
 import com.sun.jna.Native;
 
+import org.cojen.tupl.unsafe.DirectAccess;
+
 /**
  * Lowest I/O interface to a file or device.
  *

@@ -31,7 +31,8 @@ import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.io.PageArray;
 import org.cojen.tupl.io.PageCompressor;
-import org.cojen.tupl.io.UnsafeAccess;
+
+import org.cojen.tupl.unsafe.UnsafeAccess;
 
 import org.cojen.tupl.util.LocalPool;
 

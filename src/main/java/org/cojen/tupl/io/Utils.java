@@ -17,8 +17,6 @@
 
 package org.cojen.tupl.io;
 
-import org.cojen.tupl.CorruptDatabaseException;
-
 import java.io.Closeable;
 import java.io.EOFException;
 import java.io.InputStream;
@@ -39,6 +37,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+
+import org.cojen.tupl.CorruptDatabaseException;
+
+import org.cojen.tupl.unsafe.UnsafeAccess;
 
 /**
  * Generic data and I/O utility methods.

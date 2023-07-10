@@ -38,7 +38,7 @@ import javax.crypto.spec.SecretKeySpec;
 import org.cojen.tupl.core.DirectPageOps;
 import org.cojen.tupl.core.Utils;
 
-import org.cojen.tupl.io.DirectAccess;
+import org.cojen.tupl.unsafe.DirectAccess;
 
 /**
  * Crypto implementation which uses {@link Cipher} and defaults to the AES algorithm. An
