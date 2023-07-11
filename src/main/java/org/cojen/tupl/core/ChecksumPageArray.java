@@ -216,7 +216,7 @@ abstract class ChecksumPageArray extends TransformedPageArray {
         @Override
         public void close(Throwable cause) throws IOException {
             super.close(cause);
-            mBufRefPool.clear(ref -> Utils.delete(ref.mBuffer));
+            mBufRefPool.clear(ref -> DirectAccess.delete(ref.mBuffer));
         }
 
         static class BufRef {

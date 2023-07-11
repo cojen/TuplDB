@@ -37,6 +37,8 @@ import com.sun.jna.Platform;
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
 
+import org.cojen.tupl.unsafe.DirectAccess;
+
 import org.cojen.tupl.util.LocalPool;
 
 /**
@@ -279,7 +281,7 @@ final class PosixFileIO extends AbstractFileIO {
                 e.replace(new BufRef(bb));
 
                 if (original != null) {
-                    Utils.delete(original);
+                    DirectAccess.delete(original);
                 }
             }
 
@@ -293,7 +295,7 @@ final class PosixFileIO extends AbstractFileIO {
     }
 
     private static void clearBufRefPool(LocalPool<BufRef> pool) {
-        pool.clear(ref -> Utils.delete(ref.mBuffer));
+        pool.clear(ref -> DirectAccess.delete(ref.mBuffer));
     }
 
     static class BufRef {
