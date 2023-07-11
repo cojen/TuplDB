@@ -17,6 +17,9 @@
 
 package org.cojen.tupl.unsafe;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 
@@ -35,6 +38,8 @@ public class DirectAccess {
     private static final long cDirectCapacityOffset;
     private static final ThreadLocal<ByteBuffer> cLocalBuffer;
     private static final ThreadLocal<ByteBuffer> cLocalBuffer2;
+
+    private static volatile int cDeleteSupport;
 
     static {
         Class<?> clazz;
@@ -163,5 +168,41 @@ public class DirectAccess {
         UNSAFE.putLong(bb, cDirectAddressOffset, ptr);
         UNSAFE.putInt(bb, cDirectCapacityOffset, length);
         bb.position(0).limit(length);
+    }
+
+    /**
+     * Attempt to delete the given direct or mapped byte buffer.
+     */
+    public static boolean delete(ByteBuffer bb) {
+        if (!bb.isDirect()) {
+            return false;
+        }
+
+        // https://bugs.openjdk.org/browse/JDK-4724038
+
+        int deleteSupport = cDeleteSupport;
+
+        if (deleteSupport < 0) {
+            return false;
+        }
+
+        try {
+            var u = UnsafeAccess.obtain();
+            Method m = u.getClass().getMethod("invokeCleaner", ByteBuffer.class);
+            m.invoke(u, bb);
+            return true;
+        } catch (InvocationTargetException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof IllegalArgumentException) {
+                // Duplicate or slice.
+                return false;
+            }
+            // Unsupported.
+        } catch (Throwable e) {
+            // Unsupported.
+        }
+
+        cDeleteSupport = -1;
+        return false;
     }
 }
