@@ -25,6 +25,8 @@ import java.io.IOException;
 import java.util.EnumSet;
 
 import java.nio.channels.FileChannel;
+
+import java.nio.file.FileSystemException;
 import java.nio.file.StandardOpenOption;
 
 /**
@@ -169,6 +171,8 @@ public abstract class FileIO implements CauseCloseable {
         } else {
             try (FileChannel fc = FileChannel.open(file.toPath(), StandardOpenOption.READ)) {
                 fc.force(true);
+            } catch (FileSystemException e) {
+                // Not supported.
             }
         }
     }
