@@ -15,7 +15,7 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.io;
+package org.cojen.tupl.core;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
@@ -31,7 +31,6 @@ import java.lang.invoke.MethodHandle;
  * 
  *
  * @author Brian S O'Neill
- * @hidden
  */
 public class SysInfo {
     private static final int PAGE_SIZE;

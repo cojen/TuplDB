@@ -30,7 +30,6 @@ import java.util.function.Supplier;
 import java.util.zip.Checksum;
 
 import org.cojen.tupl.io.PageArray;
-import org.cojen.tupl.io.SysInfo;
 import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.util.LocalPool;

@@ -32,7 +32,6 @@ import org.cojen.tupl.ClosedIndexException;
 import org.cojen.tupl.DeletedIndexException;
 
 import org.cojen.tupl.io.MappedPageArray;
-import org.cojen.tupl.io.SysInfo;
 
 import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.Runner;

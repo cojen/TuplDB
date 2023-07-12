@@ -35,7 +35,6 @@ import org.cojen.tupl.TestUtils;
 import org.cojen.tupl.io.FilePageArray;
 import org.cojen.tupl.io.OpenOption;
 import org.cojen.tupl.io.PageArray;
-import org.cojen.tupl.io.SysInfo;
 import org.cojen.tupl.io.Utils;
 
 /**
