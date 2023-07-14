@@ -205,7 +205,7 @@ abstract class ChecksumPageArray extends TransformedPageArray {
                 checksum.update(DirectAccess.ref(srcPtr + offset, length));
                 ByteBuffer buf = ref.mBuffer;
                 buf.limit(buf.capacity());
-                UnsafeAccess.copy(srcPtr, ref.mAddress, length);
+                UnsafeAccess.copy(srcPtr + offset, ref.mAddress, length);
                 buf.putInt(length, (int) checksum.getValue());
                 mSource.writePage(index, ref.mAddress);
             } finally {
