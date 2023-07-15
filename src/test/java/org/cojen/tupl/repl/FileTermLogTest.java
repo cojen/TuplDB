@@ -37,7 +37,6 @@ import org.junit.*;
 import static org.junit.Assert.*;
 
 import org.cojen.tupl.util.Latch;
-import org.cojen.tupl.util.LatchCondition;
 import org.cojen.tupl.util.Worker;
 
 import org.cojen.tupl.TestUtils;
@@ -469,14 +468,14 @@ public class FileTermLogTest {
             final long mWaitFor;
             final boolean mUpon;
             final Latch mLatch;
-            final LatchCondition mLatchCondition;
+            final Latch.Condition mLatchCondition;
             Exception mEx;
             long mCommit;
 
             Waiter(long waitFor, boolean upon) {
                 mLatch = new Latch();
                 mUpon = upon;
-                mLatchCondition = new LatchCondition();
+                mLatchCondition = new Latch.Condition();
                 mWaitFor = waitFor;
             }
 

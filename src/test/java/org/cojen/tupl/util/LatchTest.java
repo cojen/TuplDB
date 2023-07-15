@@ -39,7 +39,7 @@ public class LatchTest {
         // Must interrupt a Thread.
 
         var latch = new Latch();
-        var cond = new LatchCondition();
+        var cond = new Latch.Condition();
 
         var waiter = new Thread() {
             volatile int result;
@@ -67,7 +67,7 @@ public class LatchTest {
         // Can't interrupt a continuation.
 
         var latch = new Latch();
-        var cond = new LatchCondition();
+        var cond = new Latch.Condition();
 
         var waiter = new Runnable() {
             volatile boolean called;
@@ -108,7 +108,7 @@ public class LatchTest {
     @Test
     public void priorityAwait() throws Exception {
         var latch = new Latch();
-        var condition = new LatchCondition();
+        var condition = new Latch.Condition();
 
         var finished = new ArrayList<Thread>();
 

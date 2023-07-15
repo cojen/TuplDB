@@ -20,6 +20,8 @@ package org.cojen.tupl.util;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
+import java.util.concurrent.TimeUnit;
+
 import org.cojen.tupl.io.Utils;
 
 /**
@@ -29,7 +31,7 @@ import org.cojen.tupl.io.Utils;
  * typically unfair, waiting threads aren't starved indefinitely.
  *
  * @author Brian S O'Neill
- * @see LatchCondition
+ * @see Latch.Condition
  */
 public class Latch {
     public static final int UNLATCHED = 0, EXCLUSIVE = 0x80000000, SHARED = 1;
@@ -899,11 +901,271 @@ public class Latch {
         return trials;
     }
 
+    /**
+     * Manages a queue of waiting threads, associated with a {@link Latch} instance. Unlike the
+     * built-in Java Condition class, spurious wakeup does not occur when waiting.
+     */
+    public static class Condition {
+        WaitNode mHead;
+        WaitNode mTail;
+
+        /**
+         * Returns true if no waiters are enqueued. Caller must hold shared or exclusive latch.
+         */
+        public final boolean isEmpty() {
+            return mHead == null;
+        }
+
+        /**
+         * Blocks the current thread indefinitely until a signal is received. Exclusive latch must
+         * be acquired by the caller, which is released and then re-acquired by this method.
+         *
+         * @param latch latch being used by this condition
+         * @return -1 if interrupted, or 1 if signaled
+         */
+        public final int await(Latch latch) {
+            return await(latch, -1, 0);
+        }
+
+        /**
+         * Blocks the current thread until a signal is received. Exclusive latch must be acquired
+         * by the caller, which is released and then re-acquired by this method.
+         *
+         * @param latch latch being used by this condition
+         * @param timeout relative time to wait; infinite if {@literal <0}
+         * @param unit timeout unit
+         * @return -1 if interrupted, 0 if timed out, 1 if signaled
+         */
+        public final int await(Latch latch, long timeout, TimeUnit unit) {
+            long nanosTimeout, nanosEnd;
+            if (timeout <= 0) {
+                nanosTimeout = timeout;
+                nanosEnd = 0;
+            } else {
+                nanosTimeout = unit.toNanos(timeout);
+                nanosEnd = System.nanoTime() + nanosTimeout;
+            }
+            return await(latch, nanosTimeout, nanosEnd);
+        }
+
+        /**
+         * Blocks the current thread until a signal is received. Exclusive latch must be acquired
+         * by the caller, which is released and then re-acquired by this method.
+         *
+         * @param latch latch being used by this condition
+         * @param nanosTimeout relative nanosecond time to wait; infinite if {@literal <0}
+         * @return -1 if interrupted, 0 if timed out, 1 if signaled
+         */
+        public final int await(Latch latch, long nanosTimeout) {
+            long nanosEnd = nanosTimeout <= 0 ? 0 : (System.nanoTime() + nanosTimeout);
+            return await(latch, nanosTimeout, nanosEnd);
+        }
+
+        /**
+         * Blocks the current thread until a signal is received. Exclusive latch must be acquired
+         * by the caller, which is released and then re-acquired by this method.
+         *
+         * @param latch latch being used by this condition
+         * @param nanosTimeout relative nanosecond time to wait; infinite if {@literal <0}
+         * @param nanosEnd absolute nanosecond time to wait until; used only with {@literal >0}
+         * timeout
+         * @return -1 if interrupted, 0 if timed out, 1 if signaled
+         */
+        public final int await(Latch latch, long nanosTimeout, long nanosEnd) {
+            return await(latch, WaitNode.COND_WAIT, nanosTimeout, nanosEnd);
+        }
+
+        /**
+         * Blocks the current thread until a signal is received. Exclusive latch must be acquired
+         * by the caller, which is released and then re-acquired by this method.
+         *
+         * @param latch latch being used by this condition
+         * @param nanosTimeout relative nanosecond time to wait; infinite if {@literal <0}
+         * @return -1 if interrupted, 0 if timed out, 1 if signaled
+         * @see #signalTagged
+         */
+        public final int awaitTagged(Latch latch, long nanosTimeout) {
+            long nanosEnd = nanosTimeout <= 0 ? 0 : (System.nanoTime() + nanosTimeout);
+            return awaitTagged(latch, nanosTimeout, nanosEnd);
+        }
+
+        /**
+         * Blocks the current thread until a signal is received. Exclusive latch must be acquired
+         * by the caller, which is released and then re-acquired by this method.
+         *
+         * @param latch latch being used by this condition
+         * @param nanosTimeout relative nanosecond time to wait; infinite if {@literal <0}
+         * @param nanosEnd absolute nanosecond time to wait until; used only with {@literal >0}
+         * timeout
+         * @return -1 if interrupted, 0 if timed out, 1 if signaled
+         * @see #signalTagged
+         */
+        public final int awaitTagged(Latch latch, long nanosTimeout, long nanosEnd) {
+            return await(latch, WaitNode.COND_WAIT_TAGGED, nanosTimeout, nanosEnd);
+        }
+
+        private int await(Latch latch, int waitState, long nanosTimeout, long nanosEnd) {
+            final WaitNode node;
+            try {
+                node = new WaitNode(Thread.currentThread(), waitState);
+            } catch (Throwable e) {
+                // Possibly an OutOfMemoryError. Latch must still be held.
+                return -1;
+            }
+
+            WaitNode tail = mTail;
+            if (tail == null) {
+                mHead = node;
+            } else {
+                cNextHandle.set(tail, node);
+                cPrevHandle.set(node, tail);
+            }
+            mTail = node;
+
+            return node.condAwait(latch, this, nanosTimeout, nanosEnd);
+        }
+
+        /**
+         * Blocks the current thread until a signal is received. This method behaves like regular
+         * {@code await} method except the thread is signaled ahead of all the other waiting
+         * threads. Exclusive latch must be acquired by the caller, which is released and then
+         * re-acquired by this method.
+         *
+         * @param latch latch being used by this condition
+         * @param nanosTimeout relative nanosecond time to wait; infinite if {@literal <0}
+         * @param nanosEnd absolute nanosecond time to wait until; used only with {@literal >0}
+         * timeout
+         * @return -1 if interrupted, 0 if timed out, 1 if signaled
+         */
+        public final int priorityAwait(Latch latch, long nanosTimeout, long nanosEnd) {
+            return priorityAwait(latch, WaitNode.COND_WAIT, nanosTimeout, nanosEnd);
+        }
+
+        private int priorityAwait(Latch latch, int waitState, long nanosTimeout, long nanosEnd) {
+            final WaitNode node;
+            try {
+                node = new WaitNode(Thread.currentThread(), waitState);
+            } catch (Throwable e) {
+                // Possibly an OutOfMemoryError. Latch must still be held.
+                return -1;
+            }
+
+            WaitNode head = mHead;
+            if (head == null) {
+                mTail = node;
+            } else {
+                cPrevHandle.set(head, node);
+                cNextHandle.set(node, head);
+            }
+            mHead = node;
+
+            return node.condAwait(latch, this, nanosTimeout, nanosEnd);
+        }
+
+        /**
+         * Invokes the given continuation upon the condition being signaled. The exclusive
+         * latch must be acquired by the caller, which is retained. When the condition is
+         * signaled, the continuation is enqueued to be run by a thread which releases the
+         * exclusive latch. The releasing thread actually retains the latch and runs the
+         * continuation, effectively transferring latch ownership. The continuation must not
+         * explicitly release the latch, and any exception thrown by the continuation is passed
+         * to the uncaught exception handler of the running thread.
+         *
+         * @param cont called with latch held
+         */
+        public final void uponSignal(Runnable cont) {
+            upon(cont, WaitNode.COND_WAIT);
+        }
+
+        /**
+         * Invokes the given continuation upon the condition being signaled. The exclusive
+         * latch must be acquired by the caller, which is retained. When the condition is
+         * signaled, the continuation is enqueued to be run by a thread which releases the
+         * exclusive latch. The releasing thread actually retains the latch and runs the
+         * continuation, effectively transferring latch ownership. The continuation must not
+         * explicitly release the latch, and any exception thrown by the continuation is passed
+         * to the uncaught exception handler of the running thread.
+         *
+         * @param cont called with latch held
+         * @see #signalTagged
+         */
+        public final void uponSignalTagged(Runnable cont) {
+            upon(cont, WaitNode.COND_WAIT_TAGGED);
+        }
+
+        private void upon(Runnable cont, int waitState) {
+            final var node = new WaitNode(cont, waitState);
+
+            WaitNode tail = mTail;
+            if (tail == null) {
+                mHead = node;
+            } else {
+                cNextHandle.set(tail, node);
+                cPrevHandle.set(node, tail);
+            }
+            mTail = node;
+        }
+
+        /**
+         * Signals the first waiter, of any type. Caller must hold exclusive latch.
+         */
+        public final void signal(Latch latch) {
+            WaitNode head = mHead;
+            if (head != null) {
+                head.condSignal(latch, this);
+            }
+        }
+
+        /**
+         * Signals all waiters, of any type. Caller must hold exclusive latch.
+         */
+        public final void signalAll(Latch latch) {
+            while (true) {
+                WaitNode head = mHead;
+                if (head == null) {
+                    return;
+                }
+                head.condSignal(latch, this);
+            }
+        }
+
+        /**
+         * Signals the first waiter, but only if it's a tagged waiter. Caller must hold
+         * exclusive latch.
+         */
+        public final void signalTagged(Latch latch) {
+            WaitNode head = mHead;
+            if (head != null && ((int) cWaitStateHandle.get(head)) == WaitNode.COND_WAIT_TAGGED) {
+                head.condSignal(latch, this);
+            }
+        }
+
+        /**
+         * Clears out all waiters and interrupts those that are threads. Caller must hold
+         * exclusive latch.
+         */
+        public final void clear() {
+            WaitNode node = mHead;
+            while (node != null) {
+                Object waiter = cWaiterHandle.get(node);
+                if (waiter instanceof Thread t) {
+                    t.interrupt();
+                }
+                cPrevHandle.set(node, null);
+                var next = (WaitNode) cNextHandle.get(node);
+                cNextHandle.set(node, null);
+                node = next;
+            }
+            mHead = null;
+            mTail = null;
+        }
+    }
+
     static class WaitNode {
         volatile Object mWaiter;
 
         /*
-          The COND states are only used when the node is associated with a LatchCondition,
+          The COND states are only used when the node is associated with a Condition,
           and when such a node moves into the Latch, the state is always SIGNALED.
           
           0 -> SIGNALED
@@ -971,7 +1233,7 @@ public class Latch {
         /**
          * Used for latch condition. Caller must hold exclusive latch.
          */
-        final void condSignal(Latch latch, LatchCondition queue) {
+        final void condSignal(Latch latch, Condition queue) {
             condRemove(queue);
             cWaitStateHandle.set(this, SIGNALED);
             latch.enqueue(this);
@@ -983,7 +1245,7 @@ public class Latch {
          *
          * @return -1 if interrupted, 0 if timed out, 1 if signaled
          */
-        final int condAwait(Latch latch, LatchCondition queue, long nanosTimeout, long nanosEnd) {
+        final int condAwait(Latch latch, Condition queue, long nanosTimeout, long nanosEnd) {
             latch.releaseExclusive();
 
             while (true) {
@@ -1058,7 +1320,7 @@ public class Latch {
         /**
          * Used for latch condition. Caller must hold exclusive latch.
          */
-        private void condRemove(LatchCondition queue) {
+        private void condRemove(Condition queue) {
             var prev = (WaitNode) cPrevHandle.get(this);
             var next = (WaitNode) cNextHandle.get(this);
             if (prev == null) {

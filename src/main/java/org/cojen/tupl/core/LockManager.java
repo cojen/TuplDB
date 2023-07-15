@@ -32,7 +32,6 @@ import org.cojen.tupl.LockUpgradeRule;
 import static org.cojen.tupl.LockResult.*;
 
 import org.cojen.tupl.util.Latch;
-import org.cojen.tupl.util.LatchCondition;
 
 /**
  * Manages all Lock instances using a specialized striped hashtable.
@@ -587,7 +586,7 @@ public final class LockManager {
 
                             // Interrupt all waiters.
 
-                            LatchCondition q = e.mQueueU;
+                            Latch.Condition q = e.mQueueU;
                             if (q != null) {
                                 q.clear();
                                 e.mQueueU = null;

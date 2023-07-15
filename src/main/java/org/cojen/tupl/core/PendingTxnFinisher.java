@@ -18,7 +18,6 @@
 package org.cojen.tupl.core;
 
 import org.cojen.tupl.util.Latch;
-import org.cojen.tupl.util.LatchCondition;
 import org.cojen.tupl.util.Runner;
 
 /**
@@ -29,7 +28,7 @@ import org.cojen.tupl.util.Runner;
 /*P*/
 final class PendingTxnFinisher extends Latch implements Runnable {
     private final int mMaxThreads;
-    private final LatchCondition mIdleCondition;
+    private final Latch.Condition mIdleCondition;
 
     private PendingTxn mFirst, mLast;
 
@@ -37,7 +36,7 @@ final class PendingTxnFinisher extends Latch implements Runnable {
 
     PendingTxnFinisher(int maxThreads) {
         mMaxThreads = maxThreads;
-        mIdleCondition = new LatchCondition();
+        mIdleCondition = new Latch.Condition();
     }
 
     void enqueue(PendingTxn first, PendingTxn last) {

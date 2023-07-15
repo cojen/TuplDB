@@ -24,7 +24,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 
 import org.cojen.tupl.util.Latch;
-import org.cojen.tupl.util.LatchCondition;
 
 /**
  * Simple task scheduler that doesn't hoard waiting threads, unlike ScheduledThreadPoolExecutor.
@@ -33,7 +32,7 @@ import org.cojen.tupl.util.LatchCondition;
  */
 public final class Scheduler {
     private final Latch mLatch;
-    private final LatchCondition mCondition;
+    private final Latch.Condition mCondition;
     private final ExecutorService mExecutor;
     private final PriorityQueue<Delayed> mDelayed;
 
@@ -62,7 +61,7 @@ public final class Scheduler {
             throw new IllegalArgumentException();
         }
         mLatch = new Latch();
-        mCondition = new LatchCondition();
+        mCondition = new Latch.Condition();
         mExecutor = executor;
         mDelayed = new PriorityQueue<>();
     }

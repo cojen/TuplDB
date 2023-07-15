@@ -25,7 +25,7 @@ import java.util.Arrays;
 import org.cojen.tupl.DeadlockException;
 import org.cojen.tupl.LockResult;
 
-import org.cojen.tupl.util.LatchCondition;
+import org.cojen.tupl.util.Latch;
 
 import static org.cojen.tupl.LockResult.*;
 
@@ -64,10 +64,10 @@ class Lock {
     private Object mSharedLockersObj;
 
     // Waiters for upgradable lock. Contains only regular waiters.
-    LatchCondition mQueueU;
+    Latch.Condition mQueueU;
 
     // Waiters for shared and exclusive locks. Contains regular and shared waiters.
-    LatchCondition mQueueSX;
+    Latch.Condition mQueueSX;
 
     static final VarHandle cLockCountHandle;
 
@@ -119,7 +119,7 @@ class Lock {
             return mLockCount == ~0 ? OWNED_EXCLUSIVE : OWNED_UPGRADABLE;
         }
 
-        LatchCondition queueSX = mQueueSX;
+        Latch.Condition queueSX = mQueueSX;
         if (queueSX != null) {
             if (isSharedLocker(locker)) {
                 return OWNED_SHARED;
@@ -146,7 +146,7 @@ class Lock {
                     }
                 }
                 try {
-                    mQueueSX = queueSX = new LatchCondition();
+                    mQueueSX = queueSX = new Latch.Condition();
                 } catch (Throwable e) {
                     locker.mWaitingFor = null;
                     throw e;
@@ -214,7 +214,7 @@ class Lock {
             }
         }
 
-        LatchCondition queueU = mQueueU;
+        Latch.Condition queueU = mQueueU;
         if (queueU != null) {
             locker.mWaitingFor = this;
             if (nanosTimeout >= 0) {
@@ -241,7 +241,7 @@ class Lock {
                 }
             }
             try {
-                mQueueU = queueU = new LatchCondition();
+                mQueueU = queueU = new Latch.Condition();
             } catch (Throwable e) {
                 locker.mWaitingFor = null;
                 throw e;
@@ -288,7 +288,7 @@ class Lock {
             return ur;
         }
 
-        LatchCondition queueSX = mQueueSX;
+        Latch.Condition queueSX = mQueueSX;
         quick: {
             if (queueSX == null) {
                 int lockCount = mLockCount;
@@ -303,7 +303,7 @@ class Lock {
                         return DEADLOCK;
                     }
                     try {
-                        mQueueSX = queueSX = new LatchCondition();
+                        mQueueSX = queueSX = new Latch.Condition();
                         break quick;
                     } catch (Throwable e) {
                         locker.mWaitingFor = null;
@@ -397,7 +397,7 @@ class Lock {
      */
     private void unlockUpgradable(Bucket bucket) {
         mOwner = null;
-        LatchCondition queueU = mQueueU;
+        Latch.Condition queueU = mQueueU;
         if (queueU != null) {
             // Signal at most one upgradable lock waiter.
             queueU.signal(bucket);
@@ -445,7 +445,7 @@ class Lock {
         if (count != ~0) {
             // Unlocking an upgradable lock.
             mOwner = null;
-            LatchCondition queueU = mQueueU;
+            Latch.Condition queueU = mQueueU;
             if ((mLockCount = count & 0x7fffffff) == 0 && queueU == null && mQueueSX == null) {
                 // Lock is now completely unused.
                 bucket.remove(this);
@@ -473,7 +473,7 @@ class Lock {
         if (count != ~0) {
             // Unlocking an upgradable lock.
             mOwner = null;
-            LatchCondition queueU = mQueueU;
+            Latch.Condition queueU = mQueueU;
             if ((mLockCount = count & 0x7fffffff) == 0 && queueU == null && mQueueSX == null) {
                 // Lock is now completely unused.
                 bucket.remove(this);
@@ -488,8 +488,8 @@ class Lock {
             mLockCount = 0;
             // The call to deleteGhost might have released and re-acquired the latch guarding
             // the state of this lock, so must obtain the latest references to the queues.
-            LatchCondition queueU = mQueueU;
-            LatchCondition queueSX = mQueueSX;
+            Latch.Condition queueU = mQueueU;
+            Latch.Condition queueSX = mQueueSX;
             if (queueU != null) {
                 // Signal at most one upgradable lock waiter.
                 queueU.signal(bucket);
@@ -542,7 +542,7 @@ class Lock {
 
             mLockCount = --count;
 
-            LatchCondition queueSX = mQueueSX;
+            Latch.Condition queueSX = mQueueSX;
             if (count == 0x80000000) {
                 if (queueSX != null) {
                     // Signal any exclusive lock waiter. Queue shouldn't contain any shared
@@ -582,7 +582,7 @@ class Lock {
             mOwner = null;
 
             // Signal at most one upgradable lock waiter.
-            LatchCondition queueU = mQueueU;
+            Latch.Condition queueU = mQueueU;
             if (queueU != null) {
                 queueU.signal(bucket);
             }
@@ -601,7 +601,7 @@ class Lock {
      */
     final void doUnlockToShared(Locker locker, Bucket bucket) {
         ownerCheck: if (mOwner == locker) {
-            LatchCondition queueU;
+            Latch.Condition queueU;
             int count = mLockCount;
 
             if (count != ~0) {
@@ -618,7 +618,7 @@ class Lock {
                 // The call to deleteGhost might have released and re-acquired the latch guarding
                 // the state of this lock, so must obtain the latest references to the queues.
                 queueU = mQueueU;
-                LatchCondition queueSX = mQueueSX;
+                Latch.Condition queueSX = mQueueSX;
                 if (queueSX != null) {
                     if (queueU != null) {
                         // Signal at most one upgradable lock waiter, and keep the latch.
@@ -664,7 +664,7 @@ class Lock {
         if (mLockCount == ~0) {
             deleteGhost(bucket);
             mLockCount = 0x80000000;
-            LatchCondition queueSX = mQueueSX;
+            Latch.Condition queueSX = mQueueSX;
             if (queueSX != null) {
                 queueSX.signalTagged(bucket);
             }
