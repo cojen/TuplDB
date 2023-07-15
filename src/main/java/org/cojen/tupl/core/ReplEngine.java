@@ -50,7 +50,6 @@ import org.cojen.tupl.repl.StreamReplicator;
 import org.cojen.tupl.rows.RowStore;
 
 import org.cojen.tupl.util.Latch;
-import org.cojen.tupl.util.LatchCondition;
 import org.cojen.tupl.util.Parker;
 import org.cojen.tupl.util.Runner;
 import org.cojen.tupl.util.WeakPool;
@@ -114,7 +113,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
     private final TxnTable mTransactions;
 
     // Used by stashForRecovery and awaitPreparedTransactions.
-    private LatchCondition mStashedCond;
+    private Latch.Condition mStashedCond;
 
     // Maintain soft references to indexes, allowing them to get closed if not used for
     // awhile. Without the soft references, LocalDatabase maintains only weak references to
@@ -1518,7 +1517,7 @@ class ReplEngine implements RedoVisitor, ThreadFactory {
                         te = mTransactions.get(scrambledTxnId);
                         if (te == null) {
                             if (mStashedCond == null) {
-                                mStashedCond = new LatchCondition();
+                                mStashedCond = new Latch.Condition();
                             }
                         }
                     } finally {

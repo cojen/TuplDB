@@ -34,7 +34,7 @@ import org.cojen.tupl.diag.DatabaseStats;
 
 import org.cojen.tupl.repl.StreamReplicator;
 
-import org.cojen.tupl.util.LatchCondition;
+import org.cojen.tupl.util.Latch;
 import org.cojen.tupl.util.Runner;
 
 /**
@@ -63,7 +63,7 @@ final class ReplController extends ReplWriter {
 
     final StreamReplicator mRepl;
 
-    private LatchCondition mLeaderNotifyCondition;
+    private Latch.Condition mLeaderNotifyCondition;
 
     private volatile ReplWriter mTxnRedoWriter;
     private volatile boolean mSwitchingToReplica;
@@ -92,7 +92,7 @@ final class ReplController extends ReplWriter {
     public ReplDecoder ready(long initialPosition, long initialTxnId) throws IOException {
         acquireExclusive();
         try {
-            mLeaderNotifyCondition = new LatchCondition();
+            mLeaderNotifyCondition = new Latch.Condition();
             // Init for the shouldCheckpoint method. Without this, an initial checkpoint is
             // performed even if it's not necessary.
             cCheckpointPosHandle.setOpaque(this, initialPosition | (1L << 63));
@@ -378,7 +378,7 @@ final class ReplController extends ReplWriter {
             }
         } else {
             if (mLeaderNotifyCondition == null) {
-                mLeaderNotifyCondition = new LatchCondition();
+                mLeaderNotifyCondition = new Latch.Condition();
             }
 
             // When signaled and with the latch held, need to check everything again.

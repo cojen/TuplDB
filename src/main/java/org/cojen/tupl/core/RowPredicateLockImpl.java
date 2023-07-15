@@ -32,7 +32,7 @@ import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.diag.DeadlockInfo;
 
-import org.cojen.tupl.util.LatchCondition;
+import org.cojen.tupl.util.Latch;
 
 /**
  * 
@@ -661,7 +661,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
                 cIndexIdHandle = lookup.findVarHandle
                     (VersionLock.class, "mIndexId", long.class);
                 cQueueUHandle = lookup.findVarHandle
-                    (VersionLock.class, "mQueueU", LatchCondition.class);
+                    (VersionLock.class, "mQueueU", Latch.Condition.class);
             } catch (Throwable e) {
                 throw Utils.rethrow(e);
             }
@@ -717,7 +717,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
         }
 
         private void signalQueueU() {
-            var queue = (LatchCondition) cQueueUHandle.getAcquire(this);
+            var queue = (Latch.Condition) cQueueUHandle.getAcquire(this);
             if (queue != null) {
                 LockManager.Bucket bucket = mBucket;
                 bucket.acquireExclusive();
@@ -750,10 +750,10 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
                     return true;
                 }
 
-                LatchCondition queue = mQueueSX;
+                Latch.Condition queue = mQueueSX;
                 if (queue == null) {
                     // Create a queue to indicate that we're waiting.
-                    mQueueSX = queue = new LatchCondition();
+                    mQueueSX = queue = new Latch.Condition();
                 }
             } catch (Throwable e) {
                 bucket.releaseExclusive();
@@ -766,7 +766,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
                 var queue = mQueueU;
                 if (queue == null) {
                     try {
-                        queue = new LatchCondition();
+                        queue = new Latch.Condition();
                         cQueueUHandle.setRelease(this, queue);
                     } catch (Throwable e) {
                         bucket.releaseExclusive();
@@ -849,7 +849,7 @@ final class RowPredicateLockImpl<R> implements RowPredicateLock<R> {
                     return true;
                 }
 
-                LatchCondition queueSX = mQueueSX;
+                Latch.Condition queueSX = mQueueSX;
 
                 if (queueSX == null) {
                     // Assume LockManager was closed.
