@@ -52,7 +52,6 @@ import org.cojen.tupl.diag.EventListener;
 import org.cojen.tupl.diag.EventType;
 
 import org.cojen.tupl.util.Latch;
-import org.cojen.tupl.util.LatchCondition;
 
 import org.cojen.tupl.io.Utils;
 import static org.cojen.tupl.io.Utils.closeQuietly;
@@ -97,7 +96,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
     private final ChannelManager mChanMan;
     private final StateLog mStateLog;
 
-    private final LatchCondition mSyncCommitCondition;
+    private final Latch.Condition mSyncCommitCondition;
 
     private final boolean mProxyWrites;
 
@@ -201,7 +200,7 @@ final class Controller extends Latch implements StreamReplicator, Channel {
                                       gf == null ? 0 : gf.groupId(), config.mChecksumSockets,
                                       this::uncaught);
         mGroupFile = gf;
-        mSyncCommitCondition = new LatchCondition();
+        mSyncCommitCondition = new Latch.Condition();
         mProxyWrites = config.mProxyWrites;
         mFailoverLagTimeoutMillis = config.mFailoverLagTimeoutMillis;
     }

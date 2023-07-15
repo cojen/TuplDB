@@ -23,7 +23,7 @@ import org.cojen.tupl.LockFailureException;
 import org.cojen.tupl.LockResult;
 import org.cojen.tupl.Transaction;
 
-import org.cojen.tupl.util.LatchCondition;
+import org.cojen.tupl.util.Latch;
 
 /**
  * 
@@ -141,7 +141,7 @@ class DetachedLockImpl extends Lock implements DetachedLock {
 
         if (mLockCount == ~0) {
             mLockCount = 0x80000000;
-            LatchCondition queueSX = mQueueSX;
+            Latch.Condition queueSX = mQueueSX;
             if (queueSX != null) {
                 queueSX.signalTagged(bucket);
             }
