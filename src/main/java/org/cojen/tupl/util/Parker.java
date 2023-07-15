@@ -446,7 +446,7 @@ public abstract class Parker {
         private Entry findEntry(Thread thread, int hash) {
             Entry[] entries = mEntries;
             for (Entry e = entries[hash & (entries.length - 1)]; e != null; e = e.mNext) {
-                if (e.get() == thread) {
+                if (e.refersTo(thread)) {
                     return e;
                 }
             }
