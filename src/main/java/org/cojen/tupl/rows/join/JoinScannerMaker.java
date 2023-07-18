@@ -918,7 +918,7 @@ final class JoinScannerMaker {
                 if (filter == FalseFilter.THE) {
                     resultVar = mMethodMaker.var(boolean.class).set(false);
                 } else if (filter == TrueFilter.THE) {
-                    resultVar = mTableVar.invoke("existsWith", mTxnVar, levelRowVar());
+                    resultVar = mTableVar.invoke("anyRowsWith", mTxnVar, levelRowVar());
                 } else {
                     Set<String> sources = mSource.argSources();
                     if (sources != null) {
@@ -932,7 +932,7 @@ final class JoinScannerMaker {
                         }
                     }
 
-                    resultVar = mTableVar.invoke("existsWith", mTxnVar, levelRowVar(),
+                    resultVar = mTableVar.invoke("anyRowsWith", mTxnVar, levelRowVar(),
                                                  filter.toString(), mArgsVar);
                 }
             } else {

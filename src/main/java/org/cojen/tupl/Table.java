@@ -236,15 +236,15 @@ public interface Table<R> extends Closeable {
      * @throws IllegalStateException if transaction belongs to another database instance
      * @see #isEmpty
      */
-    public default boolean exists(Transaction txn) throws IOException {
+    public default boolean anyRows(Transaction txn) throws IOException {
         // FIXME: Subclasses should provide an optimized implementation.
-        return exists(txn, null);
+        return anyRowsWith(txn, null);
     }
 
     /**
      * @hidden
      */
-    public default boolean existsWith(Transaction txn, R row) throws IOException {
+    public default boolean anyRowsWith(Transaction txn, R row) throws IOException {
         // FIXME: Subclasses should provide an optimized implementation.
         Scanner<R> s = newScannerWith(txn, row);
         boolean result = s.row() != null;
@@ -259,17 +259,17 @@ public interface Table<R> extends Closeable {
      * @param txn optional transaction to use; pass null for auto-commit mode
      * @throws IllegalStateException if transaction belongs to another database instance
      */
-    public default boolean exists(Transaction txn, String query, Object... args)
+    public default boolean anyRows(Transaction txn, String query, Object... args)
         throws IOException
     {
         // FIXME: Subclasses should provide an optimized implementation.
-        return existsWith(txn, null, query, args);
+        return anyRowsWith(txn, null, query, args);
     }
 
     /**
      * @hidden
      */
-    public default boolean existsWith(Transaction txn, R row, String query, Object... args)
+    public default boolean anyRowsWith(Transaction txn, R row, String query, Object... args)
         throws IOException
     {
         // FIXME: Subclasses should provide an optimized implementation.
@@ -299,7 +299,7 @@ public interface Table<R> extends Closeable {
      * Non-transactionally determines if the table has nothing in it. A return value of true
      * guarantees that the table is empty, but false negatives are possible.
      *
-     * @see #exists(Transaction)
+     * @see #anyRows(Transaction)
      */
     public boolean isEmpty() throws IOException;
 

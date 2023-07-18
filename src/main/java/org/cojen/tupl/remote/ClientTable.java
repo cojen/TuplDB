@@ -192,23 +192,23 @@ final class ClientTable<R> implements Table<R> {
     }
 
     @Override
-    public boolean exists(Transaction txn) throws IOException {
-        return mRemote.exists(mDb.remoteTransaction(txn));
+    public boolean anyRows(Transaction txn) throws IOException {
+        return mRemote.anyRows(mDb.remoteTransaction(txn));
     }
 
     @Override
-    public boolean existsWith(Transaction txn, R row) throws IOException {
+    public boolean anyRowsWith(Transaction txn, R row) throws IOException {
         // FIXME
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public boolean exists(Transaction txn, String query, Object... args) throws IOException {
-        return mRemote.exists(mDb.remoteTransaction(txn), query, args);
+    public boolean anyRows(Transaction txn, String query, Object... args) throws IOException {
+        return mRemote.anyRows(mDb.remoteTransaction(txn), query, args);
     }
 
     @Override
-    public boolean existsWith(Transaction txn, R row, String query, Object... args)
+    public boolean anyRowsWith(Transaction txn, R row, String query, Object... args)
         throws IOException
     {
         // FIXME
