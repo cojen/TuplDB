@@ -513,11 +513,6 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     @Override
-    public final Comparator<R> comparator(String spec) {
-        return ComparatorMaker.comparator(rowType(), spec);
-    }
-
-    @Override
     public final RowPredicate<R> predicate(String queryStr, Object... args) {
         if (queryStr == null) {
             return RowPredicate.all();

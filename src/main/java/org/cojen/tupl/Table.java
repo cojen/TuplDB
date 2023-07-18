@@ -31,6 +31,9 @@ import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.io.Utils;
 
+import org.cojen.tupl.rows.ComparatorMaker;
+import org.cojen.tupl.rows.PlainPredicateMaker;
+
 import org.cojen.tupl.rows.join.JoinTableMaker;
 
 /**
@@ -429,12 +432,16 @@ public interface Table<R> extends Closeable {
      * @throws IllegalArgumentException if the specification is malformed
      * @throws IllegalStateException if the specification refers to non-existent columns
      */
-    public Comparator<R> comparator(String spec);
+    public default Comparator<R> comparator(String spec) {
+        return ComparatorMaker.comparator(rowType(), spec);
+    }
 
     /**
      * Returns a row predicate for the given query expression and arguments.
      */
-    public Predicate<R> predicate(String query, Object... args);
+    public default Predicate<R> predicate(String query, Object... args) {
+        return PlainPredicateMaker.predicate(rowType(), query, args);
+    }
 
     /**
      * Returns a query plan used by {@link #newScanner(Transaction, String, Object...)

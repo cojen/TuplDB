@@ -287,16 +287,6 @@ final class ClientTable<R> implements Table<R> {
     }
 
     @Override
-    public Comparator<R> comparator(String spec) {
-        return mHelper.comparator(spec);
-    }
-
-    @Override
-    public Predicate<R> predicate(String query, Object... args) {
-        return mHelper.predicate(query, args);
-    }
-
-    @Override
     public QueryPlan scannerPlan(Transaction txn, String query, Object... args) throws IOException {
         return mRemote.scannerPlan(mDb.remoteTransaction(txn), query, args);
     }
