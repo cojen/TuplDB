@@ -184,6 +184,14 @@ public abstract class GroupFilter extends RowFilter {
         return num;
     }
 
+    @Override
+    protected final int maxArgument(int max) {
+        for (RowFilter sub : mSubFilters) {
+            max = sub.maxArgument(max);
+        }
+        return max;
+    }
+
     public final RowFilter[] subFilters() {
         return mSubFilters;
     }

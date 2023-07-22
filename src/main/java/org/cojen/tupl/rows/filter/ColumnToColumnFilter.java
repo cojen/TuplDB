@@ -56,6 +56,11 @@ public final class ColumnToColumnFilter extends ColumnFilter {
     }
 
     @Override
+    protected int maxArgument(int max) {
+        return max;
+    }
+
+    @Override
     public int isMatch(RowFilter filter) {
         if (filter == this) {
             return 1; // equal

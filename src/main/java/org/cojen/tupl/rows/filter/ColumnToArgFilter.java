@@ -54,6 +54,11 @@ public class ColumnToArgFilter extends ColumnFilter {
     }
 
     @Override
+    protected int maxArgument(int max) {
+        return Math.max(max, mArgNum);
+    }
+
+    @Override
     public int isMatch(RowFilter filter) {
         if (filter == this) {
             return 1; // equal
