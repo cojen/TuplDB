@@ -359,8 +359,8 @@ public abstract sealed class QueryPlan implements Serializable {
     public static final class Mapper extends QueryPlan {
         private static final long serialVersionUID = 1L;
 
-        public final String using;
         public final String target;
+        public final String using;
         public final QueryPlan source;
 
         /**
@@ -369,9 +369,9 @@ public abstract sealed class QueryPlan implements Serializable {
          * @param source child plan node
          */
         public Mapper(String target, String using, QueryPlan source) {
-            this.source = source;
-            this.using = using;
             this.target = target;
+            this.using = using;
+            this.source = source;
         }
 
         @Override
@@ -387,15 +387,15 @@ public abstract sealed class QueryPlan implements Serializable {
         }
 
         boolean matches(Mapper other) {
-            return Objects.equals(using, other.using) && Objects.equals(source, other.source) &&
-                Objects.equals(source, other.target);
+            return Objects.equals(target, other.target) && Objects.equals(using, other.using) &&
+                Objects.equals(source, other.source);
         }
 
         @Override
         public int hashCode() {
-            int hash = Objects.hashCode(using);
+            int hash = Objects.hashCode(target);
+            hash = hash * 31 + Objects.hashCode(using);
             hash = hash * 31 + Objects.hashCode(source);
-            hash = hash * 31 + Objects.hashCode(target);
             return hash ^ -677855948;
         }
     }
