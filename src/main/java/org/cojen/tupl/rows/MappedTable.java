@@ -279,12 +279,12 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
     @Override
     public QueryPlan scannerPlan(Transaction txn, String query, Object... args) throws IOException {
-        return mScannerFactoryCache.obtain(query, null).scannerPlan(this, txn, args);
+        return mScannerFactoryCache.obtain(query, null).plan(false, this, txn, args);
     }
 
     @Override
     public QueryPlan updaterPlan(Transaction txn, String query, Object... args) throws IOException {
-        return mScannerFactoryCache.obtain(query, null).updaterPlan(this, txn, args);
+        return mScannerFactoryCache.obtain(query, null).plan(true, this, txn, args);
     }
 
     @Override
@@ -575,12 +575,12 @@ public abstract class MappedTable<S, T> implements Table<T> {
                                sourceScannerVar, targetRowVar, mapperVar));
         }
 
-        // Add the scannerPlan and updaterPlan methods, which call a common method.
+        // Add the plan method.
 
         {
             MethodMaker mm = cm.addMethod(QueryPlan.class, "plan", boolean.class,
                                           MappedTable.class, Transaction.class, Object[].class)
-                .private_().varargs();
+                .public_().varargs();
 
             var forUpdaterVar = mm.param(0);
             var tableVar = mm.param(1);
@@ -613,20 +613,6 @@ public abstract class MappedTable<S, T> implements Table<T> {
             mm.return_(planVar);
         }
 
-        {
-            MethodMaker mm = cm.addMethod(QueryPlan.class, "scannerPlan",
-                                          MappedTable.class, Transaction.class, Object[].class)
-                .public_().varargs();
-            mm.return_(mm.invoke("plan", false, mm.param(0), mm.param(1), mm.param(2)));
-        }
-
-        {
-            MethodMaker mm = cm.addMethod(QueryPlan.class, "updaterPlan",
-                                          MappedTable.class, Transaction.class, Object[].class)
-                .public_().varargs();
-            mm.return_(mm.invoke("plan", true, mm.param(0), mm.param(1), mm.param(2)));
-        }
-
         try {
             MethodHandles.Lookup lookup = cm.finishHidden();
             MethodHandle mh = lookup.findConstructor
@@ -642,10 +628,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
                                   Transaction txn, T targetRow, Object... args)
             throws IOException;
 
-        QueryPlan scannerPlan(MappedTable<S, T> table, Transaction txn, Object... args)
-            throws IOException;
-
-        QueryPlan updaterPlan(MappedTable<S, T> table, Transaction txn, Object... args)
+        QueryPlan plan(boolean forUpdater, MappedTable<S, T> table, Transaction txn, Object... args)
             throws IOException;
     }
 
