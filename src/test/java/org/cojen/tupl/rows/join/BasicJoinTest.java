@@ -68,12 +68,10 @@ public class BasicJoinTest {
         var plan = """
             - nested loops join
               - first
-                - full scan over primary key
-                  table: org.cojen.tupl.rows.join.Department
+                - full scan over primary key: org.cojen.tupl.rows.join.Department
                   key columns: +id
               - join
-                - full scan over primary key
-                  table: org.cojen.tupl.rows.join.Employee
+                - full scan over primary key: org.cojen.tupl.rows.join.Employee
                   key columns: +id
             """;
 
@@ -114,13 +112,11 @@ public class BasicJoinTest {
         var plan = """
             - nested loops join
               - first
-                - full scan over primary key
-                  table: org.cojen.tupl.rows.join.Employee
+                - full scan over primary key: org.cojen.tupl.rows.join.Employee
                   key columns: +id
                 assignments: ?1 = employee.departmentId
               - join
-                - load one using primary key
-                  table: org.cojen.tupl.rows.join.Department
+                - load one using primary key: org.cojen.tupl.rows.join.Department
                   key columns: +id
                   filter: id == ?1
             """;
@@ -155,14 +151,12 @@ public class BasicJoinTest {
         plan = """
             - nested loops join
               - first
-                - full scan over primary key
-                  table: org.cojen.tupl.rows.join.Department
+                - full scan over primary key: org.cojen.tupl.rows.join.Department
                   key columns: +id
                 assignments: ?1 = department.id
               - join
                 - filter: departmentId == ?1
-                  - full scan over primary key
-                    table: org.cojen.tupl.rows.join.Employee
+                  - full scan over primary key: org.cojen.tupl.rows.join.Employee
                     key columns: +id
             """;
 
@@ -177,13 +171,11 @@ public class BasicJoinTest {
         var plan = """
             - nested loops join
               - first
-                - full scan over primary key
-                  table: org.cojen.tupl.rows.join.Employee
+                - full scan over primary key: org.cojen.tupl.rows.join.Employee
                   key columns: +id
                 assignments: ?1 = employee.departmentId
               - outer join
-                - load one using primary key
-                  table: org.cojen.tupl.rows.join.Department
+                - load one using primary key: org.cojen.tupl.rows.join.Department
                   key columns: +id
                   filter: id == ?1
             """;
@@ -205,14 +197,12 @@ public class BasicJoinTest {
         plan = """
             - nested loops join
               - first
-                - full scan over primary key
-                  table: org.cojen.tupl.rows.join.Department
+                - full scan over primary key: org.cojen.tupl.rows.join.Department
                   key columns: +id
                 assignments: ?1 = department.id
               - outer join
                 - filter: departmentId == ?1
-                  - full scan over primary key
-                    table: org.cojen.tupl.rows.join.Employee
+                  - full scan over primary key: org.cojen.tupl.rows.join.Employee
                     key columns: +id
             """;
 
@@ -236,14 +226,12 @@ public class BasicJoinTest {
         var plan = """
             - nested loops join
               - first
-                - full scan over primary key
-                  table: org.cojen.tupl.rows.join.Department
+                - full scan over primary key: org.cojen.tupl.rows.join.Department
                   key columns: +id
                 assignments: ?1 = department.id
               - outer join
                 - filter: departmentId == ?1
-                  - full scan over primary key
-                    table: org.cojen.tupl.rows.join.Employee
+                  - full scan over primary key: org.cojen.tupl.rows.join.Employee
                     key columns: +id
             """;
 
@@ -264,13 +252,11 @@ public class BasicJoinTest {
         plan = """
             - nested loops join
               - first
-                - full scan over primary key
-                  table: org.cojen.tupl.rows.join.Employee
+                - full scan over primary key: org.cojen.tupl.rows.join.Employee
                   key columns: +id
                 assignments: ?1 = employee.departmentId
               - outer join
-                - load one using primary key
-                  table: org.cojen.tupl.rows.join.Department
+                - load one using primary key: org.cojen.tupl.rows.join.Department
                   key columns: +id
                   filter: id == ?1
             """;
@@ -296,26 +282,22 @@ public class BasicJoinTest {
             - disjoint union
               - nested loops join
                 - first
-                  - full scan over primary key
-                    table: org.cojen.tupl.rows.join.Employee
+                  - full scan over primary key: org.cojen.tupl.rows.join.Employee
                     key columns: +id
                   assignments: ?1 = employee.departmentId
                 - outer join
-                  - load one using primary key
-                    table: org.cojen.tupl.rows.join.Department
+                  - load one using primary key: org.cojen.tupl.rows.join.Department
                     key columns: +id
                     filter: id == ?1
               - nested loops join
                 - first
-                  - full scan over primary key
-                    table: org.cojen.tupl.rows.join.Department
+                  - full scan over primary key: org.cojen.tupl.rows.join.Department
                     key columns: +id
                   assignments: ?1 = department.id
                 - anti join
                   - exists
                     - filter: departmentId == ?1
-                      - full scan over primary key
-                        table: org.cojen.tupl.rows.join.Employee
+                      - full scan over primary key: org.cojen.tupl.rows.join.Employee
                         key columns: +id
             """;
 
@@ -338,25 +320,21 @@ public class BasicJoinTest {
             - disjoint union
               - nested loops join
                 - first
-                  - full scan over primary key
-                    table: org.cojen.tupl.rows.join.Department
+                  - full scan over primary key: org.cojen.tupl.rows.join.Department
                     key columns: +id
                   assignments: ?1 = department.id
                 - outer join
                   - filter: departmentId == ?1
-                    - full scan over primary key
-                      table: org.cojen.tupl.rows.join.Employee
+                    - full scan over primary key: org.cojen.tupl.rows.join.Employee
                       key columns: +id
               - nested loops join
                 - first
-                  - full scan over primary key
-                    table: org.cojen.tupl.rows.join.Employee
+                  - full scan over primary key: org.cojen.tupl.rows.join.Employee
                     key columns: +id
                   assignments: ?1 = employee.departmentId
                 - anti join
                   - exists
-                    - load one using primary key
-                      table: org.cojen.tupl.rows.join.Department
+                    - load one using primary key: org.cojen.tupl.rows.join.Department
                       key columns: +id
                       filter: id == ?1
             """;
@@ -382,13 +360,11 @@ public class BasicJoinTest {
         var plan = """
             - nested loops join
               - first
-                - load one using primary key
-                  table: org.cojen.tupl.rows.join.Department
+                - load one using primary key: org.cojen.tupl.rows.join.Department
                   key columns: +id
                   filter: id == ?1
               - join
-                - full scan over primary key
-                  table: org.cojen.tupl.rows.join.Employee
+                - full scan over primary key: org.cojen.tupl.rows.join.Employee
                   key columns: +id
             """;
 
@@ -406,13 +382,11 @@ public class BasicJoinTest {
         plan = """
             - nested loops join
               - first
-                - load one using primary key
-                  table: org.cojen.tupl.rows.join.Employee
+                - load one using primary key: org.cojen.tupl.rows.join.Employee
                   key columns: +id
                   filter: id == ?1
               - join
-                - full scan over primary key
-                  table: org.cojen.tupl.rows.join.Department
+                - full scan over primary key: org.cojen.tupl.rows.join.Department
                   key columns: +id
             """;
 
@@ -428,15 +402,13 @@ public class BasicJoinTest {
         var plan = """
             - nested loops join
               - first
-                - load one using primary key
-                  table: org.cojen.tupl.rows.join.Department
+                - load one using primary key: org.cojen.tupl.rows.join.Department
                   key columns: +id
                   filter: id == ?1
                 assignments: ?2 = department.id
               - join
                 - filter: departmentId == ?2
-                  - full scan over primary key
-                    table: org.cojen.tupl.rows.join.Employee
+                  - full scan over primary key: org.cojen.tupl.rows.join.Employee
                     key columns: +id
             """;
 
@@ -454,18 +426,15 @@ public class BasicJoinTest {
         plan = """
             - nested loops join
               - first
-                - full scan over primary key
-                  table: org.cojen.tupl.rows.join.Employee
+                - full scan over primary key: org.cojen.tupl.rows.join.Employee
                   key columns: +id
                 assignments: ?2 = employee.departmentId
               - join
                 - range union
-                  - range scan over primary key
-                    table: org.cojen.tupl.rows.join.Department
+                  - range scan over primary key: org.cojen.tupl.rows.join.Department
                     key columns: +id
                     range: id >= ?2 .. id <= ?2
-                  - range scan over primary key
-                    table: org.cojen.tupl.rows.join.Department
+                  - range scan over primary key: org.cojen.tupl.rows.join.Department
                     key columns: +id
                     range: id >= ?1 .. id <= ?1
             """;
@@ -492,14 +461,12 @@ public class BasicJoinTest {
         var plan = """
             - nested loops join
               - first
-                - full scan over primary key
-                  table: org.cojen.tupl.rows.join.Employee
+                - full scan over primary key: org.cojen.tupl.rows.join.Employee
                   key columns: +id
                 assignments: ?2 = employee.departmentId
               - outer join
                 - filter: id == ?1
-                  - load one using primary key
-                    table: org.cojen.tupl.rows.join.Department
+                  - load one using primary key: org.cojen.tupl.rows.join.Department
                     key columns: +id
                     filter: id == ?2
             """;
@@ -522,18 +489,15 @@ public class BasicJoinTest {
         plan = """
             - nested loops join
               - first
-                - full scan over primary key
-                  table: org.cojen.tupl.rows.join.Employee
+                - full scan over primary key: org.cojen.tupl.rows.join.Employee
                   key columns: +id
                 assignments: ?2 = employee.departmentId
               - outer join
                 - range union
-                  - range scan over primary key
-                    table: org.cojen.tupl.rows.join.Department
+                  - range scan over primary key: org.cojen.tupl.rows.join.Department
                     key columns: +id
                     range: id >= ?2 .. id <= ?2
-                  - range scan over primary key
-                    table: org.cojen.tupl.rows.join.Department
+                  - range scan over primary key: org.cojen.tupl.rows.join.Department
                     key columns: +id
                     range: id >= ?1 .. id <= ?1
             """;
@@ -561,28 +525,24 @@ public class BasicJoinTest {
             - disjoint union
               - nested loops join
                 - first
-                  - full scan over primary key
-                    table: org.cojen.tupl.rows.join.Employee
+                  - full scan over primary key: org.cojen.tupl.rows.join.Employee
                     key columns: +id
                   assignments: ?2 = employee.departmentId
                 - outer join
                   - filter: id == ?1
-                    - load one using primary key
-                      table: org.cojen.tupl.rows.join.Department
+                    - load one using primary key: org.cojen.tupl.rows.join.Department
                       key columns: +id
                       filter: id == ?2
               - nested loops join
                 - first
-                  - load one using primary key
-                    table: org.cojen.tupl.rows.join.Department
+                  - load one using primary key: org.cojen.tupl.rows.join.Department
                     key columns: +id
                     filter: id == ?1
                   assignments: ?2 = department.id
                 - anti join
                   - exists
                     - filter: departmentId == ?2
-                      - full scan over primary key
-                        table: org.cojen.tupl.rows.join.Employee
+                      - full scan over primary key: org.cojen.tupl.rows.join.Employee
                         key columns: +id
             """;
 
@@ -603,27 +563,23 @@ public class BasicJoinTest {
             - disjoint union
               - nested loops join
                 - first
-                  - load one using primary key
-                    table: org.cojen.tupl.rows.join.Department
+                  - load one using primary key: org.cojen.tupl.rows.join.Department
                     key columns: +id
                     filter: id == ?1
                   assignments: ?2 = department.id
                 - outer join
                   - filter: departmentId == ?2
-                    - full scan over primary key
-                      table: org.cojen.tupl.rows.join.Employee
+                    - full scan over primary key: org.cojen.tupl.rows.join.Employee
                       key columns: +id
               - nested loops join
                 - first
-                  - full scan over primary key
-                    table: org.cojen.tupl.rows.join.Employee
+                  - full scan over primary key: org.cojen.tupl.rows.join.Employee
                     key columns: +id
                   assignments: ?2 = employee.departmentId
                 - anti join
                   - exists
                     - filter: id == ?1
-                      - load one using primary key
-                        table: org.cojen.tupl.rows.join.Department
+                      - load one using primary key: org.cojen.tupl.rows.join.Department
                         key columns: +id
                         filter: id == ?2
             """;
@@ -648,28 +604,23 @@ public class BasicJoinTest {
               - filter: department.id == employee.departmentId || department.id == ?1
                 - nested loops join
                   - first
-                    - full scan over primary key
-                      table: org.cojen.tupl.rows.join.Department
+                    - full scan over primary key: org.cojen.tupl.rows.join.Department
                       key columns: +id
                   - outer join
-                    - full scan over primary key
-                      table: org.cojen.tupl.rows.join.Employee
+                    - full scan over primary key: org.cojen.tupl.rows.join.Employee
                       key columns: +id
               - nested loops join
                 - first
-                  - full scan over primary key
-                    table: org.cojen.tupl.rows.join.Employee
+                  - full scan over primary key: org.cojen.tupl.rows.join.Employee
                     key columns: +id
                   assignments: ?2 = employee.departmentId
                 - anti join
                   - exists
                     - range union
-                      - range scan over primary key
-                        table: org.cojen.tupl.rows.join.Department
+                      - range scan over primary key: org.cojen.tupl.rows.join.Department
                         key columns: +id
                         range: id >= ?2 .. id <= ?2
-                      - range scan over primary key
-                        table: org.cojen.tupl.rows.join.Department
+                      - range scan over primary key: org.cojen.tupl.rows.join.Department
                         key columns: +id
                         range: id >= ?1 .. id <= ?1
             """;
@@ -700,14 +651,12 @@ public class BasicJoinTest {
             - nested loops join
               - first
                 - filter: employee.id != employee.lastName
-                  - full scan over primary key
-                    table: org.cojen.tupl.rows.join.Employee
+                  - full scan over primary key: org.cojen.tupl.rows.join.Employee
                     key columns: +id
                 assignments: ?2 = employee.departmentId
               - join
                 - filter: id != ?1
-                  - load one using primary key
-                    table: org.cojen.tupl.rows.join.Department
+                  - load one using primary key: org.cojen.tupl.rows.join.Department
                     key columns: +id
                     filter: id == ?2
             """;
@@ -728,13 +677,11 @@ public class BasicJoinTest {
             - nested loops join
               - first
                 - filter: employee.id != employee.lastName
-                  - full scan over primary key
-                    table: org.cojen.tupl.rows.join.Employee
+                  - full scan over primary key: org.cojen.tupl.rows.join.Employee
                     key columns: +id
               - join
                 - filter: id != ?1
-                  - full scan over primary key
-                    table: org.cojen.tupl.rows.join.Department
+                  - full scan over primary key: org.cojen.tupl.rows.join.Department
                     key columns: +id
             """;
 
@@ -765,12 +712,10 @@ public class BasicJoinTest {
             - filter: (employee.departmentId == department.id && employee.id != employee.lastName) || department.name == ?1
               - nested loops join
                 - first
-                  - full scan over primary key
-                    table: org.cojen.tupl.rows.join.Employee
+                  - full scan over primary key: org.cojen.tupl.rows.join.Employee
                     key columns: +id
                 - join
-                  - full scan over primary key
-                    table: org.cojen.tupl.rows.join.Department
+                  - full scan over primary key: org.cojen.tupl.rows.join.Department
                     key columns: +id
             """;
         results = new String[] {
@@ -796,12 +741,10 @@ public class BasicJoinTest {
               - nested loops join
                 - first
                   - filter: id != ?1 || name == ?2
-                    - full scan over primary key
-                      table: org.cojen.tupl.rows.join.Department
+                    - full scan over primary key: org.cojen.tupl.rows.join.Department
                       key columns: +id
                 - join
-                  - full scan over primary key
-                    table: org.cojen.tupl.rows.join.Employee
+                  - full scan over primary key: org.cojen.tupl.rows.join.Employee
                     key columns: +id
             """;
 
@@ -831,14 +774,12 @@ public class BasicJoinTest {
         String plan = """
             - nested loops join
               - first
-                - full scan over primary key
-                  table: org.cojen.tupl.rows.join.Employee
+                - full scan over primary key: org.cojen.tupl.rows.join.Employee
                   key columns: +id
                 assignments: ?1 = first.country, ?2 = first.id
               - join
                 - filter: country == ?1
-                  - range scan over primary key
-                    table: org.cojen.tupl.rows.join.Employee
+                  - range scan over primary key: org.cojen.tupl.rows.join.Employee
                     key columns: +id
                     range: id > ?2 ..
             """;

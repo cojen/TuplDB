@@ -79,6 +79,8 @@ public class WorkerTest {
         w.join(false);
 
         assertEquals(1000 + ((max + 1) * (max / 2)), total.sum());
+
+        w.join(true);
     }
 
     @Test
@@ -97,6 +99,8 @@ public class WorkerTest {
         w.join(false);
 
         assertEquals((limit + 1) * (limit / 2), total.sum());
+
+        w.join(true);
     }
 
     @Test
@@ -116,6 +120,8 @@ public class WorkerTest {
         w.join(false);
 
         assertEquals((limit + 1) * (limit / 2), total.sum());
+
+        w.join(true);
     }
 
     @Test
@@ -182,6 +188,8 @@ public class WorkerTest {
         group.join(false);
 
         assertEquals((limit + 1) * (limit / 2), total.sum());
+
+        group.join(true);
     }
 
     @Test
@@ -217,6 +225,8 @@ public class WorkerTest {
         }
 
         assertEquals(max * counts.size(), sum);
+
+        group.join(true);
     }
 
     @Test

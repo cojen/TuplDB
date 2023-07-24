@@ -30,7 +30,7 @@ import org.cojen.tupl.rows.filter.RowFilter;
  * @see Table#predicate
  * @author Brian S O'Neill
  */
-final class PlainPredicateMaker {
+public final class PlainPredicateMaker {
     private static final WeakCache<Pair<Class<?>, String>, MethodHandle, Object> cCache;
 
     static {
