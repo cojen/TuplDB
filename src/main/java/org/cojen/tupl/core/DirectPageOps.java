@@ -22,6 +22,11 @@ import java.io.IOException;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.lang.invoke.VarHandle;
+
 import java.nio.ByteOrder;
 
 import java.util.Arrays;
@@ -52,16 +57,35 @@ public final class DirectPageOps {
     static final ValueLayout.OfInt INT_LE;
     static final ValueLayout.OfLong LONG_LE, LONG_BE;
 
+    static final MethodHandle OF_ADDRESS_UNSAFE;
+
+    static final VarHandle BYTE_H, CHAR_LE_H, INT_LE_H, LONG_LE_H, LONG_BE_H;
+
     private static final boolean CHECK_BOUNDS;
     private static final int CHECKED_PAGE_SIZE;
 
     private static final long EMPTY_TREE_LEAF, CLOSED_TREE_PAGE, DELETED_TREE_PAGE, STUB_TREE_PAGE;
 
     static {
+        // TODO: Won't need to be stashed in fields.
         CHAR_LE = ValueLayout.JAVA_CHAR_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
         INT_LE = ValueLayout.JAVA_INT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
         LONG_LE = ValueLayout.JAVA_LONG_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
         LONG_BE = ValueLayout.JAVA_LONG_UNALIGNED.withOrder(ByteOrder.BIG_ENDIAN);
+
+        try {
+            OF_ADDRESS_UNSAFE = MethodHandles.lookup().findStatic
+                (DirectPageOps.class, "ofAddressUnsafe",
+                 MethodType.methodType(MemorySegment.class, long.class));
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
+
+        BYTE_H = adaptSegmentHandle(ValueLayout.JAVA_BYTE.varHandle());
+        CHAR_LE_H = adaptSegmentHandle(CHAR_LE.varHandle());
+        INT_LE_H = adaptSegmentHandle(INT_LE.varHandle());
+        LONG_LE_H = adaptSegmentHandle(LONG_LE.varHandle());
+        LONG_BE_H = adaptSegmentHandle(LONG_BE.varHandle());
 
         Integer checkedPageSize = Integer.getInteger
             (DirectPageOps.class.getName() + ".checkedPageSize");
@@ -82,6 +106,17 @@ public final class DirectPageOps {
         DELETED_TREE_PAGE = newEmptyTreePage(TN_HEADER_SIZE + 8, TYPE_TN_IN);
 
         STUB_TREE_PAGE = newEmptyTreePage(TN_HEADER_SIZE + 8, TYPE_TN_IN);
+    }
+
+    private static VarHandle adaptSegmentHandle(VarHandle vh) {
+        vh = MethodHandles.insertCoordinates(vh, 1, 0L);
+        vh = MethodHandles.filterCoordinates(vh, 0, OF_ADDRESS_UNSAFE);
+        //vh = vh.withInvokeExactBehavior();
+        return vh;
+    }
+
+    private static MemorySegment ofAddressUnsafe(long address) {
+        return MemorySegment.ofAddress(address).reinterpret(8);
     }
 
     private static long newEmptyTreePage(int pageSize, int type) {
@@ -205,7 +240,8 @@ public final class DirectPageOps {
 
         private static void preTouch(long startPtr, long endPtr, int pageSize, Latch notify) {
             for (long ptr = startPtr; ptr < endPtr; ptr += pageSize) {
-                ALL.set(ValueLayout.JAVA_BYTE, ptr, (byte) 0);
+                //ALL.set(ValueLayout.JAVA_BYTE, ptr, (byte) 0);
+                p_bytePut(ptr, 0, 0);
             }
             notify.releaseShared();
         }
@@ -378,7 +414,8 @@ public final class DirectPageOps {
         if (CHECK_BOUNDS && Long.compareUnsigned(index, CHECKED_PAGE_SIZE) >= 0) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
-        return ALL.get(ValueLayout.JAVA_BYTE, page + index);
+        //return ALL.get(ValueLayout.JAVA_BYTE, page + index);
+        return (byte) BYTE_H.get(page + index);
     }
 
     public static int p_ubyteGet(final long page, int index) {
@@ -389,7 +426,8 @@ public final class DirectPageOps {
         if (CHECK_BOUNDS && Long.compareUnsigned(index, CHECKED_PAGE_SIZE) >= 0) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
-        ALL.set(ValueLayout.JAVA_BYTE, page + index, v);
+        //ALL.set(ValueLayout.JAVA_BYTE, page + index, v);
+        BYTE_H.set(page + index, v);
     }
 
     public static void p_bytePut(final long page, int index, int v) {
@@ -400,28 +438,32 @@ public final class DirectPageOps {
         if (CHECK_BOUNDS && (index < 0 || index + 2 > CHECKED_PAGE_SIZE)) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
-        return ALL.get(CHAR_LE, page + index);
+        //return ALL.get(CHAR_LE, page + index);
+        return (char) CHAR_LE_H.get(page + index);
     }
 
     static void p_shortPutLE(final long page, int index, int v) {
         if (CHECK_BOUNDS && (index < 0 || index + 2 > CHECKED_PAGE_SIZE)) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
-        ALL.set(CHAR_LE, page + index, (char) v);
+        //ALL.set(CHAR_LE, page + index, (char) v);
+        CHAR_LE_H.set(page + index, (char) v);
     }
 
     static int p_intGetLE(final long page, int index) {
         if (CHECK_BOUNDS && (index < 0 || index + 4 > CHECKED_PAGE_SIZE)) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
-        return ALL.get(INT_LE, page + index);
+        //return ALL.get(INT_LE, page + index);
+        return (int) INT_LE_H.get(page + index);
     }
 
     static void p_intPutLE(final long page, int index, int v) {
         if (CHECK_BOUNDS && (index < 0 || index + 4 > CHECKED_PAGE_SIZE)) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
-        ALL.set(INT_LE, page + index, v);
+        //ALL.set(INT_LE, page + index, v);
+        INT_LE_H.set(page + index, v);
     }
 
     static long p_uintGetVar(final long page, int index) {
@@ -507,28 +549,32 @@ public final class DirectPageOps {
         if (CHECK_BOUNDS && (index < 0 || index + 8 > CHECKED_PAGE_SIZE)) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
-        return ALL.get(LONG_LE, page + index);
+        //return ALL.get(LONG_LE, page + index);
+        return (long) LONG_LE_H.get(page + index);
     }
 
     static void p_longPutLE(final long page, int index, long v) {
         if (CHECK_BOUNDS && (index < 0 || index + 8 > CHECKED_PAGE_SIZE)) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
-        ALL.set(LONG_LE, page + index, v);
+        //ALL.set(LONG_LE, page + index, v);
+        LONG_LE_H.set(page + index, v);
     }
 
     static long p_longGetBE(final long page, int index) {
         if (CHECK_BOUNDS && (index < 0 || index + 8 > CHECKED_PAGE_SIZE)) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
-        return ALL.get(LONG_BE, page + index);
+        //return ALL.get(LONG_BE, page + index);
+        return (long) LONG_BE_H.get(page + index);
     }
 
     static void p_longPutBE(final long page, int index, long v) {
         if (CHECK_BOUNDS && (index < 0 || index + 8 > CHECKED_PAGE_SIZE)) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
-        ALL.set(LONG_BE, page + index, v);
+        //ALL.set(LONG_BE, page + index, v);
+        LONG_BE_H.set(page + index, v);
     }
 
     static long p_ulongGetVar(final long page, IntegerRef ref) {

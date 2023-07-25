@@ -37,6 +37,7 @@ final class DirectMemory {
     private static final MethodHandle malloc, free;
 
     static {
+        // TODO: Should remove eventually.
         ALL = MemorySegment.NULL.reinterpret(Long.MAX_VALUE);
 
         Linker linker = Linker.nativeLinker();
