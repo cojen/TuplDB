@@ -51,6 +51,20 @@ import static org.cojen.tupl.core.Node.*;
  * @author Brian S O'Neill
  */
 public final class DirectPageOps {
+    private static final sun.misc.Unsafe UNSAFE;
+    private static final long ARRAY_OFFSET;
+
+    static {
+        try {
+            var theUnsafe = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
+            theUnsafe.setAccessible(true);
+            UNSAFE = (sun.misc.Unsafe) theUnsafe.get(null);
+            ARRAY_OFFSET = UNSAFE.arrayBaseOffset(byte[].class);
+        } catch (Throwable e) {
+            throw Utils.rethrow(e);
+        }
+    }
+
     static final int NODE_OVERHEAD = 100 - 24; // 6 fewer fields
 
     static final ValueLayout.OfChar CHAR_LE;
@@ -414,6 +428,7 @@ public final class DirectPageOps {
         if (CHECK_BOUNDS && Long.compareUnsigned(index, CHECKED_PAGE_SIZE) >= 0) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
+        //return UNSAFE.getByte(page + index);
         //return ALL.get(ValueLayout.JAVA_BYTE, page + index);
         return (byte) BYTE_H.get(page + index);
     }
@@ -426,6 +441,7 @@ public final class DirectPageOps {
         if (CHECK_BOUNDS && Long.compareUnsigned(index, CHECKED_PAGE_SIZE) >= 0) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
+        //UNSAFE.putByte(page + index, v);
         //ALL.set(ValueLayout.JAVA_BYTE, page + index, v);
         BYTE_H.set(page + index, v);
     }
@@ -438,6 +454,7 @@ public final class DirectPageOps {
         if (CHECK_BOUNDS && (index < 0 || index + 2 > CHECKED_PAGE_SIZE)) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
+        //return UNSAFE.getChar(page + index);
         //return ALL.get(CHAR_LE, page + index);
         return (char) CHAR_LE_H.get(page + index);
     }
@@ -446,6 +463,7 @@ public final class DirectPageOps {
         if (CHECK_BOUNDS && (index < 0 || index + 2 > CHECKED_PAGE_SIZE)) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
+        //UNSAFE.putShort(page + index, (short) v);
         //ALL.set(CHAR_LE, page + index, (char) v);
         CHAR_LE_H.set(page + index, (char) v);
     }
@@ -454,6 +472,7 @@ public final class DirectPageOps {
         if (CHECK_BOUNDS && (index < 0 || index + 4 > CHECKED_PAGE_SIZE)) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
+        //return UNSAFE.getInt(page + index);
         //return ALL.get(INT_LE, page + index);
         return (int) INT_LE_H.get(page + index);
     }
@@ -462,6 +481,7 @@ public final class DirectPageOps {
         if (CHECK_BOUNDS && (index < 0 || index + 4 > CHECKED_PAGE_SIZE)) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
+        //UNSAFE.putInt(page + index, v);
         //ALL.set(INT_LE, page + index, v);
         INT_LE_H.set(page + index, v);
     }
@@ -549,6 +569,7 @@ public final class DirectPageOps {
         if (CHECK_BOUNDS && (index < 0 || index + 8 > CHECKED_PAGE_SIZE)) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
+        //return UNSAFE.getLong(page + index);
         //return ALL.get(LONG_LE, page + index);
         return (long) LONG_LE_H.get(page + index);
     }
@@ -557,6 +578,7 @@ public final class DirectPageOps {
         if (CHECK_BOUNDS && (index < 0 || index + 8 > CHECKED_PAGE_SIZE)) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
+        //UNSAFE.putLong(page + index, v);
         //ALL.set(LONG_LE, page + index, v);
         LONG_LE_H.set(page + index, v);
     }
@@ -565,6 +587,7 @@ public final class DirectPageOps {
         if (CHECK_BOUNDS && (index < 0 || index + 8 > CHECKED_PAGE_SIZE)) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
+        //return Long.reverseBytes(p_longGetLE(page, index));
         //return ALL.get(LONG_BE, page + index);
         return (long) LONG_BE_H.get(page + index);
     }
@@ -573,6 +596,7 @@ public final class DirectPageOps {
         if (CHECK_BOUNDS && (index < 0 || index + 8 > CHECKED_PAGE_SIZE)) {
             throw new ArrayIndexOutOfBoundsException(index);
         }
+        //p_longPutLE(page, index, Long.reverseBytes(v));
         //ALL.set(LONG_BE, page + index, v);
         LONG_BE_H.set(page + index, v);
     }
@@ -768,6 +792,7 @@ public final class DirectPageOps {
                 throw new IndexOutOfBoundsException("dst: " + dstStart + ", " + len);
             }
         }
+        //UNSAFE.copyMemory(src, BYTE_ARRAY_OFFSET + srcStart, null, dstPage + dstStart, len);
         MemorySegment.copy(src, srcStart, ALL, ValueLayout.JAVA_BYTE, dstPage + dstStart, len);
     }
 
@@ -785,6 +810,7 @@ public final class DirectPageOps {
                 throw new IndexOutOfBoundsException("dst: " + dstStart + ", " + len);
             }
         }
+        //UNSAFE.copyMemory(null, srcPage + srcStart, dst, BYTE_ARRAY_OFFSET + dstStart, len);
         MemorySegment.copy(ALL, ValueLayout.JAVA_BYTE, srcPage + srcStart, dst, dstStart, len);
     }
 
@@ -802,6 +828,7 @@ public final class DirectPageOps {
                 throw new IndexOutOfBoundsException("dst: " + dstStart + ", " + len);
             }
         }
+        //UnsafeAccess.copy(srcPage + srcStart, dstPage + dstStart, len);
         MemorySegment.copy(ALL, srcPage + srcStart, ALL, dstPage + dstStart, len);
     }
 
