@@ -828,7 +828,7 @@ public final class DirectPageOps {
                 throw new IndexOutOfBoundsException("dst: " + dstStart + ", " + len);
             }
         }
-        //UnsafeAccess.copy(srcPage + srcStart, dstPage + dstStart, len);
+        //UNSAFE.copyMemory(srcPage + srcStart, dstPage + dstStart, len);
         MemorySegment.copy(ALL, srcPage + srcStart, ALL, dstPage + dstStart, len);
     }
 
