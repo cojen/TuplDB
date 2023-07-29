@@ -35,8 +35,8 @@ public interface Mapper<R, T> {
     // depends on, to help optimize query projection. By default, all columns are required.
 
     // FIXME: Define a method which indicates whether or not the map method performs any
-    // filtering, is is true by default. When false, it can help query sorting. In particular,
-    // partial sorting.
+    // filtering, which is true by default. When false, it can help query sorting. In
+    // particular, partial sorting.
 
     /**
      * Maps source rows to target rows.
@@ -53,9 +53,7 @@ public interface Mapper<R, T> {
      * @return null if the source column cannot always be derived from the target column
      * @throws ReflectiveOperationException if obtaining a MethodHandle fails
      */
-    default SourceColumn sourceColumn(String targetColumnName)
-        throws ReflectiveOperationException
-    {
+    default Column sourceColumn(String targetColumnName) throws ReflectiveOperationException {
         return null;
     }
 
@@ -63,8 +61,8 @@ public interface Mapper<R, T> {
      * @param name non-null source column name
      * @param mapper source column mapper, which can be null if an identity mapping suffices
      */
-    public record SourceColumn(String name, MethodHandle mapper) {
-        public SourceColumn {
+    public record Column(String name, MethodHandle mapper) {
+        public Column {
             Objects.requireNonNull(name);
         }
     }

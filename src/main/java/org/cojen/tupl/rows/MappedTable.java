@@ -22,12 +22,15 @@ import java.io.IOException;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.lang.invoke.VarHandle;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.TreeSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -66,10 +69,10 @@ import org.cojen.tupl.rows.filter.TrueFilter;
  * @see Table#map
  */
 public abstract class MappedTable<S, T> implements Table<T> {
-    private static final WeakCache<Class<?>, Factory<?, ?>, Object> cCache;
+    private static final SoftCache<Class<?>, Factory<?, ?>, Object> cCache;
 
     static {
-        cCache = new WeakCache<>() {
+        cCache = new SoftCache<>() {
             @Override
             public Factory<?, ?> newValue(Class<?> targetType, Object unused) {
                 return makeTableFactory(targetType);
@@ -87,25 +90,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
     private final SoftCache<String, ScannerFactory<S, T>, Query> mScannerFactoryCache;
 
-    /* FIXME: InverseMappers are generated as hidden classes to support unloading. They should
-       be softly cached to prevent premature unloading.
-    */
-
-    private volatile InverseMapper<S, T> mSourceRowPk, mSourceRowFull;
-
-    private static final VarHandle cSourceRowPkHandle, cSourceRowFullHandle;
-
-    static {
-        try {
-            var lookup = MethodHandles.lookup();
-            cSourceRowPkHandle = lookup.findVarHandle
-                (MappedTable.class, "mSourceRowPk", InverseMapper.class);
-            cSourceRowFullHandle = lookup.findVarHandle
-                (MappedTable.class, "mSourceRowFull", InverseMapper.class);
-        } catch (Throwable e) {
-            throw Utils.rethrow(e);
-        }
-    }
+    private InverseMapper<S, T> mInversePk, mInverseFull;
 
     protected MappedTable(Table<S> source, Mapper<S, T> mapper) {
         mSource = source;
@@ -179,10 +164,8 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
     @Override
     public boolean load(Transaction txn, T targetRow) throws IOException {
-        S sourceRow = sourceRowPk(Objects.requireNonNull(targetRow));
-        if (sourceRow == null) {
-            throw new ViewConstraintException();
-        }
+        Objects.requireNonNull(targetRow);
+        S sourceRow = inversePk().inverseMap(mSource, targetRow);
         if (mSource.load(txn, sourceRow)) {
             unsetRow(targetRow);
             mMapper.map(sourceRow, targetRow);
@@ -194,29 +177,23 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
     @Override
     public boolean exists(Transaction txn, T targetRow) throws IOException {
-        S sourceRow = sourceRowPk(Objects.requireNonNull(targetRow));
-        if (sourceRow == null) {
-            throw new ViewConstraintException();
-        }
+        Objects.requireNonNull(targetRow);
+        S sourceRow = inversePk().inverseMap(mSource, targetRow);
         return mSource.exists(txn, sourceRow);
     }
 
     @Override
     public void store(Transaction txn, T targetRow) throws IOException {
-        S sourceRow = sourceRowFull(Objects.requireNonNull(targetRow));
-        if (sourceRow == null) {
-            throw new UnmodifiableViewException();
-        }
+        Objects.requireNonNull(targetRow);
+        S sourceRow = inverseFull().inverseMapForWrite(mSource, targetRow);
         mSource.store(txn, sourceRow);
         markAllUndirty(targetRow);
     }
 
     @Override
     public T exchange(Transaction txn, T targetRow) throws IOException {
-        S sourceRow = sourceRowFull(Objects.requireNonNull(targetRow));
-        if (sourceRow == null) {
-            throw new UnmodifiableViewException();
-        }
+        Objects.requireNonNull(targetRow);
+        S sourceRow = inverseFull().inverseMapForWrite(mSource, targetRow);
         S oldSourceRow = mSource.exchange(txn, sourceRow);
         markAllUndirty(targetRow);
         if (oldSourceRow == null) {
@@ -230,10 +207,8 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
     @Override
     public boolean insert(Transaction txn, T targetRow) throws IOException {
-        S sourceRow = sourceRowFull(Objects.requireNonNull(targetRow));
-        if (sourceRow == null) {
-            throw new UnmodifiableViewException();
-        }
+        Objects.requireNonNull(targetRow);
+        S sourceRow = inverseFull().inverseMapForWrite(mSource, targetRow);
         if (!mSource.insert(txn, sourceRow)) {
             return false;
         }
@@ -243,10 +218,8 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
     @Override
     public boolean replace(Transaction txn, T targetRow) throws IOException {
-        S sourceRow = sourceRowFull(Objects.requireNonNull(targetRow));
-        if (sourceRow == null) {
-            throw new UnmodifiableViewException();
-        }
+        Objects.requireNonNull(targetRow);
+        S sourceRow = inverseFull().inverseMapForWrite(mSource, targetRow);
         if (!mSource.replace(txn, sourceRow)) {
             return false;
         }
@@ -270,10 +243,8 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
     @Override
     public boolean delete(Transaction txn, T targetRow) throws IOException {
-        S sourceRow = sourceRowPk(Objects.requireNonNull(targetRow));
-        if (sourceRow == null) {
-            throw new UnmodifiableViewException();
-        }
+        Objects.requireNonNull(targetRow);
+        S sourceRow = inversePk().inverseMapForWrite(mSource, targetRow);
         return mSource.delete(txn, sourceRow);
     }
 
@@ -303,33 +274,199 @@ public abstract class MappedTable<S, T> implements Table<T> {
     protected abstract void markAllUndirty(T targetRow);
 
     /**
-     * Returns a new source row instance or null if inverse mapping isn't possible. Only the
-     * primary key source columns need to be set.
-     *
-     * @throws IllegalStateException if the target primary key isn't fully specified
+     * Returns an inverse mapper which requires that the primary key columns need to be set.
      */
-    private S sourceRowPk(T targetRow) throws IOException {
-        var invMapper = (InverseMapper<S, T>) cSourceRowPkHandle.getOpaque(this);
+    private InverseMapper<S, T> inversePk() {
+        var invMapper = (InverseMapper<S, T>) mInversePk;
         if (invMapper == null) {
-            // FIXME: generate and stash using setOpaque
-            throw null;
+            invMapper = makeInversePk();
         }
-        return invMapper.inverseMap(mSource, targetRow);
+        return invMapper;
+    }
+
+    private synchronized InverseMapper<S, T> makeInversePk() {
+        var invMapper = mInversePk;
+        if (invMapper == null) {
+            mInversePk = invMapper = makeInverseMapper(1);
+        }
+        return invMapper;
     }
 
     /**
-     * Returns a new source row instance or null if inverse mapping isn't possible. All source
-     * row columns must be set.
-     *
-     * @throws IllegalStateException if any required target columns aren't set
+     * Returns an inverse mapper which requires that all columns need to be set.
      */
-    private S sourceRowFull(T targetRow) throws IOException {
-        var invMapper = (InverseMapper<S, T>) cSourceRowFullHandle.getOpaque(this);
+    private InverseMapper<S, T> inverseFull() {
+        var invMapper = (InverseMapper<S, T>) mInverseFull;
         if (invMapper == null) {
-            // FIXME: generate and stash using setOpaque
-            throw null;
+            invMapper = makeInverseFull();
         }
-        return invMapper.inverseMap(mSource, targetRow);
+        return invMapper;
+    }
+
+    private synchronized InverseMapper<S, T> makeInverseFull() {
+        var invMapper = mInverseFull;
+        if (invMapper == null) {
+            mInverseFull = invMapper = makeInverseMapper(2);
+        }
+        return invMapper;
+    }
+
+    /**
+     * @param mode 1: pk, mode 2: full
+     */
+    private InverseMapper<S, T> makeInverseMapper(int mode) {
+        RowInfo sourceInfo = RowInfo.find(mSource.rowType());
+        RowInfo targetInfo = RowInfo.find(rowType());
+
+        // Maps source columns to the targets that map to it.
+        var toTargetMap = new LinkedHashMap<String, Set<Mapper.Column>>();
+
+        for (ColumnInfo targetColumn : targetInfo.allColumns.values()) {
+            Mapper.Column source;
+            try {
+                source = mMapper.sourceColumn(targetColumn.name);
+            } catch (ReflectiveOperationException e) {
+                throw new IllegalStateException(e);
+            }
+
+            if (source == null) {
+                continue;
+            }
+
+            ColumnInfo sourceColumn = sourceInfo.allColumns.get(source.name());
+
+            if (sourceColumn == null) {
+                throw new IllegalStateException
+                    ("Target column \"" + targetColumn.name + "\" maps to a nonexistent " +
+                     "source column: " + source.name());
+            }
+
+            // pk: only select sources that refer to the primary key
+            if (mode == 1 && !sourceInfo.keyColumns.containsKey(source.name())) {
+                continue;
+            }
+
+            MethodHandle mapper = source.mapper();
+
+            if (mapper != null) {
+                MethodType mt = mapper.type();
+                if (mt.returnType() == void.class || mt.parameterCount() != 1) {
+                    throw new IllegalStateException
+                        ("Source column mapper isn't a function: " + source);
+                }
+                if (!mt.parameterType(0).isAssignableFrom(targetColumn.type)) {
+                    throw new IllegalStateException
+                        ("Source column mapper parameter type mismatch: " + source + "; " +
+                         targetColumn.type.getName());
+                }
+                if (!sourceColumn.type.isAssignableFrom(mt.returnType())) {
+                    throw new IllegalStateException
+                        ("Source column mapper return type mismatch: " + source + "; " +
+                         sourceColumn.type.getName());
+                }
+            }
+
+            Set<Mapper.Column> set = toTargetMap.get(source.name());
+
+            if (set == null) {
+                set = new TreeSet<>((a, b) -> {
+                    // Prefer identity mappers, so order them first.
+                    if (a.mapper() == null) {
+                        if (b.mapper() != null) {
+                            return -1;
+                        }
+                    } else if (b.mapper() == null) {
+                        return 1;
+                    }
+
+                    return a.name().compareTo(b.name());
+                });
+
+                toTargetMap.put(source.name(), set);
+            }
+
+            set.add(new Mapper.Column(targetColumn.name, mapper));
+        }
+
+        int expect = mode == 1 ? sourceInfo.keyColumns.size() : sourceInfo.allColumns.size();
+
+        if (toTargetMap.size() != expect) {
+            // Not enough source columns have been mapped.
+            return NoInverse.instance();
+        }
+
+        RowGen targetGen = targetInfo.rowGen();
+
+        ClassMaker cm = targetGen.beginClassMaker
+            (MappedTable.class, rowType(), "mapped").final_().implement(InverseMapper.class);
+
+        cm.addConstructor().private_();
+
+        MethodMaker mm = cm.addMethod(Object.class, "inverseMap", Table.class, Object.class);
+        mm.public_();
+
+        var targetRowVar = mm.param(1).cast(RowMaker.find(rowType()));
+        var sourceRowVar = mm.param(0).invoke("newRow").cast(mSource.rowType());
+
+        Map<String, Integer> targetColumnNumbers = targetGen.columnNumbers();
+
+        for (Map.Entry<String, Set<Mapper.Column>> e : toTargetMap.entrySet()) {
+            String sourceColumnName = e.getKey();
+            ColumnInfo sourceColumnInfo = sourceInfo.allColumns.get(sourceColumnName);
+
+            Label nextSource = mm.label();
+
+            // Assign the source column with the first target column which is set.
+
+            Iterator<Mapper.Column> it = e.getValue().iterator();
+            while (true) {
+                Mapper.Column targetColumn = it.next();
+
+                ColumnInfo targetColumnInfo = targetInfo.allColumns.get(targetColumn.name());
+
+                int targetColumnNum = targetColumnNumbers.get(targetColumn.name());
+                var stateVar = targetRowVar.field(targetGen.stateField(targetColumnNum));
+                Label nextTarget = it.hasNext() ? mm.label() : nextSource;
+                stateVar.and(RowGen.stateFieldMask(targetColumnNum)).ifEq(0, nextTarget);
+
+                var targetColumnVar = targetRowVar.field(targetColumn.name());
+                Variable sourceColumnVar;
+
+                MethodHandle mh = targetColumn.mapper();
+
+                if (mh != null) {
+                    sourceColumnVar = mm.invoke(mh, targetColumnVar);
+                } else {
+                    sourceColumnVar = mm.var(sourceColumnInfo.type);
+                    Converter.convertExact(mm, sourceColumnName,
+                                           targetColumnInfo, targetColumnVar,
+                                           sourceColumnInfo, sourceColumnVar);
+                }
+
+                sourceRowVar.invoke(sourceColumnName, sourceColumnVar);
+
+                if (!it.hasNext()) {
+                    break;
+                }
+
+                nextSource.goto_();
+
+                nextTarget.here();
+            }
+
+            nextSource.here();
+        }
+
+        mm.return_(sourceRowVar);
+
+        try {
+            MethodHandles.Lookup lookup = cm.finishHidden();
+            MethodHandle mh = lookup.findConstructor
+                (lookup.lookupClass(), MethodType.methodType(void.class));
+            return (InverseMapper<S, T>) mh.invoke();
+        } catch (Throwable e) {
+            throw RowUtils.rethrow(e);
+        }
     }
 
     private static <S, T> Factory<S, T> makeTableFactory(Class<T> targetType) {
@@ -403,14 +540,14 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
         var checker = new Function<ColumnFilter, RowFilter>() {
             Map<String, ColumnInfo> sourceRowColumns = RowInfo.find(mSource.rowType()).allColumns;
-            Map<String, Mapper.SourceColumn> sourceMappers = new HashMap<>();
+            Map<String, Mapper.Column> sourceMappers = new HashMap<>();
             Map<ArgMapper, Integer> argMappers;
             int maxArg;
 
             @Override
             public RowFilter apply(ColumnFilter cf) {
                 String columnName = cf.column().name;
-                Mapper.SourceColumn sourceMapper = sourceMapper(columnName);
+                Mapper.Column sourceMapper = sourceMapper(columnName);
                 if (sourceMapper == null) {
                     return null;
                 }
@@ -439,7 +576,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
                         return null;
                     }
                     String otherColumnName = c2c.otherColumn().name;
-                    Mapper.SourceColumn otherSourceMapper = sourceMapper(otherColumnName);
+                    Mapper.Column otherSourceMapper = sourceMapper(otherColumnName);
                     if (otherSourceMapper == null || otherSourceMapper.mapper() != null) {
                         return null;
                     }
@@ -450,8 +587,8 @@ public abstract class MappedTable<S, T> implements Table<T> {
                 return null;
             }
 
-            private Mapper.SourceColumn sourceMapper(String targetColumnName) {
-                Mapper.SourceColumn sourceMapper = sourceMappers.get(targetColumnName);
+            private Mapper.Column sourceMapper(String targetColumnName) {
+                Mapper.Column sourceMapper = sourceMappers.get(targetColumnName);
 
                 if (sourceMapper == null && !sourceMappers.containsKey(targetColumnName)) {
                     try {
@@ -664,14 +801,24 @@ public abstract class MappedTable<S, T> implements Table<T> {
         }
     }
 
-    @FunctionalInterface
     public interface InverseMapper<S, T> {
         /**
          * @param source only expected to be used for calling newRow
          * @param targetRow non null
          * @throws IllegalStateException if any required target columns aren't set
+         * @throws ViewConstraintException if inverse mapping isn't possible
          */
         S inverseMap(Table<S> source, T targetRow) throws IOException;
+
+        /**
+         * @param source only expected to be used for calling newRow
+         * @param targetRow non null
+         * @throws IllegalStateException if any required target columns aren't set
+         * @throws UnmodifiableViewException if inverse mapping isn't possible
+         */
+        default S inverseMapForWrite(Table<S> source, T targetRow) throws IOException {
+            return inverseMap(source, targetRow);
+        }
     }
 
     public static class NoInverse implements InverseMapper {
@@ -686,8 +833,13 @@ public abstract class MappedTable<S, T> implements Table<T> {
         }
 
         @Override
-        public Object inverseMap(Table source, Object targetRow) {
-            return null;
+        public Object inverseMap(Table source, Object targetRow) throws IOException {
+            throw new ViewConstraintException();
+        }
+
+        @Override
+        public Object inverseMapForWrite(Table source, Object targetRow) throws IOException {
+            throw new UnmodifiableViewException();
         }
     }
 }
