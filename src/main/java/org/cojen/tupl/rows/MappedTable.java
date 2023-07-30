@@ -435,7 +435,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
         RowGen targetGen = targetInfo.rowGen();
 
         ClassMaker cm = targetGen.beginClassMaker
-            (MappedTable.class, rowType(), "mapped").final_().implement(InverseMapper.class);
+            (MappedTable.class, rowType(), null).final_().implement(InverseMapper.class);
 
         cm.addConstructor().private_();
 
@@ -717,7 +717,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
         RowInfo info = RowInfo.find(targetType);
 
         ClassMaker cm = info.rowGen().beginClassMaker
-            (MappedTable.class, targetType, "mapped").final_().implement(ScannerFactory.class);
+            (MappedTable.class, targetType, null).final_().implement(ScannerFactory.class);
 
         cm.addConstructor().private_();
 
