@@ -90,7 +90,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
     private final SoftCache<String, ScannerFactory<S, T>, Query> mScannerFactoryCache;
 
-    private InverseMapper<S, T> mInversePk, mInverseFull;
+    private InverseMapper<S, T> mInversePk, mInverseFull, mInverseUpdate;
 
     protected MappedTable(Table<S> source, Mapper<S, T> mapper) {
         mSource = source;
@@ -227,19 +227,28 @@ public abstract class MappedTable<S, T> implements Table<T> {
         return true;
     }
 
-    /*
     @Override
     public boolean update(Transaction txn, T targetRow) throws IOException {
-        // FIXME: Need to perform an inverse mapping.
-        throw null;
+        Objects.requireNonNull(targetRow);
+        S sourceRow = inverseUpdate().inverseMapForWrite(mSource, targetRow);
+        if (!mSource.update(txn, sourceRow)) {
+            return false;
+        }
+        markAllUndirty(targetRow);
+        return true;
     }
 
     @Override
     public boolean merge(Transaction txn, T targetRow) throws IOException {
-        // FIXME: Need to perform an inverse mapping.
-        throw null;
+        Objects.requireNonNull(targetRow);
+        S sourceRow = inverseUpdate().inverseMapForWrite(mSource, targetRow);
+        if (!mSource.merge(txn, sourceRow)) {
+            return false;
+        }
+        mMapper.map(sourceRow, targetRow);
+        markAllUndirty(targetRow);
+        return true;
     }
-    */
 
     @Override
     public boolean delete(Transaction txn, T targetRow) throws IOException {
@@ -312,7 +321,27 @@ public abstract class MappedTable<S, T> implements Table<T> {
     }
 
     /**
-     * @param mode 1: pk, mode 2: full
+     * Returns an inverse mapper which requires that the primary key columns need to be set,
+     * and only dirty columns are updated.
+     */
+    private InverseMapper<S, T> inverseUpdate() {
+        var invMapper = (InverseMapper<S, T>) mInverseUpdate;
+        if (invMapper == null) {
+            invMapper = makeInverseUpdate();
+        }
+        return invMapper;
+    }
+
+    private synchronized InverseMapper<S, T> makeInverseUpdate() {
+        var invMapper = mInverseUpdate;
+        if (invMapper == null) {
+            mInverseUpdate = invMapper = makeInverseMapper(3);
+        }
+        return invMapper;
+    }
+
+    /**
+     * @param mode 1: pk, mode 2: full, mode 3: update
      */
     private InverseMapper<S, T> makeInverseMapper(int mode) {
         RowInfo sourceInfo = RowInfo.find(mSource.rowType());
@@ -388,11 +417,19 @@ public abstract class MappedTable<S, T> implements Table<T> {
             set.add(new Mapper.Column(targetColumn.name, mapper));
         }
 
-        int expect = mode == 1 ? sourceInfo.keyColumns.size() : sourceInfo.allColumns.size();
-
-        if (toTargetMap.size() != expect) {
-            // Not enough source columns have been mapped.
-            return NoInverse.instance();
+        if (mode < 3) {
+            int expect = mode == 1 ? sourceInfo.keyColumns.size() : sourceInfo.allColumns.size();
+            if (toTargetMap.size() != expect) {
+                // Not enough source columns have been mapped.
+                return NoInverse.instance();
+            }
+        } else {
+            // At least the source primary key columns must be mapped.
+            for (String name : sourceInfo.keyColumns.keySet()) {
+                if (!toTargetMap.containsKey(name)) {
+                    return NoInverse.instance();
+                }
+            }
         }
 
         RowGen targetGen = targetInfo.rowGen();
@@ -427,7 +464,14 @@ public abstract class MappedTable<S, T> implements Table<T> {
                 int targetColumnNum = targetColumnNumbers.get(targetColumn.name());
                 var stateVar = targetRowVar.field(targetGen.stateField(targetColumnNum));
                 Label nextTarget = it.hasNext() ? mm.label() : nextSource;
-                stateVar.and(RowGen.stateFieldMask(targetColumnNum)).ifEq(0, nextTarget);
+                int stateMask = RowGen.stateFieldMask(targetColumnNum);
+
+                if (mode < 3 || sourceInfo.keyColumns.containsKey(sourceColumnName)) {
+                    stateVar.and(stateMask).ifEq(0, nextTarget);
+                } else {
+                    // Only update the column if it's dirty.
+                    stateVar.and(stateMask).ifNe(stateMask, nextTarget);
+                }
 
                 var targetColumnVar = targetRowVar.field(targetColumn.name());
                 Variable sourceColumnVar;
