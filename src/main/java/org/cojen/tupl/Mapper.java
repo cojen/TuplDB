@@ -19,12 +19,18 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
-import java.lang.invoke.MethodHandle;
-
-import java.util.Objects;
-
 /**
- * Interface for mapping source rows to target rows.
+ * Interface for mapping source rows to target rows. Inverse mapping is optional, but it's
+ * necessary for supporting modifiable views, and it's also used by the query optimizer.
+ *
+ * <p>For supporting inverse mapping, define a public static method for each target column
+ * which can be mapped to a source column. The method naming pattern must be {@code
+ * <target_name>_to_<source_name>}, and it must be a function. The parameter type must exactly
+ * match the target column type, and the return type must exactly match the source column type.
+ *
+ * <p>If this {@code Mapper} mostly performs identity mappings, extend the {@link Identity}
+ * interface in order for inverse mapping functions to be automatically defined. These serve as
+ * defaults only and can be overridden with explicit functions.
  *
  * @author Brian S O'Neill
  * @see Table#map Table.map
@@ -48,22 +54,8 @@ public interface Mapper<R, T> {
     T map(R source, T target) throws IOException;
 
     /**
-     * Returns a source column inverse mapper for querying target rows.
-     *
-     * @return null if the source column cannot always be derived from the target column
-     * @throws ReflectiveOperationException if obtaining a MethodHandle fails
+     * Defines a {@link Mapper} which automatically defines inverse mapping functions.
      */
-    default Column sourceColumn(String targetColumnName) throws ReflectiveOperationException {
-        return null;
-    }
-
-    /**
-     * @param name non-null source column name
-     * @param mapper source column mapper, which can be null if an identity mapping suffices
-     */
-    public record Column(String name, MethodHandle mapper) {
-        public Column {
-            Objects.requireNonNull(name);
-        }
+    public interface Identity<R, T> extends Mapper<R, T> {
     }
 }

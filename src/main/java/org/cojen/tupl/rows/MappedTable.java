@@ -23,10 +23,14 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.Map;
 import java.util.Objects;
@@ -347,74 +351,47 @@ public abstract class MappedTable<S, T> implements Table<T> {
         RowInfo sourceInfo = RowInfo.find(mSource.rowType());
         RowInfo targetInfo = RowInfo.find(rowType());
 
+        Map<String, ColumnInfo> sourceColumns;
+        if (mode == 1) {
+            // pk: only select sources that refer to the primary key
+            sourceColumns = sourceInfo.keyColumns;
+        } else {
+            sourceColumns = sourceInfo.allColumns;
+        }
+
+        var finder = new InverseFinder(mMapper.getClass(), sourceColumns);
+
         // Maps source columns to the targets that map to it.
-        var toTargetMap = new LinkedHashMap<String, Set<Mapper.Column>>();
+        var toTargetMap = new LinkedHashMap<String, Set<ColumnFunction>>();
 
         for (ColumnInfo targetColumn : targetInfo.allColumns.values()) {
-            Mapper.Column source;
-            try {
-                source = mMapper.sourceColumn(targetColumn.name);
-            } catch (ReflectiveOperationException e) {
-                throw new IllegalStateException(e);
-            }
+            ColumnFunction source = finder.tryFind(targetColumn);
 
             if (source == null) {
                 continue;
             }
 
-            ColumnInfo sourceColumn = sourceInfo.allColumns.get(source.name());
-
-            if (sourceColumn == null) {
-                throw new IllegalStateException
-                    ("Target column \"" + targetColumn.name + "\" maps to a nonexistent " +
-                     "source column: " + source.name());
-            }
-
-            // pk: only select sources that refer to the primary key
-            if (mode == 1 && !sourceInfo.keyColumns.containsKey(source.name())) {
-                continue;
-            }
-
-            MethodHandle mapper = source.mapper();
-
-            if (mapper != null) {
-                MethodType mt = mapper.type();
-                if (mt.returnType() == void.class || mt.parameterCount() != 1) {
-                    throw new IllegalStateException
-                        ("Source column mapper isn't a function: " + source);
-                }
-                if (!mt.parameterType(0).isAssignableFrom(targetColumn.type)) {
-                    throw new IllegalStateException
-                        ("Source column mapper parameter type mismatch: " + source + "; " +
-                         targetColumn.type.getName());
-                }
-                if (!sourceColumn.type.isAssignableFrom(mt.returnType())) {
-                    throw new IllegalStateException
-                        ("Source column mapper return type mismatch: " + source + "; " +
-                         sourceColumn.type.getName());
-                }
-            }
-
-            Set<Mapper.Column> set = toTargetMap.get(source.name());
+            String sourceName = source.column().name;
+            Set<ColumnFunction> set = toTargetMap.get(sourceName);
 
             if (set == null) {
                 set = new TreeSet<>((a, b) -> {
                     // Prefer identity mappers, so order them first.
-                    if (a.mapper() == null) {
-                        if (b.mapper() != null) {
+                    if (a.function() == null) {
+                        if (b.function() != null) {
                             return -1;
                         }
-                    } else if (b.mapper() == null) {
+                    } else if (b.function() == null) {
                         return 1;
                     }
 
-                    return a.name().compareTo(b.name());
+                    return a.column().name.compareTo(b.column().name);
                 });
 
-                toTargetMap.put(source.name(), set);
+                toTargetMap.put(sourceName, set);
             }
 
-            set.add(new Mapper.Column(targetColumn.name, mapper));
+            set.add(new ColumnFunction(targetColumn, source.function()));
         }
 
         if (mode < 3) {
@@ -447,7 +424,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
         Map<String, Integer> targetColumnNumbers = targetGen.columnNumbers();
 
-        for (Map.Entry<String, Set<Mapper.Column>> e : toTargetMap.entrySet()) {
+        for (Map.Entry<String, Set<ColumnFunction>> e : toTargetMap.entrySet()) {
             String sourceColumnName = e.getKey();
             ColumnInfo sourceColumnInfo = sourceInfo.allColumns.get(sourceColumnName);
 
@@ -455,13 +432,12 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
             // Assign the source column with the first target column which is set.
 
-            Iterator<Mapper.Column> it = e.getValue().iterator();
+            Iterator<ColumnFunction> it = e.getValue().iterator();
             while (true) {
-                Mapper.Column targetColumn = it.next();
+                ColumnFunction targetColumnFun = it.next();
+                ColumnInfo targetColumn = targetColumnFun.column();
 
-                ColumnInfo targetColumnInfo = targetInfo.allColumns.get(targetColumn.name());
-
-                int targetColumnNum = targetColumnNumbers.get(targetColumn.name());
+                int targetColumnNum = targetColumnNumbers.get(targetColumn.name);
                 var stateVar = targetRowVar.field(targetGen.stateField(targetColumnNum));
                 Label nextTarget = it.hasNext() ? mm.label() : nextSource;
                 int stateMask = RowGen.stateFieldMask(targetColumnNum);
@@ -473,17 +449,18 @@ public abstract class MappedTable<S, T> implements Table<T> {
                     stateVar.and(stateMask).ifNe(stateMask, nextTarget);
                 }
 
-                var targetColumnVar = targetRowVar.field(targetColumn.name());
+                var targetColumnVar = targetRowVar.field(targetColumn.name);
                 Variable sourceColumnVar;
 
-                MethodHandle mh = targetColumn.mapper();
+                Method fun = targetColumnFun.function();
 
-                if (mh != null) {
-                    sourceColumnVar = mm.invoke(mh, targetColumnVar);
+                if (fun != null) {
+                    sourceColumnVar = mm.var
+                        (fun.getDeclaringClass()).invoke(fun.getName(), targetColumnVar);
                 } else {
                     sourceColumnVar = mm.var(sourceColumnInfo.type);
                     Converter.convertExact(mm, sourceColumnName,
-                                           targetColumnInfo, targetColumnVar,
+                                           targetColumn, targetColumnVar,
                                            sourceColumnInfo, sourceColumnVar);
                 }
 
@@ -580,32 +557,31 @@ public abstract class MappedTable<S, T> implements Table<T> {
             targetFilter = filter;
         }
 
-        record ArgMapper(int targetArgNum, MethodHandle sourceMapper) { } 
+        record ArgMapper(int targetArgNum, Method function) { } 
 
         var checker = new Function<ColumnFilter, RowFilter>() {
-            Map<String, ColumnInfo> sourceRowColumns = RowInfo.find(mSource.rowType()).allColumns;
-            Map<String, Mapper.Column> sourceMappers = new HashMap<>();
+            InverseFinder finder = new InverseFinder
+                (mMapper.getClass(), RowInfo.find(mSource.rowType()).allColumns);
             Map<ArgMapper, Integer> argMappers;
             int maxArg;
 
             @Override
             public RowFilter apply(ColumnFilter cf) {
-                String columnName = cf.column().name;
-                Mapper.Column sourceMapper = sourceMapper(columnName);
-                if (sourceMapper == null) {
+                ColumnFunction source = finder.tryFind(cf.column());
+                if (source == null) {
                     return null;
                 }
 
                 if (cf instanceof ColumnToArgFilter c2a) {
-                    c2a = c2a.withColumn(sourceRowColumns.get(sourceMapper.name()));
-                    if (sourceMapper.mapper() == null) {
+                    c2a = c2a.withColumn(source.column());
+                    if (source.function() == null) {
                         return c2a;
                     }
                     if (argMappers == null) {
                         argMappers = new HashMap<>();
                         maxArg = targetFilter.maxArgument();
                     }
-                    var argMapper = new ArgMapper(c2a.argument(), sourceMapper.mapper());
+                    var argMapper = new ArgMapper(c2a.argument(), source.function());
                     Integer sourceArg = argMappers.get(argMapper);
                     if (sourceArg == null) {
                         sourceArg = ++maxArg;
@@ -616,39 +592,17 @@ public abstract class MappedTable<S, T> implements Table<T> {
                     // Can only convert to a source filter when both columns rely on an
                     // identity mapping, and a common type exists. It's unlikely that a common
                     // type doesn't exist.
-                    if (sourceMapper.mapper() != null) {
+                    if (source.function() != null) {
                         return null;
                     }
-                    String otherColumnName = c2c.otherColumn().name;
-                    Mapper.Column otherSourceMapper = sourceMapper(otherColumnName);
-                    if (otherSourceMapper == null || otherSourceMapper.mapper() != null) {
+                    ColumnFunction otherSource = finder.tryFind(c2c.otherColumn());
+                    if (otherSource == null || otherSource.function() != null) {
                         return null;
                     }
-                    return c2c.tryWithColumns(sourceRowColumns.get(columnName),
-                                              sourceRowColumns.get(otherColumnName));
+                    return c2c.tryWithColumns(source.column(), otherSource.column());
                 }
 
                 return null;
-            }
-
-            private Mapper.Column sourceMapper(String targetColumnName) {
-                Mapper.Column sourceMapper = sourceMappers.get(targetColumnName);
-
-                if (sourceMapper == null && !sourceMappers.containsKey(targetColumnName)) {
-                    try {
-                        sourceMapper = mMapper.sourceColumn(targetColumnName);
-                    } catch (ReflectiveOperationException e) {
-                        throw new IllegalStateException(e);
-                    }
-                    if (!sourceRowColumns.containsKey(sourceMapper.name())) {
-                        throw new IllegalStateException
-                            ("Target column \"" + targetColumnName + "\" maps to a nonexistent " +
-                             "source column: " + sourceMapper.name());
-                    }
-                    sourceMappers.put(targetColumnName, sourceMapper);
-                }
-
-                return sourceMapper;
             }
 
             void addPrepareArgsMethod(ClassMaker cm) {
@@ -671,13 +625,13 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
                 for (Map.Entry<ArgMapper, Integer> e : argMappers.entrySet()) {
                     ArgMapper argMapper = e.getKey();
-                    MethodHandle sourceMapper = argMapper.sourceMapper();
                     var argVar = argsVar.aget(argMapper.targetArgNum - 1);
                     Label cont = mm.label();
                     argVar.ifEq(null, cont);
-                    var targetArgVar = ConvertCallSite.make
-                        (mm, sourceMapper.type().parameterType(0), argVar);
-                    var sourceArgVar = mm.invoke(sourceMapper, targetArgVar);
+                    Method fun = argMapper.function();
+                    var targetArgVar = ConvertCallSite.make(mm, fun.getParameterTypes()[0], argVar);
+                    var sourceArgVar =
+                        mm.var(fun.getDeclaringClass()).invoke(fun.getName(), targetArgVar);
                     argsVar.aset(e.getValue() - 1, sourceArgVar);
 
                     cont.here();
@@ -884,6 +838,78 @@ public abstract class MappedTable<S, T> implements Table<T> {
         @Override
         public Object inverseMapForWrite(Table source, Object targetRow) throws IOException {
             throw new UnmodifiableViewException();
+        }
+    }
+
+    /**
+     * @param function is null for identity mapping
+     */
+    private record ColumnFunction(ColumnInfo column, Method function) { }
+
+    /**
+     * Finds inverse mapping functions defined in a Mapper implementation.
+     */
+    private static class InverseFinder {
+        private final boolean mIdentity;
+        private final Map<String, ColumnInfo> mSourceColumns;
+        private final TreeMap<String, Method> mAllMethods;
+
+        InverseFinder(Class<? extends Mapper> mapperClass, Map<String, ColumnInfo> sourceColumns) {
+            mIdentity = Mapper.Identity.class.isAssignableFrom(mapperClass);
+            mSourceColumns = sourceColumns;
+
+            mAllMethods = new TreeMap<>();
+            for (Method m : mapperClass.getMethods()) {
+                mAllMethods.put(m.getName(), m);
+            }
+        }
+
+        ColumnFunction tryFind(ColumnInfo targetColumn) {
+            String prefix = targetColumn.name + "_to_";
+
+            for (Method candidate : mAllMethods.tailMap(prefix).values()) {
+                String name = candidate.getName();
+                if (!name.startsWith(prefix)) {
+                    break;
+                }
+
+                if (!Modifier.isStatic(candidate.getModifiers())) {
+                    continue;
+                }
+
+                Class<?> retType = candidate.getReturnType();
+                if (retType == null || retType == void.class) {
+                    continue;
+                }
+
+                Class<?>[] paramTypes = candidate.getParameterTypes();
+                if (paramTypes.length != 1) {
+                    continue;
+                }
+
+                if (!paramTypes[0].isAssignableFrom(targetColumn.type)) {
+                    continue;
+                }
+
+                ColumnInfo sourceColumn = mSourceColumns.get(name.substring(prefix.length()));
+                if (sourceColumn == null) {
+                    continue;
+                }
+
+                if (!sourceColumn.type.isAssignableFrom(retType)) {
+                    continue;
+                }
+
+                return new ColumnFunction(sourceColumn, candidate);
+            }
+
+            if (!mIdentity) {
+                return null;
+            }
+
+            ColumnInfo sourceColumn = mSourceColumns.get(targetColumn.name);
+
+            return sourceColumn == null ? null : new ColumnFunction(sourceColumn, null);
         }
     }
 }
