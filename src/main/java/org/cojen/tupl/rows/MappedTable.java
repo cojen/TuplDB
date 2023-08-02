@@ -198,21 +198,17 @@ public abstract class MappedTable<S, T> implements Table<T> {
         return mScannerFactoryCache.obtain(query, null).newScannerWith(this, txn, targetRow, args);
     }
 
-    /*
     @Override
     public Updater<T> newUpdater(Transaction txn) throws IOException {
-        // FIXME: newUpdater
-        throw null;
+        return new MappedUpdater<>(this, mSource.newUpdater(txn), null, mMapper);
     }
 
     @Override
     public Updater<T> newUpdater(Transaction txn, String query, Object... args)
         throws IOException
     {
-        // FIXME: newUpdater
-        throw null;
+        return mScannerFactoryCache.obtain(query, null).newUpdaterWith(this, txn, null, args);
     }
-    */
 
     @Override
     public final Transaction newTransaction(DurabilityMode durabilityMode) {
@@ -347,7 +343,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
     /**
      * Returns an inverse mapper which requires that the primary key columns need to be set.
      */
-    private InverseMapper<S, T> inversePk() {
+    final InverseMapper<S, T> inversePk() {
         var invMapper = (InverseMapper<S, T>) mInversePk;
         if (invMapper == null) {
             invMapper = makeInversePk();
@@ -386,7 +382,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
      * Returns an inverse mapper which requires that the primary key columns need to be set,
      * and only dirty columns are updated.
      */
-    private InverseMapper<S, T> inverseUpdate() {
+    final InverseMapper<S, T> inverseUpdate() {
         var invMapper = (InverseMapper<S, T>) mInverseUpdate;
         if (invMapper == null) {
             invMapper = makeInverseUpdate();
@@ -678,9 +674,11 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
         checker.addPrepareArgsMethod(cm);
 
-        {
+        for (int which = 1; which <= 2; which++) {
+            String methodName = which == 1 ? "newScanner" : "newUpdater";
+
             MethodMaker mm = cm.addMethod
-                (Scanner.class, "newScannerWith",
+                (which == 1 ? Scanner.class : Updater.class, methodName + "With",
                  MappedTable.class, Transaction.class, Object.class, Object[].class)
                 .public_().varargs();
 
@@ -701,13 +699,13 @@ public abstract class MappedTable<S, T> implements Table<T> {
             Variable sourceScannerVar;
 
             if (sourceQuery.filter() == TrueFilter.THE) {
-                sourceScannerVar = sourceTableVar.invoke("newScanner", txnVar);
+                sourceScannerVar = sourceTableVar.invoke(methodName, txnVar);
             } else {
                 sourceScannerVar = sourceTableVar.invoke
-                    ("newScanner", txnVar, sourceQuery.toString(), argsVar);
+                    (methodName, txnVar, sourceQuery.toString(), argsVar);
             }
 
-            mm.return_(mm.new_(MappedScanner.class, tableVar,
+            mm.return_(mm.new_(which == 1 ? MappedScanner.class : MappedUpdater.class, tableVar,
                                sourceScannerVar, targetRowVar, mapperVar));
         }
 
@@ -761,6 +759,10 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
     public interface ScannerFactory<S, T> {
         Scanner<T> newScannerWith(MappedTable<S, T> table,
+                                  Transaction txn, T targetRow, Object... args)
+            throws IOException;
+
+        Updater<T> newUpdaterWith(MappedTable<S, T> table,
                                   Transaction txn, T targetRow, Object... args)
             throws IOException;
 

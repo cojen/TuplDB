@@ -28,12 +28,12 @@ import org.cojen.tupl.Scanner;
  * @author Brian S O'Neill
  * @see MappedTable
  */
-public final class MappedScanner<S, T> implements Scanner<T> {
-    private final MappedTable<S, T> mMappedTable;
-    private final Scanner<S> mSource;
-    private final Mapper<S, T> mMapper;
+public class MappedScanner<S, T> implements Scanner<T> {
+    protected final MappedTable<S, T> mMappedTable;
+    protected final Scanner<S> mSource;
+    protected final Mapper<S, T> mMapper;
 
-    private T mTargetRow;
+    protected T mTargetRow;
 
     public MappedScanner(MappedTable<S, T> mappedTable, Scanner<S> source, T targetRow,
                          Mapper<S, T> mapper)
@@ -58,12 +58,12 @@ public final class MappedScanner<S, T> implements Scanner<T> {
     }
 
     @Override
-    public T row() {
+    public final T row() {
         return mTargetRow;
     }
 
     @Override
-    public T step(T targetRow) throws IOException {
+    public final T step(T targetRow) throws IOException {
         Scanner<S> source = mSource;
         S sourceRow = source.row();
 
@@ -84,22 +84,22 @@ public final class MappedScanner<S, T> implements Scanner<T> {
     }
 
     @Override
-    public void close() throws IOException {
+    public final void close() throws IOException {
         mTargetRow = null;
         mSource.close();
     }
 
     @Override
-    public long estimateSize() {
+    public final long estimateSize() {
         return mSource.estimateSize();
     }
 
     @Override
-    public int characteristics() {
+    public final int characteristics() {
         return mSource.characteristics() & ~(SIZED | SUBSIZED);
     }
 
-    private T prepareTargetRow(T targetRow) {
+    protected final T prepareTargetRow(T targetRow) {
         if (targetRow == null) {
             targetRow = mMappedTable.newRow();
         } else {
