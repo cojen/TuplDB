@@ -73,13 +73,20 @@ import org.cojen.tupl.rows.filter.TrueFilter;
  * @see Table#map
  */
 public abstract class MappedTable<S, T> implements Table<T> {
-    private static final WeakCache<Class<?>, MethodHandle, Object> cFactoryCache;
+    /**
+     * Although the generated factories only depend on the targetType, a full key is needed
+     * because the mScannerFactoryCache and mInverse* fields rely on code which is generated
+     * against the source and target type.
+     */
+    private record FactoryKey(Class<?> sourceType, Class<?> targetType, Class<?> mapperClass) { }
+
+    private static final WeakCache<FactoryKey, MethodHandle, Object> cFactoryCache;
 
     static {
         cFactoryCache = new WeakCache<>() {
             @Override
-            public MethodHandle newValue(Class<?> targetType, Object unused) {
-                return makeTableFactory(targetType);
+            public MethodHandle newValue(FactoryKey key, Object unused) {
+                return makeTableFactory(key.targetType());
             }
         };
     }
@@ -88,8 +95,8 @@ public abstract class MappedTable<S, T> implements Table<T> {
                                                Mapper<S, T> mapper)
     {
         try {
-            return (MappedTable<S, T>) cFactoryCache.obtain(targetType, null)
-                .invokeExact(source, mapper);
+            var key = new FactoryKey(source.rowType(), targetType, mapper.getClass());
+            return (MappedTable<S, T>) cFactoryCache.obtain(key, null).invokeExact(source, mapper);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }
@@ -140,8 +147,8 @@ public abstract class MappedTable<S, T> implements Table<T> {
         return mh;
     }
 
-    final Table<S> mSource;
-    final Mapper<S, T> mMapper;
+    private final Table<S> mSource;
+    private final Mapper<S, T> mMapper;
 
     private final SoftCache<String, ScannerFactory<S, T>, Query> mScannerFactoryCache;
 
