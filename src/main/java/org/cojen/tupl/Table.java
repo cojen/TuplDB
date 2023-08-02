@@ -413,7 +413,7 @@ public interface Table<R> extends Closeable {
      * @throws NullPointerException if the given mapper is null
      */
     public default <T> Table<T> map(Class<T> targetType, Mapper<R, T> mapper) {
-        return MappedTable.<R, T>factory(targetType).make(this, mapper);
+        return MappedTable.<R, T>map(this, targetType, mapper);
     }
 
     /**

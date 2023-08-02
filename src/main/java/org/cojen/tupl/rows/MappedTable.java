@@ -73,20 +73,71 @@ import org.cojen.tupl.rows.filter.TrueFilter;
  * @see Table#map
  */
 public abstract class MappedTable<S, T> implements Table<T> {
-    private static final SoftCache<Class<?>, Factory<?, ?>, Object> cCache;
+    private static final WeakCache<Class<?>, MethodHandle, Object> cFactoryCache;
 
     static {
-        cCache = new SoftCache<>() {
+        cFactoryCache = new WeakCache<>() {
             @Override
-            public Factory<?, ?> newValue(Class<?> targetType, Object unused) {
+            public MethodHandle newValue(Class<?> targetType, Object unused) {
                 return makeTableFactory(targetType);
             }
         };
     }
 
-    @SuppressWarnings("unchecked")
-    public static <S, T> Factory<S, T> factory(Class<T> targetType) {
-        return (Factory<S, T>) cCache.obtain(targetType, null);
+    public static <S, T> MappedTable<S, T> map(Table<S> source, Class<T> targetType,
+                                               Mapper<S, T> mapper)
+    {
+        try {
+            return (MappedTable<S, T>) cFactoryCache.obtain(targetType, null)
+                .invokeExact(source, mapper);
+        } catch (Throwable e) {
+            throw RowUtils.rethrow(e);
+        }
+    }
+
+    /**
+     * MethodHandle signature: MappedTable<S, T> make(Table<S> source, Mapper<S, T> mapper)
+     */
+    private static MethodHandle makeTableFactory(Class<?> targetType) {
+        RowInfo info = RowInfo.find(targetType);
+
+        ClassMaker tableMaker = info.rowGen().beginClassMaker
+            (MappedTable.class, targetType, "mapped").final_()
+            .extend(MappedTable.class).implement(TableBasicsMaker.find(targetType));
+
+        {
+            MethodMaker ctor = tableMaker.addConstructor(Table.class, Mapper.class).private_();
+            ctor.invokeSuperConstructor(ctor.param(0), ctor.param(1));
+        }
+
+        // Keep a reference to the MethodHandle instance, to prevent it from being garbage
+        // collected as long as the generated table class still exists.
+        tableMaker.addField(MethodHandle.class, "_").static_().private_();
+
+        // Add the markAllUndirty method.
+        {
+            MethodMaker mm = tableMaker.addMethod(null, "markAllUndirty", Object.class);
+            mm.protected_();
+            TableMaker.markAllUndirty(mm.param(0).cast(RowMaker.find(targetType)), info);
+        }
+
+        MethodHandles.Lookup lookup = tableMaker.finishLookup();
+        Class<?> tableClass = lookup.lookupClass();
+
+        MethodMaker mm = MethodMaker.begin
+            (lookup, MappedTable.class, null, Table.class, Mapper.class);
+        mm.return_(mm.new_(tableClass, mm.param(0), mm.param(1)));
+
+        MethodHandle mh = mm.finish();
+
+        try {
+            // Assign the singleton reference.
+            lookup.findStaticVarHandle(tableClass, "_", MethodHandle.class).set(mh);
+        } catch (Throwable e) {
+            throw RowUtils.rethrow(e);
+        }
+
+        return mh;
     }
 
     final Table<S> mSource;
@@ -488,61 +539,6 @@ public abstract class MappedTable<S, T> implements Table<T> {
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }
-    }
-
-    private static <S, T> Factory<S, T> makeTableFactory(Class<T> targetType) {
-        RowInfo info = RowInfo.find(targetType);
-
-        ClassMaker tableMaker = info.rowGen().beginClassMaker
-            (MappedTable.class, targetType, "mapped").final_()
-            .extend(MappedTable.class).implement(TableBasicsMaker.find(targetType));
-
-        {
-            MethodMaker ctor = tableMaker.addConstructor(Table.class, Mapper.class);
-            ctor.invokeSuperConstructor(ctor.param(0), ctor.param(1));
-        }
-
-        // Keep a reference to the singleton factory instance, to prevent the factory from
-        // being garbage collected as long as the generated table class still exists.
-        tableMaker.addField(Factory.class, "_").static_();
-
-        // Add the markAllUndirty method.
-        {
-            MethodMaker mm = tableMaker.addMethod(null, "markAllUndirty", Object.class);
-            mm.protected_();
-            TableMaker.markAllUndirty(mm.param(0).cast(RowMaker.find(targetType)), info);
-        }
-
-        Class<?> tableClass = tableMaker.finish();
-
-        ClassMaker factoryMaker = info.rowGen().beginClassMaker
-            (MappedTable.class, targetType, null).final_().implement(Factory.class);
-
-        {
-            MethodMaker ctor = factoryMaker.addConstructor();
-            ctor.invokeSuperConstructor();
-            // Assign the singleton reference.
-            ctor.var(tableClass).field("_").set(ctor.this_());
-        }
-
-        {
-            MethodMaker mm = factoryMaker.addMethod
-                (MappedTable.class, "make", Table.class, Mapper.class).public_();
-            mm.return_(mm.new_(tableClass, mm.param(0), mm.param(1)));
-        }
-
-        try {
-            MethodHandles.Lookup lookup = factoryMaker.finishHidden();
-            MethodHandle mh = lookup.findConstructor
-                (lookup.lookupClass(), MethodType.methodType(void.class));
-            return (Factory<S, T>) mh.invoke();
-        } catch (Throwable e) {
-            throw RowUtils.rethrow(e);
-        }
-    }
-
-    public interface Factory<S, T> {
-        MappedTable<S, T> make(Table<S> source, Mapper<S, T> mapper);
     }
 
     private ScannerFactory<S, T> makeScannerFactory(Query targetQuery) {
