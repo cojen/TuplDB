@@ -449,8 +449,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
         }
 
         if (mode < 3) {
-            int expect = mode == 1 ? sourceInfo.keyColumns.size() : sourceInfo.allColumns.size();
-            if (toTargetMap.size() != expect) {
+            if (toTargetMap.size() != sourceColumns.size()) {
                 // Not enough source columns have been mapped.
                 return NoInverse.instance();
             }
