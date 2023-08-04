@@ -54,9 +54,7 @@ public final class MappedUpdater<S, T> extends MappedScanner<S, T> implements Up
         }
 
         T targetRow = row();
-        if (targetRow == null) {
-            return null;
-        }
+        assert targetRow != null;
 
         if (forDelete) {
             mMappedTable.inversePk().inverseMap(sourceRow, targetRow);

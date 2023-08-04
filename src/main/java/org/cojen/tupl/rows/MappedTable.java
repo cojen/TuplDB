@@ -175,36 +175,37 @@ public abstract class MappedTable<S, T> implements Table<T> {
     }
 
     @Override
-    public Scanner<T> newScanner(Transaction txn) throws IOException {
-        return new MappedScanner<>(this, mSource.newScanner(txn), null, mMapper);
+    public final Scanner<T> newScanner(Transaction txn) throws IOException {
+        return newScannerWith(txn, null);
     }
 
     @Override
-    public Scanner<T> newScannerWith(Transaction txn, T targetRow) throws IOException {
+    public final Scanner<T> newScannerWith(Transaction txn, T targetRow) throws IOException {
         return new MappedScanner<>(this, mSource.newScanner(txn), targetRow, mMapper);
     }
 
     @Override
-    public Scanner<T> newScanner(Transaction txn, String query, Object... args)
+    public final Scanner<T> newScanner(Transaction txn, String query, Object... args)
         throws IOException
     {
-        return mScannerFactoryCache.obtain(query, null).newScannerWith(this, txn, null, args);
+        return newScannerWith(txn, null, query, args);
     }
 
     @Override
-    public Scanner<T> newScannerWith(Transaction txn, T targetRow, String query, Object... args)
+    public final Scanner<T> newScannerWith(Transaction txn, T targetRow,
+                                           String query, Object... args)
         throws IOException
     {
         return mScannerFactoryCache.obtain(query, null).newScannerWith(this, txn, targetRow, args);
     }
 
     @Override
-    public Updater<T> newUpdater(Transaction txn) throws IOException {
+    public final Updater<T> newUpdater(Transaction txn) throws IOException {
         return new MappedUpdater<>(this, mSource.newUpdater(txn), null, mMapper);
     }
 
     @Override
-    public Updater<T> newUpdater(Transaction txn, String query, Object... args)
+    public final Updater<T> newUpdater(Transaction txn, String query, Object... args)
         throws IOException
     {
         return mScannerFactoryCache.obtain(query, null).newUpdaterWith(this, txn, null, args);
@@ -225,10 +226,12 @@ public abstract class MappedTable<S, T> implements Table<T> {
         Objects.requireNonNull(targetRow);
         S sourceRow = inversePk().inverseMapForLoad(mSource, targetRow);
         if (mSource.load(txn, sourceRow)) {
-            unsetRow(targetRow);
-            mMapper.map(sourceRow, targetRow);
-            markAllUndirty(targetRow);
-            return true;
+            T mappedRow = mMapper.map(sourceRow, newRow());
+            if (mappedRow != null) {
+                markAllUndirty(mappedRow);
+                copyRow(mappedRow, targetRow);
+                return true;
+            }
         }
         return false;
     }
@@ -237,7 +240,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
     public boolean exists(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inversePk().inverseMapForLoad(mSource, targetRow);
-        return mSource.exists(txn, sourceRow);
+        return mSource.load(txn, sourceRow) && mMapper.map(sourceRow, newRow()) != null;
     }
 
     @Override
@@ -257,9 +260,10 @@ public abstract class MappedTable<S, T> implements Table<T> {
         if (oldSourceRow == null) {
             return null;
         }
-        T oldTargetRow = newRow();
-        mMapper.map(oldSourceRow, oldTargetRow);
-        markAllUndirty(oldTargetRow);
+        T oldTargetRow = mMapper.map(oldSourceRow, newRow());
+        if (oldTargetRow != null) {
+            markAllUndirty(oldTargetRow);
+        }
         return oldTargetRow;
     }
 
@@ -303,8 +307,16 @@ public abstract class MappedTable<S, T> implements Table<T> {
         if (!mSource.merge(txn, sourceRow)) {
             return false;
         }
-        mMapper.map(sourceRow, targetRow);
-        markAllUndirty(targetRow);
+        T mappedRow = mMapper.map(sourceRow, newRow());
+        if (mappedRow != null) {
+            markAllUndirty(mappedRow);
+            copyRow(mappedRow, targetRow);
+        } else {
+            // Can't load back the row. One option is to rollback the transaction, but then the
+            // behavior would be inconsistent with the update operation. Unsetting all the
+            // columns allows the operation to complete and signal that something is amiss.
+            unsetRow(targetRow);
+        }
         return true;
     }
 
@@ -317,12 +329,24 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
     @Override
     public QueryPlan scannerPlan(Transaction txn, String query, Object... args) throws IOException {
-        return mScannerFactoryCache.obtain(query, null).plan(false, this, txn, args);
+        if (query == null) {
+            return decorate(mSource.scannerPlan(txn, null));
+        } else {
+            return mScannerFactoryCache.obtain(query, null).plan(false, this, txn, args);
+        }
     }
 
     @Override
     public QueryPlan updaterPlan(Transaction txn, String query, Object... args) throws IOException {
-        return mScannerFactoryCache.obtain(query, null).plan(true, this, txn, args);
+        if (query == null) {
+            return decorate(mSource.updaterPlan(txn, null));
+        } else {
+            return mScannerFactoryCache.obtain(query, null).plan(true, this, txn, args);
+        }
+    }
+
+    private QueryPlan decorate(QueryPlan plan) {
+        return new QueryPlan.Mapper(rowType().getName(), mMapper.toString(), plan);
     }
 
     @Override
@@ -797,7 +821,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
         public T map(S source, T target) throws IOException {
             target = mMapper.map(source, target);
-            return mPredicate.test(target) ? target : null;
+            return (target != null && mPredicate.test(target)) ? target : null;
         }
     }
 
