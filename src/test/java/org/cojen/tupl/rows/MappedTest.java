@@ -50,6 +50,7 @@ public class MappedTest {
     protected Table<TestRow> mTable;
 
     @PrimaryKey("id")
+    @SecondaryIndex("str")
     public interface TestRow {
         long id();
         void id(long id);
@@ -376,6 +377,20 @@ public class MappedTest {
             assertNull(scanner.step(row));
         }
 
+        var plan = (QueryPlan.Mapper) mapped.scannerPlan(null, "num == ? && str == ?");
+        var sub1 = (QueryPlan.Filter) plan.source;
+        assertEquals("num == ?4", sub1.expression);
+        var sub2 = (QueryPlan.PrimaryJoin) sub1.source;
+        var sub3 = (QueryPlan.RangeScan) sub2.source;
+        assertEquals("str >= ?3", sub3.low);
+        assertEquals("str <= ?3", sub3.high);
+
+        try (var scanner = mapped.newScanner(null, "num == ? && str == ?", 111, 2)) {
+            row = scanner.row();
+            assertEquals("{id=2, num=111, str=2}", row.toString());
+            assertNull(scanner.step(row));
+        }
+
         try (var updater = mapped.newUpdater(null)) {
             for (row = updater.row(); row != null; ) {
                 row.num(row.num() - 1);
@@ -456,6 +471,83 @@ public class MappedTest {
 
         public static int str_to_num(String str) {
             return Integer.parseInt(str);
+        }
+    }
+
+    @Test
+    public void rename() throws Exception {
+        Table<Renamed> mapped = mTable.map(Renamed.class, new Renamer());
+
+        Renamed row = mapped.newRow();
+        row.identifier(1);
+        row.string("hello");
+        row.number(123);
+        mapped.store(null, row);
+
+        row = mapped.newRow();
+        row.identifier(2);
+        row.string("world");
+        row.number(456);
+        mapped.store(null, row);
+
+        try (var scanner = mapped.newScanner(null)) {
+            row = scanner.row();
+            assertEquals("{identifier=1, number=123, string=hello}", row.toString());
+            row = scanner.step();
+            assertEquals("{identifier=2, number=456, string=world}", row.toString());
+            assertNull(scanner.step());
+        }
+
+        try (var scanner = mTable.newScanner(null)) {
+            var sourceRow = scanner.row();
+            assertEquals("{id=1, num=123, str=hello}", sourceRow.toString());
+            sourceRow = scanner.step();
+            assertEquals("{id=2, num=456, str=world}", sourceRow.toString());
+            assertNull(scanner.step());
+        }
+
+        var plan = (QueryPlan.Mapper) mapped.scannerPlan(null, "string > ? && number != ?");
+        var sub1 = (QueryPlan.Filter) plan.source;
+        assertEquals("str > ?3 && num != ?4", sub1.expression);
+
+        try (var scanner = mapped.newScanner(null, "string > ? && number != ?", "hello", 0)) {
+            row = scanner.row();
+            assertEquals("{identifier=2, number=456, string=world}", row.toString());
+            assertNull(scanner.step());
+        }
+    }
+
+    public static interface Renamed {
+        long identifier();
+        void identifier(long id);
+
+        String string();
+        void string(String str);
+
+        int number();
+        void number(int num);
+    }
+
+    public static class Renamer implements Mapper<TestRow, Renamed> {
+        @Override
+        public Renamed map(TestRow source, Renamed target) {
+            assertEquals("{}", target.toString());
+            target.identifier(source.id());
+            target.string(source.str());
+            target.number(source.num());
+            return target;
+        }
+
+        public static long identifier_to_id(long id) {
+            return id;
+        }
+
+        public static String string_to_str(String str) {
+            return str;
+        }
+
+        public static int number_to_num(int num) {
+            return num;
         }
     }
 }
