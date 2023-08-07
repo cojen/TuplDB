@@ -199,6 +199,12 @@ public abstract class MappedTable<S, T> implements Table<T> {
         }
 
         MethodMaker mm = cm.addMethod(null, "markValuesUnset", Object.class).protected_();
+
+        if (mapToSource.isEmpty()) {
+            mm.invoke("unsetRow", mm.param(0));
+            return;
+        }
+
         var targetRowVar = mm.param(0).cast(RowMaker.find(key.targetType()));
 
         TableMaker.markUnset(targetRowVar, targetInfo.rowGen(), mapToSource);
