@@ -248,11 +248,15 @@ public class MappedTest {
         // String cannot be parsed as an integer.
         assertTrue(mapped.isEmpty());
 
-        assertFalse(mapped.load(null, row));
-        assertEquals("{id=1, num=123, str=hello}", row.toString()); // no side effect
-
         assertFalse(mapped.exists(null, row));
         assertEquals("{id=1, num=123, str=hello}", row.toString()); // no side effect
+
+        assertFalse(mapped.load(null, row));
+        // When the load fails, only the target columns which map to source primary key columns
+        // should still be set. This guards against accidentally using a row when the caller
+        // failed to check the load return value. Loading against a plain table behaves in a
+        // similar fashion -- it only keeps the primary key columns.
+        assertEquals("{id=1}", row.toString());
 
         row = mTable.newRow();
         row.id(2);

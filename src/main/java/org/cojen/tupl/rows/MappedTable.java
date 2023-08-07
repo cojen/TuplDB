@@ -86,7 +86,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
         cFactoryCache = new WeakCache<>() {
             @Override
             public MethodHandle newValue(FactoryKey key, Object unused) {
-                return makeTableFactory(key.targetType());
+                return makeTableFactory(key);
             }
         };
     }
@@ -105,7 +105,8 @@ public abstract class MappedTable<S, T> implements Table<T> {
     /**
      * MethodHandle signature: MappedTable<S, T> make(Table<S> source, Mapper<S, T> mapper)
      */
-    private static MethodHandle makeTableFactory(Class<?> targetType) {
+    private static MethodHandle makeTableFactory(FactoryKey key) {
+        Class<?> targetType = key.targetType();
         RowInfo info = RowInfo.find(targetType);
 
         ClassMaker tableMaker = info.rowGen().beginClassMaker
@@ -128,6 +129,8 @@ public abstract class MappedTable<S, T> implements Table<T> {
             TableMaker.markAllUndirty(mm.param(0).cast(RowMaker.find(targetType)), info);
         }
 
+        addMarkValuesUnset(key, info, tableMaker);
+
         MethodHandles.Lookup lookup = tableMaker.finishLookup();
         Class<?> tableClass = lookup.lookupClass();
 
@@ -145,6 +148,69 @@ public abstract class MappedTable<S, T> implements Table<T> {
         }
 
         return mh;
+    }
+
+    private static void addMarkValuesUnset(FactoryKey key, RowInfo targetInfo, ClassMaker cm) {
+        RowInfo sourceInfo = RowInfo.find(key.sourceType());
+
+        // Map of target columns which have an inverse mapping to a source primary key column.
+        Map<String, ColumnInfo> mapToSource = new HashMap<>();
+
+        for (Method m : key.mapperClass().getMethods()) {
+            if (!Modifier.isStatic(m.getModifiers())) {
+                continue;
+            }
+
+            Class<?> retType = m.getReturnType();
+            if (retType == null || retType == void.class) {
+                continue;
+            }
+
+            Class<?>[] paramTypes = m.getParameterTypes();
+            if (paramTypes.length != 1) {
+                continue;
+            }
+
+            String name = m.getName();
+            int ix = name.indexOf("_to_");
+            if (ix <= 0) {
+                continue;
+            }
+
+            String sourceName = name.substring(ix + "_to_".length());
+            if (!sourceInfo.keyColumns.containsKey(sourceName)) {
+                continue;
+            }
+
+            String targetName = name.substring(0, ix);
+            ColumnInfo target = targetInfo.allColumns.get(targetName);
+            if (target != null) {
+                mapToSource.put(targetName, target);
+            }
+        }
+
+        if (Mapper.Identity.class.isAssignableFrom(key.mapperClass())) {
+            for (ColumnInfo target : targetInfo.allColumns.values()) {
+                String name = target.name;
+                if (!mapToSource.containsKey(name) && sourceInfo.keyColumns.containsKey(name)) {
+                    mapToSource.put(name, target);
+                }
+            }
+        }
+
+        MethodMaker mm = cm.addMethod(null, "markValuesUnset", Object.class).protected_();
+        var targetRowVar = mm.param(0).cast(RowMaker.find(key.targetType()));
+
+        TableMaker.markUnset(targetRowVar, targetInfo.rowGen(), mapToSource);
+
+        // Clear the unset target column fields that refer to objects.
+
+        for (ColumnInfo target : targetInfo.allColumns.values()) {
+            String name = target.name;
+            if (!mapToSource.containsKey(name) && !target.type.isPrimitive()) {
+                targetRowVar.field(name).set(null);
+            }
+        }
     }
 
     private final Table<S> mSource;
@@ -233,6 +299,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
                 return true;
             }
         }
+        markValuesUnset(targetRow);
         return false;
     }
 
@@ -365,6 +432,11 @@ public abstract class MappedTable<S, T> implements Table<T> {
     protected abstract void markAllUndirty(T targetRow);
 
     /**
+     * All columns which don't map to source primary key columns are unset.
+     */
+    protected abstract void markValuesUnset(T targetRow);
+
+    /**
      * Returns an inverse mapper which requires that the primary key columns need to be set.
      */
     final InverseMapper<S, T> inversePk() {
@@ -443,7 +515,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
         var toTargetMap = new LinkedHashMap<String, Set<ColumnFunction>>();
 
         for (ColumnInfo targetColumn : targetInfo.allColumns.values()) {
-            ColumnFunction source = finder.tryFind(targetColumn);
+            ColumnFunction source = finder.tryFindSource(targetColumn);
 
             if (source == null) {
                 continue;
@@ -587,7 +659,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
             @Override
             public RowFilter apply(ColumnFilter cf) {
-                ColumnFunction source = finder.tryFind(cf.column());
+                ColumnFunction source = finder.tryFindSource(cf.column());
                 if (source == null) {
                     return null;
                 }
@@ -615,7 +687,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
                     if (source.function() != null) {
                         return null;
                     }
-                    ColumnFunction otherSource = finder.tryFind(c2c.otherColumn());
+                    ColumnFunction otherSource = finder.tryFindSource(c2c.otherColumn());
                     if (otherSource == null || otherSource.function() != null) {
                         return null;
                     }
@@ -678,7 +750,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
            Query projection needs renames, and any remainder requires post projection.
 
-           If query is only renames, push the sort to the source. Otherwise, due a post sort.
+           If query is only renames, push the sort to the source. Otherwise, do a post sort.
 
            Define a new sorter class that can write resolved row objects to temp indexes when a
            size threshold is reached. This can also be used for joins.
@@ -907,7 +979,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
             }
         }
 
-        ColumnFunction tryFind(ColumnInfo targetColumn) {
+        ColumnFunction tryFindSource(ColumnInfo targetColumn) {
             String prefix = targetColumn.name + "_to_";
 
             for (Method candidate : mAllMethods.tailMap(prefix).values()) {

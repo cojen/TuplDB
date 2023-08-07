@@ -48,7 +48,7 @@ public interface Mapper<R, T> {
      * Maps source rows to target rows.
      *
      * @param source never null
-     * @param target never null; all columns initially are unset
+     * @param target never null; all columns are initially unset
      * @return null if filtered out
      */
     T map(R source, T target) throws IOException;
