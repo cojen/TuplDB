@@ -198,12 +198,11 @@ public abstract class MappedTable<S, T> implements Table<T> {
             }
         }
 
-        MethodMaker mm = cm.addMethod(null, "markValuesUnset", Object.class).protected_();
-
         if (mapToSource.isEmpty()) {
-            mm.invoke("unsetRow", mm.param(0));
             return;
         }
+
+        MethodMaker mm = cm.addMethod(null, "markValuesUnset", Object.class).protected_();
 
         var targetRowVar = mm.param(0).cast(RowMaker.find(key.targetType()));
 
@@ -438,9 +437,12 @@ public abstract class MappedTable<S, T> implements Table<T> {
     protected abstract void markAllUndirty(T targetRow);
 
     /**
-     * All columns which don't map to source primary key columns are unset.
+     * All columns which don't map to source primary key columns are unset. Is overridden by
+     * generated code if necessary.
      */
-    protected abstract void markValuesUnset(T targetRow);
+    protected void markValuesUnset(T targetRow) {
+        unsetRow(targetRow);
+    }
 
     /**
      * Returns an inverse mapper which requires that the primary key columns need to be set.
