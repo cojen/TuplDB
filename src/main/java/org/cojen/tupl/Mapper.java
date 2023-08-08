@@ -37,10 +37,10 @@ import java.io.IOException;
  */
 @FunctionalInterface
 public interface Mapper<R, T> {
-    // FIXME: Define a method which returns the set of source columns that the map method
+    // TODO: Define a method which returns the set of source columns that the map method
     // depends on, to help optimize query projection. By default, all columns are required.
 
-    // FIXME: Define a method which indicates whether or not the map method performs any
+    // TODO: Define a method which indicates whether or not the map method performs any
     // filtering, which is true by default. When false, it can help query sorting. In
     // particular, partial sorting.
 

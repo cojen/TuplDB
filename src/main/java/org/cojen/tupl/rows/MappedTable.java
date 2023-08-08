@@ -203,16 +203,23 @@ public abstract class MappedTable<S, T> implements Table<T> {
         }
 
         MethodMaker mm = cm.addMethod(null, "markValuesUnset", Object.class).protected_();
-
         var targetRowVar = mm.param(0).cast(RowMaker.find(key.targetType()));
+        unset(targetInfo, targetRowVar, mapToSource);
+    }
 
-        TableMaker.markUnset(targetRowVar, targetInfo.rowGen(), mapToSource);
+    /**
+     * Unset all columns except for the excluded ones.
+     */
+    private static void unset(RowInfo targetInfo, Variable targetRowVar,
+                              Map<String, ColumnInfo> excluded)
+    {
+        TableMaker.markUnset(targetRowVar, targetInfo.rowGen(), excluded);
 
         // Clear the unset target column fields that refer to objects.
 
         for (ColumnInfo target : targetInfo.allColumns.values()) {
             String name = target.name;
-            if (!mapToSource.containsKey(name) && !target.type.isPrimitive()) {
+            if (!excluded.containsKey(name) && !target.type.isPrimitive()) {
                 targetRowVar.field(name).set(null);
             }
         }
@@ -754,9 +761,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
         var split = new RowFilter[2];
         targetFilter.split(checker, split);
 
-        /* FIXME: Projection and ordering will require special handling.
-
-           Query projection needs renames, and any remainder requires post projection.
+        /* FIXME:
 
            If query is only renames, push the sort to the source. Otherwise, do a post sort.
 
@@ -768,12 +773,60 @@ public abstract class MappedTable<S, T> implements Table<T> {
         RowFilter targetRemainder = split[1];
 
         Class<T> targetType = rowType();
-        RowInfo info = RowInfo.find(targetType);
+        RowInfo targetInfo = RowInfo.find(targetType);
 
-        ClassMaker cm = info.rowGen().beginClassMaker
+        ClassMaker cm = targetInfo.rowGen().beginClassMaker
             (MappedTable.class, targetType, null).final_().implement(ScannerFactory.class);
 
         cm.addConstructor().private_();
+
+        if (targetRemainder != TrueFilter.THE || targetQuery.projection() != null) {
+            // Allow factory instances to serve as Mapper wrappers for supporting predicate
+            // testing and projection.
+
+            cm.implement(Mapper.class).implement(Cloneable.class);
+
+            MethodMaker mm = cm.addMethod
+                (Mapper.class, "initWrapper", Mapper.class, Object[].class).public_().varargs();
+
+            cm.addField(Mapper.class, "mapper").private_();
+            mm.field("mapper").set(mm.param(0));
+
+            if (targetRemainder != TrueFilter.THE) {
+                cm.addField(Predicate.class, "predicate").private_();
+                MethodHandle mh = PlainPredicateMaker
+                    .predicateHandle(targetType, targetRemainder.toString());
+                mm.field("predicate").set(mm.invoke(mh, mm.param(1)));
+            }
+
+            mm.return_(mm.this_());
+
+            mm = cm.addMethod(Object.class, "map", Object.class, Object.class).public_();
+
+            var sourceRowVar = mm.param(0);
+            var targetRowVar = mm.param(1);
+
+            targetRowVar.set(mm.field("mapper").invoke("map", sourceRowVar, targetRowVar));
+
+            Label done = mm.label();
+            targetRowVar.ifEq(null, done);
+
+            if (targetRemainder != TrueFilter.THE) {
+                Label cont = mm.label();
+                mm.field("predicate").invoke("test", targetRowVar).ifTrue(cont);
+                mm.return_(null);
+                cont.here();
+            }
+
+            Map<String, ColumnInfo> projection = targetQuery.projection();
+
+            if (projection != null) {
+                unset(targetInfo, targetRowVar.cast(RowMaker.find(targetType)), projection);
+            }
+
+            done.here();
+            mm.return_(targetRowVar);
+        }
 
         checker.addPrepareArgsMethod(cm);
 
@@ -792,10 +845,9 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
             var mapperVar = tableVar.invoke("mapper");
 
-            if (targetRemainder != TrueFilter.THE) {
-                MethodHandle mh = PlainPredicateMaker
-                    .predicateHandle(targetType, targetRemainder.toString());
-                mapperVar = mm.new_(PredicateMapper.class, mapperVar, mm.invoke(mh, argsVar));
+            if (targetRemainder != TrueFilter.THE || targetQuery.projection() != null) {
+                var wrapperVar = mm.invoke("clone").cast(ScannerFactory.class);
+                mapperVar.set(wrapperVar.invoke("initWrapper", mapperVar, argsVar));
             }
 
             var sourceTableVar = tableVar.invoke("source");
@@ -871,6 +923,9 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
         QueryPlan plan(boolean forUpdater, MappedTable<S, T> table, Transaction txn, Object... args)
             throws IOException;
+
+        // Only to be called if scanner has a predicate or projection applied to it.
+        Mapper<S, T> initWrapper(Mapper<S, T> mapper, Object... args);
     }
 
     /**
@@ -885,24 +940,6 @@ public abstract class MappedTable<S, T> implements Table<T> {
      */
     public final Mapper<S, T> mapper() {
         return mMapper;
-    }
-
-    /**
-     * Tests a predicate after mapping a source row to a target row.
-     */
-    public static class PredicateMapper<S, T> implements Mapper<S, T> {
-        private final Mapper<S, T> mMapper;
-        private final Predicate<T> mPredicate;
-
-        public PredicateMapper(Mapper<S, T> mapper, Predicate<T> predicate) {
-            mMapper = mapper;
-            mPredicate = predicate;
-        }
-
-        public T map(S source, T target) throws IOException {
-            target = mMapper.map(source, target);
-            return (target != null && mPredicate.test(target)) ? target : null;
-        }
     }
 
     public interface InverseMapper<S, T> {

@@ -200,6 +200,14 @@ public class MappedTest {
             assertNull(scanner.step());
         }
 
+        try (var scanner = mapped.newScanner(null, "{id, num}")) {
+            row = scanner.row();
+            assertEquals("{id=2, num=234}", row.toString());
+            row = scanner.step();
+            assertEquals("{id=3, num=33}", row.toString());
+            assertNull(scanner.step());
+        }
+
         try (var scanner = mapped.newScannerWith(null, mapped.newRow())) {
             row = scanner.row();
             assertEquals("{id=2, num=234, str=123}", row.toString());
@@ -219,6 +227,12 @@ public class MappedTest {
         try (var scanner = mapped.newScanner(null, "num >= ?", 100)) {
             row = scanner.row();
             assertEquals("{id=2, num=234, str=123}", row.toString());
+            assertNull(scanner.step());
+        }
+
+        try (var scanner = mapped.newScanner(null, "{id, str} num >= ?", 100)) {
+            row = scanner.row();
+            assertEquals("{id=2, str=123}", row.toString());
             assertNull(scanner.step());
         }
 
@@ -517,6 +531,14 @@ public class MappedTest {
         try (var scanner = mapped.newScanner(null, "string > ? && number != ?", "hello", 0)) {
             row = scanner.row();
             assertEquals("{identifier=2, number=456, string=world}", row.toString());
+            assertNull(scanner.step());
+        }
+
+        try (var scanner = mapped.newScanner(null, "{identifier, number}")) {
+            row = scanner.row();
+            assertEquals("{identifier=1, number=123}", row.toString());
+            row = scanner.step(row);
+            assertEquals("{identifier=2, number=456}", row.toString());
             assertNull(scanner.step());
         }
     }
