@@ -57,8 +57,6 @@ import org.cojen.tupl.ViewConstraintException;
 
 import org.cojen.tupl.diag.QueryPlan;
 
-import org.cojen.tupl.io.Utils;
-
 import org.cojen.tupl.rows.filter.ColumnFilter;
 import org.cojen.tupl.rows.filter.ColumnToArgFilter;
 import org.cojen.tupl.rows.filter.ColumnToColumnFilter;
@@ -1005,7 +1003,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
     /**
      * Called by the generated ScannerFactory.
      *
-     * @see SortedQueryLauncher#newUpdater
+     * @see SortedQueryLauncher#newUpdaterWith
      */
     public final Updater<T> newWrappedUpdater(ScannerFactory<S, T> factory,
                                               Transaction txn, T targetRow, Object... args)

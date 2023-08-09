@@ -91,7 +91,7 @@ final class SortedQueryLauncher<R> implements QueryLauncher<R> {
     }
 
     @Override
-    public Scanner<R> newScanner(Transaction txn, R row, Object... args) throws IOException {
+    public Scanner<R> newScannerWith(Transaction txn, R row, Object... args) throws IOException {
         return RowSorter.sort(this, txn, args);
     }
 
@@ -99,7 +99,7 @@ final class SortedQueryLauncher<R> implements QueryLauncher<R> {
      * @see MappedTable.newWrappedUpdater
      */
     @Override
-    public Updater<R> newUpdater(Transaction txn, R row, Object... args) throws IOException {
+    public Updater<R> newUpdaterWith(Transaction txn, R row, Object... args) throws IOException {
         if (txn != null) {
             if (txn.lockMode() != LockMode.UNSAFE) {
                 txn.enter();
@@ -107,7 +107,7 @@ final class SortedQueryLauncher<R> implements QueryLauncher<R> {
 
             Scanner<R> scanner;
             try {
-                scanner = newScanner(txn, row, args);
+                scanner = newScannerWith(txn, row, args);
                 // Commit the transaction scope to promote and keep all the locks which were
                 // acquired by the sort operation.
                 txn.commit();
@@ -128,7 +128,7 @@ final class SortedQueryLauncher<R> implements QueryLauncher<R> {
 
         Scanner<R> scanner;
         try {
-            scanner = newScanner(txn, row, args);
+            scanner = newScannerWith(txn, row, args);
         } catch (Throwable e) {
             txn.exit();
             throw e;

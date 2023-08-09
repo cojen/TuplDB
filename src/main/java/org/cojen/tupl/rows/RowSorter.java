@@ -55,7 +55,7 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
         var sorter = new RowSorter<R>();
 
         // Pass sorter as if it's a row, but it's actually a RowConsumer.
-        Scanner source = launcher.mSource.newScanner(txn, (R) sorter, args);
+        Scanner source = launcher.mSource.newScannerWith(txn, (R) sorter, args);
 
         int numRows = 0;
         for (Object c = source.row(); c != null; c = source.step(c)) {
@@ -95,7 +95,7 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
 
         try {
             // Pass ext as if it's a row, but it's actually a RowConsumer.
-            ext.transferAll(launcher.mSource.newScanner(txn, (R) ext, args));
+            ext.transferAll(launcher.mSource.newScannerWith(txn, (R) ext, args));
             sorted = ext.finishScan();
         } catch (Throwable e) {
             throw ext.failed(e);
