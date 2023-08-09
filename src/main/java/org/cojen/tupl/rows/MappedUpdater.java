@@ -50,7 +50,7 @@ public final class MappedUpdater<S, T> extends MappedScanner<S, T> implements Up
 
         S sourceRow = source.row();
         if (sourceRow == null) {
-            return null;
+            throw new IllegalStateException();
         }
 
         T targetRow = row();

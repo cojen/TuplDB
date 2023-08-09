@@ -17,6 +17,9 @@
 
 package org.cojen.tupl.rows;
 
+import java.util.Arrays;
+import java.util.Random;
+
 import org.junit.*;
 import static org.junit.Assert.*;
 
@@ -242,6 +245,18 @@ public class MappedTest {
             assertNull(scanner.step());
         }
 
+        var plan3 = (QueryPlan.Sort) mapped.scannerPlan(null, "{-str, id}");
+        assertEquals("[-str]", Arrays.toString(plan3.sortColumns));
+        assertEquals(mTable.scannerPlan(null, null), ((QueryPlan.Mapper) plan3.source).source);
+
+        try (var scanner = mapped.newScanner(null, "{-str, id}")) {
+            row = scanner.row();
+            assertEquals("{id=3, str=333}", row.toString());
+            row = scanner.step();
+            assertEquals("{id=2, str=123}", row.toString());
+            assertNull(scanner.step());
+        }
+
         mapped.close();
         assertFalse(mapped.isClosed());
     }
@@ -414,7 +429,11 @@ public class MappedTest {
                 row.num(row.num() - 1);
                 row = updater.update(row);
             }
-            assertNull(updater.update(row));
+            try {
+                updater.update(row);
+                fail();
+            } catch (IllegalStateException e) {
+            }
         }
 
         try (var scanner = mapped.newScanner(null)) {
@@ -422,6 +441,29 @@ public class MappedTest {
             assertEquals("{id=2, num=110, str=2}", row.toString());
             row = scanner.step(row);
             assertEquals("{id=999, num=998, str=8}", row.toString());
+            assertNull(scanner.step(row));
+        }
+
+        var plan2 = (QueryPlan.Sort) mapped.scannerPlan(null, "{-str, id}");
+        assertEquals("[-str]", Arrays.toString(plan2.sortColumns));
+        assertEquals(mTable.scannerPlan(null, null), ((QueryPlan.Mapper) plan2.source).source);
+
+        try (var scanner = mapped.newScanner(null, "{-str, id}")) {
+            row = scanner.row();
+            assertEquals("{id=999, str=8}", row.toString());
+            row = scanner.step(row);
+            assertEquals("{id=2, str=2}", row.toString());
+            assertNull(scanner.step(row));
+        }
+
+        plan = (QueryPlan.Mapper) mapped.scannerPlan(null, "{-id}");
+        assertTrue(((QueryPlan.FullScan) plan.source).reverse);
+
+        try (var scanner = mapped.newScanner(null, "{-id, *}")) {
+            row = scanner.row();
+            assertEquals("{id=999, num=998, str=8}", row.toString());
+            row = scanner.step(row);
+            assertEquals("{id=2, num=110, str=2}", row.toString());
             assertNull(scanner.step(row));
         }
 
@@ -437,6 +479,39 @@ public class MappedTest {
             row = scanner.step(row);
             assertEquals("{id=999, num=998, str=888}", row.toString());
             assertNull(scanner.step(row));
+        }
+
+        try (var updater = mapped.newUpdater(null, "{-num, *}")) {
+            row = updater.row();
+            assertEquals("{id=999, num=998, str=888}", row.toString());
+            row = updater.step(row);
+            assertEquals("{id=2, num=110, str=2}", row.toString());
+            assertNull(updater.step(row));
+        }
+
+        Transaction txn = mapped.newTransaction(null);
+        try {
+            try (var updater = mapped.newUpdater(null, "{-num, *}")) {
+                for (row = updater.row(); row != null; ) {
+                    row.num(row.num() - 1);
+                    row = updater.update(row);
+                }
+                try {
+                    updater.update(row);
+                    fail();
+                } catch (IllegalStateException e) {
+                }
+            }
+
+            try (var scanner = mapped.newScanner(null)) {
+                row = scanner.row();
+                assertEquals("{id=2, num=109, str=2}", row.toString());
+                row = scanner.step(row);
+                assertEquals("{id=999, num=997, str=888}", row.toString());
+                assertNull(scanner.step(row));
+            }
+        } finally {
+            txn.reset();
         }
 
         row = mTable.newRow();
@@ -541,6 +616,21 @@ public class MappedTest {
             assertEquals("{identifier=2, number=456}", row.toString());
             assertNull(scanner.step());
         }
+
+        String query = "{-string, identifier} string >= ?";
+
+        var plan2 = (QueryPlan.Sort) mapped.scannerPlan(null, query);
+        assertEquals("[-string]", Arrays.toString(plan2.sortColumns));
+        assertEquals(mTable.scannerPlan(null, "str >= ?2"),
+                     ((QueryPlan.Mapper) plan2.source).source);
+
+        try (var scanner = mapped.newScanner(null, query, "a")) {
+            row = scanner.row();
+            assertEquals("{identifier=2, string=world}", row.toString());
+            row = scanner.step(row);
+            assertEquals("{identifier=1, string=hello}", row.toString());
+            assertNull(scanner.step());
+        }
     }
 
     public static interface Renamed {
@@ -575,5 +665,33 @@ public class MappedTest {
         public static int number_to_num(int num) {
             return num;
         }
+    }
+
+    @Test
+    public void sortMany() throws Exception {
+        Table<Renamed> mapped = mTable.map(Renamed.class, new Renamer());
+
+        var rnd = new Random(123);
+
+        for (int i = 1; i <= 5000; i++) {
+            Renamed row = mapped.newRow();
+            row.identifier(i);
+            row.string("hello-" + i);
+            row.number(rnd.nextInt());
+            mapped.store(null, row);
+        }
+
+        int num = 0;
+        int last = Integer.MIN_VALUE;
+
+        try (var scanner = mapped.newScanner(null, "{+number, *}")) {
+            for (var row = scanner.row(); row != null; row = scanner.step(row)) {
+                num++;
+                assertTrue(row.number() >= last);
+                last = row.number();
+            }
+        }
+
+        assertEquals(5000, num);
     }
 }

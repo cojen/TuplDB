@@ -39,6 +39,7 @@ import static java.util.Spliterator.*;
  * 
  *
  * @author Brian S O'Neill
+ * @see RowSorter
  */
 final class SortedQueryLauncher<R> implements QueryLauncher<R> {
     private static volatile Canonicalizer cProjectionCache;
@@ -47,7 +48,7 @@ final class SortedQueryLauncher<R> implements QueryLauncher<R> {
      * Returns a cached instance, to reduce the memory footprint of SortedQueryLauncher
      * instances, which can be long lived.
      */
-    private static Set<String> canonicalize(Set<String> projection) {
+    static Set<String> canonicalize(Set<String> projection) {
         if (projection == null) {
             return null;
         }
@@ -94,6 +95,9 @@ final class SortedQueryLauncher<R> implements QueryLauncher<R> {
         return RowSorter.sort(this, txn, args);
     }
 
+    /**
+     * @see MappedTable.newWrappedUpdater
+     */
     @Override
     public Updater<R> newUpdater(Transaction txn, R row, Object... args) throws IOException {
         if (txn != null) {

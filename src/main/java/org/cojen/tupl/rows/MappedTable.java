@@ -27,6 +27,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -45,6 +46,7 @@ import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 import org.cojen.tupl.DurabilityMode;
+import org.cojen.tupl.LockMode;
 import org.cojen.tupl.Mapper;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
@@ -524,7 +526,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
             sourceColumns = sourceInfo.allColumns;
         }
 
-        var finder = new InverseFinder(mMapper.getClass(), sourceColumns);
+        var finder = new InverseFinder(sourceColumns);
 
         // Maps source columns to the targets that map to it.
         var toTargetMap = new LinkedHashMap<String, Set<ColumnFunction>>();
@@ -666,9 +668,9 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
         record ArgMapper(int targetArgNum, Method function) { } 
 
+        var finder = new InverseFinder(RowInfo.find(mSource.rowType()).allColumns);
+
         var checker = new Function<ColumnFilter, RowFilter>() {
-            InverseFinder finder = new InverseFinder
-                (mMapper.getClass(), RowInfo.find(mSource.rowType()).allColumns);
             Map<ArgMapper, Integer> argMappers;
             int maxArg;
 
@@ -761,16 +763,23 @@ public abstract class MappedTable<S, T> implements Table<T> {
         var split = new RowFilter[2];
         targetFilter.split(checker, split);
 
-        /* FIXME:
-
-           If query is only renames, push the sort to the source. Otherwise, do a post sort.
-
-           Define a new sorter class that can write resolved row objects to temp indexes when a
-           size threshold is reached. This can also be used for joins.
-         */
         Query sourceQuery = targetQuery.withFilter(split[0]);
 
         RowFilter targetRemainder = split[1];
+
+        SortPlan sortPlan = finder.analyzeSort(targetQuery);
+
+        if (sortPlan != null && sortPlan.sourceOrder != null) {
+            sourceQuery = sourceQuery.withOrderBy(sortPlan.sourceOrder);
+        } else {
+            // All source columns are required, and no orderBy is required. If no filter is
+            // required either, then the sourceQuery can be null to do a full scan.
+            if (sourceQuery.filter() == TrueFilter.THE) {
+                sourceQuery = null;
+            } else {
+                sourceQuery = new Query(null, null, sourceQuery.filter());
+            }
+        }
 
         Class<T> targetType = rowType();
         RowInfo targetInfo = RowInfo.find(targetType);
@@ -843,6 +852,15 @@ public abstract class MappedTable<S, T> implements Table<T> {
             var targetRowVar = mm.param(2);
             var argsVar = checker.prepareArgs(mm.param(3));
 
+            if (which != 1 && sortPlan != null && sortPlan.sortOrder != null) {
+                // Use a WrappedUpdater around a sorted Scanner.
+                mm.return_(tableVar.invoke
+                           ("newWrappedUpdater", mm.this_(), txnVar, targetRowVar, argsVar));
+                continue;
+            }
+
+            argsVar = checker.prepareArgs(argsVar);
+
             var mapperVar = tableVar.invoke("mapper");
 
             if (targetRemainder != TrueFilter.THE || targetQuery.projection() != null) {
@@ -853,15 +871,43 @@ public abstract class MappedTable<S, T> implements Table<T> {
             var sourceTableVar = tableVar.invoke("source");
             Variable sourceScannerVar;
 
-            if (sourceQuery.filter() == TrueFilter.THE) {
+            if (sourceQuery == null) {
                 sourceScannerVar = sourceTableVar.invoke(methodName, txnVar);
             } else {
                 sourceScannerVar = sourceTableVar.invoke
                     (methodName, txnVar, sourceQuery.toString(), argsVar);
             }
 
-            mm.return_(mm.new_(which == 1 ? MappedScanner.class : MappedUpdater.class, tableVar,
-                               sourceScannerVar, targetRowVar, mapperVar));
+            Variable resultVar;
+
+            if (sortPlan != null && sortPlan.sortOrder != null) {
+                if (which != 1) {
+                    throw new AssertionError();
+                }
+
+                var comparatorVar = mm.var(Comparator.class).setExact(sortPlan.sortComparator);
+
+                Variable projectionVar = null;
+
+                if (targetQuery.projection() != null) {
+                    projectionVar = mm.var(Set.class).setExact
+                        (SortedQueryLauncher.canonicalize(targetQuery.projection().keySet()));
+                }
+
+                resultVar = mm.new_(MappedScanner.class, tableVar,
+                                    sourceScannerVar, targetRowVar, mapperVar);
+
+                resultVar = tableVar.invoke("sort", resultVar, comparatorVar,
+                                            projectionVar, sortPlan.sortOrderSpec);
+            } else if (which == 1) {
+                resultVar = mm.new_(MappedScanner.class, tableVar,
+                                    sourceScannerVar, targetRowVar, mapperVar);
+            } else {
+                resultVar = mm.new_(MappedUpdater.class, tableVar,
+                                    sourceScannerVar, targetRowVar, mapperVar);
+            }
+
+            mm.return_(resultVar);
         }
 
         // Add the plan method.
@@ -876,8 +922,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
             var txnVar = mm.param(2);
             var argsVar = checker.prepareArgs(mm.param(3));
 
-            String sourceQueryStr =
-                sourceQuery.filter() == TrueFilter.THE ? null : sourceQuery.toString();
+            String sourceQueryStr = sourceQuery == null ? null : sourceQuery.toString();
 
             var sourceTableVar = tableVar.invoke("source");
             var planVar = mm.var(QueryPlan.class);
@@ -897,6 +942,11 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
             if (targetRemainder != TrueFilter.THE) {
                 planVar = mm.new_(QueryPlan.Filter.class, targetRemainder.toString(), planVar);
+            }
+
+            if (sortPlan != null && sortPlan.sortOrder != null) {
+                var columnsVar = mm.var(OrderBy.class).invoke("splitSpec", sortPlan.sortOrderSpec);
+                planVar = mm.new_(QueryPlan.Sort.class, columnsVar, planVar);
             }
 
             mm.return_(planVar);
@@ -940,6 +990,62 @@ public abstract class MappedTable<S, T> implements Table<T> {
      */
     public final Mapper<S, T> mapper() {
         return mMapper;
+    }
+
+    /**
+     * Called by the generated ScannerFactory.
+     */
+    public final Scanner<T> sort(Scanner<T> source, Comparator<T> comparator,
+                                 Set<String> projection, String orderBySpec)
+        throws IOException
+    {
+        return RowSorter.sort(this, source, comparator, projection, orderBySpec);
+    }
+
+    /**
+     * Called by the generated ScannerFactory.
+     *
+     * @see SortedQueryLauncher#newUpdater
+     */
+    public final Updater<T> newWrappedUpdater(ScannerFactory<S, T> factory,
+                                              Transaction txn, T targetRow, Object... args)
+        throws IOException
+    {
+        if (txn != null) {
+            if (txn.lockMode() != LockMode.UNSAFE) {
+                txn.enter();
+            }
+
+            Scanner<T> scanner;
+            try {
+                scanner = factory.newScannerWith(this, txn, targetRow, args);
+                // Commit the transaction scope to promote and keep all the locks which were
+                // acquired by the sort operation.
+                txn.commit();
+            } finally {
+                txn.exit();
+            }
+
+            return new WrappedUpdater<>(this, txn, scanner);
+        }
+
+        // Need to create a transaction to acquire locks, but true auto-commit behavior isn't
+        // really feasible because update order won't match lock acquisition order. In
+        // particular, the locks cannot be released out of order. Instead, keep the transaction
+        // open until the updater finishes and always commit. Unfortunately, if the commit
+        // fails then all updates fail instead of just one.
+
+        txn = newTransaction(null);
+
+        Scanner<T> scanner;
+        try {
+            scanner = factory.newScannerWith(this, txn, targetRow, args);
+        } catch (Throwable e) {
+            txn.exit();
+            throw e;
+        }
+
+        return new WrappedUpdater.EndCommit<>(this, txn, scanner);
     }
 
     public interface InverseMapper<S, T> {
@@ -1009,12 +1115,14 @@ public abstract class MappedTable<S, T> implements Table<T> {
     /**
      * Finds inverse mapping functions defined in a Mapper implementation.
      */
-    private static class InverseFinder {
+    private class InverseFinder {
         private final boolean mIdentity;
         private final Map<String, ColumnInfo> mSourceColumns;
         private final TreeMap<String, Method> mAllMethods;
 
-        InverseFinder(Class<? extends Mapper> mapperClass, Map<String, ColumnInfo> sourceColumns) {
+        InverseFinder(Map<String, ColumnInfo> sourceColumns) {
+            Class<? extends Mapper> mapperClass = mMapper.getClass();
+
             mIdentity = Mapper.Identity.class.isAssignableFrom(mapperClass);
             mSourceColumns = sourceColumns;
 
@@ -1071,5 +1179,81 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
             return sourceColumn == null ? null : new ColumnFunction(sourceColumn, null);
         }
+
+        /**
+         * @return null if nothing special needs to be done for sorting
+         */
+        SortPlan analyzeSort(Query targetQuery) {
+            OrderBy targetOrder = targetQuery.orderBy();
+
+            if (targetOrder == null) {
+                return null;
+            }
+
+            var plan = new SortPlan();
+
+            OrderBy sourceOrder = null;
+
+            for (var rule : targetOrder.values()) {
+                ColumnFunction source = tryFindSource(rule.column());
+                if (source == null || source.function() != null) {
+                    break;
+                }
+                if (sourceOrder == null) {
+                    sourceOrder = new OrderBy();
+                }
+                ColumnInfo sourceColumn = source.column();
+                sourceOrder.put(sourceColumn.name, new OrderBy.Rule(sourceColumn, rule.type()));
+            }
+
+            if (sourceOrder != null && sourceOrder.size() >= targetOrder.size()) {
+                // Can push the entire sort operation to the source.
+                plan.sourceOrder = sourceOrder;
+                return plan;
+            }
+
+            /*
+              Apply the entire sort operation on the target scanner. It's possible for a
+              partial ordering to be performed on the source, it's a bit complicated. The key
+              is to ensure that no sort operation is performed against the source. A double
+              sort doesn't make any sense.
+
+              For now partial ordering isn't supported, but here's what needs to happen:
+
+              Examine the source query plan with the sourceOrder applied to it. If no sort is
+              performed, then a partial sort is possible. Otherwise, examine the sort and
+              remove the ordering columns that the sort applies to. Examine the surviving
+              ordering columns, and keep the leading contiguous ones. If none remain, then no
+              partial sort is possible. If a partial sort is still possible, examine the source
+              query plan again to verify that no sort will be applied.
+
+              The target sorter needs to be given the sourceComparator, which identifies row
+              groups. The final sort only needs to apply these groups and not the whole set.
+            */
+
+            plan.sortOrder = targetOrder;
+            String targetSpec = targetOrder.spec();
+            plan.sortOrderSpec = targetSpec;
+            plan.sortComparator = ComparatorMaker.comparator(rowType(), targetOrder, targetSpec);
+
+            return plan;
+        }
+    }
+
+    private static class SortPlan {
+        // Optional ordering to apply to the source scanner.
+        OrderBy sourceOrder;
+
+        // Defines a partial order, and is required when sourceOrder and sortOrder is defined.
+        //Comparator sourceComparator;
+
+        // Optional sort order to apply to the target scanner.
+        OrderBy sortOrder;
+
+        // Is required when sortOrder is defined.
+        String sortOrderSpec;
+
+        // Is required when sortOrder is defined.
+        Comparator sortComparator;
     }
 }
