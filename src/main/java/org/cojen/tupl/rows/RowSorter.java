@@ -25,6 +25,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Set;
 
+import org.cojen.tupl.DatabaseException;
 import org.cojen.tupl.Entry;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Sorter;
@@ -135,9 +136,12 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
         int numRows = 0;
         for (R row = source.row(); row != null; row = source.step()) {
             collection.add(row);
-            if (++numRows >= EXTERNAL_THRESHOLD) {
-                // FIXME: Need to generate encoder and decoder, and feed into a Sorter. Need to
-                // utilize projection and orderBySpec.
+            if (++numRows == EXTERNAL_THRESHOLD) {
+                Sorter sorter = newSorter(table);
+                if (sorter != null) {
+                    return finishExternal(table, source, comparator, projection, orderBySpec,
+                                          collection, sorter);
+                }
             }
         }
 
@@ -146,12 +150,60 @@ final class RowSorter<R> extends ScanBatch<R> implements RowConsumer<R> {
         }
 
         R[] rows = collection.toArray(numRows);
-        collection = null;
+        collection = null; // help GC
 
         Arrays.parallelSort(rows, comparator);
 
         return new ARS<R>(table, rows, comparator);
-    }    
+    }
+
+    /**
+     * @return null if not supported
+     */
+    private static Sorter newSorter(Table<?> table) throws DatabaseException {
+        while (true) {
+            if (table instanceof MappedTable mapped) {
+                table = mapped.source();
+            } else if (table instanceof BaseTable base) {
+                return base.rowStore().mDatabase.newSorter();
+            } else {
+                return null;
+            }
+        }
+    }
+
+    private static <R> Scanner<R> finishExternal
+        (Table<R> table, Scanner<R> source, Comparator<R> comparator,
+         Set<String> projection, String orderBySpec,
+         RowCollection<R> collection, Sorter sorter)
+        throws IOException
+    {
+        SortRowCodec<R> codec = SortRowCodec.find(table.rowType(), projection, orderBySpec);
+
+        // Transfer the existing rows into the Sorter.
+
+        var kvPairs = new byte[1000][];
+        long numRows = collection.transferAndDiscard(sorter, codec, kvPairs);
+
+        // Feed the remaining rows into the Sorter.
+
+        int offset = 0;
+
+        // Note that the first row is obtained by calling step, to skip over the last row which
+        // was added to the collection.
+        for (R row = source.step(); row != null; row = source.step()) {
+            codec.encode(row, numRows++, kvPairs, offset);
+            offset += 2;
+            if (offset >= kvPairs.length) {
+                sorter.addBatch(kvPairs, 0, offset >> 1);
+                offset = 0;
+            }
+        }
+
+        sorter.addBatch(kvPairs, 0, offset >> 1);
+
+        return new SRS<>(sorter.finishScan(), codec, comparator);
+    }
 
     @Override
     public void beginBatch(Scanner scanner, RowEvaluator<R> evaluator) {

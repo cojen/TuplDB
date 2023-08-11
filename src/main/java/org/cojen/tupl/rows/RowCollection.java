@@ -17,9 +17,13 @@
 
 package org.cojen.tupl.rows;
 
+import java.io.IOException;
+
 import java.util.AbstractCollection;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+
+import org.cojen.tupl.Sorter;
 
 /**
  * Implements a growable collection of objects which grows by accumulating blocks of objects.
@@ -32,6 +36,11 @@ final class RowCollection<R> extends AbstractCollection<R> {
     private Block<R> mLastBlock;
 
     RowCollection() {
+        clear();
+    }
+
+    @Override
+    public void clear() {
         mFirstBlock = mLastBlock = new Block<R>();
     }
 
@@ -116,6 +125,36 @@ final class RowCollection<R> extends AbstractCollection<R> {
             pos += blockSize;
         }
         return (R[]) array;
+    }
+
+    /**
+     * @return number of rows
+     */
+    long transferAndDiscard(Sorter sorter, SortRowCodec<R> codec, byte[][] kvPairs)
+        throws IOException
+    {
+        Block<R> block = mFirstBlock;
+        mFirstBlock = null;
+        mLastBlock = null;
+
+        int offset = 0;
+        long numRows = 0;
+
+        while (block != null) {
+            for (int i=0; i<block.mSize; i++) {
+                codec.encode(block.mRows[i], numRows++, kvPairs, offset);
+                offset += 2;
+                if (offset >= kvPairs.length) {
+                    sorter.addBatch(kvPairs, 0, offset >> 1);
+                    offset = 0;
+                }
+            }
+            block = block.mNext;
+        }
+
+        sorter.addBatch(kvPairs, 0, offset >> 1);
+
+        return numRows;
     }
 
     static final class Block<R> {

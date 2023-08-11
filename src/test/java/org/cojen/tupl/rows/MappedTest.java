@@ -39,14 +39,19 @@ public class MappedTest {
 
     @Before
     public void setup() throws Exception {
-        mDb = Database.open(new DatabaseConfig());
-        mTable = mDb.openTable(TestRow.class);
+        setup(Database.open(new DatabaseConfig()));
+    }
+
+    private void setup(Database db) throws Exception {
+        mDb = db;
+        mTable = db.openTable(TestRow.class);
     }
 
     @After
     public void teardown() throws Exception {
         mDb.close();
         mDb = null;
+        TestUtils.deleteTempDatabases(getClass());
     }
 
     protected Database mDb;
@@ -669,29 +674,50 @@ public class MappedTest {
 
     @Test
     public void sortMany() throws Exception {
+        sortMany(5000);
+    }
+
+    @Test
+    public void sortManyMore() throws Exception {
+        teardown();
+        setup(TestUtils.newTempDatabase(getClass(), 10_000_000));
+        sortMany(1_500_000);
+    }
+
+    private void sortMany(int amount) throws Exception {
         Table<Renamed> mapped = mTable.map(Renamed.class, new Renamer());
 
-        var rnd = new Random(123);
+        var plan = (QueryPlan.Sort) mapped.scannerPlan(null, "{+number, *}");
+        assertEquals("[+number]", Arrays.toString(plan.sortColumns));
 
-        for (int i = 1; i <= 5000; i++) {
+        var rnd = new Random(amount);
+
+        long checksum = 0;
+
+        for (int i = 1; i <= amount; i++) {
             Renamed row = mapped.newRow();
             row.identifier(i);
             row.string("hello-" + i);
-            row.number(rnd.nextInt());
+            int num = rnd.nextInt();
+            row.number(num);
+            checksum += num;
             mapped.store(null, row);
         }
 
         int num = 0;
         int last = Integer.MIN_VALUE;
+        long actualChecksum = 0;
 
         try (var scanner = mapped.newScanner(null, "{+number, *}")) {
             for (var row = scanner.row(); row != null; row = scanner.step(row)) {
                 num++;
                 assertTrue(row.number() >= last);
+                actualChecksum += row.number();
                 last = row.number();
             }
         }
 
-        assertEquals(5000, num);
+        assertEquals(amount, num);
+        assertEquals(checksum, actualChecksum);
     }
 }

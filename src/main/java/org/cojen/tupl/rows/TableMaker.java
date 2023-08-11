@@ -23,6 +23,7 @@ import java.lang.invoke.MethodType;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Field;
@@ -153,6 +154,15 @@ public class TableMaker {
     protected static void markClean(final Variable rowVar, final RowGen rowGen,
                                     final Map<String, ColumnInfo> columns)
     {
+        markClean(rowVar, rowGen, columns.keySet());
+    }
+
+    /**
+     * Mark only the given columns as CLEAN. All others are UNSET.
+     */
+    protected static void markClean(final Variable rowVar, final RowGen rowGen,
+                                    final Set<String> columnNames)
+    {
         final int maxNum = rowGen.info.allColumns.size();
 
         int num = 0, mask = 0;
@@ -163,7 +173,7 @@ public class TableMaker {
             var baseCodecs = step == 0 ? rowGen.keyCodecs() : rowGen.valueCodecs();
 
             for (ColumnCodec codec : baseCodecs) {
-                if (columns.containsKey(codec.info.name)) {
+                if (columnNames.contains(codec.info.name)) {
                     mask |= RowGen.stateFieldMask(num, 0b01); // clean state
                 }
                 if ((++num & 0b1111) == 0 || num >= maxNum) {
