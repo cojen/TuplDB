@@ -44,6 +44,15 @@ public abstract class RowFilter implements Comparable<RowFilter> {
 
     public abstract int numTerms();
 
+    public int maxArgument() {
+        return maxArgument(0);
+    }
+
+    /**
+     * @retur 0 if filter has no arguments
+     */
+    protected abstract int maxArgument(int max);
+
     /**
      * Apply partial or full reduction of the filter.
      */
@@ -89,8 +98,8 @@ public abstract class RowFilter implements Comparable<RowFilter> {
      * Returns this filter with some operators expanded into "or" filters.
      *
      * <ul>
-     * <li>"a >= ?0" expands to "a > ?0 || a == ?0"
-     * <li>"a <= ?0" expands to "a < ?0 || a == ?0"
+     * <li>"a >= ?1" expands to "a > ?1 || a == ?1"
+     * <li>"a <= ?1" expands to "a < ?1 || a == ?1"
      * </ul>
      *
      * @param force when false, only expand if the filter has multiple levels

@@ -160,8 +160,8 @@ public abstract sealed class QueryPlan implements Serializable {
             if (reverse) {
                 a.append("reverse ");
             }
-            a.append(title).append(" scan over ").append(which).append('\n');
-            appendItem(a, in2, "table").append(table).append('\n');
+            a.append(title).append(" scan over ").append(which).append(": ")
+                .append(table).append('\n');
             appendKeyColumns(a, in2).append('\n');
         }
 
@@ -286,8 +286,8 @@ public abstract sealed class QueryPlan implements Serializable {
 
         @Override
         void appendTo(Appendable a, String in1, String in2) throws IOException {
-            a.append(in1).append("load one using ").append(which).append('\n');
-            appendItem(a, in2, "table").append(table).append('\n');
+            a.append(in1).append("load one using ").append(which).append(": ")
+                .append(table).append('\n');
             appendKeyColumns(a, in2).append('\n');
             if (filter != null) {
                 appendItem(a, in2, "filter").append(filter).append('\n');
@@ -350,6 +350,53 @@ public abstract sealed class QueryPlan implements Serializable {
             int hash = Objects.hashCode(expression);
             hash = hash * 31 + Objects.hashCode(source);
             return hash ^ -274869396;
+        }
+    }
+
+    /**
+     * Query plan node which applies custom row mapping and filtering.
+     */
+    public static final class Mapper extends QueryPlan {
+        private static final long serialVersionUID = 1L;
+
+        public final String target;
+        public final String using;
+        public final QueryPlan source;
+
+        /**
+         * @param target describes the target row type
+         * @param using describes the map operation
+         * @param source child plan node
+         */
+        public Mapper(String target, String using, QueryPlan source) {
+            this.target = target;
+            this.using = using;
+            this.source = source;
+        }
+
+        @Override
+        void appendTo(Appendable a, String in1, String in2) throws IOException {
+            a.append(in1).append("map").append(": ").append(target).append('\n');
+            appendItem(a, in2, "using").append(using).append('\n');
+            appendSub(a, in2, null, source);
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof Mapper mapper && matches(mapper);
+        }
+
+        boolean matches(Mapper other) {
+            return Objects.equals(target, other.target) && Objects.equals(using, other.using) &&
+                Objects.equals(source, other.source);
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = Objects.hashCode(target);
+            hash = hash * 31 + Objects.hashCode(using);
+            hash = hash * 31 + Objects.hashCode(source);
+            return hash ^ -677855948;
         }
     }
 
@@ -540,8 +587,7 @@ public abstract sealed class QueryPlan implements Serializable {
 
         @Override
         void appendTo(Appendable a, String in1, String in2) throws IOException {
-            a.append(in1).append("primary join").append('\n');
-            appendItem(a, in2, "table").append(table).append('\n');
+            a.append(in1).append("primary join").append(": ").append(table).append('\n');
             appendItem(a, in2, "key columns");
             appendArray(a, columns).append('\n');
             appendSub(a, in2, null, source);

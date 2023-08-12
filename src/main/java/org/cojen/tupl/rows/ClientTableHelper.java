@@ -21,10 +21,7 @@ import java.io.IOException;
 
 import java.lang.invoke.MethodHandles;
 
-import java.util.Comparator;
 import java.util.Map;
-
-import java.util.function.Predicate;
 
 import org.cojen.dirmi.Pipe;
 
@@ -129,16 +126,6 @@ public abstract class ClientTableHelper<R> implements Table<R> {
      * @param pipe is recycled or closed as a side effect
      */
     public abstract boolean updaterDelete(R row, R newRow, Pipe pipe) throws IOException;
-
-    @Override
-    public Comparator<R> comparator(String spec) {
-        return ComparatorMaker.comparator(rowType(), spec);
-    }
-
-    @Override
-    public Predicate<R> predicate(String query, Object... args) {
-        return PlainPredicateMaker.predicate(rowType(), query, args);
-    }
 
     /**
      * Returns an uncloned row descriptor, which is an encoded RowHeader.

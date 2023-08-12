@@ -48,18 +48,7 @@ final class JoinPlanner implements JoinSpec.Visitor {
      * @param filter overall query filter against a join row
      */
     JoinPlanner(JoinSpec spec, RowFilter filter) {
-        // Calculate the number of filter arguments.
-        var calc = new Visitor() {
-            int mNumArgs = 0;
-
-            @Override
-            public void visit(ColumnToArgFilter filter) {
-                mNumArgs = Math.max(mNumArgs, filter.argument());
-            }
-        };
-
-        filter.accept(calc);
-        mOriginalNumArgs = calc.mNumArgs;
+        mOriginalNumArgs = filter.maxArgument();
 
         // First convert all Column instances to PlannedColumn instances, and make copies of
         // anything else that will be modified.

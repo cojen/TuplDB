@@ -131,13 +131,13 @@ final class ServerTable<R> implements RemoteTable {
     }
 
     @Override
-    public boolean exists(RemoteTransaction txn) throws IOException {
-        return mTable.exists(ServerTransaction.txn(txn));
+    public boolean anyRows(RemoteTransaction txn) throws IOException {
+        return mTable.anyRows(ServerTransaction.txn(txn));
     }
 
     @Override
-    public boolean exists(RemoteTransaction txn, String query, Object... args) throws IOException {
-        return mTable.exists(ServerTransaction.txn(txn), query, args);
+    public boolean anyRows(RemoteTransaction txn, String query, Object... args) throws IOException {
+        return mTable.anyRows(ServerTransaction.txn(txn), query, args);
     }
 
     @Override
