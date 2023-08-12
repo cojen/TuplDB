@@ -23,6 +23,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 
 import java.util.Map;
+import java.util.Objects;
 
 import org.cojen.tupl.rows.join.JoinColumnInfo;
 
@@ -331,8 +332,19 @@ public class ColumnInfo implements Cloneable {
      *
      * @see JoinColumnInfo
      */
-    public void putScalarColumns(Map<String, ColumnInfo> dst) {
+    public void gatherScalarColumns(Map<String, ColumnInfo> dst) {
         dst.put(name, this);
+    }
+
+    /**
+     * Recursively puts all the scalar columns into the given map with their fully qualified
+     * names.
+     *
+     * @param path required
+     * @see JoinColumnInfo
+     */
+    public void gatherScalarColumns(String path, Map<String, ColumnInfo> dst) {
+        dst.put(Objects.requireNonNull(path) + '.' + name, this);
     }
 
     /**

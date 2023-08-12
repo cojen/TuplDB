@@ -103,7 +103,7 @@ public final class JoinRowInfo {
             messages.add("cannot define a key or secondary index");
         }
 
-        var allColumns = new TreeMap<String, JoinColumnInfo>();
+        var allColumns = new TreeMap<String, ColumnInfo>();
         examineAllColumns(allColumns, joinType, messages);
         if (allColumns.isEmpty()) {
             messages.add("no columns are defined");
@@ -137,7 +137,7 @@ public final class JoinRowInfo {
     /**
      * @param allColumns results stored here
      */
-    private static void examineAllColumns(NavigableMap<String, JoinColumnInfo> allColumns,
+    private static void examineAllColumns(NavigableMap<String, ColumnInfo> allColumns,
                                           Class<?> joinType, Set<String> messages)
     {
         for (Method method : joinType.getMethods()) {
@@ -234,14 +234,14 @@ public final class JoinRowInfo {
     /**
      * @return null if illegal
      */
-    private static ColumnInfo addColumn(NavigableMap<String, JoinColumnInfo> allColumns,
+    private static ColumnInfo addColumn(NavigableMap<String, ColumnInfo> allColumns,
                                         Set<String> messages, String name, Class<?> type)
     {
         if (!typeCheck(messages, name, type)) {
             return null;
         }
 
-        JoinColumnInfo info = allColumns.get(name);
+        ColumnInfo info = allColumns.get(name);
 
         if (info == null) {
             name = name.intern();
@@ -294,9 +294,9 @@ public final class JoinRowInfo {
     final String name;
 
     // Map is ordered lexicographically by name.
-    final NavigableMap<String, JoinColumnInfo> allColumns;
+    final NavigableMap<String, ColumnInfo> allColumns;
 
-    private JoinRowInfo(String name, NavigableMap<String, JoinColumnInfo> allColumns) {
+    private JoinRowInfo(String name, NavigableMap<String, ColumnInfo> allColumns) {
         this.name = name;
         this.allColumns = allColumns;
     }

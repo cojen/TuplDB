@@ -40,7 +40,7 @@ public class JoinColumnInfo extends ColumnInfo {
      */
     @Override
     public ColumnInfo subColumn(String name) {
-        if (isPlainRowType()) {
+        if (isPlainColumnType()) {
             return RowInfo.find(type).allColumns.get(name);
         } else {
             return JoinRowInfo.find(type).allColumns.get(name);
@@ -48,23 +48,24 @@ public class JoinColumnInfo extends ColumnInfo {
     }
 
     @Override
-    public void putScalarColumns(Map<String, ColumnInfo> dst) {
-        putScalarColumns(name, dst);
+    public void gatherScalarColumns(Map<String, ColumnInfo> dst) {
+        gatherScalarColumns(name, dst);
     }
 
-    private void putScalarColumns(String path, Map<String, ColumnInfo> dst) {
-        if (isPlainRowType()) {
+    @Override
+    public void gatherScalarColumns(String path, Map<String, ColumnInfo> dst) {
+        if (isPlainColumnType()) {
             for (ColumnInfo info : RowInfo.find(type).allColumns.values()) {
-                dst.put(path + '.' + info.name, info);
+                info.gatherScalarColumns(path, dst);
             }
         } else {
-            for (JoinColumnInfo info : JoinRowInfo.find(type).allColumns.values()) {
-                info.putScalarColumns(path + '.' + info.name, dst);
+            for (ColumnInfo info : JoinRowInfo.find(type).allColumns.values()) {
+                info.gatherScalarColumns(path + '.' + info.name, dst);
             }
         }
     }
 
-    public boolean isPlainRowType() {
+    private boolean isPlainColumnType() {
         // This simple check works because join row types cannot specify a primary key.
         return type.isAnnotationPresent(PrimaryKey.class);
     }
