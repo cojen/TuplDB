@@ -15,14 +15,9 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.rows.join;
+package org.cojen.tupl.rows;
 
 import java.util.Map;
-
-import org.cojen.tupl.PrimaryKey;
-
-import org.cojen.tupl.rows.ColumnInfo;
-import org.cojen.tupl.rows.RowInfo;
 
 /**
  * 
@@ -40,33 +35,13 @@ public class JoinColumnInfo extends ColumnInfo {
      */
     @Override
     public ColumnInfo subColumn(String name) {
-        if (isPlainColumnType()) {
-            return RowInfo.find(type).allColumns.get(name);
-        } else {
-            return JoinRowInfo.find(type).allColumns.get(name);
-        }
-    }
-
-    @Override
-    public void gatherScalarColumns(Map<String, ColumnInfo> dst) {
-        gatherScalarColumns(name, dst);
+        return RowInfo.find(type).allColumns.get(name);
     }
 
     @Override
     public void gatherScalarColumns(String path, Map<String, ColumnInfo> dst) {
-        if (isPlainColumnType()) {
-            for (ColumnInfo info : RowInfo.find(type).allColumns.values()) {
-                info.gatherScalarColumns(path, dst);
-            }
-        } else {
-            for (ColumnInfo info : JoinRowInfo.find(type).allColumns.values()) {
-                info.gatherScalarColumns(path + '.' + info.name, dst);
-            }
+        for (ColumnInfo info : RowInfo.find(type).allColumns.values()) {
+            info.gatherScalarColumns(path + '.' + info.name, dst);
         }
-    }
-
-    private boolean isPlainColumnType() {
-        // This simple check works because join row types cannot specify a primary key.
-        return type.isAnnotationPresent(PrimaryKey.class);
     }
 }

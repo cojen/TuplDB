@@ -62,7 +62,7 @@ final class JoinSpec {
      * a < b    right anti join
      * a >< b   full anti join
      */
-    static JoinSpec parse(JoinRowInfo joinInfo, String spec, Table... tables) {
+    static JoinSpec parse(RowInfo joinInfo, String spec, Table... tables) {
         try {
             return new JoinSpec(new Parser(joinInfo.allColumns, spec, tables, null).parse());
         } catch (IOException e) {
@@ -74,7 +74,7 @@ final class JoinSpec {
     /**
      * Variant which opens tables automatically.
      */
-    static JoinSpec parse(JoinRowInfo joinInfo, String spec, Database db) throws IOException {
+    static JoinSpec parse(RowInfo joinInfo, String spec, Database db) throws IOException {
         return new JoinSpec(new Parser(joinInfo.allColumns, spec, null, db).parse());
     }
 

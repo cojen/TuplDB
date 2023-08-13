@@ -25,6 +25,7 @@ import static org.junit.Assert.*;
 import org.cojen.tupl.PrimaryKey;
 
 import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.RowInfo;
 
 import org.cojen.tupl.rows.filter.Parser;
 import org.cojen.tupl.rows.filter.Query;
@@ -43,7 +44,7 @@ public class JoinParserTest {
 
     @Before
     public void setup() {
-        mColumnMap = JoinRowInfo.find(JoinABC.class).allColumns;
+        mColumnMap = RowInfo.find(JoinABC.class).allColumns;
     }
 
     @Test

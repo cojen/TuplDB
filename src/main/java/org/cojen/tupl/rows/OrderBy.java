@@ -22,8 +22,6 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import org.cojen.tupl.rows.join.JoinColumnInfo;
-
 import static org.cojen.tupl.rows.ColumnInfo.*;
 
 /**
