@@ -238,7 +238,7 @@ abstract class KeyMatch implements Visitor {
 
         private long find(String name) {
             Entry[] entries = mEntries;
-            for (var e = entries[name.hashCode() & (entries.length - 1)]; e != null; e = e.mNext) {
+            for (var e = entries[name.hashCode() % entries.length]; e != null; e = e.mNext) {
                 if (e.mName.equals(name)) {
                     return e.mValue;
                 }
