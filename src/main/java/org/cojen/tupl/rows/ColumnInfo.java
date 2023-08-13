@@ -308,40 +308,33 @@ public class ColumnInfo implements Cloneable {
         };
     }
 
-    /**
-     * @see JoinColumnInfo
-     */
     public boolean isScalarType() {
-        return true;
+        return typeCode != TYPE_OBJECT;
     }
 
     /**
      * @return null if not found
-     * @see JoinColumnInfo
      */
     public ColumnInfo subColumn(String name) {
-        return null;
+        return isScalarType() ? null : RowInfo.find(type).allColumns.get(name);
     }
 
     /**
      * Recursively puts all the scalar columns into the given map with their fully qualified
      * names.
-     *
-     * @see JoinColumnInfo
      */
     public void gatherScalarColumns(Map<String, ColumnInfo> dst) {
         gatherScalarColumns(name, dst);
     }
 
-    /**
-     * Recursively puts all the scalar columns into the given map with their fully qualified
-     * names.
-     *
-     * @param path overrides the column name; must not be null
-     * @see JoinColumnInfo
-     */
-    public void gatherScalarColumns(String path, Map<String, ColumnInfo> dst) {
-        dst.put(path, this);
+    private void gatherScalarColumns(String path, Map<String, ColumnInfo> dst) {
+        if (isScalarType()) {
+            dst.put(path, this);
+        } else {
+            for (ColumnInfo info : RowInfo.find(type).allColumns.values()) {
+                info.gatherScalarColumns(path + '.' + info.name, dst);
+            }
+        }
     }
 
     /**

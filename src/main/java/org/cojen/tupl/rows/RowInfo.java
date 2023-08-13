@@ -470,7 +470,7 @@ public class RowInfo extends ColumnSet {
 
         if (info == null) {
             name = name.intern();
-            info = typeCode != TYPE_OBJECT ? new ColumnInfo() : new JoinColumnInfo();
+            info = new ColumnInfo();
             info.name = name;
             info.type = type;
             info.typeCode = typeCode;

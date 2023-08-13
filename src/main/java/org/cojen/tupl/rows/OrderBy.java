@@ -215,11 +215,11 @@ public final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
                     if (base != null) {
                         column = base.subColumn(name.substring(ix + 1));
                         if (column != null) {
-                            var joinColumn = new JoinColumnInfo();
-                            joinColumn.name = name;
-                            joinColumn.type = column.type;
-                            joinColumn.typeCode = column.typeCode;
-                            column = joinColumn;
+                            var pathColumn = new ColumnInfo();
+                            pathColumn.name = name;
+                            pathColumn.type = column.type;
+                            pathColumn.typeCode = column.typeCode;
+                            column = pathColumn;
                             break subColumn;
                         }
                     }
