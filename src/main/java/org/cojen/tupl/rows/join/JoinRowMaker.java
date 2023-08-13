@@ -75,6 +75,13 @@ public class JoinRowMaker {
     private final ClassMaker mClassMaker;
 
     private JoinRowMaker(Class<?> joinType, RowInfo joinInfo) {
+        for (ColumnInfo info : joinInfo.allColumns.values()) {
+            if (info.isScalarType()) {
+                throw new IllegalArgumentException
+                    ("Join type cannot have any scalar columns: " + info.name);
+            }
+        }
+
         mJoinType = joinType;
         mJoinInfo = joinInfo;
         mClassMaker = RowGen.beginClassMaker(getClass(), joinType, joinInfo.name, null, null)
