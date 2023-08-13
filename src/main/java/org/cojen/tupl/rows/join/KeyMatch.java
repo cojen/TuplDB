@@ -64,6 +64,8 @@ abstract class KeyMatch implements Visitor {
         int size = keyColumns.size();
         if (size == 1) {
             return new OneKey(prefix + keyColumns.keySet().iterator().next());
+        } else if (size == 0) {
+            return new NoKey();
         } else {
             // FIXME: If more than 64 (unlikely), define MegaKey which uses a BitSet.
             return new MultiKey(prefix, keyColumns);
@@ -117,6 +119,28 @@ abstract class KeyMatch implements Visitor {
 
     @Override
     public abstract void visit(ColumnToColumnFilter filter);
+
+    /**
+     * KeyMatch for a primary or alternate key which consists of no columns. Isn't generally
+     * applicable to ordinary row types, because they always require a primary key with at
+     * least one column.
+     */
+    private static final class NoKey extends KeyMatch {
+        NoKey() {
+        }
+
+        @Override
+        public void visit(AndFilter filter) {
+        }
+
+        @Override
+        public void visit(ColumnToArgFilter filter) {
+        }
+
+        @Override
+        public void visit(ColumnToColumnFilter filter) {
+        }
+    }
 
     /**
      * KeyMatch for a primary or alternate key which consists of one column.

@@ -55,7 +55,7 @@ public class MappedJoinTest {
     }
 
     @Test
-    public void simpleRename() throws Exception {
+    public void basic() throws Exception {
         Table<Emp> emp = mEmployee.map(Emp.class, new ToEmp());
         Table<Dept> dept = mDepartment.map(Dept.class, new ToDept());
         Table<EmpJoinDept> join = Table.join(EmpJoinDept.class, "emp : dept", emp, dept);
@@ -85,6 +85,55 @@ public class MappedJoinTest {
         };
 
         eval(join, plan, results, "emp.deptId == dept.id");
+
+        plan = """
+- nested loops join
+  - first
+    - map: org.cojen.tupl.rows.join.MappedJoinTest$Emp
+      using: ToEmp
+      - filter: lastName == ?2
+        - full scan over primary key: org.cojen.tupl.rows.join.Employee
+          key columns: +id
+    assignments: ?2 = emp.deptId
+  - join
+    - filter: id == ?2
+      - map: org.cojen.tupl.rows.join.MappedJoinTest$Dept
+        using: ToDept
+        - full scan over primary key: org.cojen.tupl.rows.join.Department
+          key columns: +id
+            """;
+
+        results = new String[] {
+            "{dept={id=34, name=Clerical}, emp={deptId=34, country=Germany, name=Smith}}",
+        };
+
+        eval(join, plan, results, "emp.deptId == dept.id && emp.name == ?", "Smith");
+
+        Table<EmpAndDept> flat = join.map(EmpAndDept.class, new ToEmpAndDept()); 
+
+        plan = """
+- filter: deptName == ?1
+  - map: org.cojen.tupl.rows.join.MappedJoinTest$EmpAndDept
+    using: ToEmpAndDept
+    - nested loops join
+      - first
+        - map: org.cojen.tupl.rows.join.MappedJoinTest$Emp
+          using: ToEmp
+          - full scan over primary key: org.cojen.tupl.rows.join.Employee
+            key columns: +id
+      - join
+        - map: org.cojen.tupl.rows.join.MappedJoinTest$Dept
+          using: ToDept
+          - full scan over primary key: org.cojen.tupl.rows.join.Department
+            key columns: +id
+            """;
+
+        results = new String[] {
+            "{deptId=33, deptName=Engineering, empCountry=Australia, empName=Jones}",
+            "{deptId=33, deptName=Engineering, empCountry=Australia, empName=Heisenberg}",
+        };
+
+        eval(flat, plan, results, "{~empId, *} deptName == ?", "Engineering");
     }
 
     @SuppressWarnings("unchecked")
@@ -149,6 +198,24 @@ public class MappedJoinTest {
         void dept(Dept d);
     }
 
+    public static interface EmpAndDept {
+        int empId();
+        void empId(int id);
+
+        String empName();
+        void empName(String s);
+
+        String empCountry();
+        void empCountry(String s);
+
+        @Nullable
+        Integer deptId();
+        void deptId(Integer id);
+
+        String deptName();
+        void deptName(String s);
+    }
+
     public static class ToEmp implements Mapper<Employee, Emp> {
         @Override
         public Emp map(Employee source, Emp target) {
@@ -157,6 +224,10 @@ public class MappedJoinTest {
             target.country(source.country());
             target.deptId(source.departmentId());
             return target;
+        }
+
+        public static String name_to_lastName(String name) {
+            return name;
         }
 
         @Override
@@ -170,6 +241,29 @@ public class MappedJoinTest {
         public Dept map(Department source, Dept target) {
             target.id(source.id());
             target.name(source.name());
+            return target;
+        }
+
+        @Override
+        public String toString() {
+            return getClass().getSimpleName();
+        }
+    }
+
+    public static class ToEmpAndDept implements Mapper<EmpJoinDept, EmpAndDept> {
+        @Override
+        public EmpAndDept map(EmpJoinDept source, EmpAndDept target) {
+            Integer empDeptId = source.emp().deptId();
+
+            if (empDeptId == null || empDeptId != source.dept().id()) {
+                return null;
+            }
+
+            target.empId(source.emp().id());
+            target.empName(source.emp().name());
+            target.empCountry(source.emp().country());
+            target.deptId(source.dept().id());
+            target.deptName(source.dept().name());
             return target;
         }
 
