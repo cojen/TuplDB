@@ -84,7 +84,7 @@ public class CodeUtils {
     }
 
     /**
-     * Appends a value to a StringBuilder.
+     * Appends a column value to a StringBuilder.
      *
      * @param bob StringBuilder
      */
