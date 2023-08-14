@@ -332,7 +332,10 @@ public class ColumnInfo implements Cloneable {
             dst.put(path, this);
         } else {
             for (ColumnInfo info : RowInfo.find(type).allColumns.values()) {
-                info.gatherScalarColumns(path + '.' + info.name, dst);
+                String newPath = path + '.' + info.name;
+                info = info.copy();
+                info.name = newPath;
+                info.gatherScalarColumns(newPath, dst);
             }
         }
     }
