@@ -62,7 +62,7 @@ final class JoinSpec {
      * a < b    right anti join
      * a >< b   full anti join
      */
-    static JoinSpec parse(JoinRowInfo joinInfo, String spec, Table... tables) {
+    static JoinSpec parse(RowInfo joinInfo, String spec, Table... tables) {
         try {
             return new JoinSpec(new Parser(joinInfo.allColumns, spec, tables, null).parse());
         } catch (IOException e) {
@@ -74,7 +74,7 @@ final class JoinSpec {
     /**
      * Variant which opens tables automatically.
      */
-    static JoinSpec parse(JoinRowInfo joinInfo, String spec, Database db) throws IOException {
+    static JoinSpec parse(RowInfo joinInfo, String spec, Database db) throws IOException {
         return new JoinSpec(new Parser(joinInfo.allColumns, spec, null, db).parse());
     }
 
@@ -613,9 +613,9 @@ final class JoinSpec {
 
     public static sealed class Column extends Node implements Source {
         private final Table mTable;
-        private final JoinColumnInfo mColumn;
+        private final ColumnInfo mColumn;
 
-        Column(Table table, JoinColumnInfo column) {
+        Column(Table table, ColumnInfo column) {
             mTable = table;
             mColumn = column;
         }
@@ -663,7 +663,7 @@ final class JoinSpec {
             return mTable;
         }
 
-        public final JoinColumnInfo column() {
+        public final ColumnInfo column() {
             return mColumn;
         }
 
@@ -797,7 +797,7 @@ final class JoinSpec {
         public void assignScore(FilterScorer fs, Set<String> available) {
             KeyMatch km = mKeyMatch;
             if (km == null) {
-                JoinColumnInfo column = column();                
+                ColumnInfo column = column();                
                 mKeyMatch = km = KeyMatch.build(column.name + '.', RowInfo.find(column.type));
             }
 
@@ -1298,7 +1298,7 @@ final class JoinSpec {
     }
 
     private static final class Parser extends SimpleParser {
-        private final Map<String, JoinColumnInfo> mAllColumns;
+        private final Map<String, ColumnInfo> mAllColumns;
         private final Set<String> mAvailableNames;
         private final Table[] mTables;
         private final Database mDb;
@@ -1310,7 +1310,7 @@ final class JoinSpec {
         /**
          * @param db optional; pass a database instance to open tables automatically
          */
-        Parser(Map<String, JoinColumnInfo> allColumns, String spec, Table[] tables, Database db) {
+        Parser(Map<String, ColumnInfo> allColumns, String spec, Table[] tables, Database db) {
             super(spec);
             mAllColumns = allColumns;
             mAvailableNames = new HashSet<>(allColumns.keySet());
@@ -1390,7 +1390,7 @@ final class JoinSpec {
             } while (Character.isJavaIdentifierPart(c));
 
             String name = mText.substring(start, --mPos);
-            JoinColumnInfo column = mAllColumns.get(name);
+            ColumnInfo column = mAllColumns.get(name);
 
             if (column == null) {
                 mPos = start;
