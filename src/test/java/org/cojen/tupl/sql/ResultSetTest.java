@@ -31,6 +31,8 @@ import org.cojen.tupl.*;
 
 import org.cojen.tupl.rows.RowMaker;
 
+import org.cojen.tupl.rows.join.JoinRowMaker;
+
 /**
  * 
  *
@@ -40,7 +42,6 @@ public class ResultSetTest {
     public static void main(String[] args) throws Exception {
         org.junit.runner.JUnitCore.main(ResultSetTest.class.getName());
     }
-
 
     @Test
     public void basic() throws Exception {
@@ -197,6 +198,88 @@ public class ResultSetTest {
         assertTrue(rs.toString().endsWith("{idx=123, message=hello}"));
     }
 
+    @Test
+    public void join() throws Exception {
+        var rsClass = ResultSetMaker.find(Join.class, null);
+        var rsCtor = rsClass.getConstructor();
+
+        var rs = (ResultSet) rsCtor.newInstance();
+
+        assertTrue(rs.toString().contains("ResultSet"));
+
+        var joinRowClass = JoinRowMaker.find(Join.class);
+        var joinRow = joinRowClass.getConstructor().newInstance();
+        rsClass.getMethod("init", joinRowClass).invoke(rs, joinRow);
+
+        assertTrue(rs.toString().endsWith("{a.id=0, a.number=0, a.text=null, a.value=null, b.id=0, b.number=0, b.text=null, b.value=null}"));
+
+        try {
+            rs.updateLong("a.id", 123);
+            fail();
+        } catch (NullPointerException e) {
+        }
+
+        var rowClass = RowMaker.find(Row.class);
+        var arow = rowClass.getConstructor().newInstance();
+        joinRowClass.getMethod("a", Row.class).invoke(joinRow, arow);
+
+        assertTrue(rs.toString().endsWith("{a.id=0, a.number=0, a.text=null, a.value=null, b.id=0, b.number=0, b.text=null, b.value=null}"));
+
+        rs.updateLong("a.id", 123);
+
+        assertTrue(rs.toString().endsWith("{a.id=123, a.number=0, a.text=null, a.value=null, b.id=0, b.number=0, b.text=null, b.value=null}"));
+
+        rs.updateLong("a.text", 456);
+
+        assertTrue(rs.toString().endsWith("{a.id=123, a.number=0, a.text=456, a.value=null, b.id=0, b.number=0, b.text=null, b.value=null}"));
+
+        assertEquals(123, rs.getLong("a.id"));
+        assertEquals("456", rs.getString("a.text"));
+
+        assertEquals(0, rs.getLong("a.number"));
+        assertFalse(rs.wasNull());
+
+        assertEquals(null, rs.getObject("a.value"));
+        assertTrue(rs.wasNull());
+
+        var md = rs.getMetaData();
+        assertEquals(8, md.getColumnCount());
+        assertEquals("a.id", md.getColumnName(1));
+    }
+
+    @Test
+    public void joinProjection() throws Exception {
+        var projection = new LinkedHashMap<String, String>();
+        projection.put("a.id", "aid");
+        projection.put("b.id", "bid");
+
+        var rsClass = ResultSetMaker.find(Join.class, projection);
+        var rsCtor = rsClass.getConstructor();
+
+        var rs = (ResultSet) rsCtor.newInstance();
+
+        assertTrue(rs.toString().contains("ResultSet"));
+
+        var joinRowClass = JoinRowMaker.find(Join.class);
+        var joinRow = joinRowClass.getConstructor().newInstance();
+        rsClass.getMethod("init", joinRowClass).invoke(rs, joinRow);
+
+        assertTrue(rs.toString().endsWith("{aid=0, bid=0}"));
+
+        var rowClass = RowMaker.find(Row.class);
+        var arow = rowClass.getConstructor().newInstance();
+        var brow = rowClass.getConstructor().newInstance();
+        joinRowClass.getMethod("a", Row.class).invoke(joinRow, arow);
+        joinRowClass.getMethod("b", Row.class).invoke(joinRow, brow);
+
+        assertTrue(rs.toString().endsWith("{aid=0, bid=0}"));
+
+        rs.updateLong("aid", 123);
+        rs.updateInt("bid", 456);
+
+        assertTrue(rs.toString().endsWith("{aid=123, bid=456}"));
+    }
+
     @PrimaryKey("id")
     public static interface Row {
         @Automatic
@@ -213,5 +296,13 @@ public class ResultSetTest {
 
         String text();
         void text(String t);
+    }
+
+    public static interface Join {
+        Row a();
+        void a(Row a);
+
+        Row b();
+        void b(Row b);
     }
 }

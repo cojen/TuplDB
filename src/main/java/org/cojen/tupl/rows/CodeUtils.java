@@ -23,6 +23,8 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.UnsetColumnException;
+
 import static org.cojen.tupl.rows.ColumnInfo.*;
 
 /**
@@ -123,5 +125,84 @@ public class CodeUtils {
         if (done != null) {
             done.here();
         }
+    }
+
+    /**
+     * Generates code which follows a path to obtain a column value. The generated code might
+     * throw an UnsetColumnException or NullPointerException (if following a null join path).
+     *
+     * @param rowVar can be a row type or row class
+     * @param noException when true, return a cleared value unstead of throwing
+     * UnsetColumnException or NullPointerException (NPE is still thrown if initial row is null)
+     * @return a local Variable or a Field
+     */
+    public static Variable getColumnValue(Variable rowVar, ColumnInfo ci, boolean noException)
+    {
+        String prefix = ci.prefix();
+
+        if (prefix == null && noException && ci.isScalarType()
+            && !rowVar.classType().isInterface())
+        {
+            return rowVar.field(ci.name);
+        }
+
+        MethodMaker mm = rowVar.methodMaker();
+
+        final Variable columnVar = mm.var(ci.type);
+
+        Label tryStart, done;
+
+        if (noException) {
+            tryStart = mm.label().here();
+            done = mm.label();
+        } else {
+            tryStart = null;
+            done = null;
+        }
+
+        while (true) {
+            if (prefix == null) {
+                columnVar.set(rowVar.invoke(ci.name));
+                break;
+            }
+
+            rowVar = rowVar.invoke(prefix);
+
+            if (noException) {
+                Label cont = mm.label();
+                rowVar.ifNe(null, cont);
+                columnVar.clear();
+                done.goto_();
+                cont.here();
+            }
+
+            ci = ci.tail();
+            prefix = ci.prefix();
+        }
+
+        if (tryStart != null) {
+            mm.catch_(tryStart, UnsetColumnException.class, exVar -> {
+                columnVar.clear();
+            });
+
+            done.here();
+        }
+
+        return columnVar;
+    }
+
+    /**
+     * Generates code which follows a path to assign a column value. The generated code might
+     * throw an UnsetColumnException or NullPointerException (if following a null join path).
+     *
+     * @param rowVar can be a row type or row class
+     */
+    public static void setColumnValue(Variable rowVar, ColumnInfo ci, Variable columnVar) {
+        for (String prefix = ci.prefix(); prefix != null; prefix = ci.prefix()) {
+            rowVar = rowVar.invoke(prefix);
+            ci = ci.tail();
+            prefix = ci.prefix();
+        }
+        rowVar.invoke(ci.name, columnVar);
     }
 }

@@ -28,6 +28,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -58,6 +59,8 @@ import org.cojen.tupl.rows.RowInfo;
 import org.cojen.tupl.rows.RowMaker;
 import org.cojen.tupl.rows.WeakCache;
 
+import org.cojen.tupl.rows.join.JoinRowMaker;
+
 import static org.cojen.tupl.rows.ColumnInfo.*;
 
 /**
@@ -72,8 +75,9 @@ public final class ResultSetMaker {
      * Finds or makes a ResultSet implementation class.
      *
      * @param rowType interface consisting of column methods
-     * @param projection maps original column names to target names; the order of the elements
-     * determines the ResultSet column numbers; pass null to project all non-hidden columns
+     * @param projection maps original column names to fully qualified target names; the order
+     * of the elements determines the ResultSet column numbers; pass null to project all
+     * non-hidden columns
      * @throws SQLNonTransientException if a requested column doesn't exist
      */
     static Class<?> find(Class<?> rowType, LinkedHashMap<String, String> projection)
@@ -84,20 +88,22 @@ public final class ResultSetMaker {
         var columns = new LinkedHashMap<String, ColumnInfo>();
 
         if (projection == null) {
-            putAllNonHidden(columns, info.keyColumns);
-            putAllNonHidden(columns, info.valueColumns);
-        } else {
-            Map<String, ColumnInfo> all = info.allColumns;
+            gatherAllScalarColumns(columns, info.keyColumns);
+            gatherAllScalarColumns(columns, info.valueColumns);
 
+            // Need to remove all of the hidden columns.
+            Iterator<ColumnInfo> it = columns.values().iterator();
+            while (it.hasNext()) {
+                ColumnInfo colInfo = it.next();
+                if (colInfo.isHidden()) {
+                    it.remove();
+                }
+            }
+        } else {
             for (Map.Entry<String, String> e : projection.entrySet()) {
                 String originalName = e.getKey();
 
-                ColumnInfo colInfo = all.get(originalName);
-                if (colInfo == null) {
-                    throw new SQLNonTransientException
-                        ("Column \"" + originalName + "\" doesn't exist in \"" +
-                         rowType.getSimpleName() + '"');
-                }
+                ColumnInfo colInfo = findColumn(rowType, info.allColumns, originalName);
 
                 String targetName = e.getValue();
                 if (targetName == null) {
@@ -108,17 +114,72 @@ public final class ResultSetMaker {
             }
         }
 
-        var maker = new ResultSetMaker(rowType, info, columns);
+        boolean joinType = false;
+
+        for (ColumnInfo colInfo : columns.values()) {
+            if (colInfo.prefix() != null) {
+                joinType = true;
+                break;
+            }
+        }
+
+        Class<?> rowClass;
+        if (!joinType) {
+            rowClass = RowMaker.find(rowType);
+        } else {
+            rowClass = JoinRowMaker.find(rowType);
+        }
+
+        var maker = new ResultSetMaker(rowType, rowClass, info, columns);
 
         return cCache.obtain(new Key(maker.mRowType, maker.mColumnPairs), maker);
     }
 
-    private static void putAllNonHidden(Map<String, ColumnInfo> dst, Map<String, ColumnInfo> src) {
-        for (Map.Entry<String, ColumnInfo> e : src.entrySet()) {
-            ColumnInfo colInfo = e.getValue();
-            if (!colInfo.isHidden()) {
-                dst.put(e.getKey(), colInfo);
+    private static ColumnInfo findColumn(Class<?> rowType,
+                                         Map<String, ColumnInfo> allColumns, final String path)
+        throws SQLNonTransientException
+    {
+        String subPath = path;
+        ColumnInfo colInfo;
+
+        while (true) {
+            colInfo = allColumns.get(subPath);
+
+            if (colInfo != null) {
+                if (!colInfo.name.equals(path)) {
+                    colInfo = colInfo.copy();
+                    colInfo.name = path;
+                }
+                return colInfo;
             }
+
+            int ix = subPath.indexOf('.');
+
+            if (ix < 0) {
+                break;
+            }
+
+            String prefix = subPath.substring(0, ix);
+            colInfo = allColumns.get(prefix);
+
+            if (colInfo == null) {
+                break;
+            }
+
+            allColumns = RowInfo.find(colInfo.type).allColumns;
+            subPath = subPath.substring(ix + 1);
+        }
+
+        throw new SQLNonTransientException
+            ("Column \"" + path + "\" doesn't exist in \"" +
+             rowType.getSimpleName() + '"');
+    }
+
+    private static void gatherAllScalarColumns(Map<String, ColumnInfo> dst,
+                                               Map<String, ColumnInfo> src)
+    {
+        for (Map.Entry<String, ColumnInfo> e : src.entrySet()) {
+            e.getValue().gatherScalarColumns(dst);
         }
     }
 
@@ -145,7 +206,11 @@ public final class ResultSetMaker {
 
     private static final WeakCache<Object, Class<?>, ResultSetMaker> cCache = new WeakCache<>() {
         protected Class<?> newValue(Object key, ResultSetMaker maker) {
-            return maker.finish();
+            try {
+                return maker.finish();
+            } catch (SQLNonTransientException e) {
+                throw Utils.rethrow(e);
+            }
         }
     };
 
@@ -153,20 +218,21 @@ public final class ResultSetMaker {
 
     private final Class<?> mRowType;
     private final Class<?> mRowClass;
-    private final LinkedHashMap<String, ColumnInfo> mColumns;
     private final String[] mColumnPairs;
     private final boolean mHasNullableColumns;
+
+    private LinkedHashMap<String, ColumnInfo> mColumns;
 
     private ClassMaker mClassMaker;
 
     /**
      * @param columns maps target names to the original columns
      */
-    private ResultSetMaker(Class<?> rowType, RowInfo info,
+    private ResultSetMaker(Class<?> rowType, Class<?> rowClass, RowInfo info,
                            LinkedHashMap<String, ColumnInfo> columns)
     {
         mRowType = rowType;
-        mRowClass = RowMaker.find(rowType);
+        mRowClass = rowClass;
         mColumns = columns;
 
         boolean hasNullableColumns = false;
@@ -192,14 +258,6 @@ public final class ResultSetMaker {
     private ResultSetMaker(Class<?> rowType, String[] columnPairs, boolean hasNullableColumns) {
         mRowType = rowType;
         mRowClass = null; // not needed
-
-        Map<String, ColumnInfo> allColumns = RowInfo.find(rowType).allColumns;
-        mColumns = new LinkedHashMap<>();
-
-        for (int i = 0; i < columnPairs.length; i += 2) {
-            mColumns.put(columnPairs[i], allColumns.get(columnPairs[i + 1]));
-        }
-
         mColumnPairs = columnPairs;
         mHasNullableColumns = hasNullableColumns;
     }
@@ -216,6 +274,25 @@ public final class ResultSetMaker {
         mHasNullableColumns = maker.mHasNullableColumns;
     }
 
+    private Map<String, ColumnInfo> columns() throws SQLNonTransientException {
+        Map<String, ColumnInfo> columns = mColumns;
+        if (columns == null) {
+            columns = buildColumnMap();
+        }
+        return columns;
+    }
+
+    private Map<String, ColumnInfo> buildColumnMap() throws SQLNonTransientException {
+        Map<String, ColumnInfo> allColumns = RowInfo.find(mRowType).allColumns;
+        var columns = new LinkedHashMap<String, ColumnInfo>();
+        String[] columnPairs = mColumnPairs;
+        for (int i = 0; i < columnPairs.length; i += 2) {
+            columns.put(columnPairs[i], findColumn(mRowType, allColumns, columnPairs[i + 1]));
+        }
+        mColumns = columns;
+        return columns;
+    }
+
     /**
      * Returns the generated class which has a no-arg constructor and an init method which
      * accepts a row object. The init method parameter type is the generated row implementation
@@ -223,7 +300,7 @@ public final class ResultSetMaker {
      *
      * @see RowMaker#find
      */
-    private Class<?> finish() {
+    private Class<?> finish() throws SQLNonTransientException {
         // Note that the generated mRowClass is used as the peer in order to be accessible.
         mClassMaker = CodeUtils.beginClassMaker(ResultSetMaker.class, mRowClass, null, "rs");
         mClassMaker.public_();
@@ -311,6 +388,7 @@ public final class ResultSetMaker {
 
     public static CallSite indyToString(MethodHandles.Lookup lookup, String name, MethodType mt,
                                         Class<?> rowType, String[] columnPairs)
+        throws SQLNonTransientException
     {
         MethodMaker mm = MethodMaker.begin(lookup, name, mt);
         var rsVar = mm.param(0);
@@ -322,7 +400,9 @@ public final class ResultSetMaker {
         return new ConstantCallSite(mm.finish());
     }
 
-    private void makeToStringMethod(MethodMaker mm, Variable rsVar, Variable rowVar) {
+    private void makeToStringMethod(MethodMaker mm, Variable rsVar, Variable rowVar)
+        throws SQLNonTransientException
+    {
         var bob = mm.var(ResultSetMaker.class).invoke("beginToString", rsVar);
 
         Label done = mm.label();
@@ -330,7 +410,7 @@ public final class ResultSetMaker {
 
         var initSize = bob.invoke("append", '{').invoke("length");
 
-        for (Map.Entry<String, ColumnInfo> e : mColumns.entrySet()) {
+        for (Map.Entry<String, ColumnInfo> e : columns().entrySet()) {
             ColumnInfo info = e.getValue();
             if (!info.isHidden()) {
                 Label sep = mm.label();
@@ -338,7 +418,7 @@ public final class ResultSetMaker {
                 bob.invoke("append", ", ");
                 sep.here();
                 bob.invoke("append", e.getKey()).invoke("append", '=');
-                CodeUtils.appendValue(bob, info, rowVar.field(info.name));
+                CodeUtils.appendValue(bob, info, CodeUtils.getColumnValue(rowVar, info, true));
             }
         }
 
@@ -363,6 +443,7 @@ public final class ResultSetMaker {
 
     public static ResultSetMetaData condyMD(MethodHandles.Lookup lookup, String name, Class<?> type,
                                             Class<?> rowType, String[] columnPairs)
+        throws SQLNonTransientException
     {
         ClassMaker cm = ClassMaker.begin(null, lookup).extend(BaseResultSetMetaData.class).final_();
         cm.addConstructor().private_();
@@ -370,7 +451,7 @@ public final class ResultSetMaker {
         var maker = new ResultSetMaker(rowType, columnPairs, false);
         maker.mClassMaker = cm;
 
-        cm.addMethod(int.class, "getColumnCount").public_().return_(maker.mColumns.size());
+        cm.addMethod(int.class, "getColumnCount").public_().return_(maker.columns().size());
 
         maker.addMetaDataMethod(boolean.class, "isAutoIncrement", (n, info) -> info.isAutomatic());
 
@@ -477,11 +558,12 @@ public final class ResultSetMaker {
      */
     private void addMetaDataMethod(Class<?> type, String methodName,
                                    BiFunction<String, ColumnInfo, Object> impl)
+        throws SQLNonTransientException
     {
         MethodMaker mm = mClassMaker.addMethod(type, methodName, int.class).public_();
         var indexVar = mm.param(0);
 
-        var cases = new int[mColumns.size()];
+        var cases = new int[columns().size()];
         var labels = new Label[cases.length];
 
         for (int i=0; i<cases.length; i++) {
@@ -493,7 +575,7 @@ public final class ResultSetMaker {
         indexVar.switch_(defaultLabel, cases, labels);
 
         int i = 0;
-        for (Map.Entry<String, ColumnInfo> entry : mColumns.entrySet()) {
+        for (Map.Entry<String, ColumnInfo> entry : columns().entrySet()) {
             labels[i++].here();
             mm.return_(impl.apply(entry.getKey(), entry.getValue()));
         }
@@ -503,7 +585,7 @@ public final class ResultSetMaker {
     }
 
     @SuppressWarnings("unchecked")
-    private void addFindColumnMethod() {
+    private void addFindColumnMethod() throws SQLNonTransientException {
         MethodMaker mm = mClassMaker.addMethod(int.class, "findColumn", String.class);
         mm.public_().final_();
         var columnNameVar = mm.param(0);
@@ -511,10 +593,10 @@ public final class ResultSetMaker {
         var rsMakerVar = mm.var(ResultSetMaker.class);
         rsMakerVar.invoke("nullCheck", columnNameVar);
 
-        var caseMap = new HashMap<String, Label>(mColumns.size() * 3);
+        var caseMap = new HashMap<String, Label>(columns().size() * 3);
         var uniqueLabels = new ArrayList<Label>(caseMap.size());
 
-        for (String name : mColumns.keySet()) {
+        for (String name : columns().keySet()) {
             Label label = mm.label();
             uniqueLabels.add(label);
             caseMap.put(name, label);
@@ -579,6 +661,7 @@ public final class ResultSetMaker {
      */
     public static CallSite indyGet(MethodHandles.Lookup lookup, String name, MethodType mt,
                                    Class<?> rowType, String[] columnPairs, int returnTypeCode)
+        throws SQLNonTransientException
     {
         MethodMaker mm = MethodMaker.begin(lookup, name, mt);
 
@@ -603,6 +686,7 @@ public final class ResultSetMaker {
      */
     private void makeGetMethod(MethodMaker mm, Field lastGetField, int returnTypeCode,
                                Variable rowVar, Variable indexVar)
+        throws SQLNonTransientException
     {
         var returnInfo = new ColumnInfo();
         returnInfo.typeCode = returnTypeCode;
@@ -610,7 +694,7 @@ public final class ResultSetMaker {
 
         Variable returnVar = mm.var(returnInfo.type);
 
-        var cases = new int[mColumns.size()];
+        var cases = new int[columns().size()];
         var labels = new Label[cases.length];
 
         for (int i=0; i<cases.length; i++) {
@@ -624,11 +708,11 @@ public final class ResultSetMaker {
         indexVar.switch_(defaultLabel, cases, labels);
 
         int i = 0;
-        for (Map.Entry<String, ColumnInfo> entry : mColumns.entrySet()) {
+        for (Map.Entry<String, ColumnInfo> entry : columns().entrySet()) {
             labels[i++].here();
 
             ColumnInfo colInfo = entry.getValue();
-            Variable columnVar = rowVar.field(colInfo.name);
+            var columnVar = CodeUtils.getColumnValue(rowVar, colInfo, true);
 
             if (lastGetField != null && colInfo.isNullable() && !returnInfo.isNullable()) {
                 // Copy to a local variable because it will be accessed twice.
@@ -708,6 +792,7 @@ public final class ResultSetMaker {
 
     public static CallSite indyUpdate(MethodHandles.Lookup lookup, String name, MethodType mt,
                                       Class<?> rowType, String[] columnPairs, int paramTypeCode)
+        throws SQLNonTransientException
     {
         MethodMaker mm = MethodMaker.begin(lookup, name, mt);
 
@@ -724,12 +809,13 @@ public final class ResultSetMaker {
 
     private void makeUpdateMethod(MethodMaker mm, int paramTypeCode,
                                   Variable rowVar, Variable indexVar, Variable paramVar)
+        throws SQLNonTransientException
     {
         var paramInfo = new ColumnInfo();
         paramInfo.typeCode = paramTypeCode;
         paramInfo.assignType();
 
-        var cases = new int[mColumns.size()];
+        var cases = new int[columns().size()];
         var labels = new Label[cases.length];
 
         for (int i=0; i<cases.length; i++) {
@@ -745,7 +831,7 @@ public final class ResultSetMaker {
         indexVar.switch_(defaultLabel, cases, labels);
 
         int i = 0;
-        for (Map.Entry<String, ColumnInfo> entry : mColumns.entrySet()) {
+        for (Map.Entry<String, ColumnInfo> entry : columns().entrySet()) {
             labels[i++].here();
 
             ColumnInfo colInfo = entry.getValue();
@@ -767,13 +853,13 @@ public final class ResultSetMaker {
                 var columnVar = mm.var(colInfo.type);
                 Converter.convertExact(mm, entry.getKey(),
                                        paramInfo, paramVar, colInfo, columnVar);
-                rowVar.invoke(colInfo.name, columnVar);
+                CodeUtils.setColumnValue(rowVar, colInfo, columnVar);
                 mm.return_();
             } else {
                 Label convertStart = mm.label().here();
 
                 var columnVar = ConvertCallSite.make(mm, colInfo.type, paramVar);
-                rowVar.invoke(colInfo.name, columnVar);
+                CodeUtils.setColumnValue(rowVar, colInfo, columnVar);
                 mm.return_();
 
                 mm.catch_(tryStart, RuntimeException.class, exVar -> {
