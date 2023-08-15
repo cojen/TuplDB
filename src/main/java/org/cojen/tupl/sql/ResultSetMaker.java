@@ -86,16 +86,18 @@ public final class ResultSetMaker {
         RowInfo info = RowInfo.find(rowType);
 
         var columns = new LinkedHashMap<String, ColumnInfo>();
+        boolean joinType = false;
 
         if (projection == null) {
             gatherAllScalarColumns(columns, info.keyColumns);
             gatherAllScalarColumns(columns, info.valueColumns);
 
-            // Need to remove all of the hidden columns.
             Iterator<ColumnInfo> it = columns.values().iterator();
             while (it.hasNext()) {
                 ColumnInfo colInfo = it.next();
+                joinType |= colInfo.prefix() != null;
                 if (colInfo.isHidden()) {
+                    // Need to remove all of the hidden columns.
                     it.remove();
                 }
             }
@@ -111,15 +113,7 @@ public final class ResultSetMaker {
                 }
 
                 columns.put(targetName, colInfo);
-            }
-        }
-
-        boolean joinType = false;
-
-        for (ColumnInfo colInfo : columns.values()) {
-            if (colInfo.prefix() != null) {
-                joinType = true;
-                break;
+                joinType |= colInfo.prefix() != null;
             }
         }
 
