@@ -846,7 +846,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
             var tableVar = mm.param(0);
             var txnVar = mm.param(1);
             var targetRowVar = mm.param(2);
-            var argsVar = checker.prepareArgs(mm.param(3));
+            var argsVar = mm.param(3);
 
             if (which != 1 && sortPlan != null && sortPlan.sortOrder != null) {
                 // Use a WrappedUpdater around a sorted Scanner.
