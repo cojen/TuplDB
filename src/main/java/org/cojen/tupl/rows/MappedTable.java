@@ -791,12 +791,12 @@ public abstract class MappedTable<S, T> implements Table<T> {
             // Allow factory instances to serve as Mapper wrappers for supporting predicate
             // testing and projection.
 
-            cm.implement(Mapper.class).implement(Cloneable.class);
+            cm.implement(Mapper.class);
 
-            MethodMaker mm = cm.addMethod
-                (Mapper.class, "initWrapper", Mapper.class, Object[].class).public_().varargs();
+            MethodMaker mm = cm.addConstructor(Mapper.class, Object[].class).private_().varargs();
+            mm.invokeSuperConstructor();
 
-            cm.addField(Mapper.class, "mapper").private_();
+            cm.addField(Mapper.class, "mapper").private_().final_();
             mm.field("mapper").set(mm.param(0));
 
             if (targetRemainder != TrueFilter.THE) {
@@ -805,8 +805,6 @@ public abstract class MappedTable<S, T> implements Table<T> {
                     .predicateHandle(targetType, targetRemainder.toString());
                 mm.field("predicate").set(mm.invoke(mh, mm.param(1)));
             }
-
-            mm.return_(mm.this_());
 
             mm = cm.addMethod(Object.class, "map", Object.class, Object.class).public_();
 
@@ -862,8 +860,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
             var mapperVar = tableVar.invoke("mapper");
 
             if (targetRemainder != TrueFilter.THE || targetQuery.projection() != null) {
-                var wrapperVar = mm.invoke("clone").cast(ScannerFactory.class);
-                mapperVar.set(wrapperVar.invoke("initWrapper", mapperVar, argsVar));
+                mapperVar.set(mm.new_(cm, mapperVar, argsVar));
             }
 
             var sourceTableVar = tableVar.invoke("source");
@@ -971,9 +968,6 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
         QueryPlan plan(boolean forUpdater, MappedTable<S, T> table, Transaction txn, Object... args)
             throws IOException;
-
-        // Only to be called if scanner has a predicate or projection applied to it.
-        Mapper<S, T> initWrapper(Mapper<S, T> mapper, Object... args);
     }
 
     /**
