@@ -705,7 +705,7 @@ public class MappedTest {
     @Test
     public void sortManyMore() throws Exception {
         teardown();
-        setup(TestUtils.newTempDatabase(getClass(), 10_000_000));
+        setup(TestUtils.newTempDatabase(getClass(), 20_000_000));
         sortMany(1_500_000);
     }
 
