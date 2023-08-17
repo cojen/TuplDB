@@ -49,7 +49,7 @@ public class MappedScanner<S, T> implements Scanner<T> {
             targetRow = prepareTargetRow(targetRow);
             T mappedTargetRow = mMapper.map(sourceRow, targetRow);
             if (mappedTargetRow != null) {
-                mMappedTable.markAllUndirty(mappedTargetRow);
+                mMappedTable.cleanRow(mappedTargetRow);
                 mTargetRow = mappedTargetRow;
             } else {
                 step(targetRow);
@@ -76,7 +76,7 @@ public class MappedScanner<S, T> implements Scanner<T> {
             targetRow = prepareTargetRow(targetRow);
             T mappedTargetRow = mMapper.map(sourceRow, targetRow);
             if (mappedTargetRow != null) {
-                mMappedTable.markAllUndirty(mappedTargetRow);
+                mMappedTable.cleanRow(mappedTargetRow);
                 mTargetRow = mappedTargetRow;
                 return mappedTargetRow;
             }

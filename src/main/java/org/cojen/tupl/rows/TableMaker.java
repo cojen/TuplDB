@@ -750,7 +750,7 @@ public class TableMaker {
             cont.here();
         }
 
-        markAllUndirty(rowVar, rowInfo);
+        tableVar.invoke("cleanRow", rowVar);
 
         if (returnTrue) {
             mm.return_(true);

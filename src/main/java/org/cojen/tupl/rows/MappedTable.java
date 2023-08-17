@@ -122,13 +122,6 @@ public abstract class MappedTable<S, T> implements Table<T> {
         // collected as long as the generated table class still exists.
         tableMaker.addField(MethodHandle.class, "_").static_().private_();
 
-        // Add the markAllUndirty method.
-        {
-            MethodMaker mm = tableMaker.addMethod(null, "markAllUndirty", Object.class);
-            mm.protected_();
-            TableMaker.markAllUndirty(mm.param(0).cast(RowMaker.find(targetType)), info);
-        }
-
         addMarkValuesUnset(key, info, tableMaker);
 
         MethodHandles.Lookup lookup = tableMaker.finishLookup();
@@ -306,7 +299,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
         if (mSource.load(txn, sourceRow)) {
             T mappedRow = mMapper.map(sourceRow, newRow());
             if (mappedRow != null) {
-                markAllUndirty(mappedRow);
+                cleanRow(mappedRow);
                 copyRow(mappedRow, targetRow);
                 return true;
             }
@@ -327,7 +320,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseFull().inverseMap(mSource, targetRow);
         mSource.store(txn, sourceRow);
-        markAllUndirty(targetRow);
+        cleanRow(targetRow);
     }
 
     @Override
@@ -335,13 +328,13 @@ public abstract class MappedTable<S, T> implements Table<T> {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseFull().inverseMap(mSource, targetRow);
         S oldSourceRow = mSource.exchange(txn, sourceRow);
-        markAllUndirty(targetRow);
+        cleanRow(targetRow);
         if (oldSourceRow == null) {
             return null;
         }
         T oldTargetRow = mMapper.map(oldSourceRow, newRow());
         if (oldTargetRow != null) {
-            markAllUndirty(oldTargetRow);
+            cleanRow(oldTargetRow);
         }
         return oldTargetRow;
     }
@@ -353,7 +346,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
         if (!mSource.insert(txn, sourceRow)) {
             return false;
         }
-        markAllUndirty(targetRow);
+        cleanRow(targetRow);
         return true;
     }
 
@@ -364,7 +357,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
         if (!mSource.replace(txn, sourceRow)) {
             return false;
         }
-        markAllUndirty(targetRow);
+        cleanRow(targetRow);
         return true;
     }
 
@@ -375,7 +368,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
         if (!mSource.update(txn, sourceRow)) {
             return false;
         }
-        markAllUndirty(targetRow);
+        cleanRow(targetRow);
         return true;
     }
 
@@ -388,7 +381,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
         }
         T mappedRow = mMapper.map(sourceRow, newRow());
         if (mappedRow != null) {
-            markAllUndirty(mappedRow);
+            cleanRow(mappedRow);
             copyRow(mappedRow, targetRow);
         } else {
             // Can't load back the row. One option is to rollback the transaction, but then the
@@ -437,11 +430,6 @@ public abstract class MappedTable<S, T> implements Table<T> {
     public final boolean isClosed() {
         return false;
     }
-
-    /**
-     * All columns which are dirty are to be marked clean, and unset columns remain as such.
-     */
-    protected abstract void markAllUndirty(T targetRow);
 
     /**
      * All columns which don't map to source primary key columns are unset. Is overridden by

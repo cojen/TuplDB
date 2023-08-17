@@ -120,6 +120,11 @@ public interface Table<R> extends Closeable {
     public void unsetRow(R row);
 
     /**
+     * Sets columns which have a dirty state to clean. All unset columns remain unset.
+     */
+    public void cleanRow(R row);
+
+    /**
      * Copies all columns and states from one row to another.
      */
     public void copyRow(R from, R to);
