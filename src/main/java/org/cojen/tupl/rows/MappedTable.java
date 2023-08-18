@@ -293,7 +293,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
     }
 
     @Override
-    public boolean load(Transaction txn, T targetRow) throws IOException {
+    public final boolean load(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inversePk().inverseMapForLoad(mSource, targetRow);
         if (mSource.load(txn, sourceRow)) {
@@ -309,14 +309,14 @@ public abstract class MappedTable<S, T> implements Table<T> {
     }
 
     @Override
-    public boolean exists(Transaction txn, T targetRow) throws IOException {
+    public final boolean exists(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inversePk().inverseMapForLoad(mSource, targetRow);
         return mSource.load(txn, sourceRow) && mMapper.map(sourceRow, newRow()) != null;
     }
 
     @Override
-    public void store(Transaction txn, T targetRow) throws IOException {
+    public final void store(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseFull().inverseMap(mSource, targetRow);
         mSource.store(txn, sourceRow);
@@ -324,7 +324,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
     }
 
     @Override
-    public T exchange(Transaction txn, T targetRow) throws IOException {
+    public final T exchange(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseFull().inverseMap(mSource, targetRow);
         S oldSourceRow = mSource.exchange(txn, sourceRow);
@@ -340,7 +340,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
     }
 
     @Override
-    public boolean insert(Transaction txn, T targetRow) throws IOException {
+    public final boolean insert(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseFull().inverseMap(mSource, targetRow);
         if (!mSource.insert(txn, sourceRow)) {
@@ -351,7 +351,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
     }
 
     @Override
-    public boolean replace(Transaction txn, T targetRow) throws IOException {
+    public final boolean replace(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseFull().inverseMap(mSource, targetRow);
         if (!mSource.replace(txn, sourceRow)) {
@@ -362,7 +362,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
     }
 
     @Override
-    public boolean update(Transaction txn, T targetRow) throws IOException {
+    public final boolean update(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseUpdate().inverseMap(mSource, targetRow);
         if (!mSource.update(txn, sourceRow)) {
@@ -373,7 +373,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
     }
 
     @Override
-    public boolean merge(Transaction txn, T targetRow) throws IOException {
+    public final boolean merge(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseUpdate().inverseMap(mSource, targetRow);
         if (!mSource.merge(txn, sourceRow)) {
@@ -393,14 +393,16 @@ public abstract class MappedTable<S, T> implements Table<T> {
     }
 
     @Override
-    public boolean delete(Transaction txn, T targetRow) throws IOException {
+    public final boolean delete(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inversePk().inverseMap(mSource, targetRow);
         return mSource.delete(txn, sourceRow);
     }
 
     @Override
-    public QueryPlan scannerPlan(Transaction txn, String query, Object... args) throws IOException {
+    public final QueryPlan scannerPlan(Transaction txn, String query, Object... args)
+        throws IOException
+    {
         if (query == null) {
             return decorate(mSource.scannerPlan(txn, null));
         } else {
@@ -409,7 +411,9 @@ public abstract class MappedTable<S, T> implements Table<T> {
     }
 
     @Override
-    public QueryPlan updaterPlan(Transaction txn, String query, Object... args) throws IOException {
+    public final QueryPlan updaterPlan(Transaction txn, String query, Object... args)
+        throws IOException
+    {
         if (query == null) {
             return decorate(mSource.updaterPlan(txn, null));
         } else {
