@@ -415,7 +415,7 @@ public interface Table<R> extends Closeable {
      * returned table instance will throw a {@link ViewConstraintException} for operations
      * against rows not supported by the mapper, and closing the table has no effect.
      *
-     * @throws NullPointerException if the given mapper is null
+     * @throws NullPointerException if any parameter is null
      */
     public default <T> Table<T> map(Class<T> targetType, Mapper<R, T> mapper) {
         return MappedTable.<R, T>map(this, targetType, mapper);
