@@ -154,7 +154,7 @@ public final class Parser extends SimpleParser {
                             throw error("Cannot select a column which is also excluded");
                         }
 
-                        projection.put(name, column);
+                        projection.putIfAbsent(name, column);
 
                         if (prefix != 0) orderBy: {
                             if (orderBy == null) {
@@ -169,7 +169,7 @@ public final class Parser extends SimpleParser {
                             if ((prefix & 0b100) == 0b100) {
                                 type |= ColumnInfo.TYPE_NULL_LOW;
                             }
-                            orderBy.put(name, new OrderBy.Rule(column, type));
+                            orderBy.putIfAbsent(name, new OrderBy.Rule(column, type));
                         }
                     }
                 }
