@@ -94,6 +94,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
     public static <S, T> MappedTable<S, T> map(Table<S> source, Class<T> targetType,
                                                Mapper<S, T> mapper)
     {
+        Objects.requireNonNull(targetType);
         try {
             var key = new FactoryKey(source.rowType(), targetType, mapper.getClass());
             return (MappedTable<S, T>) cFactoryCache.obtain(key, null).invokeExact(source, mapper);
