@@ -22,6 +22,7 @@ import java.io.IOException;
 /**
  * Interface for mapping source rows to target rows. Inverse mapping is optional, but it's
  * necessary for supporting modifiable views, and it's also used by the query optimizer.
+ * Mapper implementations must be thread-safe.
  *
  * <p>For supporting inverse mapping, define a public static method for each target column
  * which can be mapped to a source column. The method naming pattern must be {@code

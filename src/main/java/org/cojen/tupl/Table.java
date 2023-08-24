@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.Comparator;
 
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -32,6 +33,7 @@ import org.cojen.tupl.diag.QueryPlan;
 import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.rows.ComparatorMaker;
+import org.cojen.tupl.rows.GroupedTable;
 import org.cojen.tupl.rows.MappedTable;
 import org.cojen.tupl.rows.PlainPredicateMaker;
 
@@ -118,6 +120,11 @@ public interface Table<R> extends Closeable {
      * Resets the state of the given row such that all columns are unset.
      */
     public void unsetRow(R row);
+
+    /**
+     * Sets columns which have a dirty state to clean. All unset columns remain unset.
+     */
+    public void cleanRow(R row);
 
     /**
      * Copies all columns and states from one row to another.
@@ -410,10 +417,26 @@ public interface Table<R> extends Closeable {
      * returned table instance will throw a {@link ViewConstraintException} for operations
      * against rows not supported by the mapper, and closing the table has no effect.
      *
-     * @throws NullPointerException if the given mapper is null
+     * @throws NullPointerException if any parameter is null
      */
     public default <T> Table<T> map(Class<T> targetType, Mapper<R, T> mapper) {
-        return MappedTable.<R, T>map(this, targetType, mapper);
+        return MappedTable.map(this, targetType, mapper);
+    }
+
+    /**
+     * Returns a view backed by this table, consisting of aggregate rows, which are grouped by
+     * the {@link PrimaryKey primary key} of the target type. The primary key columns must
+     * exactly correspond to columns of this source table. If no primary key is defined, then
+     * the resulting table has one row, which is the aggregate result of all the rows of this
+     * table. The view returned by this method is unmodifiable, and closing it has no effect.
+     *
+     * @param supplier is called to generate a new {@link Grouper} instance for every query
+     * against the returned table
+     * @throws NullPointerException if any parameter is null
+     * @throws IllegalArgumentException if target primary key is malformed
+     */
+    public default <T> Table<T> group(Class<T> targetType, Supplier<Grouper<R, T>> supplier) {
+        return GroupedTable.group(this, targetType, supplier);
     }
 
     /**
