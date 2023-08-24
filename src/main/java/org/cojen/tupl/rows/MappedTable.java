@@ -198,25 +198,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
         MethodMaker mm = cm.addMethod(null, "markValuesUnset", Object.class).protected_();
         var targetRowVar = mm.param(0).cast(RowMaker.find(key.targetType()));
-        unset(targetInfo, targetRowVar, mapToSource);
-    }
-
-    /**
-     * Unset all columns except for the excluded ones.
-     */
-    private static void unset(RowInfo targetInfo, Variable targetRowVar,
-                              Map<String, ColumnInfo> excluded)
-    {
-        TableMaker.markUnset(targetRowVar, targetInfo.rowGen(), excluded);
-
-        // Clear the unset target column fields that refer to objects.
-
-        for (ColumnInfo target : targetInfo.allColumns.values()) {
-            String name = target.name;
-            if (!excluded.containsKey(name) && !target.type.isPrimitive()) {
-                targetRowVar.field(name).set(null);
-            }
-        }
+        TableMaker.unset(targetInfo, targetRowVar, mapToSource);
     }
 
     private final Table<S> mSource;
@@ -819,7 +801,8 @@ public abstract class MappedTable<S, T> implements Table<T> {
             Map<String, ColumnInfo> projection = targetQuery.projection();
 
             if (projection != null) {
-                unset(targetInfo, targetRowVar.cast(RowMaker.find(targetType)), projection);
+                TableMaker.unset
+                    (targetInfo, targetRowVar.cast(RowMaker.find(targetType)), projection);
             }
 
             done.here();
@@ -926,15 +909,15 @@ public abstract class MappedTable<S, T> implements Table<T> {
             var targetVar = mm.var(Class.class).set(targetType).invoke("getName");
             var usingVar = tableVar.invoke("mapper").invoke("toString");
 
-            planVar = mm.new_(QueryPlan.Mapper.class, targetVar, usingVar, planVar);
+            planVar.set(mm.new_(QueryPlan.Mapper.class, targetVar, usingVar, planVar));
 
             if (targetRemainder != TrueFilter.THE) {
-                planVar = mm.new_(QueryPlan.Filter.class, targetRemainder.toString(), planVar);
+                planVar.set(mm.new_(QueryPlan.Filter.class, targetRemainder.toString(), planVar));
             }
 
             if (sortPlan != null && sortPlan.sortOrder != null) {
                 var columnsVar = mm.var(OrderBy.class).invoke("splitSpec", sortPlan.sortOrderSpec);
-                planVar = mm.new_(QueryPlan.Sort.class, columnsVar, planVar);
+                planVar.set(mm.new_(QueryPlan.Sort.class, columnsVar, planVar));
             }
 
             mm.return_(planVar);
