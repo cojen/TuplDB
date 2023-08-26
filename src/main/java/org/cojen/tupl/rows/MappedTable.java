@@ -405,7 +405,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
     }
 
     private QueryPlan decorate(QueryPlan plan) {
-        return new QueryPlan.Mapper(rowType().getName(), mMapper.toString(), plan);
+        return mMapper.plan(new QueryPlan.Mapper(rowType().getName(), mMapper.toString(), plan));
     }
 
     @Override
@@ -907,9 +907,11 @@ public abstract class MappedTable<S, T> implements Table<T> {
             ready.here();
 
             var targetVar = mm.var(Class.class).set(targetType).invoke("getName");
-            var usingVar = tableVar.invoke("mapper").invoke("toString");
+            var mapperVar = tableVar.invoke("mapper");
+            var usingVar = mapperVar.invoke("toString");
 
-            planVar.set(mm.new_(QueryPlan.Mapper.class, targetVar, usingVar, planVar));
+            var mapperPlanVar = mm.new_(QueryPlan.Mapper.class, targetVar, usingVar, planVar);
+            planVar.set(mapperVar.invoke("plan", mapperPlanVar));
 
             if (targetRemainder != TrueFilter.THE) {
                 planVar.set(mm.new_(QueryPlan.Filter.class, targetRemainder.toString(), planVar));

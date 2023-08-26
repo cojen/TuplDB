@@ -365,7 +365,7 @@ public abstract sealed class QueryPlan implements Serializable {
 
         /**
          * @param target describes the target row type
-         * @param using describes the map operation
+         * @param using describes the map operation (optional)
          * @param source child plan node
          */
         public Mapper(String target, String using, QueryPlan source) {
@@ -377,7 +377,9 @@ public abstract sealed class QueryPlan implements Serializable {
         @Override
         void appendTo(Appendable a, String in1, String in2) throws IOException {
             a.append(in1).append("map").append(": ").append(target).append('\n');
-            appendItem(a, in2, "using").append(using).append('\n');
+            if (using != null) {
+                appendItem(a, in2, "using").append(using).append('\n');
+            }
             appendSub(a, in2, null, source);
         }
 
@@ -413,7 +415,7 @@ public abstract sealed class QueryPlan implements Serializable {
 
         /**
          * @param target describes the target row type
-         * @param using describes the group operation
+         * @param using describes the group operation (optional)
          * @param columns group-by columns (or null if none)
          * @param source child plan node
          */
@@ -427,7 +429,9 @@ public abstract sealed class QueryPlan implements Serializable {
         @Override
         void appendTo(Appendable a, String in1, String in2) throws IOException {
             a.append(in1).append("group").append(": ").append(target).append('\n');
-            appendItem(a, in2, "using").append(using).append('\n');
+            if (using != null) {
+                appendItem(a, in2, "using").append(using).append('\n');
+            }
             if (columns != null && columns.length != 0) {
                 appendItem(a, in2, "columns");
                 appendArray(a, columns).append('\n');
