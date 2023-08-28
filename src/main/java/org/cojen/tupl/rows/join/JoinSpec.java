@@ -48,8 +48,8 @@ final class JoinSpec {
 
     /**
      * JoinOp = Source { Type Source }
-     * Source = Column | Parens
-     * Parens = "(" JoinOp ")"
+     * Source = Column | Group
+     * Group = "(" JoinOp ")"
      * Column = string
      * Type   = ":" | "::" | ">:" | ":<" | ">:<" | ">" | "<" | "><"
      *

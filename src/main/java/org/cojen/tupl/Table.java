@@ -440,18 +440,42 @@ public interface Table<R> extends Closeable {
     }
 
     /**
-     * Joins tables together into an unmodifiable view. The view doesn't have any primary key,
-     * and so operations which act upon one aren't supported. In addition, closing the view
-     * doesn't have any effect.
+     * Joins tables together into an unmodifiable view. The returned view doesn't have any
+     * primary key, and so operations which act upon one aren't supported. In addition, closing
+     * the view doesn't have any effect.
      *
      * <p>The {@code joinType} parameter is a class which resembles an ordinary row definition
-     * except that all columns must refer to other row types. Annotations for defining keys and
-     * indexes is unsupported.
+     * except that all columns must refer to other row types. Any annotations which define keys
+     * and indexes are ignored.
+     *
+     * <p>The join specification consists of each join column, separated by a join operator,
+     * and possibly grouped with parenthesis:
+     *
+     * <blockquote><pre>{@code
+     * JoinOp = Source { Type Source }
+     * Source = Column | Group
+     * Group  = "(" JoinOp ")"
+     * Column = string
+     * Type   = ":" | ">:" | ":<" | ">:<" | ">" | "<" | "><"
+     *
+     * a : b    inner join
+     * a >: b   left outer join
+     * a :< b   right outer join
+     * a >:< b  full outer join
+     * a > b    left anti join
+     * a < b    right anti join
+     * a >< b   full anti join
+     * }</pre></blockquote>
+     *
+     * <p>In order for a requested join type to work correctly, a suitable join filter must be
+     * provided by a query. Scanning all rows of the table without a join filter results in a
+     * <em>cross join</em>.
      *
      * @param spec join specification
      * @throws NullPointerException if any parameters are null
      * @throws IllegalArgumentException if join type is malformed, or if the specification is
      * malformed, or if there are any table matching issues
+     * @see Database#openJoinTable
      */
     public static <J> Table<J> join(Class<J> joinType, String spec, Table<?>... tables) {
         return JoinTableMaker.join(joinType, spec, tables);

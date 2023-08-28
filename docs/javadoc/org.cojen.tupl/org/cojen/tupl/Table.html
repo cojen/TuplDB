@@ -861,13 +861,36 @@ public interface MyRow {
 <div class="member-signature"><span class="modifiers">static</span>&nbsp;<span class="type-parameters">&lt;J&gt;</span>&nbsp;<span class="return-type"><a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;J&gt;</span>&nbsp;<span class="element-name">join</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;J&gt;&nbsp;joinType,
  <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;spec,
  <a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;?&gt;...&nbsp;tables)</span></div>
-<div class="block">Joins tables together into an unmodifiable view. The view doesn't have any primary key,
- and so operations which act upon one aren't supported. In addition, closing the view
- doesn't have any effect.
+<div class="block">Joins tables together into an unmodifiable view. The returned view doesn't have any
+ primary key, and so operations which act upon one aren't supported. In addition, closing
+ the view doesn't have any effect.
 
  <p>The <code>joinType</code> parameter is a class which resembles an ordinary row definition
- except that all columns must refer to other row types. Annotations for defining keys and
- indexes is unsupported.</div>
+ except that all columns must refer to other row types. Any annotations which define keys
+ and indexes are ignored.
+
+ <p>The join specification consists of each join column, separated by a join operator,
+ and possibly grouped with parenthesis:
+
+ <blockquote><pre><code>
+ JoinOp = Source { Type Source }
+ Source = Column | Group
+ Group  = "(" JoinOp ")"
+ Column = string
+ Type   = ":" | "&gt;:" | ":&lt;" | "&gt;:&lt;" | "&gt;" | "&lt;" | "&gt;&lt;"
+
+ a : b    inner join
+ a &gt;: b   left outer join
+ a :&lt; b   right outer join
+ a &gt;:&lt; b  full outer join
+ a &gt; b    left anti join
+ a &lt; b    right anti join
+ a &gt;&lt; b   full anti join
+ </code></pre></blockquote>
+
+ <p>In order for a requested join type to work correctly, a suitable join filter must be
+ provided by a query. Scanning all rows of the table without a join filter results in a
+ <em>cross join</em>.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>spec</code> - join specification</dd>
@@ -875,6 +898,12 @@ public interface MyRow {
 <dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if any parameters are null</dd>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if join type is malformed, or if the specification is
  malformed, or if there are any table matching issues</dd>
+<dt>See Also:</dt>
+<dd>
+<ul class="tag-list-long">
+<li><a href="Database.html#openJoinTable(java.lang.Class,java.lang.String)"><code>Database.openJoinTable(java.lang.Class&lt;J&gt;, java.lang.String)</code></a></li>
+</ul>
+</dd>
 </dl>
 </section>
 </li>
