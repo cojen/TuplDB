@@ -493,8 +493,15 @@ public abstract class GroupedTable<S, T> implements Table<T> {
         RowInfo sourceInfo = RowInfo.find(sourceType);
 
         // Prepare an initial source query, which will be replaced later.
-        Query sourceQuery = new Parser
-            (sourceInfo.allColumns, '{' + sourceProjection + '}').parseQuery(null);
+        Query sourceQuery;
+        {
+            if (sourceProjection == null) {
+                sourceQuery = new Query(null, null, TrueFilter.THE);
+            } else {
+                sourceQuery = new Parser
+                    (sourceInfo.allColumns, '{' + sourceProjection + '}').parseQuery(null);
+            }
+        }
 
         Class<T> targetType = rowType();
         RowInfo targetInfo = RowInfo.find(targetType);
