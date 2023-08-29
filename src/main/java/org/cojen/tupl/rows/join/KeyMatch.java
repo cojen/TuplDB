@@ -120,6 +120,10 @@ abstract class KeyMatch implements Visitor {
     @Override
     public abstract void visit(ColumnToColumnFilter filter);
 
+    public boolean hasPkColumns() {
+        return true;
+    }
+
     /**
      * KeyMatch for a primary or alternate key which consists of no columns. Isn't generally
      * applicable to ordinary row types, because they always require a primary key with at
@@ -139,6 +143,11 @@ abstract class KeyMatch implements Visitor {
 
         @Override
         public void visit(ColumnToColumnFilter filter) {
+        }
+
+        @Override
+        public boolean hasPkColumns() {
+            return false;
         }
     }
 

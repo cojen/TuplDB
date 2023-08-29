@@ -29,6 +29,7 @@ import org.cojen.tupl.Database;
 import org.cojen.tupl.Table;
 
 import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.GroupedTable;
 import org.cojen.tupl.rows.RowInfo;
 import org.cojen.tupl.rows.RowUtils;
 import org.cojen.tupl.rows.SimpleParser;
@@ -801,7 +802,13 @@ final class JoinSpec {
                 mKeyMatch = km = KeyMatch.build(column.name + '.', RowInfo.find(column.type));
             }
 
-            mKeyScore = km.score(mFilter);
+            if (!km.hasPkColumns() && table() instanceof GroupedTable) {
+                // Table has at most one row, and so it should be ordered first in the join.
+                // Assign a score which is greater than what the KeyMatch.score method returns.
+                mKeyScore = 3;
+            } else {
+                mKeyScore = km.score(mFilter);
+            }
 
             mFilterScore = fs.calculate(mFilter, available);
         }
@@ -820,14 +827,32 @@ final class JoinSpec {
             if (this == other) {
                 return 0;
             }
+
             if (!(other instanceof PlannedColumn planned)) {
                 return super.compareScore(other);
             }
+
             int cmp = Integer.compare(mKeyScore, planned.mKeyScore);
             if (cmp != 0) {
                 return cmp;
             }
-            return FilterScorer.compare(mFilterScore, planned.mFilterScore);
+
+            cmp = FilterScorer.compare(mFilterScore, planned.mFilterScore);
+            if (cmp != 0) {
+                return cmp;
+            }
+
+            // If either table is grouped (performs aggregatation), then it likely generates
+            // fewer rows, and so it should be first in the join order.
+            if (table() instanceof GroupedTable) {
+                if (!(planned.table() instanceof GroupedTable)) {
+                    return 1;
+                }
+            } else if (planned.table() instanceof GroupedTable) {
+                return -1;
+            }
+
+            return cmp;
         }
 
         @Override
