@@ -57,7 +57,7 @@ public interface Grouper<R, T> extends Closeable {
 
     /**
      * Returns a comma-separated list of source columns which are needed by this {@code
-     * Grouper}. Null is returned by default, which indicates that all colums are needed.
+     * Grouper}. Null is returned by default, which indicates that all columns are needed.
      */
     default String sourceProjection() {
         return null;
