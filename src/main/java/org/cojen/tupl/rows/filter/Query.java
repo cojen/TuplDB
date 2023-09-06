@@ -39,9 +39,7 @@ public record Query(Map<String, ColumnInfo> projection, OrderBy orderBy, RowFilt
             return this;
         }
 
-        if (ob == null || (projection == null && ob.isEmpty())
-            || projection.keySet().containsAll(ob.keySet()))
-        {
+        if (ob == null || projection == null || projection.keySet().containsAll(ob.keySet())) {
             return new Query(projection, ob, filter);
         }
 

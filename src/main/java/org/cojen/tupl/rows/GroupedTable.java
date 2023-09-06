@@ -400,7 +400,7 @@ public abstract class GroupedTable<S, T> implements Table<T> {
             String projection = grouper.sourceProjection();
             return mScannerFactoryCache
                 .obtain(makeScannerFactoryKey(query == null ? "{*}" : query, projection), null)
-                .scannerPlan(this, grouper, txn, args);
+                .plan(this, grouper, txn, args);
         }
     }
 
@@ -493,8 +493,15 @@ public abstract class GroupedTable<S, T> implements Table<T> {
         RowInfo sourceInfo = RowInfo.find(sourceType);
 
         // Prepare an initial source query, which will be replaced later.
-        Query sourceQuery = new Parser
-            (sourceInfo.allColumns, '{' + sourceProjection + '}').parseQuery(null);
+        Query sourceQuery;
+        {
+            if (sourceProjection == null) {
+                sourceQuery = new Query(null, null, TrueFilter.THE);
+            } else {
+                sourceQuery = new Parser
+                    (sourceInfo.allColumns, '{' + sourceProjection + '}').parseQuery(null);
+            }
+        }
 
         Class<T> targetType = rowType();
         RowInfo targetInfo = RowInfo.find(targetType);
@@ -679,7 +686,7 @@ public abstract class GroupedTable<S, T> implements Table<T> {
         // Add the plan method.
 
         mm = factoryMaker.addMethod
-            (QueryPlan.class, "scannerPlan", GroupedTable.class, Grouper.class,
+            (QueryPlan.class, "plan", GroupedTable.class, Grouper.class,
              Transaction.class, Object[].class).public_().varargs();
 
         tableVar = mm.param(0);
@@ -694,7 +701,9 @@ public abstract class GroupedTable<S, T> implements Table<T> {
         var usingVar = grouperVar.invoke("toString");
         var columnVars = tableVar.invoke("groupByColumns");
 
-        planVar.set(mm.new_(QueryPlan.Grouper.class, targetVar, usingVar, columnVars, planVar));
+        var grouperPlanVar = mm.new_
+            (QueryPlan.Grouper.class, targetVar, usingVar, columnVars, planVar);
+        planVar.set(grouperVar.invoke("plan", grouperPlanVar));
 
         if (targetQuery.filter() != TrueFilter.THE) {
             planVar.set(mm.new_(QueryPlan.Filter.class, targetQuery.filter().toString(), planVar));
@@ -723,8 +732,8 @@ public abstract class GroupedTable<S, T> implements Table<T> {
                                   Transaction txn, T targetRow, Object... args)
             throws IOException;
 
-        QueryPlan scannerPlan(GroupedTable<S, T> table, Grouper<S, T> grouper,
-                              Transaction txn, Object... args)
+        QueryPlan plan(GroupedTable<S, T> table, Grouper<S, T> grouper,
+                       Transaction txn, Object... args)
             throws IOException;
     }
 }

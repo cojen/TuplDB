@@ -19,6 +19,8 @@ package org.cojen.tupl;
 
 import java.io.IOException;
 
+import org.cojen.tupl.diag.QueryPlan;
+
 /**
  * Interface for mapping source rows to target rows. Inverse mapping is optional, but it's
  * necessary for supporting modifiable views, and it's also used by the query optimizer.
@@ -38,9 +40,6 @@ import java.io.IOException;
  */
 @FunctionalInterface
 public interface Mapper<R, T> {
-    // TODO: Define a method which returns the set of source columns that the map method
-    // depends on, to help optimize query projection. By default, all columns are required.
-
     // TODO: Define a method which indicates whether or not the map method performs any
     // filtering, which is true by default. When false, it can help query sorting. In
     // particular, partial sorting.
@@ -53,6 +52,24 @@ public interface Mapper<R, T> {
      * @return null if filtered out
      */
     T map(R source, T target) throws IOException;
+
+    /**
+     * Returns a comma-separated list of source columns which are needed by this {@code
+     * Mapper}. Null is returned by default, which indicates that all columns are needed.
+     */
+    default String sourceProjection() {
+        return null;
+    }
+
+    /**
+     * Override this method to customize the mapper's query plan.
+     *
+     * @param plan original plan
+     * @return original or replacement plan
+     */
+    default QueryPlan plan(QueryPlan.Mapper plan) {
+        return plan;
+    }
 
     /**
      * Defines a {@link Mapper} which automatically defines inverse mapping functions.

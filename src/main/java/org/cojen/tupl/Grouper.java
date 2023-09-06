@@ -20,6 +20,8 @@ package org.cojen.tupl;
 import java.io.Closeable;
 import java.io.IOException;
 
+import org.cojen.tupl.diag.QueryPlan;
+
 /**
  * Interface which processes groups of rows into aggregate results.
  *
@@ -55,7 +57,7 @@ public interface Grouper<R, T> extends Closeable {
 
     /**
      * Returns a comma-separated list of source columns which are needed by this {@code
-     * Grouper}. Null is returned by default, which indicates that all colums are needed.
+     * Grouper}. Null is returned by default, which indicates that all columns are needed.
      */
     default String sourceProjection() {
         return null;
@@ -66,5 +68,15 @@ public interface Grouper<R, T> extends Closeable {
      */
     @Override
     default void close() throws IOException {
+    }
+
+    /**
+     * Override this method to customize the grouper's query plan.
+     *
+     * @param plan original plan
+     * @return original or replacement plan
+     */
+    default QueryPlan plan(QueryPlan.Grouper plan) {
+        return plan;
     }
 }

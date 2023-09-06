@@ -405,7 +405,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
     }
 
     private QueryPlan decorate(QueryPlan plan) {
-        return new QueryPlan.Mapper(rowType().getName(), mMapper.toString(), plan);
+        return mMapper.plan(new QueryPlan.Mapper(rowType().getName(), mMapper.toString(), plan));
     }
 
     @Override
@@ -641,7 +641,8 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
         record ArgMapper(int targetArgNum, Method function) { } 
 
-        var finder = new InverseFinder(RowInfo.find(mSource.rowType()).allColumns);
+        RowInfo sourceInfo = RowInfo.find(mSource.rowType());
+        var finder = new InverseFinder(sourceInfo.allColumns);
 
         var checker = new Function<ColumnFilter, RowFilter>() {
             Map<ArgMapper, Integer> argMappers;
@@ -736,22 +737,27 @@ public abstract class MappedTable<S, T> implements Table<T> {
         var split = new RowFilter[2];
         targetFilter.split(checker, split);
 
-        Query sourceQuery = targetQuery.withFilter(split[0]);
-
+        RowFilter sourceFilter = split[0];
         RowFilter targetRemainder = split[1];
+
+        Query sourceQuery;
+
+        String sourceProjection = mMapper.sourceProjection();
+        if (sourceProjection == null) {
+            sourceQuery = new Query(null, null, sourceFilter);
+        } else {
+            sourceQuery = new Parser(sourceInfo.allColumns, '{' + sourceProjection + '}')
+                .parseQuery(null).withFilter(sourceFilter);
+        }
 
         SortPlan sortPlan = finder.analyzeSort(targetQuery);
 
         if (sortPlan != null && sortPlan.sourceOrder != null) {
             sourceQuery = sourceQuery.withOrderBy(sortPlan.sourceOrder);
-        } else {
-            // All source columns are required, and no orderBy is required. If no filter is
-            // required either, then the sourceQuery can be null to do a full scan.
-            if (sourceQuery.filter() == TrueFilter.THE) {
-                sourceQuery = null;
-            } else {
-                sourceQuery = new Query(null, null, sourceQuery.filter());
-            }
+        } else if (sourceQuery.projection() == null && sourceQuery.filter() == TrueFilter.THE) {
+            // There's no orderBy, all columns are projected, there's no filter, so just do a
+            // full scan.
+            sourceQuery = null;
         }
 
         Class<T> targetType = rowType();
@@ -907,9 +913,11 @@ public abstract class MappedTable<S, T> implements Table<T> {
             ready.here();
 
             var targetVar = mm.var(Class.class).set(targetType).invoke("getName");
-            var usingVar = tableVar.invoke("mapper").invoke("toString");
+            var mapperVar = tableVar.invoke("mapper");
+            var usingVar = mapperVar.invoke("toString");
 
-            planVar.set(mm.new_(QueryPlan.Mapper.class, targetVar, usingVar, planVar));
+            var mapperPlanVar = mm.new_(QueryPlan.Mapper.class, targetVar, usingVar, planVar);
+            planVar.set(mapperVar.invoke("plan", mapperPlanVar));
 
             if (targetRemainder != TrueFilter.THE) {
                 planVar.set(mm.new_(QueryPlan.Filter.class, targetRemainder.toString(), planVar));
