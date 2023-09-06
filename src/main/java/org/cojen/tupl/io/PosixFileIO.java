@@ -490,6 +490,13 @@ final class PosixFileIO extends AbstractFileIO {
         }
     }
 
+    static void madvisePtr(long ptr, long length, int advice) throws IOException {
+        int result = posix_madvise(ptr, length, advice);
+        if (result != 0) {
+            throw new IOException(errorMessage(result));
+        }
+    }
+
     static IOException lastErrorToException() {
         return new IOException(errorMessage(Native.getLastError()));
     }
@@ -705,6 +712,8 @@ final class PosixFileIO extends AbstractFileIO {
     static native int msync(long addr, long length, int flags);
 
     static native int munmap(long addr, long length);
+
+    static native int posix_madvise(long addr, long length, int advice);
 
     static class RT {
         static {

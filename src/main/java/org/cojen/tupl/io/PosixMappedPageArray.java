@@ -122,6 +122,10 @@ class PosixMappedPageArray extends MappedPageArray {
             throw e;
         }
 
+        if (options.contains(OpenOption.RANDOM_ACCESS)) {
+            PosixFileIO.madvisePtr(addr, mappingSize, 1); // 1 = POSIX_MADV_RANDOM
+        }
+
         mFileDescriptor = fd;
 
         setMappingPtr(addr);
