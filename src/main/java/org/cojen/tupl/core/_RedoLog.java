@@ -141,7 +141,7 @@ final class _RedoLog extends _RedoWriter {
     /**
      * @return all the files which were replayed
      */
-    TreeMap<Long, File> replay(RedoVisitor visitor,
+    TreeMap<Long, File> replay(boolean readOnly, RedoVisitor visitor,
                                EventListener listener, EventType type, String message)
         throws IOException
     {
@@ -191,8 +191,10 @@ final class _RedoLog extends _RedoWriter {
                 mLogId++;
 
                 if (!finished) {
-                    // Last log file was truncated, so chuck the rest.
-                    deleteNumberedFiles(mBaseFile, REDO_FILE_SUFFIX, mLogId, Long.MAX_VALUE);
+                    if (!readOnly) {
+                        // Last log file was truncated, so chuck the rest.
+                        deleteNumberedFiles(mBaseFile, REDO_FILE_SUFFIX, mLogId, Long.MAX_VALUE);
+                    }
                     break;
                 }
             }
