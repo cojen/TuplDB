@@ -113,6 +113,10 @@ class PosixMappedPageArray extends MappedPageArray {
         long addr;
         try {
             addr = PosixFileIO.mmapFd(mappingSize, prot, flags, fd, 0);
+
+            if (options.contains(OpenOption.RANDOM_ACCESS)) {
+                PosixFileIO.madvisePtr(addr, mappingSize, 1); // 1 = POSIX_MADV_RANDOM
+            }
         } catch (IOException e) {
             try {
                 PosixFileIO.closeFd(fd);
