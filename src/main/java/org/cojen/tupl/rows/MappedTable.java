@@ -45,7 +45,6 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.Mapper;
 import org.cojen.tupl.Scanner;
@@ -72,7 +71,7 @@ import org.cojen.tupl.rows.filter.TrueFilter;
  * @author Brian S O'Neill
  * @see Table#map
  */
-public abstract class MappedTable<S, T> implements Table<T> {
+public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
     /**
      * Although the generated factories only depend on the targetType, a full key is needed
      * because the mScannerFactoryCache and mInverse* fields rely on code which is generated
@@ -201,7 +200,6 @@ public abstract class MappedTable<S, T> implements Table<T> {
         TableMaker.unset(targetInfo, targetRowVar, mapToSource);
     }
 
-    private final Table<S> mSource;
     private final Mapper<S, T> mMapper;
 
     private final SoftCache<String, ScannerFactory<S, T>, Query> mScannerFactoryCache;
@@ -209,7 +207,8 @@ public abstract class MappedTable<S, T> implements Table<T> {
     private InverseMapper<S, T> mInversePk, mInverseFull, mInverseUpdate;
 
     protected MappedTable(Table<S> source, Mapper<S, T> mapper) {
-        mSource = source;
+        super(source);
+
         mMapper = mapper;
 
         mScannerFactoryCache = new SoftCache<>() {
@@ -229,20 +228,8 @@ public abstract class MappedTable<S, T> implements Table<T> {
     }
 
     @Override
-    public final Scanner<T> newScanner(Transaction txn) throws IOException {
-        return newScannerWith(txn, null);
-    }
-
-    @Override
     public final Scanner<T> newScannerWith(Transaction txn, T targetRow) throws IOException {
         return new MappedScanner<>(this, mSource.newScanner(txn), targetRow, mMapper);
-    }
-
-    @Override
-    public final Scanner<T> newScanner(Transaction txn, String query, Object... args)
-        throws IOException
-    {
-        return newScannerWith(txn, null, query, args);
     }
 
     @Override
@@ -263,16 +250,6 @@ public abstract class MappedTable<S, T> implements Table<T> {
         throws IOException
     {
         return mScannerFactoryCache.obtain(query, null).newUpdaterWith(this, txn, null, args);
-    }
-
-    @Override
-    public final Transaction newTransaction(DurabilityMode durabilityMode) {
-        return mSource.newTransaction(durabilityMode);
-    }
-
-    @Override
-    public final boolean isEmpty() throws IOException {
-        return mSource.isEmpty() || !anyRows(Transaction.BOGUS);
     }
 
     @Override
@@ -406,16 +383,6 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
     private QueryPlan decorate(QueryPlan plan) {
         return mMapper.plan(new QueryPlan.Mapper(rowType().getName(), mMapper.toString(), plan));
-    }
-
-    @Override
-    public final void close() throws IOException {
-        // Do nothing.
-    }
-
-    @Override
-    public final boolean isClosed() {
-        return false;
     }
 
     /**
