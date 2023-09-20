@@ -63,10 +63,11 @@ public final class Parser extends SimpleParser {
      * ProjColumns  = [ ProjColumn { "," ProjColumn } ]
      * ProjColumn   = ( ( ( ( "+" | "-" ) [ "!" ] ) | "~" ) ColumnName ) | "*"
      *
-     * Returns null if string doesn't start with a projection or if the projection is all of
-     * the available columns. If the projection ends with a non-whitespace character, then a
-     * subsequent call to parseFilter expects a filter. If only whitespace characters remain,
-     * parseFilter expects nothing, and so it returns TrueFilter.
+     * Assigns mProjection and mOrderBy as a side-effect. The mProjection field is null if the
+     * string doesn't start with a projection or if the projection is all of the available
+     * columns. If the projection ends with a non-whitespace character, then a subsequent call
+     * to parseFilter expects a filter. If only whitespace characters remain, parseFilter
+     * expects nothing, and so it returns TrueFilter.
      *
      * @param availableColumns can pass null if same as all columns
      */
