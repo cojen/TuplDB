@@ -64,8 +64,22 @@ public class RemoteRowTest {
     @Test
     public void predicate() throws Exception {
         Table<TestRow> table = mClientDb.openTable(TestRow.class);
+
+        try {
+            table.predicate(null);
+            fail();
+        } catch (NullPointerException e) {
+        }
+
         var predicate = table.predicate("{*} id == ? || str1 == ?", 10, "hello");
         var row = table.newRow();
+
+        try {
+            predicate.test(row);
+            fail();
+        } catch (UnsetColumnException e) {
+        }
+
         row.id(1);
         row.str1("hello");
         assertTrue(predicate.test(row));

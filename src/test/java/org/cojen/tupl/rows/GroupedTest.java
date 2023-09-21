@@ -159,6 +159,23 @@ public class GroupedTest {
         }
     }
 
+    public static class Broken<T extends TestRowAgg> implements Grouper<TestRow, T> {
+        @Override
+        public TestRow begin(TestRow source) {
+            return source;
+        }
+
+        @Override
+        public TestRow accumulate(TestRow source) {
+            return source;
+        }
+
+        @Override
+        public T finish(T target) {
+            return target;
+        }
+    }
+
     @Test
     public void toOneRow() throws Exception {
         Table<TestRowAgg> grouped = mTable.group(TestRowAgg.class, Grouper1::new);
@@ -479,6 +496,20 @@ public class GroupedTest {
             expect("{name=readme, avgNum=15.5, count=2, maxNum=21, minNum=10, totalNum=31}", row);
 
             assertNull(scanner.step());
+        }
+    }
+
+    @Test
+    public void brokenGrouping() throws Exception {
+        Table<TestRowAggByName> grouped =
+            mTable.group(TestRowAggByName.class, () -> new Broken<>());
+
+        fill();
+
+        try {
+            grouped.newScanner(null, "count == ?", 0);
+            fail();
+        } catch (UnsetColumnException e) {
         }
     }
 

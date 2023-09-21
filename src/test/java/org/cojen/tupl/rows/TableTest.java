@@ -169,6 +169,34 @@ public class TableTest {
         }
     }
 
+    @Test
+    public void predicate() throws Exception {
+        var config = new DatabaseConfig().directPageAccess(false);
+        var db = (CoreDatabase) newTempDatabase(getClass(), config);
+
+        var table = db.openTable(TestRow.class);
+
+        try {
+            table.predicate(null);
+            fail();
+        } catch (NullPointerException e) {
+        }
+
+        var predicate = table.predicate("name == ?", "hello");
+        var row = table.newRow();
+
+        try {
+            predicate.test(row);
+            fail();
+        } catch (UnsetColumnException e) {
+        }
+
+        row.name("hello");
+        assertTrue(predicate.test(row));
+        row.name("hello!");
+        assertFalse(predicate.test(row));
+    }
+
     @PrimaryKey("id")
     @SecondaryIndex("name")
     public interface TestRow {

@@ -512,15 +512,6 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
     }
 
     @Override
-    public final RowPredicate<R> predicate(String queryStr, Object... args) {
-        if (queryStr == null) {
-            return RowPredicate.all();
-        } else {
-            return mFilterFactoryCache.obtain(PLAIN, queryStr, null).predicate(args);
-        }
-    }
-
-    @Override
     public int characteristics() {
         return NONNULL | ORDERED | CONCURRENT | DISTINCT;
     }

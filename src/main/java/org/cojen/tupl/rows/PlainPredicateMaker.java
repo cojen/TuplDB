@@ -27,7 +27,10 @@ import org.cojen.tupl.rows.filter.Parser;
 import org.cojen.tupl.rows.filter.RowFilter;
 
 /**
+ * Generates plain Predicate instances which check that columns are set.
+ *
  * @see Table#predicate
+ * @see RowPredicateMaker
  * @author Brian S O'Neill
  */
 public final class PlainPredicateMaker {

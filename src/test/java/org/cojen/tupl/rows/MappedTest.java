@@ -745,4 +745,25 @@ public class MappedTest {
         assertEquals(amount, num);
         assertEquals(checksum, actualChecksum);
     }
+
+    @Test
+    public void brokenMapping() throws Exception {
+        {
+            TestRow row = mTable.newRow();
+            row.id(1);
+            row.str("hello");
+            row.num(123);
+            mTable.store(null, row);
+        }
+
+        Table<Renamed> mapped = mTable.map(Renamed.class, (source, target) -> {
+            return target;
+        });
+
+        try {
+            mapped.newScanner(null, "identifier == ?", 0);
+            fail();
+        } catch (UnsetColumnException e) {
+        }
+    }
 }
