@@ -245,11 +245,11 @@ public abstract class RowReader<R, DIN extends DataInput> implements Scanner<R> 
 
         // Keep a singleton instance, in order for a weakly cached reference to the decoder to
         // stick around until the class is unloaded.
-        cm.addField(Decoder.class, "THE").private_().static_();
+        cm.addField(Decoder.class, "_").private_().static_();
 
         MethodMaker mm = cm.addConstructor().private_();
         mm.invokeSuperConstructor();
-        mm.field("THE").set(mm.this_());
+        mm.field("_").set(mm.this_());
 
         mm = cm.addMethod(Object.class, "decodeRow", RowReader.class, Object.class).public_();
 

@@ -194,12 +194,12 @@ public abstract class WrappedScanner<R> implements Scanner<R> {
 
         // Keep a singleton instance, in order for a weakly cached reference to the wrapper to
         // stick around until the class is unloaded.
-        cm.addField(Object.class, "THE").private_().static_();
+        cm.addField(Object.class, "_").private_().static_();
 
         // Add the constructor for the factory instance.
         MethodMaker ctor = cm.addConstructor().private_();
         ctor.invokeSuperConstructor();
-        ctor.field("THE").set(ctor.this_());
+        ctor.field("_").set(ctor.this_());
 
         // Add the regular constructor.
         ctor = cm.addConstructor(Scanner.class).private_();
@@ -238,12 +238,12 @@ public abstract class WrappedScanner<R> implements Scanner<R> {
 
         // Keep a singleton instance, in order for a weakly cached reference to the wrapper to
         // stick around until the class is unloaded.
-        cm.addField(Object.class, "THE").private_().static_();
+        cm.addField(Object.class, "_").private_().static_();
 
         // Add the constructor for the factory instance.
         MethodMaker ctor = cm.addConstructor().private_();
         ctor.invokeSuperConstructor();
-        ctor.field("THE").set(ctor.this_());
+        ctor.field("_").set(ctor.this_());
 
         // Add the regular constructor.
         ctor = cm.addConstructor(Scanner.class, Predicate.class).private_();

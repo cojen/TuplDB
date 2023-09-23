@@ -203,13 +203,13 @@ public abstract class ClientTableHelper<R> implements Table<R> {
 
         // Keep a singleton instance, in order for a weakly cached reference to the helper to
         // stick around until the class is unloaded.
-        cm.addField(ClientTableHelper.class, "THE").private_().static_().final_();
+        cm.addField(ClientTableHelper.class, "_").private_().static_().final_();
 
         cm.addField(boolean.class, "assert").private_().static_().final_();
 
         {
             MethodMaker mm = cm.addClinit();
-            mm.field("THE").set(mm.new_(cm));
+            mm.field("_").set(mm.new_(cm));
             mm.field("assert").set(mm.class_().invoke("desiredAssertionStatus"));
         }
 
@@ -254,7 +254,7 @@ public abstract class ClientTableHelper<R> implements Table<R> {
 
         try {
             var clazz = lookup.lookupClass();
-            var vh = lookup.findStaticVarHandle(clazz, "THE", ClientTableHelper.class);
+            var vh = lookup.findStaticVarHandle(clazz, "_", ClientTableHelper.class);
             return (ClientTableHelper<?>) vh.get();
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);

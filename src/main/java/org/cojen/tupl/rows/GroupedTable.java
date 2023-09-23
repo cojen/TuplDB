@@ -575,11 +575,11 @@ public abstract class GroupedTable<S, T> extends WrappedTable<S, T> {
 
         // Keep a singleton instance, in order for a weakly cached reference to the factory to
         // stick around until the class is unloaded.
-        factoryMaker.addField(Object.class, "THE").private_().static_();
+        factoryMaker.addField(Object.class, "_").private_().static_();
 
         MethodMaker ctor = factoryMaker.addConstructor().private_();
         ctor.invokeSuperConstructor();
-        ctor.field("THE").set(ctor.this_());
+        ctor.field("_").set(ctor.this_());
 
         MethodMaker mm = factoryMaker.addMethod
             (Scanner.class, "newScannerWith", GroupedTable.class, Grouper.class,
