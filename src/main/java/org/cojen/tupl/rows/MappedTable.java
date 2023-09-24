@@ -120,7 +120,7 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
 
         // Keep a reference to the MethodHandle instance, to prevent it from being garbage
         // collected as long as the generated table class still exists.
-        tableMaker.addField(MethodHandle.class, "_").static_().private_();
+        tableMaker.addField(Object.class, "_").static_().private_();
 
         addMarkValuesUnset(key, info, tableMaker);
 
@@ -135,7 +135,7 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
 
         try {
             // Assign the singleton reference.
-            lookup.findStaticVarHandle(tableClass, "_", MethodHandle.class).set(mh);
+            lookup.findStaticVarHandle(tableClass, "_", Object.class).set(mh);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }
