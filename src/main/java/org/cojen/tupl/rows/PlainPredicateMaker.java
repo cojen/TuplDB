@@ -23,8 +23,10 @@ import java.util.function.Predicate;
 
 import org.cojen.tupl.core.Pair;
 
+import org.cojen.tupl.rows.filter.FalseFilter;
 import org.cojen.tupl.rows.filter.Parser;
 import org.cojen.tupl.rows.filter.RowFilter;
+import org.cojen.tupl.rows.filter.TrueFilter;
 
 /**
  * Generates plain Predicate instances which check that columns are set.
@@ -45,7 +47,9 @@ public final class PlainPredicateMaker {
                 RowInfo info = RowInfo.find(rowType);
                 RowFilter filter = new Parser(info.allColumns, query).parseQuery(null).filter();
                 String filterStr = filter.toString();
-                if (filterStr.equals(query)) {
+                if (filterStr.equals(query)
+                    || filter == TrueFilter.THE || filter == FalseFilter.THE)
+                {
                     var maker = new RowPredicateMaker(rowType, info.rowGen(), filter, filterStr);
                     return maker.finishPlain();
                 } else {
