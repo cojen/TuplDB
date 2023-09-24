@@ -407,12 +407,12 @@ public class QueryPlanTest {
 
             row.id(2);
             row.a(2);
-            assertTrue(mTable.insert(null, row));
+            mTable.insert(null, row);
 
             row.id(3);
             row.a(3);
             row.b("c");
-            assertTrue(mTable.insert(null, row));
+            mTable.insert(null, row);
 
             List<TestRow> results = indexB.newStream(null, "b == ? && id > ?", "b", 0).toList();
             assertEquals(2, results.size());
@@ -590,7 +590,7 @@ public class QueryPlanTest {
                 row.b("b" + i);
                 row.c((long) i);
                 row.d(null);
-                assertTrue(mTable.insert(null, row));
+                mTable.insert(null, row);
             }
 
             List<TestRow> results = indexC.newStream(null, "c >= ?", 2).toList();
@@ -663,7 +663,7 @@ public class QueryPlanTest {
                 row.b("b" + i);
                 row.c((long) i);
                 row.d(null);
-                assertTrue(mTable.insert(null, row));
+                mTable.insert(null, row);
             }
 
             Transaction txn = mDatabase.newTransaction();

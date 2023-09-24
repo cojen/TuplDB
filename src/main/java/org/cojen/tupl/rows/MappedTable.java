@@ -300,45 +300,34 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
     }
 
     @Override
-    public final boolean insert(Transaction txn, T targetRow) throws IOException {
+    public final void insert(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseFull().inverseMap(mSource, targetRow);
-        if (!mSource.insert(txn, sourceRow)) {
-            return false;
-        }
+        mSource.insert(txn, sourceRow);
         cleanRow(targetRow);
-        return true;
     }
 
     @Override
-    public final boolean replace(Transaction txn, T targetRow) throws IOException {
+    public final void replace(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseFull().inverseMap(mSource, targetRow);
-        if (!mSource.replace(txn, sourceRow)) {
-            return false;
-        }
+        mSource.replace(txn, sourceRow);
         cleanRow(targetRow);
-        return true;
     }
 
     @Override
-    public final boolean update(Transaction txn, T targetRow) throws IOException {
+    public final void update(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseUpdate().inverseMap(mSource, targetRow);
-        if (!mSource.update(txn, sourceRow)) {
-            return false;
-        }
+        mSource.update(txn, sourceRow);
         cleanRow(targetRow);
-        return true;
     }
 
     @Override
-    public final boolean merge(Transaction txn, T targetRow) throws IOException {
+    public final void merge(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseUpdate().inverseMap(mSource, targetRow);
-        if (!mSource.merge(txn, sourceRow)) {
-            return false;
-        }
+        mSource.merge(txn, sourceRow);
         T mappedRow = mMapper.map(sourceRow, newRow());
         if (mappedRow != null) {
             cleanRow(mappedRow);
@@ -349,7 +338,6 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
             // columns allows the operation to complete and signal that something is amiss.
             unsetRow(targetRow);
         }
-        return true;
     }
 
     @Override

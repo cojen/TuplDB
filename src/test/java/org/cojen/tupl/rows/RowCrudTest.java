@@ -145,7 +145,7 @@ public class RowCrudTest {
         row.num1(100);
         assertTrue(row.toString().endsWith("{*id=1, *num1=100, *str1=hello, *str2=null}"));
 
-        assertTrue(mTable.insert(null, row));
+        mTable.insert(null, row);
         assertTrue(row.toString().endsWith("{id=1, num1=100, str1=hello, str2=null}"));
         assertFalse(mTable.isEmpty());
         assertTrue(mTable.exists(null, row));
@@ -158,34 +158,38 @@ public class RowCrudTest {
         assertEquals(row, row2);
         assertEquals(row.hashCode(), row2.hashCode());
         assertEquals(row.toString(), row2.toString());
-        assertFalse(mTable.insert(null, row2));
+        try {
+            mTable.insert(null, row2);
+            fail();
+        } catch (UniqueConstraintException e) {
+        }
 
         row2.str2("world");
-        assertTrue(mTable.update(null, row2));
+        mTable.update(null, row2);
         assertTrue(row2.toString().endsWith("{id=1, num1=100, str1=hello, str2=world}"));
 
         row.str1("howdy");
-        assertTrue(mTable.update(null, row));
+        mTable.update(null, row);
         assertTrue(row.toString().endsWith("{id=1, num1=100, str1=howdy, str2=null}"));
         row.str1("hi");
-        assertTrue(mTable.merge(null, row));
+        mTable.merge(null, row);
         assertTrue(row.toString().endsWith("{id=1, num1=100, str1=hi, str2=world}"));
 
         row2.num1(-555);
-        assertTrue(mTable.update(null, row2));
+        mTable.update(null, row2);
         assertTrue(row2.toString().endsWith("{id=1, num1=-555, str1=hello, str2=world}"));
 
         mTable.unsetRow(row2);
         row2.id(1);
         row2.num1(999);
-        assertTrue(mTable.update(null, row2));
+        mTable.update(null, row2);
         assertTrue(row2.toString().endsWith("{id=1, num1=999}"));
 
         row2.str2("everyone");
-        assertTrue(mTable.merge(null, row2));
+        mTable.merge(null, row2);
         assertTrue(row2.toString().endsWith("{id=1, num1=999, str1=hi, str2=everyone}"));
 
-        assertTrue(mTable.replace(null, row));
+        mTable.replace(null, row);
         mTable.load(null, row2);
         assertTrue(row2.toString().endsWith("{id=1, num1=100, str1=hi, str2=world}"));
 
@@ -197,7 +201,7 @@ public class RowCrudTest {
         assertTrue(row2.toString().endsWith("{id=1, num1=100, str1=hi, str2=world}"));
 
         Transaction txn = mTable.newTransaction(null);
-        assertTrue(mTable.insert(txn, row));
+        mTable.insert(txn, row);
         assertTrue(mTable.exists(txn, row2));
         assertFalse(mTable.isEmpty());
         txn.reset(); // rollback
@@ -533,26 +537,40 @@ public class RowCrudTest {
         }
 
         e.key("hello".getBytes());
-        assertFalse(table.update(null, e));
+        try {
+            table.update(null, e);
+            fail();
+        } catch (NoSuchRowException ex) {
+        }
 
         e.value("world".getBytes());
-        assertFalse(table.update(null, e));
+        try {
+            table.update(null, e);
+            fail();
+        } catch (NoSuchRowException ex) {
+        }
 
-        assertTrue(table.insert(null, e));
+        try {
+            table.merge(null, e);
+            fail();
+        } catch (NoSuchRowException ex) {
+        }
+
+        table.insert(null, e);
 
         e.value("world!".getBytes());
-        assertTrue(table.update(null, e));
+        table.update(null, e);
 
         assertArrayEquals("world!".getBytes(), ix.load(null, e.key()));
 
         table.unsetRow(e);
         e.key("hello".getBytes());
 
-        assertTrue(table.merge(null, e));
+        table.merge(null, e);
         assertArrayEquals("world!".getBytes(), e.value());
 
         e.value("world!!!".getBytes());
-        assertTrue(table.merge(null, e));
+        table.merge(null, e);
         assertArrayEquals("world!!!".getBytes(), e.value());
 
         assertArrayEquals("world!!!".getBytes(), ix.load(null, e.key()));

@@ -251,23 +251,23 @@ final class ClientTable<R> implements Table<R> {
     }
 
     @Override
-    public boolean insert(Transaction txn, R row) throws IOException {
-        return mHelper.insert(row, proxy().insert(mDb.remoteTransaction(txn), null));
+    public void insert(Transaction txn, R row) throws IOException {
+        mHelper.insert(row, proxy().insert(mDb.remoteTransaction(txn), null));
     }
 
     @Override
-    public boolean replace(Transaction txn, R row) throws IOException {
-        return mHelper.replace(row, proxy().replace(mDb.remoteTransaction(txn), null));
+    public void replace(Transaction txn, R row) throws IOException {
+        mHelper.replace(row, proxy().replace(mDb.remoteTransaction(txn), null));
     }
 
     @Override
-    public boolean update(Transaction txn, R row) throws IOException {
-        return mHelper.update(row, proxy().update(mDb.remoteTransaction(txn), null));
+    public void update(Transaction txn, R row) throws IOException {
+        mHelper.update(row, proxy().update(mDb.remoteTransaction(txn), null));
     }
 
     @Override
-    public boolean merge(Transaction txn, R row) throws IOException {
-        return mHelper.merge(row, proxy().merge(mDb.remoteTransaction(txn), null));
+    public void merge(Transaction txn, R row) throws IOException {
+        mHelper.merge(row, proxy().merge(mDb.remoteTransaction(txn), null));
     }
 
     @Override

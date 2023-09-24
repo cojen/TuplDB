@@ -73,7 +73,7 @@ public class SortTest {
             TestRow row = table.newRow();
             row.v1((byte) rnd.nextInt());
             row.v2(rnd.nextInt());
-            assertTrue(table.insert(null, row));
+            table.insert(null, row);
         }
 
         byte lastV1 = Byte.MIN_VALUE;

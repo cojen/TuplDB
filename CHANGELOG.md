@@ -1,6 +1,11 @@
 Changelog
 =========
 
+v1.8.0
+------
+* The insert, replace, update, and merge methods now throw UniqueConstraintException or
+  NoSuchRowException instead of returning false. The declared return type is now void.
+
 v1.7.0 (2023-03-04)
 ------
 

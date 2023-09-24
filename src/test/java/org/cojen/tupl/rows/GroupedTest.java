@@ -528,7 +528,7 @@ public class GroupedTest {
             row.id((int) r[0]);
             row.name((String) r[1]);
             row.num((int) r[2]);
-            assertTrue(mTable.insert(null, row));
+            mTable.insert(null, row);
         }
     }
 }

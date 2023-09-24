@@ -156,7 +156,7 @@ public class TriggerTest {
         row.extra("extra!");
         row.id(1);
         row.value("v1");
-        assertTrue(mTable.insert(null, row));
+        mTable.insert(null, row);
 
         mTable.setTrigger(trigger);
 
@@ -164,7 +164,7 @@ public class TriggerTest {
         row.extra("extra!");
         row.id(2);
         row.value("v2");
-        assertTrue(mTable.insert(null, row));
+        mTable.insert(null, row);
         assertSame(row, trigger.row);
         assertNull(trigger.oldValue);
         assertNotNull(trigger.newValue);
@@ -175,7 +175,11 @@ public class TriggerTest {
         row.id(1);
         row.value("hello");
         trigger.row = null;
-        assertFalse(mTable.insert(null, row));
+        try {
+            mTable.insert(null, row);
+            fail();
+        } catch (UniqueConstraintException e) {
+        }
         assertNull(trigger.row);
 
         mTable.setTrigger(null);
@@ -183,7 +187,7 @@ public class TriggerTest {
         trigger.row = null;
         row.id(3);
         row.value("hello!");
-        assertTrue(mTable.insert(null, row));
+        mTable.insert(null, row);
         assertNull(trigger.row);
     }
 
@@ -198,7 +202,7 @@ public class TriggerTest {
         mTable.store(null, row);
 
         row.value("v1-a");
-        assertTrue(mTable.replace(null, row));
+        mTable.replace(null, row);
 
         mTable.setTrigger(trigger);
 
@@ -206,7 +210,7 @@ public class TriggerTest {
         row.extra("extra!");
         row.id(1);
         row.value("v1-b");
-        assertTrue(mTable.replace(null, row));
+        mTable.replace(null, row);
         assertSame(row, trigger.row);
         assertNotNull(trigger.oldValue);
         assertNotNull(trigger.newValue);
@@ -217,7 +221,7 @@ public class TriggerTest {
 
         trigger.row = null;
         row.value("v1-c");
-        assertTrue(mTable.replace(null, row));
+        mTable.replace(null, row);
         assertNull(trigger.row);
     }
 
@@ -232,7 +236,7 @@ public class TriggerTest {
         mTable.store(null, row);
 
         assertTrue(mTable.delete(null, row));
-        assertTrue(mTable.insert(null, row));
+        mTable.insert(null, row);
 
         mTable.setTrigger(trigger);
 
@@ -249,7 +253,7 @@ public class TriggerTest {
 
         trigger.row = null;
         row.value("xxx");
-        assertTrue(mTable.insert(null, row));
+        mTable.insert(null, row);
         assertTrue(mTable.delete(null, row));
         assertNull(trigger.row);
     }
@@ -275,10 +279,14 @@ public class TriggerTest {
         row.extra("extra!");
         row.id(2);
         row.value("v3");
-        assertFalse(mTable.update(null, row));
+        try {
+            mTable.update(null, row);
+            fail();
+        } catch (NoSuchRowException e) {
+        }
         assertNull(trigger.row);
         row.id(1);
-        assertTrue(mTable.update(null, row));
+        mTable.update(null, row);
         assertSame(row, trigger.row);
         assertNotNull(trigger.oldValue);
         assertNotNull(trigger.newValue);
@@ -291,7 +299,7 @@ public class TriggerTest {
 
         trigger.row = null;
         row.value("v4");
-        assertTrue(mTable.update(null, row));
+        mTable.update(null, row);
         assertNull(trigger.row);
         mTable.load(null, row);
         assertEquals("v4", row.value());
@@ -325,7 +333,7 @@ public class TriggerTest {
         row = mTable.newRow();
         row.id(1);
         row.extra("extra!");
-        assertTrue(mTable.update(null, row));
+        mTable.update(null, row);
         assertSame(row, trigger.row);
         assertNotNull(trigger.oldValue);
         assertNotNull(trigger.newValue);
@@ -341,7 +349,7 @@ public class TriggerTest {
         row = mTable.newRow();
         row.id(1);
         row.extra("nothing");
-        assertTrue(mTable.update(null, row));
+        mTable.update(null, row);
         assertNull(trigger.row);
         mTable.load(null, row);
         assertEquals("v2", row.value());
@@ -373,7 +381,7 @@ public class TriggerTest {
         row = mTable.newRow();
         row.id(1);
         row.extra("extra!");
-        assertTrue(mTable.merge(null, row));
+        mTable.merge(null, row);
         assertEquals("v2", row.value());
         assertEquals("extra!", row.extra());
         assertSame(row, trigger.row);
@@ -391,7 +399,7 @@ public class TriggerTest {
         row = mTable.newRow();
         row.id(1);
         row.extra("nothing");
-        assertTrue(mTable.merge(null, row));
+        mTable.merge(null, row);
         assertNull(trigger.row);
         mTable.load(null, row);
         assertEquals("v2", row.value());

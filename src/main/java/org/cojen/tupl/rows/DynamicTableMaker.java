@@ -382,7 +382,7 @@ public class DynamicTableMaker extends TableMaker {
                 Variable mergeVar = mm.param(2);
                 Variable cursorVar = mm.param(3);
 
-                finishDoUpdate(mm, info, schemaVersion, triggers, false,
+                finishDoUpdate(mm, info, schemaVersion, triggers,
                                tableVar, rowVar, mergeVar, cursorVar);
             });
     }

@@ -319,7 +319,7 @@ public class IndexingTest {
             row.path("path5");
             row.name("name5");
             row.num(new BigDecimal("555"));
-            assertTrue(table.insert(null, row));
+            table.insert(null, row);
         }
 
         scanExpect(alt, "{id=1, path=no-path}", "{id=5, path=path5}");
@@ -343,7 +343,7 @@ public class IndexingTest {
             }
 
             row.path("path5");
-            assertTrue(table.replace(null, row));
+            table.replace(null, row);
         }
 
         scanExpect(alt, "{id=1, path=no-path}", "{id=5, path=path5}");
@@ -358,7 +358,7 @@ public class IndexingTest {
             row.path("!path5");
             row.name("!name55");
             row.num(new BigDecimal("55"));
-            assertTrue(table.update(null, row));
+            table.update(null, row);
         }
 
         scanExpect(alt, "{id=5, path=!path5}", "{id=1, path=no-path}");
@@ -372,7 +372,7 @@ public class IndexingTest {
             TestRow row = table.newRow();
             row.id(1);
             row.name("name1");
-            assertTrue(table.update(null, row));
+            table.update(null, row);
         }
 
         scanExpect(alt, "{id=5, path=!path5}", "{id=1, path=no-path}");
@@ -385,7 +385,7 @@ public class IndexingTest {
             TestRow row = table.newRow();
             row.id(5);
             row.name("name5");
-            assertTrue(table.merge(null, row));
+            table.merge(null, row);
             assertTrue(row.toString().contains("{id=5, name=name5, num=55, path=!path5}"));
         }
 
@@ -1494,7 +1494,7 @@ public class IndexingTest {
         TestRow row = table.newRow();
         row.id(1);
         row.path("xxx");
-        assertTrue(table.update(txn1, row));
+        table.update(txn1, row);
         txn1.commit();
 
         task.join();
