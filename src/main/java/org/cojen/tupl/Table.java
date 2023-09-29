@@ -36,6 +36,7 @@ import org.cojen.tupl.rows.ComparatorMaker;
 import org.cojen.tupl.rows.GroupedTable;
 import org.cojen.tupl.rows.MappedTable;
 import org.cojen.tupl.rows.PlainPredicateMaker;
+import org.cojen.tupl.rows.ViewedTable;
 
 import org.cojen.tupl.rows.join.JoinTableMaker;
 
@@ -409,6 +410,16 @@ public interface Table<R> extends Closeable {
      */
     public default boolean delete(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
+    }
+
+    /**
+     * Returns a view backed by this table, whose rows and natural ordering are defined by the
+     * given query. The returned table instance will throw a {@link ViewConstraintException}
+     * for operations against rows which are restricted by the query, and closing the table has
+     * no effect.
+     */
+    public default Table<R> view(String query, Object... args) {
+        return ViewedTable.view(this, query, args);
     }
 
     /**

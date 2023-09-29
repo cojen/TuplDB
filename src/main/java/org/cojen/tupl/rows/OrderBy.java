@@ -98,6 +98,32 @@ public final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
         return ob;
     }
 
+    /**
+     * Return an OrderBy which only preserves the first set of rules which are in the available
+     * projection. If the no rules remain, then null is returned.
+     *
+     * @param projection can be null if projection is all columns
+     */
+    OrderBy truncate(Map<String, ColumnInfo> projection) {
+        if (projection == null || projection.keySet().containsAll(keySet())) {
+            return this;
+        }
+
+        OrderBy ob = null;
+
+        for (var e : entrySet()) {
+            if (!projection.containsKey(e.getKey())) {
+                break;
+            }
+            if (ob == null) {
+                ob = new OrderBy();
+            }
+            ob.put(e.getKey(), e.getValue());
+        }
+
+        return ob;
+    }
+
     public String spec() {
         var b = new StringBuilder();
         for (OrderBy.Rule rule : values()) {

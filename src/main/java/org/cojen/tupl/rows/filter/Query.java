@@ -34,6 +34,10 @@ import org.cojen.tupl.rows.OrderBy;
  * @see Parser#parseQuery
  */
 public record Query(Map<String, ColumnInfo> projection, OrderBy orderBy, RowFilter filter) {
+    public Query withProjection(Map<String, ColumnInfo> proj) {
+        return proj.equals(projection) ? this : new Query(proj, orderBy, filter);
+    }
+
     public Query withOrderBy(OrderBy ob) {
         if (Objects.equals(orderBy, ob)) {
             return this;
