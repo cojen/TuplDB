@@ -420,6 +420,8 @@ public interface Database extends CauseCloseable, Flushable {
      *
      * <p>If the database is configured with {@link DatabaseConfig#replicate replication},
      * remote access is already enabled, and so a server doesn't need to be created.
+     *
+     * @see #connect connect
      */
     public abstract Server newServer() throws IOException;
 

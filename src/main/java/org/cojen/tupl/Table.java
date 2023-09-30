@@ -36,6 +36,7 @@ import org.cojen.tupl.rows.ComparatorMaker;
 import org.cojen.tupl.rows.GroupedTable;
 import org.cojen.tupl.rows.MappedTable;
 import org.cojen.tupl.rows.PlainPredicateMaker;
+import org.cojen.tupl.rows.ViewedTable;
 
 import org.cojen.tupl.rows.join.JoinTableMaker;
 
@@ -359,22 +360,21 @@ public interface Table<R> extends Closeable {
     /**
      * Stores the given row when a corresponding row doesn't exist.
      *
-     * @return false if a corresponding row already exists and nothing was inserted
      * @throws IllegalStateException if any required columns aren't set
-     * @throws UniqueConstraintException if a conflicting alternate key exists
+     * @throws UniqueConstraintException if a conflicting primary or alternate key exists
      */
-    public default boolean insert(Transaction txn, R row) throws IOException {
+    public default void insert(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
     }
 
     /**
      * Stores the given row when a corresponding row already exists.
      *
-     * @return false if a corresponding row doesn't exist
      * @throws IllegalStateException if any required columns aren't set
+     * @throws NoSuchRowException if a corresponding row doesn't exist
      * @throws UniqueConstraintException if a conflicting alternate key exists
      */
-    public default boolean replace(Transaction txn, R row) throws IOException {
+    public default void replace(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
     }
 
@@ -382,11 +382,11 @@ public interface Table<R> extends Closeable {
      * Updates an existing row with the modified columns of the given row, but the resulting
      * row isn't loaded back.
      *
-     * @return false if a corresponding row doesn't exist
      * @throws IllegalStateException if primary key isn't fully specified
+     * @throws NoSuchRowException if a corresponding row doesn't exist
      * @throws UniqueConstraintException if a conflicting alternate key exists
      */
-    public default boolean update(Transaction txn, R row) throws IOException {
+    public default void update(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
     }
 
@@ -394,11 +394,11 @@ public interface Table<R> extends Closeable {
      * Updates an existing row with the modified columns of the given row, and then loads the
      * result back into the given row.
      *
-     * @return false if a corresponding row doesn't exist
      * @throws IllegalStateException if primary key isn't fully specified
+     * @throws NoSuchRowException if a corresponding row doesn't exist
      * @throws UniqueConstraintException if a conflicting alternate key exists
      */
-    public default boolean merge(Transaction txn, R row) throws IOException {
+    public default void merge(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
     }
 
@@ -410,6 +410,16 @@ public interface Table<R> extends Closeable {
      */
     public default boolean delete(Transaction txn, R row) throws IOException {
         throw new UnmodifiableViewException();
+    }
+
+    /**
+     * Returns a view backed by this table, whose rows and natural ordering are defined by the
+     * given query. The returned table instance will throw a {@link ViewConstraintException}
+     * for operations against rows which are restricted by the query, and closing the table has
+     * no effect.
+     */
+    public default Table<R> view(String query, Object... args) {
+        return ViewedTable.view(this, query, args);
     }
 
     /**

@@ -139,7 +139,7 @@ public class RemoteMissingClientColumnTest {
             TestRow row = mTable.newRow();
             row.id(1);
             row.str1("hello");
-            assertTrue(mTable.merge(null, row));
+            mTable.merge(null, row);
             assertEquals("hello", row.str1());
             assertEquals(2, row.num2());
         }

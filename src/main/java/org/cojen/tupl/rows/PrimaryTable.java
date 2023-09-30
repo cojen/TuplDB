@@ -145,23 +145,23 @@ final class PrimaryTable<R> implements Table<R> {
     }
 
     @Override
-    public boolean insert(Transaction txn, R row) throws IOException {
-        return mSource.insert(txn, row);
+    public void insert(Transaction txn, R row) throws IOException {
+        mSource.insert(txn, row);
     }
 
     @Override
-    public boolean replace(Transaction txn, R row) throws IOException {
-        return mSource.replace(txn, row);
+    public void replace(Transaction txn, R row) throws IOException {
+        mSource.replace(txn, row);
     }
 
     @Override
-    public boolean update(Transaction txn, R row) throws IOException {
-        return mSource.update(txn, row);
+    public void update(Transaction txn, R row) throws IOException {
+        mSource.update(txn, row);
     }
 
     @Override
-    public boolean merge(Transaction txn, R row) throws IOException {
-        return mSource.merge(txn, row);
+    public void merge(Transaction txn, R row) throws IOException {
+        mSource.merge(txn, row);
     }
 
     @Override

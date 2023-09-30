@@ -45,7 +45,6 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.LockMode;
 import org.cojen.tupl.Mapper;
 import org.cojen.tupl.Scanner;
@@ -72,7 +71,7 @@ import org.cojen.tupl.rows.filter.TrueFilter;
  * @author Brian S O'Neill
  * @see Table#map
  */
-public abstract class MappedTable<S, T> implements Table<T> {
+public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
     /**
      * Although the generated factories only depend on the targetType, a full key is needed
      * because the mScannerFactoryCache and mInverse* fields rely on code which is generated
@@ -121,7 +120,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
         // Keep a reference to the MethodHandle instance, to prevent it from being garbage
         // collected as long as the generated table class still exists.
-        tableMaker.addField(MethodHandle.class, "_").static_().private_();
+        tableMaker.addField(Object.class, "_").static_().private_();
 
         addMarkValuesUnset(key, info, tableMaker);
 
@@ -136,7 +135,7 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
         try {
             // Assign the singleton reference.
-            lookup.findStaticVarHandle(tableClass, "_", MethodHandle.class).set(mh);
+            lookup.findStaticVarHandle(tableClass, "_", Object.class).set(mh);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }
@@ -201,7 +200,6 @@ public abstract class MappedTable<S, T> implements Table<T> {
         TableMaker.unset(targetInfo, targetRowVar, mapToSource);
     }
 
-    private final Table<S> mSource;
     private final Mapper<S, T> mMapper;
 
     private final SoftCache<String, ScannerFactory<S, T>, Query> mScannerFactoryCache;
@@ -209,7 +207,8 @@ public abstract class MappedTable<S, T> implements Table<T> {
     private InverseMapper<S, T> mInversePk, mInverseFull, mInverseUpdate;
 
     protected MappedTable(Table<S> source, Mapper<S, T> mapper) {
-        mSource = source;
+        super(source);
+
         mMapper = mapper;
 
         mScannerFactoryCache = new SoftCache<>() {
@@ -229,20 +228,8 @@ public abstract class MappedTable<S, T> implements Table<T> {
     }
 
     @Override
-    public final Scanner<T> newScanner(Transaction txn) throws IOException {
-        return newScannerWith(txn, null);
-    }
-
-    @Override
     public final Scanner<T> newScannerWith(Transaction txn, T targetRow) throws IOException {
         return new MappedScanner<>(this, mSource.newScanner(txn), targetRow, mMapper);
-    }
-
-    @Override
-    public final Scanner<T> newScanner(Transaction txn, String query, Object... args)
-        throws IOException
-    {
-        return newScannerWith(txn, null, query, args);
     }
 
     @Override
@@ -263,16 +250,6 @@ public abstract class MappedTable<S, T> implements Table<T> {
         throws IOException
     {
         return mScannerFactoryCache.obtain(query, null).newUpdaterWith(this, txn, null, args);
-    }
-
-    @Override
-    public final Transaction newTransaction(DurabilityMode durabilityMode) {
-        return mSource.newTransaction(durabilityMode);
-    }
-
-    @Override
-    public final boolean isEmpty() throws IOException {
-        return mSource.isEmpty() || !anyRows(Transaction.BOGUS);
     }
 
     @Override
@@ -323,45 +300,34 @@ public abstract class MappedTable<S, T> implements Table<T> {
     }
 
     @Override
-    public final boolean insert(Transaction txn, T targetRow) throws IOException {
+    public final void insert(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseFull().inverseMap(mSource, targetRow);
-        if (!mSource.insert(txn, sourceRow)) {
-            return false;
-        }
+        mSource.insert(txn, sourceRow);
         cleanRow(targetRow);
-        return true;
     }
 
     @Override
-    public final boolean replace(Transaction txn, T targetRow) throws IOException {
+    public final void replace(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseFull().inverseMap(mSource, targetRow);
-        if (!mSource.replace(txn, sourceRow)) {
-            return false;
-        }
+        mSource.replace(txn, sourceRow);
         cleanRow(targetRow);
-        return true;
     }
 
     @Override
-    public final boolean update(Transaction txn, T targetRow) throws IOException {
+    public final void update(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseUpdate().inverseMap(mSource, targetRow);
-        if (!mSource.update(txn, sourceRow)) {
-            return false;
-        }
+        mSource.update(txn, sourceRow);
         cleanRow(targetRow);
-        return true;
     }
 
     @Override
-    public final boolean merge(Transaction txn, T targetRow) throws IOException {
+    public final void merge(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseUpdate().inverseMap(mSource, targetRow);
-        if (!mSource.merge(txn, sourceRow)) {
-            return false;
-        }
+        mSource.merge(txn, sourceRow);
         T mappedRow = mMapper.map(sourceRow, newRow());
         if (mappedRow != null) {
             cleanRow(mappedRow);
@@ -372,7 +338,6 @@ public abstract class MappedTable<S, T> implements Table<T> {
             // columns allows the operation to complete and signal that something is amiss.
             unsetRow(targetRow);
         }
-        return true;
     }
 
     @Override
@@ -406,16 +371,6 @@ public abstract class MappedTable<S, T> implements Table<T> {
 
     private QueryPlan decorate(QueryPlan plan) {
         return mMapper.plan(new QueryPlan.Mapper(rowType().getName(), mMapper.toString(), plan));
-    }
-
-    @Override
-    public final void close() throws IOException {
-        // Do nothing.
-    }
-
-    @Override
-    public final boolean isClosed() {
-        return false;
     }
 
     /**

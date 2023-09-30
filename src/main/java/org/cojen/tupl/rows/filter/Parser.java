@@ -35,6 +35,7 @@ import org.cojen.tupl.rows.SimpleParser;
  */
 public final class Parser extends SimpleParser {
     private final Map<String, ? extends ColumnInfo> mAllColumns;
+    private final int mArgDelta;
 
     private int mNextArg;
     private Map<Integer, Boolean> mInArgs;
@@ -44,8 +45,16 @@ public final class Parser extends SimpleParser {
     private OrderBy mOrderBy;
 
     public Parser(Map<String, ? extends ColumnInfo> allColumns, String filter) {
+        this(allColumns, filter, 0);
+    }
+
+    /**
+     * @param argDelta amount to add to each argument number after being parsed
+     */
+    public Parser(Map<String, ? extends ColumnInfo> allColumns, String filter, int argDelta) {
         super(filter);
         mAllColumns = allColumns;
+        mArgDelta = argDelta;
     }
 
     /**
@@ -63,10 +72,11 @@ public final class Parser extends SimpleParser {
      * ProjColumns  = [ ProjColumn { "," ProjColumn } ]
      * ProjColumn   = ( ( ( ( "+" | "-" ) [ "!" ] ) | "~" ) ColumnName ) | "*"
      *
-     * Returns null if string doesn't start with a projection or if the projection is all of
-     * the available columns. If the projection ends with a non-whitespace character, then a
-     * subsequent call to parseFilter expects a filter. If only whitespace characters remain,
-     * parseFilter expects nothing, and so it returns TrueFilter.
+     * Assigns mProjection and mOrderBy as a side-effect. The mProjection field is null if the
+     * string doesn't start with a projection or if the projection is all of the available
+     * columns. If the projection ends with a non-whitespace character, then a subsequent call
+     * to parseFilter expects a filter. If only whitespace characters remain, parseFilter
+     * expects nothing, and so it returns TrueFilter.
      *
      * @param availableColumns can pass null if same as all columns
      */
@@ -439,6 +449,7 @@ public final class Parser extends SimpleParser {
             if (arg < 0) {
                 arg = ++mNextArg;
             }
+            arg += mArgDelta;
         } else {
             // column-to-column comparison
 

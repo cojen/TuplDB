@@ -485,7 +485,7 @@ public class RowGen {
                 ColumnInfo info = codec.info;
 
                 if (columns.containsKey(info.name)) {
-                    mask |= RowGen.stateFieldMask(num);
+                    mask |= stateFieldMask(num);
                 }
 
                 if (isMaskReady(++num, mask)) {
@@ -524,6 +524,33 @@ public class RowGen {
             resultVar.set(true);
             end.here();
         }
+    }
+
+    /**
+     * Generates code which checks if at least one of the given columns is set for a given row
+     * object, returning true or false.
+     *
+     * @param resultVar pass null to return; pass boolean var to set instead
+     * @param rowVar variable which references a row with state fields
+     */
+    void checkAnySet(MethodMaker mm, Map<String, ColumnInfo> columns,
+                     Variable resultVar, Variable rowVar)
+    {
+        checkAnySet(mm, columns, resultVar, num -> rowVar.field(stateField(num)));
+    }
+
+    /**
+     * Generates code which checks if at least one of the given columns is set, returning true
+     * or false.
+     *
+     * @param resultVar pass null to return; pass boolean var to set instead
+     * @param stateFieldAccessor returns a state field for a given zero-based column number
+     * @see #stateField
+     */
+    void checkAnySet(MethodMaker mm, Map<String, ColumnInfo> columns,
+                     Variable resultVar, IntFunction<Variable> stateFieldAccessor)
+    {
+        checkAny(mm, columns, resultVar, stateFieldAccessor, 0b11);
     }
 
     /**
@@ -609,6 +636,13 @@ public class RowGen {
     void checkAnyDirty(MethodMaker mm, Map<String, ColumnInfo> columns,
                        Variable resultVar, IntFunction<Variable> stateFieldAccessor)
     {
+        checkAny(mm, columns, resultVar, stateFieldAccessor, 0b10);
+    }
+
+    private void checkAny(MethodMaker mm, Map<String, ColumnInfo> columns,
+                          Variable resultVar, IntFunction<Variable> stateFieldAccessor,
+                          int state)
+    {
         Label end = resultVar == null ? null : mm.label();
 
         int num = 0, mask = 0;
@@ -622,7 +656,7 @@ public class RowGen {
                 ColumnInfo info = codec.info;
 
                 if (columns.containsKey(info.name)) {
-                    mask |= stateFieldMask(num, 0b10);
+                    mask |= stateFieldMask(num, state);
                 }
 
                 if (isMaskReady(++num, mask)) {

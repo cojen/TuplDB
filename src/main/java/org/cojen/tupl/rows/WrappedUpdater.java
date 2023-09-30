@@ -47,22 +47,12 @@ class WrappedUpdater<R> implements Updater<R> {
 
     @Override
     public R step() throws IOException {
-        try {
-            return mScanner.step();
-        } catch (Throwable e) {
-            exception(e);
-            throw e;
-        }
+        return mScanner.step();
     }
 
     @Override
     public R step(R row) throws IOException {
-        try {
-            return mScanner.step(row);
-        } catch (Throwable e) {
-            exception(e);
-            throw e;
-        }
+        return mScanner.step(row);
     }
 
     @Override
@@ -70,7 +60,7 @@ class WrappedUpdater<R> implements Updater<R> {
         try {
             mTable.update(mTxn, current());
         } catch (Throwable e) {
-            exception(e);
+            close(e);
             throw e;
         }
         return step();
@@ -81,7 +71,7 @@ class WrappedUpdater<R> implements Updater<R> {
         try {
             mTable.update(mTxn, current());
         } catch (Throwable e) {
-            exception(e);
+            close(e);
             throw e;
         }
         return step(row);
@@ -92,7 +82,7 @@ class WrappedUpdater<R> implements Updater<R> {
         try {
             mTable.delete(mTxn, current());
         } catch (Throwable e) {
-            exception(e);
+            close(e);
             throw e;
         }
         return step();
@@ -103,7 +93,7 @@ class WrappedUpdater<R> implements Updater<R> {
         try {
             mTable.delete(mTxn, current());
         } catch (Throwable e) {
-            exception(e);
+            close(e);
             throw e;
         }
         return step(row);
@@ -124,7 +114,12 @@ class WrappedUpdater<R> implements Updater<R> {
         mScanner.close();
     }
 
-    protected void exception(Throwable e) throws IOException {
+    protected void close(Throwable e) {
+        try {
+            mScanner.close();
+        } catch (Throwable e2) {
+            RowUtils.suppress(e, e2);
+        }
     }
 
     private R current() {
@@ -146,48 +141,56 @@ class WrappedUpdater<R> implements Updater<R> {
 
         @Override
         public R step() throws IOException {
+            R row;
             try {
-                R row = mScanner.step();
-                if (row == null) {
-                    exception(null);
-                }
-                return row;
+                row = mScanner.step();
             } catch (Throwable e) {
-                exception(e);
+                commit(e);
                 throw e;
             }
+            if (row == null) {
+                mTxn.commit();
+            }
+            return row;
         }
 
         @Override
         public R step(R row) throws IOException {
             try {
                 row = mScanner.step(row);
-                if (row == null) {
-                    exception(null);
-                }
-                return row;
             } catch (Throwable e) {
-                exception(e);
+                commit(e);
                 throw e;
             }
+            if (row == null) {
+                mTxn.commit();
+            }
+            return row;
         }
 
         @Override
         public void close() throws IOException {
-            exception(null);
-            mScanner.close();
+            try {
+                mScanner.close();
+            } catch (Throwable e) {
+                commit(e);
+                throw e;
+            }
+
+            mTxn.commit();
         }
 
         @Override
-        protected void exception(Throwable e) throws IOException {
+        protected void close(Throwable e) {
+            super.close(e);
+            commit(e);
+        }
+
+        private void commit(Throwable e) {
             try {
                 mTxn.commit();
             } catch (Throwable e2) {
-                if (e == null) {
-                    throw e2;
-                } else {
-                    RowUtils.suppress(e, e2);
-                }
+                RowUtils.suppress(e, e2);
             }
         }
     }

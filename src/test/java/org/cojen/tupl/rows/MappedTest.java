@@ -305,7 +305,11 @@ public class MappedTest {
 
         assertTrue(mapped.exists(null, row));
 
-        assertFalse(mapped.insert(null, row));
+        try {
+            mapped.insert(null, row);
+            fail();
+        } catch (UniqueConstraintException e) {
+        }
 
         try {
             row.str("xxx");
@@ -354,44 +358,56 @@ public class MappedTest {
         row.id(1000);
         row.num(1000);
         row.str("1000");
-        assertTrue(mapped.insert(null, row));
+        mapped.insert(null, row);
         assertEquals("{id=1000, num=1000, str=1000}", row.toString());
         assertTrue(mapped.load(null, row));
         assertEquals("{id=1000, num=1000, str=1000}", row.toString());
 
         row.num(1);
-        assertTrue(mapped.replace(null, row));
+        mapped.replace(null, row);
         assertEquals("{id=1000, num=1, str=1000}", row.toString());
         assertTrue(mapped.load(null, row));
         assertEquals("{id=1000, num=1, str=1000}", row.toString());
 
         row.id(0);
-        assertFalse(mapped.replace(null, row));
+        try {
+            mapped.replace(null, row);
+            fail();
+        } catch (NoSuchRowException e) {
+        }
         assertEquals("{*id=0, num=1, str=1000}", row.toString());
 
         row.id(1000);
         row.num(2);
-        assertTrue(mapped.update(null, row));
+        mapped.update(null, row);
         assertEquals("{id=1000, num=2, str=1000}", row.toString());
         assertTrue(mapped.load(null, row));
         assertEquals("{id=1000, num=2, str=1000}", row.toString());
 
         row.id(0);
         row.num(9);
-        assertFalse(mapped.update(null, row));
+        try {
+            mapped.update(null, row);
+            fail();
+        } catch (NoSuchRowException e) {
+        }
         assertEquals("{*id=0, *num=9, str=1000}", row.toString());
 
         row = mapped.newRow();
         row.id(1000);
         row.num(99);
-        assertTrue(mapped.merge(null, row));
+        mapped.merge(null, row);
         assertEquals("{id=1000, num=99, str=1000}", row.toString());
         assertTrue(mapped.load(null, row));
         assertEquals("{id=1000, num=99, str=1000}", row.toString());
 
         row.id(0);
         row.num(91);
-        assertFalse(mapped.merge(null, row));
+        try {
+            mapped.merge(null, row);
+            fail();
+        } catch (NoSuchRowException e) {
+        }
         assertEquals("{*id=0, *num=91, str=1000}", row.toString());
 
         row.id(1000);
@@ -399,7 +415,7 @@ public class MappedTest {
         mTable.store(null, row);
 
         row.str("111");
-        assertTrue(mapped.merge(null, row));
+        mapped.merge(null, row);
         assertEquals("{}", row.toString());
         row.id(1000);
         assertFalse(mapped.load(null, row));
@@ -522,7 +538,7 @@ public class MappedTest {
         row = mTable.newRow();
         row.id(999);
         row.str("hello");
-        assertTrue(mTable.update(null, row));
+        mTable.update(null, row);
 
         try (var updater = mapped.newUpdater(null)) {
             row = updater.row();
@@ -744,5 +760,26 @@ public class MappedTest {
 
         assertEquals(amount, num);
         assertEquals(checksum, actualChecksum);
+    }
+
+    @Test
+    public void brokenMapping() throws Exception {
+        {
+            TestRow row = mTable.newRow();
+            row.id(1);
+            row.str("hello");
+            row.num(123);
+            mTable.store(null, row);
+        }
+
+        Table<Renamed> mapped = mTable.map(Renamed.class, (source, target) -> {
+            return target;
+        });
+
+        try {
+            mapped.newScanner(null, "identifier == ?", 0);
+            fail();
+        } catch (UnsetColumnException e) {
+        }
     }
 }

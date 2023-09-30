@@ -159,6 +159,23 @@ public class GroupedTest {
         }
     }
 
+    public static class Broken<T extends TestRowAgg> implements Grouper<TestRow, T> {
+        @Override
+        public TestRow begin(TestRow source) {
+            return source;
+        }
+
+        @Override
+        public TestRow accumulate(TestRow source) {
+            return source;
+        }
+
+        @Override
+        public T finish(T target) {
+            return target;
+        }
+    }
+
     @Test
     public void toOneRow() throws Exception {
         Table<TestRowAgg> grouped = mTable.group(TestRowAgg.class, Grouper1::new);
@@ -482,6 +499,20 @@ public class GroupedTest {
         }
     }
 
+    @Test
+    public void brokenGrouping() throws Exception {
+        Table<TestRowAggByName> grouped =
+            mTable.group(TestRowAggByName.class, () -> new Broken<>());
+
+        fill();
+
+        try {
+            grouped.newScanner(null, "count == ?", 0);
+            fail();
+        } catch (UnsetColumnException e) {
+        }
+    }
+
     private void fill() throws Exception {
         Object[][] data = {
             {1, "hello", 1},
@@ -497,7 +528,7 @@ public class GroupedTest {
             row.id((int) r[0]);
             row.name((String) r[1]);
             row.num((int) r[2]);
-            assertTrue(mTable.insert(null, row));
+            mTable.insert(null, row);
         }
     }
 }

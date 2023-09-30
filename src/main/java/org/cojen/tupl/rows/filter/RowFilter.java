@@ -44,12 +44,15 @@ public abstract class RowFilter implements Comparable<RowFilter> {
 
     public abstract int numTerms();
 
+    /**
+     * @return 0 if filter has no arguments
+     */
     public int maxArgument() {
         return maxArgument(0);
     }
 
     /**
-     * @retur 0 if filter has no arguments
+     * @return 0 if filter has no arguments
      */
     protected abstract int maxArgument(int max);
 

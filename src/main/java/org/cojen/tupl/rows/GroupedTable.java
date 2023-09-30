@@ -38,7 +38,6 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Grouper;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
@@ -63,7 +62,7 @@ import static java.util.Spliterator.*;
  * @author Brian S. O'Neill
  * @see Table#group
  */
-public abstract class GroupedTable<S, T> implements Table<T> {
+public abstract class GroupedTable<S, T> extends WrappedTable<S, T> {
     private static final WeakCache<Pair<Class, Class>, MethodHandle, Table> cFactoryCache;
 
     static {
@@ -127,7 +126,7 @@ public abstract class GroupedTable<S, T> implements Table<T> {
 
         // Keep a reference to the MethodHandle instance, to prevent it from being garbage
         // collected as long as the generated table class still exists.
-        cm.addField(MethodHandle.class, "_").static_().private_();
+        cm.addField(Object.class, "_").static_().private_();
 
         // Add the compareSourceRows method.
         {
@@ -237,7 +236,7 @@ public abstract class GroupedTable<S, T> implements Table<T> {
 
         try {
             // Assign the singleton reference.
-            lookup.findStaticVarHandle(tableClass, "_", MethodHandle.class).set(mh);
+            lookup.findStaticVarHandle(tableClass, "_", Object.class).set(mh);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }
@@ -275,14 +274,14 @@ public abstract class GroupedTable<S, T> implements Table<T> {
         return bob.toString();
     }
 
-    protected final Table<S> mSource;
     protected final Supplier<Grouper<S, T>> mGrouperSupplier;
 
     // Cache key is either a query string or a Pair of a query string and source projection.
     private final WeakCache<Object, ScannerFactory<S, T>, Query> mScannerFactoryCache;
 
     protected GroupedTable(Table<S> source, Supplier<Grouper<S, T>> supplier) {
-        mSource = source;
+        super(source);
+
         mGrouperSupplier = supplier;
 
         mScannerFactoryCache = new WeakCache<>() {
@@ -321,20 +320,8 @@ public abstract class GroupedTable<S, T> implements Table<T> {
     }
 
     @Override
-    public final Scanner<T> newScanner(Transaction txn) throws IOException {
-        return newScannerWith(txn, null);
-    }
-
-    @Override
     public final Scanner<T> newScannerWith(Transaction txn, T targetRow) throws IOException {
         return newScannerWith(txn, targetRow, "{*}");
-    }
-
-    @Override
-    public final Scanner<T> newScanner(Transaction txn, String query, Object... args)
-        throws IOException
-    {
-        return newScannerWith(txn, null, query, args);
     }
 
     @Override
@@ -358,16 +345,6 @@ public abstract class GroupedTable<S, T> implements Table<T> {
         }
 
         return factory.newScannerWith(this, grouper, txn, targetRow, args);
-    }
-
-    @Override
-    public final Transaction newTransaction(DurabilityMode durabilityMode) {
-        return mSource.newTransaction(durabilityMode);
-    }
-
-    @Override
-    public final boolean isEmpty() throws IOException {
-        return mSource.isEmpty() || !anyRows(Transaction.BOGUS);
     }
 
     /**
@@ -402,16 +379,6 @@ public abstract class GroupedTable<S, T> implements Table<T> {
                 .obtain(makeScannerFactoryKey(query == null ? "{*}" : query, projection), null)
                 .plan(this, grouper, txn, args);
         }
-    }
-
-    @Override
-    public final void close() throws IOException {
-        // Do nothing.
-    }
-
-    @Override
-    public final boolean isClosed() {
-        return false;
     }
 
     /**
@@ -608,11 +575,11 @@ public abstract class GroupedTable<S, T> implements Table<T> {
 
         // Keep a singleton instance, in order for a weakly cached reference to the factory to
         // stick around until the class is unloaded.
-        factoryMaker.addField(Object.class, "THE").private_().static_();
+        factoryMaker.addField(Object.class, "_").private_().static_();
 
         MethodMaker ctor = factoryMaker.addConstructor().private_();
         ctor.invokeSuperConstructor();
-        ctor.field("THE").set(ctor.this_());
+        ctor.field("_").set(ctor.this_());
 
         MethodMaker mm = factoryMaker.addMethod
             (Scanner.class, "newScannerWith", GroupedTable.class, Grouper.class,

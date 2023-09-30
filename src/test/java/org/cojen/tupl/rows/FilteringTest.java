@@ -59,7 +59,7 @@ public class FilteringTest {
             row.value3(a);
             row.value4(a);
             row.x("");
-            assertTrue(table.insert(null, row));
+            table.insert(null, row);
         }
 
         findArrayRows(table, nums, "id1", false);
@@ -86,7 +86,7 @@ public class FilteringTest {
             row.id1(a);
             row.id2(a);
             row.x("");
-            assertTrue(table.insert(null, row));
+            table.insert(null, row);
         }
 
         findArrayRows(table, nums, "id1", true);
@@ -109,7 +109,7 @@ public class FilteringTest {
             row.id1(a);
             row.id2(a);
             row.x("");
-            assertTrue(table.insert(null, row));
+            table.insert(null, row);
         }
 
         findArrayRows(table, nums, "id1", true);
@@ -136,7 +136,7 @@ public class FilteringTest {
             row.value3(a);
             row.value4(a);
             row.x("");
-            assertTrue(table.insert(null, row));
+            table.insert(null, row);
         }
 
         findArrayRows(table, nums, "id1", false);
@@ -163,7 +163,7 @@ public class FilteringTest {
             row.id1(a);
             row.id2(a);
             row.x("");
-            assertTrue(table.insert(null, row));
+            table.insert(null, row);
         }
 
         findArrayRows(table, nums, "id1", true);
@@ -186,7 +186,7 @@ public class FilteringTest {
             row.id1(a);
             row.id2(a);
             row.x("");
-            assertTrue(table.insert(null, row));
+            table.insert(null, row);
         }
 
         findArrayRows(table, nums, "id1", true);
@@ -211,7 +211,7 @@ public class FilteringTest {
             row.value1(a);
             row.value2(a);
             row.x("");
-            assertTrue(table.insert(null, row));
+            table.insert(null, row);
         }
 
         findArrayRows(table, nums, "id1");
@@ -236,7 +236,7 @@ public class FilteringTest {
             row.id1(a);
             row.id2(a);
             row.x("");
-            assertTrue(table.insert(null, row));
+            table.insert(null, row);
         }
 
         findArrayRows(table, nums, "id1");
