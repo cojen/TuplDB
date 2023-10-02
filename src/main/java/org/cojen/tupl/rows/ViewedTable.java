@@ -266,6 +266,11 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     }
 
     @Override
+    public long deleteAll(Transaction txn, String query, Object... args) throws IOException {
+        return mSource.deleteAll(txn, fuseQuery(query), fuseArguments(args));
+    }
+
+    @Override
     public final Table<R> view(String query, Object... args) {
         return mSource.view(fuseQuery(query), fuseArguments(args));
     }
@@ -749,20 +754,10 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
                 return table.mSource.delete(txn, row);
             }
 
-            // Use an empty projection because the columns don't need to be decoded.
-            String query = fusedPkQueryEmptyProjection(table);
+            String query = fusedPkQuery(table);
             Object[] args = fusePkArguments(table.mArgs, table.mMaxArg, row);
 
-            // TODO: Should use the deleteAll method, when it becomes available. The regular
-            // fused query will work fine too (no need for an empty projection).
-            try (var updater = table.mSource.newUpdater(txn, query, args)) {
-                if (updater.row() == null) {
-                    return false;
-                } else {
-                    updater.delete();
-                    return true;
-                }
-            }
+            return table.mSource.deleteAll(txn, query, args) != 0;
         }
 
         private String fusedPkQuery(ViewedTable<R> table) {

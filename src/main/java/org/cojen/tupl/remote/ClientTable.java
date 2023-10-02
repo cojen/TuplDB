@@ -197,6 +197,11 @@ final class ClientTable<R> implements Table<R> {
     }
 
     @Override
+    public long deleteAll(Transaction txn, String query, Object... args) throws IOException {
+        return mRemote.deleteAll(mDb.remoteTransaction(txn), query, args);
+    }
+
+    @Override
     public boolean anyRows(Transaction txn) throws IOException {
         return mRemote.anyRows(mDb.remoteTransaction(txn));
     }

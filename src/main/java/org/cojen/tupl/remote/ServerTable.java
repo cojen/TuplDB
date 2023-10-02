@@ -131,6 +131,11 @@ final class ServerTable<R> implements RemoteTable {
     }
 
     @Override
+    public long deleteAll(RemoteTransaction txn, String query, Object... args) throws IOException {
+        return mTable.deleteAll(ServerTransaction.txn(txn), query, args);
+    }
+
+    @Override
     public boolean anyRows(RemoteTransaction txn) throws IOException {
         return mTable.anyRows(ServerTransaction.txn(txn));
     }

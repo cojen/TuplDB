@@ -110,6 +110,11 @@ final class PrimaryTable<R> implements Table<R> {
     }
 
     @Override
+    public long deleteAll(Transaction txn, String query, Object... args) throws IOException {
+        return mSource.deleteAll(txn, query, args);
+    }
+
+    @Override
     public String toString() {
         return mSource.toString();
     }
