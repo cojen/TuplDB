@@ -252,6 +252,7 @@ public interface Table<R> extends Closeable {
     public default long deleteAll(Transaction txn, String query, Object... args)
         throws IOException
     {
+        // Note: If the transaction is null, deleting in batches is an acceptable optimization.
         long total = 0;
         try (var updater = newUpdater(txn, query, args)) {
             for (var row = updater.row(); row != null; row = updater.delete(row)) {

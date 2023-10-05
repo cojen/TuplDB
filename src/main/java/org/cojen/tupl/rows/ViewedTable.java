@@ -754,7 +754,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
                 return table.mSource.delete(txn, row);
             }
 
-            String query = fusedPkQuery(table);
+            String query = fusedPkQueryEmptyProjection(table);
             Object[] args = fusePkArguments(table.mArgs, table.mMaxArg, row);
 
             return table.mSource.deleteAll(txn, query, args) != 0;
