@@ -41,7 +41,7 @@ public abstract sealed class QueryPlan implements Serializable {
         return b.toString();
     }
 
-    public void printTo(PrintStream out) {
+    public final void printTo(PrintStream out) {
         try {
             appendTo((Appendable) out);
         } catch (IOException e) {
@@ -49,7 +49,7 @@ public abstract sealed class QueryPlan implements Serializable {
         }
     }
 
-    public void appendTo(StringBuilder b) {
+    public final void appendTo(StringBuilder b) {
         try {
             appendTo((Appendable) b);
         } catch (IOException e) {
@@ -57,7 +57,7 @@ public abstract sealed class QueryPlan implements Serializable {
         }
     }
 
-    public void appendTo(Appendable a) throws IOException {
+    public final void appendTo(Appendable a) throws IOException {
         appendTo(a, "- ", "  ");
     }
 
@@ -308,6 +308,29 @@ public abstract sealed class QueryPlan implements Serializable {
             int hash = super.hashCode();
             hash = hash * 31 + Objects.hashCode(filter);
             return hash ^ -1241565554;
+        }
+    }
+
+    /**
+     * Query plan node which represents a single row with no columns.
+     */
+    public static final class Identity extends QueryPlan {
+        public Identity() {
+        }
+
+        @Override
+        void appendTo(Appendable a, String in1, String in2) throws IOException {
+            a.append(in1).append("identity").append('\n');
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof Identity;
+        }
+
+        @Override
+        public int hashCode() {
+            return -630610878;
         }
     }
 
