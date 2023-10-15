@@ -194,13 +194,15 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     {
         super(source);
 
-        if (maxArg == 0 || args == null || args.length == 0) {
+        if (maxArg == 0) {
             args = NO_ARGS;
-        } else if (maxArg != args.length) {
-            if (maxArg > args.length) {
+        } else {
+            if (args.length < maxArg) {
                 throw new IllegalArgumentException("Not enough query arguments provided");
             }
-            args = Arrays.copyOf(args, maxArg);
+            var copy = new Object[maxArg];
+            System.arraycopy(args, 0, copy, 0, copy.length);
+            args = copy;
         }
 
         mQueryStr = queryStr;
