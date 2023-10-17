@@ -89,6 +89,7 @@ import org.cojen.tupl.rows.join.JoinTableMaker;
  * ParenFilter  = [ "!" ] "(" RowFilter ")"
  * ColumnFilter = ColumnName RelOp ( ArgRef | ColumnName )
  *              | ColumnName "in" ArgRef
+ *              | ArgRef RelOp ColumnName
  * RelOp        = "==" | "!=" | ">=" | "<" | "<=" | ">"
  * Projection   = "{" ProjColumns "}"
  * ProjColumns  = [ ProjColumn { "," ProjColumn } ]
