@@ -167,7 +167,7 @@ public class RowInfo extends ColumnSet {
             StringBuilder b = null;
 
             for (ColumnInfo column : info.allColumns.values()) {
-                if (column.typeCode == TYPE_JOIN &&
+                if (column.typeCode == TYPE_REFERENCE &&
                     !Comparable.class.isAssignableFrom(column.type))
                 {
                     if (b == null) {
@@ -512,7 +512,7 @@ public class RowInfo extends ColumnSet {
             // Assume column is joining to another row.
             try {
                 RowInfo.find(type);
-                return TYPE_JOIN;
+                return TYPE_REFERENCE;
             } catch (IllegalArgumentException e) {
                 msg = e.getMessage();
                 if (msg == null || msg.isEmpty()) {
