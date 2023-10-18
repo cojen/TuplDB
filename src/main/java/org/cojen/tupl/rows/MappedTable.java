@@ -279,6 +279,7 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
     public final void store(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseFull().inverseMap(mSource, targetRow);
+        mMapper.checkStore(mSource, sourceRow);
         mSource.store(txn, sourceRow);
         cleanRow(targetRow);
     }
@@ -287,6 +288,7 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
     public final T exchange(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseFull().inverseMap(mSource, targetRow);
+        mMapper.checkStore(mSource, sourceRow);
         S oldSourceRow = mSource.exchange(txn, sourceRow);
         cleanRow(targetRow);
         if (oldSourceRow == null) {
@@ -303,6 +305,7 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
     public final void insert(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseFull().inverseMap(mSource, targetRow);
+        mMapper.checkStore(mSource, sourceRow);
         mSource.insert(txn, sourceRow);
         cleanRow(targetRow);
     }
@@ -311,6 +314,7 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
     public final void replace(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseFull().inverseMap(mSource, targetRow);
+        mMapper.checkStore(mSource, sourceRow);
         mSource.replace(txn, sourceRow);
         cleanRow(targetRow);
     }
@@ -319,6 +323,7 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
     public final void update(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseUpdate().inverseMap(mSource, targetRow);
+        mMapper.checkUpdate(mSource, sourceRow);
         mSource.update(txn, sourceRow);
         cleanRow(targetRow);
     }
@@ -327,6 +332,7 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
     public final void merge(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inverseUpdate().inverseMap(mSource, targetRow);
+        mMapper.checkUpdate(mSource, sourceRow);
         mSource.merge(txn, sourceRow);
         T mappedRow = mMapper.map(sourceRow, newRow());
         if (mappedRow != null) {
@@ -344,6 +350,7 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
     public final boolean delete(Transaction txn, T targetRow) throws IOException {
         Objects.requireNonNull(targetRow);
         S sourceRow = inversePk().inverseMap(mSource, targetRow);
+        mMapper.checkDelete(mSource, sourceRow);
         return mSource.delete(txn, sourceRow);
     }
 
@@ -513,8 +520,18 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
         MethodMaker mm = cm.addMethod(null, "inverseMap", Object.class, Object.class);
         mm.public_();
 
+        // Only attempt to check that the source columns are set if the source table type is
+        // expected to have the special check methods defined.
+        boolean checkSet = BaseTable.class.isAssignableFrom(mSource.getClass());
+
+        Class<?> sourceRowType = mSource.rowType();
+        if (checkSet) {
+            // The special methods act upon the implementation class.
+            sourceRowType = RowMaker.find(sourceRowType);
+        }
+
         var targetRowVar = mm.param(1).cast(RowMaker.find(rowType()));
-        var sourceRowVar = mm.param(0).cast(mSource.rowType());
+        var sourceRowVar = mm.param(0).cast(sourceRowType);
 
         Map<String, Integer> targetColumnNumbers = targetGen.columnNumbers();
 
@@ -570,6 +587,21 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
             }
 
             nextSource.here();
+        }
+
+        if (checkSet) {
+            var sourceVar = mm.var(mSource.getClass());
+            Label ok = mm.label();
+
+            if (mode == 2) { // full
+                sourceVar.invoke("checkAllSet", sourceRowVar).ifTrue(ok);
+                sourceVar.invoke("requireAllSet", sourceRowVar);
+            } else {
+                sourceVar.invoke("checkPrimaryKeySet", sourceRowVar).ifTrue(ok);
+                mm.new_(IllegalStateException.class, "Primary key isn't fully specified").throw_();
+            }
+
+            ok.here();
         }
 
         try {

@@ -579,6 +579,30 @@ public class MappedTest {
             return target;
         }
 
+        @Override
+        public void checkStore(Table<TestRow> table, TestRow row) throws ViewConstraintException {
+            try {
+                Integer.parseInt(row.str());
+            } catch (NumberFormatException e) {
+                throw new ViewConstraintException();
+            }
+        }
+
+        @Override
+        public void checkUpdate(Table<TestRow> table, TestRow row) throws ViewConstraintException {
+            try {
+                Integer.parseInt(row.str());
+            } catch (NumberFormatException e) {
+                throw new ViewConstraintException();
+            } catch (UnsetColumnException e) {
+                // FIXME: call Table.isSet
+            }
+        }
+
+        @Override
+        public void checkDelete(Table<TestRow> table, TestRow row) throws ViewConstraintException {
+        }
+
         public static String num_to_str(int num) {
             return String.valueOf(num);
         }
@@ -693,6 +717,18 @@ public class MappedTest {
             target.string(source.str());
             target.number(source.num());
             return target;
+        }
+
+        @Override
+        public void checkStore(Table<TestRow> table, TestRow row) throws ViewConstraintException {
+        }
+
+        @Override
+        public void checkUpdate(Table<TestRow> table, TestRow row) throws ViewConstraintException {
+        }
+
+        @Override
+        public void checkDelete(Table<TestRow> table, TestRow row) throws ViewConstraintException {
         }
 
         public static long identifier_to_id(long id) {
