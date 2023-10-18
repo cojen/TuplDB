@@ -590,12 +590,12 @@ public class MappedTest {
 
         @Override
         public void checkUpdate(Table<TestRow> table, TestRow row) throws ViewConstraintException {
-            try {
-                Integer.parseInt(row.str());
-            } catch (NumberFormatException e) {
-                throw new ViewConstraintException();
-            } catch (UnsetColumnException e) {
-                // FIXME: call Table.isSet
+            if (table.isSet(row, "str")) {
+                try {
+                    Integer.parseInt(row.str());
+                } catch (NumberFormatException e) {
+                    throw new ViewConstraintException();
+                }
             }
         }
 

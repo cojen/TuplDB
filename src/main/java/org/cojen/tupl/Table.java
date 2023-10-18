@@ -134,6 +134,13 @@ public interface Table<R> extends Closeable {
     public void copyRow(R from, R to);
 
     /**
+     * Returns true if the given row column is set.
+     *
+     * @throws IllegalArgumentException if column is unknown
+     */
+    public boolean isSet(R row, String name);
+
+    /**
      * Returns a new scanner for all rows of this table.
      *
      * @param txn optional transaction for the scanner to use; pass null for auto-commit mode
