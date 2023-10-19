@@ -137,7 +137,7 @@ public final class ConstantNode extends Node {
     @Override
     public void makeFilter(MakerContext context, Label pass, Label fail) {
         if (mValue instanceof Boolean b) {
-            context.rowVar.methodMaker().goto_(b ? pass : fail);
+            context.methodMaker().goto_(b ? pass : fail);
         } else {
             throw new IllegalStateException();
         }

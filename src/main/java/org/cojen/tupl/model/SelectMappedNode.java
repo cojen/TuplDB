@@ -21,12 +21,17 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
+import java.util.Map;
+
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 
 import org.cojen.tupl.Mapper;
 import org.cojen.tupl.Table;
+import org.cojen.tupl.ViewConstraintException;
+
+import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.io.Utils;
 
@@ -49,14 +54,6 @@ public final class SelectMappedNode extends SelectNode {
     }
 
     /* FIXME
-
-       - Identify all the required source columns by examining all of the ColumnNodes in
-         the "where" and "projection". This forms the Mapper.sourceProjection.
- 
-       - Identify all the directly projected ColumnNodes to form the Mapper's
-         <target_name>_to_<source_name> functions. Note that the target name and source name
-         are the real column names, which might be generated. The implementations of these
-         methods simply return the parameter as-is.
 
        - The Mapper evaluates the "where" filter and returns null if it yields false. Any
          ColumnNodes which were projected (and have inverses) cannot be skipped because
@@ -108,7 +105,7 @@ public final class SelectMappedNode extends SelectNode {
 
         ClassMaker cm = RowGen.beginClassMaker
             (SelectMappedNode.class, targetClass, targetClass.getName(), null, "mapper")
-            .implement(Mapper.class).implement(MapperFactory.class);
+            .implement(Mapper.class).implement(MapperFactory.class).final_();
 
         cm.addConstructor().private_();
 
@@ -130,17 +127,22 @@ public final class SelectMappedNode extends SelectNode {
             }
         }
 
-        addMapMethod(cm, argCount);
+        MakerContext context = addMapMethod(cm, argCount);
 
-        // FIXME: Implement sourceProjection method.
+        Map<String, ColumnNode> fromColumns = context.fromColumns(mFrom);
+        addSourceProjectionMethod(cm, fromColumns);
 
-        // FIXME: Implement inverse mapping functions.
+        addInverseMappingFunctions(cm);
 
-        // FIXME: Implement the plan method, only if mWhere isn't null.
+        addToStringMethod(cm);
+        addPlanMethod(cm);
 
-        // FIXME: Implement the check methods.
-
-        // FIXME: Implement the toString method(?)
+        // FIXME: These only need to be added if CRUD operations work.
+        if (false) {
+            addCheckStoreMethod(cm);
+            addCheckUpdateMethod(cm);
+            addCheckDeleteMethod(cm);
+        }
 
         MethodHandles.Lookup lookup = cm.finishHidden();
         Class<?> clazz = lookup.lookupClass();
@@ -153,13 +155,13 @@ public final class SelectMappedNode extends SelectNode {
         }
     }
 
-    private void addMapMethod(ClassMaker cm, int argCount) {
+    private MakerContext addMapMethod(ClassMaker cm, int argCount) {
         TupleType targetType = type().tupleType();
 
         MethodMaker mm = cm.addMethod
             (targetType.clazz(), "map", Object.class, Object.class).public_();
 
-        // FIXME: If source projection is empty, no need to cast the sourceRow. It won't be used.
+        // TODO: If source projection is empty, no need to cast the sourceRow. It won't be used.
         Class<?> sourceClass = mFrom.type().tupleType().clazz();
         var sourceRow = mm.param(0).cast(sourceClass);
 
@@ -190,5 +192,118 @@ public final class SelectMappedNode extends SelectNode {
         // Now implement the bridge method.
         mm = cm.addMethod(Object.class, "map", Object.class, Object.class).public_().bridge();
         mm.return_(mm.this_().invoke(targetType.clazz(), "map", null, mm.param(0), mm.param(1)));
+
+        return context;
+    }
+
+    private void addSourceProjectionMethod(ClassMaker cm, Map<String, ColumnNode> fromColumns) {
+        int numColumns = fromColumns.size();
+        int maxColumns = mFrom.type().tupleType().numColumns();
+
+        if (numColumns == maxColumns) {
+            // The default implementation indicates that all source columns are projected.
+            return;
+        }
+
+        if (numColumns > maxColumns) {
+            throw new AssertionError();
+        }
+
+        MethodMaker mm = cm.addMethod(String.class, "sourceProjection").public_();
+
+        if (numColumns == 0) {
+            mm.return_("");
+            return;
+        }
+
+        // The sourceProjection string isn't used as a cache key, so it can just be constructed
+        // as needed rather than stashing a reference to a big string instance.
+
+        Object[] toConcat = new String[numColumns + numColumns - 1];
+
+        int i = 0;
+        for (String name : fromColumns.keySet()) {
+            if (i > 0) {
+                toConcat[i++] = ", ";
+            }
+            toConcat[i++] = name;
+        }
+
+        mm.return_(mm.concat(toConcat));
+    }
+
+    private void addInverseMappingFunctions(ClassMaker cm) {
+        TupleType targetType = type().tupleType();
+        int numColumns = targetType.numColumns();
+
+        for (int i=0; i<numColumns; i++) {
+            if (!(mProjection[i] instanceof ColumnNode source) || source.from() != mFrom) {
+                continue;
+            }
+
+            Class columnType = targetType.column(i).type().clazz();
+            if (columnType != source.type().clazz()) {
+                continue;
+            }
+
+            String methodName = targetType.field(i) + "_to_" + source.column().name();
+            MethodMaker mm = cm.addMethod(columnType, methodName, columnType).public_().static_();
+            mm.return_(mm.param(0));
+        }
+    }
+
+    private void addToStringMethod(ClassMaker cm) {
+        MethodMaker mm = cm.addMethod(String.class, "toString").public_();
+        mm.return_(mm.class_().invoke("getName"));
+    }
+
+    private void addPlanMethod(ClassMaker cm) {
+        if (mWhere == null) {
+            return;
+        }
+        String filterExpr = mWhere.name();
+        MethodMaker mm = cm.addMethod(QueryPlan.class, "plan", QueryPlan.Mapper.class).public_();
+        mm.return_(mm.new_(QueryPlan.Filter.class, filterExpr, mm.param(0)));
+    }
+
+    // FIXME: Finish the check methods, which just applies the filter. Columns that don't need
+    // to be checked effectively evaluate to true. For checkUpdate, any columns not in the
+    // primary key must also call the isSet method. If it returns false, then the column check
+    // passes. If true, must check the column value.
+
+    private void addCheckStoreMethod(ClassMaker cm) {
+        MethodMaker mm = cm.addMethod(null, "checkStore", Table.class, Object.class).public_();
+
+        if (mWhere == null) {
+            // Nothing to check.
+            return;
+        }
+
+        // FIXME: checkStore
+        mm.new_(ViewConstraintException.class).throw_();
+    }
+
+    private void addCheckUpdateMethod(ClassMaker cm) {
+        MethodMaker mm = cm.addMethod(null, "checkUpdate", Table.class, Object.class).public_();
+
+        if (mWhere == null) {
+            // Nothing to check.
+            return;
+        }
+
+        // FIXME: checkUpdate
+        mm.new_(ViewConstraintException.class).throw_();
+    }
+
+    private void addCheckDeleteMethod(ClassMaker cm) {
+        MethodMaker mm = cm.addMethod(null, "checkDelete", Table.class, Object.class).public_();
+
+        if (mWhere == null) {
+            // Nothing to check.
+            return;
+        }
+
+        // FIXME: checkDelete
+        mm.new_(ViewConstraintException.class).throw_();
     }
 }

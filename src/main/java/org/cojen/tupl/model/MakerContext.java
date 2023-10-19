@@ -20,6 +20,7 @@ package org.cojen.tupl.model;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
@@ -86,6 +87,24 @@ final class MakerContext {
             undo[i].invalidate();
         }
         mUndoSize = savepoint;
+    }
+
+    /**
+     * Returns all the columns which were accessed from the given relation. The map keys are
+     * the fully qualified column field names.
+     */
+    Map<String, ColumnNode> fromColumns(RelationNode from) {
+        var map = new TreeMap<String, ColumnNode>();
+
+        if (mEvaluated != null) {
+            for (Node n : mEvaluated.keySet()) {
+                if (n instanceof ColumnNode cn && cn.from() == from) {
+                    map.put(cn.column().name(), cn);
+                }
+            }
+        }
+
+        return map;
     }
 
     private void undoPush(ResultRef ref) {

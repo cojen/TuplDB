@@ -186,7 +186,7 @@ public final class TupleType extends Type {
      * @return column with a fully qualified name, with the canonical case
      * @throws IllegalArgumentException if not found or ambiguous
      */
-    public final Column findColumn(String name, boolean caseInsensitive) {
+    public Column findColumn(String name, boolean caseInsensitive) {
         Map<String, Integer> map;
         if (!caseInsensitive) {
             map = mColumnMap;

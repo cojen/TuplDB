@@ -117,10 +117,22 @@ public sealed class BinaryOpNode extends Node {
     @Override
     public String name() {
         if (mName == null) {
-            // FIXME
-            throw null;
+            var b = new StringBuilder();
+            append(b, mLeft);
+            b.append(' ').append(opString()).append(' ');
+            append(b, mRight);
+            mName = b.toString();
         }
         return mName;
+    }
+
+    private static void append(StringBuilder b, Node node) {
+        String name = node.name();
+        if (node instanceof BinaryOpNode) {
+            b.append('(').append(name).append(')');
+        } else {
+            b.append(name);
+        }
     }
 
     @Override
@@ -180,10 +192,6 @@ public sealed class BinaryOpNode extends Node {
         throw new AssertionError();
     }
 
-    private boolean isPrimitiveType() {
-        return mType.clazz().isPrimitive();
-    }
-
     @Override
     public int hashCode() {
         int hash = mType.hashCode();
@@ -198,6 +206,27 @@ public sealed class BinaryOpNode extends Node {
         return obj instanceof BinaryOpNode bon
             && mType.equals(bon.mType) && mOp == bon.mOp
             && mLeft.equals(bon.mLeft) && mRight.equals(bon.mRight);
+    }
+
+    protected String opString() {
+        return switch (mOp) {
+            case OP_EQ  -> "==";
+            case OP_NE  -> "!=";
+            case OP_GE  -> ">=";
+            case OP_LT  -> "<";
+            case OP_LE  -> "<=";
+            case OP_GT  -> ">";
+            case OP_AND -> "&&";
+            case OP_OR  -> "||";
+
+            case OP_ADD -> "+";
+            case OP_SUB -> "-";
+            case OP_MUL -> "*";
+            case OP_DIV -> "/";
+            case OP_REM -> "%";
+
+            default -> throw new AssertionError();
+        };
     }
 
     /**
@@ -223,21 +252,7 @@ public sealed class BinaryOpNode extends Node {
                                     List<Object> argConstants, int argOrdinal)
         {
             argOrdinal = append(mLeft, query, argConstants, argOrdinal);
-
-            String opStr = switch (mOp) {
-                case OP_EQ  -> "==";
-                case OP_NE  -> "!=";
-                case OP_GE  -> ">=";
-                case OP_LT  -> "<";
-                case OP_LE  -> "<=";
-                case OP_GT  -> ">";
-                case OP_AND -> "&&";
-                case OP_OR  -> "||";
-                default -> throw new AssertionError();
-            };
-
-            query.append(' ').append(opStr).append(' ');
-
+            query.append(' ').append(opString()).append(' ');
             return append(mRight, query, argConstants, argOrdinal);
         }
 
