@@ -111,6 +111,11 @@ final class ClientTable<R> implements Table<R> {
     }
 
     @Override
+    public boolean isSet(R row, String name) {
+        return mHelper.isSet(row, name);
+    }
+
+    @Override
     public Scanner<R> newScanner(Transaction txn) throws IOException {
         return newScanner(mRemote.newScanner(mDb.remoteTransaction(txn), null));
     }

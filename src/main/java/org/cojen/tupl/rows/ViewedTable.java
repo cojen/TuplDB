@@ -243,6 +243,11 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     }
 
     @Override
+    public boolean isSet(R row, String name) {
+        return mSource.isSet(row, name);
+    }
+
+    @Override
     public final Scanner<R> newScannerWith(Transaction txn, R row) throws IOException {
         return mSource.newScannerWith(txn, row, mQueryStr, mArgs);
     }
