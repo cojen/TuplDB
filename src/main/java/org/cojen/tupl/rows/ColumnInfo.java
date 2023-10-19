@@ -95,7 +95,7 @@ public class ColumnInfo implements Cloneable {
         TYPE_UTF8        = 0b11000,
         TYPE_BIG_INTEGER = 0b11100,
         TYPE_BIG_DECIMAL = 0b11101,
-        TYPE_JOIN        = 0b11111;
+        TYPE_REFERENCE   = 0b11111;
 
     public static final int
         TYPE_NULL_LOW    = 0b1000_00000,
@@ -319,7 +319,7 @@ public class ColumnInfo implements Cloneable {
     }
 
     public boolean isScalarType() {
-        return typeCode != TYPE_JOIN;
+        return typeCode != TYPE_REFERENCE;
     }
 
     /**

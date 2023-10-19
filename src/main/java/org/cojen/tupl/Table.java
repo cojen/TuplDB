@@ -89,6 +89,7 @@ import org.cojen.tupl.rows.join.JoinTableMaker;
  * ParenFilter  = [ "!" ] "(" RowFilter ")"
  * ColumnFilter = ColumnName RelOp ( ArgRef | ColumnName )
  *              | ColumnName "in" ArgRef
+ *              | ArgRef RelOp ColumnName
  * RelOp        = "==" | "!=" | ">=" | "<" | "<=" | ">"
  * Projection   = "{" ProjColumns "}"
  * ProjColumns  = [ ProjColumn { "," ProjColumn } ]
@@ -131,6 +132,13 @@ public interface Table<R> extends Closeable {
      * Copies all columns and states from one row to another.
      */
     public void copyRow(R from, R to);
+
+    /**
+     * Returns true if the given row column is set.
+     *
+     * @throws IllegalArgumentException if column is unknown
+     */
+    public boolean isSet(R row, String name);
 
     /**
      * Returns a new scanner for all rows of this table.
@@ -239,6 +247,27 @@ public interface Table<R> extends Closeable {
         } catch (IOException e) {
             throw Utils.rethrow(e);
         }
+    }
+
+    /**
+     * Deletes all rows from this table which match the given query filter. Any query
+     * projection is ignored.
+     *
+     * @param txn optional transaction to use; pass null for auto-commit mode against each row
+     * @return the amount of rows deleted
+     * @throws IllegalStateException if transaction belongs to another database instance
+     */
+    public default long deleteAll(Transaction txn, String query, Object... args)
+        throws IOException
+    {
+        // Note: If the transaction is null, deleting in batches is an acceptable optimization.
+        long total = 0;
+        try (var updater = newUpdater(txn, query, args)) {
+            for (var row = updater.row(); row != null; row = updater.delete(row)) {
+                total++;
+            }
+        }
+        return total;
     }
 
     /**

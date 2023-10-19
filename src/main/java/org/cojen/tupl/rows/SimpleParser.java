@@ -79,6 +79,11 @@ public abstract class SimpleParser {
         return c;
     }
 
+    protected void skipWhitespace() {
+        nextCharIgnoreWhitespace();
+        mPos--;
+    }
+
     protected IllegalArgumentException error(String message) {
         return error(message, mPos);
     }

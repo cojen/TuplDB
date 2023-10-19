@@ -80,7 +80,9 @@ public class ParserTest {
         pf("a in a", "Argument number");
         pf("a<c\u1f600", "type mismatch");
         pf("a in ?1 || a == ?1", "Mismatched argument usage");
+        pf("a in ?1 || ?1 == a", "Mismatched argument usage");
         pf("!(a==\u2003a)||a>?5||a in?5", "Mismatched argument usage");
+        pf("!(a==\u2003a)||?5<a||a in?5", "Mismatched argument usage");
         pf("!(a\u2003== ?", "Right paren");
         pf("a inx", "Unknown operator");
         pf("1==?", "Not a valid character");
@@ -92,6 +94,7 @@ public class ParserTest {
         pf("{~!a}", "Not a valid character");
         pf("{~a}", "Must include wildcard");
         pf("a<=?0", "at least one");
+        pf("? in a", "Unsupported operator");
     }
 
     // pf: parse failure
@@ -127,6 +130,11 @@ public class ParserTest {
         pass("{+ ! a}", "{+!a}");
         pass("{-b, + ! a, -a}", "{-b, +!a}");
         pass("{-b, + ! a}", "{-b, +!a}");
+
+        pass("a == ?", "a == ?1");
+        pass("a < ?2", "a < ?2");
+        pass("? == a", "a == ?1");
+        pass("?2 < a", "a > ?2");
     }
 
     private void pass(String filterStr) throws Exception {

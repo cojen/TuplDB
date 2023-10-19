@@ -456,6 +456,11 @@ public abstract class BaseTable<R> implements Table<R>, ScanControllerFactory<R>
         return mQueryLauncherCache.obtain(type, queryStr, null);
     }
 
+    /* FIXME: Override and optimize deleteAll.
+    @Override
+    public final long deleteAll(Transaction txn, String query, Object... args) throws IOException {
+    */
+
     @Override
     public final String toString() {
         var b = new StringBuilder();

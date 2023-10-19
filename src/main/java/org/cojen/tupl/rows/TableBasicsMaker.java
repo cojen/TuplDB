@@ -17,8 +17,17 @@
 
 package org.cojen.tupl.rows;
 
+import java.lang.invoke.CallSite;
+import java.lang.invoke.ConstantCallSite;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+
+import java.util.Map;
+import java.util.Set;
+
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Field;
+import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
@@ -30,7 +39,7 @@ import org.cojen.tupl.Table;
  *
  * @author Brian S O'Neill
  */
-class TableBasicsMaker {
+public class TableBasicsMaker {
     // Maps rowType interface classes to generated interface classes.
     private static final WeakClassCache<Class<?>> cCache = new WeakClassCache<>();
 
@@ -119,6 +128,62 @@ class TableBasicsMaker {
             }
         }
 
+        // Add the isSet method.
+        {
+            MethodMaker mm = cm.addMethod
+                (boolean.class, "isSet", Object.class, String.class).public_();
+            var indy = mm.var(TableBasicsMaker.class).indy("indyIsSet", rowType);
+            mm.return_(indy.invoke(boolean.class, "isSet", null, mm.param(0), mm.param(1)));
+        }
+
         return cm.finish();
+    }
+
+    public static CallSite indyIsSet(MethodHandles.Lookup lookup, String name, MethodType mt,
+                                     Class<?> rowType)
+    {
+        var info = RowInfo.find(rowType);
+        Class<?> rowClass = RowMaker.find(rowType);
+
+        MethodMaker mm = MethodMaker.begin(lookup, name, mt);
+
+        var rowVar = mm.param(0).cast(rowClass);
+        var colName = mm.param(1);
+
+        Set<String> keys = info.allColumns.keySet();
+        String[] cases = keys.toArray(String[]::new);
+        var labels = new Label[cases.length];
+
+        int i = 0;
+        for (String key : keys) {
+            labels[i++] = mm.label();
+        }
+
+        var notFound = mm.label();
+        colName.switch_(notFound, cases, labels);
+
+        RowGen rowGen = info.rowGen();
+        Map<String, Integer> colNums = rowGen.columnNumbers();
+
+        final Variable stateVar = mm.var(int.class);
+        final Variable stateMask = mm.var(int.class);
+
+        Label check = mm.label();
+
+        for (i=0; i<cases.length; i++) {
+            labels[i].here();
+            int colNum = colNums.get(cases[i]);
+            stateVar.set(rowVar.field(rowGen.stateField(colNum)));
+            stateMask.set(RowGen.stateFieldMask(colNum));
+            check.goto_();
+        }
+
+        check.here();
+        mm.return_(stateVar.and(stateMask).ne(0));
+
+        notFound.here();
+        mm.new_(IllegalArgumentException.class, mm.concat("Unknown column: ", colName)).throw_();
+
+        return new ConstantCallSite(mm.finish());
     }
 }

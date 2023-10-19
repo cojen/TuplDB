@@ -54,6 +54,36 @@ public interface Mapper<R, T> {
     T map(R source, T target) throws IOException;
 
     /**
+     * Checks if the given source row can be stored into the source table. By default, a {@code
+     * ViewConstraintException} is always thrown.
+     *
+     * @param row all required columns are guaranteed to be set
+     */
+    default void checkStore(Table<R> table, R row) throws ViewConstraintException {
+        throw new ViewConstraintException();
+    }
+
+    /**
+     * Checks if the given source row can be updated into the source table. By default, a
+     * {@code ViewConstraintException} is always thrown.
+     *
+     * @param row only the primary key columns are guaranteed to be set
+     */
+    default void checkUpdate(Table<R> table, R row) throws ViewConstraintException {
+        throw new ViewConstraintException();
+    }
+
+    /**
+     * Checks if the given source row can be deleted from the source table. By default, a
+     * {@code ViewConstraintException} is always thrown.
+     *
+     * @param row only the primary key columns are guaranteed to be set
+     */
+    default void checkDelete(Table<R> table, R row) throws ViewConstraintException {
+        throw new ViewConstraintException();
+    }
+
+    /**
      * Returns a comma-separated list of source columns which are needed by this {@code
      * Mapper}. Null is returned by default, which indicates that all columns are needed.
      */

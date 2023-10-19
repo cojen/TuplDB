@@ -194,13 +194,15 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     {
         super(source);
 
-        if (maxArg == 0 || args == null || args.length == 0) {
+        if (maxArg == 0) {
             args = NO_ARGS;
-        } else if (maxArg != args.length) {
-            if (maxArg > args.length) {
+        } else {
+            if (args.length < maxArg) {
                 throw new IllegalArgumentException("Not enough query arguments provided");
             }
-            args = Arrays.copyOf(args, maxArg);
+            var copy = new Object[maxArg];
+            System.arraycopy(args, 0, copy, 0, copy.length);
+            args = copy;
         }
 
         mQueryStr = queryStr;
@@ -263,6 +265,11 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
     {
         return new CheckedUpdater<>
             (helper(), mSource.newUpdater(txn, fuseQuery(query), fuseArguments(args)));
+    }
+
+    @Override
+    public long deleteAll(Transaction txn, String query, Object... args) throws IOException {
+        return mSource.deleteAll(txn, fuseQuery(query), fuseArguments(args));
     }
 
     @Override
@@ -749,20 +756,10 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
                 return table.mSource.delete(txn, row);
             }
 
-            // Use an empty projection because the columns don't need to be decoded.
             String query = fusedPkQueryEmptyProjection(table);
             Object[] args = fusePkArguments(table.mArgs, table.mMaxArg, row);
 
-            // TODO: Should use the deleteAll method, when it becomes available. The regular
-            // fused query will work fine too (no need for an empty projection).
-            try (var updater = table.mSource.newUpdater(txn, query, args)) {
-                if (updater.row() == null) {
-                    return false;
-                } else {
-                    updater.delete();
-                    return true;
-                }
-            }
+            return table.mSource.deleteAll(txn, query, args) != 0;
         }
 
         private String fusedPkQuery(ViewedTable<R> table) {

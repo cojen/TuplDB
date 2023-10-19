@@ -251,6 +251,7 @@ public final class Parser extends SimpleParser {
      * ParenFilter  = [ "!" ] "(" RowFilter ")"
      * ColumnFilter = ColumnName RelOp ( ArgRef | ColumnName )
      *              | ColumnName "in" ArgRef
+     *              | ArgRef RelOp ColumnName
      * RelOp        = "==" | "!=" | ">=" | "<" | "<=" | ">"
      * ColumnName   = string
      * ArgRef       = "?" [ uint ]
@@ -362,94 +363,43 @@ public final class Parser extends SimpleParser {
             return parseParenFilter().not();
         } else if (c == '(') {
             return parseParenFilter();
+        } else if (c == '?') {
+            // arg-to-column comparison
+
+            int arg = parseArgNumber();
+
+            int startPos = mPos;
+            int op = parseOp();
+
+            if (op > ColumnFilter.OP_GT) {
+                mPos = startPos;
+                skipWhitespace();
+                throw error("Unsupported operator");
+            }
+
+            skipWhitespace();
+            ColumnInfo column = parseColumn(null);
+
+            op = ColumnFilter.reverseOperator(op);
+            var filter = new ColumnToArgFilter(column, op, arg);
+            inArgCheck(startPos, filter);
+
+            return filter;
         }
 
         mPos--;
 
-        // parseColumnFilter
-
         int startPos = mPos;
         ColumnInfo column = parseColumn(null);
 
-        c = nextCharIgnoreWhitespace();
-
-        int op;
-        switch (c) {
-            case '=' -> {
-                c = nextChar();
-                if (c == '=') {
-                    op = ColumnFilter.OP_EQ;
-                } else {
-                    mPos -= 2;
-                    throw error("Equality operator must be specified as '=='");
-                }
-                operatorCheck();
-            }
-            case '!' -> {
-                c = nextChar();
-                if (c == '=') {
-                    op = ColumnFilter.OP_NE;
-                } else {
-                    mPos -= 2;
-                    throw error("Inequality operator must be specified as '!='");
-                }
-                operatorCheck();
-            }
-            case '<' -> {
-                c = nextChar();
-                if (c == '=') {
-                    op = ColumnFilter.OP_LE;
-                } else {
-                    mPos--;
-                    op = ColumnFilter.OP_LT;
-                }
-                operatorCheck();
-            }
-            case '>' -> {
-                c = nextChar();
-                if (c == '=') {
-                    op = ColumnFilter.OP_GE;
-                } else {
-                    mPos--;
-                    op = ColumnFilter.OP_GT;
-                }
-                operatorCheck();
-            }
-            case 'i' -> {
-                c = nextChar();
-                if (c == 'n') {
-                    op = ColumnFilter.OP_IN;
-                } else {
-                    mPos -= 2;
-                    throw error("Unknown operator");
-                }
-                operatorCheck(true);
-            }
-            case '?' -> {
-                mPos--;
-                throw error("Relational operator missing");
-            }
-            case '*' -> {
-                mPos--;
-                throw error("Wildcard disallowed here");
-            }
-            case -1 -> throw error("Relational operator expected");
-            default -> {
-                mPos--;
-                throw error("Unknown operator");
-            }
-        }
+        int op = parseOp();
 
         c = nextCharIgnoreWhitespace();
 
         int arg;
         if (c == '?') {
             // column-to-arg comparison
-            arg = tryParseArgNumber();
-            if (arg < 0) {
-                arg = ++mNextArg;
-            }
-            arg += mArgDelta;
+            arg = parseArgNumber();
         } else {
             // column-to-column comparison
 
@@ -471,23 +421,23 @@ public final class Parser extends SimpleParser {
         }
 
         ColumnToArgFilter filter;
-        Boolean in;
-
         if (op < ColumnFilter.OP_IN) {
             filter = new ColumnToArgFilter(column, op, arg);
-            in = Boolean.FALSE;
         } else {
             filter = new InFilter(column, arg);
-            in = Boolean.TRUE;
         }
 
-        Boolean existing = mInArgs.putIfAbsent(arg, in);
+        inArgCheck(startPos, filter);
 
+        return filter;
+    }
+
+    private void inArgCheck(int startPos, ColumnToArgFilter filter) {
+        Boolean in = filter.operator() >= ColumnFilter.OP_IN;
+        Boolean existing = mInArgs.putIfAbsent(filter.argument(), in);
         if (existing != null && existing != in) {
             throw error("Mismatched argument usage with 'in' operator", startPos);
         }
-
-        return filter;
     }
 
     // Left paren has already been consumed.
@@ -586,6 +536,91 @@ public final class Parser extends SimpleParser {
         } while (Character.isJavaIdentifierPart(c));
 
         return mText.substring(start, --mPos);
+    }
+
+    private int parseOp() {
+        int c = nextCharIgnoreWhitespace();
+
+        int op;
+        switch (c) {
+            case '=' -> {
+                c = nextChar();
+                if (c == '=') {
+                    op = ColumnFilter.OP_EQ;
+                } else {
+                    mPos -= 2;
+                    throw error("Equality operator must be specified as '=='");
+                }
+                operatorCheck();
+            }
+            case '!' -> {
+                c = nextChar();
+                if (c == '=') {
+                    op = ColumnFilter.OP_NE;
+                } else {
+                    mPos -= 2;
+                    throw error("Inequality operator must be specified as '!='");
+                }
+                operatorCheck();
+            }
+            case '<' -> {
+                c = nextChar();
+                if (c == '=') {
+                    op = ColumnFilter.OP_LE;
+                } else {
+                    mPos--;
+                    op = ColumnFilter.OP_LT;
+                }
+                operatorCheck();
+            }
+            case '>' -> {
+                c = nextChar();
+                if (c == '=') {
+                    op = ColumnFilter.OP_GE;
+                } else {
+                    mPos--;
+                    op = ColumnFilter.OP_GT;
+                }
+                operatorCheck();
+            }
+            case 'i' -> {
+                c = nextChar();
+                if (c == 'n') {
+                    op = ColumnFilter.OP_IN;
+                } else {
+                    mPos -= 2;
+                    throw error("Unknown operator");
+                }
+                operatorCheck(true);
+            }
+            case '?' -> {
+                mPos--;
+                throw error("Relational operator missing");
+            }
+            case '*' -> {
+                mPos--;
+                throw error("Wildcard disallowed here");
+            }
+            case -1 -> throw error("Relational operator expected");
+            default -> {
+                mPos--;
+                throw error("Unknown operator");
+            }
+        }
+
+        return op;
+    }
+
+    /**
+     * Returns a parsed argument or generates the next one.
+     */
+    private int parseArgNumber() {
+        int arg = tryParseArgNumber();
+        if (arg < 0) {
+            arg = ++mNextArg;
+        }
+        arg += mArgDelta;
+        return arg;
     }
 
     /**

@@ -58,9 +58,11 @@ public final class MappedUpdater<S, T> extends MappedScanner<S, T> implements Up
 
         if (forDelete) {
             mMappedTable.inversePk().inverseMap(sourceRow, targetRow);
+            mMapper.checkDelete(mMappedTable.mSource, sourceRow);
             sourceRow = source.delete(sourceRow);
         } else {
             mMappedTable.inverseUpdate().inverseMap(sourceRow, targetRow);
+            mMapper.checkUpdate(mMappedTable.mSource, sourceRow);
             sourceRow = source.update(sourceRow);
         }
 
