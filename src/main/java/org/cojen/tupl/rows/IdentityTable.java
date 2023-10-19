@@ -99,6 +99,11 @@ public final class IdentityTable implements Table<IdentityTable.Row> {
     }
 
     @Override
+    public boolean isSet(Row row, String name) {
+        throw new IllegalArgumentException();
+    }
+
+    @Override
     public Scanner<Row> newScanner(Transaction txn) {
         return new ScanOne();
     }

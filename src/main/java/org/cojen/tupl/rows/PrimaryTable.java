@@ -74,6 +74,11 @@ final class PrimaryTable<R> implements Table<R> {
     }
 
     @Override
+    public boolean isSet(R row, String name) {
+        return mSource.isSet(row, name);
+    }
+
+    @Override
     public Scanner<R> newScanner(Transaction txn) throws IOException {
         return mSource.newScanner(txn);
     }
