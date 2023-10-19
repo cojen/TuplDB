@@ -355,7 +355,7 @@ public class RowInfo extends ColumnSet {
                             // Inherited non-final method declared in Object.
                             continue;
                         }
-                        info = addColumn(messages, name, type);
+                        info = addColumn(rowType, messages, name, type);
                         if (info == null) {
                             continue;
                         }
@@ -381,7 +381,7 @@ public class RowInfo extends ColumnSet {
                 } else {
                     if (params.length == 1) {
                         type = params[0];
-                        info = addColumn(messages, name, type);
+                        info = addColumn(rowType, messages, name, type);
                         if (info == null) {
                             continue;
                         }
@@ -463,8 +463,10 @@ public class RowInfo extends ColumnSet {
     /**
      * @return null if illegal
      */
-    private ColumnInfo addColumn(Set<String> messages, String name, Class<?> type) {
-        int typeCode = selectTypeCode(messages, name, type);
+    private ColumnInfo addColumn(Class<?> rowType, Set<String> messages,
+                                 String name, Class<?> type)
+    {
+        int typeCode = selectTypeCode(rowType, messages, name, type);
 
         ColumnInfo info = allColumns.get(name);
 
@@ -487,7 +489,9 @@ public class RowInfo extends ColumnSet {
     /**
      * @return -1 if unsupported
      */
-    private static int selectTypeCode(Set<String> messages, String name, Class<?> type) {
+    private static int selectTypeCode(Class<?> rowType, Set<String> messages,
+                                      String name, Class<?> type)
+    {
         String msg = null;
 
         if (type.isPrimitive()) {
@@ -522,7 +526,7 @@ public class RowInfo extends ColumnSet {
         } else if (type.isArray()) {
             Class<?> subType = type.getComponentType();
             if (subType.isPrimitive()) {
-                int typeCode = selectTypeCode(null, name, subType);
+                int typeCode = selectTypeCode(rowType, null, name, subType);
                 if (typeCode != -1) {
                     return typeCode | TYPE_ARRAY;
                 }
@@ -549,6 +553,12 @@ public class RowInfo extends ColumnSet {
             return TYPE_CHAR;
         } else if (type == Short.class) {
             return TYPE_SHORT;
+        }
+
+        if (rowType.isAnnotationPresent(Unpersisted.class)
+            || type.isAnnotationPresent(Unpersisted.class))
+        {
+            return TYPE_REFERENCE;
         }
 
         if (messages != null) {
