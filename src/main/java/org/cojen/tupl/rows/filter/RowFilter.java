@@ -33,7 +33,9 @@ import org.cojen.tupl.rows.ColumnInfo;
  * @author Brian S O'Neill
  * @see Parser
  */
-public abstract class RowFilter implements Comparable<RowFilter> {
+public abstract sealed class RowFilter implements Comparable<RowFilter>
+    permits ColumnFilter, GroupFilter
+{
     private final int mHash;
 
     RowFilter(int hash) {
@@ -47,7 +49,7 @@ public abstract class RowFilter implements Comparable<RowFilter> {
     /**
      * @return 0 if filter has no arguments
      */
-    public int maxArgument() {
+    public final int maxArgument() {
         return maxArgument(0);
     }
 
@@ -64,7 +66,7 @@ public abstract class RowFilter implements Comparable<RowFilter> {
     /**
      * Attempt a more aggressive reduction.
      */
-    public RowFilter reduceMore() {
+    public final RowFilter reduceMore() {
         RowFilter filter = reduce();
         int numTerms = -1;
 
@@ -244,7 +246,7 @@ public abstract class RowFilter implements Comparable<RowFilter> {
     /**
      * Split variant which operates against a column map.
      */
-    public void split(Map<String, ?> columns, RowFilter[] split) {
+    public final void split(Map<String, ?> columns, RowFilter[] split) {
         split((ColumnFilter filter) -> filter.canSplit(columns) ? filter : null, split);
     }
 
