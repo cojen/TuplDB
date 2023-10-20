@@ -34,7 +34,7 @@ import org.cojen.tupl.rows.ColumnInfo;
  * @see Parser
  */
 public abstract sealed class RowFilter implements Comparable<RowFilter>
-    permits ColumnFilter, GroupFilter
+    permits TermFilter, GroupFilter
 {
     private final int mHash;
 

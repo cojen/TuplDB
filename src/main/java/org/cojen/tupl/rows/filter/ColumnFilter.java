@@ -31,7 +31,7 @@ import static java.lang.Integer.MAX_VALUE;
  *
  * @author Brian S O'Neill
  */
-public abstract sealed class ColumnFilter extends RowFilter
+public abstract sealed class ColumnFilter extends TermFilter
     permits ColumnToArgFilter, ColumnToColumnFilter
 {
     public static final int OP_EQ = 0, OP_NE = 1, OP_GE = 2, OP_LT = 3, OP_LE = 4, OP_GT = 5;
@@ -84,21 +84,6 @@ public abstract sealed class ColumnFilter extends RowFilter
     }
 
     @Override
-    public final int numTerms() {
-        return 1;
-    }
-
-    @Override
-    public final RowFilter reduce() {
-        return this;
-    }
-
-    @Override
-    final RowFilter reduce(long limit, boolean merge) {
-        return this;
-    }
-
-    @Override
     final RowFilter expandOperators(boolean force) {
         if (!force) {
             return this;
@@ -114,48 +99,8 @@ public abstract sealed class ColumnFilter extends RowFilter
     }
 
     @Override
-    public final boolean isDnf() {
-        return true;
-    }
-
-    @Override
-    public final ColumnFilter dnf() {
-        return this;
-    }
-
-    @Override
-    final ColumnFilter dnf(long limit, boolean merge) {
-        return this;
-    }
-
-    @Override
-    public final boolean isCnf() {
-        return true;
-    }
-
-    @Override
-    public final ColumnFilter cnf() {
-        return this;
-    }
-
-    @Override
-    final ColumnFilter cnf(long limit, boolean merge) {
-        return this;
-    }
-
-    @Override
-    public final int isSubMatch(RowFilter filter) {
-        return isMatch(filter);
-    }
-
-    @Override
     public ColumnFilter not() {
         return withOperator(flipOperator(mOperator));
-    }
-
-    @Override
-    public final ColumnFilter sort() {
-        return this;
     }
 
     @Override
