@@ -41,9 +41,7 @@ public interface Visitor {
         visit((ColumnToArgFilter) filter);
     }
 
-    public default void visit(ColumnToArgFilter filter) {
-    }
+    public void visit(ColumnToArgFilter filter);
 
-    public default void visit(ColumnToColumnFilter filter) {
-    }
+    public void visit(ColumnToColumnFilter filter);
 }

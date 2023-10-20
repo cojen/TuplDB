@@ -291,6 +291,11 @@ public class RowPredicateMaker {
 
             mDefined.put(argFieldName, codec);
         }
+
+        @Override
+        public void visit(ColumnToColumnFilter filter) {
+            // Ignore.
+        }
     }
 
     /**
