@@ -31,7 +31,9 @@ import static java.lang.Integer.MAX_VALUE;
  *
  * @author Brian S O'Neill
  */
-public abstract class ColumnFilter extends RowFilter {
+public abstract sealed class ColumnFilter extends TermFilter
+    permits ColumnToArgFilter, ColumnToColumnFilter
+{
     public static final int OP_EQ = 0, OP_NE = 1, OP_GE = 2, OP_LT = 3, OP_LE = 4, OP_GT = 5;
 
     // Used by InFilter.
@@ -82,22 +84,7 @@ public abstract class ColumnFilter extends RowFilter {
     }
 
     @Override
-    public int numTerms() {
-        return 1;
-    }
-
-    @Override
-    public RowFilter reduce() {
-        return this;
-    }
-
-    @Override
-    RowFilter reduce(long limit, boolean merge) {
-        return this;
-    }
-
-    @Override
-    RowFilter expandOperators(boolean force) {
+    final RowFilter expandOperators(boolean force) {
         if (!force) {
             return this;
         } else {
@@ -112,66 +99,26 @@ public abstract class ColumnFilter extends RowFilter {
     }
 
     @Override
-    public boolean isDnf() {
-        return true;
-    }
-
-    @Override
-    public ColumnFilter dnf() {
-        return this;
-    }
-
-    @Override
-    ColumnFilter dnf(long limit, boolean merge) {
-        return this;
-    }
-
-    @Override
-    public boolean isCnf() {
-        return true;
-    }
-
-    @Override
-    public ColumnFilter cnf() {
-        return this;
-    }
-
-    @Override
-    ColumnFilter cnf(long limit, boolean merge) {
-        return this;
-    }
-
-    @Override
-    public int isSubMatch(RowFilter filter) {
-        return isMatch(filter);
-    }
-
-    @Override
     public ColumnFilter not() {
         return withOperator(flipOperator(mOperator));
     }
 
     @Override
-    public ColumnFilter sort() {
-        return this;
-    }
-
-    @Override
-    protected RowFilter trySplit(Function<ColumnFilter, RowFilter> check) {
+    protected final RowFilter trySplit(Function<ColumnFilter, RowFilter> check) {
         return check.apply(this);
     }
 
     protected abstract boolean canSplit(Map<String, ?> columns);
 
-    public ColumnInfo column() {
+    public final ColumnInfo column() {
         return mColumn;
     }
 
-    public int operator() {
+    public final int operator() {
         return mOperator;
     }
 
-    public String operatorString() {
+    public final String operatorString() {
         return switch (mOperator) {
         case OP_EQ -> "==";
         case OP_NE -> "!=";
@@ -188,7 +135,7 @@ public abstract class ColumnFilter extends RowFilter {
     /**
      * @return true if operator is OP_EQ or OP_NE
      */
-    public boolean isExact() {
+    public final boolean isExact() {
         return isExact(mOperator);
     }
 
@@ -202,7 +149,7 @@ public abstract class ColumnFilter extends RowFilter {
     /**
      * @return true if operator is OP_IN or OP_NOT_IN
      */
-    public boolean isIn() {
+    public final boolean isIn() {
         return isIn(mOperator);
     }
 
@@ -221,7 +168,7 @@ public abstract class ColumnFilter extends RowFilter {
      * - operator if idempotence (one of the operators is redundant)
      * - ~operator if elimination (operators are merged into a different operator)
      */
-    int reduceOperatorForAnd(ColumnFilter other) {
+    final int reduceOperatorForAnd(ColumnFilter other) {
         if (!isReducible(other)) {
             return MIN_VALUE;
         }
@@ -243,7 +190,7 @@ public abstract class ColumnFilter extends RowFilter {
      * - operator if idempotence (one of the operators is redundant)
      * - ~operator if elimination (operators are merged into a different operator)
      */
-    int reduceOperatorForOr(ColumnFilter other) {
+    final int reduceOperatorForOr(ColumnFilter other) {
         if (!isReducible(other)) {
             return MIN_VALUE;
         }

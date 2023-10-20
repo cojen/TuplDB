@@ -33,7 +33,7 @@ import org.cojen.tupl.rows.ConvertUtils;
  *
  * @author Brian S O'Neill
  */
-public class ColumnToArgFilter extends ColumnFilter {
+public sealed class ColumnToArgFilter extends ColumnFilter permits InFilter {
     final int mArgNum;
 
     public ColumnToArgFilter(ColumnInfo column, int op, int arg) {
@@ -54,12 +54,12 @@ public class ColumnToArgFilter extends ColumnFilter {
     }
 
     @Override
-    protected int maxArgument(int max) {
+    protected final int maxArgument(int max) {
         return Math.max(max, mArgNum);
     }
 
     @Override
-    public int isMatch(RowFilter filter) {
+    public final int isMatch(RowFilter filter) {
         if (filter == this) {
             return 1; // equal
         }
@@ -76,7 +76,7 @@ public class ColumnToArgFilter extends ColumnFilter {
     }
 
     @Override
-    public int matchHashCode() {
+    public final int matchHashCode() {
         int hash = mMatchHashCode;
         if (hash == 0) {
             hash = mColumn.hashCode();
@@ -88,7 +88,7 @@ public class ColumnToArgFilter extends ColumnFilter {
     }
 
     @Override
-    public RowFilter replaceArguments(IntUnaryOperator function) {
+    public final RowFilter replaceArguments(IntUnaryOperator function) {
         int argNum = mArgNum;
         int newArgNum = function.applyAsInt(argNum);
         if (newArgNum == argNum) {
@@ -99,7 +99,7 @@ public class ColumnToArgFilter extends ColumnFilter {
     }
 
     @Override
-    public RowFilter argumentAsNull(int argNum) {
+    public final RowFilter argumentAsNull(int argNum) {
         if (mArgNum == argNum && !mColumn.isNullable()) {
             switch (mOperator) {
             case OP_EQ:
@@ -117,17 +117,17 @@ public class ColumnToArgFilter extends ColumnFilter {
     }
 
     @Override
-    public RowFilter retain(Predicate<String> pred, boolean strict, RowFilter undecided) {
+    public final RowFilter retain(Predicate<String> pred, boolean strict, RowFilter undecided) {
         return pred.test(mColumn.name) ? this : undecided;
     }
 
     @Override
-    protected boolean canSplit(Map<String, ?> columns) {
+    protected final boolean canSplit(Map<String, ?> columns) {
         return columns.containsKey(mColumn.name);
     }
 
     @Override
-    public RowFilter[] rangeExtract(ColumnInfo... keyColumns) {
+    public final RowFilter[] rangeExtract(ColumnInfo... keyColumns) {
         ColumnToArgFilter low, high, remaining;
 
         match: {
@@ -184,7 +184,7 @@ public class ColumnToArgFilter extends ColumnFilter {
     }
 
     @Override
-    public boolean matchesOne(RowFilter high, ColumnInfo... keyColumns) {
+    public final boolean matchesOne(RowFilter high, ColumnInfo... keyColumns) {
         return (high instanceof ColumnToArgFilter highCol) &&
             mOperator == OP_GE && highCol.mOperator == OP_LE &&
             mArgNum == highCol.mArgNum && mColumn.name.equals(highCol.mColumn.name) &&
@@ -192,13 +192,13 @@ public class ColumnToArgFilter extends ColumnFilter {
     }
 
     @Override
-    public boolean uniqueColumn(String columnName) {
+    public final boolean uniqueColumn(String columnName) {
         return mOperator == OP_EQ
             && mColumn.type != BigDecimal.class
             && mColumn.name.equals(columnName);
     }
 
-    public int argument() {
+    public final int argument() {
         return mArgNum;
     }
 
@@ -210,7 +210,7 @@ public class ColumnToArgFilter extends ColumnFilter {
     }
 
     @Override
-    public int compareTo(RowFilter filter) {
+    public final int compareTo(RowFilter filter) {
         if (!(filter instanceof ColumnToArgFilter other)) {
             return super.compareTo(filter);
         }
@@ -225,20 +225,20 @@ public class ColumnToArgFilter extends ColumnFilter {
     }
 
     @Override
-    boolean equalRhs(ColumnFilter other) {
+    final boolean equalRhs(ColumnFilter other) {
         return other instanceof ColumnToArgFilter ctaf && mArgNum == ctaf.mArgNum;
     }
 
     @Override
-    public ColumnToArgFilter withOperator(int op) {
+    public final ColumnToArgFilter withOperator(int op) {
         return new ColumnToArgFilter(mColumn, op, mArgNum);
     }
 
-    public ColumnToArgFilter withColumn(ColumnInfo column) {
+    public final ColumnToArgFilter withColumn(ColumnInfo column) {
         return new ColumnToArgFilter(column, mOperator, mArgNum);
     }
 
-    public ColumnToArgFilter withArgument(int argNum) {
+    public final ColumnToArgFilter withArgument(int argNum) {
         return new ColumnToArgFilter(mColumn, mOperator, argNum);
     }
 

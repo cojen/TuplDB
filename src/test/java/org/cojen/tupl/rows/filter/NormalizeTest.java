@@ -266,6 +266,11 @@ public class NormalizeTest {
                     case OP_LE -> result = colValue <= argValue;
                 }
             }
+
+            @Override
+            public void visit(ColumnToColumnFilter filter) {
+                fail();
+            }
         };
 
         filter.accept(visitor);

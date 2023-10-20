@@ -48,6 +48,7 @@ import org.cojen.tupl.diag.QueryPlan;
 import org.cojen.tupl.rows.codec.ColumnCodec;
 
 import org.cojen.tupl.rows.filter.ColumnToArgFilter;
+import org.cojen.tupl.rows.filter.ColumnToColumnFilter;
 import org.cojen.tupl.rows.filter.RowFilter;
 import org.cojen.tupl.rows.filter.TrueFilter;
 import org.cojen.tupl.rows.filter.Visitor;
@@ -432,6 +433,11 @@ public class FilteredScanMaker<R> {
                 }
 
                 argVars[pos++] = argVar;
+            }
+
+            @Override
+            public void visit(ColumnToColumnFilter filter) {
+                // Ignore.
             }
         };
 

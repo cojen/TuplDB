@@ -33,7 +33,7 @@ import static org.cojen.tupl.rows.filter.ColumnFilter.*;
  *
  * @author Brian S O'Neill
  */
-public class AndFilter extends GroupFilter {
+public sealed class AndFilter extends GroupFilter permits TrueFilter {
     /**
      * Combines the given filters together into a flattened AndFilter or just one RowFilter.
      * This operation isn't recursive -- it only applies one round of flattening.
@@ -90,12 +90,12 @@ public class AndFilter extends GroupFilter {
     }
 
     @Override
-    public void accept(Visitor visitor) {
+    public final void accept(Visitor visitor) {
         visitor.visit(this);
     }
 
     @Override
-    public void appendTo(StringBuilder b) {
+    public final void appendTo(StringBuilder b) {
         if (mSubFilters.length == 0) {
             b.append('T');
         } else {
@@ -104,7 +104,7 @@ public class AndFilter extends GroupFilter {
     }
 
     @Override
-    public boolean isDnf() {
+    public final boolean isDnf() {
         if ((mFlags & FLAG_DNF_SET) != 0) {
             return (mFlags & FLAG_IS_DNF) != 0;
         }
@@ -120,7 +120,7 @@ public class AndFilter extends GroupFilter {
     }
 
     @Override
-    public boolean isCnf() {
+    public final boolean isCnf() {
         if ((mFlags & FLAG_CNF_SET) != 0) {
             return (mFlags & FLAG_IS_CNF) != 0;
         }
@@ -136,7 +136,7 @@ public class AndFilter extends GroupFilter {
     }
 
     @Override
-    public int isMatch(RowFilter filter) {
+    public final int isMatch(RowFilter filter) {
         if (equals(filter)) {
             return 1; // equal
         }
@@ -155,7 +155,7 @@ public class AndFilter extends GroupFilter {
     }
 
     @Override
-    public RowFilter retain(Predicate<String> pred, boolean strict, RowFilter undecided) {
+    public final RowFilter retain(Predicate<String> pred, boolean strict, RowFilter undecided) {
         RowFilter[] subFilters = mSubFilters;
         if (subFilters.length == 0) {
             return this;
@@ -178,21 +178,21 @@ public class AndFilter extends GroupFilter {
     }
 
     @Override
-    public void split(Function<ColumnFilter, RowFilter> check, RowFilter[] split) {
+    public final void split(Function<ColumnFilter, RowFilter> check, RowFilter[] split) {
         split[0] = TrueFilter.THE;
         split[1] = TrueFilter.THE;
         splitCombine(check, split);
     }
 
     @Override
-    protected void splitCombine(Function<ColumnFilter, RowFilter> check, RowFilter[] split) {
+    protected final void splitCombine(Function<ColumnFilter, RowFilter> check, RowFilter[] split) {
         for (RowFilter sub : mSubFilters) {
             sub.splitCombine(check, split);
         }
     }
 
     @Override
-    public RowFilter[] rangeExtract(ColumnInfo... keyColumns) {
+    public final RowFilter[] rangeExtract(ColumnInfo... keyColumns) {
         if (mReduced == null) {
             return reduce().rangeExtract(keyColumns);
         }
@@ -308,7 +308,7 @@ public class AndFilter extends GroupFilter {
     }
 
     @Override
-    public boolean matchesOne(RowFilter high, ColumnInfo... keyColumns) {
+    public final boolean matchesOne(RowFilter high, ColumnInfo... keyColumns) {
         if (!(high instanceof AndFilter highCol) ||
             mSubFilters.length != keyColumns.length ||
             mSubFilters.length != highCol.mSubFilters.length)
@@ -347,7 +347,7 @@ public class AndFilter extends GroupFilter {
     }
 
     @Override
-    public boolean uniqueColumn(String columnName) {
+    public final boolean uniqueColumn(String columnName) {
         for (RowFilter sub : mSubFilters) {
             if (sub.uniqueColumn(columnName)) {
                 return true;

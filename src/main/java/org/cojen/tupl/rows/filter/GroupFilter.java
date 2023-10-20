@@ -33,7 +33,7 @@ import org.cojen.tupl.rows.ColumnInfo;
  *
  * @author Brian S O'Neill
  */
-public abstract class GroupFilter extends RowFilter {
+public abstract sealed class GroupFilter extends RowFilter permits AndFilter, OrFilter {
     private static final long REDUCE_LIMIT, REDUCE_LIMIT_SQRT;
     private static final int SPLIT_LIMIT;
 
@@ -77,7 +77,7 @@ public abstract class GroupFilter extends RowFilter {
     }
 
     @Override
-    public int compareTo(RowFilter filter) {
+    public final int compareTo(RowFilter filter) {
         if (filter instanceof GroupFilter other) {
             if (opChar() == other.opChar()) {
                 return Arrays.compare(mSubFilters, other.mSubFilters);
@@ -87,7 +87,7 @@ public abstract class GroupFilter extends RowFilter {
     }
 
     @Override
-    public RowFilter sort() {
+    public final RowFilter sort() {
         RowFilter[] subFilters = mSubFilters;
         if (subFilters.length == 0) {
             return this;
@@ -101,7 +101,7 @@ public abstract class GroupFilter extends RowFilter {
     }
 
     @Override
-    protected RowFilter trySplit(Function<ColumnFilter, RowFilter> check) {
+    protected final RowFilter trySplit(Function<ColumnFilter, RowFilter> check) {
         RowFilter[] subFilters = mSubFilters;
 
         for (int i=0; i<subFilters.length; i++) {
@@ -122,7 +122,7 @@ public abstract class GroupFilter extends RowFilter {
     }
 
     @Override
-    public RowFilter replaceArguments(IntUnaryOperator function) {
+    public final RowFilter replaceArguments(IntUnaryOperator function) {
         RowFilter[] subFilters = mSubFilters;
 
         for (int i=0; i<subFilters.length; i++) {
@@ -140,7 +140,7 @@ public abstract class GroupFilter extends RowFilter {
     }
 
     @Override
-    public RowFilter argumentAsNull(int argNum) {
+    public final RowFilter argumentAsNull(int argNum) {
         RowFilter[] subFilters = mSubFilters;
 
         for (int i=0; i<subFilters.length; i++) {
@@ -198,7 +198,7 @@ public abstract class GroupFilter extends RowFilter {
 
     public abstract char opChar();
 
-    public RowFilter newInstance(RowFilter... subFilters) {
+    public final RowFilter newInstance(RowFilter... subFilters) {
         return newInstance(subFilters, 0, subFilters.length);
     }
 
