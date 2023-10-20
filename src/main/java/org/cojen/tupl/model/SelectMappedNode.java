@@ -70,6 +70,9 @@ public final class SelectMappedNode extends SelectNode {
        - If the primary key is fully mapped, CRUD operations work, and so the Mapper must apply
          the full filter. Only when CRUD operations don't work can the Mapper use a split
          remainder filter.
+
+       - However, the MappedUpdater will call the checkUpdate and checkDelete methods. So
+         perhaps always define those methods? Just checkStore can be skipped.
     */
 
     @Override

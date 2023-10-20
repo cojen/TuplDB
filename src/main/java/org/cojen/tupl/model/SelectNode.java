@@ -31,7 +31,7 @@ import org.cojen.tupl.rows.IdentityTable;
  * @author Brian S. O'Neill
  */
 public abstract sealed class SelectNode extends RelationNode
-    permits SelectTableNode, SelectMappedNode
+    permits SelectUnmappedNode, SelectMappedNode
 {
     // FIXME: For supporting order-by, define a separate RelationNode type which wraps another
     // RelationNode. It should just create a view. The SQL order-by clause supports original
@@ -60,35 +60,22 @@ public abstract sealed class SelectNode extends RelationNode
 
         // FIXME: Perform type checking / validation.
 
-        SelectTableNode stn = trySelectTable(name, from, where, projection);
+        SelectUnmappedNode stn = trySelectUnmapped(name, from, where, projection);
         if (stn != null) {
             return stn;
         }
 
         // A custom row type and Mapper is required.
 
-        var columns = new Column[projection.length];
-        for (int i=0; i<projection.length; i++) {
-            Node node = projection[i];
-            // FIXME: Try to infer if column is a key or not. If full primary key is composite,
-            // then all of its columns must be projected in order for any columns to have
-            // key=true.
-            columns[i] = new Column(node.type(), node.name(), false);
-        }
-
-        return new SelectMappedNode(TupleType.make(columns), name, from, where, projection);
+        return new SelectMappedNode(TupleType.make(projection), name, from, where, projection);
     }
 
     /**
-     * Returns a SelectTableNode if possible.
+     * Returns a SelectUnmappedNode if possible.
      */
-    private static SelectTableNode trySelectTable(String name, RelationNode from,
-                                                  Node where, Node[] projection)
+    private static SelectUnmappedNode trySelectUnmapped(String name, RelationNode from,
+                                                        Node where, Node[] projection)
     {
-        if (!(from instanceof TableNode fromTable)) {
-            return null;
-        }
-
         if (where != null && !where.isPureFilter()) {
             return null;
         }
@@ -99,17 +86,23 @@ public abstract sealed class SelectNode extends RelationNode
         if (projection != null) {
             for (Node node : projection) {
                 if (!(node instanceof ColumnNode cn) || cn.from() != from) {
+                    // Projecting something not known by the relation.
                     return null;
                 }
                 if (projMap.putIfAbsent(cn.column().name(), cn.name()) != null) {
+                    // Column is projected more than once.
                     return null;
                 }
             }
         }
 
-        var type = TupleType.make(fromTable.table().rowType(), projMap);
+        TupleType type = from.type().tupleType();
 
-        return new SelectTableNode(type, name, fromTable, where, projection);
+        if (projection != null) {
+            type = TupleType.make(type.clazz(), projMap);
+        }
+
+        return new SelectUnmappedNode(type, name, from, where, projection);
     }
 
     protected final RelationNode mFrom;

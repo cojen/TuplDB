@@ -96,6 +96,20 @@ public final class TupleType extends Type {
         return new TupleType(rowType, columns, fields);
     }
 
+    public static TupleType make(Node[] projection) {
+        var columns = new Column[projection.length];
+
+        for (int i=0; i<projection.length; i++) {
+            Node node = projection[i];
+            // FIXME: Try to infer if column is a key or not. If full primary key is composite,
+            // then all of its columns must be projected in order for any columns to have
+            // key=true.
+            columns[i] = new Column(node.type(), node.name(), false);
+        }
+
+        return make(columns);
+    }
+
     /**
      * @return updated ix
      */

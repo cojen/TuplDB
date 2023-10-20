@@ -22,23 +22,23 @@ import java.util.ArrayList;
 import org.cojen.tupl.Table;
 
 /**
- * Defines a SelectNode in which the node's row type can be used for storing select results,
- * and so no Mapper is needed. A call to {@link SelectNode#make} returns a SelectTableNode
- * when all of the following conditions are met:
+ * Defines a SelectNode which doesn't need a Mapper. A call to {@link SelectNode#make} returns
+ * a SelectUnmappedNode when all of the following conditions are met:
  *
  * <ul>
- * <li> "from" is a TableNode
  * <li> "where" is null or a pure filter
- * <li> "projection" only consists of ColumnNodes from the table, requested at most once
+ * <li> "projection" only consists of ColumnNodes from the relation, requested at most once
  * </ul>
  *
  * @author Brian S. O'Neill
  */
-public final class SelectTableNode extends SelectNode {
+public final class SelectUnmappedNode extends SelectNode {
     /**
      * @see SelectNode#make
      */
-    SelectTableNode(TupleType type, String name, TableNode from, Node where, Node[] projection) {
+    SelectUnmappedNode(TupleType type, String name,
+                       RelationNode from, Node where, Node[] projection)
+    {
         super(type, name, from, where, projection);
     }
 
