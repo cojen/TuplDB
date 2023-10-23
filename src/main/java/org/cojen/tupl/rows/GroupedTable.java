@@ -321,7 +321,7 @@ public abstract class GroupedTable<S, T> extends WrappedTable<S, T> {
 
     @Override
     public final Scanner<T> newScannerWith(Transaction txn, T targetRow) throws IOException {
-        return newScannerWith(txn, targetRow, "{*}");
+        return newScannerWith(txn, targetRow, "{*}", (Object[]) null);
     }
 
     @Override
