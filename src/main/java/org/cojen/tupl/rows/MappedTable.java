@@ -229,7 +229,7 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
 
     @Override
     public final Scanner<T> newScannerWith(Transaction txn, T targetRow) throws IOException {
-        return new MappedScanner<>(this, mSource.newScanner(txn), targetRow, mMapper);
+        return newScannerWith(txn, targetRow, "{*}", (Object[]) null);
     }
 
     @Override
@@ -242,7 +242,7 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
 
     @Override
     public final Updater<T> newUpdater(Transaction txn) throws IOException {
-        return new MappedUpdater<>(this, mSource.newUpdater(txn), null, mMapper);
+        return newUpdater(txn, "{*}", (Object[]) null);
     }
 
     @Override
