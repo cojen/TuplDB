@@ -176,8 +176,8 @@ public class ConvertUtils {
                 case TYPE_SHORT:
                 case TYPE_INT:
                 case TYPE_LONG: cPlainCode = TYPE_LONG; break select;
-                case TYPE_FLOAT: cPlainCode = TYPE_DOUBLE; break select;
-                case TYPE_DOUBLE: cPlainCode = TYPE_BIG_DECIMAL; break select;
+                case TYPE_FLOAT:
+                case TYPE_DOUBLE: cPlainCode = TYPE_DOUBLE; break select;
                 case TYPE_CHAR: cPlainCode = TYPE_UINT; break select;
                 case TYPE_UTF8: cPlainCode = -1; break select;
                 case TYPE_BIG_INTEGER: cPlainCode = TYPE_BIG_INTEGER; break select;
