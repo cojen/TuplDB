@@ -35,6 +35,8 @@ import org.cojen.tupl.rows.RowTypeMaker;
  */
 public final class TupleType extends Type {
     /**
+     * Makes a type which has a generated row type class.
+     *
      * @param columns columns must have names, but they don't need to be valid identifiers
      */
     public static TupleType make(Column... columns) {
@@ -54,6 +56,8 @@ public final class TupleType extends Type {
     }
 
     /**
+     * Makes a type which uses the given row type class.
+     *
      * @param projection maps column names to target names; can pass null to project all columns
      * @throws IllegalArgumentException if projection refers to a non-existent column
      */
@@ -143,7 +147,7 @@ public final class TupleType extends Type {
 
     @Override
     public int hashCode() {
-        int hash = mClazz.hashCode();
+        int hash = clazz().hashCode();
         hash = hash * 31 + Arrays.hashCode(mColumns);
         return hash;
     }
@@ -151,7 +155,7 @@ public final class TupleType extends Type {
     @Override
     public boolean equals(Object obj) {
         return obj instanceof TupleType tt
-            && mClazz == tt.mClazz && Arrays.equals(mColumns, tt.mColumns);
+            && clazz() == tt.clazz() && Arrays.equals(mColumns, tt.mColumns);
     }
 
     @Override
@@ -170,7 +174,7 @@ public final class TupleType extends Type {
             bob.append(field);
             String name = column.name();
             if (!field.equals(name)) {
-                bob.append(" as \"").append(column.name()).append('"');
+                bob.append(" as \"").append(name).append('"');
             }
         }
 
@@ -198,7 +202,7 @@ public final class TupleType extends Type {
      *
      * @param name qualified or unqualified column name to find
      * @return column with a fully qualified name, with the canonical case
-     * @throws IllegalArgumentException if not found or ambiguous
+     * @throws IllegalArgumentException if not found or is ambiguous
      */
     public Column findColumn(String name, boolean caseInsensitive) {
         Map<String, Integer> map;

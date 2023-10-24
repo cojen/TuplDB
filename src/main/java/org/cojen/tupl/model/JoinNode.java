@@ -76,15 +76,8 @@ public final class JoinNode extends RelationNode {
     }
 
     @Override
-    public Node asType(Type type) {
-        // FIXME: Should this ever be supported? Yes, for supporting renames, and for
-        // converting to basic nodes (depending on cardinality).
-        throw null;
-    }
-
-    @Override
-    public int highestParamOrdinal() {
-        return Math.max(mLeft.highestParamOrdinal(), mRight.highestParamOrdinal());
+    public int maxArgument() {
+        return Math.max(mLeft.maxArgument(), mRight.maxArgument());
     }
 
     @Override
@@ -101,7 +94,7 @@ public final class JoinNode extends RelationNode {
     }
 
     private Query<?> doMakeQuery() {
-        int argCount = highestParamOrdinal();
+        int argCount = maxArgument();
 
         var queryList = new ArrayList<Query>();
         flattenQueries(this, queryList);

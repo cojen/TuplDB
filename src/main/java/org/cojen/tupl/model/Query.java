@@ -48,7 +48,8 @@ public interface Query<R> {
     }
 
     // FIXME: Provide access to the projected column names, which can differ from the table
-    // column names.
+    // column names. Perhaps this should be a feature of Table?
+    //   Map<String, String> columnLabels();
 
     /**
      * Returns a Query which just wraps a Table.

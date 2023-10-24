@@ -45,17 +45,21 @@ public final class BasicType extends Type {
 
     @Override
     public int hashCode() {
-        return mClazz.hashCode() * 31 + mTypeCode;
+        return clazz().hashCode() * 31 + typeCode();
     }
 
     @Override
     public boolean equals(Object obj) {
         return obj instanceof BasicType bt
-            && mClazz == bt.mClazz && mTypeCode == bt.mTypeCode;
+            && clazz() == bt.clazz() && typeCode == bt.typeCode();
     }
 
     @Override
     public String toString() {
-        return clazz().getCanonicalName();
+        String str = clazz().getCanonicalName();
+        if (isUnsigned()) {
+            str = "unsigned " + str;
+        }
+        return str;
     }
 }

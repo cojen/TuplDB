@@ -20,38 +20,26 @@ package org.cojen.tupl.model;
 import org.cojen.tupl.rows.ColumnInfo;
 
 /**
- * 
+ * Design note: this class extends ColumnInfo to simplify interoperability with APIs that work
+ * with ColumnInfos.
  *
  * @author Brian S. O'Neill
  */
-public abstract class Type {
-    protected final Class mClazz;
-    protected final int mTypeCode;
-
+public abstract sealed class Type extends ColumnInfo permits BasicType, TupleType, RelationType {
     /**
      * @param typeCode see ColumnInfo
      */
     protected Type(Class clazz, int typeCode) {
-        mClazz = clazz;
-        mTypeCode = typeCode;
+        this.type = clazz;
+        this.typeCode = typeCode;
     }
 
     public final Class<?> clazz() {
-        return mClazz;
+        return type;
     }
 
     public final int typeCode() {
-        return mTypeCode;
-    }
-
-    /**
-     * Returns a new unnamed ColumnInfo instance.
-     */
-    public final ColumnInfo asColumnInfo() {
-        var info = new ColumnInfo();
-        info.type = mClazz;
-        info.typeCode = mTypeCode;
-        return info;
+        return typeCode;
     }
 
     @Override

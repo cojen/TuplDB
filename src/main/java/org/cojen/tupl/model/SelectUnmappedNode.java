@@ -17,85 +17,133 @@
 
 package org.cojen.tupl.model;
 
-import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import org.cojen.tupl.Table;
 
+import org.cojen.tupl.rows.filter.ColumnToConstantFilter;
+import org.cojen.tupl.rows.filter.RowFilter;
+import org.cojen.tupl.rows.filter.TrueFilter;
+
 /**
- * Defines a SelectNode which doesn't need a Mapper. A call to {@link SelectNode#make} returns
- * a SelectUnmappedNode when all of the following conditions are met:
- *
- * <ul>
- * <li> "where" is null or a pure filter
- * <li> "projection" only consists of ColumnNodes from the relation, requested at most once
- * </ul>
+ * Defines a SelectNode which doesn't need a Mapper.
  *
  * @author Brian S. O'Neill
+ * @see SelectNode#make
  */
-public final class SelectUnmappedNode extends SelectNode {
+final class SelectUnmappedNode extends SelectNode {
     /**
      * @see SelectNode#make
      */
-    SelectUnmappedNode(TupleType type, String name,
-                       RelationNode from, Node where, Node[] projection)
+    static SelectUnmappedNode rename(RelationNode from, String name) {
+        return new SelectUnmappedNode(from.type(), name, from, from.maxArgument());
+    }
+
+    /**
+     * @see SelectNode#make
+     */
+    static SelectUnmappedNode make(TupleType type, String name,
+                                   RelationNode from, RowFilter filter, Node[] projection,
+                                   int maxArgument)
     {
-        super(type, name, from, where, projection);
+        if (projection != null && projection.length == from.type().tupleType().numColumns()) {
+            // Full projection.
+            projection = null;
+        }
+
+        Map<Object, Integer> argMap;
+
+        if (filter == TrueFilter.THE) {
+            argMap = null;
+        } else {
+            final var fArgMap = new LinkedHashMap<Object, Integer>();
+            final int fMaxArgument = maxArgument;
+
+            filter = filter.constantsToArguments((ColumnToConstantFilter f) -> {
+                Integer arg = fArgMap.get(f.constant());
+                if (arg == null) {
+                    arg = fMaxArgument + fArgMap.size() + 1;
+                    fArgMap.put(f.constant(), arg);
+                }
+                return arg;
+            });
+
+            int size = fArgMap.size();
+
+            if (size == 0) {
+                argMap = null;
+            } else {
+                argMap = fArgMap;
+                maxArgument += size;
+            }
+        }
+
+        return new SelectUnmappedNode(type, name, from, filter, projection, maxArgument, argMap);
+    }
+
+    private final Map<Object, Integer> mArgMap;
+
+    private SelectUnmappedNode(TupleType type, String name,
+                               RelationNode from, RowFilter filter, Node[] projection,
+                               int maxArgument, Map<Object, Integer> argMap)
+    {
+        super(type, name, from, filter, projection, maxArgument);
+        mArgMap = argMap;
+    }
+
+    private SelectUnmappedNode(RelationType type, String name, RelationNode from, int maxArgument) {
+        super(type, name, from, TrueFilter.THE, null, maxArgument);
+        mArgMap = null;
     }
 
     @Override
     protected Query<?> doMakeQuery() {
         Query<?> fromQuery = mFrom.makeQuery();
 
-        boolean fullProjection = mProjection == null
-            || mProjection.length == mFrom.type().tupleType().numColumns();
-
-        if (fullProjection && mWhere == null) {
+        if (mFilter == TrueFilter.THE && mProjection == null) {
             return fromQuery;
         }
 
-        // TODO: Should probably use an empty query if the effective where filter is false.
-
-        int argCount = highestParamOrdinal();
+        // FIXME: Use an empty query if the filter is false.
 
         // Build up the full query string.
-        var qb = new StringBuilder();
-        {
-            qb.append('{');
-            if (fullProjection) {
-                qb.append('*');
-            } else {
-                for (int i=0; i<mProjection.length; i++) {
-                    if (i > 0) {
-                        qb.append(", ");
-                    }
-                    qb.append(((ColumnNode) mProjection[i]).column().name());
-                }
-            }
-            qb.append('}');
-        }
-
-        final Object[] viewArgs;
-        if (mWhere == null) {
-            viewArgs = Query.NO_ARGS;
+        var qb = new StringBuilder().append('{');
+        if (mProjection == null) {
+            qb.append('*');
         } else {
-            qb.append(' ');
-            var argConstants = new ArrayList<Object>();
-            mWhere.appendPureFilter(qb, argConstants, argCount);
-            if (argConstants.isEmpty()) {
-                viewArgs = Query.NO_ARGS;
-            } else {
-                viewArgs = argConstants.toArray(new Object[argConstants.size()]);
+            for (int i=0; i<mProjection.length; i++) {
+                if (i > 0) {
+                    qb.append(", ");
+                }
+                qb.append(((ColumnNode) mProjection[i]).column().name());
             }
+        }
+        qb.append('}');
+
+        if (mFilter != TrueFilter.THE) {
+            qb.append(' ').append(mFilter);
         }
 
         String viewQuery = qb.toString();
 
-        if (argCount == 0) {
+        int baseArgCount = mMaxArgument;
+        Object[] viewArgs;
+
+        if (mArgMap == null) {
+            viewArgs = Query.NO_ARGS;
+        } else {
+            int size = mArgMap.size();
+            baseArgCount -= size;
+            viewArgs = mArgMap.keySet().toArray(new Object[size]);
+        }
+
+        if (baseArgCount == 0) {
             return Query.make(fromQuery.asTable().view(viewQuery, viewArgs));
         }
 
         if (viewArgs.length == 0) {
-            return new Query.Wrapped(fromQuery, argCount) {
+            return new Query.Wrapped(fromQuery, baseArgCount) {
                 @Override
                 public Table asTable(Object... args) {
                     return mFromQuery.asTable(args).view(viewQuery, args);
@@ -103,7 +151,7 @@ public final class SelectUnmappedNode extends SelectNode {
             };
         }
 
-        return new Query.Wrapped(fromQuery, argCount) {
+        return new Query.Wrapped(fromQuery, baseArgCount) {
             @Override
             public Table asTable(Object... args) {
                 int argCount = checkArgumentCount(args);

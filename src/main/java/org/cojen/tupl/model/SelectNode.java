@@ -19,11 +19,17 @@ package org.cojen.tupl.model;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 import org.cojen.tupl.Table;
 
+import org.cojen.tupl.rows.filter.ComplexFilterException;
+import org.cojen.tupl.rows.filter.RowFilter;
+import org.cojen.tupl.rows.filter.TrueFilter;
+
 import org.cojen.tupl.rows.IdentityTable;
+import org.cojen.tupl.rows.RowInfo;
 
 /**
  * Defines a node which represents a basic SQL select statement.
@@ -46,7 +52,7 @@ public abstract sealed class SelectNode extends RelationNode
      * to boolean
      * @param projection can be null to project all columns
      */
-    public static SelectNode make(String name, RelationNode from, Node where, Node[] projection) {
+    public static RelationNode make(String name, RelationNode from, Node where, Node[] projection) {
         if (from == null) {
             from = TableNode.make(null, IdentityTable.THE);
         }
@@ -60,91 +66,136 @@ public abstract sealed class SelectNode extends RelationNode
 
         // FIXME: Perform type checking / validation.
 
-        SelectUnmappedNode stn = trySelectUnmapped(name, from, where, projection);
-        if (stn != null) {
-            return stn;
+        TupleType fromType = from.type().tupleType();
+
+        int maxArgument = from.maxArgument();
+
+        // Maps actual column names to target names (renames). Is null when:
+        // - projection is null (all columns are projected)
+        // - or the requested projection refers to a column not known by the "from" relation
+        // - or if anything is projected more than once
+        Map<String, String> pureProjection;
+
+        if (projection == null) {
+            pureProjection = null;
+        } else {
+            for (Node node : projection) {
+                maxArgument = Math.max(maxArgument, node.maxArgument());
+            }
+
+            pureProjection = new HashMap<String, String>();
+
+            for (Node node : projection) {
+                if (!(node instanceof ColumnNode cn)) {
+                    // Projecting something not known by the relation.
+                    pureProjection = null;
+                    break;
+                }
+                if (pureProjection.putIfAbsent(cn.column().name(), cn.name()) != null) {
+                    // Column is projected more than once.
+                    pureProjection = null;
+                    break;
+                }
+            }
+
+            if (pureProjection != null && pureProjection.size() == fromType.numColumns()) {
+                // All columns are projected.
+                projection = null;
+                pureProjection = null;
+            }
+        }
+
+        // Split the filter such that the unmapped part can be pushed down. The remaining
+        // mapped part must be handled by a Mapper. The unmapped part is guaranteed to have no
+        // OpaqueFilters. If it did, SelectUnmappedNode would produce a broken query string.
+        RowFilter unmappedFilter, mappedFilter;
+
+        if (where == null) {
+            unmappedFilter = mappedFilter = TrueFilter.THE;
+        } else {
+            maxArgument = Math.max(maxArgument, where.maxArgument());
+
+            RowInfo info = RowInfo.find(fromType.clazz());
+
+            RowFilter filter = where.toFilter(info);
+            try {
+                filter = filter.cnf();
+            } catch (ComplexFilterException e) {
+                // The split won't be as effective, and so the Mapper might end up doing more
+                // filtering work.
+            }
+
+            var whereFilters = new RowFilter[2];
+            filter.split(info.allColumns, whereFilters);
+
+            unmappedFilter = whereFilters[0];
+            mappedFilter = whereFilters[1];
+        }
+
+        // Attempt to push down filtering and projection by replacing the "from" node with a
+        // SelectUnmappedNode.
+        pushDown: {
+            Node[] fromProjection;
+
+            if (mappedFilter == TrueFilter.THE && projection != null && pureProjection != null) {
+                // Can push down filtering and projection entirely; no Mapper is needed.
+                fromType = TupleType.make(fromType.clazz(), pureProjection);
+                fromProjection = projection;
+                projection = null;
+            } else if (unmappedFilter == TrueFilter.THE) {
+                // There's no filter and all columns need to be projected, so there's nothing
+                // to push down.
+                break pushDown;
+            } else {
+                fromProjection = null;
+            }
+
+            from = SelectUnmappedNode.make
+                (fromType, name, from, unmappedFilter, fromProjection, maxArgument);
+        }
+
+        if (mappedFilter == TrueFilter.THE && projection == null) {
+            if (!Objects.equals(name, from.name())) {
+                from = SelectUnmappedNode.rename(from, name);
+            }
+            return from;
         }
 
         // A custom row type and Mapper is required.
 
-        return new SelectMappedNode(TupleType.make(projection), name, from, where, projection);
-    }
-
-    /**
-     * Returns a SelectUnmappedNode if possible.
-     */
-    private static SelectUnmappedNode trySelectUnmapped(String name, RelationNode from,
-                                                        Node where, Node[] projection)
-    {
-        if (where != null && !where.isPureFilter()) {
-            return null;
-        }
-
-        // Maps actual column names to target names (renames).
-        var projMap = new HashMap<String, String>();
-
-        if (projection != null) {
-            for (Node node : projection) {
-                if (!(node instanceof ColumnNode cn) || cn.from() != from) {
-                    // Projecting something not known by the relation.
-                    return null;
-                }
-                if (projMap.putIfAbsent(cn.column().name(), cn.name()) != null) {
-                    // Column is projected more than once.
-                    return null;
-                }
-            }
-        }
-
-        TupleType type = from.type().tupleType();
-
-        if (projection != null) {
-            type = TupleType.make(type.clazz(), projMap);
-        }
-
-        return new SelectUnmappedNode(type, name, from, where, projection);
+        return new SelectMappedNode
+            (TupleType.make(projection), name, from, mappedFilter, projection, maxArgument);
     }
 
     protected final RelationNode mFrom;
-    protected final Node mWhere;
+    protected final RowFilter mFilter;
     protected final Node[] mProjection;
+    protected final int mMaxArgument;
 
     private Query<?> mQuery;
 
     protected SelectNode(TupleType type, String name,
-                         RelationNode from, Node where, Node[] projection)
+                         RelationNode from, RowFilter filter, Node[] projection,
+                         int maxArgument)
     {
-        this(RelationType.make(type, from.type().cardinality()), name, from, where, projection);
+        this(RelationType.make(type, from.type().cardinality()),
+             name, from, filter, projection, maxArgument);
     }
 
     protected SelectNode(RelationType type, String name,
-                         RelationNode from, Node where, Node[] projection)
+                         RelationNode from, RowFilter filter, Node[] projection,
+                         int maxArgument)
     {
         super(type, name);
         mFrom = from;
-        mWhere = where;
+        mFilter = filter;
         mProjection = projection;
+        mMaxArgument = maxArgument;
     }
 
     @Override
-    public final Node asType(Type type) {
-        // FIXME: Should this ever be supported? Yes, for supporting renames, and for
-        // converting to basic nodes (depending on cardinality).
-        throw null;
-    }
-
-    @Override
-    public final int highestParamOrdinal() {
-        int ordinal = mFrom.highestParamOrdinal();
-        if (mWhere != null) {
-            ordinal = Math.max(ordinal, mWhere.highestParamOrdinal());
-        }
-        if (mProjection != null) {
-            for (Node node : mProjection) {
-                ordinal = Math.max(ordinal, node.highestParamOrdinal());
-            }
-        }
-        return ordinal;
+    public final int maxArgument() {
+        return mMaxArgument;
     }
 
     @Override
@@ -153,8 +204,9 @@ public abstract sealed class SelectNode extends RelationNode
             return false;
         }
 
-        if (mWhere != null && !mWhere.isPureFunction()) {
-            return false;
+        // FIXME: Need a Visitor to examine the OpaqueFilters.
+        if (mFilter != TrueFilter.THE) {
+            throw null;
         }
 
         if (mProjection != null) {
@@ -181,7 +233,7 @@ public abstract sealed class SelectNode extends RelationNode
     @Override
     public final int hashCode() {
         int hash = mFrom.hashCode();
-        hash = hash * 31 + Objects.hashCode(mWhere);
+        hash = hash * 31 + mFilter.hashCode();
         hash = hash * 31 + Arrays.hashCode(mProjection);
         return hash;
     }
@@ -190,7 +242,7 @@ public abstract sealed class SelectNode extends RelationNode
     public final boolean equals(Object obj) {
         return obj instanceof SelectNode sn
             && mFrom.equals(sn.mFrom)
-            && Objects.equals(mWhere, sn.mWhere)
+            && mFilter.equals(sn.mFilter)
             && Arrays.equals(mProjection, sn.mProjection);
     }
 }

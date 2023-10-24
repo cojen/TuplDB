@@ -19,9 +19,9 @@ package org.cojen.tupl.rows.filter;
 
 import java.util.Map;
 
-import java.util.function.IntFunction;
 import java.util.function.IntUnaryOperator;
 import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 
 import org.cojen.tupl.rows.ColumnInfo;
 import org.cojen.tupl.rows.ConvertUtils;
@@ -32,6 +32,17 @@ import org.cojen.tupl.rows.ConvertUtils;
  * @author Brian S O'Neill
  */
 public final class ColumnToColumnFilter extends ColumnFilter {
+    /**
+     * @return null if a common type doesn't exist
+     */
+    public static ColumnToColumnFilter tryMake(ColumnInfo column, int op, ColumnInfo other) {
+        ColumnInfo common = ConvertUtils.commonType(column, other, op);
+        if (common == null) {
+            return null;
+        }
+        return new ColumnToColumnFilter(column, op, other, common);
+    }
+
     private final ColumnInfo mOtherColumn;
     private final ColumnInfo mCommon;
 
@@ -97,6 +108,11 @@ public final class ColumnToColumnFilter extends ColumnFilter {
 
     @Override
     public RowFilter argumentAsNull(int argNum) {
+        return this;
+    }
+
+    @Override
+    public RowFilter constantsToArguments(ToIntFunction<ColumnToConstantFilter> function) {
         return this;
     }
 

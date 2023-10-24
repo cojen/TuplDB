@@ -17,9 +17,6 @@
 
 package org.cojen.tupl.model;
 
-import java.util.List;
-import java.util.Objects;
-
 import org.cojen.maker.Label;
 import org.cojen.maker.Variable;
 
@@ -35,26 +32,30 @@ public final class ParamNode extends Node {
      * @param name can be null to automatically assign a name
      */
     public static ParamNode make(String name, int ordinal) {
-        return new ParamNode(name, ordinal);
+        return new ParamNode(name, BasicType.OBJECT, ordinal);
     }
 
     private String mName;
+    private final Type mType;
     private final int mOrdinal;
 
-    private ParamNode(String name, int ordinal) {
+    private ParamNode(String name, Type type, int ordinal) {
         mName = name;
+        mType = type;
         mOrdinal = ordinal;
     }
 
     @Override
     public Type type() {
-        return BasicType.OBJECT;
+        return mType;
     }
 
     @Override
     public Node asType(Type type) {
-        // FIXME: runtime cast using ConvertCallSite
-        throw null;
+        if (mType.equals(type)) {
+            return this;
+        }
+        return new ParamNode(mName, type, mOrdinal);
     }
 
     @Override
@@ -66,7 +67,7 @@ public final class ParamNode extends Node {
     }
 
     @Override
-    public int highestParamOrdinal() {
+    public int maxArgument() {
         return mOrdinal;
     }
 
@@ -76,29 +77,22 @@ public final class ParamNode extends Node {
     }
 
     @Override
-    public boolean isPureFilterTerm() {
-        return true;
-    }
-
-    @Override
-    public int appendPureFilter(StringBuilder query, List<Object> argConstants, int argOrdinal) {
-        query.append('?').append(mOrdinal);
-        return argOrdinal;
-    }
-
-    @Override
-    public Variable makeEval(MakerContext context) {
+    public Variable makeEval(EvalContext context) {
         var resultRef = context.refFor(this);
         var result = resultRef.get();
         if (result != null) {
             return result;
         } else {
-            return resultRef.set(context.argsVar.aget(mOrdinal - 1));
+            var value = context.argsVar.aget(mOrdinal - 1);
+            if (mType != BasicType.OBJECT) {
+                value = ConvertCallSite.make(context.methodMaker(), mType.clazz(), value);
+            }
+            return resultRef.set(value);
         }
     }
 
     @Override
-    public void makeFilter(MakerContext context, Label pass, Label fail) {
+    public void makeFilter(EvalContext context, Label pass, Label fail) {
         ConvertCallSite.make(context.methodMaker(), boolean.class, makeEval(context)).ifTrue(pass);
         fail.goto_();
     }

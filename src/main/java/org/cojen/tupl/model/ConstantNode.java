@@ -17,13 +17,27 @@
 
 package org.cojen.tupl.model;
 
-import java.util.List;
+import java.lang.invoke.CallSite;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+
 import java.util.Objects;
 
 import org.cojen.maker.Label;
 import org.cojen.maker.Variable;
 
 import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.ConvertCallSite;
+import org.cojen.tupl.rows.RowInfo;
+import org.cojen.tupl.rows.RowUtils;
+import org.cojen.tupl.rows.SoftCache;
+
+import org.cojen.tupl.rows.filter.FalseFilter;
+import org.cojen.tupl.rows.filter.RowFilter;
+import org.cojen.tupl.rows.filter.TrueFilter;
+
+import static org.cojen.tupl.rows.ColumnInfo.*;
 
 /**
  * Defines a simple node which just represents a constant value.
@@ -40,42 +54,55 @@ public final class ConstantNode extends Node {
     }
 
     public static ConstantNode make(boolean value) {
-        return new ConstantNode(boolean.class, ColumnInfo.TYPE_BOOLEAN, value);
+        return new ConstantNode(boolean.class, TYPE_BOOLEAN, value);
     }
 
     public static ConstantNode make(byte value) {
-        return new ConstantNode(byte.class, ColumnInfo.TYPE_BYTE, value);
+        return new ConstantNode(byte.class, TYPE_BYTE, value);
     }
 
     public static ConstantNode make(short value) {
-        return new ConstantNode(short.class, ColumnInfo.TYPE_SHORT, value);
+        return new ConstantNode(short.class, TYPE_SHORT, value);
     }
 
     public static ConstantNode make(char value) {
-        return new ConstantNode(char.class, ColumnInfo.TYPE_CHAR, value);
+        return new ConstantNode(char.class, TYPE_CHAR, value);
     }
 
     public static ConstantNode make(int value) {
-        return new ConstantNode(int.class, ColumnInfo.TYPE_INT, value);
+        return new ConstantNode(int.class, TYPE_INT, value);
     }
 
     public static ConstantNode make(long value) {
-        return new ConstantNode(long.class, ColumnInfo.TYPE_LONG, value);
+        return new ConstantNode(long.class, TYPE_LONG, value);
     }
 
     public static ConstantNode make(float value) {
-        return new ConstantNode(float.class, ColumnInfo.TYPE_FLOAT, value);
+        return new ConstantNode(float.class, TYPE_FLOAT, value);
     }
 
     public static ConstantNode make(double value) {
-        return new ConstantNode(double.class, ColumnInfo.TYPE_DOUBLE, value);
+        return new ConstantNode(double.class, TYPE_DOUBLE, value);
+    }
+
+    private static final SoftCache<Class, MethodHandle, Object> cConverterCache;
+
+    static {
+        cConverterCache = new SoftCache<>() {
+            @Override
+            protected MethodHandle newValue(Class toType, Object unused) {
+                MethodType mt = MethodType.methodType(toType, Object.class);
+                CallSite cs = ConvertCallSite.makeNext(MethodHandles.lookup(), "_", mt);
+                return cs.dynamicInvoker();
+            }
+        };
     }
 
     private final Type mType;
     private final Object mValue;
 
-    private ConstantNode(Class type, int typeCode, Object value) {
-        this(BasicType.make(type, typeCode), value);
+    private ConstantNode(Class clazz, int typeCode, Object value) {
+        this(BasicType.make(clazz, typeCode), value);
     }
 
     private ConstantNode(Type type, Object value) {
@@ -89,17 +116,23 @@ public final class ConstantNode extends Node {
     }
 
     @Override
-    public Node asType(Type type) {
-        if (type.equals(mType)) {
+    public ConstantNode asType(Type type) {
+        if (mType.equals(type)) {
             return this;
         }
+
         if (mValue == null) {
             return new ConstantNode(type, null);
         }
-        // FIXME: Support conversions; throw an exception if conversion fails. Conversion to
-        // RelationType should always be supported (SelectNode). If converting to an object
-        // like BigInteger, makeEval must call setExact.
-        throw null;
+
+        // FIXME: Conversion to RelationType should always be supported (SelectNode).
+
+        try {
+            Object value = cConverterCache.obtain(type.clazz(), null).invoke(mValue);
+            return new ConstantNode(type, value);
+        } catch (Throwable e) {
+            throw RowUtils.rethrow(e);
+        }
     }
 
     @Override
@@ -108,7 +141,7 @@ public final class ConstantNode extends Node {
     }
 
     @Override
-    public int highestParamOrdinal() {
+    public int maxArgument() {
         return 0;
     }
 
@@ -118,24 +151,26 @@ public final class ConstantNode extends Node {
     }
 
     @Override
-    public boolean isPureFilterTerm() {
-        return true;
+    public RowFilter toFilter(RowInfo info) {
+        if (mValue == Boolean.TRUE) {
+            return TrueFilter.THE;
+        } else if (mValue == Boolean.FALSE) {
+            return FalseFilter.THE;
+        }
+        return super.toFilter(info);
     }
 
     @Override
-    public int appendPureFilter(StringBuilder query, List<Object> argConstants, int argOrdinal) {
-        argConstants.add(mValue);
-        query.append('?').append(++argOrdinal);
-        return argOrdinal;
+    public Variable makeEval(EvalContext context) {
+        var v = context.methodMaker().var(mType.clazz());
+
+        // FIXME: Must call setExact if necessary. Add a new method to the Variable class?
+
+        return v.set(mValue);
     }
 
     @Override
-    public Variable makeEval(MakerContext context) {
-        return context.methodMaker().var(mType.clazz()).set(mValue);
-    }
-
-    @Override
-    public void makeFilter(MakerContext context, Label pass, Label fail) {
+    public void makeFilter(EvalContext context, Label pass, Label fail) {
         if (mValue instanceof Boolean b) {
             context.methodMaker().goto_(b ? pass : fail);
         } else {
@@ -145,6 +180,91 @@ public final class ConstantNode extends Node {
 
     public Object value() {
         return mValue;
+    }
+
+    /**
+     * Try to convert this numerical type to the given (different) numerical type if no
+     * information is lost. This only needs to be called when a conversion would create a
+     * BigDecimal or BigInteger, and so it doesn't need to cover all cases.
+     */
+    public ConstantNode tryConvert(Type toType) {
+        Class<?> clazz;
+        int typeCode;
+
+        switch (toType.typeCode) {
+        case TYPE_ULONG:
+            switch (mType.typeCode) {
+            case TYPE_BYTE: case TYPE_SHORT: case TYPE_INT: case TYPE_LONG:
+                if (((Number) mValue).longValue() < 0L) {
+                    return null;
+                }
+                break;
+
+            case TYPE_FLOAT:
+                float f = ((Float) mValue).floatValue();
+                long i = (long) f;
+                if (f < 0 || ((float) i) != f) {
+                    return null;
+                }
+                break;
+
+            case TYPE_DOUBLE:
+                double d = ((Double) mValue).doubleValue();
+                i = (long) d;
+                if (d < 0 || ((double) i) != d) {
+                    return null;
+                }
+                break;
+
+            default:
+                return null;
+            }
+
+            clazz = long.class;
+            typeCode = TYPE_ULONG;
+            break;
+
+        case TYPE_FLOAT:
+            switch (mType.typeCode) {
+            case TYPE_LONG:
+                long i = ((Long) mValue).longValue();
+                float f = (float) i;
+                if (((long) f) != i) {
+                    return null;
+                }
+                break;
+
+            default:
+                return null;
+            }
+
+            clazz = float.class;
+            typeCode = TYPE_FLOAT;
+            break;
+
+        case TYPE_DOUBLE:
+            switch (mType.typeCode) {
+            case TYPE_LONG:
+                long i = ((Long) mValue).longValue();
+                double d = (double) i;
+                if (((long) d) != i) {
+                    return null;
+                }
+                break;
+
+            default:
+                return null;
+            }
+
+            clazz = double.class;
+            typeCode = TYPE_DOUBLE;
+            break;
+
+        default:
+            return null;
+        }
+
+        return asType(BasicType.make(clazz, typeCode));
     }
 
     @Override

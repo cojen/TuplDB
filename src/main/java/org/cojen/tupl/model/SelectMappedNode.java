@@ -37,23 +37,27 @@ import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.rows.RowGen;
 
+import org.cojen.tupl.rows.filter.RowFilter;
+import org.cojen.tupl.rows.filter.TrueFilter;
+
 /**
  * Defines a SelectNode which relies on a Mapper to perform custom transformations and
- * filtering. A call to {@link SelectNode#make} determines if a SelectMappedNode is required.
+ * filtering.
  *
  * @author Brian S. O'Neill
+ * @see SelectNode#make
  */
-public final class SelectMappedNode extends SelectNode {
+final class SelectMappedNode extends SelectNode {
     /**
      * @see SelectNode#make
      */
     SelectMappedNode(TupleType type, String name,
-                     RelationNode from, Node where, Node[] projection)
+                     RelationNode from, RowFilter filter, Node[] projection, int maxArgument)
     {
-        super(type, name, from, where, projection);
+        super(type, name, from, filter, projection, maxArgument);
     }
 
-    /* FIXME
+    /* FIXME: Notes
 
        - The Mapper evaluates the "where" filter and returns null if it yields false. Any
          ColumnNodes which were projected (and have inverses) cannot be skipped because
@@ -79,7 +83,7 @@ public final class SelectMappedNode extends SelectNode {
     protected Query<?> doMakeQuery() {
         Query fromQuery = mFrom.makeQuery();
 
-        int argCount = highestParamOrdinal();
+        int argCount = maxArgument();
         MapperFactory factory = makeMapper(argCount);
 
         Class targetClass = type().tupleType().clazz();
@@ -130,7 +134,7 @@ public final class SelectMappedNode extends SelectNode {
             }
         }
 
-        MakerContext context = addMapMethod(cm, argCount);
+        EvalContext context = addMapMethod(cm, argCount);
 
         Map<String, ColumnNode> fromColumns = context.fromColumns(mFrom);
         addSourceProjectionMethod(cm, fromColumns);
@@ -147,7 +151,9 @@ public final class SelectMappedNode extends SelectNode {
             addCheckDeleteMethod(cm);
         }
 
-        MethodHandles.Lookup lookup = cm.finishHidden();
+        // Note that a hidden class cannot be used because the static inverse mapping functions
+        // can only be referenced by their fully qualified name.
+        MethodHandles.Lookup lookup = cm.finishLookup();
         Class<?> clazz = lookup.lookupClass();
 
         try {
@@ -158,7 +164,7 @@ public final class SelectMappedNode extends SelectNode {
         }
     }
 
-    private MakerContext addMapMethod(ClassMaker cm, int argCount) {
+    private EvalContext addMapMethod(ClassMaker cm, int argCount) {
         TupleType targetType = type().tupleType();
 
         MethodMaker mm = cm.addMethod
@@ -171,13 +177,13 @@ public final class SelectMappedNode extends SelectNode {
         var targetRow = mm.param(1).cast(targetType.clazz());
 
         var argsVar = argCount == 0 ? null : mm.field("args").get();
-        var context = new MakerContext(argsVar, sourceRow);
+        var context = new EvalContext(argsVar, sourceRow);
 
-        if (mWhere != null) {
+        if (mFilter != TrueFilter.THE) {
             Label pass = mm.label();
             Label fail = mm.label();
 
-            mWhere.makeFilter(context, pass, fail);
+            new FilterVisitor(context, pass, fail).apply(mFilter);
 
             fail.here();
             mm.return_(null);
@@ -240,7 +246,7 @@ public final class SelectMappedNode extends SelectNode {
         int numColumns = targetType.numColumns();
 
         for (int i=0; i<numColumns; i++) {
-            if (!(mProjection[i] instanceof ColumnNode source) || source.from() != mFrom) {
+            if (!(mProjection[i] instanceof ColumnNode source)) {
                 continue;
             }
 
@@ -261,10 +267,10 @@ public final class SelectMappedNode extends SelectNode {
     }
 
     private void addPlanMethod(ClassMaker cm) {
-        if (mWhere == null) {
+        if (mFilter == TrueFilter.THE) {
             return;
         }
-        String filterExpr = mWhere.name();
+        String filterExpr = mFilter.toString();
         MethodMaker mm = cm.addMethod(QueryPlan.class, "plan", QueryPlan.Mapper.class).public_();
         mm.return_(mm.new_(QueryPlan.Filter.class, filterExpr, mm.param(0)));
     }
@@ -277,7 +283,7 @@ public final class SelectMappedNode extends SelectNode {
     private void addCheckStoreMethod(ClassMaker cm) {
         MethodMaker mm = cm.addMethod(null, "checkStore", Table.class, Object.class).public_();
 
-        if (mWhere == null) {
+        if (mFilter == TrueFilter.THE) {
             // Nothing to check.
             return;
         }
@@ -289,7 +295,7 @@ public final class SelectMappedNode extends SelectNode {
     private void addCheckUpdateMethod(ClassMaker cm) {
         MethodMaker mm = cm.addMethod(null, "checkUpdate", Table.class, Object.class).public_();
 
-        if (mWhere == null) {
+        if (mFilter == TrueFilter.THE) {
             // Nothing to check.
             return;
         }
@@ -301,7 +307,7 @@ public final class SelectMappedNode extends SelectNode {
     private void addCheckDeleteMethod(ClassMaker cm) {
         MethodMaker mm = cm.addMethod(null, "checkDelete", Table.class, Object.class).public_();
 
-        if (mWhere == null) {
+        if (mFilter == TrueFilter.THE) {
             // Nothing to check.
             return;
         }

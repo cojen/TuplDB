@@ -22,7 +22,6 @@ import java.util.Objects;
 import org.cojen.tupl.Table;
 
 import org.cojen.tupl.rows.IdentityTable;
-import org.cojen.tupl.rows.RowInfo;
 
 /**
  * Defines a node which access an ordinary table.
@@ -47,14 +46,7 @@ public final class TableNode extends RelationNode {
     }
 
     @Override
-    public Node asType(Type type) {
-        // FIXME: Should this ever be supported? Yes, for supporting renames, and for
-        // converting to basic nodes (depending on cardinality).
-        throw null;
-    }
-
-    @Override
-    public int highestParamOrdinal() {
+    public int maxArgument() {
         return 0;
     }
 

@@ -17,30 +17,23 @@
 
 package org.cojen.tupl.model;
 
-import java.util.List;
-
 import org.cojen.maker.Variable;
 
 /**
  * Defines a node which accesses a named column found in a RelationNode.
  *
  * @author Brian S. O'Neill
+ * @see RelationNode#findColumn
  */
 public final class ColumnNode extends Node {
+    private final String mName;
+    private final Column mColumn;
+
     /**
      * @param name qualified or unqualified name which was requested
      * @param column must refer to a column in a RelationNode; name is a fully qualified field
      */
-    public static ColumnNode make(RelationNode from, String name, Column column) {
-        return new ColumnNode(from, name, column);
-    }
-
-    private final RelationNode mFrom;
-    private final String mName;
-    private final Column mColumn;
-
-    private ColumnNode(RelationNode from, String name, Column column) {
-        mFrom = from;
+    ColumnNode(String name, Column column) {
         mName = name;
         mColumn = column;
     }
@@ -59,13 +52,16 @@ public final class ColumnNode extends Node {
         throw null;
     }
 
+    /**
+     * Returns the qualified or unqualified name which was requested.
+     */
     @Override
     public String name() {
         return mName;
     }
 
     @Override
-    public int highestParamOrdinal() {
+    public int maxArgument() {
         return 0;
     }
 
@@ -75,18 +71,7 @@ public final class ColumnNode extends Node {
     }
 
     @Override
-    public boolean isPureFilterTerm() {
-        return true;
-    }
-
-    @Override
-    public int appendPureFilter(StringBuilder query, List<Object> argConstants, int argOrdinal) {
-        query.append(mColumn.name());
-        return argOrdinal;
-    }
-
-    @Override
-    public Variable makeEval(MakerContext context) {
+    public Variable makeEval(EvalContext context) {
         var resultRef = context.refFor(this);
         var result = resultRef.get();
         if (result != null) {
@@ -94,10 +79,6 @@ public final class ColumnNode extends Node {
         } else {
             return resultRef.set(context.rowVar.invoke(mColumn.name()));
         }
-    }
-
-    public RelationNode from() {
-        return mFrom;
     }
 
     /**
@@ -109,13 +90,11 @@ public final class ColumnNode extends Node {
 
     @Override
     public int hashCode() {
-        int hash = mFrom.hashCode();
-        hash = hash * 31 + mColumn.hashCode();
-        return hash;
+        return mColumn.hashCode();
     }
 
     @Override
     public boolean equals(Object obj) {
-        return obj instanceof ColumnNode cn && mFrom.equals(cn.mFrom) && mColumn.equals(cn.mColumn);
+        return obj instanceof ColumnNode cn && mColumn.equals(cn.mColumn);
     }
 }

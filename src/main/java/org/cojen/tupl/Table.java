@@ -478,6 +478,9 @@ public interface Table<R> extends Closeable {
         return GroupedTable.group(this, targetType, supplier);
     }
 
+    // FIXME: For supporting windowed functions.
+    //public default <T> Table<T> frame(Class<T> targetType, Supplier<Framer<R, T>> supplier) {
+
     /**
      * Joins tables together into an unmodifiable view. The returned view doesn't have any
      * primary key, and so operations which act upon one aren't supported. In addition, closing

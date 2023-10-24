@@ -44,4 +44,12 @@ public interface Visitor {
     public void visit(ColumnToArgFilter filter);
 
     public void visit(ColumnToColumnFilter filter);
+
+    public default void visit(ColumnToConstantFilter filter) {
+        throw new UnsupportedOperationException();
+    }
+
+    public default void visit(OpaqueFilter filter) {
+        throw new UnsupportedOperationException();
+    }
 }

@@ -30,7 +30,7 @@ import org.cojen.maker.Variable;
  *
  * @author Brian S. O'Neill
  */
-final class MakerContext {
+final class EvalContext {
     private Map<Node, ResultRef> mEvaluated;
     private ResultRef[] mUndoLog;
     private int mUndoSize;
@@ -45,7 +45,7 @@ final class MakerContext {
      */
     final Variable rowVar;
 
-    MakerContext(Variable argsVar, Variable rowVar) {
+    EvalContext(Variable argsVar, Variable rowVar) {
         this.argsVar = argsVar;
         this.rowVar = rowVar;
     }
@@ -98,7 +98,7 @@ final class MakerContext {
 
         if (mEvaluated != null) {
             for (Node n : mEvaluated.keySet()) {
-                if (n instanceof ColumnNode cn && cn.from() == from) {
+                if (n instanceof ColumnNode cn) {
                     map.put(cn.column().name(), cn);
                 }
             }

@@ -17,10 +17,13 @@
 
 package org.cojen.tupl.model;
 
-import java.util.List;
-
 import org.cojen.maker.Label;
 import org.cojen.maker.Variable;
+
+import org.cojen.tupl.rows.RowInfo;
+
+import org.cojen.tupl.rows.filter.OpaqueFilter;
+import org.cojen.tupl.rows.filter.RowFilter;
 
 /**
  * A node represents an AST element of a query.
@@ -43,9 +46,10 @@ public abstract class Node {
     public abstract String name();
 
     /**
-     * Returns the highest ordinal from all the ParamNodes referenced by this node.
+     * Returns the highest query argument needed by this node, which is zero of none are
+     * needed.
      */
-    public abstract int highestParamOrdinal();
+    public abstract int maxArgument();
 
     /**
      * Returns true if this node represents a pure function with respect to the current row,
@@ -54,45 +58,27 @@ public abstract class Node {
     public abstract boolean isPureFunction();
 
     /**
-     * Returns true if this node represents a filter which only accesses columns and constants,
-     * and thus it can be easily converted to a Table query filter expression.
+     * Performs best effert conversion of this node into a RowFilter. And nodes which cannot be
+     * converted are represented by OpaqueFilters which have the node attached.
      */
-    public boolean isPureFilter() {
-        return false;
-    }
-
-    /**
-     * Returns true if this node can be a term of a pure filter. Applicable to columns,
-     * constants, and parameters.
-     */
-    public boolean isPureFilterTerm() {
-        return isPureFilter();
-    }
-
-    /**
-     * @param query is appended to by this method
-     * @param argConstants constants converted to args are added to this list
-     * @param argOrdinal the highest arg ordinal so far, is used for constants converted to args
-     * @return updated argOrdinal
-     * @throw IllegalStateException if isPureFilterTerm returns false
-     */
-    public int appendPureFilter(StringBuilder query, List<Object> argConstants, int argOrdinal) {
-        throw new IllegalStateException();
+    public RowFilter toFilter(RowInfo info) {
+        return new OpaqueFilter(false, this);
     }
 
     /**
      * Generates code which evaluates an expression. The context tracks nodes which have
      * already been evaluated and is updated by this method.
      */
-    public abstract Variable makeEval(MakerContext context);
+    public abstract Variable makeEval(EvalContext context);
 
     /**
      * Generates code which evaluates an expression for branching to a pass or fail label.
      * Short-circuit logic is used, and so the expression might only be partially evaluated.
      *
      * @throws IllegalStateException if unsupported
+     * @see FilterVisitor
      */
-    public void makeFilter(MakerContext context, Label pass, Label fail) {
+    public void makeFilter(EvalContext context, Label pass, Label fail) {
         makeEval(context).ifTrue(pass);
         fail.goto_();
     }
@@ -109,4 +95,9 @@ public abstract class Node {
      */
     @Override
     public abstract boolean equals(Object obj);
+
+    @Override
+    public String toString() {
+        return name();
+    }
 }

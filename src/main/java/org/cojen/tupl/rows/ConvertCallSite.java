@@ -192,11 +192,9 @@ public class ConvertCallSite extends MutableCallSite {
                     " to " + toType.getSimpleName()).throw_();
         }
 
-        if (next != null) {
-            next.here();
-            var indy = mm.var(ConvertCallSite.class).indy("makeNext");
-            mm.return_(indy.invoke(toType, "_", null, from));
-        }
+        next.here();
+        var indy = mm.var(ConvertCallSite.class).indy("makeNext");
+        mm.return_(indy.invoke(toType, "_", null, from));
 
         return mm.finish();
     }

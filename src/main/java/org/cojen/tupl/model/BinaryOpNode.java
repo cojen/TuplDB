@@ -17,16 +17,25 @@
 
 package org.cojen.tupl.model;
 
-import java.util.List;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+
 import java.util.Objects;
 
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
+import org.cojen.tupl.rows.ColumnInfo;
 import org.cojen.tupl.rows.CompareUtils;
+import org.cojen.tupl.rows.ConvertUtils;
+import org.cojen.tupl.rows.RowInfo;
 
 import org.cojen.tupl.rows.filter.ColumnFilter;
+import org.cojen.tupl.rows.filter.ColumnToArgFilter;
+import org.cojen.tupl.rows.filter.ColumnToColumnFilter;
+import org.cojen.tupl.rows.filter.ColumnToConstantFilter;
+import org.cojen.tupl.rows.filter.RowFilter;
 
 /**
  * Defines a node for a binary operator.
@@ -55,17 +64,66 @@ public sealed class BinaryOpNode extends Node {
      * @param name can be null to automatically assign a name
      */
     public static BinaryOpNode make(String name, int op, Node left, Node right) {
-        if (op <= OP_OR) {
-            return new Filtered(name, op, left, right);
+        Type type;
+
+        while (true) {
+            Type leftType = left.type();
+            Type rightType = right.type();
+
+            ColumnInfo common = ConvertUtils.commonType(leftType, rightType, op);
+
+            if (common == leftType) {
+                type = leftType;
+                break;
+            }
+
+            if (common == rightType) {
+                type = rightType;
+                break;
+            }
+
+            if (common == null) {
+                if (left instanceof ParamNode pn) {
+                    left = left.asType(rightType);
+                    continue;
+                }
+                if (right instanceof ParamNode pn) {
+                    right = right.asType(leftType);
+                    continue;
+                }
+
+                throw new IllegalStateException
+                    ("No common type for: " + left + ' ' + opString(op) + ' ' + right);
+            }
+
+            if ((common.type == BigDecimal.class || common.type == BigInteger.class) &&
+                leftType.isUnsigned() != rightType.isUnsigned())
+            {
+                // Try to use a simpler type.
+                if (left instanceof ConstantNode cn) {
+                    ConstantNode converted = cn.tryConvert(rightType);
+                    if (converted != null && !converted.equals(left)) {
+                        left = converted;
+                        continue;
+                    }
+                } else if (right instanceof ConstantNode cn) {
+                    ConstantNode converted = cn.tryConvert(leftType);
+                    if (converted != null && !converted.equals(right)) {
+                        right = converted;
+                        continue;
+                    }
+                }
+            }
+
+            type = BasicType.make(common.type, common.typeCode);
+            break;
         }
 
-        // FIXME: Need a common type or else throw an exception.
-        Type type = left.type();
         left = left.asType(type);
         right = right.asType(type);
 
         if (type == BasicType.BOOLEAN && op <= OP_NE
-            && left.isPureFilter() && right.isPureFilter())
+            /*&& left.isPureFilter() && right.isPureFilter()*/)
         {
             /* FIXME: Transform some forms into xor:
 
@@ -82,6 +140,11 @@ public sealed class BinaryOpNode extends Node {
                1 0  1    0   1   0           1         1
                1 1  0    0   0   0           0         0
             */
+        }
+
+        if (op <= OP_OR) {
+            // FIXME: If left and right are ConstantNode, return a true/false ConstantNode.
+            return new Filtered(name, op, left, right);
         }
 
         return new BinaryOpNode(type, name, op, left, right);
@@ -107,11 +170,16 @@ public sealed class BinaryOpNode extends Node {
 
     @Override
     public Node asType(Type type) {
-        if (type.equals(mType)) {
+        if (mType.equals(type)) {
             return this;
         }
-        // FIXME: asType
-        throw null;
+
+        if (mOp < OP_ADD) {
+            throw new IllegalStateException("Cannot convert " + mType + " to " + type);
+        }
+
+        // Convert the sources to avoid calculation errors.
+        return new BinaryOpNode(type, mName, mOp, mLeft.asType(type), mRight.asType(type));
     }
 
     @Override
@@ -136,8 +204,8 @@ public sealed class BinaryOpNode extends Node {
     }
 
     @Override
-    public int highestParamOrdinal() {
-        return Math.max(mLeft.highestParamOrdinal(), mRight.highestParamOrdinal());
+    public int maxArgument() {
+        return Math.max(mLeft.maxArgument(), mRight.maxArgument());
     }
 
     @Override
@@ -146,8 +214,8 @@ public sealed class BinaryOpNode extends Node {
     }
 
     @Override
-    public Variable makeEval(MakerContext context) {
-        MakerContext.ResultRef resultRef;
+    public Variable makeEval(EvalContext context) {
+        EvalContext.ResultRef resultRef;
 
         if (isPureFunction()) {
             resultRef = context.refFor(this);
@@ -159,17 +227,27 @@ public sealed class BinaryOpNode extends Node {
             resultRef = null;
         }
 
-        // FIXME: If resultRef isn't null, be sure to set it.
-
         var leftVar = mLeft.makeEval(context);
         var rightVar = mRight.makeEval(context);
 
+        Variable result = doMakeEval(context, leftVar, rightVar);
+
+        if (resultRef != null) {
+            result = resultRef.set(result);
+        }
+
+        return result;
+    }
+
+    private Variable doMakeEval(EvalContext context, Variable leftVar, Variable rightVar) {
         switch (mOp) {
             // FIXME: These ops need to work for primitive numbers, BigInteger, and BigDecimal.
+            // FIXME: Needs to perform exact arithmetic.
+            // FIXME: Needs to support unsigned numbers.
 
         case OP_ADD:
-            // FIXME: OP_ADD
-            throw null;
+            // FIXME: Temporary hack.
+            return leftVar.add(rightVar);
 
         case OP_SUB:
             // FIXME: OP_SUB
@@ -209,7 +287,11 @@ public sealed class BinaryOpNode extends Node {
     }
 
     protected String opString() {
-        return switch (mOp) {
+        return opString(mOp);
+    }
+
+    protected static String opString(int op) {
+        return switch (op) {
             case OP_EQ  -> "==";
             case OP_NE  -> "!=";
             case OP_GE  -> ">=";
@@ -225,7 +307,7 @@ public sealed class BinaryOpNode extends Node {
             case OP_DIV -> "/";
             case OP_REM -> "%";
 
-            default -> throw new AssertionError();
+            default -> "?";
         };
     }
 
@@ -238,40 +320,53 @@ public sealed class BinaryOpNode extends Node {
         }
 
         @Override
-        public boolean isPureFilter() {
-            if (mLeft.isPureFilter() || mLeft instanceof ColumnNode) {
-                return mRight.isPureFilterTerm();
-            } else if (mRight.isPureFilter() || mRight instanceof ColumnNode) {
-                return mLeft.isPureFilterTerm();
+        public RowFilter toFilter(RowInfo info) {
+            if (mOp == OP_AND) {
+                return mLeft.toFilter(info).and(mRight.toFilter(info));
+            } else if (mOp == OP_OR) {
+                return mLeft.toFilter(info).or(mRight.toFilter(info));
             }
-            return false;
+
+            if (mLeft instanceof ColumnNode left) {
+                ColumnInfo leftCol = tryFindColumn(info, left);
+                if (leftCol != null) {
+                    if (mRight instanceof ColumnNode right) {
+                        ColumnInfo rightCol = tryFindColumn(info, right);
+                        if (rightCol != null) {
+                            var filter = ColumnToColumnFilter.tryMake(leftCol, mOp, rightCol);
+                            if (filter != null) {
+                                return filter;
+                            }
+                        }
+                    } else if (mRight instanceof ParamNode right) {
+                        return new ColumnToArgFilter(leftCol, mOp, right.ordinal());
+                    } else if (mRight instanceof ConstantNode right) {
+                        return new ColumnToConstantFilter(leftCol, mOp, right.value());
+                    }
+                }
+            } else if (mRight instanceof ColumnNode right) {
+                ColumnInfo rightCol = tryFindColumn(info, right);
+                if (rightCol != null) {
+                    if (mLeft instanceof ParamNode left) {
+                        int op = ColumnFilter.reverseOperator(mOp);
+                        return new ColumnToArgFilter(rightCol, op, left.ordinal());
+                    } else if (mLeft instanceof ConstantNode left) {
+                        int op = ColumnFilter.reverseOperator(mOp);
+                        return new ColumnToConstantFilter(rightCol, op, left.value());
+                    }
+                }
+            }
+
+            return super.toFilter(info);
+        }
+
+        private static ColumnInfo tryFindColumn(RowInfo info, ColumnNode node) {
+            return info.allColumns.get(node.column().name());
         }
 
         @Override
-        public int appendPureFilter(StringBuilder query,
-                                    List<Object> argConstants, int argOrdinal)
-        {
-            argOrdinal = append(mLeft, query, argConstants, argOrdinal);
-            query.append(' ').append(opString()).append(' ');
-            return append(mRight, query, argConstants, argOrdinal);
-        }
-
-        private static int append(Node child, StringBuilder query,
-                                  List<Object> argConstants, int argOrdinal)
-        {
-            if (child.isPureFilterTerm()) {
-                argOrdinal = child.appendPureFilter(query, argConstants, argOrdinal);
-            } else {
-                query.append('(');
-                argOrdinal = child.appendPureFilter(query, argConstants, argOrdinal);
-                query.append(')');
-            }
-            return argOrdinal;
-        }
-
-        @Override
-        public Variable makeEval(MakerContext context) {
-            MakerContext.ResultRef resultRef;
+        public Variable makeEval(EvalContext context) {
+            EvalContext.ResultRef resultRef;
 
             if (isPureFunction()) {
                 resultRef = context.refFor(this);
@@ -288,7 +383,9 @@ public sealed class BinaryOpNode extends Node {
             Label pass = mm.label();
             Label fail = mm.label();
 
-            makeFilter(context, pass, fail);
+            if (true) {
+                makeFilter(context, pass, fail);
+            }
 
             var result = resultRef == null ? mm.var(boolean.class) : resultRef.toSet(boolean.class);
 
@@ -302,10 +399,11 @@ public sealed class BinaryOpNode extends Node {
             return result;
         }
 
+        // FIXME: Break up this method into sub methods to be used by FilterVisitor.
         @Override
-        public void makeFilter(MakerContext context, Label pass, Label fail) {
+        public void makeFilter(EvalContext context, Label pass, Label fail) {
             if (isPureFunction()) {
-                var result = context.refFor(this).get();
+                Variable result = context.refFor(this).get();
                 if (result != null) {
                     result.ifTrue(pass);
                     fail.goto_();
@@ -316,8 +414,8 @@ public sealed class BinaryOpNode extends Node {
             switch (mOp) {
             case OP_EQ, OP_NE, OP_GE, OP_LT, OP_LE, OP_GT:
                 CompareUtils.compare(context.methodMaker(),
-                                     mLeft.type().asColumnInfo(), mLeft.makeEval(context),
-                                     mRight.type().asColumnInfo(), mRight.makeEval(context),
+                                     mLeft.type(), mLeft.makeEval(context),
+                                     mRight.type(), mRight.makeEval(context),
                                      mOp, pass, fail);
                 return;
 

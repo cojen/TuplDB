@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.function.IntFunction;
 import java.util.function.IntUnaryOperator;
 import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 
 import org.cojen.tupl.rows.ColumnInfo;
 import org.cojen.tupl.rows.ConvertUtils;
@@ -113,6 +114,11 @@ public sealed class ColumnToArgFilter extends ColumnFilter permits InFilter {
             }
         }
 
+        return this;
+    }
+
+    @Override
+    public RowFilter constantsToArguments(ToIntFunction<ColumnToConstantFilter> function) {
         return this;
     }
 
