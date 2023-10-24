@@ -56,7 +56,8 @@ final class EvalContext {
 
     /**
      * Returns a reference to an already evaluated result for the given node. Should only be
-     * used for non-trivial nodes which are pure functions.
+     * used for non-trivial nodes which are pure functions. There's no point in stashing
+     * references to trivial nodes because evaluating them again is cheap.
      */
     ResultRef refFor(Node node) {
         Map<Node, ResultRef> evaluated = mEvaluated;
@@ -90,10 +91,10 @@ final class EvalContext {
     }
 
     /**
-     * Returns all the columns which were accessed from the given relation. The map keys are
-     * the fully qualified column field names.
+     * Returns all the columns which were accessed. The map keys are the fully qualified column
+     * field names.
      */
-    Map<String, ColumnNode> fromColumns(RelationNode from) {
+    Map<String, ColumnNode> fromColumns() {
         var map = new TreeMap<String, ColumnNode>();
 
         if (mEvaluated != null) {

@@ -20,8 +20,6 @@ package org.cojen.tupl.model;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
-import java.util.Objects;
-
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
@@ -115,7 +113,7 @@ public sealed class BinaryOpNode extends Node {
                 }
             }
 
-            type = BasicType.make(common.type, common.typeCode);
+            type = BasicType.make(common);
             break;
         }
 
@@ -383,9 +381,7 @@ public sealed class BinaryOpNode extends Node {
             Label pass = mm.label();
             Label fail = mm.label();
 
-            if (true) {
-                makeFilter(context, pass, fail);
-            }
+            makeFilter(context, pass, fail);
 
             var result = resultRef == null ? mm.var(boolean.class) : resultRef.toSet(boolean.class);
 
@@ -399,7 +395,6 @@ public sealed class BinaryOpNode extends Node {
             return result;
         }
 
-        // FIXME: Break up this method into sub methods to be used by FilterVisitor.
         @Override
         public void makeFilter(EvalContext context, Label pass, Label fail) {
             if (isPureFunction()) {

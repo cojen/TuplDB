@@ -58,7 +58,7 @@ public abstract class Node {
     public abstract boolean isPureFunction();
 
     /**
-     * Performs best effert conversion of this node into a RowFilter. And nodes which cannot be
+     * Performs a best effort conversion of this node into a RowFilter. And nodes which cannot be
      * converted are represented by OpaqueFilters which have the node attached.
      */
     public RowFilter toFilter(RowInfo info) {

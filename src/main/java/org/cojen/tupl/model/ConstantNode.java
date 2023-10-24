@@ -27,7 +27,6 @@ import java.util.Objects;
 import org.cojen.maker.Label;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.rows.ColumnInfo;
 import org.cojen.tupl.rows.ConvertCallSite;
 import org.cojen.tupl.rows.RowInfo;
 import org.cojen.tupl.rows.RowUtils;
@@ -162,11 +161,13 @@ public final class ConstantNode extends Node {
 
     @Override
     public Variable makeEval(EvalContext context) {
-        var v = context.methodMaker().var(mType.clazz());
+        return makeEval(context, mType.clazz(), mValue);
+    }
 
-        // FIXME: Must call setExact if necessary. Add a new method to the Variable class?
-
-        return v.set(mValue);
+    public static Variable makeEval(EvalContext context, Class type, Object value) {
+        var valueVar = context.methodMaker().var(type);
+        // FIXME: Must call setExact if necessary. Use Canonicalizer.
+        return valueVar.set(value);
     }
 
     @Override

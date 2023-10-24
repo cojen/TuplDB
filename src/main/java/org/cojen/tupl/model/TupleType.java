@@ -126,7 +126,7 @@ public final class TupleType extends Type {
             if (projection != null) {
                 name = projection.get(name);
             }
-            columns[ix] = new Column(BasicType.make(info.type, info.typeCode), name, key);
+            columns[ix] = new Column(BasicType.make(info), name, key);
             ix++;
         }
 

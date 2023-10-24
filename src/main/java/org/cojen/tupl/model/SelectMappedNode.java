@@ -136,7 +136,7 @@ final class SelectMappedNode extends SelectNode {
 
         EvalContext context = addMapMethod(cm, argCount);
 
-        Map<String, ColumnNode> fromColumns = context.fromColumns(mFrom);
+        Map<String, ColumnNode> fromColumns = context.fromColumns();
         addSourceProjectionMethod(cm, fromColumns);
 
         addInverseMappingFunctions(cm);

@@ -35,6 +35,13 @@ public final class ParamNode extends Node {
         return new ParamNode(name, BasicType.OBJECT, ordinal);
     }
 
+    /**
+     * @param name can be null to automatically assign a name
+     */
+    public static ParamNode make(String name, Type type, int ordinal) {
+        return new ParamNode(name, type, ordinal);
+    }
+
     private String mName;
     private final Type mType;
     private final int mOrdinal;

@@ -17,8 +17,6 @@
 
 package org.cojen.tupl.model;
 
-import java.util.Objects;
-
 import org.cojen.tupl.Table;
 
 import org.cojen.tupl.rows.IdentityTable;

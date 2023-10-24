@@ -26,14 +26,18 @@ import org.cojen.maker.Variable;
  * @see RelationNode#findColumn
  */
 public final class ColumnNode extends Node {
-    private final String mName;
-    private final Column mColumn;
-
     /**
      * @param name qualified or unqualified name which was requested
      * @param column must refer to a column in a RelationNode; name is a fully qualified field
      */
-    ColumnNode(String name, Column column) {
+    public static ColumnNode make(String name, Column column) {
+        return new ColumnNode(name, column);
+    }
+
+    private final String mName;
+    private final Column mColumn;
+
+    private ColumnNode(String name, Column column) {
         mName = name;
         mColumn = column;
     }

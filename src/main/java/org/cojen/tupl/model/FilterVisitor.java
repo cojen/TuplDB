@@ -18,6 +18,11 @@
 package org.cojen.tupl.model;
 
 import org.cojen.maker.Label;
+import org.cojen.maker.MethodMaker;
+import org.cojen.maker.Variable;
+
+import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.CompareUtils;
 
 import org.cojen.tupl.rows.filter.AndFilter;
 import org.cojen.tupl.rows.filter.ColumnToArgFilter;
@@ -36,7 +41,7 @@ import org.cojen.tupl.rows.filter.Visitor;
  */
 final class FilterVisitor implements Visitor {
     private final EvalContext mContext;
-    private final Label mPass, mFail;
+    private Label mPass, mFail;
 
     FilterVisitor(EvalContext context, Label pass, Label fail) {
         mContext = context;
@@ -48,54 +53,108 @@ final class FilterVisitor implements Visitor {
         filter.accept(this);
     }
 
+    // Note that the OrFilter and AndFilter logic is similar to how DecodeVisitor does it.
+
     @Override
     public void visit(OrFilter filter) {
+        final Label originalFail = mFail;
+
         RowFilter[] subFilters = filter.subFilters();
 
         if (subFilters.length == 0) {
-            mFail.goto_();
+            originalFail.goto_();
             return;
         }
 
-        System.out.println("visit: " + filter);
-        // FIXME: See BinaryOpNode
-        throw null;
+        MethodMaker mm = mContext.methodMaker();
+
+        mFail = mm.label();
+        subFilters[0].accept(this);
+        mFail.here();
+
+        int savepoint = mContext.refSavepoint();
+
+        for (int i=1; i<subFilters.length; i++) {
+            mFail = mm.label();
+            subFilters[i].accept(this);
+            mFail.here();
+        }
+
+        // Rollback the refs for all nodes but the first, because they don't always execute.
+        mContext.refRollback(savepoint);
+
+        originalFail.goto_();
+        mFail = originalFail;
     }
 
     @Override
     public void visit(AndFilter filter) {
+        final Label originalPass = mPass;
+
         RowFilter[] subFilters = filter.subFilters();
 
         if (subFilters.length == 0) {
-            mPass.goto_();
+            originalPass.goto_();
             return;
         }
 
-        System.out.println("visit: " + filter);
-        // FIXME: See BinaryOpNode
-        throw null;
+        MethodMaker mm = mContext.methodMaker();
+
+        mPass = mm.label();
+        subFilters[0].accept(this);
+        mPass.here();
+
+        int savepoint = mContext.refSavepoint();
+
+        for (int i=1; i<subFilters.length; i++) {
+            mPass = mm.label();
+            subFilters[i].accept(this);
+            mPass.here();
+        }
+
+        // Rollback the refs for all nodes but the first, because they don't always execute.
+        mContext.refRollback(savepoint);
+
+        originalPass.goto_();
+        mPass = originalPass;
     }
 
     @Override
     public void visit(ColumnToArgFilter filter) {
-        // FIXME: access mContext.rowVar and mContext.argsVar
-        // FIXME: This line is from ParamNode. Do I try to keep the a ref to arg value?
-        //        I can make a ParamNode instance as a cache key.
-        //ConvertCallSite.make(context.methodMaker(), boolean.class, makeEval(context)).ifTrue(pass);
-        //fail.goto_();
-        throw null;
+        // The parameter type must be converted to be the same type as the column. Although
+        // ConvertCallSite could be called directly, using a ParamNode allows for reference
+        // caching in the EvalContext.
+        ColumnInfo info = filter.column();
+        ParamNode pn = ParamNode.make(null, BasicType.make(info), filter.argument());
+
+        CompareUtils.compare(mContext.methodMaker(),
+                             info, accessColumn(filter.column()),
+                             info, pn.makeEval(mContext),
+                             filter.operator(), mPass, mFail);
     }
 
     @Override
     public void visit(ColumnToColumnFilter filter) {
-        // FIXME: access mContext.rowVar twice
-        throw null;
+        CompareUtils.compare(mContext.methodMaker(),
+                             filter.column(), accessColumn(filter.column()),
+                             filter.otherColumn(), accessColumn(filter.otherColumn()),
+                             filter.operator(), mPass, mFail);
     }
 
     @Override
     public void visit(ColumnToConstantFilter filter) {
-        // FIXME: access mContext.rowVar
-        throw null;
+        // Assume that BinaryOpNode has already ensured that the left and right sides are of
+        // the same type, and so the ColumnInfo can be used for both sides.
+        ColumnInfo info = filter.column();
+
+        CompareUtils.compare(mContext.methodMaker(),
+                             info, accessColumn(filter.column()),
+                             info, ConstantNode.makeEval(mContext, info.type, filter.constant()),
+                             filter.operator(), mPass, mFail);
+    }
+
+    private Variable accessColumn(ColumnInfo info) {
+        return mContext.rowVar.invoke(info.name);
     }
 
     @Override

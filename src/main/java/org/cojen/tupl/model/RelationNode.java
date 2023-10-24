@@ -17,9 +17,6 @@
 
 package org.cojen.tupl.model;
 
-import java.util.Objects;
-
-import org.cojen.maker.Label;
 import org.cojen.maker.Variable;
 
 /**
@@ -69,7 +66,7 @@ public abstract class RelationNode extends Node {
      * @throws IllegalArgumentException if not found or is ambiguous
      */
     public ColumnNode findColumn(String name) {
-        return new ColumnNode(name, type().tupleType().findColumn(name, true));
+        return ColumnNode.make(name, type().tupleType().findColumn(name, true));
     }
 
     /**

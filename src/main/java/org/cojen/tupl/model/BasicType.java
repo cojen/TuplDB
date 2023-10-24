@@ -29,6 +29,10 @@ public final class BasicType extends Type {
         BOOLEAN = new BasicType(boolean.class, ColumnInfo.TYPE_BOOLEAN),
         OBJECT = new BasicType(Object.class, ColumnInfo.TYPE_REFERENCE);
 
+    public static BasicType make(ColumnInfo info) {
+        return make(info.type, info.typeCode);
+    }
+
     public static BasicType make(Class clazz, int typeCode) {
         if (clazz == boolean.class) {
             return BOOLEAN;

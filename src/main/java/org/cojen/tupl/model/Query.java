@@ -31,7 +31,7 @@ public interface Query<R> {
     Class<R> rowType();
 
     /**
-     * Returns the minimum amount of arguments which must be passed to the {@link asTable}
+     * Returns the minimum amount of arguments which must be passed to the {@link #asTable}
      * method.
      */
     int argumentCount();
