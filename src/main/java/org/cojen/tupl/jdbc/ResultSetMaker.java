@@ -15,7 +15,7 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.sql;
+package org.cojen.tupl.jdbc;
 
 import java.lang.invoke.CallSite;
 import java.lang.invoke.ConstantCallSite;
@@ -208,7 +208,7 @@ public final class ResultSetMaker {
         }
     };
 
-    private static int TYPE_OBJECT = 0b11111 | TYPE_NULLABLE;
+    private static final int TYPE_OBJECT = TYPE_REFERENCE | TYPE_NULLABLE;
 
     private final Class<?> mRowType;
     private final Class<?> mRowClass;

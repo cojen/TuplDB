@@ -15,7 +15,7 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.sql;
+package org.cojen.tupl.jdbc;
 
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;

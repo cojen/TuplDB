@@ -15,7 +15,7 @@
  *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package org.cojen.tupl.sql;
+package org.cojen.tupl.jdbc;
 
 import org.cojen.maker.ClassMaker;
 
@@ -66,7 +66,7 @@ class CodeUtils extends org.cojen.tupl.rows.CodeUtils {
         var thatModule = cm.classLoader().getUnnamedModule();
 
         // Generated code needs access to these non-exported packages.
-        thisModule.addExports("org.cojen.tupl.sql", thatModule);
+        thisModule.addExports("org.cojen.tupl.jdbc", thatModule);
 
         return cm;
     }
