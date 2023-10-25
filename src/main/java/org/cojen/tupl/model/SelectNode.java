@@ -19,12 +19,19 @@ package org.cojen.tupl.model;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
+import org.cojen.tupl.rows.filter.ColumnToArgFilter;
+import org.cojen.tupl.rows.filter.ColumnToColumnFilter;
+import org.cojen.tupl.rows.filter.ColumnToConstantFilter;
 import org.cojen.tupl.rows.filter.ComplexFilterException;
+import org.cojen.tupl.rows.filter.OpaqueFilter;
 import org.cojen.tupl.rows.filter.RowFilter;
 import org.cojen.tupl.rows.filter.TrueFilter;
+import org.cojen.tupl.rows.filter.Visitor;
 
 import org.cojen.tupl.rows.IdentityTable;
 import org.cojen.tupl.rows.RowInfo;
@@ -115,12 +122,23 @@ public abstract sealed class SelectNode extends RelationNode
 
             RowInfo info = RowInfo.find(fromType.clazz());
 
-            RowFilter filter = where.toFilter(info);
+            final RowFilter original = where.toFilter(info);
+
+            // Try to transform the filter to cnf, to make split method be more effective. If
+            // this isn't possible, then filtering might be pushed down as much.
+            RowFilter filter;
+
             try {
-                filter = filter.cnf();
+                filter = original.cnf();
+
+                if (hasRepeatedNonPureFunctions(filter)) {
+                    // Assume that duplication was caused by the cnf transform. Non-pure
+                    // functions can yield different results each time, and so they cannot be
+                    // invoked multiple times within the filter.
+                    filter = original;
+                }
             } catch (ComplexFilterException e) {
-                // The split won't be as effective, and so the Mapper might end up doing more
-                // filtering work.
+                filter = original;
             }
 
             var whereFilters = new RowFilter[2];
@@ -128,6 +146,11 @@ public abstract sealed class SelectNode extends RelationNode
 
             unmappedFilter = whereFilters[0];
             mappedFilter = whereFilters[1];
+
+            if (unmappedFilter == TrueFilter.THE) {
+                // Nothing will push down, so just use the original filter.
+                mappedFilter = original;
+            }
         }
 
         // Attempt to push down filtering and projection by replacing the "from" node with a
@@ -163,6 +186,45 @@ public abstract sealed class SelectNode extends RelationNode
 
         return new SelectMappedNode
             (TupleType.make(projection), name, from, mappedFilter, projection, maxArgument);
+    }
+
+    private static boolean hasRepeatedNonPureFunctions(RowFilter filter) {
+        var visitor = new Visitor() {
+            Set<Node> nonPure;
+            boolean hasRepeats;
+
+            @Override
+            public void visit(ColumnToArgFilter filter) {
+                // Nothing to do.
+            }
+
+            @Override
+            public void visit(ColumnToColumnFilter filter) {
+                // Nothing to do.
+            }
+
+            @Override
+            public void visit(ColumnToConstantFilter filter) {
+                // Nothing to do.
+            }
+
+            @Override
+            public void visit(OpaqueFilter filter) {
+                var node = (Node) filter.attachment();
+                if (!node.isPureFunction()) {
+                    if (nonPure == null) {
+                        nonPure = new HashSet<>();
+                    }
+                    if (nonPure.add(node)) {
+                        hasRepeats = true;
+                    }
+                }
+            }
+        };
+
+        filter.accept(visitor);
+
+        return visitor.hasRepeats;
     }
 
     protected final RelationNode mFrom;
