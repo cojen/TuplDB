@@ -114,18 +114,21 @@ public abstract sealed class SelectNode extends RelationNode
         // mapped part must be handled by a Mapper. The unmapped part is guaranteed to have no
         // OpaqueFilters. If it did, SelectUnmappedNode would produce a broken query string.
         RowFilter unmappedFilter, mappedFilter;
+        Node mappedWhere;
 
         if (where == null) {
             unmappedFilter = mappedFilter = TrueFilter.THE;
+            mappedWhere = null;
         } else {
             maxArgument = Math.max(maxArgument, where.maxArgument());
 
             RowInfo info = RowInfo.find(fromType.clazz());
 
-            final RowFilter original = where.toFilter(info);
+            var columns = new HashMap<String, ColumnNode>();
+            final RowFilter original = where.toRowFilter(info, columns);
 
             // Try to transform the filter to cnf, to make split method be more effective. If
-            // this isn't possible, then filtering might be pushed down as much.
+            // this isn't possible, then filtering might not be pushed down as much.
             RowFilter filter;
 
             try {
@@ -150,6 +153,13 @@ public abstract sealed class SelectNode extends RelationNode
             if (unmappedFilter == TrueFilter.THE) {
                 // Nothing will push down, so just use the original filter.
                 mappedFilter = original;
+                mappedWhere = where;
+            } else if (mappedFilter == TrueFilter.THE) {
+                mappedWhere = null;
+            } else if (mappedFilter == original) {
+                mappedWhere = where;
+            } else {
+                mappedWhere = new ToNodeVisitor(columns).apply(mappedFilter);
             }
         }
 
@@ -185,7 +195,8 @@ public abstract sealed class SelectNode extends RelationNode
         // A custom row type and Mapper is required.
 
         return new SelectMappedNode
-            (TupleType.make(projection), name, from, mappedFilter, projection, maxArgument);
+            (TupleType.make(projection), name, from,
+             mappedFilter, mappedWhere, projection, maxArgument);
     }
 
     private static boolean hasRepeatedNonPureFunctions(RowFilter filter) {
@@ -259,14 +270,9 @@ public abstract sealed class SelectNode extends RelationNode
     }
 
     @Override
-    public final boolean isPureFunction() {
+    public boolean isPureFunction() {
         if (!mFrom.isPureFunction()) {
             return false;
-        }
-
-        // FIXME: Need a Visitor to examine the OpaqueFilters.
-        if (mFilter != TrueFilter.THE) {
-            throw null;
         }
 
         if (mProjection != null) {
@@ -276,6 +282,10 @@ public abstract sealed class SelectNode extends RelationNode
                 }
             }
         }
+
+        // Note that mFilter isn't checked. The filter used by the SelectUnmappedNode subclass
+        // never has OpaqueFilters, and so it's always pure. The SelectMappedNode subclass
+        // overrides this method and checks mWhere instead.
 
         return true;
     }

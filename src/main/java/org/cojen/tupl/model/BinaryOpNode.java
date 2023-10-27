@@ -20,6 +20,9 @@ package org.cojen.tupl.model;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
+import java.util.Map;
+import java.util.Set;
+
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
@@ -140,12 +143,24 @@ public sealed class BinaryOpNode extends Node {
             */
         }
 
-        if (op <= OP_OR) {
-            // FIXME: If left and right are ConstantNode, return a true/false ConstantNode.
-            return new Filtered(name, op, left, right);
+        if (op > OP_OR) {
+            return new BinaryOpNode(type, name, op, left, right);
         }
 
-        return new BinaryOpNode(type, name, op, left, right);
+        // FIXME: If left and right are ConstantNode, return a true/false ConstantNode.
+
+        if (op >= OP_AND) {
+            if (left.canThrowRuntimeException() && !right.canThrowRuntimeException()) {
+                // Swap the evaluation order such that an exception is less likely to be thrown
+                // due to short-circuit logic. The implementation of hasOrderDependentException
+                // in the Filtered class assumes that this swap operation has been performed.
+                Node temp = left;
+                left = right;
+                right = temp;
+            }
+        }
+
+        return new Filtered(name, op, left, right);
     }
 
     protected final Type mType;
@@ -212,6 +227,12 @@ public sealed class BinaryOpNode extends Node {
     }
 
     @Override
+    public void evalColumns(Set<String> columns) {
+        mLeft.evalColumns(columns);
+        mRight.evalColumns(columns);
+    }
+
+    @Override
     public Variable makeEval(EvalContext context) {
         EvalContext.ResultRef resultRef;
 
@@ -269,6 +290,22 @@ public sealed class BinaryOpNode extends Node {
     }
 
     @Override
+    public boolean canThrowRuntimeException() {
+        Class clazz = type().clazz();
+        if (clazz.isPrimitive()) {
+            return clazz != float.class && clazz != double.class;
+        } else if (clazz == BigDecimal.class || clazz == BigInteger.class) {
+            return mOp == OP_DIV || mOp == OP_REM;
+        }
+        return true;
+    }
+
+    @Override
+    public boolean hasOrderDependentException() {
+        return mLeft.hasOrderDependentException() || mRight.hasOrderDependentException();
+    }
+
+    @Override
     public int hashCode() {
         int hash = mType.hashCode();
         hash = hash * 31 + mOp;
@@ -318,11 +355,11 @@ public sealed class BinaryOpNode extends Node {
         }
 
         @Override
-        public RowFilter toFilter(RowInfo info) {
+        public RowFilter toRowFilter(RowInfo info, Map<String, ColumnNode> columns) {
             if (mOp == OP_AND) {
-                return mLeft.toFilter(info).and(mRight.toFilter(info));
+                return mLeft.toRowFilter(info, columns).and(mRight.toRowFilter(info, columns));
             } else if (mOp == OP_OR) {
-                return mLeft.toFilter(info).or(mRight.toFilter(info));
+                return mLeft.toRowFilter(info, columns).or(mRight.toRowFilter(info, columns));
             }
 
             if (mLeft instanceof ColumnNode left) {
@@ -333,12 +370,16 @@ public sealed class BinaryOpNode extends Node {
                         if (rightCol != null) {
                             var filter = ColumnToColumnFilter.tryMake(leftCol, mOp, rightCol);
                             if (filter != null) {
+                                columns.putIfAbsent(leftCol.name, left);
+                                columns.putIfAbsent(rightCol.name, right);
                                 return filter;
                             }
                         }
                     } else if (mRight instanceof ParamNode right) {
+                        columns.putIfAbsent(leftCol.name, left);
                         return new ColumnToArgFilter(leftCol, mOp, right.ordinal());
                     } else if (mRight instanceof ConstantNode right) {
+                        columns.putIfAbsent(leftCol.name, left);
                         return new ColumnToConstantFilter(leftCol, mOp, right.value());
                     }
                 }
@@ -347,15 +388,17 @@ public sealed class BinaryOpNode extends Node {
                 if (rightCol != null) {
                     if (mLeft instanceof ParamNode left) {
                         int op = ColumnFilter.reverseOperator(mOp);
+                        columns.putIfAbsent(rightCol.name, right);
                         return new ColumnToArgFilter(rightCol, op, left.ordinal());
                     } else if (mLeft instanceof ConstantNode left) {
                         int op = ColumnFilter.reverseOperator(mOp);
+                        columns.putIfAbsent(rightCol.name, right);
                         return new ColumnToConstantFilter(rightCol, op, left.value());
                     }
                 }
             }
 
-            return super.toFilter(info);
+            return super.toRowFilter(info, columns);
         }
 
         private static ColumnInfo tryFindColumn(RowInfo info, ColumnNode node) {
@@ -437,6 +480,83 @@ public sealed class BinaryOpNode extends Node {
             }
 
             throw new AssertionError();
+        }
+
+        @Override
+        public Variable makeFilterEval(EvalContext context) {
+            return makeEval(context);
+        }
+
+        @Override
+        public Variable makeFilterEvalRemap(EvalContext context) {
+            if (!hasOrderDependentException()) {
+                return super.makeFilterEvalRemap(context);
+            }
+
+            var leftVar = makeFilterEvalRemap(context, mLeft);
+            var rightVar = makeFilterEvalRemap(context, mRight);
+
+            String method = switch(mOp) {
+                case OP_AND -> "And";
+                case OP_OR -> "Or";
+                default -> throw new AssertionError();
+            };
+
+            MethodMaker mm = context.methodMaker();
+
+            return mm.var(RemapUtils.class).invoke("check" + method, leftVar, rightVar);
+        }
+
+        /**
+         * @return an assigned Object variable which references a Boolean or a RuntimeException
+         */
+        private static Variable makeFilterEvalRemap(EvalContext context, Node node) {
+            MethodMaker mm = context.methodMaker();
+
+            Label pass = mm.label();
+            Label fail = mm.label();
+
+            Variable result = mm.var(Object.class);
+
+            Label tryStart = null;
+            int savepoint = 0;
+
+            if (node.canThrowRuntimeException()) {
+                tryStart = mm.label().here();
+                savepoint = context.refSavepoint();
+            }
+
+            node.makeFilter(context, pass, fail);
+
+            fail.here();
+            result.set(false);
+            Label cont = mm.label().goto_();
+            pass.here();
+            result.set(true);
+
+            if (tryStart != null) {
+                // Rollback the refs for the node, because it doesn't always fully execute.
+                context.refRollback(savepoint);
+
+                mm.catch_(tryStart, RuntimeException.class, exVar -> {
+                    result.set(exVar);
+                });
+            }
+
+            cont.here();
+
+            return result;
+        }
+
+        @Override
+        public boolean canThrowRuntimeException() {
+            return mLeft.canThrowRuntimeException() || mRight.canThrowRuntimeException();
+        }
+
+        @Override
+        public boolean hasOrderDependentException() {
+            return super.hasOrderDependentException()
+                || ((mOp == OP_AND || mOp == OP_OR) && mLeft.canThrowRuntimeException());
         }
     }
 }

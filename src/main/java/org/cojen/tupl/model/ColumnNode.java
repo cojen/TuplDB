@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.model;
 
+import java.util.Set;
+
 import org.cojen.maker.Variable;
 
 /**
@@ -75,6 +77,11 @@ public final class ColumnNode extends Node {
     }
 
     @Override
+    public void evalColumns(Set<String> columns) {
+        columns.add(mColumn.name());
+    }
+
+    @Override
     public Variable makeEval(EvalContext context) {
         var resultRef = context.refFor(this);
         var result = resultRef.get();
@@ -83,6 +90,11 @@ public final class ColumnNode extends Node {
         } else {
             return resultRef.set(context.rowVar.invoke(mColumn.name()));
         }
+    }
+
+    @Override
+    public boolean canThrowRuntimeException() {
+        return false;
     }
 
     /**

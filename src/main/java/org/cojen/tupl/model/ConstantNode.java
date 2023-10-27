@@ -22,7 +22,9 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import org.cojen.maker.Label;
 import org.cojen.maker.Variable;
@@ -150,13 +152,17 @@ public final class ConstantNode extends Node {
     }
 
     @Override
-    public RowFilter toFilter(RowInfo info) {
+    public RowFilter toRowFilter(RowInfo info, Map<String, ColumnNode> columns) {
         if (mValue == Boolean.TRUE) {
             return TrueFilter.THE;
         } else if (mValue == Boolean.FALSE) {
             return FalseFilter.THE;
         }
-        return super.toFilter(info);
+        return super.toRowFilter(info, columns);
+    }
+
+    @Override
+    public void evalColumns(Set<String> columns) {
     }
 
     @Override
@@ -177,6 +183,20 @@ public final class ConstantNode extends Node {
         } else {
             throw new IllegalStateException();
         }
+    }
+
+    @Override
+    public Variable makeFilterEval(EvalContext context) {
+        if (mValue instanceof Boolean b) {
+            return context.methodMaker().var(boolean.class).set(b.booleanValue());
+        } else {
+            throw new IllegalStateException();
+        }
+    }
+
+    @Override
+    public boolean canThrowRuntimeException() {
+        return false;
     }
 
     public Object value() {

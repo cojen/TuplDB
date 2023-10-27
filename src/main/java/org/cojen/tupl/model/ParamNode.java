@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.model;
 
+import java.util.Set;
+
 import org.cojen.maker.Label;
 import org.cojen.maker.Variable;
 
@@ -84,6 +86,10 @@ public final class ParamNode extends Node {
     }
 
     @Override
+    public void evalColumns(Set<String> columns) {
+    }
+
+    @Override
     public Variable makeEval(EvalContext context) {
         var resultRef = context.refFor(this);
         var result = resultRef.get();
@@ -99,9 +105,20 @@ public final class ParamNode extends Node {
     }
 
     @Override
+    public boolean canThrowRuntimeException() {
+        // Can throw an exception due to a conversion error.
+        return mType != BasicType.OBJECT;
+    }
+
+    @Override
     public void makeFilter(EvalContext context, Label pass, Label fail) {
         ConvertCallSite.make(context.methodMaker(), boolean.class, makeEval(context)).ifTrue(pass);
         fail.goto_();
+    }
+
+    @Override
+    public Variable makeFilterEval(EvalContext context) {
+        return ConvertCallSite.make(context.methodMaker(), boolean.class, makeEval(context));
     }
 
     public int ordinal() {

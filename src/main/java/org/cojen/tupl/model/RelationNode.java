@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.model;
 
+import java.util.Set;
+
 import org.cojen.maker.Variable;
 
 /**
@@ -49,7 +51,12 @@ public abstract class RelationNode extends Node {
     }
 
     @Override
-    public Variable makeEval(EvalContext context) {
+    public final void evalColumns(Set<String> columns) {
+        // FIXME: revise when makeEval is implemented
+    }
+
+    @Override
+    public final Variable makeEval(EvalContext context) {
         // FIXME: makeEval - return a Table
         throw null;
     }
@@ -65,7 +72,7 @@ public abstract class RelationNode extends Node {
      * @return column with a fully qualified name, with the canonical case
      * @throws IllegalArgumentException if not found or is ambiguous
      */
-    public ColumnNode findColumn(String name) {
+    public final ColumnNode findColumn(String name) {
         return ColumnNode.make(name, type().tupleType().findColumn(name, true));
     }
 

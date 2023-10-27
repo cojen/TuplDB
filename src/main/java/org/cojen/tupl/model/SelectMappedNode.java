@@ -21,11 +21,14 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
+import org.cojen.maker.Variable;
 
 import org.cojen.tupl.Mapper;
 import org.cojen.tupl.Table;
@@ -48,13 +51,20 @@ import org.cojen.tupl.rows.filter.TrueFilter;
  * @see SelectNode#make
  */
 final class SelectMappedNode extends SelectNode {
+    private final Node mWhere;
+    private final boolean mRequireRemap;
+
     /**
+     * @param where can be null if filter is TrueFilter
      * @see SelectNode#make
      */
     SelectMappedNode(TupleType type, String name,
-                     RelationNode from, RowFilter filter, Node[] projection, int maxArgument)
+                     RelationNode from, RowFilter filter, Node where,
+                     Node[] projection, int maxArgument)
     {
         super(type, name, from, filter, projection, maxArgument);
+        mWhere = where;
+        mRequireRemap = where == null ? false : where.hasOrderDependentException();
     }
 
     /* FIXME: Notes
@@ -78,6 +88,11 @@ final class SelectMappedNode extends SelectNode {
        - However, the MappedUpdater will call the checkUpdate and checkDelete methods. So
          perhaps always define those methods? Just checkStore can be skipped.
     */
+
+    @Override
+    public boolean isPureFunction() {
+        return super.isPureFunction() && (mWhere == null || mWhere.isPureFunction());
+    }
 
     @Override
     protected Query<?> doMakeQuery() {
@@ -134,10 +149,15 @@ final class SelectMappedNode extends SelectNode {
             }
         }
 
-        EvalContext context = addMapMethod(cm, argCount);
+        Set<String> evalColumns = evalColumns();
 
-        Map<String, ColumnNode> fromColumns = context.fromColumns();
-        addSourceProjectionMethod(cm, fromColumns);
+        if (mRequireRemap) {
+            addRemapMethod(cm, evalColumns, argCount);
+        }
+
+        addMapMethod(cm, evalColumns, argCount);
+
+        addSourceProjectionMethod(cm, evalColumns);
 
         addInverseMappingFunctions(cm);
 
@@ -164,15 +184,33 @@ final class SelectMappedNode extends SelectNode {
         }
     }
 
-    private EvalContext addMapMethod(ClassMaker cm, int argCount) {
+    private Set<String> evalColumns() {
+        var evalColumns = new HashSet<String>();
+
+        if (mWhere != null) {
+            mWhere.evalColumns(evalColumns);
+        }
+
+        for (Node node : mProjection) {
+            node.evalColumns(evalColumns);
+        }
+
+        return evalColumns;
+    }
+
+    private void addMapMethod(ClassMaker cm, Set<String> evalColumns, int argCount) {
         TupleType targetType = type().tupleType();
 
         MethodMaker mm = cm.addMethod
             (targetType.clazz(), "map", Object.class, Object.class).public_();
 
-        // TODO: If source projection is empty, no need to cast the sourceRow. It won't be used.
-        Class<?> sourceClass = mFrom.type().tupleType().clazz();
-        var sourceRow = mm.param(0).cast(sourceClass);
+        Variable sourceRow;
+        if (evalColumns.isEmpty()) {
+            // No need to cast the sourceRow because it won't be used.
+            sourceRow = mm.param(0);
+        } else {
+            sourceRow = mm.param(0).cast(mFrom.type().tupleType().clazz());
+        }
 
         var targetRow = mm.param(1).cast(targetType.clazz());
 
@@ -183,10 +221,22 @@ final class SelectMappedNode extends SelectNode {
             Label pass = mm.label();
             Label fail = mm.label();
 
-            new FilterVisitor(context, pass, fail).apply(mFilter);
+            Label tryStart = null;
+            if (mRequireRemap) {
+                tryStart = mm.label().here();
+            }
+
+            mWhere.makeFilter(context, pass, fail);
 
             fail.here();
             mm.return_(null);
+
+            if (mRequireRemap) {
+                mm.catch_(tryStart, RuntimeException.class, exVar -> {
+                    mm.return_(mm.invoke("remap", exVar, sourceRow, targetRow));
+                });
+            }
+
             pass.here();
         }
 
@@ -199,14 +249,72 @@ final class SelectMappedNode extends SelectNode {
         mm.return_(targetRow);
 
         // Now implement the bridge method.
-        mm = cm.addMethod(Object.class, "map", Object.class, Object.class).public_().bridge();
-        mm.return_(mm.this_().invoke(targetType.clazz(), "map", null, mm.param(0), mm.param(1)));
-
-        return context;
+        MethodMaker bridge = cm.addMethod
+            (Object.class, "map", Object.class, Object.class).public_().bridge();
+        bridge.return_(bridge.this_().invoke(targetType.clazz(), "map",
+                                             null, bridge.param(0), bridge.param(1)));
     }
 
-    private void addSourceProjectionMethod(ClassMaker cm, Map<String, ColumnNode> fromColumns) {
-        int numColumns = fromColumns.size();
+    /**
+     * Defines a private variant of the map method which is only called when an exception is
+     * thrown when the map method is processing the filter. The remap method doesn't generate
+     * short circuit logic, and it can suppress an exception depending on the outcome of an
+     * 'and' or 'or' operation. If an exception shouldn't be suppressed, the original is thrown.
+     */
+    private void addRemapMethod(ClassMaker cm, Set<String> evalColumns, int argCount) {
+        // Generated code needs access to the RemapUtils class in this package.
+        {
+            var thisModule = getClass().getModule();
+            var thatModule = cm.classLoader().getUnnamedModule();
+            thisModule.addExports("org.cojen.tupl.model", thatModule);
+        }
+
+        TupleType targetType = type().tupleType();
+
+        Class sourceParamType = Object.class;
+
+        if (!evalColumns.isEmpty()) {
+            sourceParamType = mFrom.type().tupleType().clazz();
+        }
+
+        MethodMaker mm = cm.addMethod
+            (targetType.clazz(), "remap",
+             RuntimeException.class, sourceParamType, targetType.clazz())
+            .private_();
+
+        var originalEx = mm.param(0);
+        var sourceRow = mm.param(1);
+        var targetRow = mm.param(2);
+
+        var argsVar = argCount == 0 ? null : mm.field("args").get();
+        var context = new EvalContext(argsVar, sourceRow);
+
+        Label tryStart = mm.label().here();
+
+        var resultVar = mWhere.makeFilterEvalRemap(context);
+
+        mm.catch_(tryStart, Throwable.class, exVar -> {
+            originalEx.throw_();
+        });
+
+        Label pass = mm.label();
+
+        mm.var(RemapUtils.class).invoke("checkFinal", originalEx, resultVar).ifTrue(pass);
+        mm.return_(null);
+
+        pass.here();
+
+        int numColumns = targetType.numColumns();
+
+        for (int i=0; i<numColumns; i++) {
+            targetRow.invoke(targetType.field(i), mProjection[i].makeEval(context));
+        }
+
+        mm.return_(targetRow);
+    }
+
+    private void addSourceProjectionMethod(ClassMaker cm, Set<String> evalColumns) {
+        int numColumns = evalColumns.size();
         int maxColumns = mFrom.type().tupleType().numColumns();
 
         if (numColumns == maxColumns) {
@@ -231,11 +339,11 @@ final class SelectMappedNode extends SelectNode {
         Object[] toConcat = new String[numColumns + numColumns - 1];
 
         int i = 0;
-        for (String name : fromColumns.keySet()) {
+        for (String column : evalColumns) {
             if (i > 0) {
                 toConcat[i++] = ", ";
             }
-            toConcat[i++] = name;
+            toConcat[i++] = column;
         }
 
         mm.return_(mm.concat(toConcat));
