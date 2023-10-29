@@ -171,9 +171,7 @@ final class SelectMappedNode extends SelectNode {
             addCheckDeleteMethod(cm);
         }
 
-        // Note that a hidden class cannot be used because the static inverse mapping functions
-        // can only be referenced by their fully qualified name.
-        MethodHandles.Lookup lookup = cm.finishLookup();
+        MethodHandles.Lookup lookup = cm.finishHidden();
         Class<?> clazz = lookup.lookupClass();
 
         try {
