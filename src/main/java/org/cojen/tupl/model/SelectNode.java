@@ -159,7 +159,7 @@ public abstract sealed class SelectNode extends RelationNode
             } else if (mappedFilter == original) {
                 mappedWhere = where;
             } else {
-                mappedWhere = new ToNodeVisitor(columns).apply(mappedFilter);
+                mappedWhere = new ToNodeVisitor(columns).apply(mappedFilter.reduceMore());
             }
         }
 
