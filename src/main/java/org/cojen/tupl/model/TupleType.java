@@ -27,6 +27,7 @@ import java.util.TreeMap;
 import org.cojen.tupl.rows.ColumnInfo;
 import org.cojen.tupl.rows.RowInfo;
 import org.cojen.tupl.rows.RowTypeMaker;
+import org.cojen.tupl.rows.RowUtils;
 
 /**
  * 
@@ -174,7 +175,8 @@ public final class TupleType extends Type {
             bob.append(field);
             String name = column.name();
             if (!field.equals(name)) {
-                bob.append(" as \"").append(name).append('"');
+                bob.append(" as ");
+                RowUtils.appendQuotedString(bob, name);
             }
         }
 

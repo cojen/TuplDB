@@ -25,6 +25,7 @@ import java.util.function.Predicate;
 import java.util.function.ToIntFunction;
 
 import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.RowUtils;
 
 /**
  * 
@@ -157,6 +158,13 @@ public final class ColumnToConstantFilter extends ColumnFilter {
     @Override
     public void appendTo(StringBuilder b) {
         super.appendTo(b);
-        b.append('"').append(mConstant).append('"');
+
+        if (mConstant instanceof String s) {
+            RowUtils.appendQuotedString(b, s);
+        } else if (mConstant instanceof Character c) {
+            RowUtils.appendQuotedString(b, c);
+        } else {
+            b.append(mConstant);
+        }
     }
 }

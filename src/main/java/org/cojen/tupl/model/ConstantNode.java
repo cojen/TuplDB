@@ -138,7 +138,19 @@ public final class ConstantNode extends Node {
 
     @Override
     public String name() {
-        return String.valueOf(mValue);
+        StringBuilder b;
+
+        if (mValue instanceof String s) {
+            b = new StringBuilder();
+            RowUtils.appendQuotedString(b, s);
+        } else if (mValue instanceof Character c) {
+            b = new StringBuilder();
+            RowUtils.appendQuotedString(b, c);
+        } else {
+            return String.valueOf(mValue);
+        }
+
+        return b.toString();
     }
 
     @Override
