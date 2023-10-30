@@ -206,12 +206,7 @@ public class RowPredicateMaker {
         makeAllFields(new HashMap<String, ColumnCodec>(), mFilter, false, true);
         addDirectRowTestMethod();
 
-        // Doesn't work with hidden class because the predicate instance (this class) must be
-        // passed along, and it must be specified in a NameAndType structure. Hidden classes
-        // don't have names. Two alternatives: Implement the method eagerly or else call
-        // finishLookup. The problem with finishLookup is that the class won't be unloaded
-        // unless a single-use ClassLoader instance is used.
-        //addToStringMethod();
+        addToStringMethod();
 
         MethodHandles.Lookup lookup = mClassMaker.finishHidden();
 
@@ -334,8 +329,8 @@ public class RowPredicateMaker {
     private void addToStringMethod() {
         MethodMaker mm = mClassMaker.addMethod(String.class, "toString").public_();
         var indy = mm.var(RowPredicateMaker.class).indy
-            ("indyToString", mRowType, mFilterRef, mFilterStr);
-        mm.return_(indy.invoke(String.class, "toString", null, mm.this_()));
+            ("indyToString", mRowType, mm.class_(), mFilterRef, mFilterStr);
+        mm.return_(indy.invoke(String.class, "toString", new Object[]{Object.class}, mm.this_()));
     }
 
     private void addRowTestMethod() {
@@ -664,7 +659,7 @@ public class RowPredicateMaker {
     }
 
     public static CallSite indyToString(MethodHandles.Lookup lookup, String name, MethodType mt,
-                                        Class<?> rowType,
+                                        Class<?> rowType, Class<?> rowPredicateClass,
                                         WeakReference<RowFilter> filterRef, String filterStr)
     {
         RowFilter filter = filterRef.get();
@@ -672,7 +667,10 @@ public class RowPredicateMaker {
             filter = BaseTable.parseFilter(rowType, filterStr);
         }
         MethodMaker mm = MethodMaker.begin(lookup, name, mt);
-        var sm = new ToStringMaker(mm, mm.param(0));
+        // Cannot define the parameter as the rowPredicateClass itself because it might be a
+        // hidden class, and so it cannot appear in the method signature. This is because it
+        // doesn't have a valid name. Instead, define the param as an object and cast it.
+        var sm = new ToStringMaker(mm, mm.param(0).cast(rowPredicateClass));
         filter.accept(sm);
         mm.return_(sm.mBuilderVar.invoke("toString"));
         return new ConstantCallSite(mm.finish());
