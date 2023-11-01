@@ -158,6 +158,13 @@ public final class RowStore {
         });
     }
 
+    /**
+     * Is called when the database is closing, to stop any background tasks.
+     */
+    public void shutdown() {
+        mTableManagers.clear(TableManager::shutdown);
+    }
+
     WeakReference<RowStore> ref() {
         return mSelfRef;
     }

@@ -3050,6 +3050,8 @@ final class LocalDatabase extends CoreDatabase {
                     Thread.yield();
                 }
 
+                RowStore rs;
+
                 try {
                     trees = new ArrayList<>(mOpenTreesById.size());
 
@@ -3075,7 +3077,8 @@ final class LocalDatabase extends CoreDatabase {
                     trees.add(mPreparedTxns);
                     mPreparedTxns = null;
 
-                    if (mRowStore != null) {
+                    rs = mRowStore;
+                    if (rs != null) {
                         trees.add((Tree) mRowStore.schemata());
                         mRowStore = null;
                     }
@@ -3105,6 +3108,10 @@ final class LocalDatabase extends CoreDatabase {
 
                 if (mRegistry != null) {
                     mRegistry.forceClose();
+                }
+
+                if (rs != null) {
+                    rs.shutdown();
                 }
             }
 
