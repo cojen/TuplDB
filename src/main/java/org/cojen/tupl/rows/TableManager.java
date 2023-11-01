@@ -54,7 +54,7 @@ public final class TableManager<R> {
 
     private TreeMap<byte[], IndexBackfill<R>> mIndexBackfills;
 
-    private WeakReference<Worker> mWorkerRef;
+    private volatile WeakReference<Worker> mWorkerRef;
 
     private volatile WeakCache<Object, BaseTableIndex<R>, Object> mIndexTables;
 
@@ -69,6 +69,16 @@ public final class TableManager<R> {
 
     public Index primaryIndex() {
         return mPrimaryIndex;
+    }
+
+    /**
+     * Is called when the database is closing, to stop any background tasks.
+     */
+    void shutdown() {
+        Worker worker = worker(false);
+        if (worker != null) {
+            worker.interrupt();
+        }
     }
 
     BaseTable<R> asTable(RowStore rs, Index ix, Class<R> type) throws IOException {
@@ -87,12 +97,10 @@ public final class TableManager<R> {
         // Must be called after the table is added to the cache. No harm if called redundantly.
         rs.examineSecondaries(this);
 
-        Worker worker;
-        if (mWorkerRef != null && (worker = mWorkerRef.get()) != null) {
-            if (ix.isEmpty()) {
-                // Backfill of nothing is fast, so wait for it before returning Table to caller.
-                worker.join(false);
-            }
+        Worker worker = worker(false);
+        if (worker != null && ix.isEmpty()) {
+            // Backfill of nothing is fast, so wait for it before returning Table to caller.
+            worker.join(false);
         }
 
         return table;
@@ -312,15 +320,7 @@ public final class TableManager<R> {
         // Can only safely start new backfills after the new trigger has been installed.
 
         if (newBackfills != null && !newBackfills.isEmpty()) {
-            Worker worker;
-            if (mWorkerRef == null || (worker = mWorkerRef.get()) == null) {
-                worker = Worker.make(Integer.MAX_VALUE, 10, TimeUnit.SECONDS, r -> {
-                    Thread t = new Thread(r);
-                    t.setDaemon(true);
-                    return t;
-                });
-                mWorkerRef = new WeakReference<>(worker);
-            }
+            Worker worker = worker(true);
 
             for (var backfill : newBackfills) {
                 // The backfill must also be installed as a listener before it starts.
@@ -336,6 +336,40 @@ public final class TableManager<R> {
             // When an IndexBackfill is removed, it doesn't need to be immediately closed. When
             // the old trigger is disabled, it will call the IndexBackfill.unused method.
             mIndexBackfills.remove(desc);
+        }
+    }
+
+    /**
+     * Returns a Worker instance.
+     *
+     * @param require when false, null can be returned
+     */
+    private Worker worker(boolean require) {
+        WeakReference<Worker> ref;
+        Worker worker;
+
+        if ((ref = mWorkerRef) != null && ((worker = ref.get()) != null)) {
+            return worker;
+        }
+
+        if (!require) {
+            return null;
+        }
+
+        synchronized (this) {
+            if ((ref = mWorkerRef) != null && ((worker = ref.get()) != null)) {
+                return worker;
+            }
+
+            worker = Worker.make(Integer.MAX_VALUE, 10, TimeUnit.SECONDS, r -> {
+                Thread t = new Thread(r);
+                t.setDaemon(true);
+                return t;
+            });
+
+            mWorkerRef = new WeakReference<>(worker);
+
+            return worker;
         }
     }
 }
