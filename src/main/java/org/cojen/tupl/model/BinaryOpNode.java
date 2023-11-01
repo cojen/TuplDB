@@ -71,6 +71,18 @@ public sealed class BinaryOpNode extends Node {
             Type leftType = left.type();
             Type rightType = right.type();
 
+            if (leftType == AnyType.THE) {
+                if (rightType == AnyType.THE) {
+                    type = leftType;
+                    break;
+                }
+                left = left.asType(rightType);
+                continue;
+            } else if (rightType == AnyType.THE) {
+                right = right.asType(leftType);
+                continue;
+            }
+
             ColumnInfo common = ConvertUtils.commonType(leftType, rightType, op);
 
             if (common == leftType) {
@@ -84,17 +96,9 @@ public sealed class BinaryOpNode extends Node {
             }
 
             if (common == null) {
-                if (left instanceof ParamNode pn) {
-                    left = left.asType(rightType);
-                    continue;
-                }
-                if (right instanceof ParamNode pn) {
-                    right = right.asType(leftType);
-                    continue;
-                }
-
-                throw new IllegalStateException
-                    ("No common type for: " + left + ' ' + opString(op) + ' ' + right);
+                var b = new StringBuilder("No common type for: ");
+                append(b, op, left, right);
+                throw new IllegalStateException(b.toString());
             }
 
             if ((common.type == BigDecimal.class || common.type == BigInteger.class) &&
@@ -205,6 +209,12 @@ public sealed class BinaryOpNode extends Node {
             mName = b.toString();
         }
         return mName;
+    }
+
+    private static void append(StringBuilder b, int op, Node left, Node right) {
+        append(b, left);
+        b.append(' ').append(opString(op)).append(' ');
+        append(b, right);
     }
 
     private static void append(StringBuilder b, Node node) {

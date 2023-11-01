@@ -26,8 +26,7 @@ import org.cojen.tupl.rows.ColumnInfo;
  */
 public final class BasicType extends Type {
     public static final BasicType
-        BOOLEAN = new BasicType(boolean.class, ColumnInfo.TYPE_BOOLEAN),
-        OBJECT = new BasicType(Object.class, ColumnInfo.TYPE_REFERENCE);
+        BOOLEAN = new BasicType(boolean.class, ColumnInfo.TYPE_BOOLEAN);
 
     public static BasicType make(ColumnInfo info) {
         return make(info.type, info.typeCode);
@@ -36,8 +35,6 @@ public final class BasicType extends Type {
     public static BasicType make(Class clazz, int typeCode) {
         if (clazz == boolean.class) {
             return BOOLEAN;
-        } else if (clazz == Object.class) {
-            return OBJECT;
         }
         // FIXME: Use more singleton types, lazily initialized. Or use Canonicalizer.
         return new BasicType(clazz, typeCode);

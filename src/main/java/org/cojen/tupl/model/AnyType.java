@@ -20,36 +20,29 @@ package org.cojen.tupl.model;
 import org.cojen.tupl.rows.ColumnInfo;
 
 /**
- * Design note: this class extends ColumnInfo to simplify interoperability with APIs that work
- * with ColumnInfos.
+ * 
  *
  * @author Brian S. O'Neill
  */
-public abstract sealed class Type extends ColumnInfo
-    permits BasicType, TupleType, RelationType, AnyType
-{
-    /**
-     * @param typeCode see ColumnInfo
-     */
-    protected Type(Class clazz, int typeCode) {
-        this.type = clazz;
-        this.typeCode = typeCode;
-    }
+public final class AnyType extends Type {
+    public static final AnyType THE = new AnyType();
 
-    public final Class<?> clazz() {
-        return type;
-    }
-
-    public final int typeCode() {
-        return typeCode;
+    private AnyType() {
+        super(Object.class, ColumnInfo.TYPE_REFERENCE);
     }
 
     @Override
-    public abstract int hashCode();
+    public int hashCode() {
+        return 1872601810;
+    }
 
     @Override
-    public abstract boolean equals(Object obj);
+    public boolean equals(Object obj) {
+        return obj == THE;
+    }
 
     @Override
-    public abstract String toString();
+    public String toString() {
+        return "any";
+    }
 }

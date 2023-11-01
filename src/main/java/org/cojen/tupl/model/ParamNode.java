@@ -34,7 +34,7 @@ public final class ParamNode extends Node {
      * @param name can be null to automatically assign a name
      */
     public static ParamNode make(String name, int ordinal) {
-        return new ParamNode(name, BasicType.OBJECT, ordinal);
+        return new ParamNode(name, AnyType.THE, ordinal);
     }
 
     /**
@@ -97,8 +97,9 @@ public final class ParamNode extends Node {
             return result;
         } else {
             var value = context.argsVar.aget(mOrdinal - 1);
-            if (mType != BasicType.OBJECT) {
-                value = ConvertCallSite.make(context.methodMaker(), mType.clazz(), value);
+            Class<?> clazz = mType.clazz();
+            if (clazz != Object.class) {
+                value = ConvertCallSite.make(context.methodMaker(), clazz, value);
             }
             return resultRef.set(value);
         }
@@ -107,7 +108,7 @@ public final class ParamNode extends Node {
     @Override
     public boolean canThrowRuntimeException() {
         // Can throw an exception due to a conversion error.
-        return mType != BasicType.OBJECT;
+        return mType.clazz() != Object.class;
     }
 
     @Override
