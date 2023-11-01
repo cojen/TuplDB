@@ -194,9 +194,22 @@ public abstract sealed class SelectNode extends RelationNode
 
         // A custom row type and Mapper is required.
 
+        TupleType type;
+
+        if (projection == null) {
+            type = from.type().tupleType();
+            int numColumns = type.numColumns();
+            projection = new Node[numColumns];
+            for (int i=0; i<numColumns; i++) {
+                Column column = type.column(i);
+                projection[i] = ColumnNode.make(column.name(), column);
+            }
+        } else {
+            type = TupleType.make(projection);
+        }
+
         return new SelectMappedNode
-            (TupleType.make(projection), name, from,
-             mappedFilter, mappedWhere, projection, maxArgument);
+            (type, name, from, mappedFilter, mappedWhere, projection, maxArgument);
     }
 
     private static boolean hasRepeatedNonPureFunctions(RowFilter filter) {
