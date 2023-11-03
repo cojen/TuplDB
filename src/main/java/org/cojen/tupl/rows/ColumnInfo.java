@@ -319,7 +319,7 @@ public class ColumnInfo implements Cloneable {
     }
 
     public boolean isScalarType() {
-        return typeCode != TYPE_REFERENCE;
+        return plainTypeCode() != TYPE_REFERENCE;
     }
 
     /**
