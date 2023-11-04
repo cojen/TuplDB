@@ -28,6 +28,40 @@ import java.util.NavigableMap;
  * @author Brian S O'Neill
  */
 public class ColumnSet {
+    /**
+     * Finds a column by a simple name or a dotted path. Returns null if not found.
+     */
+    public static ColumnInfo findColumn(Map<String, ? extends ColumnInfo> columns, String path) {
+        final String fullPath = path;
+
+        while (true) {
+            ColumnInfo column = columns.get(path);
+
+            if (column != null) {
+                if (!column.name.equals(fullPath)) {
+                    column = column.copy();
+                    column.name = fullPath;
+                }
+                return column;
+            }
+
+            int ix = path.indexOf('.');
+
+            if (ix < 0) {
+                return null;
+            }
+
+            column = columns.get(path.substring(0, ix));
+
+            if (column == null || column.isScalarType()) {
+                return null;
+            }
+
+            columns = RowInfo.find(column.type).allColumns;
+            path = path.substring(ix + 1);
+        }
+    }
+
     // Map order matches declaration order and excludes value columns.
     public Map<String, ColumnInfo> keyColumns;
 
