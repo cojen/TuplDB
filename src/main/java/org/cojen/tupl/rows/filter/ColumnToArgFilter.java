@@ -122,8 +122,8 @@ public sealed class ColumnToArgFilter extends ColumnFilter permits InFilter {
     }
 
     @Override
-    protected final boolean canSplit(Map<String, ?> columns) {
-        return columns.containsKey(mColumn.name);
+    protected final boolean canSplit(Map<String, ? extends ColumnInfo> columns) {
+        return columnExists(columns, mColumn);
     }
 
     @Override

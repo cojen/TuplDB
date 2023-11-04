@@ -118,8 +118,8 @@ public final class ColumnToColumnFilter extends ColumnFilter {
     }
 
     @Override
-    protected boolean canSplit(Map<String, ?> columns) {
-        return columns.containsKey(mColumn.name) && columns.containsKey(mOtherColumn.name);
+    protected boolean canSplit(Map<String, ? extends ColumnInfo> columns) {
+        return columnExists(columns, mColumn) && columnExists(columns, mOtherColumn);
     }
 
     @Override
