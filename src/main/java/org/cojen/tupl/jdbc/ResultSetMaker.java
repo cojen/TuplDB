@@ -52,6 +52,7 @@ import org.cojen.tupl.ConversionException;
 import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.ColumnSet;
 import org.cojen.tupl.rows.ConvertCallSite;
 import org.cojen.tupl.rows.Converter;
 import org.cojen.tupl.rows.ConvertUtils;
@@ -130,38 +131,13 @@ public final class ResultSetMaker {
     }
 
     private static ColumnInfo findColumn(Class<?> rowType,
-                                         Map<String, ColumnInfo> allColumns, final String path)
+                                         Map<String, ColumnInfo> allColumns, String path)
         throws SQLNonTransientException
     {
-        String subPath = path;
-        ColumnInfo colInfo;
+        ColumnInfo colInfo = ColumnSet.findColumn(allColumns, path);
 
-        while (true) {
-            colInfo = allColumns.get(subPath);
-
-            if (colInfo != null) {
-                if (!colInfo.name.equals(path)) {
-                    colInfo = colInfo.copy();
-                    colInfo.name = path;
-                }
-                return colInfo;
-            }
-
-            int ix = subPath.indexOf('.');
-
-            if (ix < 0) {
-                break;
-            }
-
-            String prefix = subPath.substring(0, ix);
-            colInfo = allColumns.get(prefix);
-
-            if (colInfo == null) {
-                break;
-            }
-
-            allColumns = RowInfo.find(colInfo.type).allColumns;
-            subPath = subPath.substring(ix + 1);
+        if (colInfo != null) {
+            return colInfo;
         }
 
         throw new SQLNonTransientException
