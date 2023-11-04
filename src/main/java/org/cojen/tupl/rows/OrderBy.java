@@ -227,32 +227,16 @@ public final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
             }
 
             String name = spec.substring(pos, end);
-            ColumnInfo column = columns.get(name);
+            ColumnInfo column = ColumnSet.findColumn(columns, name);
 
-            if (column != null) {
-                if (column.isPrimitive()) {
-                    // Can't be null.
-                    type &= ~TYPE_NULL_LOW;
-                }
-            } else subColumn: {
-                int ix = name.indexOf('.');
-                if (ix > 0) {
-                    ColumnInfo base = columns.get(name.substring(0, ix));
-                    if (base != null) {
-                        column = base.subColumn(name.substring(ix + 1));
-                        if (column != null) {
-                            var pathColumn = new ColumnInfo();
-                            pathColumn.name = name;
-                            pathColumn.type = column.type;
-                            pathColumn.typeCode = column.typeCode;
-                            column = pathColumn;
-                            break subColumn;
-                        }
-                    }
-                }
-
+            if (column == null) {
                 throw new IllegalStateException
                     ("Unknown column \"" + name + "\" in ordering specification: " + spec);
+            }
+
+            if (column.isPrimitive() && column.prefix() == null) {
+                // Can't be null.
+                type &= ~TYPE_NULL_LOW;
             }
 
             if (!orderBy.containsKey(name)) {
