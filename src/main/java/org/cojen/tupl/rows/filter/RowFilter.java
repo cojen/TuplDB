@@ -257,7 +257,7 @@ public abstract sealed class RowFilter implements Comparable<RowFilter>
     /**
      * Split variant which operates against a column map.
      */
-    public final void split(Map<String, ?> columns, RowFilter[] split) {
+    public final void split(Map<String, ? extends ColumnInfo> columns, RowFilter[] split) {
         split((ColumnFilter filter) -> filter.canSplit(columns) ? filter : null, split);
     }
 
@@ -336,7 +336,9 @@ public abstract sealed class RowFilter implements Comparable<RowFilter>
      * @param columns columns to extract
      * @param ranges result from calling multiRangeExtract
      */
-    public static void splitRemainders(Map<String, ?> columns, RowFilter[]... ranges) {
+    public static void splitRemainders(Map<String, ? extends ColumnInfo> columns,
+                                       RowFilter[]... ranges)
+    {
         splitRemainders((ColumnFilter filter) -> filter.canSplit(columns) ? filter : null, ranges);
     }
 

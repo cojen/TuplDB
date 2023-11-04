@@ -170,8 +170,9 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
                 continue;
             }
 
-            String sourceName = name.substring(ix + "_to_".length());
-            if (!sourceInfo.keyColumns.containsKey(sourceName)) {
+            String sourceName = unescape(name.substring(ix + "_to_".length()));
+
+            if (ColumnSet.findColumn(sourceInfo.keyColumns, sourceName) == null) {
                 continue;
             }
 
@@ -198,6 +199,90 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
         MethodMaker mm = cm.addMethod(null, "markValuesUnset", Object.class).protected_();
         var targetRowVar = mm.param(0).cast(RowMaker.find(key.targetType()));
         TableMaker.unset(targetInfo, targetRowVar, mapToSource);
+    }
+
+    /**
+     * Converts '.' to "$_" and converts '$' to "$$".
+     */
+    public static String escape(String name) {
+        int length = name.length();
+        int ix;
+        char c;
+        StringBuilder b;
+
+        quick: {
+            for (ix = 0; ix < length; ix++) {
+                c = name.charAt(ix);
+                if (c == '.' || c == '$') {
+                    b = new StringBuilder(length + 4).append(name.substring(0, ix));
+                    break quick;
+                }
+            }
+            return name;
+        }
+
+        while (true) {
+            if (c == '.') {
+                b.append("$_");
+            } else if (c == '$') {
+                b.append("$$");
+            } else {
+                b.append(c);
+            }
+
+            if (++ix >= length) {
+                break;
+            }
+
+            c = name.charAt(ix);
+        }
+
+        return b.toString();
+    }
+
+    /**
+     * Converts "$_" to '.' and converts "$$" to '$'.
+     */
+    public static String unescape(String name) {
+        int ix2 = name.indexOf('$');
+
+        if (ix2 < 0) {
+            return name;
+        }
+
+        int length = name.length();
+        var b = new StringBuilder(length);
+        int ix1 = 0;
+
+        while (true) {
+            b.append(name.substring(ix1, ix2));
+            ix1 = ix2;
+
+            if (++ix1 >= length) {
+                b.append(name.substring(ix2));
+                break;
+            }
+
+            int c = name.charAt(ix1);
+
+            if (c == '_') {
+                b.append('.');
+            } else {
+                b.append('$');
+                if (c != '$') {
+                    b.append((char) c);
+                }
+            }
+
+            ix2 = name.indexOf('$', ++ix1);
+
+            if (ix2 < 0) {
+                b.append(name.substring(ix1));
+                break;
+            }
+        }
+
+        return b.toString();
     }
 
     private final Mapper<S, T> mMapper;
@@ -537,7 +622,8 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
 
         for (Map.Entry<String, Set<ColumnFunction>> e : toTargetMap.entrySet()) {
             String sourceColumnName = e.getKey();
-            ColumnInfo sourceColumnInfo = sourceInfo.allColumns.get(sourceColumnName);
+            ColumnInfo sourceColumnInfo = ColumnSet.findColumn
+                (sourceInfo.allColumns, sourceColumnName);
 
             Label nextSource = mm.label();
 
@@ -1122,7 +1208,9 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
                     continue;
                 }
 
-                ColumnInfo sourceColumn = mSourceColumns.get(name.substring(prefix.length()));
+                String sourceName = unescape(name.substring(prefix.length()));
+
+                ColumnInfo sourceColumn = ColumnSet.findColumn(mSourceColumns, sourceName);
                 if (sourceColumn == null) {
                     continue;
                 }

@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.ColumnSet;
 
 import static java.lang.Integer.MIN_VALUE;
 import static java.lang.Integer.MAX_VALUE;
@@ -108,7 +109,11 @@ public abstract sealed class ColumnFilter extends TermFilter
         return check.apply(this);
     }
 
-    protected abstract boolean canSplit(Map<String, ?> columns);
+    protected abstract boolean canSplit(Map<String, ? extends ColumnInfo> columns);
+
+    protected boolean columnExists(Map<String, ? extends ColumnInfo> columns, ColumnInfo column) {
+        return ColumnSet.findColumn(columns, column.name) != null;
+    }
 
     public final ColumnInfo column() {
         return mColumn;
