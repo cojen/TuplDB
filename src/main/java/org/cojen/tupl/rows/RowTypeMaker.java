@@ -79,12 +79,12 @@ public final class RowTypeMaker {
             }
             keyTypes = null;
             valueNames = new String[valueTypes.length];
-            allTypes = valueTypes;
+            allTypes = valueTypes.clone();
         } else {
             keyNames = null;
             if (valueTypes == null || valueTypes.length == 0) {
                 valueNames = NO_NAMES;
-                allTypes = keyTypes;
+                allTypes = keyTypes.clone();
             } else {
                 valueNames = new String[valueTypes.length];
                 allTypes = new Class[keyTypes.length + valueTypes.length];
