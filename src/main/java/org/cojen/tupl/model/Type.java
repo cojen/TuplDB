@@ -40,6 +40,8 @@ public abstract sealed class Type extends ColumnInfo
         return type;
     }
 
+    // FIXME: isNullable (use the typeCode)
+
     public final int typeCode() {
         return typeCode;
     }

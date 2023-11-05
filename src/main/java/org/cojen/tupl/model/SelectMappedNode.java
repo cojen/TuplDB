@@ -39,6 +39,7 @@ import org.cojen.tupl.diag.QueryPlan;
 import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.rows.RowGen;
+import org.cojen.tupl.rows.MappedTable;
 
 import org.cojen.tupl.rows.filter.RowFilter;
 import org.cojen.tupl.rows.filter.TrueFilter;
@@ -313,15 +314,19 @@ final class SelectMappedNode extends SelectNode {
 
     private void addSourceProjectionMethod(ClassMaker cm, Set<String> evalColumns) {
         int numColumns = evalColumns.size();
+
+        // FIXME: might be a join; flatten to get the max
         int maxColumns = mFrom.type().tupleType().numColumns();
 
         if (numColumns == maxColumns) {
             // The default implementation indicates that all source columns are projected.
+            // FIXME: Depends on the actual paths.
             return;
         }
 
         if (numColumns > maxColumns) {
-            throw new AssertionError();
+            // FIXME
+            //throw new AssertionError();
         }
 
         MethodMaker mm = cm.addMethod(String.class, "sourceProjection").public_();
@@ -361,7 +366,8 @@ final class SelectMappedNode extends SelectNode {
                 continue;
             }
 
-            String methodName = targetType.field(i) + "_to_" + source.column().name();
+            String sourceName = MappedTable.escape(source.column().name());
+            String methodName = targetType.field(i) + "_to_" + sourceName;
             MethodMaker mm = cm.addMethod(columnType, methodName, columnType).public_().static_();
             mm.return_(mm.param(0));
         }

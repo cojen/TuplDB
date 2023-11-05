@@ -21,7 +21,9 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.cojen.maker.ClassMaker;
+import org.cojen.maker.MethodMaker;
 
+import org.cojen.tupl.Nullable;
 import org.cojen.tupl.PrimaryKey;
 
 /**
@@ -49,6 +51,8 @@ public final class RowTypeMaker {
             return all;
         }
     }
+
+    // FIXME: Doesn't support nulls. Should I just use @Nullable for all objects?
 
     /**
      * @param keyTypes column types which belong to the primary key; can be null
@@ -215,8 +219,15 @@ public final class RowTypeMaker {
 
         for (int i=0; i<allTypes.length; i++) {
             String colName = 'c' + String.valueOf(i);
-            cm.addMethod(allTypes[i], colName).public_().abstract_();
-            cm.addMethod(null, colName, allTypes[i]).public_().abstract_();
+            Class type = allTypes[i];
+
+            MethodMaker mm = cm.addMethod(type, colName).public_().abstract_();
+            if (!type.isPrimitive()) {
+                // FIXME: testing
+                mm.addAnnotation(Nullable.class, true);
+            }
+
+            cm.addMethod(null, colName, type).public_().abstract_();
         }
 
         if (keyTypes != null) {

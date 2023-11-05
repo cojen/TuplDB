@@ -116,8 +116,8 @@ public final class ColumnToConstantFilter extends ColumnFilter {
     }
 
     @Override
-    protected boolean canSplit(Map<String, ?> columns) {
-        return columns.containsKey(mColumn.name);
+    protected boolean canSplit(Map<String, ? extends ColumnInfo> columns) {
+        return columnExists(columns, mColumn);
     }
 
     @Override

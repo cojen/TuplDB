@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.ColumnSet;
 import org.cojen.tupl.rows.RowInfo;
 import org.cojen.tupl.rows.RowTypeMaker;
 import org.cojen.tupl.rows.RowUtils;
@@ -75,10 +76,10 @@ public final class TupleType extends Type {
             values = new LinkedHashMap<>();
 
             for (String colName : projection.keySet()) {
-                ColumnInfo column = info.keyColumns.get(colName);
+                ColumnInfo column = ColumnSet.findColumn(info.keyColumns, colName);
                 if (column != null) {
                     keys.put(colName, column);
-                } else if ((column = info.valueColumns.get(colName)) != null) {
+                } else if ((column = ColumnSet.findColumn(info.valueColumns, colName)) != null) {
                     values.put(colName, column);
                 } else {
                     throw new IllegalArgumentException("Unknown column: " + colName);
@@ -109,7 +110,7 @@ public final class TupleType extends Type {
             // FIXME: Try to infer if column is a key or not. If full primary key is composite,
             // then all of its columns must be projected in order for any columns to have
             // key=true.
-            columns[i] = new Column(node.type(), node.name(), false);
+            columns[i] = Column.make(node.type(), node.name(), false);
         }
 
         return make(columns);
@@ -127,7 +128,7 @@ public final class TupleType extends Type {
             if (projection != null) {
                 name = projection.get(name);
             }
-            columns[ix] = new Column(BasicType.make(info), name, key);
+            columns[ix] = Column.make(BasicType.make(info), name, key);
             ix++;
         }
 
@@ -206,7 +207,7 @@ public final class TupleType extends Type {
      * @return column with a fully qualified name, with the canonical case
      * @throws IllegalArgumentException if not found or is ambiguous
      */
-    public Column findColumn(String name, boolean caseInsensitive) {
+    public Column findColumn(final String name, final boolean caseInsensitive) {
         Map<String, Integer> map;
         if (!caseInsensitive) {
             map = mColumnMap;
@@ -227,18 +228,35 @@ public final class TupleType extends Type {
 
         if (ix != null) {
             if (ix < 0) {
-                throw new IllegalArgumentException("Column name is ambiguous: " + name);
+                throw new IllegalArgumentException("Column is ambiguous: " + name);
             }
             return column(ix).withName(field(ix));
         }
 
-        // FIXME: If name is dotted, follow the dots.
+        int dotIx = name.indexOf('.');
+
+        if (dotIx >= 0) {
+            String head = name.substring(0, dotIx);
+            ix = map.get(head);
+
+            if (ix != null) {
+                if (ix < 0) {
+                    throw new IllegalArgumentException("Column is ambiguous: " + name);
+                }
+                Column column = column(ix);
+                if (column.type() instanceof TupleType tt) {
+                    column = tt.findColumn(name.substring(dotIx + 1), caseInsensitive);
+                    return column.withName(field(ix) + '.' + column.name());
+                }
+                // FIXME: What other column types are possible?
+            }
+        }
 
         // FIXME: If column type is an interface, search wildcards paths: *.a, *.*.a, etc.
         // Might be ambiguous however. Can call RowInfo.find with the interface to see if
         // column is a true join column, although it might throw an exception.
 
-        throw null;
+        throw new IllegalArgumentException("Column isn't found: " + name);
     }
 
     private Map<String, Integer> buildColumnMap(boolean caseInsensitive) {

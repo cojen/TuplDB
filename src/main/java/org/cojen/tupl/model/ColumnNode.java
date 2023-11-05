@@ -17,6 +17,7 @@
 
 package org.cojen.tupl.model;
 
+import java.util.List;
 import java.util.Set;
 
 import org.cojen.maker.Variable;
@@ -32,14 +33,16 @@ public final class ColumnNode extends Node {
      * @param name qualified or unqualified name which was requested
      * @param column must refer to a column in a RelationNode; name is a fully qualified field
      */
-    public static ColumnNode make(String name, Column column) {
-        return new ColumnNode(name, column);
+    public static ColumnNode make(RelationNode from, String name, Column column) {
+        return new ColumnNode(from, name, column);
     }
 
+    private final RelationNode mFrom;
     private final String mName;
     private final Column mColumn;
 
-    private ColumnNode(String name, Column column) {
+    private ColumnNode(RelationNode from, String name, Column column) {
+        mFrom = from;
         mName = name;
         mColumn = column;
     }
@@ -56,6 +59,10 @@ public final class ColumnNode extends Node {
         }
         // FIXME: runtime cast
         throw null;
+    }
+
+    public RelationNode from() {
+        return mFrom;
     }
 
     /**
@@ -87,9 +94,21 @@ public final class ColumnNode extends Node {
         var result = resultRef.get();
         if (result != null) {
             return result;
-        } else {
-            return resultRef.set(context.rowVar.invoke(mColumn.name()));
         }
+
+        // FIXME: Cache the intermediate chain results. Do I need to define sub nodes?
+
+        // FIXME: Handle nulls.
+
+        // FIXME: Also see JoinScannerMaker.accessPath.
+
+        Variable rowVar = context.rowVar;
+
+        for (String name : mColumn.subNames()) {
+            rowVar = rowVar.invoke(name);
+        }
+
+        return resultRef.set(rowVar);
     }
 
     @Override
@@ -106,11 +125,13 @@ public final class ColumnNode extends Node {
 
     @Override
     public int hashCode() {
-        return mColumn.hashCode();
+        int hash = mFrom.hashCode();
+        hash = hash * 31 + mColumn.hashCode();
+        return hash;
     }
 
     @Override
     public boolean equals(Object obj) {
-        return obj instanceof ColumnNode cn && mColumn.equals(cn.mColumn);
+        return obj instanceof ColumnNode cn && mFrom.equals(cn.mFrom) && mColumn.equals(cn.mColumn);
     }
 }

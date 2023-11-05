@@ -54,7 +54,7 @@ public final class JoinNode extends RelationNode {
             flattenColumns(jn.mRight, dst);
         } else {
             String name = node.name();
-            var column = new Column(node.type().tupleType(), name, false);
+            var column = Column.make(node.type().tupleType(), name, false);
             if (dst.putIfAbsent(name, column) != null) {
                 throw new IllegalArgumentException("Duplicate join relation name: " + name);
             }

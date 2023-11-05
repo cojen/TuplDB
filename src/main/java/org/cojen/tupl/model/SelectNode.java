@@ -75,10 +75,14 @@ public abstract sealed class SelectNode extends RelationNode
 
         int maxArgument = from.maxArgument();
 
-        // Maps actual column names to target names (renames). Is null when:
-        // - projection is null (all columns are projected)
-        // - or the requested projection refers to a column not known by the "from" relation
-        // - or if anything is projected more than once
+        /*
+          Maps actual column names to target names (renames). Is null when:
+
+          - projection is null (all columns are projected)
+          - or the requested projection refers to a column not known by the "from" relation
+          - or any projected column is a path
+          - or if anything is projected more than once
+        */
         Map<String, String> pureProjection;
 
         if (projection == null) {
@@ -91,8 +95,13 @@ public abstract sealed class SelectNode extends RelationNode
             pureProjection = new HashMap<String, String>();
 
             for (Node node : projection) {
-                if (!(node instanceof ColumnNode cn)) {
+                if (!(node instanceof ColumnNode cn) || cn.from() != from) {
                     // Projecting something not known by the relation.
+                    pureProjection = null;
+                    break;
+                }
+                if (cn.column().subNames().size() > 1) {
+                    // Projecting a path.
                     pureProjection = null;
                     break;
                 }
@@ -202,7 +211,7 @@ public abstract sealed class SelectNode extends RelationNode
             projection = new Node[numColumns];
             for (int i=0; i<numColumns; i++) {
                 Column column = type.column(i);
-                projection[i] = ColumnNode.make(column.name(), column);
+                projection[i] = ColumnNode.make(from, column.name(), column);
             }
         } else {
             type = TupleType.make(projection);

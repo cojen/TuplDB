@@ -28,6 +28,7 @@ import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 import org.cojen.tupl.rows.ColumnInfo;
+import org.cojen.tupl.rows.ColumnSet;
 import org.cojen.tupl.rows.CompareUtils;
 import org.cojen.tupl.rows.ConvertUtils;
 import org.cojen.tupl.rows.RowInfo;
@@ -412,7 +413,7 @@ public sealed class BinaryOpNode extends Node {
         }
 
         private static ColumnInfo tryFindColumn(RowInfo info, ColumnNode node) {
-            return info.allColumns.get(node.column().name());
+            return ColumnSet.findColumn(info.allColumns, node.column().name());
         }
 
         @Override

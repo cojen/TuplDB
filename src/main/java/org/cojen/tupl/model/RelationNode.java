@@ -73,7 +73,7 @@ public abstract class RelationNode extends Node {
      * @throws IllegalArgumentException if not found or is ambiguous
      */
     public final ColumnNode findColumn(String name) {
-        return ColumnNode.make(name, type().tupleType().findColumn(name, true));
+        return ColumnNode.make(this, name, type().tupleType().findColumn(name, true));
     }
 
     /**
