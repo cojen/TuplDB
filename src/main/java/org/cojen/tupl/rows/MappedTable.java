@@ -444,10 +444,9 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
         throws IOException
     {
         if (query == null) {
-            return decorate(mSource.scannerPlan(txn, null));
-        } else {
-            return mScannerFactoryCache.obtain(query, null).plan(false, this, txn, args);
+            query = "{*}";
         }
+        return mScannerFactoryCache.obtain(query, null).plan(false, this, txn, args);
     }
 
     @Override
@@ -455,14 +454,9 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
         throws IOException
     {
         if (query == null) {
-            return decorate(mSource.updaterPlan(txn, null));
-        } else {
-            return mScannerFactoryCache.obtain(query, null).plan(true, this, txn, args);
+            query = "{*}";
         }
-    }
-
-    private QueryPlan decorate(QueryPlan plan) {
-        return mMapper.plan(new QueryPlan.Mapper(rowType().getName(), mMapper.toString(), plan));
+        return mScannerFactoryCache.obtain(query, null).plan(true, this, txn, args);
     }
 
     /**
