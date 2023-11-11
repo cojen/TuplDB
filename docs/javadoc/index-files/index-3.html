@@ -117,6 +117,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Checks the validity of the transaction.</div>
 </dd>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/Mapper.html#checkDelete(org.cojen.tupl.Table,R)" class="member-name-link">checkDelete(Table&lt;R&gt;, R)</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Mapper.html" title="interface in org.cojen.tupl">Mapper</a></dt>
+<dd>
+<div class="block">Checks if the given source row can be deleted from the source table.</div>
+</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/Database.html#checkpoint()" class="member-name-link">checkpoint()</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
 <div class="block">Durably sync and checkpoint all changes to the database.</div>
@@ -163,6 +167,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Set the minimum redo log size required for an automatic <a href="../org.cojen.tupl/org/cojen/tupl/Database.html#checkpoint()">checkpoint</a> to actually be performed.</div>
 </dd>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/Mapper.html#checkStore(org.cojen.tupl.Table,R)" class="member-name-link">checkStore(Table&lt;R&gt;, R)</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Mapper.html" title="interface in org.cojen.tupl">Mapper</a></dt>
+<dd>
+<div class="block">Checks if the given source row can be stored into the source table.</div>
+</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html#checksumPages(java.util.function.Supplier)" class="member-name-link">checksumPages(Supplier&lt;Checksum&gt;)</a> - Method in class org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/DatabaseConfig.html" title="class in org.cojen.tupl">DatabaseConfig</a></dt>
 <dd>
 <div class="block">Enable 32-bit checksums for all of the underlying database pages.</div>
@@ -170,6 +178,10 @@ loadScripts(document, 'script');</script>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/repl/ReplicatorConfig.html#checksumSockets(boolean)" class="member-name-link">checksumSockets(boolean)</a> - Method in class org.cojen.tupl.repl.<a href="../org.cojen.tupl/org/cojen/tupl/repl/ReplicatorConfig.html" title="class in org.cojen.tupl.repl">ReplicatorConfig</a></dt>
 <dd>
 <div class="block">Pass true to enable CRC checksums for all socket commands written.</div>
+</dd>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/Mapper.html#checkUpdate(org.cojen.tupl.Table,R)" class="member-name-link">checkUpdate(Table&lt;R&gt;, R)</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Mapper.html" title="interface in org.cojen.tupl">Mapper</a></dt>
+<dd>
+<div class="block">Checks if the given source row can be updated into the source table.</div>
 </dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/ext/CipherCrypto.html" class="type-name-link" title="class in org.cojen.tupl.ext">CipherCrypto</a> - Class in <a href="../org.cojen.tupl/org/cojen/tupl/ext/package-summary.html">org.cojen.tupl.ext</a></dt>
 <dd>
@@ -216,6 +228,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Returns a new row instance which is an exact copy of the given row.</div>
 </dd>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/Aggregator.html#close()" class="member-name-link">close()</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Aggregator.html" title="interface in org.cojen.tupl">Aggregator</a></dt>
+<dd>
+<div class="block">Is called when this <code>Aggregator</code> instance is no longer needed.</div>
+</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/Cursor.html#close()" class="member-name-link">close()</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Cursor.html" title="interface in org.cojen.tupl">Cursor</a></dt>
 <dd>
 <div class="block">Equivalent to the reset method, which moves the Cursor to an undefined position.</div>
@@ -223,10 +239,6 @@ loadScripts(document, 'script');</script>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/Database.html#close()" class="member-name-link">close()</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Database.html" title="interface in org.cojen.tupl">Database</a></dt>
 <dd>
 <div class="block">Closes the database, ensuring durability of committed transactions.</div>
-</dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/Grouper.html#close()" class="member-name-link">close()</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Grouper.html" title="interface in org.cojen.tupl">Grouper</a></dt>
-<dd>
-<div class="block">Is called when this <code>Grouper</code> instance is no longer needed.</div>
 </dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/Index.html#close()" class="member-name-link">close()</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Index.html" title="interface in org.cojen.tupl">Index</a></dt>
 <dd>
@@ -322,7 +334,7 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Sharable object for supporting contended clutches.</div>
 </dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Grouper.html#columns" class="member-name-link">columns</a> - Variable in class org.cojen.tupl.diag.<a href="../org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Grouper.html" title="class in org.cojen.tupl.diag">QueryPlan.Grouper</a></dt>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Aggregator.html#columns" class="member-name-link">columns</a> - Variable in class org.cojen.tupl.diag.<a href="../org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Aggregator.html" title="class in org.cojen.tupl.diag">QueryPlan.Aggregator</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.NaturalJoin.html#columns" class="member-name-link">columns</a> - Variable in class org.cojen.tupl.diag.<a href="../org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.NaturalJoin.html" title="class in org.cojen.tupl.diag">QueryPlan.NaturalJoin</a></dt>
 <dd>&nbsp;</dd>
