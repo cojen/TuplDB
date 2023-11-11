@@ -26,14 +26,14 @@ import org.cojen.tupl.diag.QueryPlan;
  * Interface which processes groups of rows into aggregate results.
  *
  * @author Brian S. O'Neill
- * @see Table#group Table.group
+ * @see Table#aggregate Table.aggregate
  */
-public interface Grouper<R, T> extends Closeable {
+public interface Aggregator<R, T> extends Closeable {
     /**
      * Called for the first source row in the group.
      *
      * @param source never null
-     * @return the next source row instance to use, or null if it was kept by the grouper
+     * @return the next source row instance to use, or null if it was kept by the aggregator
      */
     R begin(R source) throws IOException;
 
@@ -41,7 +41,7 @@ public interface Grouper<R, T> extends Closeable {
      * Called for each source row in the group, other than the first one.
      *
      * @param source never null
-     * @return the next source row instance to use, or null if it was kept by the grouper
+     * @return the next source row instance to use, or null if it was kept by the aggregator
      */
     R accumulate(R source) throws IOException;
 
@@ -57,26 +57,26 @@ public interface Grouper<R, T> extends Closeable {
 
     /**
      * Returns a comma-separated list of source columns which are needed by this {@code
-     * Grouper}. Null is returned by default, which indicates that all columns are needed.
+     * Aggregator}. Null is returned by default, which indicates that all columns are needed.
      */
     default String sourceProjection() {
         return null;
     }
 
     /**
-     * Is called when this {@code Grouper} instance is no longer needed.
+     * Is called when this {@code Aggregator} instance is no longer needed.
      */
     @Override
     default void close() throws IOException {
     }
 
     /**
-     * Override this method to customize the grouper's query plan.
+     * Override this method to customize the aggregator's query plan.
      *
      * @param plan original plan
      * @return original or replacement plan
      */
-    default QueryPlan plan(QueryPlan.Grouper plan) {
+    default QueryPlan plan(QueryPlan.Aggregator plan) {
         return plan;
     }
 }

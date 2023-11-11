@@ -30,7 +30,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import org.cojen.maker.ClassMaker;
@@ -38,7 +37,7 @@ import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
-import org.cojen.tupl.Grouper;
+import org.cojen.tupl.Aggregator;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
@@ -57,12 +56,12 @@ import org.cojen.tupl.rows.filter.TrueFilter;
 import static java.util.Spliterator.*;
 
 /**
- * Base class for generated grouped tables.
+ * Base class for generated aggregated tables.
  *
  * @author Brian S. O'Neill
- * @see Table#group
+ * @see Table#aggregate
  */
-public abstract class GroupedTable<S, T> extends WrappedTable<S, T> {
+public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
     private static final WeakCache<Pair<Class, Class>, MethodHandle, Table> cFactoryCache;
 
     static {
@@ -74,14 +73,14 @@ public abstract class GroupedTable<S, T> extends WrappedTable<S, T> {
         };
     }
 
-    public static <S, T> GroupedTable<S, T> group(Table<S> source, Class<T> targetType,
-                                                  Supplier<Grouper<S, T>> supplier)
+    public static <S, T> AggregatedTable<S, T> aggregate(Table<S> source, Class<T> targetType,
+                                                         Supplier<Aggregator<S, T>> supplier)
     {
         Objects.requireNonNull(targetType);
         Objects.requireNonNull(supplier);
         try {
             var key = new Pair<Class, Class>(source.rowType(), targetType);
-            return (GroupedTable<S, T>) cFactoryCache.obtain(key, source)
+            return (AggregatedTable<S, T>) cFactoryCache.obtain(key, source)
                 .invokeExact(source, supplier);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
@@ -89,7 +88,9 @@ public abstract class GroupedTable<S, T> extends WrappedTable<S, T> {
     }
 
     /**
-     * MethodHandle signature: GroupedTable<S, T> make(Table<S> source, Supplier<Grouper<S, T>>)
+     * MethodHandle signature:
+     *
+     *  AggregatedTable<S, T> make(Table<S> source, Supplier<Aggregator<S, T>>)
      */
     private static MethodHandle makeTableFactory(Table<?> source, Class<?> sourceType,
                                                  Class<?> targetType)
@@ -116,8 +117,8 @@ public abstract class GroupedTable<S, T> extends WrappedTable<S, T> {
         }
 
         ClassMaker cm = targetInfo.rowGen().beginClassMaker
-            (GroupedTable.class, targetType, "grouped").final_()
-            .extend(GroupedTable.class).implement(TableBasicsMaker.find(targetType));
+            (AggregatedTable.class, targetType, "aggregated").final_()
+            .extend(AggregatedTable.class).implement(TableBasicsMaker.find(targetType));
 
         {
             MethodMaker ctor = cm.addConstructor(Table.class, Supplier.class).private_();
@@ -229,7 +230,7 @@ public abstract class GroupedTable<S, T> extends WrappedTable<S, T> {
         Class<?> tableClass = lookup.lookupClass();
 
         MethodMaker mm = MethodMaker.begin
-            (lookup, GroupedTable.class, null, Table.class, Supplier.class);
+            (lookup, AggregatedTable.class, null, Table.class, Supplier.class);
         mm.return_(mm.new_(tableClass, mm.param(0), mm.param(1)));
 
         MethodHandle mh = mm.finish();
@@ -274,15 +275,15 @@ public abstract class GroupedTable<S, T> extends WrappedTable<S, T> {
         return bob.toString();
     }
 
-    protected final Supplier<Grouper<S, T>> mGrouperSupplier;
+    protected final Supplier<Aggregator<S, T>> mAggregatorSupplier;
 
     // Cache key is either a query string or a Pair of a query string and source projection.
     private final WeakCache<Object, ScannerFactory<S, T>, Query> mScannerFactoryCache;
 
-    protected GroupedTable(Table<S> source, Supplier<Grouper<S, T>> supplier) {
+    protected AggregatedTable(Table<S> source, Supplier<Aggregator<S, T>> supplier) {
         super(source);
 
-        mGrouperSupplier = supplier;
+        mAggregatorSupplier = supplier;
 
         mScannerFactoryCache = new WeakCache<>() {
             @Override
@@ -329,22 +330,22 @@ public abstract class GroupedTable<S, T> extends WrappedTable<S, T> {
                                            String query, Object... args)
         throws IOException
     {
-        Grouper<S, T> grouper = mGrouperSupplier.get();
-        String projection = grouper.sourceProjection();
+        Aggregator<S, T> aggregator = mAggregatorSupplier.get();
+        String projection = aggregator.sourceProjection();
 
         ScannerFactory<S, T> factory;
         try {
             factory = mScannerFactoryCache.obtain(makeScannerFactoryKey(query, projection), null);
         } catch (Throwable e) {
             try {
-                grouper.close();
+                aggregator.close();
             } catch (Throwable e2) {
                 RowUtils.suppress(e, e2);
             }
             throw e;
         }
 
-        return factory.newScannerWith(this, grouper, txn, targetRow, args);
+        return factory.newScannerWith(this, aggregator, txn, targetRow, args);
     }
 
     /**
@@ -373,41 +374,41 @@ public abstract class GroupedTable<S, T> extends WrappedTable<S, T> {
     public final QueryPlan scannerPlan(Transaction txn, String query, Object... args)
         throws IOException
     {
-        try (Grouper<S, T> grouper = mGrouperSupplier.get()) {
-            String projection = grouper.sourceProjection();
+        try (Aggregator<S, T> aggregator = mAggregatorSupplier.get()) {
+            String projection = aggregator.sourceProjection();
             return mScannerFactoryCache
                 .obtain(makeScannerFactoryKey(query == null ? "{*}" : query, projection), null)
-                .plan(this, grouper, txn, args);
+                .plan(this, aggregator, txn, args);
         }
     }
 
     /**
-     * Called by GroupedScanner.
+     * Called by AggregatedScanner.
      */
     final S newSourceRow() {
         return mSource.newRow();
     }
 
     /**
-     * Called by GroupedScanner.
+     * Called by AggregatedScanner.
      */
     final void copySourceRow(S from, S to) {
         mSource.copyRow(from, to);
     }
 
     /**
-     * Called by GroupedScanner. Returns zero if the source rows are in the same group.
+     * Called by AggregatedScanner. Returns zero if the source rows are in the same group.
      */
     protected abstract int compareSourceRows(S r1, S r2);
 
     /**
-     * Called by GroupedScanner. Sets the primary key columns of the target row, and calls
+     * Called by AggregatedScanner. Sets the primary key columns of the target row, and calls
      * cleanRow(target).
      */
     protected abstract void finishTarget(S source, T target);
 
     /**
-     * Called by GroupedScanner. This method must be overridden when the target row doesn't
+     * Called by AggregatedScanner. This method must be overridden when the target row doesn't
      * have a primary key.
      */
     protected long estimateSize() {
@@ -415,7 +416,7 @@ public abstract class GroupedTable<S, T> extends WrappedTable<S, T> {
     }
 
     /**
-     * Called by GroupedScanner. This method must be overridden when the target row doesn't
+     * Called by AggregatedScanner. This method must be overridden when the target row doesn't
      * have a primary key.
      */
     protected int characteristics(Scanner<S> source) {
@@ -440,7 +441,7 @@ public abstract class GroupedTable<S, T> extends WrappedTable<S, T> {
     }
 
     /**
-     * Returns columns (or null) for QueryPlan.Grouper.
+     * Returns columns (or null) for QueryPlan.Aggregator.
      */
     public final String[] groupByColumns() {
         RowInfo info = RowInfo.find(rowType());
@@ -571,7 +572,7 @@ public abstract class GroupedTable<S, T> extends WrappedTable<S, T> {
         targetQuery = targetQuery.withOrderBy(targetOrderBy).withFilter(targetFilter);
 
         ClassMaker factoryMaker = targetInfo.rowGen().beginClassMaker
-            (GroupedTable.class, targetType, "factory").final_().implement(ScannerFactory.class);
+            (AggregatedTable.class, targetType, "factory").final_().implement(ScannerFactory.class);
 
         // Keep a singleton instance, in order for a weakly cached reference to the factory to
         // stick around until the class is unloaded.
@@ -582,11 +583,11 @@ public abstract class GroupedTable<S, T> extends WrappedTable<S, T> {
         ctor.field("_").set(ctor.this_());
 
         MethodMaker mm = factoryMaker.addMethod
-            (Scanner.class, "newScannerWith", GroupedTable.class, Grouper.class,
+            (Scanner.class, "newScannerWith", AggregatedTable.class, Aggregator.class,
              Transaction.class, Object.class, Object[].class).public_().varargs();
 
         var tableVar = mm.param(0);
-        var grouperVar = mm.param(1);
+        var aggregatorVar = mm.param(1);
         var txnVar = mm.param(2);
         var targetRowVar = mm.param(3);
         var argsVar = mm.param(4);
@@ -602,13 +603,13 @@ public abstract class GroupedTable<S, T> extends WrappedTable<S, T> {
                 ("newScanner", txnVar, sourceQuery.toString(), argsVar);
         }
 
-        // Define the comparator returned by GroupedScanner.
+        // Define the comparator returned by AggregatedScanner.
 
-        Variable groupComparatorVar = null;
+        Variable aggregateComparatorVar = null;
 
         if (!targetInfo.keyColumns.isEmpty()) {
-            var groupOrderBy = new OrderBy(sourceOrderBy);
-            Iterator<Map.Entry<String, OrderBy.Rule>> it = groupOrderBy.entrySet().iterator();
+            var aggregateOrderBy = new OrderBy(sourceOrderBy);
+            Iterator<Map.Entry<String, OrderBy.Rule>> it = aggregateOrderBy.entrySet().iterator();
 
             while (it.hasNext()) {
                 Map.Entry<String, OrderBy.Rule> e = it.next();
@@ -619,13 +620,14 @@ public abstract class GroupedTable<S, T> extends WrappedTable<S, T> {
             }
             
             if (!sourceOrderBy.isEmpty()) {
-                groupComparatorVar = mm.var(Comparator.class).setExact
-                    (ComparatorMaker.comparator(targetType, groupOrderBy, groupOrderBy.spec()));
+                aggregateComparatorVar = mm.var(Comparator.class).setExact
+                    (ComparatorMaker.comparator
+                     (targetType, aggregateOrderBy, aggregateOrderBy.spec()));
             }
         }
 
-        var targetScannerVar = mm.new_(GroupedScanner.class, tableVar, sourceScannerVar,
-                                       groupComparatorVar, targetRowVar, grouperVar);
+        var targetScannerVar = mm.new_(AggregatedScanner.class, tableVar, sourceScannerVar,
+                                       aggregateComparatorVar, targetRowVar, aggregatorVar);
 
         targetScannerVar = WrappedScanner.wrap(targetType, argsVar, targetScannerVar,
                                                targetQuery.filter(), targetQuery.projection());
@@ -653,11 +655,11 @@ public abstract class GroupedTable<S, T> extends WrappedTable<S, T> {
         // Add the plan method.
 
         mm = factoryMaker.addMethod
-            (QueryPlan.class, "plan", GroupedTable.class, Grouper.class,
+            (QueryPlan.class, "plan", AggregatedTable.class, Aggregator.class,
              Transaction.class, Object[].class).public_().varargs();
 
         tableVar = mm.param(0);
-        grouperVar = mm.param(1);
+        aggregatorVar = mm.param(1);
         txnVar = mm.param(2);
         argsVar = mm.param(3);
 
@@ -665,12 +667,12 @@ public abstract class GroupedTable<S, T> extends WrappedTable<S, T> {
             .invoke("scannerPlan", txnVar, sourceQuery.toString(), argsVar);
 
         var targetVar = mm.var(Class.class).set(targetType).invoke("getName");
-        var usingVar = grouperVar.invoke("toString");
+        var usingVar = aggregatorVar.invoke("toString");
         var columnVars = tableVar.invoke("groupByColumns");
 
-        var grouperPlanVar = mm.new_
-            (QueryPlan.Grouper.class, targetVar, usingVar, columnVars, planVar);
-        planVar.set(grouperVar.invoke("plan", grouperPlanVar));
+        var aggregatorPlanVar = mm.new_
+            (QueryPlan.Aggregator.class, targetVar, usingVar, columnVars, planVar);
+        planVar.set(aggregatorVar.invoke("plan", aggregatorPlanVar));
 
         if (targetQuery.filter() != TrueFilter.THE) {
             planVar.set(mm.new_(QueryPlan.Filter.class, targetQuery.filter().toString(), planVar));
@@ -695,11 +697,11 @@ public abstract class GroupedTable<S, T> extends WrappedTable<S, T> {
     }
 
     public interface ScannerFactory<S, T> {
-        Scanner<T> newScannerWith(GroupedTable<S, T> table, Grouper<S, T> grouper,
+        Scanner<T> newScannerWith(AggregatedTable<S, T> table, Aggregator<S, T> aggregator,
                                   Transaction txn, T targetRow, Object... args)
             throws IOException;
 
-        QueryPlan plan(GroupedTable<S, T> table, Grouper<S, T> grouper,
+        QueryPlan plan(AggregatedTable<S, T> table, Aggregator<S, T> aggregator,
                        Transaction txn, Object... args)
             throws IOException;
     }

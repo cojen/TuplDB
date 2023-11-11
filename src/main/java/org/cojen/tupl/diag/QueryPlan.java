@@ -428,7 +428,7 @@ public abstract sealed class QueryPlan implements Serializable {
     /**
      * Query plan node which applies aggregation.
      */
-    public static final class Grouper extends QueryPlan {
+    public static final class Aggregator extends QueryPlan {
         private static final long serialVersionUID = 1L;
 
         public final String target;
@@ -442,7 +442,7 @@ public abstract sealed class QueryPlan implements Serializable {
          * @param columns group-by columns (or null if none)
          * @param source child plan node
          */
-        public Grouper(String target, String using, String[] columns, QueryPlan source) {
+        public Aggregator(String target, String using, String[] columns, QueryPlan source) {
             this.target = target;
             this.using = using;
             this.columns = columns;
@@ -451,7 +451,7 @@ public abstract sealed class QueryPlan implements Serializable {
 
         @Override
         void appendTo(Appendable a, String in1, String in2) throws IOException {
-            a.append(in1).append("group").append(": ").append(target).append('\n');
+            a.append(in1).append("aggregate").append(": ").append(target).append('\n');
             if (using != null) {
                 appendItem(a, in2, "using").append(using).append('\n');
             }
@@ -464,10 +464,10 @@ public abstract sealed class QueryPlan implements Serializable {
 
         @Override
         public boolean equals(Object obj) {
-            return obj instanceof Grouper grouper && matches(grouper);
+            return obj instanceof Aggregator aggregator && matches(aggregator);
         }
 
-        boolean matches(Grouper other) {
+        boolean matches(Aggregator other) {
             return Objects.equals(target, other.target) && Objects.equals(using, other.using) &&
                 Arrays.equals(columns, other.columns) && Objects.equals(source, other.source);
         }

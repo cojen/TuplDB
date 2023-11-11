@@ -27,7 +27,7 @@ import org.cojen.tupl.Nullable;
 import org.cojen.tupl.PrimaryKey;
 
 /**
- * Makes row type interfaces suitable for use by custom Mappers and Groupers.
+ * Makes row type interfaces suitable for use by custom Mappers and Aggregators.
  *
  * @author Brian S. O'Neill
  */

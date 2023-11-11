@@ -28,8 +28,8 @@ import java.util.Set;
 import org.cojen.tupl.Database;
 import org.cojen.tupl.Table;
 
+import org.cojen.tupl.rows.AggregatedTable;
 import org.cojen.tupl.rows.ColumnInfo;
-import org.cojen.tupl.rows.GroupedTable;
 import org.cojen.tupl.rows.RowInfo;
 import org.cojen.tupl.rows.RowUtils;
 import org.cojen.tupl.rows.SimpleParser;
@@ -802,7 +802,7 @@ public final class JoinSpec {
                 mKeyMatch = km = KeyMatch.build(column.name + '.', RowInfo.find(column.type));
             }
 
-            if (!km.hasPkColumns() && table() instanceof GroupedTable) {
+            if (!km.hasPkColumns() && table() instanceof AggregatedTable) {
                 // Table has at most one row, and so it should be ordered first in the join.
                 // Assign a score which is greater than what the KeyMatch.score method returns.
                 mKeyScore = 3;
@@ -844,11 +844,11 @@ public final class JoinSpec {
 
             // If either table is grouped (performs aggregatation), then it likely generates
             // fewer rows, and so it should be first in the join order.
-            if (table() instanceof GroupedTable) {
-                if (!(planned.table() instanceof GroupedTable)) {
+            if (table() instanceof AggregatedTable) {
+                if (!(planned.table() instanceof AggregatedTable)) {
                     return 1;
                 }
-            } else if (planned.table() instanceof GroupedTable) {
+            } else if (planned.table() instanceof AggregatedTable) {
                 return -1;
             }
 
