@@ -32,8 +32,8 @@ import org.cojen.tupl.diag.QueryPlan;
 
 import org.cojen.tupl.io.Utils;
 
+import org.cojen.tupl.rows.AggregatedTable;
 import org.cojen.tupl.rows.ComparatorMaker;
-import org.cojen.tupl.rows.GroupedTable;
 import org.cojen.tupl.rows.MappedTable;
 import org.cojen.tupl.rows.PlainPredicateMaker;
 import org.cojen.tupl.rows.ViewedTable;
@@ -469,13 +469,15 @@ public interface Table<R> extends Closeable {
      * the resulting table has one row, which is the aggregate result of all the rows of this
      * table. The view returned by this method is unmodifiable, and closing it has no effect.
      *
-     * @param supplier is called to generate a new {@link Grouper} instance for every query
+     * @param supplier is called to generate a new {@link Aggregator} instance for every query
      * against the returned table
      * @throws NullPointerException if any parameter is null
      * @throws IllegalArgumentException if target primary key is malformed
      */
-    public default <T> Table<T> group(Class<T> targetType, Supplier<Grouper<R, T>> supplier) {
-        return GroupedTable.group(this, targetType, supplier);
+    public default <T> Table<T> aggregate(Class<T> targetType,
+                                          Supplier<Aggregator<R, T>> supplier)
+    {
+        return AggregatedTable.aggregate(this, targetType, supplier);
     }
 
     /**

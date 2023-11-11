@@ -31,9 +31,9 @@ import org.cojen.tupl.diag.QueryPlan;
  *
  * @author Brian S. O'Neill
  */
-public class GroupedTest {
+public class AggregatedTest {
     public static void main(String[] args) throws Exception {
-        org.junit.runner.JUnitCore.main(GroupedTest.class.getName());
+        org.junit.runner.JUnitCore.main(AggregatedTest.class.getName());
     }
 
     @Before
@@ -92,7 +92,7 @@ public class GroupedTest {
         void name(String name);
     }
 
-    public static class Grouper1<T extends TestRowAgg> implements Grouper<TestRow, T> {
+    public static class Aggregator1<T extends TestRowAgg> implements Aggregator<TestRow, T> {
         private long count, minNum, maxNum, totalNum;
 
         @Override
@@ -136,11 +136,11 @@ public class GroupedTest {
         }
     }
 
-    public static class Grouper2<T extends TestRowAgg> extends Grouper1<T> {
+    public static class Aggregator2<T extends TestRowAgg> extends Aggregator1<T> {
         final String mExclude;
         String mCurrent;
 
-        Grouper2(String exclude) {
+        Aggregator2(String exclude) {
             mExclude = exclude;
         }
 
@@ -159,7 +159,7 @@ public class GroupedTest {
         }
     }
 
-    public static class Broken<T extends TestRowAgg> implements Grouper<TestRow, T> {
+    public static class Broken<T extends TestRowAgg> implements Aggregator<TestRow, T> {
         @Override
         public TestRow begin(TestRow source) {
             return source;
@@ -178,45 +178,45 @@ public class GroupedTest {
 
     @Test
     public void toOneRow() throws Exception {
-        Table<TestRowAgg> grouped = mTable.group(TestRowAgg.class, Grouper1::new);
+        Table<TestRowAgg> aggregated = mTable.aggregate(TestRowAgg.class, Aggregator1::new);
 
-        assertTrue(grouped.isEmpty());
-        assertFalse(grouped.anyRows(null));
-        assertFalse(grouped.anyRows(null, "count != ?", 999));
+        assertTrue(aggregated.isEmpty());
+        assertFalse(aggregated.anyRows(null));
+        assertFalse(aggregated.anyRows(null, "count != ?", 999));
 
-        var row = grouped.newRow();
+        var row = aggregated.newRow();
         row.count(10);
-        assertFalse(grouped.load(null, row));
+        assertFalse(aggregated.load(null, row));
         assertEquals("{}", row.toString());
         row.count(10);
-        assertFalse(grouped.exists(null, row));
+        assertFalse(aggregated.exists(null, row));
         assertEquals("{*count=10}", row.toString());
 
         fill();
 
-        assertFalse(grouped.isEmpty());
-        assertTrue(grouped.anyRows(null));
-        assertTrue(grouped.anyRows(null, "count != ?", 999));
+        assertFalse(aggregated.isEmpty());
+        assertTrue(aggregated.anyRows(null));
+        assertTrue(aggregated.anyRows(null, "count != ?", 999));
 
-        row = grouped.newRow();
+        row = aggregated.newRow();
         row.count(10);
-        assertTrue(grouped.load(null, row));
+        assertTrue(aggregated.load(null, row));
         assertEquals("{avgNum=6.0, count=6, maxNum=21, minNum=1, totalNum=36}", row.toString());
-        row = grouped.newRow();
+        row = aggregated.newRow();
         row.count(10);
-        assertTrue(grouped.exists(null, row));
+        assertTrue(aggregated.exists(null, row));
         assertEquals("{*count=10}", row.toString());
 
-        QueryPlan plan = grouped.scannerPlan(null, null);
+        QueryPlan plan = aggregated.scannerPlan(null, null);
         assertEquals("""
-- group: org.cojen.tupl.rows.GroupedTest$TestRowAgg
-  using: Grouper1
-  - full scan over primary key: org.cojen.tupl.rows.GroupedTest$TestRow
+- aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAgg
+  using: Aggregator1
+  - full scan over primary key: org.cojen.tupl.rows.AggregatedTest$TestRow
     key columns: +id
                      """,
                      plan.toString());
 
-        try (var scanner = grouped.newScanner(null)) {
+        try (var scanner = aggregated.newScanner(null)) {
             row = scanner.row();
             assertEquals("{avgNum=6.0, count=6, maxNum=21, minNum=1, totalNum=36}", row.toString());
             assertNull(scanner.step());
@@ -224,16 +224,16 @@ public class GroupedTest {
 
         String query = "{avgNum, +count}";
 
-        plan = grouped.scannerPlan(null, query);
+        plan = aggregated.scannerPlan(null, query);
         assertEquals("""
-- group: org.cojen.tupl.rows.GroupedTest$TestRowAgg
-  using: Grouper1
-  - full scan over primary key: org.cojen.tupl.rows.GroupedTest$TestRow
+- aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAgg
+  using: Aggregator1
+  - full scan over primary key: org.cojen.tupl.rows.AggregatedTest$TestRow
     key columns: +id
                      """,
                      plan.toString());
 
-        try (var scanner = grouped.newScanner(null, query)) {
+        try (var scanner = aggregated.newScanner(null, query)) {
             row = scanner.row();
             assertEquals("{avgNum=6.0, count=6}", row.toString());
             assertNull(scanner.step());
@@ -241,107 +241,108 @@ public class GroupedTest {
 
         query = "{avgNum, +count} minNum == ?";
 
-        plan = grouped.scannerPlan(null, query);
+        plan = aggregated.scannerPlan(null, query);
         assertEquals("""
 - filter: minNum == ?1
-  - group: org.cojen.tupl.rows.GroupedTest$TestRowAgg
-    using: Grouper1
-    - full scan over primary key: org.cojen.tupl.rows.GroupedTest$TestRow
+  - aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAgg
+    using: Aggregator1
+    - full scan over primary key: org.cojen.tupl.rows.AggregatedTest$TestRow
       key columns: +id
                      """,
                      plan.toString());
 
-        try (var scanner = grouped.newScanner(null, query, 1)) {
+        try (var scanner = aggregated.newScanner(null, query, 1)) {
             row = scanner.row();
             assertEquals("{avgNum=6.0, count=6}", row.toString());
             assertNull(scanner.step());
         }
 
-        try (var scanner = grouped.newScanner(null, query, 100)) {
+        try (var scanner = aggregated.newScanner(null, query, 100)) {
             assertNull(scanner.row());
         }
 
         query = "minNum == ?";
 
-        plan = grouped.scannerPlan(null, query);
+        plan = aggregated.scannerPlan(null, query);
         assertEquals("""
 - filter: minNum == ?1
-  - group: org.cojen.tupl.rows.GroupedTest$TestRowAgg
-    using: Grouper1
-    - full scan over primary key: org.cojen.tupl.rows.GroupedTest$TestRow
+  - aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAgg
+    using: Aggregator1
+    - full scan over primary key: org.cojen.tupl.rows.AggregatedTest$TestRow
       key columns: +id
                      """,
                      plan.toString());
 
-        try (var scanner = grouped.newScanner(null, query, 1)) {
+        try (var scanner = aggregated.newScanner(null, query, 1)) {
             row = scanner.row();
             assertEquals("{avgNum=6.0, count=6, maxNum=21, minNum=1, totalNum=36}", row.toString());
             assertNull(scanner.step());
         }
 
-        try (var scanner = grouped.newScanner(null, query, 100)) {
+        try (var scanner = aggregated.newScanner(null, query, 100)) {
             assertNull(scanner.row());
         }
     }
 
     @Test
     public void byName() throws Exception {
-        Table<TestRowAggByName> grouped = mTable.group(TestRowAggByName.class, Grouper1::new);
+        Table<TestRowAggByName> aggregated =
+            mTable.aggregate(TestRowAggByName.class, Aggregator1::new);
 
-        assertTrue(grouped.isEmpty());
-        assertFalse(grouped.anyRows(null));
-        assertFalse(grouped.anyRows(null, "count != ?", 999));
+        assertTrue(aggregated.isEmpty());
+        assertFalse(aggregated.anyRows(null));
+        assertFalse(aggregated.anyRows(null, "count != ?", 999));
 
-        var row = grouped.newRow();
+        var row = aggregated.newRow();
         row.count(10);
         try {
-            grouped.load(null, row);
+            aggregated.load(null, row);
             fail();
         } catch (IllegalStateException e) {
             assertTrue(e.getMessage().contains("Primary key"));
         }
 
         row.name("hello");
-        assertFalse(grouped.load(null, row));
+        assertFalse(aggregated.load(null, row));
         assertEquals("{*name=hello}", row.toString());
 
         fill();
 
-        assertFalse(grouped.isEmpty());
-        assertTrue(grouped.anyRows(null));
-        assertTrue(grouped.anyRows(null, "count != ?", 999));
-        assertTrue(grouped.anyRows(null, "count == ?", 2));
+        assertFalse(aggregated.isEmpty());
+        assertTrue(aggregated.anyRows(null));
+        assertTrue(aggregated.anyRows(null, "count != ?", 999));
+        assertTrue(aggregated.anyRows(null, "count == ?", 2));
 
-        QueryPlan plan = grouped.scannerPlan(null, null);
+        QueryPlan plan = aggregated.scannerPlan(null, null);
         assertEquals("""
-- group: org.cojen.tupl.rows.GroupedTest$TestRowAggByName
-  using: Grouper1
+- aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAggByName
+  using: Aggregator1
   columns: name
   - sort: +name
-    - full scan over primary key: org.cojen.tupl.rows.GroupedTest$TestRow
+    - full scan over primary key: org.cojen.tupl.rows.AggregatedTest$TestRow
       key columns: +id
                      """,
                      plan.toString());
 
         TestRowAggByName lastRow = null;
 
-        try (var scanner = grouped.newScanner(null)) {
+        try (var scanner = aggregated.newScanner(null)) {
             Comparator<? super TestRowAggByName> cmp = scanner.getComparator();
 
             row = scanner.row();
             expect("{name=hello, avgNum=1.5, count=2, maxNum=2, minNum=1, totalNum=3}", row);
             assertEquals(0, cmp.compare(row, row));
-            lastRow = grouped.cloneRow(row);
+            lastRow = aggregated.cloneRow(row);
 
             row = scanner.step(row);
             expect("{name=name, avgNum=1.0, count=1, maxNum=1, minNum=1, totalNum=1}", row);
             assertTrue(cmp.compare(row, lastRow) > 0);
-            lastRow = grouped.cloneRow(row);
+            lastRow = aggregated.cloneRow(row);
 
             row = scanner.step();
             expect("{name=readme, avgNum=15.5, count=2, maxNum=21, minNum=10, totalNum=31}", row);
             assertTrue(cmp.compare(row, lastRow) > 0);
-            lastRow = grouped.cloneRow(row);
+            lastRow = aggregated.cloneRow(row);
 
             row = scanner.step();
             expect("{name=world, avgNum=1.0, count=1, maxNum=1, minNum=1, totalNum=1}", row);
@@ -352,20 +353,20 @@ public class GroupedTest {
 
         String query = "name >= ? && name < ?";
 
-        plan = grouped.scannerPlan(null, query);
+        plan = aggregated.scannerPlan(null, query);
         assertEquals("""
-- group: org.cojen.tupl.rows.GroupedTest$TestRowAggByName
-  using: Grouper1
+- aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAggByName
+  using: Aggregator1
   columns: name
-  - primary join: org.cojen.tupl.rows.GroupedTest$TestRow
+  - primary join: org.cojen.tupl.rows.AggregatedTest$TestRow
     key columns: +id
-    - range scan over secondary index: org.cojen.tupl.rows.GroupedTest$TestRow
+    - range scan over secondary index: org.cojen.tupl.rows.AggregatedTest$TestRow
       key columns: +name, +id
       range: name >= ?1 .. name < ?2
                      """,
                      plan.toString());
 
-        try (var scanner = grouped.newScanner(null, query, "readme", "readmf")) {
+        try (var scanner = aggregated.newScanner(null, query, "readme", "readmf")) {
             row = scanner.row();
             expect("{name=readme, avgNum=15.5, count=2, maxNum=21, minNum=10, totalNum=31}", row);
 
@@ -374,19 +375,19 @@ public class GroupedTest {
 
         query = "maxNum >= ? && maxNum <= ?";
 
-        plan = grouped.scannerPlan(null, query);
+        plan = aggregated.scannerPlan(null, query);
         assertEquals("""
 - filter: maxNum >= ?1 && maxNum <= ?2
-  - group: org.cojen.tupl.rows.GroupedTest$TestRowAggByName
-    using: Grouper1
+  - aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAggByName
+    using: Aggregator1
     columns: name
     - sort: +name
-      - full scan over primary key: org.cojen.tupl.rows.GroupedTest$TestRow
+      - full scan over primary key: org.cojen.tupl.rows.AggregatedTest$TestRow
         key columns: +id
                      """,
                      plan.toString());
 
-        try (var scanner = grouped.newScanner(null, query, 1, 2)) {
+        try (var scanner = aggregated.newScanner(null, query, 1, 2)) {
             row = scanner.row();
             expect("{name=hello, avgNum=1.5, count=2, maxNum=2, minNum=1, totalNum=3}", row);
 
@@ -401,22 +402,22 @@ public class GroupedTest {
 
         query = "{+avgNum, *} name >= ? && name < ? && maxNum >= ? && maxNum <= ?";
 
-        plan = grouped.scannerPlan(null, query);
+        plan = aggregated.scannerPlan(null, query);
         assertEquals("""
 - sort: +avgNum
   - filter: maxNum >= ?3 && maxNum <= ?4
-    - group: org.cojen.tupl.rows.GroupedTest$TestRowAggByName
-      using: Grouper1
+    - aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAggByName
+      using: Aggregator1
       columns: name
-      - primary join: org.cojen.tupl.rows.GroupedTest$TestRow
+      - primary join: org.cojen.tupl.rows.AggregatedTest$TestRow
         key columns: +id
-        - range scan over secondary index: org.cojen.tupl.rows.GroupedTest$TestRow
+        - range scan over secondary index: org.cojen.tupl.rows.AggregatedTest$TestRow
           key columns: +name, +id
           range: name >= ?1 .. name < ?2
                      """,
                      plan.toString());
 
-        try (var scanner = grouped.newScanner(null, query, "a", "z", 1, 2)) {
+        try (var scanner = aggregated.newScanner(null, query, "a", "z", 1, 2)) {
             row = scanner.row();
             expect("{name=name, avgNum=1.0, count=1, maxNum=1, minNum=1, totalNum=1}", row);
 
@@ -429,26 +430,26 @@ public class GroupedTest {
             assertNull(scanner.step());
         }
 
-        try (var scanner = grouped.newScanner(null, query, "readme", "readmef", 1, 2)) {
+        try (var scanner = aggregated.newScanner(null, query, "readme", "readmef", 1, 2)) {
             assertNull(scanner.row());
         }
 
         query = "{-avgNum, *, ~totalNum} count >= ? && avgNum >= ?";
 
-        plan = grouped.scannerPlan(null, query);
+        plan = aggregated.scannerPlan(null, query);
         assertEquals("""
 - sort: -avgNum
   - filter: count >= ?1 && avgNum >= ?2
-    - group: org.cojen.tupl.rows.GroupedTest$TestRowAggByName
-      using: Grouper1
+    - aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAggByName
+      using: Aggregator1
       columns: name
       - sort: +name
-        - full scan over primary key: org.cojen.tupl.rows.GroupedTest$TestRow
+        - full scan over primary key: org.cojen.tupl.rows.AggregatedTest$TestRow
           key columns: +id
                      """,
                      plan.toString());
 
-        try (var scanner = grouped.newScanner(null, query, 1, 1.5)) {
+        try (var scanner = aggregated.newScanner(null, query, 1, 1.5)) {
             row = scanner.row();
             expect("{name=readme, avgNum=15.5, count=2, maxNum=21, minNum=10}", row);
 
@@ -465,12 +466,12 @@ public class GroupedTest {
 
     @Test
     public void byNameFiltered() throws Exception {
-        Table<TestRowAggByName> grouped =
-            mTable.group(TestRowAggByName.class, () -> new Grouper2<>("readme"));
+        Table<TestRowAggByName> aggregated =
+            mTable.aggregate(TestRowAggByName.class, () -> new Aggregator2<>("readme"));
 
         fill();
 
-        try (var scanner = grouped.newScanner(null)) {
+        try (var scanner = aggregated.newScanner(null)) {
             var row = scanner.row();
             expect("{name=hello, avgNum=1.5, count=2, maxNum=2, minNum=1, totalNum=3}", row);
 
@@ -483,9 +484,9 @@ public class GroupedTest {
             assertNull(scanner.step());
         }
 
-        grouped = mTable.group(TestRowAggByName.class, () -> new Grouper2<>("world"));
+        aggregated = mTable.aggregate(TestRowAggByName.class, () -> new Aggregator2<>("world"));
 
-        try (var scanner = grouped.newScanner(null)) {
+        try (var scanner = aggregated.newScanner(null)) {
             var row = scanner.row();
             expect("{name=hello, avgNum=1.5, count=2, maxNum=2, minNum=1, totalNum=3}", row);
 
@@ -500,14 +501,14 @@ public class GroupedTest {
     }
 
     @Test
-    public void brokenGrouping() throws Exception {
-        Table<TestRowAggByName> grouped =
-            mTable.group(TestRowAggByName.class, () -> new Broken<>());
+    public void brokenAggregate() throws Exception {
+        Table<TestRowAggByName> aggregated =
+            mTable.aggregate(TestRowAggByName.class, () -> new Broken<>());
 
         fill();
 
         try {
-            grouped.newScanner(null, "count == ?", 0);
+            aggregated.newScanner(null, "count == ?", 0);
             fail();
         } catch (UnsetColumnException e) {
         }
