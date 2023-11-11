@@ -217,52 +217,19 @@ public class TableMaker {
     /**
      * Mark all columns except for the excluded ones as UNSET.
      */
-    protected static void markUnset(final Variable rowVar, final RowGen rowGen,
-                                    final Map<String, ColumnInfo> exclude)
+    protected static void markUnset(Variable rowVar, RowGen rowGen,
+                                    Map<String, ColumnInfo> excluded)
     {
-        final int maxNum = rowGen.info.allColumns.size();
-
-        int num = 0, mask = 0;
-
-        for (int step = 0; step < 2; step++) {
-            // Key columns are numbered before value columns. Add checks in two steps.
-            // Note that the codecs are accessed, to match encoding order.
-            var baseCodecs = step == 0 ? rowGen.keyCodecs() : rowGen.valueCodecs();
-
-            for (ColumnCodec codec : baseCodecs) {
-                if (!exclude.containsKey(codec.info.name)) {
-                    mask |= RowGen.stateFieldMask(num);
-                }
-                if ((++num & 0b1111) == 0 || num >= maxNum) {
-                    Field field = rowVar.field(rowGen.stateField(num - 1));
-                    mask = ~mask;
-                    if (mask == 0) {
-                        field.set(mask);
-                    } else {
-                        field.set(field.and(mask));
-                        mask = 0;
-                    }
-                }
-            }
-        }
+        rowGen.markUnset(rowVar, name -> !excluded.containsKey(name));
     }
 
     /**
-     * Unset all columns except for the excluded ones.
+     * Unset and clear all columns except for the excluded ones.
      *
      * @param rowVar type must be the row implementation class
      */
     protected static void unset(RowInfo info, Variable rowVar, Map<String, ColumnInfo> excluded) {
-        markUnset(rowVar, info.rowGen(), excluded);
-
-        // Clear the unset target column fields that refer to objects.
-
-        for (ColumnInfo target : info.allColumns.values()) {
-            String name = target.name;
-            if (!excluded.containsKey(name) && !target.type.isPrimitive()) {
-                rowVar.field(name).set(null);
-            }
-        }
+        info.rowGen().unsetAndClear(rowVar, name -> !excluded.containsKey(name));
     }
 
     /**

@@ -26,6 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import java.util.function.IntFunction;
+import java.util.function.Predicate;
 
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Label;
@@ -755,6 +756,67 @@ public class RowGen {
                     field.set(field.and(mask));
                     mask = 0;
                 }
+            }
+        }
+    }
+
+    /**
+     * @param unsetPredicate returns true if the given column name should be unset
+     */
+    public void markUnset(Variable rowVar, Predicate<String> unsetPredicate) {
+        int num = 0, mask = 0;
+
+        for (int step = 0; step < 2; step++) {
+            // Key columns are numbered before value columns. Add checks in two steps.
+            // Note that the codecs are accessed, to match encoding order.
+            var baseCodecs = step == 0 ? keyCodecs() : valueCodecs();
+
+            for (ColumnCodec codec : baseCodecs) {
+                if (unsetPredicate.test(codec.info.name)) {
+                    mask |= stateFieldMask(num);
+                }
+                if (isMaskReady(++num, mask)) {
+                    mask = maskRemainder(num, mask);
+                    Variable field = rowVar.field(stateField(num - 1));
+                    mask = ~mask;
+                    if (mask == 0) {
+                        field.set(mask);
+                    } else {
+                        field.set(field.and(mask));
+                        mask = 0;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Marks all the given columns unset, and clear those columns which refer to objects.
+     *
+     * @param unsetPredicate returns true if the given column name should be unset
+     */
+    public void unsetAndClear(Variable rowVar, Predicate<String> unsetPredicate) {
+        markUnset(rowVar, unsetPredicate);
+        clearColumns(rowVar, unsetPredicate);
+    }
+
+    /**
+     * Marks all the given columns unset, and clear those columns which refer to objects.
+     */
+    public void unsetAndClear(Variable rowVar, Map<String, ColumnInfo> columns) {
+        unsetAndClear(rowVar, columns::containsKey);
+    }
+
+    /**
+     * Clears columns which refer to objects.
+     *
+     * @param clearPredicate returns true if the given column name should be cleared
+     */
+    public void clearColumns(Variable rowVar, Predicate<String> clearPredicate) {
+        for (ColumnInfo target : info.allColumns.values()) {
+            String name = target.name;
+            if (!target.type.isPrimitive() && clearPredicate.test(name)) {
+                rowVar.field(name).set(null);
             }
         }
     }
