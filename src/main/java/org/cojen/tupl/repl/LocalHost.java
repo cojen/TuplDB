@@ -58,42 +58,57 @@ class LocalHost {
             return local;
         }
 
-        // Linux typically doesn't have a proper local address (must hack /etc/hosts), and so
-        // this huge mess is required as a workaround.
+        // Linux and MacOS typically don't have a proper local address, and so this huge mess
+        // is required as a workaround.
 
-        NetworkInterface ni = null;
+        Inet4Address v4 = null;
+        Inet6Address v6 = null;
 
         try {
-            Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces();
-            while (en.hasMoreElements()) {
-                NetworkInterface n = en.nextElement();
-                if (!n.isLoopback()) {
-                    ni = n;
+            Enumeration<NetworkInterface> e1 = NetworkInterface.getNetworkInterfaces();
+
+            while (e1.hasMoreElements()) {
+                NetworkInterface ni = e1.nextElement();
+
+                if (ni.isLoopback()) {
+                    continue;
+                }
+
+                Enumeration<InetAddress> e2 = ni.getInetAddresses();
+
+                Inet4Address candidate_v4 = null;
+                Inet6Address candidate_v6 = null;
+
+                while (e2.hasMoreElements()) {
+                    InetAddress a = e2.nextElement();
+                    if (a instanceof Inet4Address) {
+                        if (candidate_v4 == null) {
+                            candidate_v4 = (Inet4Address) a;
+                        }
+                    } else if (a instanceof Inet6Address) {
+                        if (candidate_v6 == null) {
+                            candidate_v6 = (Inet6Address) a;
+                        }
+                    }
+                }
+
+                if (candidate_v4 != null && candidate_v6 != null) {
+                    // Always prefer the network interface that supports IPv4 and IPv6.
+                    v4 = candidate_v4;
+                    v6 = candidate_v6;
                     break;
+                }
+
+                if (v4 == null && v6 == null) {
+                    // Pick the best so far.
+                    v4 = candidate_v4;
+                    v6 = candidate_v6;
                 }
             }
         } catch (SocketException e) {
             var u = new UnknownHostException(e.getMessage());
             u.initCause(e);
             throw u;
-        }
-
-        if (ni == null) {
-            return local;
-        }
-
-        Inet4Address v4 = null;
-        Inet6Address v6 = null;
-
-        Enumeration<InetAddress> en = ni.getInetAddresses();
-
-        while (en.hasMoreElements()) {
-            InetAddress a = en.nextElement();
-            if (a instanceof Inet4Address && v4 == null) {
-                v4 = (Inet4Address) a;
-            } else if (a instanceof Inet6Address && v6 == null) {
-                v6 = (Inet6Address) a;
-            }
         }
 
         InetAddress actual;
@@ -118,6 +133,10 @@ class LocalHost {
             }
         }
 
-        return InetAddress.getByAddress(name, actual.getAddress());
+        if (actual == v4) {
+            return InetAddress.getByAddress(name, v4.getAddress());
+        } else {
+            return Inet6Address.getByAddress(name, v6.getAddress(), v6.getScopedInterface());
+        }
     }
 }
