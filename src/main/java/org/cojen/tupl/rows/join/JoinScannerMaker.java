@@ -126,7 +126,7 @@ final class JoinScannerMaker {
 
     private int mReadyNum;
 
-    private Map<String, String> mPredicateFieldMap;
+    private Map<RowFilter, String> mPredicateMethods;
 
     private JoinScannerMaker(Class<?> joinType, JoinSpec spec, boolean base) {
         mJoinType = joinType;
@@ -251,7 +251,7 @@ final class JoinScannerMaker {
 
         addLoopMethod();
 
-        // Call this after defining the loops method because it might have added more code into
+        // Call this after defining the loop method because it might have added more code into
         // constructor which must run before the super class constructor.
         mCtorMaker.invokeSuperConstructor(mCtorMaker.param(0), mCtorMaker.param(1));
 
@@ -406,7 +406,7 @@ final class JoinScannerMaker {
 
         RowFilter filter = mSpec.filter();
         if (filter != null && filter != TrueFilter.THE) {
-            predicateField(mm, filter).invoke("test", mJoinRowVar).ifFalse(jumpIn);
+            invokePredicate(filter).ifFalse(jumpIn);
         }
 
         mm.field("row").set(mJoinRowVar);
@@ -502,7 +502,7 @@ final class JoinScannerMaker {
             // Need to apply a predicate before the level row can be accepted. When the
             // predicate returns false, jump to the location which steps ahead.
             step = mm.label();
-            predicateField(mm, remainder).invoke("test", mJoinRowVar).ifFalse(step);
+            invokePredicate(remainder).ifFalse(step);
         }
 
         if (hasArgAssignments) {
@@ -593,7 +593,7 @@ final class JoinScannerMaker {
         // Before producing a row with nulls, an additional predicate test might be needed.
         RowFilter predicate = node.predicate();
         if (predicate != null && predicate != TrueFilter.THE) {
-            predicateField(mm, predicate).invoke("test", mJoinRowVar).ifFalse(step);
+            invokePredicate(predicate).ifFalse(step);
         }
 
         setObjectResult(mJoinRowVar);
@@ -654,7 +654,7 @@ final class JoinScannerMaker {
         if (hasPredicate) {
             // Before producing a row with nulls, an additional predicate test might be needed.
             step = mm.label();
-            predicateField(mm, predicate).invoke("test", mJoinRowVar).ifFalse(step);
+            invokePredicate(predicate).ifFalse(step);
         }
 
         if (hasArgAssignments) {
@@ -754,33 +754,33 @@ final class JoinScannerMaker {
     }
 
     /**
-     * Returns a Variable of type Predicate which tests against the given RowFilter.
+     * Generates a predicate test method, invokes it against mJoinRowVar, and returns a boolean
+     * result.
      */
-    private Variable predicateField(MethodMaker mm, RowFilter predicate) {
-        Map<String, String> map = mPredicateFieldMap;
+    private Variable invokePredicate(RowFilter predicate) {
+        Map<RowFilter, String> map = mPredicateMethods;
+        String methodName;
 
         if (map == null) {
-            mPredicateFieldMap = map = new HashMap<>();
+            mPredicateMethods = map = new HashMap<>();
+            methodName = null;
+        } else {
+            methodName = map.get(predicate);
         }
 
-        String predicateStr = predicate.toString();
-        String fieldName = map.get(predicateStr);
+        if (methodName == null) {
+            methodName = "test" + map.size();
 
-        if (fieldName == null) {
-            // Define the field and assign it in the constructor.
-            fieldName = "p" + map.size();
-            mClassMaker.addField(Predicate.class, fieldName).private_().final_();
-            MethodHandle predicateCtor = JoinPredicateMaker.find(mJoinType, predicate);
-            var mhVar = mCtorMaker.var(MethodHandle.class).setExact(predicateCtor);
-            var argsVar = mCtorMaker.param(mCtorMaker.paramCount() - 1);
-            var predVar = mhVar.invoke(Predicate.class, "invoke", null, argsVar);
-            mCtorMaker.field(fieldName).set(predVar);
+            MethodMaker testMaker = mClassMaker
+                .addMethod(boolean.class, methodName, mJoinRowVar).private_();
 
-            // Stash it so as not to create duplicate predicates.
-            mPredicateFieldMap.put(predicateStr, fieldName);
+            new JoinPredicateMaker(mJoinType, predicate)
+                .generate(mCtorMaker, testMaker, testMaker.param(0));
+
+            map.put(predicate, methodName);
         }
 
-        return mm.field(fieldName);
+        return mJoinRowVar.methodMaker().invoke(methodName, mJoinRowVar);
     }
 
     /**
@@ -801,7 +801,7 @@ final class JoinScannerMaker {
         // Define the code in a separate method, which helps with debugging because the stack
         // trace will include the name of the joined column. The code might also become quite
         // large if special null argument processing is required, and so defining it separately
-        // reduces the likelihood that the loops method becomes too large.
+        // reduces the likelihood that the loop method becomes too large.
 
         String name = source.name();
         Class<?> returnType;

@@ -115,11 +115,16 @@ public final class JoinPredicateMaker implements Visitor {
     private final RowInfo mJoinInfo;
     private final RowFilter mFilter;
 
-    private ClassMaker mClassMaker;
     private MethodMaker mCtorMaker, mTestMaker;
-    private Map<Pair<Integer, Class<?>>, String> mArgFieldMap;
     private Variable mRowVar;
+    private Map<Pair<Integer, Class<?>>, String> mArgFieldMap;
     private Label mPass, mFail;
+
+    JoinPredicateMaker(Class<?> joinType, RowFilter filter) {
+        mJoinType = joinType;
+        mJoinInfo = RowInfo.find(joinType);
+        mFilter = filter;
+    }
 
     /**
      * @param filter if is null, the filter is parsed from queryStr
@@ -137,17 +142,20 @@ public final class JoinPredicateMaker implements Visitor {
         mFilter = filter;
     }
 
-    Class<?> finish() {
-        mClassMaker = RowGen.beginClassMaker
-            (JoinPredicateMaker.class, mJoinType, mJoinInfo.name, null, null)
-            .implement(Predicate.class).public_().final_();
+    /**
+     * Generates predicate code into the given testMaker method. The generated code might need
+     * to define and assign argument conversion fields, which is why ctorMaker is needed.
+     *
+     * @param ctorMaker constructor; last param must be an Object[] of arguments
+     * @param testMaker predicate test method to write code into; must return a boolean
+     * @param rowVar row parameter available to the test method
+     */
+    void generate(MethodMaker ctorMaker, MethodMaker testMaker, Variable rowVar) {
+        mCtorMaker = ctorMaker;
+        mTestMaker = testMaker;
+        mRowVar = rowVar;
 
-        mCtorMaker = mClassMaker.addConstructor(Object[].class).public_().varargs();
-        mCtorMaker.invokeSuperConstructor();
-
-        mTestMaker = mClassMaker.addMethod(boolean.class, "test", Object.class).public_();
-        mArgFieldMap = new HashMap<>();
-        mRowVar = mTestMaker.param(0).cast(mJoinType);
+        mArgFieldMap = null;
 
         mPass = mTestMaker.label();
         mFail = mTestMaker.label();
@@ -158,11 +166,24 @@ public final class JoinPredicateMaker implements Visitor {
         mTestMaker.return_(false);
         mPass.here();
         mTestMaker.return_(true);
+    }
+
+    Class<?> finish() {
+        ClassMaker cm = RowGen.beginClassMaker
+            (JoinPredicateMaker.class, mJoinType, mJoinInfo.name, null, null)
+            .implement(Predicate.class).public_().final_();
+
+        MethodMaker ctorMaker = cm.addConstructor(Object[].class).public_().varargs();
+        ctorMaker.invokeSuperConstructor();
+
+        MethodMaker testMaker = cm.addMethod(boolean.class, "test", Object.class).public_();
+
+        generate(ctorMaker, testMaker, testMaker.param(0).cast(mJoinType));
 
         // FIXME: Add a toString method. See RowPredicateMaker.
 
         // Define as a hidden class to facilitate unloading.
-        return mClassMaker.finishHidden().lookupClass();
+        return cm.finishHidden().lookupClass();
     }
 
     @Override
@@ -210,13 +231,19 @@ public final class JoinPredicateMaker implements Visitor {
         Class<?> argType = ci.type;
 
         var fieldKey = new Pair<Integer, Class<?>>(filter.argument(), argType);
+
+        if (mArgFieldMap == null) {
+            mArgFieldMap = new HashMap<>();
+        }
+
         String fieldName = mArgFieldMap.get(fieldKey);
 
         if (fieldName == null) {
             fieldName = "f" + mArgFieldMap.size();
             mArgFieldMap.put(fieldKey, fieldName);
-            mClassMaker.addField(argType, fieldName).private_().final_();
-            Variable argVar = mCtorMaker.param(0).aget(filter.argument() - 1);
+            mCtorMaker.classMaker().addField(argType, fieldName).private_().final_();
+            var argsVar = mCtorMaker.param(mCtorMaker.paramCount() - 1);
+            Variable argVar = argsVar.aget(filter.argument() - 1);
             mCtorMaker.field(fieldName).set(ConvertCallSite.make(mCtorMaker, argType, argVar));
         }
 
