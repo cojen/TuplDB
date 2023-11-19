@@ -521,6 +521,10 @@ final class JoinScannerMaker {
         jumpOut.goto_();
         jumpIn.here();
 
+        if (node == mLastSource) {
+            restoreColumns();
+        }
+
         scannerVar.set(scannerField.get());
         levelRowVar.set(scannerVar.invoke("row"));
 
@@ -674,6 +678,10 @@ final class JoinScannerMaker {
         jumpOut.goto_();
         jumpIn.here();
 
+        if (node == mLastSource) {
+            restoreColumns();
+        }
+
         scannerVar.set(scannerField.get());
         levelRowVar.set(scannerVar.invoke("row"));
 
@@ -712,6 +720,45 @@ final class JoinScannerMaker {
         cont.here();
 
         return resultVar;
+    }
+
+    private void restoreColumns() {
+        // Restore join levels for all but the last source.
+
+        mSpec.root().accept(new JoinSpec.Visitor() {
+            @Override
+            public JoinSpec.Node visit(JoinSpec.Column node) {
+                if (node == mLastSource) {
+                    return node;
+                }
+
+                MethodMaker mm = mJoinRowVar.methodMaker();
+                String name = node.name();
+                var levelRowVar = mm.field(name + "_s").invoke("row").cast(node.column().type);
+                mJoinRowVar.invoke(name, levelRowVar);
+
+                return node;
+            }
+
+            @Override
+            public JoinSpec.Node visit(JoinSpec.FullJoin node) {
+                if (node == mLastSource) {
+                    return node;
+                }
+
+                MethodMaker mm = mJoinRowVar.methodMaker();
+                var levelRowVar = mm.field(node.name() + "_s").invoke("row").cast(mJoinType);
+
+                JoinSpec.ColumnIterator it = node.columnIterator();
+                JoinSpec.Column column;
+                while ((column = it.tryNext()) != null) {
+                    String name = column.name();
+                    mJoinRowVar.invoke(name, levelRowVar.invoke(name));
+                }
+
+                return node;
+            }
+        });
     }
 
     private void setObjectResult(Object result) {
