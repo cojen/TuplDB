@@ -22,7 +22,6 @@ import java.lang.invoke.MethodHandle;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 import java.util.function.IntUnaryOperator;
 import java.util.function.Predicate;
@@ -921,15 +920,16 @@ final class JoinScannerMaker {
                 } else if (filter == TrueFilter.THE) {
                     resultVar = mTableVar.invoke("anyRowsWith", mTxnVar, levelRowVar());
                 } else {
-                    Set<String> sources = mSource.argSources();
+                    Map<String, JoinSpec.Source> sources = mSource.argSources();
                     if (sources != null) {
                         // If any argument source is null, return false.
-                        Label empty = mMethodMaker.label();
-                        for (String source : sources) {
-                            Label cont = mMethodMaker.label();
-                            mJoinRowVar.invoke(source).ifNe(null, cont);
-                            mMethodMaker.return_(false);
-                            cont.here();
+                        for (Map.Entry<String, JoinSpec.Source> e : sources.entrySet()) {
+                            if (e.getValue().isNullable()) {
+                                Label cont = mMethodMaker.label();
+                                mJoinRowVar.invoke(e.getKey()).ifNe(null, cont);
+                                mMethodMaker.return_(false);
+                                cont.here();
+                            }
                         }
                     }
 
@@ -942,17 +942,24 @@ final class JoinScannerMaker {
                 } else if (filter == TrueFilter.THE) {
                     resultVar = mTableVar.invoke("newScannerWith", mTxnVar, levelRowVar());
                 } else {
-                    Set<String> sources = mSource.argSources();
+                    Map<String, JoinSpec.Source> sources = mSource.argSources();
                     if (sources != null) {
                         // If any argument source is null, return an empty scanner.
-                        Label empty = mMethodMaker.label();
-                        for (String source : sources) {
-                            mJoinRowVar.invoke(source).ifEq(null, empty);
+                        Label empty = null;
+                        for (Map.Entry<String, JoinSpec.Source> e : sources.entrySet()) {
+                            if (e.getValue().isNullable()) {
+                                if (empty == null) {
+                                    empty = mMethodMaker.label();
+                                }
+                                mJoinRowVar.invoke(e.getKey()).ifEq(null, empty);
+                            }
                         }
-                        Label cont = mMethodMaker.label().goto_();
-                        empty.here();
-                        mMethodMaker.return_(mMethodMaker.var(EmptyScanner.class).field("THE"));
-                        cont.here();
+                        if (empty != null) {
+                            Label cont = mMethodMaker.label().goto_();
+                            empty.here();
+                            mMethodMaker.return_(mMethodMaker.var(EmptyScanner.class).field("THE"));
+                            cont.here();
+                        }
                     }
 
                     resultVar = mTableVar.invoke("newScannerWith", mTxnVar, levelRowVar(),

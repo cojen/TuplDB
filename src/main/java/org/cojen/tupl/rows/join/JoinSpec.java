@@ -322,6 +322,11 @@ public final class JoinSpec {
         public String name();
 
         /**
+         * Returns true if any column from this source can be null.
+         */
+        public boolean isNullable();
+
+        /**
          * Returns a filter to apply when scanning the table. Is null or TrueFilter if no
          * filter should be applied.
          *
@@ -366,15 +371,15 @@ public final class JoinSpec {
         public void addArgAssignment(Integer argNum, ColumnInfo column);
 
         /**
-         * Returns an optional set of source columns that this column depends on for argument
+         * Returns an optional map of source columns that this column depends on for argument
          * assignments.
          */
-        public Set<String> argSources();
+        public Map<String, Source> argSources();
 
         /**
          * Add an argument source column, if supported.
          */
-        public void addArgSource(String source);
+        public void addArgSource(String name, Source source);
     }
 
     public static abstract sealed class Node {
@@ -461,6 +466,17 @@ public final class JoinSpec {
          * Implementation of the JoinTable.isEmpty method.
          */
         abstract boolean isEmpty() throws IOException;
+
+        /**
+         * Indicate that all the columns of this node are nullable.
+         */
+        void nullable() {
+            ColumnIterator it = columnIterator();
+            Column column;
+            while ((column = it.tryNext()) != null) {
+                column.nullable();
+            }
+        }
 
         @Override
         public final String toString() {
@@ -616,9 +632,12 @@ public final class JoinSpec {
         private final Table mTable;
         private final ColumnInfo mColumn;
 
-        Column(Table table, ColumnInfo column) {
+        private boolean mNullable;
+
+        Column(Table table, ColumnInfo column, boolean nullable) {
             mTable = table;
             mColumn = column;
+            mNullable = nullable;
         }
 
         @Override
@@ -658,6 +677,14 @@ public final class JoinSpec {
         @Override
         public Column copyWithScore() {
             return this;
+        }
+
+        /**
+         * A column can be null at runtime if it's part of an outer join, depending on what
+         * side of the join it belongs to.
+         */
+        public final boolean isNullable() {
+            return mNullable;
         }
 
         public final Table table() {
@@ -742,12 +769,12 @@ public final class JoinSpec {
         }
 
         @Override
-        public Set<String> argSources() {
+        public Map<String, Source> argSources() {
             return null;
         }
 
         @Override
-        public void addArgSource(String source) {
+        public void addArgSource(String name, Source source) {
             throw new UnsupportedOperationException();
         }
 
@@ -759,6 +786,11 @@ public final class JoinSpec {
         @Override
         boolean isEmpty() throws IOException {
             return mTable.isEmpty();
+        }
+
+        @Override
+        void nullable() {
+            mNullable = true;
         }
 
         @Override
@@ -781,7 +813,7 @@ public final class JoinSpec {
     public static final class PlannedColumn extends Column implements Cloneable {
         private RowFilter mFilter, mRemainder, mPredicate;
         private Map<Integer, ColumnInfo> mArgAssignments;
-        private Set<String> mArgSources;
+        private Map<String, Source> mArgSources;
 
         private KeyMatch mKeyMatch;
 
@@ -791,7 +823,7 @@ public final class JoinSpec {
         private long mFilterScore;
 
         PlannedColumn(Column column) {
-            super(column.mTable, column.mColumn);
+            super(column.mTable, column.mColumn, column.mNullable);
         }
 
         @Override
@@ -913,16 +945,16 @@ public final class JoinSpec {
         }
 
         @Override
-        public Set<String> argSources() {
+        public Map<String, Source> argSources() {
             return mArgSources;
         }
 
         @Override
-        public void addArgSource(String source) {
+        public void addArgSource(String name, Source source) {
             if (mArgSources == null) {
-                mArgSources = new HashSet<>(4);
+                mArgSources = new HashMap<>(4);
             }
-            mArgSources.add(source);
+            mArgSources.put(name, source);
         }
     }
 
@@ -1127,7 +1159,7 @@ public final class JoinSpec {
         private final JoinOp mRoot;
 
         private Map<Integer, ColumnInfo> mArgAssignments;
-        private Set<String> mArgSources;
+        private Map<String, Source> mArgSources;
         private Map<String, Column> mColumnMap;
         private RowFilter mFilter, mPredicate;
 
@@ -1234,6 +1266,11 @@ public final class JoinSpec {
         }
 
         @Override
+        public boolean isNullable() {
+            return true;
+        }
+
+        @Override
         public Map<Integer, ColumnInfo> argAssignments() {
             return mArgAssignments;
         }
@@ -1247,16 +1284,16 @@ public final class JoinSpec {
         }
 
         @Override
-        public Set<String> argSources() {
+        public Map<String, Source> argSources() {
             return mArgSources;
         }
 
         @Override
-        public void addArgSource(String source) {
+        public void addArgSource(String name, Source source) {
             if (mArgSources == null) {
-                mArgSources = new HashSet<>(4);
+                mArgSources = new HashMap<>(4);
             }
-            mArgSources.add(source);
+            mArgSources.put(name, source);
         }
 
         public int type() {
@@ -1347,7 +1384,7 @@ public final class JoinSpec {
          * @throws IOException if a database instance was provided and openTable failed
          */
         Node parse() throws IOException {
-            Node root = doParse();
+            Node root = doParse(false);
 
             if (mPos < mText.length()) {
                 throw error("Unexpected trailing characters");
@@ -1356,8 +1393,8 @@ public final class JoinSpec {
             return root;
         }
 
-        private Node doParse() throws IOException {
-            Node root = parseSource();
+        private Node doParse(boolean nullable) throws IOException {
+            Node root = parseSource(nullable);
 
             for (int c; (c = nextCharIgnoreWhitespace()) >= 0; ) {
                 int type = tryParseType(c);
@@ -1366,7 +1403,24 @@ public final class JoinSpec {
                     break;
                 }
 
-                Node right = parseSource();
+                switch (type) {
+                case T_LEFT_OUTER: case T_LEFT_ANTI:
+                    nullable = true;
+                    break;
+                case T_RIGHT_OUTER: case T_RIGHT_ANTI:
+                    if (!nullable) {
+                        root.nullable();
+                    }
+                    break;
+                case T_FULL_OUTER: case T_FULL_ANTI:
+                    if (!nullable) {
+                        root.nullable();
+                        nullable = true;
+                    }
+                    break;
+                }
+
+                Node right = parseSource(nullable);
 
                 if (type != T_INNER) {
                     root = new JoinOp(root, right, type);
@@ -1390,11 +1444,11 @@ public final class JoinSpec {
             return root;
         }
 
-        private Node parseSource() throws IOException {
+        private Node parseSource(boolean nullable) throws IOException {
             int c = nextCharIgnoreWhitespace();
 
             if (c == '(') {
-                return parseParenSource();
+                return parseParenSource(nullable);
             }
 
             // parseColumn
@@ -1444,7 +1498,7 @@ public final class JoinSpec {
 
             mNumTables++;
 
-            return new Column(table, column);
+            return new Column(table, column, nullable);
         }
 
         /**
@@ -1514,8 +1568,8 @@ public final class JoinSpec {
         }
 
         // Left paren has already been consumed.
-        private Node parseParenSource() throws IOException {
-            Node node = doParse();
+        private Node parseParenSource(boolean nullable) throws IOException {
+            Node node = doParse(nullable);
             if (nextCharIgnoreWhitespace() != ')') {
                 mPos--;
                 throw error("Right paren expected");
