@@ -734,8 +734,18 @@ final class JoinScannerMaker {
 
                 MethodMaker mm = mJoinRowVar.methodMaker();
                 String name = node.name();
-                var levelRowVar = mm.field(name + "_s").invoke("row").cast(node.column().type);
+
+                Label ready = mm.label();
+                mJoinRowVar.invoke(name).ifNe(null, ready);
+
+                var levelRowVar = mm.field(name + "_s").invoke("row");
+                levelRowVar.ifEq(null, ready);
+                Class<?> rowType = node.column().type;
+                Class<?> rowClass = RowMaker.find(rowType);
+                levelRowVar = levelRowVar.cast(rowClass).invoke(rowType, "clone", null);
                 mJoinRowVar.invoke(name, levelRowVar);
+
+                ready.here();
 
                 return node;
             }
@@ -747,13 +757,24 @@ final class JoinScannerMaker {
                 }
 
                 MethodMaker mm = mJoinRowVar.methodMaker();
-                var levelRowVar = mm.field(node.name() + "_s").invoke("row").cast(mJoinType);
 
                 JoinSpec.ColumnIterator it = node.columnIterator();
                 JoinSpec.Column column;
                 while ((column = it.tryNext()) != null) {
                     String name = column.name();
-                    mJoinRowVar.invoke(name, levelRowVar.invoke(name));
+
+                    Label ready = mm.label();
+                    mJoinRowVar.invoke(name).ifNe(null, ready);
+
+                    var levelRowVar = mm.field(node.name() + "_s").invoke("row").cast(mJoinType);
+                    var subRowVar = levelRowVar.invoke(name);
+                    subRowVar.ifEq(null, ready);
+                    Class<?> subRowType = column.column().type;
+                    Class<?> subRowClass = RowMaker.find(subRowType);
+                    subRowVar = subRowVar.cast(subRowClass).invoke(subRowType, "clone", null);
+                    mJoinRowVar.invoke(name, subRowVar);
+
+                    ready.here();
                 }
 
                 return node;
