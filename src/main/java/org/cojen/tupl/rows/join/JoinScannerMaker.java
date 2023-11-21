@@ -21,6 +21,7 @@ import java.lang.invoke.MethodHandle;
 
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import java.util.function.IntUnaryOperator;
@@ -40,11 +41,16 @@ import org.cojen.tupl.rows.ColumnInfo;
 import org.cojen.tupl.rows.EmptyScanner;
 import org.cojen.tupl.rows.RowGen;
 import org.cojen.tupl.rows.RowInfo;
+import org.cojen.tupl.rows.RowMaker;
 import org.cojen.tupl.rows.WeakCache;
 
+import org.cojen.tupl.rows.filter.ColumnToArgFilter;
+import org.cojen.tupl.rows.filter.ColumnToColumnFilter;
 import org.cojen.tupl.rows.filter.FalseFilter;
+import org.cojen.tupl.rows.filter.Query;
 import org.cojen.tupl.rows.filter.RowFilter;
 import org.cojen.tupl.rows.filter.TrueFilter;
+import org.cojen.tupl.rows.filter.Visitor;
 
 /**
  * Implements a nested loops join.
@@ -58,7 +64,7 @@ final class JoinScannerMaker {
         cBaseCache = new WeakCache<>() {
             @Override
             protected Class<?> newValue(Key key, JoinSpec spec) {
-                return new JoinScannerMaker(key.mJoinType, spec, true).finish();
+                return new JoinScannerMaker(key.mJoinType, spec, null).finish();
             }
         };
     }
@@ -71,8 +77,8 @@ final class JoinScannerMaker {
      * @param joinType interface which defines a join row
      * @see JoinScanner
      */
-    static Class<?> make(Class<?> joinType, JoinSpec spec) {
-        return new JoinScannerMaker(joinType, spec, false).finish();
+    static Class<?> make(Class<?> joinType, JoinSpec spec, Query query) {
+        return new JoinScannerMaker(joinType, spec, query).finish();
     }
 
     private static final class Key {
@@ -99,7 +105,7 @@ final class JoinScannerMaker {
 
     private final Class<?> mJoinType;
     private final JoinSpec mSpec;
-    private final boolean mBase;
+    private final Query mQuery;
 
     private final Class<?> mJoinClass;
 
@@ -127,16 +133,22 @@ final class JoinScannerMaker {
 
     private Map<RowFilter, String> mPredicateMethods;
 
-    private JoinScannerMaker(Class<?> joinType, JoinSpec spec, boolean base) {
+    // Map of columns which should be projected. If null, then all columns are projected.
+    private Map<String, ColumnInfo> mProjectionMap;
+
+    /**
+     * @param query pass null for base class
+     */
+    private JoinScannerMaker(Class<?> joinType, JoinSpec spec, Query query) {
         mJoinType = joinType;
         mSpec = spec;
-        mBase = base;
+        mQuery = query;
 
         mJoinClass = JoinRowMaker.find(joinType);
 
         RowInfo joinInfo = RowInfo.find(joinType);
 
-        if (base) {
+        if (query == null) {
             // Generate a new sub-package to facilitate unloading.
             String subPackage = RowGen.newSubPackage();
             mClassMaker = RowGen.beginClassMaker
@@ -151,7 +163,7 @@ final class JoinScannerMaker {
     }
 
     private Class<?> finish() {
-        return mBase ? finishBase() : finishImpl();
+        return mQuery == null ? finishBase() : finishImpl();
     }
 
     /**
@@ -210,6 +222,8 @@ final class JoinScannerMaker {
      * Returns a class which only needs to implement the loop method.
      */
     private Class<?> finishImpl() {
+        buildProjectionMap();
+
         mClassMaker.addField(Object[].class, "args").private_().final_();
 
         var paramTypes = new Object[2 + mSpec.numSources() + 1];
@@ -255,6 +269,122 @@ final class JoinScannerMaker {
         mCtorMaker.invokeSuperConstructor(mCtorMaker.param(0), mCtorMaker.param(1));
 
         return mClassMaker.finish();
+    }
+
+    private void buildProjectionMap() {
+        if (mQuery.projection() == null) {
+            // Everything is projected.
+            mProjectionMap = null;
+            return;
+        }
+
+        mProjectionMap = new LinkedHashMap<>();
+
+        for (ColumnInfo column : mQuery.projection().values()) {
+            mProjectionMap.put(column.name, column);
+        }
+
+        // Additional columns might need to be projected to process the join.
+
+        mSpec.root().accept(new JoinSpec.Visitor() {
+            @Override
+            public JoinSpec.Node visit(JoinSpec.Column node) {
+                projectArgs(node);
+                projectFilter(node.remainder());
+                return node;
+            }
+
+            @Override
+            public JoinSpec.Node visit(JoinSpec.JoinOp node) {
+                node.leftChild().accept(this);
+                node.rightChild().accept(this);
+                if (JoinSpec.isOuterJoin(node.type())) {
+                    projectFilter(node.predicate());
+                }
+                return node;
+            }
+
+            @Override
+            public JoinSpec.Node visit(JoinSpec.FullJoin node) {
+                projectArgs(node);
+                projectFilter(node.predicate());
+                return node;
+            }
+        });
+
+        projectFilter(mSpec.filter());
+    }
+
+    private void project(ColumnInfo column) {
+        String prefix = column.prefix();
+        if (prefix != null && mProjectionMap.containsKey(prefix)) {
+            // All sub columns will be projected, so no need to add a specific one.
+        } else {
+            mProjectionMap.put(column.name, column);
+        }
+    }
+
+    private void projectArgs(JoinSpec.Source source) {
+        Map<Integer, ColumnInfo> argAssignments = source.argAssignments();
+        if (argAssignments != null) {
+            for (ColumnInfo assignment : argAssignments.values()) {
+                project(assignment);
+            }
+        }
+    }
+
+    private void projectFilter(RowFilter filter) {
+        if (filter != null && filter != TrueFilter.THE) {
+            filter.accept(new Visitor() {
+                @Override
+                public void visit(ColumnToArgFilter filter) {
+                    project(filter.column());
+                }
+
+                @Override
+                public void visit(ColumnToColumnFilter filter) {
+                    project(filter.column());
+                    project(filter.otherColumn());
+                }
+            });
+        }
+    }
+
+    private Query queryFor(JoinSpec.Source source, RowFilter filter) {
+        // FIXME: Support orderBy.
+
+        Map<String, ColumnInfo> queryProjection = null;
+
+        if (mProjectionMap == null) {
+            // All columns are projected.
+        } else if (source instanceof JoinSpec.Column node) {
+            String name = node.name();
+            if (mProjectionMap.containsKey(name)) {
+                // All columns are projected.
+            } else {
+                queryProjection = new LinkedHashMap<String, ColumnInfo>();
+                for (ColumnInfo projColumn : mProjectionMap.values()) {
+                    if (name.equals(projColumn.prefix())) {
+                        projColumn = projColumn.tail();
+                        queryProjection.put(projColumn.name, projColumn);
+                    }
+                }
+            }
+        } else if (source instanceof JoinSpec.FullJoin node) {
+            queryProjection = new LinkedHashMap<String, ColumnInfo>();
+            Map<String, JoinSpec.Column> columnMap = node.columnMap();
+            for (ColumnInfo projColumn : mProjectionMap.values()) {
+                if (columnMap.containsKey(projColumn.name) ||
+                    columnMap.containsKey(projColumn.prefix()))
+                {
+                    queryProjection.put(projColumn.name, projColumn);
+                }
+            }
+        } else {
+            throw new AssertionError();
+        }
+
+        return new Query(queryProjection, null, filter);
     }
 
     /**
@@ -734,8 +864,18 @@ final class JoinScannerMaker {
 
                 MethodMaker mm = mJoinRowVar.methodMaker();
                 String name = node.name();
-                var levelRowVar = mm.field(name + "_s").invoke("row").cast(node.column().type);
+
+                Label ready = mm.label();
+                mJoinRowVar.invoke(name).ifNe(null, ready);
+
+                var levelRowVar = mm.field(name + "_s").invoke("row");
+                levelRowVar.ifEq(null, ready);
+                Class<?> rowType = node.column().type;
+                Class<?> rowClass = RowMaker.find(rowType);
+                levelRowVar = levelRowVar.cast(rowClass).invoke(rowType, "clone", null);
                 mJoinRowVar.invoke(name, levelRowVar);
+
+                ready.here();
 
                 return node;
             }
@@ -747,13 +887,24 @@ final class JoinScannerMaker {
                 }
 
                 MethodMaker mm = mJoinRowVar.methodMaker();
-                var levelRowVar = mm.field(node.name() + "_s").invoke("row").cast(mJoinType);
 
                 JoinSpec.ColumnIterator it = node.columnIterator();
                 JoinSpec.Column column;
                 while ((column = it.tryNext()) != null) {
                     String name = column.name();
-                    mJoinRowVar.invoke(name, levelRowVar.invoke(name));
+
+                    Label ready = mm.label();
+                    mJoinRowVar.invoke(name).ifNe(null, ready);
+
+                    var levelRowVar = mm.field(node.name() + "_s").invoke("row").cast(mJoinType);
+                    var subRowVar = levelRowVar.invoke(name);
+                    subRowVar.ifEq(null, ready);
+                    Class<?> subRowType = column.column().type;
+                    Class<?> subRowClass = RowMaker.find(subRowType);
+                    subRowVar = subRowVar.cast(subRowClass).invoke(subRowType, "clone", null);
+                    mJoinRowVar.invoke(name, subRowVar);
+
+                    ready.here();
                 }
 
                 return node;
@@ -869,7 +1020,7 @@ final class JoinScannerMaker {
     /**
      * Makes code that calls newScannerWith on the join column.
      */
-    private static class ScannerMaker implements IntUnaryOperator {
+    private class ScannerMaker implements IntUnaryOperator {
         private final MethodMaker mMethodMaker;
         private final JoinSpec.Source mSource;
         private final boolean mExists;
@@ -959,9 +1110,9 @@ final class JoinScannerMaker {
                 checkArg--;
             }
 
-            final Variable resultVar;
-
             if (mExists) {
+                final Variable resultVar;
+
                 if (filter == FalseFilter.THE) {
                     resultVar = mMethodMaker.var(boolean.class).set(false);
                 } else if (filter == TrueFilter.THE) {
@@ -983,38 +1134,45 @@ final class JoinScannerMaker {
                     resultVar = mTableVar.invoke("anyRowsWith", mTxnVar, levelRowVar(),
                                                  filter.toString(), mArgsVar);
                 }
-            } else {
-                if (filter == FalseFilter.THE) {
-                    resultVar = mMethodMaker.var(EmptyScanner.class).field("THE");
-                } else if (filter == TrueFilter.THE) {
-                    resultVar = mTableVar.invoke("newScannerWith", mTxnVar, levelRowVar());
-                } else {
-                    Map<String, JoinSpec.Source> sources = mSource.argSources();
-                    if (sources != null) {
-                        // If any argument source is null, return an empty scanner.
-                        Label empty = null;
-                        for (Map.Entry<String, JoinSpec.Source> e : sources.entrySet()) {
-                            if (e.getValue().isNullable()) {
-                                if (empty == null) {
-                                    empty = mMethodMaker.label();
-                                }
-                                mJoinRowVar.invoke(e.getKey()).ifEq(null, empty);
-                            }
-                        }
-                        if (empty != null) {
-                            Label cont = mMethodMaker.label().goto_();
-                            empty.here();
-                            mMethodMaker.return_(mMethodMaker.var(EmptyScanner.class).field("THE"));
-                            cont.here();
-                        }
-                    }
 
-                    resultVar = mTableVar.invoke("newScannerWith", mTxnVar, levelRowVar(),
-                                                 filter.toString(), mArgsVar);
+                mMethodMaker.return_(resultVar);
+                return;
+            }
+
+            if (filter == FalseFilter.THE) {
+                mMethodMaker.return_(mMethodMaker.var(EmptyScanner.class).field("THE"));
+                return;
+            }
+
+            var query = queryFor(mSource, filter);
+
+            if (query.isFullScan()) {
+                mMethodMaker.return_(mTableVar.invoke("newScannerWith", mTxnVar, levelRowVar()));
+                return;
+            }
+
+            Map<String, JoinSpec.Source> sources = mSource.argSources();
+            if (sources != null) {
+                // If any argument source is null, return an empty scanner.
+                Label empty = null;
+                for (Map.Entry<String, JoinSpec.Source> e : sources.entrySet()) {
+                    if (e.getValue().isNullable()) {
+                        if (empty == null) {
+                            empty = mMethodMaker.label();
+                        }
+                        mJoinRowVar.invoke(e.getKey()).ifEq(null, empty);
+                    }
+                }
+                if (empty != null) {
+                    Label cont = mMethodMaker.label().goto_();
+                    empty.here();
+                    mMethodMaker.return_(mMethodMaker.var(EmptyScanner.class).field("THE"));
+                    cont.here();
                 }
             }
 
-            mMethodMaker.return_(resultVar);
+            mMethodMaker.return_(mTableVar.invoke("newScannerWith", mTxnVar, levelRowVar(),
+                                                  query.toString(), mArgsVar));
         }
 
         private Variable levelRowVar() {

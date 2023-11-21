@@ -111,8 +111,6 @@ final class JoinQueryLauncherMaker {
         }
     }
 
-    // FIXME: Support projection and ordering.
-
     private final JoinSpec mTableSpec;
     private final Class<?> mJoinType;
     private final RowInfo mJoinInfo;
@@ -138,7 +136,7 @@ final class JoinQueryLauncherMaker {
         mPlanner = new JoinPlanner(mTableSpec, mQuery.filter());
 
         JoinSpec spec = mPlanner.spec();
-        mScannerClass = JoinScannerMaker.make(mJoinType, spec);
+        mScannerClass = JoinScannerMaker.make(mJoinType, spec, mQuery);
 
         mClassMaker = RowGen.anotherClassMaker
             (getClass(), mJoinInfo.name, mScannerClass, "launcher")
