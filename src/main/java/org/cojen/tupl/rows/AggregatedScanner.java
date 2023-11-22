@@ -64,7 +64,7 @@ public final class AggregatedScanner<S, T> implements Scanner<T> {
             mHeader = aggregatedTable.newSourceRow();
 
             aggregatedTable.copySourceRow(sourceRow, mHeader);
-            mSourceRow = mAggregator.begin(sourceRow);
+            mSourceRow = aggregator.begin(sourceRow);
         } catch (Throwable e) {
             try {
                 close();

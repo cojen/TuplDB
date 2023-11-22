@@ -48,7 +48,7 @@ public class MappedScanner<S, T> implements Scanner<T> {
 
             if (sourceRow != null) {
                 targetRow = prepareTargetRow(targetRow);
-                T mappedTargetRow = mMapper.map(sourceRow, targetRow);
+                T mappedTargetRow = mapper.map(sourceRow, targetRow);
                 if (mappedTargetRow != null) {
                     mMappedTable.cleanRow(mappedTargetRow);
                     mTargetRow = mappedTargetRow;
