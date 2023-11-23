@@ -30,8 +30,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import java.util.function.Supplier;
-
 import org.cojen.maker.ClassMaker;
 import org.cojen.maker.Label;
 import org.cojen.maker.MethodMaker;
@@ -74,14 +72,14 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
     }
 
     public static <S, T> AggregatedTable<S, T> aggregate(Table<S> source, Class<T> targetType,
-                                                         Supplier<Aggregator<S, T>> supplier)
+                                                         Aggregator.Factory<S, T> factory)
     {
         Objects.requireNonNull(targetType);
-        Objects.requireNonNull(supplier);
+        Objects.requireNonNull(factory);
         try {
             var key = new Pair<Class, Class>(source.rowType(), targetType);
             return (AggregatedTable<S, T>) cFactoryCache.obtain(key, source)
-                .invokeExact(source, supplier);
+                .invokeExact(source, factory);
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }
@@ -90,7 +88,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
     /**
      * MethodHandle signature:
      *
-     *  AggregatedTable<S, T> make(Table<S> source, Supplier<Aggregator<S, T>>)
+     *  AggregatedTable<S, T> make(Table<S> source, Aggregator.Factory<S, T>)
      */
     private static MethodHandle makeTableFactory(Table<?> source, Class<?> sourceType,
                                                  Class<?> targetType)
@@ -121,7 +119,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
             .extend(AggregatedTable.class).implement(TableBasicsMaker.find(targetType));
 
         {
-            MethodMaker ctor = cm.addConstructor(Table.class, Supplier.class).private_();
+            MethodMaker ctor = cm.addConstructor(Table.class, Aggregator.Factory.class).private_();
             ctor.invokeSuperConstructor(ctor.param(0), ctor.param(1));
         }
 
@@ -230,7 +228,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
         Class<?> tableClass = lookup.lookupClass();
 
         MethodMaker mm = MethodMaker.begin
-            (lookup, AggregatedTable.class, null, Table.class, Supplier.class);
+            (lookup, AggregatedTable.class, null, Table.class, Aggregator.Factory.class);
         mm.return_(mm.new_(tableClass, mm.param(0), mm.param(1)));
 
         MethodHandle mh = mm.finish();
@@ -275,15 +273,15 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
         return bob.toString();
     }
 
-    protected final Supplier<Aggregator<S, T>> mAggregatorSupplier;
+    protected final Aggregator.Factory<S, T> mAggregatorFactory;
 
     // Cache key is either a query string or a Pair of a query string and source projection.
     private final WeakCache<Object, ScannerFactory<S, T>, Query> mScannerFactoryCache;
 
-    protected AggregatedTable(Table<S> source, Supplier<Aggregator<S, T>> supplier) {
+    protected AggregatedTable(Table<S> source, Aggregator.Factory<S, T> factory) {
         super(source);
 
-        mAggregatorSupplier = supplier;
+        mAggregatorFactory = factory;
 
         mScannerFactoryCache = new WeakCache<>() {
             @Override
@@ -325,7 +323,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
                                            String query, Object... args)
         throws IOException
     {
-        Aggregator<S, T> aggregator = mAggregatorSupplier.get();
+        Aggregator<S, T> aggregator = mAggregatorFactory.newAggregator();
         String projection = aggregator.sourceProjection();
 
         ScannerFactory<S, T> factory;
@@ -369,7 +367,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
     public final QueryPlan scannerPlan(Transaction txn, String query, Object... args)
         throws IOException
     {
-        try (Aggregator<S, T> aggregator = mAggregatorSupplier.get()) {
+        try (Aggregator<S, T> aggregator = mAggregatorFactory.newAggregator()) {
             String projection = aggregator.sourceProjection();
             return mScannerFactoryCache
                 .obtain(makeScannerFactoryKey(query == null ? "{*}" : query, projection), null)

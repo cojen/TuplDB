@@ -30,6 +30,14 @@ import org.cojen.tupl.diag.QueryPlan;
  */
 public interface Aggregator<R, T> extends Closeable {
     /**
+     * Is called to generate a new {@link Aggregator} instance for every query against the
+     * target table.
+     */
+    public static interface Factory<R, T> {
+        Aggregator<R, T> newAggregator() throws IOException;
+    }
+
+    /**
      * Called for the first source row in the group.
      *
      * @param source never null
