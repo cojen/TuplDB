@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.Comparator;
 
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -469,15 +468,11 @@ public interface Table<R> extends Closeable {
      * the resulting table has one row, which is the aggregate result of all the rows of this
      * table. The view returned by this method is unmodifiable, and closing it has no effect.
      *
-     * @param supplier is called to generate a new {@link Aggregator} instance for every query
-     * against the returned table
      * @throws NullPointerException if any parameter is null
      * @throws IllegalArgumentException if target primary key is malformed
      */
-    public default <T> Table<T> aggregate(Class<T> targetType,
-                                          Supplier<Aggregator<R, T>> supplier)
-    {
-        return AggregatedTable.aggregate(this, targetType, supplier);
+    public default <T> Table<T> aggregate(Class<T> targetType, Aggregator.Factory<R, T> factory) {
+        return AggregatedTable.aggregate(this, targetType, factory);
     }
 
     // FIXME: For supporting windowed functions.

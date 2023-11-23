@@ -126,13 +126,22 @@ public class AggregatedTest {
         }
 
         @Override
-        public String sourceProjection() {
-            return "num";
+        public String toString() {
+            return getClass().getSimpleName();
+        }
+    }
+
+    public static class Agg1Factory<T extends TestRowAgg>
+        implements Aggregator.Factory<TestRow, T>
+    {
+        @Override
+        public Aggregator1<T> newAggregator() {
+            return new Aggregator1<T>();
         }
 
         @Override
-        public String toString() {
-            return getClass().getSimpleName();
+        public String sourceProjection() {
+            return "num";
         }
     }
 
@@ -178,7 +187,7 @@ public class AggregatedTest {
 
     @Test
     public void toOneRow() throws Exception {
-        Table<TestRowAgg> aggregated = mTable.aggregate(TestRowAgg.class, Aggregator1::new);
+        Table<TestRowAgg> aggregated = mTable.aggregate(TestRowAgg.class, new Agg1Factory<>());
 
         assertTrue(aggregated.isEmpty());
         assertFalse(aggregated.anyRows(null));
@@ -287,7 +296,7 @@ public class AggregatedTest {
     @Test
     public void byName() throws Exception {
         Table<TestRowAggByName> aggregated =
-            mTable.aggregate(TestRowAggByName.class, Aggregator1::new);
+            mTable.aggregate(TestRowAggByName.class, new Agg1Factory<>());
 
         assertTrue(aggregated.isEmpty());
         assertFalse(aggregated.anyRows(null));
@@ -502,8 +511,7 @@ public class AggregatedTest {
 
     @Test
     public void brokenAggregate() throws Exception {
-        Table<TestRowAggByName> aggregated =
-            mTable.aggregate(TestRowAggByName.class, () -> new Broken<>());
+        Table<TestRowAggByName> aggregated = mTable.aggregate(TestRowAggByName.class, Broken::new);
 
         fill();
 

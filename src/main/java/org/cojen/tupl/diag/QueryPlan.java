@@ -438,7 +438,7 @@ public abstract sealed class QueryPlan implements Serializable {
 
         /**
          * @param target describes the target row type
-         * @param using describes the group operation (optional)
+         * @param using describes the aggregate operation (optional)
          * @param columns group-by columns (or null if none)
          * @param source child plan node
          */

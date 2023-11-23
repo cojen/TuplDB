@@ -38,7 +38,7 @@ loadScripts(document, 'script');</script>
 <li>
 <p>Summary:</p>
 <ul>
-<li>Nested</li>
+<li><a href="#nested-class-summary">Nested</a></li>
 <li>Field</li>
 <li>Constr</li>
 <li><a href="#method-summary">Method</a></li>
@@ -58,7 +58,7 @@ loadScripts(document, 'script');</script>
 <div id="navbar-sub-list">
 <ul class="sub-nav-list">
 <li>Summary:&nbsp;</li>
-<li>Nested&nbsp;|&nbsp;</li>
+<li><a href="#nested-class-summary">Nested</a>&nbsp;|&nbsp;</li>
 <li>Field&nbsp;|&nbsp;</li>
 <li>Constr&nbsp;|&nbsp;</li>
 <li><a href="#method-summary">Method</a></li>
@@ -99,13 +99,31 @@ extends <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/ja
 <dt>See Also:</dt>
 <dd>
 <ul class="tag-list">
-<li><a href="Table.html#aggregate(java.lang.Class,java.util.function.Supplier)"><code>Table.aggregate</code></a></li>
+<li><a href="Table.html#aggregate(java.lang.Class,org.cojen.tupl.Aggregator.Factory)"><code>Table.aggregate</code></a></li>
 </ul>
 </dd>
 </dl>
 </section>
 <section class="summary">
 <ul class="summary-list">
+<!-- ======== NESTED CLASS SUMMARY ======== -->
+<li>
+<section class="nested-class-summary" id="nested-class-summary">
+<h2>Nested Class Summary</h2>
+<div class="caption"><span>Nested Classes</span></div>
+<div class="summary-table three-column-summary">
+<div class="table-header col-first">Modifier and Type</div>
+<div class="table-header col-second">Interface</div>
+<div class="table-header col-last">Description</div>
+<div class="col-first even-row-color"><code>static interface&nbsp;</code></div>
+<div class="col-second even-row-color"><code><a href="Aggregator.Factory.html" class="type-name-link" title="interface in org.cojen.tupl">Aggregator.Factory</a>&lt;<a href="Aggregator.Factory.html" title="type parameter in Aggregator.Factory">R</a>,<wbr><a href="Aggregator.Factory.html" title="type parameter in Aggregator.Factory">T</a>&gt;</code></div>
+<div class="col-last even-row-color">
+<div class="block">Is called to generate a new <a href="Aggregator.html" title="interface in org.cojen.tupl"><code>Aggregator</code></a> instance for every query against the
+ target table.</div>
+</div>
+</div>
+</section>
+</li>
 <!-- ========== METHOD SUMMARY =========== -->
 <li>
 <section class="method-summary" id="method-summary">
@@ -136,17 +154,6 @@ extends <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/ja
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#finish(T)" class="member-name-link">finish</a><wbr>(<a href="Aggregator.html" title="type parameter in Aggregator">T</a>&nbsp;target)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Called produce an aggregate result for the current group.</div>
-</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#plan(org.cojen.tupl.diag.QueryPlan.Aggregator)" class="member-name-link">plan</a><wbr>(<a href="diag/QueryPlan.Aggregator.html" title="class in org.cojen.tupl.diag">QueryPlan.Aggregator</a>&nbsp;plan)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
-<div class="block">Override this method to customize the aggregator's query plan.</div>
-</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#sourceProjection()" class="member-name-link">sourceProjection</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
-<div class="block">Returns a comma-separated list of source columns which are needed by this <code>
- Aggregator</code>.</div>
 </div>
 </div>
 </div>
@@ -213,14 +220,6 @@ extends <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/ja
 </section>
 </li>
 <li>
-<section class="detail" id="sourceProjection()">
-<h3>sourceProjection</h3>
-<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">sourceProjection</span>()</div>
-<div class="block">Returns a comma-separated list of source columns which are needed by this <code>
- Aggregator</code>. Null is returned by default, which indicates that all columns are needed.</div>
-</section>
-</li>
-<li>
 <section class="detail" id="close()">
 <h3>close</h3>
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">close</span>()
@@ -233,19 +232,6 @@ extends <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/ja
 <dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/Closeable.html#close()" title="class or interface in java.io" class="external-link">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/Closeable.html" title="class or interface in java.io" class="external-link">Closeable</a></code></dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/io/IOException.html" title="class or interface in java.io" class="external-link">IOException</a></code></dd>
-</dl>
-</section>
-</li>
-<li>
-<section class="detail" id="plan(org.cojen.tupl.diag.QueryPlan.Aggregator)">
-<h3>plan</h3>
-<div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="return-type"><a href="diag/QueryPlan.html" title="class in org.cojen.tupl.diag">QueryPlan</a></span>&nbsp;<span class="element-name">plan</span><wbr><span class="parameters">(<a href="diag/QueryPlan.Aggregator.html" title="class in org.cojen.tupl.diag">QueryPlan.Aggregator</a>&nbsp;plan)</span></div>
-<div class="block">Override this method to customize the aggregator's query plan.</div>
-<dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>plan</code> - original plan</dd>
-<dt>Returns:</dt>
-<dd>original or replacement plan</dd>
 </dl>
 </section>
 </li>

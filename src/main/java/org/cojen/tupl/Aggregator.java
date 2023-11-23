@@ -30,6 +30,33 @@ import org.cojen.tupl.diag.QueryPlan;
  */
 public interface Aggregator<R, T> extends Closeable {
     /**
+     * Is called to generate a new {@link Aggregator} instance for every query against the
+     * target table.
+     */
+    public static interface Factory<R, T> {
+        Aggregator<R, T> newAggregator() throws IOException;
+
+        /**
+         * Returns a comma-separated list of source columns which are needed by the {@code
+         * Aggregator} instances. Null is returned by default, which indicates that all columns
+         * are needed.
+         */
+        default String sourceProjection() {
+            return null;
+        }
+
+        /**
+         * Override this method to customize the aggregator's query plan.
+         *
+         * @param plan original plan
+         * @return original or replacement plan
+         */
+        default QueryPlan plan(QueryPlan.Aggregator plan) {
+            return plan;
+        }
+    }
+
+    /**
      * Called for the first source row in the group.
      *
      * @param source never null
@@ -56,27 +83,9 @@ public interface Aggregator<R, T> extends Closeable {
     T finish(T target) throws IOException;
 
     /**
-     * Returns a comma-separated list of source columns which are needed by this {@code
-     * Aggregator}. Null is returned by default, which indicates that all columns are needed.
-     */
-    default String sourceProjection() {
-        return null;
-    }
-
-    /**
      * Is called when this {@code Aggregator} instance is no longer needed.
      */
     @Override
     default void close() throws IOException {
-    }
-
-    /**
-     * Override this method to customize the aggregator's query plan.
-     *
-     * @param plan original plan
-     * @return original or replacement plan
-     */
-    default QueryPlan plan(QueryPlan.Aggregator plan) {
-        return plan;
     }
 }
