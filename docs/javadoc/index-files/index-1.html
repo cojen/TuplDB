@@ -144,7 +144,7 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Add a remote member address for allowing the local member to join the group.</div>
 </dd>
-<dt><a href="../org.cojen.tupl/org/cojen/tupl/Table.html#aggregate(java.lang.Class,java.util.function.Supplier)" class="member-name-link">aggregate(Class&lt;T&gt;, Supplier&lt;Aggregator&lt;R, T&gt;&gt;)</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/Table.html#aggregate(java.lang.Class,org.cojen.tupl.Aggregator.Factory)" class="member-name-link">aggregate(Class&lt;T&gt;, Aggregator.Factory&lt;R, T&gt;)</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Table.html" title="interface in org.cojen.tupl">Table</a></dt>
 <dd>
 <div class="block">Returns a view backed by this table, consisting of aggregate rows, which are grouped by
  the <a href="../org.cojen.tupl/org/cojen/tupl/PrimaryKey.html" title="annotation interface in org.cojen.tupl"><code>primary key</code></a> of the target type.</div>
@@ -155,6 +155,11 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Aggregator.html#%3Cinit%3E(java.lang.String,java.lang.String,java.lang.String%5B%5D,org.cojen.tupl.diag.QueryPlan)" class="member-name-link">Aggregator(String, String, String[], QueryPlan)</a> - Constructor for class org.cojen.tupl.diag.<a href="../org.cojen.tupl/org/cojen/tupl/diag/QueryPlan.Aggregator.html" title="class in org.cojen.tupl.diag">QueryPlan.Aggregator</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/Aggregator.Factory.html" class="type-name-link" title="interface in org.cojen.tupl">Aggregator.Factory&lt;R,<wbr>T&gt;</a> - Interface in <a href="../org.cojen.tupl/org/cojen/tupl/package-summary.html">org.cojen.tupl</a></dt>
+<dd>
+<div class="block">Is called to generate a new <a href="../org.cojen.tupl/org/cojen/tupl/Aggregator.html" title="interface in org.cojen.tupl"><code>Aggregator</code></a> instance for every query against the
+ target table.</div>
+</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/ext/CipherCrypto.html#algorithm()" class="member-name-link">algorithm()</a> - Method in class org.cojen.tupl.ext.<a href="../org.cojen.tupl/org/cojen/tupl/ext/CipherCrypto.html" title="class in org.cojen.tupl.ext">CipherCrypto</a></dt>
 <dd>
 <div class="block">Returns "AES" by default; override to change the algorithm.</div>

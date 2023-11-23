@@ -176,8 +176,8 @@ public interface MyRow {
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code>default &lt;T&gt;&nbsp;<a href="Table.html" title="interface in org.cojen.tupl">Table</a><wbr>&lt;T&gt;</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#aggregate(java.lang.Class,java.util.function.Supplier)" class="member-name-link">aggregate</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;targetType,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;<a href="Aggregator.html" title="interface in org.cojen.tupl">Aggregator</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>,<wbr>T&gt;&gt;&nbsp;supplier)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5"><code><a href="#aggregate(java.lang.Class,org.cojen.tupl.Aggregator.Factory)" class="member-name-link">aggregate</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;targetType,
+ <a href="Aggregator.Factory.html" title="interface in org.cojen.tupl">Aggregator.Factory</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>,<wbr>T&gt;&nbsp;factory)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab5">
 <div class="block">Returns a view backed by this table, consisting of aggregate rows, which are grouped by
  the <a href="PrimaryKey.html" title="annotation interface in org.cojen.tupl"><code>primary key</code></a> of the target type.</div>
@@ -895,19 +895,16 @@ public interface MyRow {
 </section>
 </li>
 <li>
-<section class="detail" id="aggregate(java.lang.Class,java.util.function.Supplier)">
+<section class="detail" id="aggregate(java.lang.Class,org.cojen.tupl.Aggregator.Factory)">
 <h3>aggregate</h3>
 <div class="member-signature"><span class="modifiers">default</span>&nbsp;<span class="type-parameters">&lt;T&gt;</span>&nbsp;<span class="return-type"><a href="Table.html" title="interface in org.cojen.tupl">Table</a>&lt;T&gt;</span>&nbsp;<span class="element-name">aggregate</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;targetType,
- <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/util/function/Supplier.html" title="class or interface in java.util.function" class="external-link">Supplier</a>&lt;<a href="Aggregator.html" title="interface in org.cojen.tupl">Aggregator</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>,<wbr>T&gt;&gt;&nbsp;supplier)</span></div>
+ <a href="Aggregator.Factory.html" title="interface in org.cojen.tupl">Aggregator.Factory</a>&lt;<a href="Table.html" title="type parameter in Table">R</a>,<wbr>T&gt;&nbsp;factory)</span></div>
 <div class="block">Returns a view backed by this table, consisting of aggregate rows, which are grouped by
  the <a href="PrimaryKey.html" title="annotation interface in org.cojen.tupl"><code>primary key</code></a> of the target type. The primary key columns must
  exactly correspond to columns of this source table. If no primary key is defined, then
  the resulting table has one row, which is the aggregate result of all the rows of this
  table. The view returned by this method is unmodifiable, and closing it has no effect.</div>
 <dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>supplier</code> - is called to generate a new <a href="Aggregator.html" title="interface in org.cojen.tupl"><code>Aggregator</code></a> instance for every query
- against the returned table</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if any parameter is null</dd>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if target primary key is malformed</dd>
