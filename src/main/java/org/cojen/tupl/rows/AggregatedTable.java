@@ -275,47 +275,28 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
 
     protected final Aggregator.Factory<S, T> mAggregatorFactory;
 
-    // Cache key is either a query string or a Pair of a query string and source projection.
-    private final WeakCache<Object, ScannerFactory<S, T>, Query> mScannerFactoryCache;
+    private final SoftCache<String, ScannerFactory<S, T>, Query> mScannerFactoryCache;
 
     protected AggregatedTable(Table<S> source, Aggregator.Factory<S, T> factory) {
         super(source);
 
         mAggregatorFactory = factory;
 
-        mScannerFactoryCache = new WeakCache<>() {
+        mScannerFactoryCache = new SoftCache<>() {
             @Override
-            protected ScannerFactory<S, T> newValue(Object key, Query query) {
-                String queryStr, sourceProjection;
-
-                if (key instanceof Pair pair) {
-                    queryStr = (String) pair.a();
-                    sourceProjection = (String) pair.b();
-                } else {
-                    queryStr = (String) key;
-                    sourceProjection = null;
-                }
-
+            protected ScannerFactory<S, T> newValue(String queryStr, Query query) {
                 if (query == null) {
                     RowInfo rowInfo = RowInfo.find(rowType());
                     query = new Parser(rowInfo.allColumns, queryStr).parseQuery(null);
                     String canonical = query.toString();
                     if (!canonical.equals(queryStr)) {
-                        return obtain(makeScannerFactoryKey(canonical, sourceProjection), query);
+                        return obtain(canonical, query);
                     }
                 }
 
-                return makeScannerFactory(query, sourceProjection);
+                return makeScannerFactory(query);
             }
         };
-    }
-
-    private static Object makeScannerFactoryKey(String queryStr, String sourceProjection) {
-        if (sourceProjection == null) {
-            return queryStr;
-        } else {
-            return new Pair<String, String>(queryStr, sourceProjection);
-        }
     }
 
     @Override
@@ -324,11 +305,10 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
         throws IOException
     {
         Aggregator<S, T> aggregator = mAggregatorFactory.newAggregator();
-        String projection = aggregator.sourceProjection();
 
         ScannerFactory<S, T> factory;
         try {
-            factory = mScannerFactoryCache.obtain(makeScannerFactoryKey(query, projection), null);
+            factory = mScannerFactoryCache.obtain(query, null);
         } catch (Throwable e) {
             try {
                 aggregator.close();
@@ -368,9 +348,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
         throws IOException
     {
         try (Aggregator<S, T> aggregator = mAggregatorFactory.newAggregator()) {
-            String projection = aggregator.sourceProjection();
-            return mScannerFactoryCache
-                .obtain(makeScannerFactoryKey(query == null ? "{*}" : query, projection), null)
+            return mScannerFactoryCache.obtain(query == null ? "{*}" : query, null)
                 .plan(this, aggregator, txn, args);
         }
     }
@@ -434,6 +412,13 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
     }
 
     /**
+     * Called by the generated ScannerFactory.
+     */
+    public final QueryPlan plan(QueryPlan.Aggregator plan) {
+        return mAggregatorFactory.plan(plan);
+    }
+
+    /**
      * Returns columns (or null) for QueryPlan.Aggregator.
      */
     public final String[] groupByColumns() {
@@ -449,18 +434,18 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
         return columns;
     }
 
-    private ScannerFactory<S, T> makeScannerFactory(Query targetQuery, String sourceProjection) {
+    private ScannerFactory<S, T> makeScannerFactory(Query targetQuery) {
         Class<S> sourceType = mSource.rowType();
         RowInfo sourceInfo = RowInfo.find(sourceType);
 
         // Prepare an initial source query, which will be replaced later.
         Query sourceQuery;
         {
-            if (sourceProjection == null) {
+            String proj = mAggregatorFactory.sourceProjection();
+            if (proj == null) {
                 sourceQuery = new Query(null, null, TrueFilter.THE);
             } else {
-                sourceQuery = new Parser
-                    (sourceInfo.allColumns, '{' + sourceProjection + '}').parseQuery(null);
+                sourceQuery = new Parser(sourceInfo.allColumns, '{' + proj + '}').parseQuery(null);
             }
         }
 
@@ -665,7 +650,7 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
 
         var aggregatorPlanVar = mm.new_
             (QueryPlan.Aggregator.class, targetVar, usingVar, columnVars, planVar);
-        planVar.set(aggregatorVar.invoke("plan", aggregatorPlanVar));
+        planVar.set(tableVar.invoke("plan", aggregatorPlanVar));
 
         if (targetQuery.filter() != TrueFilter.THE) {
             planVar.set(mm.new_(QueryPlan.Filter.class, targetQuery.filter().toString(), planVar));
