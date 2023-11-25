@@ -51,6 +51,7 @@ import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnmodifiableViewException;
+import org.cojen.tupl.Untransformed;
 import org.cojen.tupl.Updater;
 import org.cojen.tupl.ViewConstraintException;
 
@@ -180,15 +181,6 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
             ColumnInfo target = targetInfo.allColumns.get(targetName);
             if (target != null) {
                 mapToSource.put(targetName, target);
-            }
-        }
-
-        if (Mapper.Identity.class.isAssignableFrom(key.mapperClass())) {
-            for (ColumnInfo target : targetInfo.allColumns.values()) {
-                String name = target.name;
-                if (!mapToSource.containsKey(name) && sourceInfo.keyColumns.containsKey(name)) {
-                    mapToSource.put(name, target);
-                }
             }
         }
 
@@ -552,12 +544,12 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
 
             if (set == null) {
                 set = new TreeSet<>((a, b) -> {
-                    // Prefer identity mappers, so order them first.
-                    if (a.function() == null) {
-                        if (b.function() != null) {
+                    // Prefer untransformed mappers, so order them first.
+                    if (a.isUntransformed()) {
+                        if (!b.isUntransformed()) {
                             return -1;
                         }
-                    } else if (b.function() == null) {
+                    } else if (b.isUntransformed()) {
                         return 1;
                     }
 
@@ -638,9 +630,8 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
                 var targetColumnVar = targetRowVar.field(targetColumn.name);
                 Variable sourceColumnVar;
 
-                Method fun = targetColumnFun.function();
-
-                if (fun != null) {
+                if (!targetColumnFun.isUntransformed()) {
+                    Method fun = targetColumnFun.function();
                     sourceColumnVar = mm.var
                         (fun.getDeclaringClass()).invoke(fun.getName(), targetColumnVar);
                 } else {
@@ -719,7 +710,7 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
 
                 if (cf instanceof ColumnToArgFilter c2a) {
                     c2a = c2a.withColumn(source.column());
-                    if (source.function() == null) {
+                    if (source.isUntransformed()) {
                         return c2a;
                     }
                     if (argMappers == null) {
@@ -734,14 +725,13 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
                     }
                     return c2a.withArgument(sourceArg);
                 } else if (cf instanceof ColumnToColumnFilter c2c) {
-                    // Can only convert to a source filter when both columns rely on an
-                    // identity mapping, and a common type exists. It's unlikely that a common
-                    // type doesn't exist.
-                    if (source.function() != null) {
+                    // Can only convert to a source filter when both columns are untransformed
+                    // and a common type exists. It's unlikely that a common type doesn't exist.
+                    if (!source.isUntransformed()) {
                         return null;
                     }
                     ColumnFunction otherSource = finder.tryFindSource(c2c.otherColumn());
-                    if (otherSource == null || otherSource.function() != null) {
+                    if (otherSource == null || !otherSource.isUntransformed()) {
                         return null;
                     }
                     return c2c.tryWithColumns(source.column(), otherSource.column());
@@ -843,7 +833,7 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
             mm.field("mapper").set(mm.param(0));
 
             if (targetRemainder != TrueFilter.THE) {
-                cm.addField(Predicate.class, "predicate").private_();
+                cm.addField(Predicate.class, "predicate").private_().final_();
                 MethodHandle mh = PlainPredicateMaker
                     .predicateHandle(targetType, targetRemainder.toString());
                 mm.field("predicate").set(mm.invoke(mh, mm.param(1)));
@@ -1145,27 +1135,24 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
         }
     }
 
-    /**
-     * @param function is null for identity mapping
-     */
-    private record ColumnFunction(ColumnInfo column, Method function) { }
+    private record ColumnFunction(ColumnInfo column, Method function) {
+        boolean isUntransformed() {
+            return function.isAnnotationPresent(Untransformed.class);
+        }
+    }
 
     /**
      * Finds inverse mapping functions defined in a Mapper implementation.
      */
     private class InverseFinder {
-        private final boolean mIdentity;
         private final Map<String, ColumnInfo> mSourceColumns;
         private final TreeMap<String, Method> mAllMethods;
 
         InverseFinder(Map<String, ColumnInfo> sourceColumns) {
-            Class<? extends Mapper> mapperClass = mMapper.getClass();
-
-            mIdentity = Mapper.Identity.class.isAssignableFrom(mapperClass);
             mSourceColumns = sourceColumns;
 
             mAllMethods = new TreeMap<>();
-            for (Method m : mapperClass.getMethods()) {
+            for (Method m : mMapper.getClass().getMethods()) {
                 mAllMethods.put(m.getName(), m);
             }
         }
@@ -1211,13 +1198,7 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
                 return new ColumnFunction(sourceColumn, candidate);
             }
 
-            if (!mIdentity) {
-                return null;
-            }
-
-            ColumnInfo sourceColumn = mSourceColumns.get(targetColumn.name);
-
-            return sourceColumn == null ? null : new ColumnFunction(sourceColumn, null);
+            return null;
         }
 
         /**
@@ -1236,7 +1217,7 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
 
             for (var rule : targetOrder.values()) {
                 ColumnFunction source = tryFindSource(rule.column());
-                if (source == null || source.function() != null) {
+                if (source == null || !source.isUntransformed()) {
                     break;
                 }
                 if (sourceOrder == null) {
