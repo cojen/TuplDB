@@ -48,14 +48,11 @@ public final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
 
     public static OrderBy forSpec(Map<String, ? extends ColumnInfo> columns, String spec) {
         try {
-            OrderBy orderBy = parseSpec(columns, spec);
-            if (!orderBy.isEmpty()) {
-                return orderBy;
-            }
+            return parseSpec(columns, spec);
         } catch (IndexOutOfBoundsException e) {
         }
 
-        throw new IllegalArgumentException("Malformed ordering specification: " + spec);
+        throw malformed(spec);
     }
 
     public OrderBy() {
@@ -125,6 +122,9 @@ public final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
     }
 
     public String spec() {
+        if (isEmpty()) {
+            return "";
+        }
         var b = new StringBuilder();
         for (OrderBy.Rule rule : values()) {
             rule.appendTo(b);
@@ -205,7 +205,7 @@ public final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
             if (order == '-') {
                 type |= TYPE_DESCENDING;
             } else if (order != '+') {
-                break;
+                throw malformed(spec);
             }
 
             if (spec.charAt(pos) == '!') {
@@ -223,7 +223,7 @@ public final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
             }
 
             if (end == pos) {
-                break;
+                throw malformed(spec);
             }
 
             String name = spec.substring(pos, end);
@@ -248,5 +248,9 @@ public final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
         }
 
         return orderBy;
+    }
+
+    private static IllegalArgumentException malformed(String spec) {
+        return new IllegalArgumentException("Malformed ordering specification: " + spec);
     }
 }

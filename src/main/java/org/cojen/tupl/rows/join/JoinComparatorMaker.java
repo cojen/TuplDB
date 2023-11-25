@@ -80,7 +80,12 @@ final class JoinComparatorMaker<J> {
         return mOrderBy.spec();
     }
 
+    @SuppressWarnings("unchecked")
     Comparator<J> finish() {
+        if (mOrderBy.isEmpty()) {
+            return ComparatorMaker.ZERO;
+        }
+
         ClassMaker cm = RowGen.beginClassMaker
             (JoinComparatorMaker.class, mJoinType, mJoinInfo.name, null, "comparator")
             .implement(Comparator.class).final_();
