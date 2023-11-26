@@ -142,7 +142,6 @@ public class Utils extends org.cojen.tupl.io.Utils {
         return (int) v;
     }
 
-    /*
     public static long unscramble(long v) {
         // http://naml.us/blog/2012/03/inverse-of-a-hash-function
 
@@ -182,7 +181,6 @@ public class Utils extends org.cojen.tupl.io.Utils {
 
         return v;
     }
-    */
 
     public static TimeUnit inferUnit(TimeUnit unit, long value) {
         infer: {

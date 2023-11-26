@@ -2852,6 +2852,8 @@ final class LocalDatabase extends CoreDatabase {
     }
 
     private class FreeListScan implements Runnable, LongConsumer {
+        private final IdSet mIdSet = new IdSet(mTempFileManager);
+
         private Object mFinished;
 
         @Override
@@ -2878,7 +2880,13 @@ final class LocalDatabase extends CoreDatabase {
 
         @Override
         public void accept(long id) {
-            // TODO: check for duplicates
+            try {
+                if (!mIdSet.add(id)) {
+                    throw new CorruptDatabaseException("Duplicate page id in free list: " + id);
+                }
+            } catch (Throwable e) {
+                throw rethrow(e);
+            }
         }
 
         synchronized void waitFor() throws IOException {
@@ -2888,6 +2896,16 @@ final class LocalDatabase extends CoreDatabase {
                 }
             } catch (InterruptedException e) {
                 return;
+            }
+
+            try {
+                mIdSet.close();
+            } catch (Throwable e) {
+                if (mFinished instanceof Throwable t) {
+                    suppress(t, e);
+                } else {
+                    throw e;
+                }
             }
 
             if (mFinished instanceof Throwable t) {

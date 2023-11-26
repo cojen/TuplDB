@@ -69,6 +69,22 @@ public abstract class LHashTable<E extends LHashTable.Entry<E>> {
         }
     }
 
+    public static final class SetEntry extends Entry<SetEntry> {
+    }
+
+    /**
+     * Defines an LHashTable of empty entries, which is effectively a hash set.
+     */
+    public static final class Set extends LHashTable<SetEntry> {
+        Set(int capacity) {
+            super(capacity);
+        }
+
+        protected SetEntry newEntry() {
+            return new SetEntry();
+        }
+    }
+
     private static final float LOAD_FACTOR = 0.75f;
 
     private E[] mEntries;
@@ -124,6 +140,25 @@ public abstract class LHashTable<E extends LHashTable.Entry<E>> {
         for (E e = entries[index]; e != null; e = e.next) {
             if (e.key == key) {
                 return e;
+            }
+        }
+        if (grow()) {
+            entries = mEntries;
+            index = ((int) key) & (entries.length - 1);
+        }
+        mSize++;
+        return entries[index] = newEntry(key, entries[index]);
+    }
+
+    /**
+     * @return new entry if inserted or else null if an entry already exists
+     */
+    public final E insert(long key) {
+        E[] entries = mEntries;
+        int index = ((int) key) & (entries.length - 1);
+        for (E e = entries[index]; e != null; e = e.next) {
+            if (e.key == key) {
+                return null;
             }
         }
         if (grow()) {
