@@ -259,7 +259,7 @@ public final class RowStore {
             if (lock == null) {
                 lock = mDatabase.newRowPredicateLock(indexId);
                 VarHandle.storeStoreFence();
-                mIndexLocks.insert(indexId).value = lock;
+                mIndexLocks.put(indexId).value = lock;
             }
             return lock;
         }

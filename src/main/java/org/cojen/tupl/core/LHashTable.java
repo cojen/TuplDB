@@ -29,6 +29,9 @@ public abstract class LHashTable<E extends LHashTable.Entry<E>> {
         public V value;
     }
 
+    /**
+     * Defines an LHashTable of Object entries.
+     */
     public static final class Obj<V> extends LHashTable<ObjEntry<V>> {
         public Obj(int capacity) {
             super(capacity);
@@ -53,6 +56,9 @@ public abstract class LHashTable<E extends LHashTable.Entry<E>> {
         public int value;
     }
 
+    /**
+     * Defines an LHashTable of int entries.
+     */
     public static final class Int extends LHashTable<IntEntry> {
         Int(int capacity) {
             super(capacity);
@@ -112,7 +118,7 @@ public abstract class LHashTable<E extends LHashTable.Entry<E>> {
     /**
      * @return new entry if inserted, existing entry otherwise
      */
-    public final E insert(long key) {
+    public final E put(long key) {
         E[] entries = mEntries;
         int index = ((int) key) & (entries.length - 1);
         for (E e = entries[index]; e != null; e = e.next) {

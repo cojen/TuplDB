@@ -779,7 +779,7 @@ final class LocalDatabase extends CoreDatabase {
                         // Assign after any find operation, because it will reset the cursor id.
                         cursor.mCursorId = cursorId;
 
-                        cursors.insert(cursorId).value = cursor;
+                        cursors.put(cursorId).value = cursor;
                     }
 
                     cursorRegistry.forceClose();
@@ -1926,7 +1926,7 @@ final class LocalDatabase extends CoreDatabase {
 
                     mOpenTreesLatch.acquireExclusive();
                     try {
-                        mOpenTreesById.insert(treeId).value = treeRef;
+                        mOpenTreesById.put(treeId).value = treeRef;
                     } finally {
                         mOpenTreesLatch.releaseExclusive();
                     }
@@ -2281,7 +2281,7 @@ final class LocalDatabase extends CoreDatabase {
         H handler = findRecoveryHandler(name, handlers);
 
         synchronized (handlersById) {
-            handlersById.insert(scrambledId).value = handler;
+            handlersById.put(scrambledId).value = handler;
         }
 
         return handler;
@@ -3904,7 +3904,7 @@ final class LocalDatabase extends CoreDatabase {
                         mOpenTrees.put(name, treeRef);
                     }
                     try {
-                        mOpenTreesById.insert(treeId).value = treeRef;
+                        mOpenTreesById.put(treeId).value = treeRef;
                     } catch (Throwable e) {
                         if (name != null) {
                             mOpenTrees.remove(name);

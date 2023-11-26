@@ -34,8 +34,8 @@ public class LHashTableTest {
     public void clear() {
         var ht = new LHashTable.Int(10);
 
-        ht.insert(1).value = 2;
-        ht.insert(3).value = 4;
+        ht.put(1).value = 2;
+        ht.put(3).value = 4;
         assertEquals(2, ht.get(1).value);
         assertEquals(4, ht.get(3).value);
         assertEquals(2, ht.size());
@@ -56,7 +56,7 @@ public class LHashTableTest {
         assertEquals(3, ht.get(0x100).value);
 
         // Again some collisions.
-        ht.insert(0x200).value = 1;
+        ht.put(0x200).value = 1;
         ht.replace(0x100).value = 4;
         assertEquals(4, ht.get(0x100).value);
         assertEquals(2, ht.size());
@@ -76,7 +76,7 @@ public class LHashTableTest {
         var ht = new LHashTable.Int(10);
 
         assertNull(ht.remove(1));
-        ht.insert(1).value = 2;
+        ht.put(1).value = 2;
         assertNull(ht.remove(2));
         assertEquals(2, ht.remove(1).value);
         assertNull(ht.remove(1));

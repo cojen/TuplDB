@@ -1652,7 +1652,7 @@ final class UndoLog implements DatabaseAccess {
                 if (mTxns == null) {
                     mTxns = new LHashTable.Obj<>(4);
                 }
-                mTxns.insert(txnId);
+                mTxns.put(txnId);
             }
         };
 
@@ -1756,7 +1756,7 @@ final class UndoLog implements DatabaseAccess {
                 txn.recoveredUndoLog(recoverUndoLog(op, entry));
                 txn.attach("recovery");
 
-                txns.insert(log.mTxnId).value = txn;
+                txns.put(log.mTxnId).value = txn;
 
                 return true;
             }
