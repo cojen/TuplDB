@@ -39,6 +39,8 @@ import org.cojen.tupl.core.Pair;
  * @author Brian S O'Neill
  */
 public final class ComparatorMaker<R> {
+    public static Comparator ZERO = (a, b) -> 0;
+
     private static final WeakCache<Pair<Class<?>, String>, Comparator<?>, OrderBy> cCache;
 
     static {
@@ -109,7 +111,12 @@ public final class ComparatorMaker<R> {
         return mOrderBy.spec();
     }
 
+    @SuppressWarnings("unchecked")
     Comparator<R> finish() {
+        if (mOrderBy.isEmpty()) {
+            return ZERO;
+        }
+
         Class rowClass = RowMaker.find(mRowType);
         ClassMaker cm = mRowInfo.rowGen().anotherClassMaker
             (ComparatorMaker.class, rowClass, "comparator").implement(Comparator.class).final_();

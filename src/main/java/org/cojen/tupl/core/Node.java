@@ -6238,7 +6238,7 @@ final class Node extends Clutch implements DatabaseAccess {
                 if (id() > 1 && childId <= 1) { // stubs don't have a valid child id
                     return verifyFailed(level, observer, "Illegal child id: " + childId);
                 }
-                LHashTable.IntEntry e = childIds.insert(childId);
+                LHashTable.IntEntry e = childIds.put(childId);
                 if (e.value != 0) {
                     return verifyFailed(level, observer, "Duplicate child id: " + childId);
                 }

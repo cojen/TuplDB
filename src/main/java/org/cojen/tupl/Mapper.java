@@ -27,18 +27,15 @@ import org.cojen.tupl.diag.QueryPlan;
  * Mapper implementations must be thread-safe.
  *
  * <p>For supporting inverse mapping, define a public static method for each target column
- * which can be mapped to a source column. The method naming pattern must be {@code
- * <target_name>_to_<source_name>}, and it must be a function. The parameter type must exactly
- * match the target column type, and the return type must exactly match the source column type.
- *
- * <p>If this {@code Mapper} mostly performs identity mappings, extend the {@link Identity}
- * interface in order for inverse mapping functions to be automatically defined. These serve as
- * defaults only and can be overridden with explicit functions.
+ * which can be mapped to a source column. The naming pattern must be {@code
+ * <target_name>_to_<source_name>}, and the method must be a function. The parameter type must
+ * exactly match the target column type, and the return type must exactly match the source
+ * column type. If the function doesn't transform the column value, then it should be annotated
+ * with {@link Untransformed @Untransformed}, since it helps with query optimization.
  *
  * @author Brian S O'Neill
  * @see Table#map Table.map
  */
-@FunctionalInterface
 public interface Mapper<R, T> {
     // TODO: Define a method which indicates whether or not the map method performs any
     // filtering, which is true by default. When false, it can help query sorting. In
@@ -99,11 +96,5 @@ public interface Mapper<R, T> {
      */
     default QueryPlan plan(QueryPlan.Mapper plan) {
         return plan;
-    }
-
-    /**
-     * Defines a {@link Mapper} which automatically defines inverse mapping functions.
-     */
-    public interface Identity<R, T> extends Mapper<R, T> {
     }
 }

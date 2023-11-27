@@ -565,7 +565,7 @@ public class MappedTest {
     /**
      * Swaps the str and num columns.
      */
-    public static class Swapper implements Mapper.Identity<TestRow, TestRow> {
+    public static class Swapper implements Mapper<TestRow, TestRow> {
         @Override
         public TestRow map(TestRow source, TestRow target) {
             assertEquals("{}", target.toString());
@@ -601,6 +601,11 @@ public class MappedTest {
 
         @Override
         public void checkDelete(Table<TestRow> table, TestRow row) throws ViewConstraintException {
+        }
+
+        @Untransformed
+        public static long id_to_id(long id) {
+            return id;
         }
 
         public static String num_to_str(int num) {
@@ -681,12 +686,11 @@ public class MappedTest {
 
         var plan3 = mapped.scannerPlan(null, query);
         assertEquals("""
-- sort: -identifier
-  - map: org.cojen.tupl.rows.MappedTest$Renamed
-    using: Renamer
-    - filter: str >= ?2
-      - full scan over primary key: org.cojen.tupl.rows.MappedTest$TestRow
-        key columns: +id
+- map: org.cojen.tupl.rows.MappedTest$Renamed
+  using: Renamer
+  - filter: str >= ?2
+    - reverse full scan over primary key: org.cojen.tupl.rows.MappedTest$TestRow
+      key columns: +id
                      """, plan3.toString());
 
         try (var scanner = mapped.newScanner(null, query, "a")) {
@@ -731,6 +735,7 @@ public class MappedTest {
         public void checkDelete(Table<TestRow> table, TestRow row) throws ViewConstraintException {
         }
 
+        @Untransformed
         public static long identifier_to_id(long id) {
             return id;
         }

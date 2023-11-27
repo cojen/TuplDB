@@ -175,15 +175,14 @@ public final class IdentityTable implements Table<IdentityTable.Row> {
 
     @Override
     public Comparator<Row> comparator(String spec) {
-        if (spec.length() != 0) {
-            // Validate.
-            OrderBy.forSpec(Collections.emptyMap(), spec);
-        }
+        // Validate.
+        OrderBy.forSpec(Collections.emptyMap(), spec);
         return comparator();
     }
 
+    @SuppressWarnings("unchecked")
     private static Comparator<Row> comparator() {
-        return (a, b) -> 0;
+        return ComparatorMaker.ZERO;
     }
 
     public QueryPlan scannerPlan(Transaction txn, String query, Object... args) {
