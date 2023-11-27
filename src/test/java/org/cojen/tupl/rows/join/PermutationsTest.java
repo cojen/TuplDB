@@ -83,6 +83,9 @@ public class PermutationsTest {
 
         if (cCon != null) {
             Filler.dropSQL(cCon);
+            try (var st = cCon.createStatement()) {
+                st.execute("SHUTDOWN");
+            }
             cCon.close();
             cCon = null;
         }
