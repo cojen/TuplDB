@@ -33,6 +33,7 @@ import org.cojen.tupl.io.Utils;
 
 import org.cojen.tupl.rows.AggregatedTable;
 import org.cojen.tupl.rows.ComparatorMaker;
+import org.cojen.tupl.rows.GroupedTable;
 import org.cojen.tupl.rows.MappedTable;
 import org.cojen.tupl.rows.PlainPredicateMaker;
 import org.cojen.tupl.rows.ViewedTable;
@@ -475,8 +476,25 @@ public interface Table<R> extends Closeable {
         return AggregatedTable.aggregate(this, targetType, factory);
     }
 
-    // FIXME: For supporting windowed functions.
-    //public default <T> Table<T> group(Class<T> targetType, Supplier<Grouper<R, T>> supplier) {
+    /**
+     * Returns a view backed by this table, which processes groups of source rows into groups
+     * of target rows. The view returned by this method is unmodifiable, closing it has no
+     * effect, and a {@link ViewConstraintException} is thrown from operations which act upon a
+     * primary key.
+     *
+     * @param groupBy grouping {@link #comparator specification}; pass an empty string to group
+     * all source rows together
+     * @param orderBy ordering specification within each group; pass an empty string if
+     * undefined
+     * @throws NullPointerException if any parameter is null
+     * @throws IllegalArgumentException if groupBy or orderBy specification is malformed
+     * @throws IllegalStateException if any groupBy or orderBy columns don't exist
+     */
+    public default <T> Table<T> group(String groupBy, String orderBy,
+                                      Class<T> targetType, Grouper.Factory<R, T> factory)
+    {
+        return GroupedTable.group(this, groupBy, orderBy, targetType, factory);
+    }
 
     /**
      * Joins tables together into an unmodifiable view. The returned view doesn't have any

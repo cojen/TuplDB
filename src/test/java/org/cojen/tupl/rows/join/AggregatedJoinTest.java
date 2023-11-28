@@ -180,7 +180,7 @@ public class AggregatedJoinTest {
   - first
     - aggregate: org.cojen.tupl.rows.join.AggregatedJoinTest$AggByCompany
       using: Aggregator1
-      columns: companyId
+      group by: companyId
       - sort: +companyId
         - full scan over primary key: org.cojen.tupl.rows.join.Department
           key columns: +id
@@ -207,7 +207,7 @@ public class AggregatedJoinTest {
   - first
     - aggregate: org.cojen.tupl.rows.join.AggregatedJoinTest$AggByCompany
       using: Aggregator1
-      columns: companyId
+      group by: companyId
       - sort: +companyId
         - full scan over primary key: org.cojen.tupl.rows.join.Department
           key columns: +id
@@ -237,7 +237,7 @@ public class AggregatedJoinTest {
   - join
     - aggregate: org.cojen.tupl.rows.join.AggregatedJoinTest$AggByCompany
       using: Aggregator1
-      columns: companyId
+      group by: companyId
       - filter: companyId == ?2
         - full scan over primary key: org.cojen.tupl.rows.join.Department
           key columns: +id
@@ -256,7 +256,7 @@ public class AggregatedJoinTest {
   - first
     - aggregate: org.cojen.tupl.rows.join.AggregatedJoinTest$AggByCompany
       using: Aggregator1
-      columns: companyId
+      group by: companyId
       - filter: companyId == ?1
         - full scan over primary key: org.cojen.tupl.rows.join.Department
           key columns: +id

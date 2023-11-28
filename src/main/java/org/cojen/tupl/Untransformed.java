@@ -20,10 +20,13 @@ package org.cojen.tupl;
 import java.lang.annotation.*;
 
 /**
- * Annotation which indicates that an inverse mapping function doesn't transform the value.
+ * Annotation which indicates that an inverse mapping function doesn't transform the value. A
+ * function which transforms the value can still be annotated as untransformed if the transform
+ * is guaranteed to lose no information or if it doesn't change the natural comparison order.
  *
  * @author Brian S. O'Neill
  * @see Mapper
+ * @see Grouper.Factory
  */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)

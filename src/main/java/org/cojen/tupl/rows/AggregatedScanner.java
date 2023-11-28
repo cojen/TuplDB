@@ -23,6 +23,7 @@ import java.util.Comparator;
 
 import org.cojen.tupl.Aggregator;
 import org.cojen.tupl.Scanner;
+import org.cojen.tupl.Table;
 
 /**
  * 
@@ -61,9 +62,10 @@ public final class AggregatedScanner<S, T> implements Scanner<T> {
             }
 
             mAggregator = aggregator;
-            mHeader = aggregatedTable.newSourceRow();
+            Table<S> sourceTable = aggregatedTable.source();
+            mHeader = sourceTable.newRow();
 
-            aggregatedTable.copySourceRow(sourceRow, mHeader);
+            sourceTable.copyRow(sourceRow, mHeader);
             mSourceRow = aggregator.begin(sourceRow);
         } catch (Throwable e) {
             try {
@@ -119,7 +121,7 @@ public final class AggregatedScanner<S, T> implements Scanner<T> {
 
                     mTargetRow = finishedTargetRow;
 
-                    mAggregatedTable.copySourceRow(sourceRow, mHeader);
+                    mAggregatedTable.source().copyRow(sourceRow, mHeader);
                     mSourceRow = aggregator.begin(sourceRow);
 
                     return finishedTargetRow;
@@ -129,7 +131,7 @@ public final class AggregatedScanner<S, T> implements Scanner<T> {
                     break;
                 }
 
-                mAggregatedTable.copySourceRow(sourceRow, mHeader);
+                mAggregatedTable.source().copyRow(sourceRow, mHeader);
                 sourceRow = aggregator.begin(sourceRow);
             }
         } catch (Throwable e) {

@@ -354,20 +354,6 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
     }
 
     /**
-     * Called by AggregatedScanner.
-     */
-    final S newSourceRow() {
-        return mSource.newRow();
-    }
-
-    /**
-     * Called by AggregatedScanner.
-     */
-    final void copySourceRow(S from, S to) {
-        mSource.copyRow(from, to);
-    }
-
-    /**
      * Called by AggregatedScanner. Returns zero if the source rows are in the same group.
      */
     protected abstract int compareSourceRows(S r1, S r2);
@@ -392,23 +378,6 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
      */
     protected int characteristics(Scanner<S> source) {
         return (source.characteristics() & ~(SIZED | SUBSIZED)) | ORDERED | SORTED;
-    }
-
-    /**
-     * Called by the generated ScannerFactory.
-     */
-    public final Table<S> source() {
-        return mSource;
-    }
-
-    /**
-     * Called by the generated ScannerFactory.
-     */
-    public final Scanner<T> sort(Scanner<T> source, Comparator<T> comparator,
-                                 Set<String> projection, String orderBySpec)
-        throws IOException
-    {
-        return RowSorter.sort(this, source, comparator, projection, orderBySpec);
     }
 
     /**
@@ -646,10 +615,10 @@ public abstract class AggregatedTable<S, T> extends WrappedTable<S, T> {
 
         var targetVar = mm.var(Class.class).set(targetType).invoke("getName");
         var usingVar = aggregatorVar.invoke("toString");
-        var columnVars = tableVar.invoke("groupByColumns");
+        var groupByVar = tableVar.invoke("groupByColumns");
 
         var aggregatorPlanVar = mm.new_
-            (QueryPlan.Aggregator.class, targetVar, usingVar, columnVars, planVar);
+            (QueryPlan.Aggregator.class, targetVar, usingVar, groupByVar, planVar);
         planVar.set(tableVar.invoke("plan", aggregatorPlanVar));
 
         if (targetQuery.filter() != TrueFilter.THE) {

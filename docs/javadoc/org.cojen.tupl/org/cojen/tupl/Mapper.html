@@ -95,8 +95,8 @@ loadScripts(document, 'script');</script>
 
  <p>For supporting inverse mapping, define a public static method for each target column
  which can be mapped to a source column. The naming pattern must be <code>
- &lt;target_name&gt;_to_&lt;source_name&gt;</code>, and the method must be a function. The parameter type must
- exactly match the target column type, and the return type must exactly match the source
+ &lt;target_name&gt;_to_&lt;source_name&gt;</code>, and the method must be a pure function. The parameter type
+ must exactly match the target column type, and the return type must exactly match the source
  column type. If the function doesn't transform the column value, then it should be annotated
  with <a href="Untransformed.html" title="annotation interface in org.cojen.tupl"><code>@Untransformed</code></a>, since it helps with query optimization.</div>
 <dl class="notes">

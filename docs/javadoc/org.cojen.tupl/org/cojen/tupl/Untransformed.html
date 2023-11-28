@@ -88,12 +88,15 @@ loadScripts(document, 'script');</script>
 <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/annotation/Retention.html" title="class or interface in java.lang.annotation" class="external-link">@Retention</a>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/annotation/RetentionPolicy.html#RUNTIME" title="class or interface in java.lang.annotation" class="external-link">RUNTIME</a>)
 <a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/annotation/Target.html" title="class or interface in java.lang.annotation" class="external-link">@Target</a>(<a href="https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/lang/annotation/ElementType.html#METHOD" title="class or interface in java.lang.annotation" class="external-link">METHOD</a>)
 </span><span class="modifiers">public @interface </span><span class="element-name type-name-label">Untransformed</span></div>
-<div class="block">Annotation which indicates that an inverse mapping function doesn't transform the value.</div>
+<div class="block">Annotation which indicates that an inverse mapping function doesn't transform the value. A
+ function which transforms the value can still be annotated as untransformed if the transform
+ is guaranteed to lose no information or if it doesn't change the natural comparison order.</div>
 <dl class="notes">
 <dt>See Also:</dt>
 <dd>
 <ul class="tag-list">
 <li><a href="Mapper.html" title="interface in org.cojen.tupl"><code>Mapper</code></a></li>
+<li><a href="Grouper.Factory.html" title="interface in org.cojen.tupl"><code>Grouper.Factory</code></a></li>
 </ul>
 </dd>
 </dl>

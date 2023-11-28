@@ -138,6 +138,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Override this method to customize the aggregator's query plan.</div>
 </dd>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/Grouper.Factory.html#plan(org.cojen.tupl.diag.QueryPlan.Grouper)" class="member-name-link">plan(QueryPlan.Grouper)</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Grouper.Factory.html" title="interface in org.cojen.tupl">Grouper.Factory</a></dt>
+<dd>
+<div class="block">Override this method to customize the grouper's query plan.</div>
+</dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/Mapper.html#plan(org.cojen.tupl.diag.QueryPlan.Mapper)" class="member-name-link">plan(QueryPlan.Mapper)</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Mapper.html" title="interface in org.cojen.tupl">Mapper</a></dt>
 <dd>
 <div class="block">Override this method to customize the mapper's query plan.</div>
@@ -224,6 +228,11 @@ loadScripts(document, 'script');</script>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/util/Latch.Condition.html#priorityAwait(org.cojen.tupl.util.Latch,long,long)" class="member-name-link">priorityAwait(Latch, long, long)</a> - Method in class org.cojen.tupl.util.<a href="../org.cojen.tupl/org/cojen/tupl/util/Latch.Condition.html" title="class in org.cojen.tupl.util">Latch.Condition</a></dt>
 <dd>
 <div class="block">Blocks the current thread until a signal is received.</div>
+</dd>
+<dt><a href="../org.cojen.tupl/org/cojen/tupl/Grouper.html#process(T)" class="member-name-link">process(T)</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Grouper.html" title="interface in org.cojen.tupl">Grouper</a></dt>
+<dd>
+<div class="block">Is called when all source group rows have been provided, and the first row for the
+ target group should be assigned.</div>
 </dd>
 <dt><a href="../org.cojen.tupl/org/cojen/tupl/Sorter.html#progress()" class="member-name-link">progress()</a> - Method in interface org.cojen.tupl.<a href="../org.cojen.tupl/org/cojen/tupl/Sorter.html" title="interface in org.cojen.tupl">Sorter</a></dt>
 <dd>
