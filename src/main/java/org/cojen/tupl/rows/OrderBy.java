@@ -129,8 +129,8 @@ public final class OrderBy extends LinkedHashMap<String, OrderBy.Rule> {
         for (OrderBy.Rule rule : values()) {
             rule.appendTo(b);
         }
-        // Call intern to reduce duplication. This method is only expected to be called when
-        // constructing Comparators and SortedQueryLaunchers, which are then cached.
+        // Call intern to reduce duplication under the expectation that callers will cache the
+        // string instance.
         return b.toString().intern();
     }
 

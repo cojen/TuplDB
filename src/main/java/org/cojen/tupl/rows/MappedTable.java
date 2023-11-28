@@ -26,18 +26,15 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import java.util.function.Function;
 import java.util.function.Predicate;
 
 import org.cojen.maker.ClassMaker;
@@ -51,16 +48,11 @@ import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
 import org.cojen.tupl.UnmodifiableViewException;
-import org.cojen.tupl.Untransformed;
 import org.cojen.tupl.Updater;
 import org.cojen.tupl.ViewConstraintException;
 
 import org.cojen.tupl.diag.QueryPlan;
 
-import org.cojen.tupl.rows.filter.ColumnFilter;
-import org.cojen.tupl.rows.filter.ColumnToArgFilter;
-import org.cojen.tupl.rows.filter.ColumnToColumnFilter;
-import org.cojen.tupl.rows.filter.ComplexFilterException;
 import org.cojen.tupl.rows.filter.Parser;
 import org.cojen.tupl.rows.filter.RowFilter;
 import org.cojen.tupl.rows.filter.Query;
@@ -72,7 +64,7 @@ import org.cojen.tupl.rows.filter.TrueFilter;
  * @author Brian S O'Neill
  * @see Table#map
  */
-public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
+public abstract class MappedTable<S, T> extends AbstractMappedTable<S, T> {
     /**
      * Although the generated factories only depend on the targetType, a full key is needed
      * because the mScannerFactoryCache and mInverse* fields rely on code which is generated
@@ -191,90 +183,6 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
         MethodMaker mm = cm.addMethod(null, "markValuesUnset", Object.class).protected_();
         var targetRowVar = mm.param(0).cast(RowMaker.find(key.targetType()));
         TableMaker.unset(targetInfo, targetRowVar, mapToSource);
-    }
-
-    /**
-     * Converts '.' to "$_" and converts '$' to "$$".
-     */
-    public static String escape(String name) {
-        int length = name.length();
-        int ix;
-        char c;
-        StringBuilder b;
-
-        quick: {
-            for (ix = 0; ix < length; ix++) {
-                c = name.charAt(ix);
-                if (c == '.' || c == '$') {
-                    b = new StringBuilder(length + 4).append(name.substring(0, ix));
-                    break quick;
-                }
-            }
-            return name;
-        }
-
-        while (true) {
-            if (c == '.') {
-                b.append("$_");
-            } else if (c == '$') {
-                b.append("$$");
-            } else {
-                b.append(c);
-            }
-
-            if (++ix >= length) {
-                break;
-            }
-
-            c = name.charAt(ix);
-        }
-
-        return b.toString();
-    }
-
-    /**
-     * Converts "$_" to '.' and converts "$$" to '$'.
-     */
-    public static String unescape(String name) {
-        int ix2 = name.indexOf('$');
-
-        if (ix2 < 0) {
-            return name;
-        }
-
-        int length = name.length();
-        var b = new StringBuilder(length);
-        int ix1 = 0;
-
-        while (true) {
-            b.append(name.substring(ix1, ix2));
-            ix1 = ix2;
-
-            if (++ix1 >= length) {
-                b.append(name.substring(ix2));
-                break;
-            }
-
-            int c = name.charAt(ix1);
-
-            if (c == '_') {
-                b.append('.');
-            } else {
-                b.append('$');
-                if (c != '$') {
-                    b.append((char) c);
-                }
-            }
-
-            ix2 = name.indexOf('$', ++ix1);
-
-            if (ix2 < 0) {
-                b.append(name.substring(ix1));
-                break;
-            }
-        }
-
-        return b.toString();
     }
 
     private final Mapper<S, T> mMapper;
@@ -681,144 +589,17 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
     }
 
     private ScannerFactory<S, T> makeScannerFactory(Query targetQuery) {
-        final RowFilter targetFilter;
-        {
-            RowFilter filter = targetQuery.filter();
-            try {
-                filter = filter.cnf();
-            } catch (ComplexFilterException e) {
-                // The split won't be as effective, and so the remainder mapper will do more work.
-            }
-            targetFilter = filter;
-        }
-
-        record ArgMapper(int targetArgNum, Method function) { } 
-
-        RowInfo sourceInfo = RowInfo.find(mSource.rowType());
-        var finder = new InverseFinder(sourceInfo.allColumns);
-
-        var checker = new Function<ColumnFilter, RowFilter>() {
-            Map<ArgMapper, Integer> argMappers;
-            int maxArg;
-
-            @Override
-            public RowFilter apply(ColumnFilter cf) {
-                ColumnFunction source = finder.tryFindSource(cf.column());
-                if (source == null) {
-                    return null;
-                }
-
-                if (cf instanceof ColumnToArgFilter c2a) {
-                    c2a = c2a.withColumn(source.column());
-                    if (source.isUntransformed()) {
-                        return c2a;
-                    }
-                    if (argMappers == null) {
-                        argMappers = new HashMap<>();
-                        maxArg = targetFilter.maxArgument();
-                    }
-                    var argMapper = new ArgMapper(c2a.argument(), source.function());
-                    Integer sourceArg = argMappers.get(argMapper);
-                    if (sourceArg == null) {
-                        sourceArg = ++maxArg;
-                        argMappers.put(argMapper, sourceArg);
-                    }
-                    return c2a.withArgument(sourceArg);
-                } else if (cf instanceof ColumnToColumnFilter c2c) {
-                    // Can only convert to a source filter when both columns are untransformed
-                    // and a common type exists. It's unlikely that a common type doesn't exist.
-                    if (!source.isUntransformed()) {
-                        return null;
-                    }
-                    ColumnFunction otherSource = finder.tryFindSource(c2c.otherColumn());
-                    if (otherSource == null || !otherSource.isUntransformed()) {
-                        return null;
-                    }
-                    return c2c.tryWithColumns(source.column(), otherSource.column());
-                }
-
-                return null;
-            }
-
-            void addPrepareArgsMethod(ClassMaker cm) {
-                if (argMappers == null) {
-                    // No special method is needed.
-                    return;
-                }
-
-                MethodMaker mm = cm.addMethod(Object[].class, "prepareArgs", Object[].class)
-                    .varargs().static_().final_();
-
-                // Generate the necessary source query arguments from the provided target
-                // arguments.
-
-                Label ready = mm.label();
-                var argsVar = mm.param(0);
-                argsVar.ifEq(null, ready);
-
-                argsVar.set(mm.var(Arrays.class).invoke("copyOf", argsVar, maxArg));
-
-                for (Map.Entry<ArgMapper, Integer> e : argMappers.entrySet()) {
-                    ArgMapper argMapper = e.getKey();
-                    var argVar = argsVar.aget(argMapper.targetArgNum - 1);
-                    Label cont = mm.label();
-                    argVar.ifEq(null, cont);
-                    Method fun = argMapper.function();
-                    var targetArgVar = ConvertCallSite.make(mm, fun.getParameterTypes()[0], argVar);
-                    var sourceArgVar =
-                        mm.var(fun.getDeclaringClass()).invoke(fun.getName(), targetArgVar);
-                    argsVar.aset(e.getValue() - 1, sourceArgVar);
-
-                    cont.here();
-                }
-
-                ready.here();
-                mm.return_(argsVar);
-            }
-
-            Variable prepareArgs(Variable argsVar) {
-                if (argMappers == null) {
-                    // No special method was defined.
-                    return argsVar;
-                } else {
-                    return argsVar.methodMaker().invoke("prepareArgs", argsVar);
-                }
-            }
-        };
-
-        var split = new RowFilter[2];
-        targetFilter.split(checker, split);
-
-        RowFilter sourceFilter = split[0];
-        RowFilter targetRemainder = split[1];
-
-        Query sourceQuery;
-
-        String sourceProjection = mMapper.sourceProjection();
-        if (sourceProjection == null) {
-            sourceQuery = new Query(null, null, sourceFilter);
-        } else {
-            sourceQuery = new Parser(sourceInfo.allColumns, '{' + sourceProjection + '}')
-                .parseQuery(null).withFilter(sourceFilter);
-        }
-
-        SortPlan sortPlan = finder.analyzeSort(targetQuery);
-
-        if (sortPlan != null && sortPlan.sourceOrder != null) {
-            sourceQuery = sourceQuery.withOrderBy(sortPlan.sourceOrder);
-        } else if (sourceQuery.projection() == null && sourceQuery.filter() == TrueFilter.THE) {
-            // There's no orderBy, all columns are projected, there's no filter, so just do a
-            // full scan.
-            sourceQuery = null;
-        }
+        var splitter = new Splitter(targetQuery);
 
         Class<T> targetType = rowType();
         RowInfo targetInfo = RowInfo.find(targetType);
 
         ClassMaker cm = targetInfo.rowGen().beginClassMaker
-            (MappedTable.class, targetType, null).final_().implement(ScannerFactory.class);
+            (MappedTable.class, targetType, "factory").final_().implement(ScannerFactory.class);
 
         cm.addConstructor().private_();
+
+        RowFilter targetRemainder = splitter.mTargetRemainder;
 
         if (targetRemainder != TrueFilter.THE || targetQuery.projection() != null) {
             // Allow factory instances to serve as Mapper wrappers for supporting predicate
@@ -867,7 +648,7 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
             mm.return_(targetRowVar);
         }
 
-        checker.addPrepareArgsMethod(cm);
+        splitter.addPrepareArgsMethod(cm);
 
         for (int which = 1; which <= 2; which++) {
             String methodName = which == 1 ? "newScanner" : "newUpdater";
@@ -882,14 +663,16 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
             var targetRowVar = mm.param(2);
             var argsVar = mm.param(3);
 
-            if (which != 1 && sortPlan != null && sortPlan.sortOrder != null) {
+            SortPlan sortPlan = splitter.mSortPlan;
+
+            if (which != 1 && sortPlan.sortOrder != null) {
                 // Use a WrappedUpdater around a sorted Scanner.
                 mm.return_(tableVar.invoke
                            ("newWrappedUpdater", mm.this_(), txnVar, targetRowVar, argsVar));
                 continue;
             }
 
-            argsVar = checker.prepareArgs(argsVar);
+            argsVar = splitter.prepareArgs(argsVar);
 
             var mapperVar = tableVar.invoke("mapper");
 
@@ -900,6 +683,8 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
             var sourceTableVar = tableVar.invoke("source");
             Variable sourceScannerVar;
 
+            Query sourceQuery = splitter.mSourceQuery;
+
             if (sourceQuery == null) {
                 sourceScannerVar = sourceTableVar.invoke(methodName, txnVar);
             } else {
@@ -909,7 +694,7 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
 
             Variable resultVar;
 
-            if (sortPlan != null && sortPlan.sortOrder != null) {
+            if (sortPlan.sortOrder != null) {
                 if (which != 1) {
                     throw new AssertionError();
                 }
@@ -949,8 +734,9 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
             var forUpdaterVar = mm.param(0);
             var tableVar = mm.param(1);
             var txnVar = mm.param(2);
-            var argsVar = checker.prepareArgs(mm.param(3));
+            var argsVar = splitter.prepareArgs(mm.param(3));
 
+            Query sourceQuery = splitter.mSourceQuery;
             String sourceQueryStr = sourceQuery == null ? null : sourceQuery.toString();
 
             var sourceTableVar = tableVar.invoke("source");
@@ -975,7 +761,9 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
                 planVar.set(mm.new_(QueryPlan.Filter.class, targetRemainder.toString(), planVar));
             }
 
-            if (sortPlan != null && sortPlan.sortOrder != null) {
+            SortPlan sortPlan = splitter.mSortPlan;
+
+            if (sortPlan.sortOrder != null) {
                 var columnsVar = mm.var(OrderBy.class).invoke("splitSpec", sortPlan.sortOrderSpec);
                 planVar.set(mm.new_(QueryPlan.Sort.class, columnsVar, planVar));
             }
@@ -991,6 +779,73 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
         } catch (Throwable e) {
             throw RowUtils.rethrow(e);
         }
+    }
+
+    @Override
+    protected String sourceProjection() {
+        return mMapper.sourceProjection();
+    }
+
+    @Override
+    protected Class<?> inverseFunctions() {
+        return mMapper.getClass();
+    }
+
+    @Override
+    protected SortPlan analyzeSort(InverseFinder finder, Query targetQuery) {
+        OrderBy targetOrder = targetQuery.orderBy();
+
+        var plan = new SortPlan();
+
+        if (targetOrder == null) {
+            return plan;
+        }
+
+        OrderBy sourceOrder = null;
+
+        for (var rule : targetOrder.values()) {
+            ColumnFunction source = finder.tryFindSource(rule.column());
+            if (source == null || !source.isUntransformed()) {
+                break;
+            }
+            if (sourceOrder == null) {
+                sourceOrder = new OrderBy();
+            }
+            ColumnInfo sourceColumn = source.column();
+            sourceOrder.put(sourceColumn.name, new OrderBy.Rule(sourceColumn, rule.type()));
+        }
+
+        if (sourceOrder != null && sourceOrder.size() >= targetOrder.size()) {
+            // Can push the entire sort operation to the source.
+            plan.sourceOrder = sourceOrder;
+            return plan;
+        }
+
+        /*
+          Apply the entire sort operation on the target scanner. It's possible for a partial
+          ordering to be performed on the source, but it's a bit complicated. The key is to
+          ensure that no sort operation is performed against the source. A double sort doesn't
+          make any sense.
+
+          For now partial ordering isn't supported, but here's what needs to happen:
+
+          Examine the source query plan with the sourceOrder applied to it. If no sort is
+          performed, then a partial sort is possible. Otherwise, examine the sort and remove
+          the ordering columns that the sort applies to. Examine the surviving ordering
+          columns, and keep the leading contiguous ones. If none remain, then no partial sort
+          is possible. If a partial sort is still possible, examine the source query plan again
+          to verify that no sort will be applied.
+
+          The target sorter needs to be given the sourceComparator, which identifies row
+          groups. The final sort only needs to apply these groups and not the whole set.
+        */
+
+        plan.sortOrder = targetOrder;
+        String targetSpec = targetOrder.spec();
+        plan.sortOrderSpec = targetSpec;
+        plan.sortComparator = ComparatorMaker.comparator(rowType(), targetOrder, targetSpec);
+
+        return plan;
     }
 
     public interface ScannerFactory<S, T> {
@@ -1009,25 +864,8 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
     /**
      * Called by the generated ScannerFactory.
      */
-    public final Table<S> source() {
-        return mSource;
-    }
-
-    /**
-     * Called by the generated ScannerFactory.
-     */
     public final Mapper<S, T> mapper() {
         return mMapper;
-    }
-
-    /**
-     * Called by the generated ScannerFactory.
-     */
-    public final Scanner<T> sort(Scanner<T> source, Comparator<T> comparator,
-                                 Set<String> projection, String orderBySpec)
-        throws IOException
-    {
-        return RowSorter.sort(this, source, comparator, projection, orderBySpec);
     }
 
     /**
@@ -1133,148 +971,5 @@ public abstract class MappedTable<S, T> extends WrappedTable<S, T> {
         public Object inverseMapForLoad(Table source, Object targetRow) throws IOException {
             throw new ViewConstraintException();
         }
-    }
-
-    private record ColumnFunction(ColumnInfo column, Method function) {
-        boolean isUntransformed() {
-            return function.isAnnotationPresent(Untransformed.class);
-        }
-    }
-
-    /**
-     * Finds inverse mapping functions defined in a Mapper implementation.
-     */
-    private class InverseFinder {
-        private final Map<String, ColumnInfo> mSourceColumns;
-        private final TreeMap<String, Method> mAllMethods;
-
-        InverseFinder(Map<String, ColumnInfo> sourceColumns) {
-            mSourceColumns = sourceColumns;
-
-            mAllMethods = new TreeMap<>();
-            for (Method m : mMapper.getClass().getMethods()) {
-                mAllMethods.put(m.getName(), m);
-            }
-        }
-
-        ColumnFunction tryFindSource(ColumnInfo targetColumn) {
-            String prefix = targetColumn.name + "_to_";
-
-            for (Method candidate : mAllMethods.tailMap(prefix).values()) {
-                String name = candidate.getName();
-                if (!name.startsWith(prefix)) {
-                    break;
-                }
-
-                if (!Modifier.isStatic(candidate.getModifiers())) {
-                    continue;
-                }
-
-                Class<?> retType = candidate.getReturnType();
-                if (retType == null || retType == void.class) {
-                    continue;
-                }
-
-                Class<?>[] paramTypes = candidate.getParameterTypes();
-                if (paramTypes.length != 1) {
-                    continue;
-                }
-
-                if (!paramTypes[0].isAssignableFrom(targetColumn.type)) {
-                    continue;
-                }
-
-                String sourceName = unescape(name.substring(prefix.length()));
-
-                ColumnInfo sourceColumn = ColumnSet.findColumn(mSourceColumns, sourceName);
-                if (sourceColumn == null) {
-                    continue;
-                }
-
-                if (!sourceColumn.type.isAssignableFrom(retType)) {
-                    continue;
-                }
-
-                return new ColumnFunction(sourceColumn, candidate);
-            }
-
-            return null;
-        }
-
-        /**
-         * @return null if nothing special needs to be done for sorting
-         */
-        SortPlan analyzeSort(Query targetQuery) {
-            OrderBy targetOrder = targetQuery.orderBy();
-
-            if (targetOrder == null) {
-                return null;
-            }
-
-            var plan = new SortPlan();
-
-            OrderBy sourceOrder = null;
-
-            for (var rule : targetOrder.values()) {
-                ColumnFunction source = tryFindSource(rule.column());
-                if (source == null || !source.isUntransformed()) {
-                    break;
-                }
-                if (sourceOrder == null) {
-                    sourceOrder = new OrderBy();
-                }
-                ColumnInfo sourceColumn = source.column();
-                sourceOrder.put(sourceColumn.name, new OrderBy.Rule(sourceColumn, rule.type()));
-            }
-
-            if (sourceOrder != null && sourceOrder.size() >= targetOrder.size()) {
-                // Can push the entire sort operation to the source.
-                plan.sourceOrder = sourceOrder;
-                return plan;
-            }
-
-            /*
-              Apply the entire sort operation on the target scanner. It's possible for a
-              partial ordering to be performed on the source, it's a bit complicated. The key
-              is to ensure that no sort operation is performed against the source. A double
-              sort doesn't make any sense.
-
-              For now partial ordering isn't supported, but here's what needs to happen:
-
-              Examine the source query plan with the sourceOrder applied to it. If no sort is
-              performed, then a partial sort is possible. Otherwise, examine the sort and
-              remove the ordering columns that the sort applies to. Examine the surviving
-              ordering columns, and keep the leading contiguous ones. If none remain, then no
-              partial sort is possible. If a partial sort is still possible, examine the source
-              query plan again to verify that no sort will be applied.
-
-              The target sorter needs to be given the sourceComparator, which identifies row
-              groups. The final sort only needs to apply these groups and not the whole set.
-            */
-
-            plan.sortOrder = targetOrder;
-            String targetSpec = targetOrder.spec();
-            plan.sortOrderSpec = targetSpec;
-            plan.sortComparator = ComparatorMaker.comparator(rowType(), targetOrder, targetSpec);
-
-            return plan;
-        }
-    }
-
-    private static class SortPlan {
-        // Optional ordering to apply to the source scanner.
-        OrderBy sourceOrder;
-
-        // Defines a partial order, and is required when sourceOrder and sortOrder is defined.
-        //Comparator sourceComparator;
-
-        // Optional sort order to apply to the target scanner.
-        OrderBy sortOrder;
-
-        // Is required when sortOrder is defined.
-        String sortOrderSpec;
-
-        // Is required when sortOrder is defined.
-        Comparator sortComparator;
     }
 }

@@ -28,8 +28,8 @@ import org.cojen.tupl.diag.QueryPlan;
  *
  * <p>For supporting inverse mapping, define a public static method for each target column
  * which can be mapped to a source column. The naming pattern must be {@code
- * <target_name>_to_<source_name>}, and the method must be a function. The parameter type must
- * exactly match the target column type, and the return type must exactly match the source
+ * <target_name>_to_<source_name>}, and the method must be a pure function. The parameter type
+ * must exactly match the target column type, and the return type must exactly match the source
  * column type. If the function doesn't transform the column value, then it should be annotated
  * with {@link Untransformed @Untransformed}, since it helps with query optimization.
  *

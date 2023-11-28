@@ -326,7 +326,7 @@ public class AggregatedTest {
         assertEquals("""
 - aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAggByName
   using: Aggregator1
-  columns: name
+  group by: name
   - sort: +name
     - full scan over primary key: org.cojen.tupl.rows.AggregatedTest$TestRow
       key columns: +id
@@ -366,7 +366,7 @@ public class AggregatedTest {
         assertEquals("""
 - aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAggByName
   using: Aggregator1
-  columns: name
+  group by: name
   - primary join: org.cojen.tupl.rows.AggregatedTest$TestRow
     key columns: +id
     - range scan over secondary index: org.cojen.tupl.rows.AggregatedTest$TestRow
@@ -389,7 +389,7 @@ public class AggregatedTest {
 - filter: maxNum >= ?1 && maxNum <= ?2
   - aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAggByName
     using: Aggregator1
-    columns: name
+    group by: name
     - sort: +name
       - full scan over primary key: org.cojen.tupl.rows.AggregatedTest$TestRow
         key columns: +id
@@ -417,7 +417,7 @@ public class AggregatedTest {
   - filter: maxNum >= ?3 && maxNum <= ?4
     - aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAggByName
       using: Aggregator1
-      columns: name
+      group by: name
       - primary join: org.cojen.tupl.rows.AggregatedTest$TestRow
         key columns: +id
         - range scan over secondary index: org.cojen.tupl.rows.AggregatedTest$TestRow
@@ -451,7 +451,7 @@ public class AggregatedTest {
   - filter: count >= ?1 && avgNum >= ?2
     - aggregate: org.cojen.tupl.rows.AggregatedTest$TestRowAggByName
       using: Aggregator1
-      columns: name
+      group by: name
       - sort: +name
         - full scan over primary key: org.cojen.tupl.rows.AggregatedTest$TestRow
           key columns: +id

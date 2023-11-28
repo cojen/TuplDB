@@ -19,6 +19,9 @@ package org.cojen.tupl.rows;
 
 import java.io.IOException;
 
+import java.util.Comparator;
+import java.util.Set;
+
 import org.cojen.tupl.DurabilityMode;
 import org.cojen.tupl.Scanner;
 import org.cojen.tupl.Table;
@@ -71,5 +74,22 @@ public abstract class WrappedTable<S, T> implements Table<T> {
     @Override
     public boolean isClosed() {
         return false;
+    }
+
+    /**
+     * Is called by generated ScannerFactory classes.
+     */
+    public final Table<S> source() {
+        return mSource;
+    }
+
+    /**
+     * Is called by generated ScannerFactory classes.
+     */
+    public final Scanner<T> sort(Scanner<T> source, Comparator<T> comparator,
+                                 Set<String> projection, String orderBySpec)
+        throws IOException
+    {
+        return RowSorter.sort(this, source, comparator, projection, orderBySpec);
     }
 }
