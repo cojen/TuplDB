@@ -28,7 +28,7 @@ import java.sql.SQLFeatureNotSupportedException;
  * @author Brian S O'Neill
  */
 public abstract class BaseResultSetMetaData implements ResultSetMetaData {
-    /*
+    /* Implemented by ResultSetMaker.
     @Override
     public int getColumnCount() throws SQLException {
 
@@ -51,7 +51,7 @@ public abstract class BaseResultSetMetaData implements ResultSetMetaData {
         return false;
     }
 
-    /*
+    /* Implemented by ResultSetMaker.
     @Override
     public int isNullable(int column) throws SQLException {
 
@@ -67,7 +67,7 @@ public abstract class BaseResultSetMetaData implements ResultSetMetaData {
         return getColumnName(column);
     }
 
-    /*
+    /* Implemented by ResultSetMaker.
     @Override
     public String getColumnName(int column) throws SQLException {
     */
@@ -77,7 +77,7 @@ public abstract class BaseResultSetMetaData implements ResultSetMetaData {
         return "";
     }
 
-    /*
+    /* Implemented by ResultSetMaker.
     @Override
     public int getPrecision(int column) throws SQLException {
 
@@ -95,7 +95,7 @@ public abstract class BaseResultSetMetaData implements ResultSetMetaData {
         return "";
     }
 
-    /*
+    /* Implemented by ResultSetMaker.
     @Override
     public int getColumnType(int column) throws SQLException {
     */
