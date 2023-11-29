@@ -321,7 +321,7 @@ public final class ResultSetMaker {
 
         addUpdateMethod("updateObject", Object.class, TYPE_OBJECT);
         addUpdateMethod("updateString", String.class, TYPE_UTF8 | TYPE_NULLABLE);
-
+        addUpdateMethod("updateBoolean", boolean.class, TYPE_BOOLEAN);
         addUpdateMethod("updateByte", byte.class, TYPE_BYTE);
         addUpdateMethod("updateShort", short.class, TYPE_SHORT);
         addUpdateMethod("updateInt", int.class, TYPE_INT);

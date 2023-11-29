@@ -49,7 +49,7 @@ public abstract class Node {
     public abstract String name();
 
     /**
-     * Returns the highest query argument needed by this node, which is zero of none are
+     * Returns the highest query argument needed by this node, which is zero if none are
      * needed.
      */
     public abstract int maxArgument();

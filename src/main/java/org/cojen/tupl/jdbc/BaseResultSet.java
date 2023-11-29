@@ -55,7 +55,7 @@ public abstract class BaseResultSet implements ResultSet {
     // 0: not ready, 1: ready, 2: closed
     protected int state;
 
-    /*
+    /* Implemented by ResultSetMaker.
     @Override
     public void close() throws SQLException {
     */
@@ -65,7 +65,7 @@ public abstract class BaseResultSet implements ResultSet {
         return state == 2;
     }
 
-    /*
+    /* Implemented by ResultSetMaker.
     @Override
     public ResultSetMetaData getMetaData() throws SQLException {
 
@@ -264,7 +264,7 @@ public abstract class BaseResultSet implements ResultSet {
 
     // Get columns by index...
 
-    /*
+    /* Implemented by ResultSetMaker.
     @Override
     public Object getObject(int columnIndex) throws SQLException {
     */
@@ -281,7 +281,7 @@ public abstract class BaseResultSet implements ResultSet {
         throw new SQLFeatureNotSupportedException();
     }
 
-    /*
+    /* Implemented by ResultSetMaker.
     @Override
     public String getString(int columnIndex) throws SQLException {
 
@@ -316,7 +316,7 @@ public abstract class BaseResultSet implements ResultSet {
         throw new SQLFeatureNotSupportedException();
     }
 
-    /*
+    /* Implemented by ResultSetMaker.
     @Override
     public byte[] getBytes(int columnIndex) throws SQLException {
     */
@@ -429,7 +429,7 @@ public abstract class BaseResultSet implements ResultSet {
         updateObject(columnIndex, null);
     }
 
-    /*
+    /* Implemented by ResultSetMaker.
     @Override
     public void updateObject(int columnIndex, Object x) throws SQLException {
     */
@@ -441,7 +441,7 @@ public abstract class BaseResultSet implements ResultSet {
         throw new SQLFeatureNotSupportedException();
     }
 
-    /*
+    /* Implemented by ResultSetMaker.
     @Override
     public void updateString(int columnIndex, String x) throws SQLException {
 
