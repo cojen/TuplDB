@@ -249,7 +249,7 @@ public abstract class BaseResultSet implements ResultSet {
 
     @Override
     public int getHoldability() throws SQLException {
-        return CLOSE_CURSORS_AT_COMMIT;
+        return HOLD_CURSORS_OVER_COMMIT;
     }
 
     @Override
