@@ -77,7 +77,7 @@ public abstract class RelationNode extends Node {
     }
 
     /**
-     * Makes a fully functional query from this node.
+     * Makes a fully functional QueryFactory from this node.
      */
-    public abstract Query<?> makeQuery();
+    public abstract QueryFactory<?> makeQueryFactory();
 }

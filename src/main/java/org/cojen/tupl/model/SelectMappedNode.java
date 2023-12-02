@@ -96,20 +96,20 @@ final class SelectMappedNode extends SelectNode {
     }
 
     @Override
-    protected Query<?> doMakeQuery() {
-        Query fromQuery = mFrom.makeQuery();
+    protected QueryFactory<?> doMakeQueryFactory() {
+        QueryFactory source = mFrom.makeQueryFactory();
 
         int argCount = maxArgument();
         MapperFactory factory = makeMapper(argCount);
 
         Class targetClass = type().tupleType().clazz();
 
-        return new Query.Wrapped(fromQuery, argCount) {
+        return new QueryFactory.Wrapped(source, argCount) {
             @Override
             @SuppressWarnings("unchecked")
             public Table asTable(Object... args) {
                 checkArgumentCount(args);
-                return mFromQuery.asTable(args).map(targetClass, factory.get(args));
+                return mSource.asTable(args).map(targetClass, factory.get(args));
             }
         };
     }

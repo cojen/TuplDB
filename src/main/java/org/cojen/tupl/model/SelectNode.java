@@ -265,7 +265,7 @@ public abstract sealed class SelectNode extends RelationNode
     protected final Node[] mProjection;
     protected final int mMaxArgument;
 
-    private Query<?> mQuery;
+    private QueryFactory<?> mQueryFactory;
 
     protected SelectNode(TupleType type, String name,
                          RelationNode from, RowFilter filter, Node[] projection,
@@ -313,14 +313,14 @@ public abstract sealed class SelectNode extends RelationNode
     }
 
     @Override
-    public final Query<?> makeQuery() {
-        if (mQuery == null) {
-            mQuery = doMakeQuery();
+    public final QueryFactory<?> makeQueryFactory() {
+        if (mQueryFactory == null) {
+            mQueryFactory = doMakeQueryFactory();
         }
-        return mQuery;
+        return mQueryFactory;
     }
 
-    protected abstract Query<?> doMakeQuery();
+    protected abstract QueryFactory<?> doMakeQueryFactory();
 
     @Override
     public final int hashCode() {

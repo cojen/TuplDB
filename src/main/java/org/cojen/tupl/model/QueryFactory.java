@@ -27,7 +27,7 @@ import org.cojen.tupl.rows.RowUtils;
  * @author Brian S. O'Neill
  * @see RelationNode
  */
-public interface Query<R> {
+public interface QueryFactory<R> {
     Class<R> rowType();
 
     /**
@@ -37,7 +37,7 @@ public interface Query<R> {
     int argumentCount();
 
     /**
-     * Returns a fully functional table from this query.
+     * Returns a fully functional table.
      *
      * @throws IllegalArgumentException if not enough arguments are given
      */
@@ -47,15 +47,21 @@ public interface Query<R> {
         return asTable(RowUtils.NO_ARGS);
     }
 
-    // FIXME: Provide access to the projected column names, which can differ from the table
-    // column names. Perhaps this should be a feature of Table?
-    //   Map<String, String> columnLabels();
+    // FIXME
+    //DbQuery newDbQuery(DbConnection con)
+
+    /*
+      FIXME: Provide access to the projected column names, which can differ from the table
+      column names.
+      * @return unmodifiable map of row field names to labels
+      Map<String, String> columnLabels();
+    */
 
     /**
-     * Returns a Query which just wraps a Table.
+     * Returns a QueryFactory which just wraps a Table.
      */
-    public static <R> Query<R> make(Table<R> table) {
-        return new Query<>() {
+    public static <R> QueryFactory<R> make(Table<R> table) {
+        return new QueryFactory<>() {
             @Override
             public Class<R> rowType() {
                 return table.rowType();
@@ -73,18 +79,18 @@ public interface Query<R> {
         };
     }
 
-    public static abstract class Wrapped implements Query {
-        protected final Query mFromQuery;
+    public static abstract class Wrapped implements QueryFactory {
+        protected final QueryFactory mSource;
         protected final int mArgCount;
 
-        protected Wrapped(Query fromQuery, int argCount) {
-            mFromQuery = fromQuery;
+        protected Wrapped(QueryFactory source, int argCount) {
+            mSource = source;
             mArgCount = argCount;
         }
 
         @Override
         public final Class rowType() {
-            return mFromQuery.rowType();
+            return mSource.rowType();
         }
 
         @Override

@@ -73,7 +73,8 @@ import static org.cojen.tupl.rows.ColumnInfo.*;
  */
 public final class ResultSetMaker {
     /**
-     * Finds or makes a ResultSet implementation class.
+     * Finds or makes a ResultSet implementation class. The class has a public no-arg
+     * constructor and a public init method which accepts a row object.
      *
      * @param rowType interface consisting of column methods
      * @param projection maps original column names to fully qualified target names; the order

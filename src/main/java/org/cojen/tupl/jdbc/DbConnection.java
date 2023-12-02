@@ -267,6 +267,10 @@ public class DbConnection extends BaseConnection {
         throw new SQLException("Unknown savepoint");
     }
 
+    Transaction txn() {
+        return mTxn;
+    }
+
     private Database db() throws SQLException {
         Database db = mDb;
         if (db == null) {

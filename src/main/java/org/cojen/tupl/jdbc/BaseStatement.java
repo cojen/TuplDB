@@ -30,10 +30,7 @@ import java.sql.Statement;
  * @author Brian S. O'Neill
  */
 public abstract class BaseStatement implements Statement {
-    protected BaseConnection mCon;
-
-    protected BaseStatement(BaseConnection con) {
-        mCon = con;
+    protected BaseStatement() {
     }
 
     @Override
@@ -44,11 +41,6 @@ public abstract class BaseStatement implements Statement {
     @Override
     public int executeUpdate(String sql) throws SQLException {
         return getConnection().prepareStatement(sql).executeUpdate();
-    }
-
-    @Override
-    public void close() throws SQLException {
-        mCon = null;
     }
 
     @Override
@@ -162,15 +154,6 @@ public abstract class BaseStatement implements Statement {
     }
 
     @Override
-    public Connection getConnection() throws SQLException {
-        Connection con = mCon;
-        if (con == null) {
-            throw new SQLException("Closed");
-        }
-        return con;
-    }
-
-    @Override
     public boolean getMoreResults(int current) throws SQLException {
         throw new SQLFeatureNotSupportedException();
     }
@@ -216,11 +199,6 @@ public abstract class BaseStatement implements Statement {
     }
 
     @Override
-    public boolean isClosed() throws SQLException {
-        return mCon == null;
-    }
-
-    @Override
     public void setPoolable(boolean poolable) throws SQLException {
     }
 
@@ -248,4 +226,22 @@ public abstract class BaseStatement implements Statement {
     public boolean isWrapperFor(Class<?> iface) throws SQLException {
         return false;
     }
+
+    /**
+     * Returns the connection or else throw new SQLException("Closed") if null.
+     */
+    @Override
+    public abstract Connection getConnection() throws SQLException;
+
+    /**
+     * Must set connection reference to null.
+     */
+    @Override
+    public abstract void close() throws SQLException;
+
+    /**
+     * Just checks if the connection is null.
+     */
+    @Override
+    public abstract boolean isClosed() throws SQLException;
 }

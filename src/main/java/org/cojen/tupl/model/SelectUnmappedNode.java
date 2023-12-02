@@ -100,11 +100,11 @@ final class SelectUnmappedNode extends SelectNode {
     }
 
     @Override
-    protected Query<?> doMakeQuery() {
-        Query<?> fromQuery = mFrom.makeQuery();
+    protected QueryFactory<?> doMakeQueryFactory() {
+        QueryFactory<?> source = mFrom.makeQueryFactory();
 
         if (mFilter == TrueFilter.THE && mProjection == null) {
-            return fromQuery;
+            return source;
         }
 
         // FIXME: Use an empty query if the filter is false.
@@ -141,26 +141,26 @@ final class SelectUnmappedNode extends SelectNode {
         }
 
         if (baseArgCount == 0) {
-            return Query.make(fromQuery.asTable().view(viewQuery, viewArgs));
+            return QueryFactory.make(source.asTable().view(viewQuery, viewArgs));
         }
 
         if (viewArgs.length == 0) {
-            return new Query.Wrapped(fromQuery, baseArgCount) {
+            return new QueryFactory.Wrapped(source, baseArgCount) {
                 @Override
                 public Table asTable(Object... args) {
-                    return mFromQuery.asTable(args).view(viewQuery, args);
+                    return mSource.asTable(args).view(viewQuery, args);
                 }
             };
         }
 
-        return new Query.Wrapped(fromQuery, baseArgCount) {
+        return new QueryFactory.Wrapped(source, baseArgCount) {
             @Override
             public Table asTable(Object... args) {
                 int argCount = checkArgumentCount(args);
                 var fullArgs = new Object[argCount + viewArgs.length];
                 System.arraycopy(args, 0, fullArgs, 0, argCount);
                 System.arraycopy(viewArgs, 0, fullArgs, argCount, viewArgs.length);
-                return mFromQuery.asTable(args).view(viewQuery, fullArgs);
+                return mSource.asTable(args).view(viewQuery, fullArgs);
             }
         };
     }

@@ -49,8 +49,7 @@ import java.sql.Timestamp;
  * @author Brian S. O'Neill
  */
 public abstract class BasePreparedStatement extends BaseStatement implements PreparedStatement {
-    protected BasePreparedStatement(BaseConnection con) {
-        super(con);
+    protected BasePreparedStatement() {
     }
 
     @Override

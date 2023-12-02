@@ -54,8 +54,8 @@ public final class TableNode extends RelationNode {
     }
 
     @Override
-    public Query<?> makeQuery() {
-        return Query.make(mTable);
+    public QueryFactory<?> makeQueryFactory() {
+        return QueryFactory.make(mTable);
     }
 
     public Table table() {

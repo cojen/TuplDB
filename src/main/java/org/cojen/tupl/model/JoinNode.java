@@ -64,7 +64,7 @@ public final class JoinNode extends RelationNode {
     private final int mJoinType;
     private final RelationNode mLeft, mRight;
 
-    private Query<?> mQuery;
+    private QueryFactory<?> mQueryFactory;
 
     private JoinNode(RelationType type, String name,
                      int joinType, RelationNode left, RelationNode right)
@@ -86,17 +86,17 @@ public final class JoinNode extends RelationNode {
     }
 
     @Override
-    public Query<?> makeQuery() {
-        if (mQuery == null) {
-            mQuery = doMakeQuery();
+    public QueryFactory<?> makeQueryFactory() {
+        if (mQueryFactory == null) {
+            mQueryFactory = doMakeQueryFactory();
         }
-        return mQuery;
+        return mQueryFactory;
     }
 
-    private Query<?> doMakeQuery() {
+    private QueryFactory<?> doMakeQueryFactory() {
         int argCount = maxArgument();
 
-        var queryList = new ArrayList<Query>();
+        var queryList = new ArrayList<QueryFactory>();
         flattenQueries(this, queryList);
 
         Class<?> joinType = type().tupleType().clazz();
@@ -107,12 +107,12 @@ public final class JoinNode extends RelationNode {
             for (int i=0; i<tables.length; i++) {
                 tables[i] = queryList.get(i).asTable();
             }
-            return Query.make(Table.join(joinType, spec, tables));
+            return QueryFactory.make(Table.join(joinType, spec, tables));
         }
 
-        var queries = queryList.toArray(new Query[queryList.size()]);
+        var queries = queryList.toArray(new QueryFactory[queryList.size()]);
 
-        return new Query() {
+        return new QueryFactory() {
             @Override
             public Class rowType() {
                 return joinType;
@@ -134,12 +134,12 @@ public final class JoinNode extends RelationNode {
         };
     }
 
-    private static void flattenQueries(RelationNode node, ArrayList<Query> dst) {
+    private static void flattenQueries(RelationNode node, ArrayList<QueryFactory> dst) {
         if (node instanceof JoinNode jn) {
             flattenQueries(jn.mLeft, dst);
             flattenQueries(jn.mRight, dst);
         } else {
-            dst.add(node.makeQuery());
+            dst.add(node.makeQueryFactory());
         }
     }
 
