@@ -38,6 +38,8 @@ import org.cojen.tupl.core.Utils;
  * @author Brian S O'Neill
  */
 public class RowUtils extends Utils {
+    public static final Object[] NO_ARGS = new Object[0];
+
     /** Byte to use for null, low ordering */
     public static final byte NULL_BYTE_LOW = 0;
 

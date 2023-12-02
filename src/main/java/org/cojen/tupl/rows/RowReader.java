@@ -70,7 +70,7 @@ public abstract class RowReader<R, DIN extends DataInput> implements Scanner<R> 
     private Decoder[] mDecoders;
     private int mNumDecoders;
 
-    public RowReader(Class<R> rowType, DIN in) throws IOException {
+    public RowReader(Class<R> rowType, DIN in, R row) throws IOException {
         mRowType = rowType;
         mIn = in;
         try {
@@ -78,7 +78,7 @@ public abstract class RowReader<R, DIN extends DataInput> implements Scanner<R> 
             mSize = (characteristics & Spliterator.SIZED) == 0 ? Long.MAX_VALUE : in.readLong();
             mCharacteristics = characteristics;
 
-            doStep(null);
+            doStep(row);
         } catch (Throwable e) {
             throw RowUtils.fail(this, e);
         }

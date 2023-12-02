@@ -164,8 +164,6 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         return mh.asType(MethodType.methodType(ViewedTable.class, Table.class, Object[].class));
     }
 
-    private static final Object[] NO_ARGS = new Object[0];
-
     protected final String mQueryStr;
     protected final int mMaxArg;
     protected final Object[] mArgs;
@@ -195,7 +193,7 @@ public abstract sealed class ViewedTable<R> extends WrappedTable<R, R> {
         super(source);
 
         if (maxArg == 0) {
-            args = NO_ARGS;
+            args = RowUtils.NO_ARGS;
         } else {
             if (args.length < maxArg) {
                 throw new IllegalArgumentException("Not enough query arguments provided");

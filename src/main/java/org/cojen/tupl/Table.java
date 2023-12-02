@@ -36,6 +36,7 @@ import org.cojen.tupl.rows.ComparatorMaker;
 import org.cojen.tupl.rows.GroupedTable;
 import org.cojen.tupl.rows.MappedTable;
 import org.cojen.tupl.rows.PlainPredicateMaker;
+import org.cojen.tupl.rows.RowUtils;
 import org.cojen.tupl.rows.ViewedTable;
 
 import org.cojen.tupl.rows.join.JoinTableMaker;
@@ -278,7 +279,7 @@ public interface Table<R> extends Closeable {
      * @see #isEmpty
      */
     public default boolean anyRows(Transaction txn) throws IOException {
-        // FIXME: Subclasses should provide an optimized implementation.
+        // TODO: Subclasses should provide an optimized implementation.
         return anyRowsWith(txn, null);
     }
 
@@ -286,11 +287,8 @@ public interface Table<R> extends Closeable {
      * @hidden
      */
     public default boolean anyRowsWith(Transaction txn, R row) throws IOException {
-        // FIXME: Subclasses should provide an optimized implementation.
-        Scanner<R> s = newScannerWith(txn, row);
-        boolean result = s.row() != null;
-        s.close();
-        return result;
+        // TODO: Subclasses should provide an optimized implementation.
+        return anyRowsWith(txn, row, "{}", RowUtils.NO_ARGS);
     }
 
     /**
@@ -303,7 +301,7 @@ public interface Table<R> extends Closeable {
     public default boolean anyRows(Transaction txn, String query, Object... args)
         throws IOException
     {
-        // FIXME: Subclasses should provide an optimized implementation.
+        // TODO: Subclasses should provide an optimized implementation.
         return anyRowsWith(txn, null, query, args);
     }
 
@@ -313,7 +311,7 @@ public interface Table<R> extends Closeable {
     public default boolean anyRowsWith(Transaction txn, R row, String query, Object... args)
         throws IOException
     {
-        // FIXME: Subclasses should provide an optimized implementation.
+        // TODO: Subclasses should provide an optimized implementation.
         Scanner<R> s = newScannerWith(txn, row, query, args);
         boolean result = s.row() != null;
         s.close();

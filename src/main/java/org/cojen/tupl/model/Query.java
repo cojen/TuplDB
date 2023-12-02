@@ -19,6 +19,8 @@ package org.cojen.tupl.model;
 
 import org.cojen.tupl.Table;
 
+import org.cojen.tupl.rows.RowUtils;
+
 /**
  * Represents a factory for making tables or query result sets.
  *
@@ -26,8 +28,6 @@ import org.cojen.tupl.Table;
  * @see RelationNode
  */
 public interface Query<R> {
-    static final Object[] NO_ARGS = new Object[0];
-
     Class<R> rowType();
 
     /**
@@ -44,7 +44,7 @@ public interface Query<R> {
     Table<R> asTable(Object... args);
 
     default Table<R> asTable() {
-        return asTable(NO_ARGS);
+        return asTable(RowUtils.NO_ARGS);
     }
 
     // FIXME: Provide access to the projected column names, which can differ from the table

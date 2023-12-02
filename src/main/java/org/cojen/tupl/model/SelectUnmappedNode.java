@@ -22,6 +22,8 @@ import java.util.Map;
 
 import org.cojen.tupl.Table;
 
+import org.cojen.tupl.rows.RowUtils;
+
 import org.cojen.tupl.rows.filter.ColumnToConstantFilter;
 import org.cojen.tupl.rows.filter.RowFilter;
 import org.cojen.tupl.rows.filter.TrueFilter;
@@ -131,7 +133,7 @@ final class SelectUnmappedNode extends SelectNode {
         Object[] viewArgs;
 
         if (mArgMap == null) {
-            viewArgs = Query.NO_ARGS;
+            viewArgs = RowUtils.NO_ARGS;
         } else {
             int size = mArgMap.size();
             baseArgCount -= size;
