@@ -1132,7 +1132,7 @@ final class JoinScannerMaker {
                     }
 
                     resultVar = mTableVar.invoke("anyRowsWith", mTxnVar, levelRowVar(),
-                                                 filter.toString(), mArgsVar);
+                                                 "{} " + filter, mArgsVar);
                 }
 
                 mMethodMaker.return_(resultVar);

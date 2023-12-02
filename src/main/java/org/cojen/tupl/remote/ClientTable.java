@@ -117,33 +117,31 @@ final class ClientTable<R> implements Table<R> {
 
     @Override
     public Scanner<R> newScanner(Transaction txn) throws IOException {
-        return newScanner(mRemote.newScanner(mDb.remoteTransaction(txn), null));
+        return newScannerWith(txn, null);
     }
 
     @Override
     public Scanner<R> newScannerWith(Transaction txn, R row) throws IOException {
-        // FIXME
-        throw new UnsupportedOperationException();
+        return newScanner(mRemote.newScanner(mDb.remoteTransaction(txn), null), row);
     }
 
     @Override
     public Scanner<R> newScanner(Transaction txn, String query, Object... args) throws IOException {
-        return newScanner(mRemote.newScanner(mDb.remoteTransaction(txn), null, query, args));
+        return newScannerWith(txn, null, query, args);
     }
 
     @Override
     public Scanner<R> newScannerWith(Transaction txn, R row, String query, Object... args)
         throws IOException
     {
-        // FIXME
-        throw new UnsupportedOperationException();
+        return newScanner(mRemote.newScanner(mDb.remoteTransaction(txn), null, query, args), row);
     }
 
-    private Scanner<R> newScanner(Pipe pipe) throws IOException {
+    private Scanner<R> newScanner(Pipe pipe, R row) throws IOException {
         try {
             pipe.flush();
 
-            return new RowReader<R, Pipe>(mType, pipe) {
+            return new RowReader<R, Pipe>(mType, pipe, row) {
                 @Override
                 protected void close(Pipe pipe, boolean finished) throws IOException {
                     if (finished) {
@@ -213,8 +211,7 @@ final class ClientTable<R> implements Table<R> {
 
     @Override
     public boolean anyRowsWith(Transaction txn, R row) throws IOException {
-        // FIXME
-        throw new UnsupportedOperationException();
+        return anyRows(txn);
     }
 
     @Override
@@ -226,8 +223,7 @@ final class ClientTable<R> implements Table<R> {
     public boolean anyRowsWith(Transaction txn, R row, String query, Object... args)
         throws IOException
     {
-        // FIXME
-        throw new UnsupportedOperationException();
+        return anyRows(txn, query, args);
     }
 
     @Override
