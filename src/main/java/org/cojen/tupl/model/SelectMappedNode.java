@@ -107,9 +107,9 @@ final class SelectMappedNode extends SelectNode {
         return new QueryFactory.Wrapped(source, argCount) {
             @Override
             @SuppressWarnings("unchecked")
-            public Table asTable(Object... args) {
+            public Table table(Object... args) {
                 checkArgumentCount(args);
-                return mSource.asTable(args).map(targetClass, factory.get(args));
+                return mSource.table(args).map(targetClass, factory.get(args));
             }
         };
     }

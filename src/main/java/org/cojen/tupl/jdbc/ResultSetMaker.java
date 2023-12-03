@@ -17,6 +17,8 @@
 
 package org.cojen.tupl.jdbc;
 
+import java.io.IOException;
+
 import java.lang.invoke.CallSite;
 import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MethodHandle;
@@ -48,6 +50,9 @@ import org.cojen.maker.MethodMaker;
 import org.cojen.maker.Variable;
 
 import org.cojen.tupl.ConversionException;
+import org.cojen.tupl.Scanner;
+import org.cojen.tupl.Table;
+import org.cojen.tupl.Transaction;
 
 import org.cojen.tupl.io.Utils;
 
@@ -73,16 +78,25 @@ import static org.cojen.tupl.rows.ColumnInfo.*;
  */
 public final class ResultSetMaker {
     /**
-     * Finds or makes a ResultSet implementation class. The class has a public no-arg
-     * constructor and a public init method which accepts a row object.
+     * Finds or makes a ResultSet implementation class.
+     *
+     * The projection a map of table columns to target labels, whereby the order of the
+     * elements determines ResultSet column numbers. Null labels indicate that the column name
+     * serves as the label. A null map can be returned to project all non-hidden columns, with
+     * column names as labels.
+     *
+     * Supported modes:
+     *
+     * 0 - The class has a public no-arg constructor and a public init method which accepts a
+     *     row object.
+     * 1 - The class extends the mode 0 class, and it has a public init method which accepts a
+     *     ScannerFactory. The `next` method is overridden to use a Scanner.
      *
      * @param rowType interface consisting of column methods
-     * @param projection maps original column names to fully qualified target names; the order
-     * of the elements determines the ResultSet column numbers; pass null to project all
-     * non-hidden columns
+     * @param projection column name to target label map
      * @throws SQLNonTransientException if a requested column doesn't exist
      */
-    static Class<?> find(Class<?> rowType, LinkedHashMap<String, String> projection)
+    static Class<?> find(Class<?> rowType, Map<String, String> projection, int mode)
         throws SQLNonTransientException
     {
         RowInfo info = RowInfo.find(rowType);
@@ -127,8 +141,18 @@ public final class ResultSetMaker {
         }
 
         var maker = new ResultSetMaker(rowType, rowClass, info, columns);
+        Key key = new Key(maker.mRowType, maker.mColumnPairs);
+        Class<?> clazz = cCache.obtain(key, maker);
 
-        return cCache.obtain(new Key(maker.mRowType, maker.mColumnPairs), maker);
+        if (mode == 0) {
+            return clazz;
+        }
+
+        if (mode == 1) {
+            return cCache.obtain(new ScannerKey(key), clazz);
+        }
+
+        throw new IllegalArgumentException();
     }
 
     private static ColumnInfo findColumn(Class<?> rowType,
@@ -163,6 +187,10 @@ public final class ResultSetMaker {
             mColumnPairs = columnPairs;
         }
 
+        Key(Key key) {
+            this(key.mRowType, key.mColumnPairs);
+        }
+
         @Override
         public int hashCode() {
             return mRowType.hashCode() * 31 + Arrays.hashCode(mColumnPairs);
@@ -171,17 +199,41 @@ public final class ResultSetMaker {
         @Override
         public boolean equals(Object obj) {
             return this == obj || obj instanceof Key other
+                && getClass() == other.getClass()
                 && mRowType == other.mRowType && Arrays.equals(mColumnPairs, other.mColumnPairs);
         }
     }
 
-    private static final WeakCache<Object, Class<?>, ResultSetMaker> cCache = new WeakCache<>() {
-        protected Class<?> newValue(Object key, ResultSetMaker maker) {
-            try {
-                return maker.finish();
-            } catch (SQLNonTransientException e) {
-                throw Utils.rethrow(e);
+    private static class ScannerKey extends Key {
+        ScannerKey(Key key) {
+            super(key);
+        }
+
+        @Override
+        public int hashCode() {
+            return super.hashCode() ^ 145852292;
+        }
+    }
+
+    private static final WeakCache<Object, Class<?>, Object> cCache = new WeakCache<>() {
+        protected Class<?> newValue(Object key, Object helper) {
+            if (helper instanceof ResultSetMaker maker) {
+                try {
+                    return maker.finish();
+                } catch (SQLNonTransientException e) {
+                    throw Utils.rethrow(e);
+                }
             }
+
+            if (!(helper instanceof Class parent)) {
+                throw new IllegalStateException();
+            }
+
+            if (key instanceof ScannerKey sk) {
+                return makeScannerResultSet(parent);
+            }
+            
+            throw new IllegalStateException();
         }
     };
 
@@ -208,9 +260,9 @@ public final class ResultSetMaker {
 
         boolean hasNullableColumns = false;
 
-        var pairs = new String[mColumns.size() << 1];
+        var pairs = new String[columns.size() << 1];
         int i = 0;
-        for (Map.Entry<String, ColumnInfo> entry : mColumns.entrySet()) {
+        for (Map.Entry<String, ColumnInfo> entry : columns.entrySet()) {
             pairs[i++] = entry.getKey().intern();
             ColumnInfo ci = entry.getValue();
             pairs[i++] = ci.name.intern();
@@ -332,6 +384,8 @@ public final class ResultSetMaker {
         addUpdateMethod("updateBigDecimal", BigDecimal.class, TYPE_BIG_DECIMAL | TYPE_NULLABLE);
         addUpdateMethod("updateBytes", byte[].class, TYPE_BYTE | TYPE_NULLABLE | TYPE_ARRAY);
 
+        assert mClassMaker.unimplementedMethods().isEmpty();
+
         return mClassMaker.finish();
     }
 
@@ -400,7 +454,7 @@ public final class ResultSetMaker {
     }
 
     private void addCloseMethod() {
-        MethodMaker mm = mClassMaker.addMethod(null, "close").public_().final_();
+        MethodMaker mm = mClassMaker.addMethod(null, "close").public_();
         mm.field("state").set(2); // closed state
         mm.field("row").set(null);
     }
@@ -847,6 +901,88 @@ public final class ResultSetMaker {
         rsmVar.invoke("notFound", indexVar).throw_();
     }
 
+    private static Class<?> makeScannerResultSet(Class<?> parent) {
+        ClassMaker cm = CodeUtils.beginClassMaker(ResultSetMaker.class, parent, null, "scanner");
+        cm.public_().extend(parent);
+
+        cm.addField(ScannerFactory.class, "factory").private_();
+        cm.addField(Scanner.class, "scanner").private_();
+
+        cm.addConstructor().public_();
+
+        // Define the `init` method.
+        {
+            MethodMaker mm = cm.addMethod(null, "init", ScannerFactory.class).public_();
+            mm.field("factory").set(mm.param(0));
+        }
+
+        // Override the `close` method to also close the scanner.
+        {
+            MethodMaker mm = cm.addMethod(null, "close").public_();
+            mm.super_().invoke("close");
+            var scannerField = mm.field("scanner");
+            var scannerVar = scannerField.get();
+            Label done = mm.label();
+            scannerVar.ifEq(null, done);
+            scannerField.set(null);
+            mm.var(ResultSetMaker.class).invoke("close", scannerVar);
+            done.here();
+        }
+
+        // Override the `next` method to use the scanner, making it if necessary.
+        {
+            // First create a private method which performs initialization when next is called
+            // for the first time.
+            {
+                MethodMaker mm = cm.addMethod(boolean.class, "initScanner").private_();
+
+                Class<?> rowClass;
+                try {
+                    rowClass = parent.getSuperclass().getDeclaredField("row").getType();
+                } catch (Exception e) {
+                    throw Utils.rethrow(e);
+                }
+
+                var rowVar = mm.new_(rowClass);
+                var scannerVar = mm.var(ResultSetMaker.class)
+                    .invoke("newScanner", mm.field("state"), mm.field("factory"), rowVar);
+
+                Label ready = mm.label();
+                scannerVar.invoke("row").ifNe(null, ready);
+                mm.super_().invoke("close");
+                mm.return_(false);
+
+                ready.here();
+                mm.field("scanner").set(scannerVar);
+                mm.invoke("init", rowVar);
+                mm.return_(true);
+            }
+
+            MethodMaker mm = cm.addMethod(boolean.class, "next").public_();
+            Label start = mm.label().here();
+
+            var scannerVar = mm.field("scanner").get();
+            Label ready = mm.label();
+            scannerVar.ifNe(null, ready);
+            mm.return_(mm.invoke("initScanner"));
+
+            ready.here();
+            var rowVar = scannerVar.invoke("step", mm.field("row"));
+            Label done = mm.label();
+            rowVar.ifNe(null, done);
+            mm.invoke("close");
+            mm.return_(false);
+            done.here();
+            mm.return_(true);
+
+            mm.catch_(start, IOException.class, exVar -> {
+                mm.var(ResultSetMaker.class).invoke("failed", exVar).throw_();
+            });
+        }
+
+        return cm.finish();
+    }
+
     // Called by generated code.
     public static StringBuilder beginToString(Object rs) {
         return new StringBuilder(ResultSet.class.getName()).append('@')
@@ -904,5 +1040,32 @@ public final class ResultSetMaker {
         }
         return new SQLNonTransientException
             ("Column conversion failed for column \"" + columnName + "\": " + message);
+    }
+
+    // Called by generated code.
+    public static Exception failed(IOException ex) {
+        return new SQLException(ex);
+    }
+
+    // Called by generated code.
+    public static void close(Scanner scanner) throws SQLException {
+        try {
+            scanner.close();
+        } catch (Exception e) {
+            throw new SQLException(e);
+        }
+    }
+
+    // Called by generated code.
+    public static <R> Scanner<R> newScanner(int state, ScannerFactory<R> factory, R row)
+        throws SQLNonTransientException, IOException
+    {
+        if (state != 0) {
+            throw new SQLNonTransientException("ResultSet is closed");
+        }
+        if (factory == null) {
+            throw new SQLNonTransientException("No query has been executed into this ResultSet");
+        }
+        return factory.newScannerWith(row);
     }
 }

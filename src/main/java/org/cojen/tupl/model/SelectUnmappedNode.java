@@ -141,26 +141,26 @@ final class SelectUnmappedNode extends SelectNode {
         }
 
         if (baseArgCount == 0) {
-            return QueryFactory.make(source.asTable().view(viewQuery, viewArgs));
+            return QueryFactory.make(source.table().view(viewQuery, viewArgs));
         }
 
         if (viewArgs.length == 0) {
             return new QueryFactory.Wrapped(source, baseArgCount) {
                 @Override
-                public Table asTable(Object... args) {
-                    return mSource.asTable(args).view(viewQuery, args);
+                public Table table(Object... args) {
+                    return mSource.table(args).view(viewQuery, args);
                 }
             };
         }
 
         return new QueryFactory.Wrapped(source, baseArgCount) {
             @Override
-            public Table asTable(Object... args) {
+            public Table table(Object... args) {
                 int argCount = checkArgumentCount(args);
                 var fullArgs = new Object[argCount + viewArgs.length];
                 System.arraycopy(args, 0, fullArgs, 0, argCount);
                 System.arraycopy(viewArgs, 0, fullArgs, argCount, viewArgs.length);
-                return mSource.asTable(args).view(viewQuery, fullArgs);
+                return mSource.table(args).view(viewQuery, fullArgs);
             }
         };
     }

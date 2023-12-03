@@ -105,7 +105,7 @@ public final class JoinNode extends RelationNode {
         if (argCount == 0) {
             var tables = new Table[queryList.size()];
             for (int i=0; i<tables.length; i++) {
-                tables[i] = queryList.get(i).asTable();
+                tables[i] = queryList.get(i).table();
             }
             return QueryFactory.make(Table.join(joinType, spec, tables));
         }
@@ -124,10 +124,10 @@ public final class JoinNode extends RelationNode {
             }
 
             @Override
-            public Table asTable(Object... args) {
+            public Table table(Object... args) {
                 var tables = new Table[queries.length];
                 for (int i=0; i<tables.length; i++) {
-                    tables[i] = queries[i].asTable(args);
+                    tables[i] = queries[i].table(args);
                 }
                 return Table.join(joinType, spec, tables);
             }

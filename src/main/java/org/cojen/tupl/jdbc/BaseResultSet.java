@@ -52,8 +52,12 @@ import java.util.Map;
  * @author Brian S O'Neill
  */
 public abstract class BaseResultSet implements ResultSet {
-    // 0: not ready, 1: ready, 2: closed
+    // 0: uninitialized, 1: ready, 2: closed
     protected int state;
+
+    public final boolean isUninitialized() {
+        return state == 0;
+    }
 
     /* Implemented by ResultSetMaker.
     @Override

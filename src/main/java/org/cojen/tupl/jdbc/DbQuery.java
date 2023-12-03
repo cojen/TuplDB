@@ -21,7 +21,12 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
+import java.util.Map;
+
+import org.cojen.tupl.Table;
 import org.cojen.tupl.Transaction;
+
+import org.cojen.tupl.rows.RowUtils;
 
 /**
  * 
@@ -36,40 +41,71 @@ public abstract class DbQuery extends BasePreparedStatement {
         mCon = con;
     }
 
-    @Override
-    public ResultSet executeQuery() throws SQLException {
-        return executeQuery(mCon.txn());
+    public static interface Factory {
+        /**
+         * Returns a new DbQuery instance against the given connection.
+         */
+        DbQuery newDbQuery(DbConnection con);
+    }
+
+    public static interface TableProvider<R> {
+        Class<R> rowType();
+
+        /**
+         * Returns a map of table columns to target labels, whereby the order of the elements
+         * determines ResultSet column numbers. Null labels indicate that the column name
+         * serves as the label. A null map can be returned to project all non-hidden columns,
+         * with column names as labels.
+         */
+        Map<String, String> projection();
+
+        /**
+         * Returns the minimum amount of arguments which must be passed to the {@link #table}
+         * method.
+         */
+        int argumentCount();
+
+        /**
+         * Returns a fully functional table.
+         *
+         * @throws IllegalArgumentException if not enough arguments are given
+         */
+        Table<R> table(Object... args);
+
+        default Table<R> table() {
+            return table(RowUtils.NO_ARGS);
+        }
     }
 
     @Override
-    public boolean execute() throws SQLException {
+    public final boolean execute() throws SQLException {
         executeQuery();
         return true;
     }
 
     @Override
-    public int getUpdateCount() throws SQLException {
+    public final int getUpdateCount() throws SQLException {
         return -1;
     }
 
     @Override
-    public int executeUpdate() throws SQLException {
+    public final int executeUpdate() throws SQLException {
         throw new SQLException("Statement is a query");
     }
 
     @Override
-    public boolean getMoreResults() throws SQLException {
+    public final boolean getMoreResults() throws SQLException {
         closeResultSet();
         return false;
     }
 
     @Override
-    public ResultSetMetaData getMetaData() throws SQLException {
+    public final ResultSetMetaData getMetaData() throws SQLException {
         return getResultSet().getMetaData();
     }
 
     @Override
-    public DbConnection getConnection() throws SQLException {
+    public final DbConnection getConnection() throws SQLException {
         DbConnection con = mCon;
         if (con == null) {
             throw new SQLException("Closed");
@@ -78,29 +114,49 @@ public abstract class DbQuery extends BasePreparedStatement {
     }
 
     @Override
-    public void close() throws SQLException {
+    public final void close() throws SQLException {
         mCon = null;
         closeResultSet();
     }
 
     @Override
-    public boolean isClosed() throws SQLException {
+    public final boolean isClosed() throws SQLException {
         return mCon == null;
     }
 
-    protected void checkClosed() throws SQLException {
+    protected final void checkClosed() throws SQLException {
         if (mCon == null) {
             throw new SQLException("Closed");
         }
     }
 
-    /* Implemented by subclass.
+    protected final Transaction txn() throws SQLException {
+        return getConnection().txn();
+    }
+
+    /**
+     * Should be overridden by subclasses which have parameters.
+     */
     @Override
     public void clearParameters() throws SQLException {
+    }
 
+    /**
+     * Should be overridden by subclasses which have parameters.
+     */
     @Override
     public void setObject(int parameterIndex, Object x) throws SQLException {
-    */
+        throw new SQLException("Unknown parameter: " + parameterIndex);
+    }
+
+    protected static void setObject(Object[] args, int parameterIndex, Object x)
+        throws SQLException
+    {
+        if (parameterIndex <= 0 || parameterIndex > args.length) {
+            throw new SQLException("Unknown parameter: " + parameterIndex);
+        }
+        args[parameterIndex - 1] = x;
+    }
 
     /**
      * Returns a new or existing ResultSet instance. Implementation must call checkClosed
@@ -114,10 +170,11 @@ public abstract class DbQuery extends BasePreparedStatement {
      * current ResultSet is already initialized, close it first. Implementation must call
      * checkClosed before creating a new ResultSet.
      */
-    protected abstract ResultSet executeQuery(Transaction txn) throws SQLException;
+    @Override
+    public abstract ResultSet executeQuery() throws SQLException;
 
     /**
-     * Close and clear the ResultSet, if any.
+     * Close and discard the ResultSet, if any.
      */
     protected abstract void closeResultSet() throws SQLException;
 }
